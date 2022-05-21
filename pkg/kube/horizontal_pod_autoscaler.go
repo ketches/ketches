@@ -1,19 +1,18 @@
-package k8s
+package kube
 
 import (
 	"context"
 
-	"github.com/ketches/ketches/pkg/cast"
+	"github.com/pescox/go-kit/cast"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 func CreateHorizontalPodAutoscaler(clientset *kubernetes.Clientset, hpa HorizontalPodAutoscaler) error {
-	khpa, err := clientset.AutoscalingV2().HorizontalPodAutoscalers(hpa.Namespace).Get(context.Background(), hpa.Name, v1.GetOptions{})
+	khpa, err := clientset.AutoscalingV2().HorizontalPodAutoscalers(hpa.Namespace).Get(context.Background(), hpa.Name, metav1.GetOptions{})
 
 	khpaSpec := autoscalingv2.HorizontalPodAutoscalerSpec{
 		MaxReplicas: hpa.MaxReplicas,
@@ -50,7 +49,7 @@ func CreateHorizontalPodAutoscaler(clientset *kubernetes.Clientset, hpa Horizont
 			},
 			Spec: khpaSpec,
 		}
-		_, err = clientset.AutoscalingV2().HorizontalPodAutoscalers(hpa.Namespace).Create(context.Background(), khpa, v1.CreateOptions{})
+		_, err = clientset.AutoscalingV2().HorizontalPodAutoscalers(hpa.Namespace).Create(context.Background(), khpa, metav1.CreateOptions{})
 		return err
 	}
 	if khpa == nil {
@@ -62,10 +61,10 @@ func CreateHorizontalPodAutoscaler(clientset *kubernetes.Clientset, hpa Horizont
 		}
 	}
 	khpa.Spec = khpaSpec
-	_, err = clientset.AutoscalingV2().HorizontalPodAutoscalers(hpa.Namespace).Update(context.Background(), khpa, v1.UpdateOptions{})
+	_, err = clientset.AutoscalingV2().HorizontalPodAutoscalers(hpa.Namespace).Update(context.Background(), khpa, metav1.UpdateOptions{})
 	return err
 }
 
 func DeleteHorizontalPodAutoscaler(clientset *kubernetes.Clientset, name, namespace string) error {
-	return clientset.AutoscalingV2().HorizontalPodAutoscalers(namespace).Delete(context.Background(), name, v1.DeleteOptions{})
+	return clientset.AutoscalingV2().HorizontalPodAutoscalers(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
 }

@@ -1,11 +1,10 @@
-package k8s
+package kube
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/pescox/go-kit/exp"
-	coreV1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,24 +15,24 @@ import (
 func ApplyService(clientset *kubernetes.Clientset, s *Service) error {
 	ks, err := clientset.CoreV1().Services(s.Namespace).Get(context.Background(), s.Name, v1.GetOptions{})
 
-	ports := make([]coreV1.ServicePort, 0)
+	ports := make([]corev1.ServicePort, 0)
 	for _, p := range s.Ports {
-		ports = append(ports, coreV1.ServicePort{
+		ports = append(ports, corev1.ServicePort{
 			Protocol:   corev1.Protocol(exp.If(len(p.Protocol) == 0, "TCP", p.Protocol)),
-			Name:       exp.If(len(p.Name) == 0, fmt.Sprint("p_%d", p.Port), p.Name),
+			Name:       exp.If(len(p.Name) == 0, fmt.Sprintf("p_%d", p.Port), p.Name),
 			Port:       p.Port,
 			TargetPort: intstr.Parse(p.TargetPort),
 			NodePort:   p.NodePort,
 		})
 	}
-	ksSpec := coreV1.ServiceSpec{
+	ksSpec := corev1.ServiceSpec{
 		Selector: s.SelectorMatchLabels,
 		Ports:    ports,
-		Type:     coreV1.ServiceType(exp.If(len(s.Type) == 0, "NodePort", string(s.Type))),
+		Type:     corev1.ServiceType(exp.If(len(s.Type) == 0, "NodePort", string(s.Type))),
 	}
 
 	if err != nil && apierrors.IsNotFound(err) {
-		ks = &coreV1.Service{
+		ks = &corev1.Service{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      s.Name,
 				Namespace: s.Namespace,
@@ -44,7 +43,7 @@ func ApplyService(clientset *kubernetes.Clientset, s *Service) error {
 		return err
 	}
 	if ks == nil {
-		ks = &coreV1.Service{
+		ks = &corev1.Service{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      s.Name,
 				Namespace: s.Namespace,
@@ -61,8 +60,8 @@ func DeleteService(clientset *kubernetes.Clientset, name, namespace string) erro
 }
 
 func GetServiceLoadBalancer(clientset *kubernetes.Clientset, name, namespace string) (string, error) {
-	s, err := client.CoreV1().Services(namespace).Get(context.Background(), name, v1.GetOptions{})
-	if err == nil && s.Spec.Type == coreV1.ServiceTypeLoadBalancer {
+	s, err := clientset.CoreV1().Services(namespace).Get(context.Background(), name, v1.GetOptions{})
+	if err == nil && s.Spec.Type == corev1.ServiceTypeLoadBalancer {
 		return exp.If(len(s.Status.LoadBalancer.Ingress[0].Hostname) > 0, s.Status.LoadBalancer.Ingress[0].Hostname, s.Status.LoadBalancer.Ingress[0].IP), nil
 	}
 

@@ -1,4 +1,4 @@
-package k8s
+package kube
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func ApplyDeployment(client *kubernetes.Clientset, deployment *models.KubeDeployment) error {
+func ApplyDeployment(client *kubernetes.Clientset, deployment *Deployment) error {
 	d, err := client.AppsV1().Deployments(deployment.Namespace).Get(context.Background(), deployment.Name, v1.GetOptions{})
 
 	ports := make([]coreV1.ContainerPort, 0)
-	for _, port := range deployment.ContainerPorts {
+	for _, port := range deployment.Containers[0].Ports {
 		ports = append(ports, coreV1.ContainerPort{
 			Protocol:      coreV1.ProtocolTCP,
 			Name:          fmt.Sprintf("port_%d", port.Port),
@@ -26,22 +26,20 @@ func ApplyDeployment(client *kubernetes.Clientset, deployment *models.KubeDeploy
 	deploymentSpec := appsV1.DeploymentSpec{
 		Selector: &v1.LabelSelector{
 			MatchLabels: map[string]string{
-				"app":     deployment.ApplicationName,
-				"version": deployment.Version,
+				"app": deployment.Name,
 			},
 		},
 		Template: coreV1.PodTemplateSpec{
 			ObjectMeta: v1.ObjectMeta{
 				Labels: map[string]string{
-					"app":     deployment.ApplicationName,
-					"version": deployment.Version,
+					"app": deployment.Name,
 				},
 			},
 			Spec: coreV1.PodSpec{
 				Containers: []coreV1.Container{
 					{
-						Name:  deployment.ApplicationName,
-						Image: deployment.ContainerImage,
+						Name:  deployment.Name,
+						Image: deployment.Containers[0].Image,
 						Ports: ports,
 					},
 				},
@@ -64,7 +62,7 @@ func ApplyDeployment(client *kubernetes.Clientset, deployment *models.KubeDeploy
 		_, applyErr = client.AppsV1().Deployments(deployment.Namespace).Update(context.Background(), d, v1.UpdateOptions{})
 	}
 	if applyErr != nil {
-		log.Errorf("apply deployment ERROR: %s", applyErr.Error())
+		log.ErrorF("apply deployment ERROR: %s", applyErr.Error())
 		return errors.New("apply deployment failed")
 	}
 	return nil
@@ -73,7 +71,7 @@ func ApplyDeployment(client *kubernetes.Clientset, deployment *models.KubeDeploy
 func DeleteDeployment(client *kubernetes.Clientset, deploymentName, deploymentNamespace string, canary bool) error {
 	deleteErr := client.AppsV1().Deployments(deploymentNamespace).Delete(context.Background(), deploymentName, v1.DeleteOptions{})
 	if deleteErr != nil {
-		log.Errorf("delete deployment ERROR: %s", deleteErr.Error())
+		log.ErrorF("delete deployment ERROR: %s", deleteErr.Error())
 		return errors.New("delete deployment failed")
 	}
 	return nil

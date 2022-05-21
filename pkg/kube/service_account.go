@@ -1,7 +1,8 @@
-package k8s
+package kube
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pescox/go-kit/log"
 	v1 "k8s.io/api/core/v1"
@@ -11,8 +12,8 @@ import (
 )
 
 func ApplyServiceAccount(clientset *kubernetes.Clientset, sa ServiceAccount) error {
-	if sa.BindingRole && len(sa.RoleName) > 0 {
-		if sa.ClusterRole {
+	if sa.IsBindingRole && len(sa.RoleName) > 0 {
+		if sa.IsClusterRole {
 			// Apply cluster role binding
 			get, err := clientset.RbacV1beta1().ClusterRoleBindings().Get(context.TODO(), sa.RoleName, metaV1.GetOptions{})
 			if err != nil || len(get.Name) == 0 {
@@ -34,7 +35,7 @@ func ApplyServiceAccount(clientset *kubernetes.Clientset, sa ServiceAccount) err
 					},
 				}, metaV1.CreateOptions{})
 				if err != nil {
-					log.Errorf("apply cluster role binding [%s] failed: %s", sa.RoleName, err.Error())
+					log.ErrorF("apply cluster role binding [%s] failed: %s", sa.RoleName, err.Error())
 					return err
 				}
 			}
@@ -61,7 +62,7 @@ func ApplyServiceAccount(clientset *kubernetes.Clientset, sa ServiceAccount) err
 					},
 				}, metaV1.CreateOptions{})
 				if err != nil {
-					log.Errorf("apply cluster role binding [%s] failed.", sa.RoleName)
+					log.ErrorF("apply cluster role binding [%s] failed.", sa.RoleName)
 					return err
 				}
 			}
@@ -73,12 +74,12 @@ func ApplyServiceAccount(clientset *kubernetes.Clientset, sa ServiceAccount) err
 		// Create services account
 		_, err := clientset.CoreV1().ServiceAccounts(sa.Namespace).Create(context.TODO(), &v1.ServiceAccount{}, metaV1.CreateOptions{})
 		if err != nil {
-			log.Errorf("apply cluster role binding [%s] failed: %s", sa.RoleName, err.Error())
+			log.ErrorF("apply cluster role binding [%s] failed: %s", sa.RoleName, err.Error())
 			return err
 		}
 	} else {
-		// Update services account
-
+		//TODO: Update services account
+		fmt.Println("todo")
 	}
 	return nil
 }

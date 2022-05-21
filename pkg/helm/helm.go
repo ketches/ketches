@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ketches/ketches/pkg/k8s"
+	"github.com/ketches/ketches/pkg/kube"
 	"helm.sh/helm/v3/pkg/action"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,7 +23,7 @@ var conf *action.Configuration
 
 func Configuration(namespace string) *action.Configuration {
 	actionConfig := new(action.Configuration)
-	k8sConfig := k8s.GetConfig()
+	k8sConfig := kube.RestConfig()
 	kubeConfig := genericclioptions.NewConfigFlags(false)
 	kubeConfig.APIServer = &k8sConfig.Host
 	kubeConfig.BearerToken = &k8sConfig.BearerToken
@@ -144,4 +144,24 @@ func toObjects(bytes []byte) ([]runtime.Object, error) {
 	}
 
 	return []runtime.Object{obj}, nil
+}
+
+type deployed struct {
+	helmName      string
+	helmNamespace string
+	version       string
+}
+
+func Deployed(helmName, helmNamespace string) *deployed {
+	return &deployed{
+		helmName:      helmName,
+		helmNamespace: helmNamespace,
+	}
+}
+
+func (d *deployed) AllResources() ([]*unstructured.Unstructured, error) {
+	var resources []*unstructured.Unstructured
+	// manifest
+
+	return resources, nil
 }

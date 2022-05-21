@@ -1,4 +1,4 @@
-package k8s
+package kube
 
 type Model struct {
 	Name        string      `json:"name"`
@@ -21,6 +21,11 @@ type Labels keyvals
 
 type Annotations keyvals
 
+type Deployment struct {
+	NamespacedModel
+	Containers []Container `json:"containers"`
+}
+
 type Pod struct {
 	NamespacedModel
 	ServiceAccount string      `json:"serviceAccount"`
@@ -28,12 +33,19 @@ type Pod struct {
 }
 
 type Container struct {
-	Name    string    `json:"name"`
-	Image   string    `json:"image"`
-	Args    string    `json:"args"`
-	Envs    []keyvals `json:"envs"`
-	Configs []keyvals `json:"configs"`
-	Volumes []Volume  `json:"volumes"`
+	Name    string          `json:"name"`
+	Image   string          `json:"image"`
+	Args    string          `json:"args"`
+	Envs    []keyvals       `json:"envs"`
+	Ports   []ContainerPort `json:"ports"`
+	Configs []keyvals       `json:"configs"`
+	Volumes []Volume        `json:"volumes"`
+}
+
+type ContainerPort struct {
+	Protocol string `json:"protocol"`
+	Name     string `json:"name"`
+	Port     int32  `json:"port"`
 }
 
 type Volume struct {
@@ -65,9 +77,9 @@ type ServiceType string
 
 const (
 	ClusterID    ServiceType = "ClusterID"
-	NodePort                 = "NodePort"
-	LoadBalancer             = "LoadBalancer"
-	ExternalName             = "ExternalName"
+	NodePort     ServiceType = "NodePort"
+	LoadBalancer ServiceType = "LoadBalancer"
+	ExternalName ServiceType = "ExternalName"
 )
 
 type ServicePort struct {
@@ -76,4 +88,11 @@ type ServicePort struct {
 	TargetPort string `json:"targetPort"`
 	NodePort   int32  `json:"nodePort"`
 	Protocol   string `json:"protocol"`
+}
+
+type ServiceAccount struct {
+	NamespacedModel
+	RoleName      string `json:"roleName"`
+	IsBindingRole bool   `json:"isBindingRole"`
+	IsClusterRole bool   `json:"isClusterRole"`
 }

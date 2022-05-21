@@ -1,18 +1,18 @@
-package k8s
+package kube
 
 import (
 	"context"
 	"errors"
 
-	"github.com/vsixz/nsokube-core/models"
-	"github.com/vsixz/prego/log"
+	"github.com/pescox/go-kit/log"
 	"k8s.io/api/extensions/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 )
 
-type NginxIngress models.KubeIngress
+type NginxIngress struct {
+}
 
 func (ingress NginxIngress) ApplyGateway(client *kubernetes.Clientset, gateway ApplyGatewayModel) error {
 	ing, err := client.ExtensionsV1beta1().Ingresses(gateway.Namespace).Get(context.Background(), gateway.Name, v1.GetOptions{})
@@ -67,7 +67,7 @@ func (ingress NginxIngress) ApplyGateway(client *kubernetes.Clientset, gateway A
 
 		_, err := client.ExtensionsV1beta1().Ingresses(gateway.Namespace).Create(context.Background(), ing, v1.CreateOptions{})
 		if err != nil {
-			log.Errorf("apply ingress error: %s", err.Error())
+			log.ErrorF("apply ingress error: %s", err.Error())
 			return errors.New("apply ingress failed")
 		}
 	} else {
@@ -78,7 +78,7 @@ func (ingress NginxIngress) ApplyGateway(client *kubernetes.Clientset, gateway A
 
 		_, err := client.ExtensionsV1beta1().Ingresses(gateway.Namespace).Update(context.Background(), ing, v1.UpdateOptions{})
 		if err != nil {
-			log.Errorf("apply ingress error: %s", err.Error())
+			log.ErrorF("apply ingress error: %s", err.Error())
 			return errors.New("apply ingress failed")
 		}
 	}
@@ -88,7 +88,7 @@ func (ingress NginxIngress) ApplyGateway(client *kubernetes.Clientset, gateway A
 func (ingress NginxIngress) DeleteGateway(client *kubernetes.Clientset, gateway DeleteGatewayModel) error {
 	err := client.ExtensionsV1beta1().Ingresses(gateway.Namespace).Delete(context.Background(), gateway.Name, v1.DeleteOptions{})
 	if err != nil {
-		log.Errorf("delete ingress error: %s", err.Error())
+		log.ErrorF("delete ingress error: %s", err.Error())
 		return errors.New("delete ingress failed")
 	}
 	return nil

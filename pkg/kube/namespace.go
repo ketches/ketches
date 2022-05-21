@@ -1,9 +1,8 @@
-package k8s
+package kube
 
 import (
 	"context"
 
-	"github.com/ketches/ketches/pkg/log"
 	coreV1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,7 +53,6 @@ func CreateNamespace(clientset *kubernetes.Clientset, ns Namespace) error {
 func UpdateNamespace(clientset *kubernetes.Clientset, ns Namespace) error {
 	kns, err := clientset.CoreV1().Namespaces().Get(context.TODO(), ns.Name, metaV1.GetOptions{})
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 

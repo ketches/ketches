@@ -1,4 +1,4 @@
-package k8s
+package kube
 
 type ApplyGatewayModel struct {
 	Name        string
