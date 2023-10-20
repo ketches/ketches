@@ -1,0 +1,102 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ketches-system
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ketches-sa
+  namespace: ketches-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ketches-sa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: ketches-sa
+  namespace: ketches-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: ketches-system
+  labels:
+    app: controller-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: controller-manager
+  template:
+    metadata:
+      labels:
+        app: controller-manager
+    spec:
+      serviceAccountName: ketches-sa
+      containers:
+      - name: controller-manager
+        image: ketches/controller-manager:latest
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: controller-manager
+  namespace: ketches-system
+spec:
+  selector:
+    app: controller-manager
+  ports:
+  - name: metrics
+    protocol: TCP
+    port: 8090
+    targetPort: 8090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: ketches-system
+  labels:
+    app: api-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+    spec:
+      serviceAccountName: ketches-sa
+      containers:
+      - name: api-server
+        image: ketches/api-server:latest
+        ports:
+        - name: http
+          protocol: TCP
+          containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-server
+  namespace: ketches-system
+spec:
+  selector:
+    app: api-server
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8080
+    targetPort: 8080

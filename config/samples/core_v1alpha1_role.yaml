@@ -1,0 +1,12 @@
+apiVersion: core.ketches.io/v1alpha1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/name: role
+    app.kubernetes.io/instance: role-sample
+    app.kubernetes.io/part-of: ketches
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: ketches
+  name: role-sample
+spec:
+  # TODO(user): Add fields here

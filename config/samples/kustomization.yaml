@@ -1,0 +1,13 @@
+## Append samples of your project ##
+resources:
+- core_v1alpha1_application.yaml
+- core_v1alpha1_role.yaml
+- core_v1alpha1_user.yaml
+- core_v1alpha1_space.yaml
+- core_v1alpha1_cluster.yaml
+- ci_v1alpha1_workflow.yaml
+- core_v1alpha1_applicationgroup.yaml
+- core_v1alpha1_audit.yaml
+- core_v1alpha1_extension.yaml
+- core_v1alpha1_helmrepository.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

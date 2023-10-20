@@ -1,0 +1,74 @@
+apiVersion: core.ketches.io/v1alpha1
+kind: Application
+metadata:
+  labels:
+    app.kubernetes.io/name: application
+    app.kubernetes.io/instance: application-sample
+    app.kubernetes.io/part-of: ketches
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: ketches
+  name: application-sample
+spec:
+  type: Deployment
+  desiredState: Running
+  displayName: application-sample
+  description: "应用示例: hello-app"
+  image: poneding/hello-app:latest
+  replicas: 1
+  env:
+    - name: HELLO_APP_PATH_BASE
+      value: "/hello"
+    - name: THIS_APP_NAME
+      value: "application-sample"
+  ports:
+    - number: 8080
+      target: 80
+      gateway: TCP
+      nodePort: 30080
+    - number: 80
+      target: 80
+      gateway: HTTP
+      host: hello.gateway.ketches.cn
+      path: /hello
+  healthz:
+    httpGet:
+      path: /hello
+      port: 80
+      scheme: HTTP
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 3
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+  mountFiles:
+    - name: hello-log
+      path: /tmp/hello.log
+      mode: 0644
+      content: |
+        Hello World!
+  mountDirectories:
+    - name: hello-dir
+      path: /tmp/hello-dir
+      storageClassName: standard
+      storageCapacity: 1Gi
+      local: true
+      readOnly: false
+  privileged: true
+  autoscaler:
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+  sidecars:
+    - type: InitRun
+      name: echo-hello
+      image: busybox:latest
+      command:
+      - echo
+      - "hello"

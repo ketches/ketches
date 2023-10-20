@@ -1,0 +1,23 @@
+info:
+  contact:
+    email: ketches@ketchees.cn
+    name: Ketches Support Team
+    url: https://support.ketches.io
+  description: Ketches Http server.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0
+  title: Ketches Http Server
+  version: v1
+paths:
+  /healthz:
+    get:
+      description: Get Ketches WebAPI server health status
+      responses: {}
+      summary: Healthz
+  /version:
+    get:
+      description: Get Ketches WebAPI server version
+      responses: {}
+      summary: Version
+swagger: "2.0"

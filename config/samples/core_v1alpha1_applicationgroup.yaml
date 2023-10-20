@@ -1,0 +1,12 @@
+apiVersion: core.ketches.io/v1alpha1
+kind: ApplicationGroup
+metadata:
+  labels:
+    app.kubernetes.io/name: applicationgroup
+    app.kubernetes.io/instance: applicationgroup-sample
+    app.kubernetes.io/part-of: ketches
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: ketches
+  name: applicationgroup-sample
+spec:
+  # TODO(user): Add fields here

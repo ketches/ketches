@@ -1,0 +1,8 @@
+FROM alpine:3.18
+ARG TARGETPLATFORM
+
+WORKDIR /
+COPY  .out/api-server/${TARGETPLATFORM}/ketches-api-server .
+# USER 65532:65532
+
+ENTRYPOINT ["/ketches-api-server"]

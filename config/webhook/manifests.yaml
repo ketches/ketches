@@ -1,0 +1,413 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-ci-ketches-io-v1alpha1-workflow
+  failurePolicy: Fail
+  name: mworkflow.ci.ketches.io
+  rules:
+  - apiGroups:
+    - ci.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - workflows
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-core-ketches-io-v1alpha1-application
+  failurePolicy: Fail
+  name: mapplication.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - applications
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-core-ketches-io-v1alpha1-applicationgroup
+  failurePolicy: Fail
+  name: mapplicationgroup.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - applicationgroups
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-core-ketches-io-v1alpha1-audit
+  failurePolicy: Fail
+  name: maudit.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - audits
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-core-ketches-io-v1alpha1-cluster
+  failurePolicy: Fail
+  name: mcluster.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - clusters
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-core-ketches-io-v1alpha1-extension
+  failurePolicy: Fail
+  name: mextension.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - extensions
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-core-ketches-io-v1alpha1-helmrepository
+  failurePolicy: Fail
+  name: mhelmrepository.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - helmrepositories
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-core-ketches-io-v1alpha1-role
+  failurePolicy: Fail
+  name: mrole.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - roles
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-core-ketches-io-v1alpha1-space
+  failurePolicy: Fail
+  name: mspace.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - spaces
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-core-ketches-io-v1alpha1-user
+  failurePolicy: Fail
+  name: muser.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - users
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-ci-ketches-io-v1alpha1-workflow
+  failurePolicy: Fail
+  name: vworkflow.ci.ketches.io
+  rules:
+  - apiGroups:
+    - ci.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - workflows
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-core-ketches-io-v1alpha1-application
+  failurePolicy: Fail
+  name: vapplication.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - applications
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-core-ketches-io-v1alpha1-applicationgroup
+  failurePolicy: Fail
+  name: vapplicationgroup.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - applicationgroups
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-core-ketches-io-v1alpha1-audit
+  failurePolicy: Fail
+  name: vaudit.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - audits
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-core-ketches-io-v1alpha1-cluster
+  failurePolicy: Fail
+  name: vcluster.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - clusters
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-core-ketches-io-v1alpha1-extension
+  failurePolicy: Fail
+  name: vextension.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - extensions
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-core-ketches-io-v1alpha1-helmrepository
+  failurePolicy: Fail
+  name: vhelmrepository.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - helmrepositories
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-core-ketches-io-v1alpha1-role
+  failurePolicy: Fail
+  name: vrole.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - roles
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-core-ketches-io-v1alpha1-space
+  failurePolicy: Fail
+  name: vspace.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - spaces
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-core-ketches-io-v1alpha1-user
+  failurePolicy: Fail
+  name: vuser.core.ketches.io
+  rules:
+  - apiGroups:
+    - core.ketches.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - users
+  sideEffects: None

@@ -1,0 +1,266 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ci.ketches.io
+  resources:
+  - workflows
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ci.ketches.io
+  resources:
+  - workflows/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ci.ketches.io
+  resources:
+  - workflows/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - applicationgroups
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - applicationgroups/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - applicationgroups/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - applications
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - applications/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - applications/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - audits
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - audits/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - audits/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - clusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - clusters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - clusters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - extensions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - extensions/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - extensions/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - helmrepositories
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - helmrepositories/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - helmrepositories/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - roles/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - roles/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - spaces
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - spaces/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - spaces/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - users
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - users/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.ketches.io
+  resources:
+  - users/status
+  verbs:
+  - get
+  - patch
+  - update
