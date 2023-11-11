@@ -20,6 +20,7 @@ import (
 	"context"
 
 	civ1alpha1 "github.com/ketches/ketches/api/ci/v1alpha1"
+	"github.com/ketches/ketches/pkg/global"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,7 +64,7 @@ func (r *WorkflowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				Name:      build.Name,
 				Namespace: build.Namespace,
 				Labels: map[string]string{
-					civ1alpha1.RequiredResourceLabelKey: civ1alpha1.RequiredResourceLabelValue,
+					global.OwnedResourceLabelKey: global.LabelTrueValue,
 				},
 			},
 			Spec: corev1.PodSpec{

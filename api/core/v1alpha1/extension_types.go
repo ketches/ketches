@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/ketches/ketches/api/spec"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,23 +33,23 @@ const (
 
 // ExtensionSpec defines the desired state of Extension
 type ExtensionSpec struct {
-	Description string `json:"description,omitempty"`
-	//+kubebuilder:validation:Required
-	Cluster string `json:"cluster,omitempty"`
-	//+kubebuilder:validation:Required
+	spec.ViewSpec `json:",inline"`
+	// //+kubebuilder:validation:Required
+	// Cluster string `json:"cluster,omitempty"`
+	// +kubebuilder:validation:Required
 	TargetNamespace string `json:"targetNamespace,omitempty"`
-	//+kubebuilder:validation:Required
+	// +kubebuilder:validation:Required
 	InstallType           ExtensionInstallType   `json:"installType,omitempty"`
 	HelmInstallation      *HelmInstallation      `json:"helmInstallation,omitempty"`
 	KubeApplyInstallation *KubeApplyInstallation `json:"applyInstallation,omitempty"`
 }
 
 type HelmInstallation struct {
-	//+kubebuilder:validation:Required
+	// +kubebuilder:validation:Required
 	Repository string `json:"repository,omitempty"`
-	//+kubebuilder:validation:Required
+	// +kubebuilder:validation:Required
 	Name string `json:"name,omitempty"`
-	//+kubebuilder:validation:Required
+	// +kubebuilder:validation:Required
 	Chart   string            `json:"chart,omitempty"`
 	Version string            `json:"version,omitempty"`
 	KeyVals map[string]string `json:"keyVals,omitempty"`
@@ -82,16 +83,14 @@ type KubeApplyResult struct {
 	Applyed   int `json:"applyed,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
-//+kubebuilder:printcolumn:name="Install-Type",type="string",JSONPath=".spec.installType",description="install type"
-//+kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".spec.cluster",description="cluster"
-//+kubebuilder:printcolumn:name="Target-Namespace",type="string",JSONPath=".spec.targetNamespace",description="target namespace"
-//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
-//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Install-Type",type="string",JSONPath=".spec.installType",description="install type"
+// +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".spec.cluster",description="cluster"
+// +kubebuilder:printcolumn:name="Target-Namespace",type="string",JSONPath=".spec.targetNamespace",description="target namespace"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
 // +genclient
-// +genclient:nonNamespaced
 
 // Extension is the Schema for the extensions API
 type Extension struct {
@@ -102,7 +101,7 @@ type Extension struct {
 	Status ExtensionStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ExtensionList contains a list of Extension
 type ExtensionList struct {

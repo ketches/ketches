@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/ketches/ketches/api/spec"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,10 +25,9 @@ import (
 
 // SpaceSpec defines the desired state of Space
 type SpaceSpec struct {
-	//+kubebuilder:validation:Required
+	spec.ViewSpec `json:",inline"`
+	// +kubebuilder:validation:Required
 	Cluster       string                       `json:"cluster,omitempty"`
-	DisplayName   string                       `json:"displayName,omitempty"`
-	Description   string                       `json:"description,omitempty"`
 	Members       map[string]SpaceMemberRoles  `json:"members,omitempty"`
 	ResourceQuota *corev1.ResourceRequirements `json:"resourceQuota,omitempty"`
 	LimitRange    *LimitRange                  `json:"limitRange,omitempty"`
@@ -80,20 +80,20 @@ type LimitRange struct {
 // SpaceStatus defines the observed state of Space
 type SpaceStatus struct {
 	Phase SpacePhase `json:"phase,omitempty"`
-	//+kubebuilder:validation:MaxItems=8
+	// +kubebuilder:validation:MaxItems=8
 	Conditions []Condition `json:"conditions,omitempty"`
 	// Conditions       []SpaceCondition `json:"conditions,omitempty"`
 	ApplicationCount int                         `json:"applicationCount"`
 	Applications     map[string]ApplicationPhase `json:"applications,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
-//+kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".spec.cluster",description="cluster"
-//+kubebuilder:printcolumn:name="Applications",type="integer",JSONPath=".status.applicationCount",description="number of applications"
-//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
-//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".spec.cluster",description="cluster"
+// +kubebuilder:printcolumn:name="Applications",type="integer",JSONPath=".status.applicationCount",description="number of applications"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
 // +genclient
 // +genclient:nonNamespaced
 
@@ -106,7 +106,7 @@ type Space struct {
 	Status SpaceStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // SpaceList contains a list of Space
 type SpaceList struct {

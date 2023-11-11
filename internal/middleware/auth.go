@@ -18,14 +18,15 @@ package middleware
 
 import (
 	"errors"
-	"github.com/ketches/ketches/internal/http"
-	"github.com/ketches/ketches/pkg/ketches"
 	"slices"
 	"strings"
 
+	"github.com/ketches/ketches/internal/http"
+	"github.com/ketches/ketches/pkg/ketches"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/ketches/ketches/internal/global"
+	"github.com/ketches/ketches/pkg/global"
 	jwtutil "github.com/ketches/ketches/util/jwt"
 )
 

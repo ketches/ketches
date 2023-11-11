@@ -23,6 +23,18 @@ import (
 	"github.com/ketches/ketches/internal/service"
 )
 
+// ListApplications godoc
+// @Summary List applications
+// @Description List applications
+// @Tags Applications
+// @Produce json
+// @Param space_id path string true "Space ID"
+// @Param query query string false "Query"
+// @Param page_no query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Param sort_by query string false "Sort by"
+// @Success 200 {object} model.ListApplicationsResponse
+// @Router /api/v1/spaces/{space_id}/applications [get]
 func ListApplications(c *gin.Context) {
 	spaceID := c.Param("space_id")
 
@@ -193,14 +205,35 @@ func ImportApplication(c *gin.Context) {
 
 func BackupApplication(c *gin.Context) {
 	spaceID := c.Param("space_id")
-	var req model.BackupApplicationsRequest
+	applicationID := c.Param("application_id")
+	var req model.BackupApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		http.BadRequestWithError(c, err)
 		return
 	}
 	req.SpaceID = spaceID
+	req.ApplicationID = applicationID
 	applicationService := service.NewApplicationService()
 	resp, err := applicationService.Backup(c, &req)
+	if err != nil {
+		http.Error(c, err)
+		return
+	}
+	http.Success(c, resp)
+}
+
+func ListApplicationBackups(c *gin.Context) {
+	spaceID := c.Param("space_id")
+	applicationID := c.Param("application_id")
+	var req model.ListApplicationBackupsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		http.BadRequestWithError(c, err)
+		return
+	}
+	req.SpaceID = spaceID
+	req.ApplicationID = applicationID
+	applicationService := service.NewApplicationService()
+	resp, err := applicationService.ListBackups(c, &req)
 	if err != nil {
 		http.Error(c, err)
 		return

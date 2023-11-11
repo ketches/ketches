@@ -49,6 +49,10 @@ type ClusterListerExpansion interface{}
 // ExtensionLister.
 type ExtensionListerExpansion interface{}
 
+// ExtensionNamespaceListerExpansion allows custom methods to be added to
+// ExtensionNamespaceLister.
+type ExtensionNamespaceListerExpansion interface{}
+
 // HelmRepositoryListerExpansion allows custom methods to be added to
 // HelmRepositoryLister.
 type HelmRepositoryListerExpansion interface{}

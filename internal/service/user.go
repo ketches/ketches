@@ -19,11 +19,13 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/ketches/ketches/pkg/ketches"
+	"github.com/ketches/ketches/api/spec"
 	"log"
 	"log/slog"
 	"regexp"
 	"unicode"
+
+	"github.com/ketches/ketches/pkg/ketches"
 
 	"github.com/ketches/ketches/api/core/v1alpha1"
 	"github.com/ketches/ketches/internal/model"
@@ -80,7 +82,7 @@ func (s *userService) List(ctx context.Context, filter *model.UserFilter) ([]*mo
 	for _, user := range userList {
 		users = append(users, &model.UserModel{
 			AccountID:         user.Name,
-			FullName:          user.Spec.FullName,
+			FullName:          user.Spec.DisplayName,
 			Email:             user.Spec.Email,
 			Phone:             user.Spec.Phone,
 			MustResetPassword: user.Spec.MustResetPassword,
@@ -98,7 +100,7 @@ func (s *userService) Get(ctx context.Context, accountID string) (*model.UserMod
 
 	return &model.UserModel{
 		AccountID:         user.Name,
-		FullName:          user.Spec.FullName,
+		FullName:          user.Spec.DisplayName,
 		Email:             user.Spec.Email,
 		Phone:             user.Spec.Phone,
 		MustResetPassword: user.Spec.MustResetPassword,
@@ -125,7 +127,9 @@ func (s *userService) SignUp(ctx context.Context, user *model.UserSignUpModel) (
 			Name: user.AccountID,
 		},
 		Spec: v1alpha1.UserSpec{
-			FullName:          user.FullName,
+			ViewSpec: spec.ViewSpec{
+				DisplayName: user.FullName,
+			},
 			Email:             user.Email,
 			Phone:             user.Phone,
 			PasswordHash:      string(passwordHashBytes),
@@ -161,7 +165,7 @@ func (s *userService) SignIn(ctx context.Context, user *model.UserSignInRequest)
 	}
 	return &model.UserModel{
 		AccountID:         got.Name,
-		FullName:          got.Spec.FullName,
+		FullName:          got.Spec.DisplayName,
 		Email:             got.Spec.Email,
 		Phone:             got.Spec.Phone,
 		MustResetPassword: got.Spec.MustResetPassword,
@@ -190,7 +194,7 @@ func (s *userService) Update(ctx context.Context, user *model.UserUpdateRequest)
 		return nil, fmt.Errorf("failed to get user")
 	}
 
-	got.Spec.FullName = user.FullName
+	got.Spec.DisplayName = user.FullName
 	got.Spec.Email = user.Email
 	got.Spec.Phone = user.Phone
 
@@ -203,7 +207,7 @@ func (s *userService) Update(ctx context.Context, user *model.UserUpdateRequest)
 	return &model.UserUpdateResponse{
 		UserModel: model.UserModel{
 			AccountID:         got.Name,
-			FullName:          got.Spec.FullName,
+			FullName:          got.Spec.DisplayName,
 			Email:             got.Spec.Email,
 			Phone:             got.Spec.Phone,
 			MustResetPassword: got.Spec.MustResetPassword,
@@ -272,7 +276,7 @@ func (s *userService) Rename(ctx context.Context, req *model.UserRenameRequest) 
 	return &model.UserRenameResponse{
 		UserModel: model.UserModel{
 			AccountID:         req.NewName,
-			FullName:          got.Spec.FullName,
+			FullName:          got.Spec.DisplayName,
 			Email:             got.Spec.Email,
 			Phone:             got.Spec.Phone,
 			MustResetPassword: got.Spec.MustResetPassword,
@@ -321,7 +325,7 @@ func (s *userService) ResetPassword(ctx context.Context, in *model.UserResetPass
 
 	return &model.UserModel{
 		AccountID:         got.Name,
-		FullName:          got.Spec.FullName,
+		FullName:          got.Spec.DisplayName,
 		Email:             got.Spec.Email,
 		Phone:             got.Spec.Phone,
 		MustResetPassword: got.Spec.MustResetPassword,

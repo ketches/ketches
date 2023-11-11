@@ -54,6 +54,7 @@ func (f *PagedFilter) GetLimit() int {
 
 type QueryAndPagedFilter struct {
 	Query       string `form:"query"`
+	SortBy      string `form:"sort_by"`
 	PagedFilter `form:",inline"`
 }
 
@@ -75,6 +76,19 @@ func PagedResult[S ~[]T, T any](items S, filter PagedFilterInterface) (S, int) {
 
 	ret := items[start:end]
 	return ret, total
+}
+
+type Port struct {
+	Number   int32         `json:"number"`
+	Gateways []PortGateway `json:"gateways"`
+}
+
+type PortGateway struct {
+	Type            string         `json:"type"`
+	NodePort        int32          `json:"node_port"`
+	Host            string         `json:"host"`
+	Path            string         `json:"path"`
+	AdvancedOptions map[string]any `json:"advanced_options"`
 }
 
 type KeyValue struct {

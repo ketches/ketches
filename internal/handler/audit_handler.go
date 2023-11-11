@@ -18,9 +18,9 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/ketches/ketches/internal/global"
 	"github.com/ketches/ketches/internal/model"
 	"github.com/ketches/ketches/internal/service"
+	"github.com/ketches/ketches/pkg/global"
 )
 
 func CreateAudit(c *gin.Context) {

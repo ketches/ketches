@@ -76,7 +76,7 @@ func (v *version) Clusters() ClusterInformer {
 
 // Extensions returns a ExtensionInformer.
 func (v *version) Extensions() ExtensionInformer {
-	return &extensionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &extensionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // HelmRepositories returns a HelmRepositoryInformer.

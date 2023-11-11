@@ -18,12 +18,13 @@ package initializer
 
 import (
 	"context"
+	"github.com/ketches/ketches/api/spec"
 	"slices"
 
 	"github.com/fatih/color"
 	"github.com/ketches/ketches/api/core/v1alpha1"
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
-	"github.com/ketches/ketches/internal/global"
+	"github.com/ketches/ketches/pkg/global"
 	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/pkg/kube"
 	"golang.org/x/crypto/bcrypt"
@@ -75,8 +76,6 @@ func InitializePlatform() error {
 		}
 	}
 
-	// builtin helm repositories
-	// helmRepositories, err := ketches.Store().HelmRepositoryLister().List(labels.Everything())
 	return nil
 }
 
@@ -88,9 +87,12 @@ var builtinAdminUser = &v1alpha1.User{
 		Labels: corev1alpha1.BuiltinResourceLabels(),
 	},
 	Spec: v1alpha1.UserSpec{
-		Builtin:  true,
-		FullName: "admin",
-		Email:    "admin@" + rand.String(12) + ".ketches.io",
+		ViewSpec: spec.ViewSpec{
+			DisplayName: "Admin",
+			Description: "Admin user, operator of the platform",
+		},
+		Builtin: true,
+		Email:   "admin@" + rand.String(12) + ".ketches.io",
 		PasswordHash: func() string {
 			hashPassword, _ := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
 			return string(hashPassword)
@@ -107,8 +109,11 @@ var builtinRoles = map[string]v1alpha1.Role{
 			Labels: corev1alpha1.BuiltinResourceLabels(),
 		},
 		Spec: v1alpha1.RoleSpec{
-			Builtin:     true,
-			DisplayName: "Platform Manager",
+			Builtin: true,
+			ViewSpec: spec.ViewSpec{
+				DisplayName: "Platform Manager",
+				Description: "Can manage all resources in the platform",
+			},
 		},
 	},
 	"platform-developer": {
@@ -117,8 +122,11 @@ var builtinRoles = map[string]v1alpha1.Role{
 			Labels: corev1alpha1.BuiltinResourceLabels(),
 		},
 		Spec: v1alpha1.RoleSpec{
-			Builtin:     true,
-			DisplayName: "Platform Developer",
+			Builtin: true,
+			ViewSpec: spec.ViewSpec{
+				DisplayName: "Platform Developer",
+				Description: "Platform developer can manage resources around applications",
+			},
 		},
 	},
 	"platform-viewer": {
@@ -127,8 +135,11 @@ var builtinRoles = map[string]v1alpha1.Role{
 			Labels: corev1alpha1.BuiltinResourceLabels(),
 		},
 		Spec: v1alpha1.RoleSpec{
-			Builtin:     true,
-			DisplayName: "Platform Viewer",
+			Builtin: true,
+			ViewSpec: spec.ViewSpec{
+				DisplayName: "Platform Viewer",
+				Description: "Platform viewer wait to be invited to a space",
+			},
 		},
 	},
 	"space-owner": {
@@ -137,8 +148,11 @@ var builtinRoles = map[string]v1alpha1.Role{
 			Labels: corev1alpha1.BuiltinResourceLabels(),
 		},
 		Spec: v1alpha1.RoleSpec{
-			Builtin:     true,
-			DisplayName: "Space Owner",
+			Builtin: true,
+			ViewSpec: spec.ViewSpec{
+				DisplayName: "Space Owner",
+				Description: "Owns the space and can manage all resources in the space",
+			},
 		},
 	},
 	"space-maintainer": {
@@ -147,8 +161,11 @@ var builtinRoles = map[string]v1alpha1.Role{
 			Labels: corev1alpha1.BuiltinResourceLabels(),
 		},
 		Spec: v1alpha1.RoleSpec{
-			Builtin:     true,
-			DisplayName: "Space Maintainer",
+			Builtin: true,
+			ViewSpec: spec.ViewSpec{
+				DisplayName: "Space Maintainer",
+				Description: "Can manage all resources in the space",
+			},
 		},
 	},
 	"space-viewer": {
@@ -157,8 +174,11 @@ var builtinRoles = map[string]v1alpha1.Role{
 			Labels: corev1alpha1.BuiltinResourceLabels(),
 		},
 		Spec: v1alpha1.RoleSpec{
-			Builtin:     true,
-			DisplayName: "Space Viewer",
+			Builtin: true,
+			ViewSpec: spec.ViewSpec{
+				DisplayName: "Space Viewer",
+				Description: "Can view all resources in the space",
+			},
 		},
 	},
 }
@@ -170,18 +190,4 @@ func hasRole(roles []*v1alpha1.Role, role v1alpha1.Role) bool {
 		}
 	}
 	return false
-}
-
-// builtinHelmRepositories can not be deleted and modified by normal users
-var builtinHelmRepositories = []v1alpha1.HelmRepository{
-	{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ketches-extension",
-			Namespace: global.BuiltinNamespace,
-			Labels:    corev1alpha1.BuiltinResourceLabels(),
-		},
-		Spec: v1alpha1.HelmRepositorySpec{
-			Url: "https://ketches.github.io/ketches-extension-charts/",
-		},
-	},
 }

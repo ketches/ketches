@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/ketches/ketches/api/spec"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,7 +26,8 @@ import (
 
 // ApplicationGroupSpec defines the desired state of ApplicationGroup
 type ApplicationGroupSpec struct {
-	Applications []ApplicationRef `json:"applications,omitempty"`
+	spec.ViewSpec `json:",inline"`
+	Applications  []ApplicationRef `json:"applications,omitempty"`
 }
 
 type ApplicationRef struct {
@@ -36,11 +38,11 @@ type ApplicationRef struct {
 type ApplicationGroupStatus struct {
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:shortName=ag
-//+kubebuilder:printcolumn:name="Applications",type="integer",JSONPath=".spec.applications",description="applications"
-//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=ag
+// +kubebuilder:printcolumn:name="Applications",type="integer",JSONPath=".spec.applications",description="applications"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
 // +genclient
 
 // ApplicationGroup is the Schema for the applicationgroups API
@@ -52,7 +54,7 @@ type ApplicationGroup struct {
 	Status ApplicationGroupStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ApplicationGroupList contains a list of ApplicationGroup
 type ApplicationGroupList struct {

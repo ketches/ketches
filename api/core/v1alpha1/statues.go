@@ -83,16 +83,19 @@ const (
 
 // Condition types for resources
 const (
-	ClusterConditionTypePingPassed   = "PingPassed"
-	ClusterConditionTypeReady        = "Ready"
-	ClusterConditionTypeGatewayReady = "GatewayReady"
+	ClusterConditionTypePingPassed                   = "PingPassed"
+	ClusterConditionTypeReady                        = "Ready"
+	ClusterConditionTypeAdminSpaceReady              = "AdminSpaceReady"
+	ClusterConditionTypeExtensionHelmRepositoryReady = "ExtensionHelmRepositoryReady"
+	ClusterConditionTypeDefaultExtensionReady        = "DefaultExtensionReady"
+	ClusterConditionTypeGatewayReady                 = "GatewayReady"
 
 	SpaceConditionTypeClusterReady       = "ClusterReady"
 	SpaceConditionTypeNamespaceReady     = "NamespaceReady"
 	SpaceConditionTypeResourceQuotaReady = "ResourceQuotaReady"
 	SpaceConditionTypeLimitRangeReady    = "LimitRangeReady"
 
-	ExtensionConditionTypeClusterReady          = "ClusterReady"
+	ExtensionConditionTypeSpaceReady            = "SpaceReady"
 	ExtensionConditionTypeHelmRepositoryAdded   = "HelmRepositoryAdded"
 	ExtensionConditionTypeHelmRepositoryUpdated = "HelmRepositoryUpdated"
 	ExtensionConditionTypeHelmChartFetched      = "HelmChartFetched"
@@ -102,7 +105,7 @@ const (
 	ExtensionConditionTypeKubeApplied           = "KubeApplied"
 	ExtensionConditionTypeKubeDeleted           = "KubeDeleted"
 
-	HelmRepositoryConditionTypeClusterReady          = "ClusterReady"
+	// HelmRepositoryConditionTypeClusterReady          = "ClusterReady"
 	HelmRepositoryConditionTypeSpaceReady            = "SpaceReady"
 	HelmRepositoryConditionTypeHelmRepositoryAdded   = "HelmRepositoryAdded"
 	HelmRepositoryConditionTypeHelmRepositoryUpdated = "HelmRepositoryUpdated"

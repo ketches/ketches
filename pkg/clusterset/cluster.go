@@ -17,6 +17,8 @@ limitations under the License.
 package clusterset
 
 import (
+	"slices"
+
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
 	ketchesversioned "github.com/ketches/ketches/pkg/generated/clientset/versioned"
 	ketchesscheme "github.com/ketches/ketches/pkg/generated/clientset/versioned/scheme"
@@ -29,11 +31,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	kubevirtscheme "kubevirt.io/client-go/generated/kubevirt/clientset/versioned/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gatewayapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	gatewayapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
-	"slices"
 )
 
 type Cluster interface {
@@ -56,6 +58,7 @@ type Cluster interface {
 	KetchesRuntimeClient() client.Client
 	GatewayAPIRuntimeClient() client.Client
 	VeleroRuntimeClient() client.Client
+	KubevirtRuntimeClient() client.Client
 }
 
 var _ Cluster = (*cluster)(nil)
@@ -65,15 +68,16 @@ type cluster struct {
 	restConfig       *rest.Config
 	kubeClient       kubernetes.Interface
 	ketchesClient    ketchesversioned.Interface
+	apiextClient     apiextclientset.Interface
 	gatewayapiClient gatewayapiversioned.Interface
 	veleroClient     veleroversioned.Interface
-	apiextClient     apiextclientset.Interface
 
 	kubeRuntimeClient       client.Client
 	ketchesRuntimeClient    client.Client
+	apiextRuntimeClient     client.Client
 	gatewayapiRuntimeClient client.Client
 	veleroRuntimeClient     client.Client
-	apiextRuntimeClient     client.Client
+	kubevirtRuntimeClient   client.Client
 }
 
 func NewCluster(clusterResource *corev1alpha1.Cluster) Cluster {
@@ -311,4 +315,25 @@ func (c *cluster) VeleroRuntimeClient() client.Client {
 		c.veleroRuntimeClient = cli
 	}
 	return c.veleroRuntimeClient
+}
+
+func (c *cluster) KubevirtRuntimeClient() client.Client {
+	if c == nil {
+		return nil
+	}
+
+	if !slices.Contains(c.APIGroups(), velero.SchemeGroupVersion.Group) {
+		return nil
+	}
+
+	if c.kubevirtRuntimeClient == nil {
+		cli, err := client.New(c.restConfig, client.Options{
+			Scheme: kubevirtscheme.Scheme,
+		})
+		if err != nil {
+			return nil
+		}
+		c.kubevirtRuntimeClient = cli
+	}
+	return c.kubevirtRuntimeClient
 }

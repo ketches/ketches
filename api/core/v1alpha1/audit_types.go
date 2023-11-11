@@ -17,18 +17,20 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/ketches/ketches/api/spec"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // AuditSpec defines the desired state of Audit
 type AuditSpec struct {
-	//+kubebuilder:validation:Required
+	spec.ViewSpec `json:",inline"`
+	// +kubebuilder:validation:Required
 	SourceKey string `json:"sourceKey,omitempty"`
-	//+kubebuilder:validation:Required
+	// +kubebuilder:validation:Required
 	SourceValue   string `json:"sourceValue,omitempty"`
 	RequestMethod string `json:"requestMethod,omitempty"`
 	RequestPath   string `json:"requestPath,omitempty"`
-	//+kubebuilder:validation:Required
+	// +kubebuilder:validation:Required
 	Operator string `json:"operator,omitempty"`
 }
 
@@ -36,8 +38,8 @@ type AuditSpec struct {
 type AuditStatus struct {
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // +genclient
 
 // Audit is the Schema for the audits API
@@ -49,7 +51,7 @@ type Audit struct {
 	Status AuditStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // AuditList contains a list of Audit
 type AuditList struct {

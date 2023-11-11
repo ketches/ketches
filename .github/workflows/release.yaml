@@ -29,9 +29,9 @@ jobs:
     - name: Login to Aliyun ACR
       uses: docker/login-action@v2
       with:
-        registry: registry.cn-hangzhou.aliyuncm.com
+        registry: registry.cn-hangzhou.aliyuncs.com
         username: ${{ secrets.ACR_USERNAME }}
         password: ${{ secrets.ACR_PASSWORD }}
 
     - name: Build and push
-      run: REGISTRY=registry.cn-hangzhou.aliyuncm.com make docker-buildx
+      run: REGISTRY=registry.cn-hangzhou.aliyuncs.com make docker-buildx

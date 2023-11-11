@@ -59,8 +59,8 @@ func (c *CoreV1alpha1Client) Clusters() ClusterInterface {
 	return newClusters(c)
 }
 
-func (c *CoreV1alpha1Client) Extensions() ExtensionInterface {
-	return newExtensions(c)
+func (c *CoreV1alpha1Client) Extensions(namespace string) ExtensionInterface {
+	return newExtensions(c, namespace)
 }
 
 func (c *CoreV1alpha1Client) HelmRepositories(namespace string) HelmRepositoryInterface {

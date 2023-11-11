@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/ketches/ketches/api/spec"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -26,13 +27,12 @@ import (
 
 // ApplicationSpec defines the desired state of Application
 type ApplicationSpec struct {
-	//+kubebuilder:validation:Required
-	//+kubebuilder:validation:Enum=Deployment;StatefulSet;CronJob;Job
+	spec.ViewSpec `json:",inline"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=Deployment;StatefulSet;CronJob;Job
 	Type WorkloadType `json:"type,omitempty"`
-	//+kubebuilder:validation:Enum=Running;Stopped
+	// +kubebuilder:validation:Enum=Running;Stopped
 	DesiredState     DesiredState `json:"desiredState,omitempty"`
-	DisplayName      string       `json:"displayName,omitempty"`
-	Description      string       `json:"description,omitempty"`
 	Image            string       `json:"image,omitempty"`
 	ImagePullSecrets []string     `json:"imagePullSecret,omitempty"`
 	Replicas         int32        `json:"replicas,omitempty"`
@@ -69,13 +69,13 @@ type ApplicationStatus struct {
 	StatefulSetConditions []appsv1.StatefulSetCondition `json:"statefulSetConditions,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:shortName=app
-//+kubebuilder:printcolumn:name="Workload-Type",type="string",JSONPath=".spec.type",description="workload type"
-//+kubebuilder:printcolumn:name="Edition",type="string",JSONPath=".status.edition",description="edition"
-//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
-//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=app
+// +kubebuilder:printcolumn:name="Workload-Type",type="string",JSONPath=".spec.type",description="workload type"
+// +kubebuilder:printcolumn:name="Edition",type="string",JSONPath=".status.edition",description="edition"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
 // +genclient
 
 // Application is the Schema for the applications API
@@ -87,7 +87,7 @@ type Application struct {
 	Status ApplicationStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ApplicationList contains a list of Application
 type ApplicationList struct {
@@ -121,7 +121,7 @@ type Port struct {
 
 type Gateway struct {
 	Name string `json:"name,omitempty"`
-	//+kubebuilder:validation:Enum=TCP;HTTP
+	// +kubebuilder:validation:Enum=TCP;HTTP
 	Type      GatewayType `json:"type,omitempty"`
 	ClassName string      `json:"className,omitempty"`
 	NodePort  int32       `json:"nodePort,omitempty"`
@@ -165,7 +165,7 @@ type Autoscaler struct {
 }
 
 type Sidecar struct {
-	//+kubebuilder:validation:Enum=InitRun;PreRun;PostRun
+	// +kubebuilder:validation:Enum=InitRun;PreRun;PostRun
 	Type       SidecarType                 `json:"type,omitempty"`
 	Name       string                      `json:"name,omitempty"`
 	Image      string                      `json:"image,omitempty"`

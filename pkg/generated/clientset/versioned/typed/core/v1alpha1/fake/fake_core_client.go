@@ -43,8 +43,8 @@ func (c *FakeCoreV1alpha1) Clusters() v1alpha1.ClusterInterface {
 	return &FakeClusters{c}
 }
 
-func (c *FakeCoreV1alpha1) Extensions() v1alpha1.ExtensionInterface {
-	return &FakeExtensions{c}
+func (c *FakeCoreV1alpha1) Extensions(namespace string) v1alpha1.ExtensionInterface {
+	return &FakeExtensions{c, namespace}
 }
 
 func (c *FakeCoreV1alpha1) HelmRepositories(namespace string) v1alpha1.HelmRepositoryInterface {

@@ -36,10 +36,12 @@ spec:
             properties:
               builtin:
                 type: boolean
+              description:
+                type: string
+              displayName:
+                type: string
               email:
                 pattern: ^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$
-                type: string
-              fullName:
                 type: string
               mustResetPassword:
                 type: boolean

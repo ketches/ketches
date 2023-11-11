@@ -32,7 +32,7 @@ import (
 // ExtensionsGetter has a method to return a ExtensionInterface.
 // A group's client should implement this interface.
 type ExtensionsGetter interface {
-	Extensions() ExtensionInterface
+	Extensions(namespace string) ExtensionInterface
 }
 
 // ExtensionInterface has methods to work with Extension resources.
@@ -52,12 +52,14 @@ type ExtensionInterface interface {
 // extensions implements ExtensionInterface
 type extensions struct {
 	client rest.Interface
+	ns     string
 }
 
 // newExtensions returns a Extensions
-func newExtensions(c *CoreV1alpha1Client) *extensions {
+func newExtensions(c *CoreV1alpha1Client, namespace string) *extensions {
 	return &extensions{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -65,6 +67,7 @@ func newExtensions(c *CoreV1alpha1Client) *extensions {
 func (c *extensions) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Extension, err error) {
 	result = &v1alpha1.Extension{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("extensions").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -81,6 +84,7 @@ func (c *extensions) List(ctx context.Context, opts v1.ListOptions) (result *v1a
 	}
 	result = &v1alpha1.ExtensionList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("extensions").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -97,6 +101,7 @@ func (c *extensions) Watch(ctx context.Context, opts v1.ListOptions) (watch.Inte
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("extensions").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -107,6 +112,7 @@ func (c *extensions) Watch(ctx context.Context, opts v1.ListOptions) (watch.Inte
 func (c *extensions) Create(ctx context.Context, extension *v1alpha1.Extension, opts v1.CreateOptions) (result *v1alpha1.Extension, err error) {
 	result = &v1alpha1.Extension{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("extensions").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(extension).
@@ -119,6 +125,7 @@ func (c *extensions) Create(ctx context.Context, extension *v1alpha1.Extension, 
 func (c *extensions) Update(ctx context.Context, extension *v1alpha1.Extension, opts v1.UpdateOptions) (result *v1alpha1.Extension, err error) {
 	result = &v1alpha1.Extension{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("extensions").
 		Name(extension.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -133,6 +140,7 @@ func (c *extensions) Update(ctx context.Context, extension *v1alpha1.Extension, 
 func (c *extensions) UpdateStatus(ctx context.Context, extension *v1alpha1.Extension, opts v1.UpdateOptions) (result *v1alpha1.Extension, err error) {
 	result = &v1alpha1.Extension{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("extensions").
 		Name(extension.Name).
 		SubResource("status").
@@ -146,6 +154,7 @@ func (c *extensions) UpdateStatus(ctx context.Context, extension *v1alpha1.Exten
 // Delete takes name of the extension and deletes it. Returns an error if one occurs.
 func (c *extensions) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("extensions").
 		Name(name).
 		Body(&opts).
@@ -160,6 +169,7 @@ func (c *extensions) DeleteCollection(ctx context.Context, opts v1.DeleteOptions
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("extensions").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -172,6 +182,7 @@ func (c *extensions) DeleteCollection(ctx context.Context, opts v1.DeleteOptions
 func (c *extensions) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Extension, err error) {
 	result = &v1alpha1.Extension{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("extensions").
 		Name(name).
 		SubResource(subresources...).

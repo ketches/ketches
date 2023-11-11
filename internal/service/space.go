@@ -19,6 +19,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/ketches/ketches/api/spec"
 	"unicode"
 
 	"github.com/ketches/ketches/api/core/v1alpha1"
@@ -125,7 +126,9 @@ func (s *spaceService) Create(ctx context.Context, req *model.CreateSpaceRequest
 			Name: req.Name,
 		},
 		Spec: v1alpha1.SpaceSpec{
-			DisplayName:   req.DisplayName,
+			ViewSpec: spec.ViewSpec{
+				DisplayName: req.DisplayName,
+			},
 			LimitRange:    &v1alpha1.LimitRange{},
 			ResourceQuota: &corev1.ResourceRequirements{},
 			Members: map[string]v1alpha1.SpaceMemberRoles{
@@ -229,7 +232,7 @@ func (s *spaceService) ListMembers(ctx context.Context, space string) (*model.Li
 		}
 		result.Members = append(result.Members, model.SpaceMemberDetailModel{
 			AccountID: accountID,
-			FullName:  user.Spec.FullName,
+			FullName:  user.Spec.DisplayName,
 			Email:     user.Spec.Email,
 			Roles:     roles.StringSlice(),
 		})
@@ -287,7 +290,7 @@ func readMembers(space *v1alpha1.Space) []model.SpaceMemberDetailModel {
 		}
 		result = append(result, model.SpaceMemberDetailModel{
 			AccountID: accountID,
-			FullName:  user.Spec.FullName,
+			FullName:  user.Spec.DisplayName,
 			Email:     user.Spec.Email,
 			Roles:     roles.StringSlice(),
 		})

@@ -17,6 +17,7 @@ limitations under the License.
 package kube
 
 import (
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,4 +36,12 @@ func Client() kubernetes.Interface {
 
 func ClientForConfig(config *rest.Config) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(config)
+}
+
+func DynamicClient() dynamic.Interface {
+	return dynamic.NewForConfigOrDie(ctrl.GetConfigOrDie())
+}
+
+func DynamicClientForConfig(config *rest.Config) (dynamic.Interface, error) {
+	return dynamic.NewForConfig(config)
 }

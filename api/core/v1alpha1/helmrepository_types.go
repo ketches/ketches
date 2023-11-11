@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/ketches/ketches/api/spec"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,8 +26,8 @@ import (
 
 // HelmRepositorySpec defines the desired state of HelmRepository
 type HelmRepositorySpec struct {
-	Description string `json:"description,omitempty"`
-	//+kubebuilder:validation:Required
+	spec.ViewSpec `json:",inline"`
+	// +kubebuilder:validation:Required
 	Url string `json:"url,omitempty"`
 }
 
@@ -36,10 +37,10 @@ type HelmRepositoryStatus struct {
 	Conditions []Condition         `json:"conditions,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
-//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
 // +genclient
 
 // HelmRepository is the Schema for the helmrepositories API
@@ -51,7 +52,7 @@ type HelmRepository struct {
 	Status HelmRepositoryStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // HelmRepositoryList contains a list of HelmRepository
 type HelmRepositoryList struct {

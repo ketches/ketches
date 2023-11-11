@@ -14,24 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package handler
+package kube
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/ketches/ketches/pkg/global"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"testing"
 )
 
-type Handler interface {
-	AccountID(c *gin.Context) string
-}
+func TestListNamespaces(t *testing.T) {
+	var defaultNamespace corev1.Namespace
+	err := Store().NamespaceLister().Get("default").ToObject(&defaultNamespace)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-type handler struct {
-}
+	var namespaceList corev1.NamespaceList
+	err = Store().NamespaceLister().List(labels.Everything()).ToObjectList(&namespaceList)
 
-func NewHandler() Handler {
-	return &handler{}
-}
-
-func (h *handler) AccountID(c *gin.Context) string {
-	return c.GetString(global.ContextKeyAccountID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ns := range namespaceList.Items {
+		t.Log("\t- ", ns.Name, ns.Status.Phase)
+	}
 }

@@ -111,6 +111,7 @@ resources:
     webhookVersion: v1
 - api:
     crdVersion: v1
+    namespaced: true
   controller: true
   domain: ketches.io
   group: core

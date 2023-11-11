@@ -19,8 +19,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/ketches/ketches/internal/global"
+
 	"github.com/ketches/ketches/internal/service"
+	"github.com/ketches/ketches/pkg/global"
 	"github.com/spf13/cobra"
 )
 

@@ -44,8 +44,11 @@ var _ webhook.Defaulter = &User{}
 func (r *User) Default() {
 	userlog.Info("default", "name", r.Name)
 
-	if r.Spec.FullName == "" {
-		r.Spec.FullName = r.Name
+	if r.Spec.DisplayName == "" {
+		r.Spec.DisplayName = r.Name
+	}
+	if r.Spec.Description == "" {
+		r.Spec.ViewSpec.Description = r.Name
 	}
 }
 

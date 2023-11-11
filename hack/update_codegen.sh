@@ -37,10 +37,10 @@ BOILERPLATE="./hack/boilerplate.go.txt"
 generators=(
 #  "deepcopy" # deepcopy-gen is deprecated, use controller-gen instead for faster generation.
   "defaulter"
-  # "applyconfiguration"
-  # "client"
-  # "informer"
-  # "lister"
+#   "applyconfiguration"
+   "client"
+   "informer"
+   "lister"
 )
 
 # list of import paths to get input types from.

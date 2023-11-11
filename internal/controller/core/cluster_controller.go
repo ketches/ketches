@@ -19,10 +19,11 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/ketches/ketches/api/spec"
 	"time"
 
-	"github.com/ketches/ketches/internal/global"
 	"github.com/ketches/ketches/pkg/clusterset"
+	"github.com/ketches/ketches/pkg/global"
 	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/pkg/kube"
 	"github.com/ketches/ketches/util/conv"
@@ -46,9 +47,9 @@ type ClusterReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=core.ketches.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core.ketches.io,resources=clusters/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=core.ketches.io,resources=clusters/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.ketches.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.ketches.io,resources=clusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.ketches.io,resources=clusters/finalizers,verbs=update
 
 // Reconcile reconciles Cluster objects
 func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -160,14 +161,124 @@ func (r *ClusterReconciler) updateStatus(ctx context.Context, cluster *corev1alp
 }
 
 func (r *ClusterReconciler) applyClusterDerivedResources(ctx context.Context, cluster *corev1alpha1.Cluster, workerCluster clusterset.Cluster) error {
-	if workerCluster.GatewayAPIRuntimeClient() != nil {
-		gateways := r.constructGateway(ctx, cluster, workerCluster.GatewayAPIRuntimeClient())
-		for _, gateway := range gateways {
-			err := kube.ApplyResource(ctx, workerCluster.GatewayAPIRuntimeClient(), gateway)
-			cluster.SetStatusCondition(corev1alpha1.ClusterConditionTypeGatewayReady, err)
+	adminSpace := r.constructAdminSpace(ctx, cluster)
+	err := kube.ApplyResource(ctx, r.Client, adminSpace)
+	cluster.SetStatusCondition(corev1alpha1.ClusterConditionTypeAdminSpaceReady, err)
+	if err != nil {
+		extensionHelmRepository := r.constructExtensionHelmRepository(cluster)
+		err = kube.ApplyResource(ctx, r.Client, extensionHelmRepository)
+		cluster.SetStatusCondition(corev1alpha1.ClusterConditionTypeExtensionHelmRepositoryReady, err)
+		if err != nil {
+			defaultExts := r.constructDefaultExtensions(cluster)
+			for _, ext := range defaultExts {
+				err := kube.ApplyResource(ctx, r.Client, ext)
+				cluster.SetStatusCondition(corev1alpha1.ClusterConditionTypeDefaultExtensionReady, err)
+			}
+		}
+
+		if workerCluster.GatewayAPIRuntimeClient() != nil {
+			gateways := r.constructGateway(ctx, cluster, workerCluster.GatewayAPIRuntimeClient())
+			for _, gateway := range gateways {
+				err := kube.ApplyResource(ctx, workerCluster.GatewayAPIRuntimeClient(), gateway)
+				cluster.SetStatusCondition(corev1alpha1.ClusterConditionTypeGatewayReady, err)
+			}
 		}
 	}
+
 	return nil
+}
+
+// constructAdminSpace constructs builtin admin Space object for the cluster. Named "ketches-admin-<cluster-name>"
+func (r *ClusterReconciler) constructAdminSpace(ctx context.Context, cluster *corev1alpha1.Cluster) *corev1alpha1.Space {
+	adminSpace := adminSpaceName(cluster.Name)
+	result := &corev1alpha1.Space{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   adminSpace,
+			Labels: corev1alpha1.BuiltinResourceLabels(),
+		},
+		Spec: corev1alpha1.SpaceSpec{
+			ViewSpec: spec.ViewSpec{
+				DisplayName: "Ketches Admin Space",
+				Description: "Ketches Admin Space, some built-in resources such as HelmRepository are created in this space.",
+			},
+			Cluster: cluster.Name,
+		},
+	}
+	result.CheckOrSetRequiredLabels()
+	return result
+}
+
+// constructExtensionHelmRepository constructs builtin extension HelmRepository object for the cluster. Named "ketches-extension-repository"
+func (r *ClusterReconciler) constructExtensionHelmRepository(cluster *corev1alpha1.Cluster) *corev1alpha1.HelmRepository {
+	result := &corev1alpha1.HelmRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      global.ExtensionHelmRepositoryName,
+			Namespace: adminSpaceName(cluster.Name),
+			Labels:    corev1alpha1.BuiltinResourceLabels(),
+		},
+		Spec: corev1alpha1.HelmRepositorySpec{
+			ViewSpec: spec.ViewSpec{
+				DisplayName: "Ketches Extension Helm Repository",
+				Description: "Ketches Extension Helm repository, maintained by the Ketches community, contains a wealth of Ketches's Extensions.",
+			},
+			Url: global.ExtensionHelmRepositoryUrl,
+		},
+	}
+	result.CheckOrSetRequiredLabels()
+	return result
+}
+
+func (r *ClusterReconciler) constructDefaultExtensions(cluster *corev1alpha1.Cluster) []*corev1alpha1.Extension {
+	var result []*corev1alpha1.Extension
+	// Velero extension
+	veleroExt := &corev1alpha1.Extension{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      global.VeleroExtensionName,
+			Namespace: adminSpaceName(cluster.Name),
+			Labels:    corev1alpha1.BuiltinResourceLabels(),
+		},
+		Spec: corev1alpha1.ExtensionSpec{
+			ViewSpec: spec.ViewSpec{
+				DisplayName: "Velero",
+				Description: "Velero is a tool to back up and restore Kubernetes cluster resources and persistent volumes.",
+			},
+			TargetNamespace: "velero",
+			InstallType:     corev1alpha1.ExtensionInstallTypeHelm,
+			HelmInstallation: &corev1alpha1.HelmInstallation{
+				Repository: global.ExtensionHelmRepositoryName,
+				Name:       global.VeleroExtensionName,
+				Chart:      global.VeleroExtensionChart,
+			},
+		},
+	}
+	veleroExt.CheckOrSetRequiredLabels()
+	result = append(result)
+
+	// Kubevirt extension
+	// kubevirtExt := &corev1alpha1.Extension{
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:      global.KubevirtExtensionName,
+	// 		Namespace: adminSpaceName(cluster.Name),
+	// 		Labels:    corev1alpha1.BuiltinResourceLabels(),
+	// 	},
+	// 	Spec: corev1alpha1.ExtensionSpec{
+	// 		ViewSpec: meta.ViewSpec{
+	// 			DisplayName: "Kubevirt",
+	// 			Description: "KubeVirt is a virtual machine management add-on for Kubernetes.",
+	// 		},
+	// 		TargetNamespace: "kubevirt",
+	// 		InstallType:     corev1alpha1.ExtensionInstallTypeHelm,
+	// 		HelmInstallation: &corev1alpha1.HelmInstallation{
+	// 			Repository: global.ExtensionHelmRepositoryName,
+	// 			Name:       global.KubevirtExtensionName,
+	// 			Chart:      global.KubevirtExtensionChart,
+	// 		},
+	// 	},
+	// }
+	// kubevirtExt.CheckOrSetRequiredLabels()
+	result = append(result)
+
+	return result
 }
 
 func (r *ClusterReconciler) constructGateway(ctx context.Context, cluster *corev1alpha1.Cluster, gatewayClient client.Client) []*gatewayapi.Gateway {
@@ -199,7 +310,7 @@ func (r *ClusterReconciler) constructGateway(ctx context.Context, cluster *corev
 		result = append(result, &gatewayapi.Gateway{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
-				Namespace: global.BuiltinNamespace,
+				Namespace: adminSpaceName(cluster.Name),
 				Labels:    cluster.Labels,
 			},
 			Spec: gatewayapi.GatewaySpec{
@@ -209,6 +320,10 @@ func (r *ClusterReconciler) constructGateway(ctx context.Context, cluster *corev
 		})
 	}
 	return result
+}
+
+func adminSpaceName(cluster string) string {
+	return "ketches-admin-" + cluster
 }
 
 func gatewayName(gcName string) string {

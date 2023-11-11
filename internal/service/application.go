@@ -19,6 +19,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/ketches/ketches/api/spec"
 	"log"
 	"strings"
 	"unicode"
@@ -50,8 +51,11 @@ type ApplicationService interface {
 	Delete(ctx context.Context, spaceID string, appID string) error
 	Export(ctx context.Context, req *model.ExportApplicationsRequest) (*model.ExportApplicationsResponse, error)
 	Import(ctx context.Context, req *model.ImportApplicationsRequest) (*model.ImportApplicationsResponse, error)
-	Backup(ctx context.Context, req *model.BackupApplicationsRequest) (*model.BackupApplicationsResponse, error)
+	Backup(ctx context.Context, req *model.BackupApplicationRequest) (*model.BackupApplicationResponse, error)
+	ListBackups(ctx context.Context, req *model.ListApplicationBackupsRequest) ([]*model.ListApplicationBackupsResponse, error)
+	CreateBackupSchedule(ctx context.Context, req *model.CreateApplicationBackupScheduleRequest) (*model.CreateApplicationBackupScheduleResponse, error)
 	Restore(ctx context.Context, req *model.RestoreApplicationsRequest) (*model.RestoreApplicationsResponse, error)
+	ListRestores(ctx context.Context, spaceID string, appID string) ([]*model.BackupApplicationResponse, error)
 }
 
 type applicationService struct {
@@ -151,9 +155,11 @@ func (s *applicationService) Create(ctx context.Context, req *model.CreateApplic
 			},
 		},
 		Spec: v1alpha1.ApplicationSpec{
-			Type:             v1alpha1.WorkloadType(req.Type),
-			DisplayName:      req.DisplayName,
-			Description:      req.Description,
+			Type: v1alpha1.WorkloadType(req.Type),
+			ViewSpec: spec.ViewSpec{
+				DisplayName: req.DisplayName,
+				Description: req.Description,
+			},
 			DesiredState:     v1alpha1.DesiredStateRunning,
 			Image:            req.Image,
 			Replicas:         req.Replicas,
@@ -410,11 +416,19 @@ func (s *applicationService) Import(ctx context.Context, req *model.ImportApplic
 }
 
 // TODO: Backup & Restore with Velero and MinIO 0
-func (s *applicationService) Backup(ctx context.Context, req *model.BackupApplicationsRequest) (*model.BackupApplicationsResponse, error) {
+func (s *applicationService) Backup(ctx context.Context, req *model.BackupApplicationRequest) (*model.BackupApplicationResponse, error) {
 	return nil, nil
 }
 
-func (s *applicationService) ListBackups(ctx context.Context, req *model.BackupApplicationsRequest) ([]*model.BackupApplicationsResponse, error) {
+func (s applicationService) DeleteBackup(ctx context.Context, app string) error {
+	return nil
+}
+
+func (s *applicationService) ListBackups(ctx context.Context, req *model.ListApplicationBackupsRequest) ([]*model.ListApplicationBackupsResponse, error) {
+	return nil, nil
+}
+
+func (s *applicationService) CreateBackupSchedule(ctx context.Context, req *model.CreateApplicationBackupScheduleRequest) (*model.CreateApplicationBackupScheduleResponse, error) {
 	return nil, nil
 }
 
@@ -422,7 +436,11 @@ func (s *applicationService) Restore(ctx context.Context, req *model.RestoreAppl
 	return nil, nil
 }
 
-func (s *applicationService) ListRestores(ctx context.Context, spaceID, appID string) ([]*model.BackupApplicationsResponse, error) {
+func (s *applicationService) DeleteRestoreRecord(ctx context.Context, app string) error {
+	return nil
+}
+
+func (s *applicationService) ListRestores(ctx context.Context, spaceID, appID string) ([]*model.BackupApplicationResponse, error) {
 	return nil, nil
 }
 

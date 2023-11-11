@@ -16,18 +16,16 @@ limitations under the License.
 
 package v1alpha1
 
-const (
-	RequiredResourceLabel      = "ketches.io/owned=true"
-	RequiredResourceLabelKey   = "ketches.io/owned"
-	RequiredResourceLabelValue = "true"
+import "github.com/ketches/ketches/pkg/global"
 
+const (
 	WorkflowLabelKey = "ketches.io/workflow"
 )
 
 func WorkflowRequiredLabelSet(workflow string) map[string]string {
 	return map[string]string{
-		RequiredResourceLabel: RequiredResourceLabelValue,
-		WorkflowLabelKey:      workflow,
+		global.OwnedResourceLabelKey: global.LabelTrueValue,
+		WorkflowLabelKey:             workflow,
 	}
 }
 
@@ -38,8 +36,8 @@ func (workflow *Workflow) CheckOrSetRequiredLabels() bool {
 	if workflow.Labels == nil {
 		workflow.Labels = make(map[string]string)
 	}
-	if v, ok := workflow.Labels[RequiredResourceLabelKey]; !ok || v != RequiredResourceLabelValue {
-		workflow.Labels[RequiredResourceLabelKey] = RequiredResourceLabelValue
+	if v, ok := workflow.Labels[global.OwnedResourceLabelKey]; !ok || v != global.LabelTrueValue {
+		workflow.Labels[global.OwnedResourceLabelKey] = global.LabelTrueValue
 		result = true
 	}
 	if v, ok := workflow.Labels[WorkflowLabelKey]; !ok || v != workflow.Name {

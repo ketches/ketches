@@ -17,19 +17,20 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/ketches/ketches/api/spec"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // UserSpec defines the desired state of User
 type UserSpec struct {
-	Builtin  bool   `json:"builtin,omitempty"`
-	FullName string `json:"fullName,omitempty"`
-	//+kubebuilder:validation:Required
-	//+kubebuilder:validation:Pattern="^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$"
+	spec.ViewSpec `json:",inline"`
+	Builtin       bool `json:"builtin,omitempty"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern="^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$"
 	Email string `json:"email,omitempty"`
-	//+kubebuilder:validation:Pattern="^\\+?[0-9]{10,13}$"
+	// +kubebuilder:validation:Pattern="^\\+?[0-9]{10,13}$"
 	Phone string `json:"phone,omitempty"`
-	//+kubebuilder:validation:Required
+	// +kubebuilder:validation:Required
 	PasswordHash      string `json:"passwordHash,omitempty"`
 	MustResetPassword bool   `json:"mustResetPassword,omitempty"`
 }
@@ -42,9 +43,9 @@ type UserRef struct {
 type UserStatus struct {
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
 // +genclient
 // +genclient:nonNamespaced
 
@@ -57,7 +58,7 @@ type User struct {
 	Status UserStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // UserList contains a list of User
 type UserList struct {

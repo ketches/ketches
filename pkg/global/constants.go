@@ -17,6 +17,13 @@ limitations under the License.
 package global
 
 const (
+	OwnedResourceLabel      = "ketches.io/owned=true"
+	OwnedResourceLabelKey   = "ketches.io/owned"
+	LabelTrueValue          = "true"
+	LabelFalseValue         = "false"
+	BuiltinResourceLabel    = "ketches.io/builtin=true"
+	BuiltinResourceLabelKey = "ketches.io/builtin"
+
 	SystemOperator = "system"
 
 	ContextKeyAccountID  = "account_id"
@@ -24,4 +31,11 @@ const (
 	ContextKeyEmail      = "email"
 
 	BuiltinNamespace = "ketches-system"
+
+	ExtensionHelmRepositoryName = "ketches-extension"
+	ExtensionHelmRepositoryUrl  = "https://ketches.github.io/ketches-extension-charts/"
+	VeleroExtensionName         = "velero"
+	VeleroExtensionChart        = "ketches-extension/velero"
+	KubevirtExtensionName       = "kubevirt"
+	KubevirtExtensionChart      = "ketches-extension/kubevirt"
 )

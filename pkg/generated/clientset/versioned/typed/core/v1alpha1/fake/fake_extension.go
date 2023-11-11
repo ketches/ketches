@@ -31,6 +31,7 @@ import (
 // FakeExtensions implements ExtensionInterface
 type FakeExtensions struct {
 	Fake *FakeCoreV1alpha1
+	ns   string
 }
 
 var extensionsResource = v1alpha1.SchemeGroupVersion.WithResource("extensions")
@@ -40,7 +41,8 @@ var extensionsKind = v1alpha1.SchemeGroupVersion.WithKind("Extension")
 // Get takes name of the extension, and returns the corresponding extension object, and an error if there is any.
 func (c *FakeExtensions) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Extension, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(extensionsResource, name), &v1alpha1.Extension{})
+		Invokes(testing.NewGetAction(extensionsResource, c.ns, name), &v1alpha1.Extension{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -50,7 +52,8 @@ func (c *FakeExtensions) Get(ctx context.Context, name string, options v1.GetOpt
 // List takes label and field selectors, and returns the list of Extensions that match those selectors.
 func (c *FakeExtensions) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ExtensionList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(extensionsResource, extensionsKind, opts), &v1alpha1.ExtensionList{})
+		Invokes(testing.NewListAction(extensionsResource, extensionsKind, c.ns, opts), &v1alpha1.ExtensionList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -71,13 +74,15 @@ func (c *FakeExtensions) List(ctx context.Context, opts v1.ListOptions) (result 
 // Watch returns a watch.Interface that watches the requested extensions.
 func (c *FakeExtensions) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(extensionsResource, opts))
+		InvokesWatch(testing.NewWatchAction(extensionsResource, c.ns, opts))
+
 }
 
 // Create takes the representation of a extension and creates it.  Returns the server's representation of the extension, and an error, if there is any.
 func (c *FakeExtensions) Create(ctx context.Context, extension *v1alpha1.Extension, opts v1.CreateOptions) (result *v1alpha1.Extension, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(extensionsResource, extension), &v1alpha1.Extension{})
+		Invokes(testing.NewCreateAction(extensionsResource, c.ns, extension), &v1alpha1.Extension{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -87,7 +92,8 @@ func (c *FakeExtensions) Create(ctx context.Context, extension *v1alpha1.Extensi
 // Update takes the representation of a extension and updates it. Returns the server's representation of the extension, and an error, if there is any.
 func (c *FakeExtensions) Update(ctx context.Context, extension *v1alpha1.Extension, opts v1.UpdateOptions) (result *v1alpha1.Extension, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(extensionsResource, extension), &v1alpha1.Extension{})
+		Invokes(testing.NewUpdateAction(extensionsResource, c.ns, extension), &v1alpha1.Extension{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -98,7 +104,8 @@ func (c *FakeExtensions) Update(ctx context.Context, extension *v1alpha1.Extensi
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeExtensions) UpdateStatus(ctx context.Context, extension *v1alpha1.Extension, opts v1.UpdateOptions) (*v1alpha1.Extension, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(extensionsResource, "status", extension), &v1alpha1.Extension{})
+		Invokes(testing.NewUpdateSubresourceAction(extensionsResource, "status", c.ns, extension), &v1alpha1.Extension{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -108,13 +115,14 @@ func (c *FakeExtensions) UpdateStatus(ctx context.Context, extension *v1alpha1.E
 // Delete takes name of the extension and deletes it. Returns an error if one occurs.
 func (c *FakeExtensions) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(extensionsResource, name, opts), &v1alpha1.Extension{})
+		Invokes(testing.NewDeleteActionWithOptions(extensionsResource, c.ns, name, opts), &v1alpha1.Extension{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeExtensions) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(extensionsResource, listOpts)
+	action := testing.NewDeleteCollectionAction(extensionsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ExtensionList{})
 	return err
@@ -123,7 +131,8 @@ func (c *FakeExtensions) DeleteCollection(ctx context.Context, opts v1.DeleteOpt
 // Patch applies the patch and returns the patched extension.
 func (c *FakeExtensions) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Extension, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(extensionsResource, name, pt, data, subresources...), &v1alpha1.Extension{})
+		Invokes(testing.NewPatchSubresourceAction(extensionsResource, c.ns, name, pt, data, subresources...), &v1alpha1.Extension{})
+
 	if obj == nil {
 		return nil, err
 	}

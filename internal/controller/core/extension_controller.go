@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
-	"github.com/ketches/ketches/internal/global"
 	"github.com/ketches/ketches/pkg/clusterset"
 	"github.com/ketches/ketches/pkg/extension/helm"
 	"github.com/ketches/ketches/pkg/ketches"
@@ -54,7 +53,8 @@ func (r *ExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	extension := &corev1alpha1.Extension{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: req.Name,
+			Name:      req.Name,
+			Namespace: req.Namespace,
 		},
 	}
 	if err := r.Get(ctx, req.NamespacedName, extension); err != nil {
@@ -77,45 +77,28 @@ func (r *ExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	// update cluster status
-	cluster := &corev1alpha1.Cluster{}
-	err := r.Get(ctx, types.NamespacedName{Name: extension.Spec.Cluster}, cluster)
+	space := &corev1alpha1.Space{}
+	err := r.Get(ctx, types.NamespacedName{Name: extension.Namespace}, space)
 	if err != nil {
-		extension.SetStatusCondition(corev1alpha1.ExtensionConditionTypeClusterReady, fmt.Errorf("cluster %s not found", extension.Spec.Cluster))
-		return ctrl.Result{}, err
-	}
-	if cluster.Status.Extensions == nil {
-		cluster.Status.Extensions = make(map[string]corev1alpha1.ExtensionPhase)
-	}
-	cluster.Status.Extensions[extension.Name] = extension.Status.Phase
-	if err := kube.UpdateResourceStatus(ctx, r.Client, cluster); err != nil {
-		log.Error(err, "unable to update Cluster status")
-		return ctrl.Result{}, err
-	}
-
-	if extension.Status.Phase == "" {
 		extension.Status.Phase = corev1alpha1.ExtensionPhasePending
-		if err := r.Status().Update(ctx, extension); err != nil {
-			log.Error(err, "unable to update Extension status")
-			return ctrl.Result{}, err
-		}
-	}
-
-	// check cluster status
-	if cluster.Status.Phase != corev1alpha1.ClusterPhaseConnected {
-		extension.SetStatusCondition(corev1alpha1.ExtensionConditionTypeClusterReady, fmt.Errorf("cluster %s is not connected", extension.Spec.Cluster))
-		err := kube.UpdateResourceStatus(ctx, r.Client, extension)
-		return ctrl.Result{}, err
-	}
-
-	workerCluster, ok := ketches.Store().Clusterset().Cluster(extension.Spec.Cluster)
-	if !ok {
-		extension.SetStatusCondition(corev1alpha1.ExtensionConditionTypeClusterReady, fmt.Errorf("cluster %s is not connected", extension.Spec.Cluster))
+		extension.SetStatusCondition(corev1alpha1.ExtensionConditionTypeSpaceReady, err)
 		if err := kube.UpdateResourceStatus(ctx, r.Client, extension); err != nil {
 			log.Error(err, "unable to update Extension status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, fmt.Errorf("cluster %s not found", extension.Spec.Cluster)
+		return ctrl.Result{Requeue: true}, fmt.Errorf("space %s not found", extension.Namespace)
+	}
+
+	if space.Status.Phase != corev1alpha1.SpacePhaseReady {
+		extension.SetStatusCondition(corev1alpha1.ExtensionConditionTypeSpaceReady, fmt.Errorf("space %s not ready", space.Name))
+		err := kube.UpdateResourceStatus(ctx, r.Client, extension)
+		return ctrl.Result{}, err
+	}
+
+	workerCluster, ok := ketches.Store().Clusterset().Cluster(space.Spec.Cluster)
+	if !ok {
+		log.Error(err, "unable to get worker cluster")
+		return ctrl.Result{RequeueAfter: time.Second * 1}, nil
 	}
 
 	if extension.GetDeletionTimestamp() != nil {
@@ -136,7 +119,7 @@ func (r *ExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	case corev1alpha1.ExtensionPhaseInstalled:
 		return ctrl.Result{}, nil
 	case corev1alpha1.ExtensionPhaseFailed:
-		// retry
+		// TODO: implement
 	}
 
 	err = kube.UpdateResourceStatus(ctx, r.Client, extension)
@@ -173,7 +156,7 @@ func (r *ExtensionReconciler) installHelmExtension(ctx context.Context, extensio
 	}
 
 	hr := &corev1alpha1.HelmRepository{}
-	err := r.Get(ctx, types.NamespacedName{Namespace: global.BuiltinNamespace, Name: extension.Spec.HelmInstallation.Repository}, hr)
+	err := r.Get(ctx, types.NamespacedName{Namespace: adminSpaceName(workerCluster.Name()), Name: extension.Spec.HelmInstallation.Repository}, hr)
 	if err != nil || hr.Status.Phase != corev1alpha1.HelmRepositoryPhaseAdded {
 		extension.Status.Phase = corev1alpha1.ExtensionPhaseFailed
 		extension.SetStatusCondition(corev1alpha1.ExtensionConditionTypeHelmRepositoryAdded, fmt.Errorf("helm repository %s is not added", extension.Spec.HelmInstallation.Repository))

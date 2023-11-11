@@ -26,6 +26,7 @@ import (
 	civ1alpha1 "github.com/ketches/ketches/api/ci/v1alpha1"
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
 	"github.com/ketches/ketches/pkg/clusterset"
+	"github.com/ketches/ketches/pkg/global"
 	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/pkg/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -158,7 +159,7 @@ func (r *SpaceReconciler) onSpaceDeleted(ctx context.Context, space *corev1alpha
 			return err
 		}
 
-		if nsInMaster.Labels[corev1alpha1.RequiredResourceLabelKey] == corev1alpha1.LabelTrueValue {
+		if nsInMaster.Labels[global.OwnedResourceLabelKey] == global.LabelTrueValue {
 			if err := r.Client.Delete(ctx, nsInMaster); err != nil {
 				if !errors.IsNotFound(err) {
 					return err
@@ -180,7 +181,7 @@ func (r *SpaceReconciler) onSpaceDeleted(ctx context.Context, space *corev1alpha
 			}
 			return err
 		}
-		if nsInWorker.Labels[corev1alpha1.RequiredResourceLabelKey] == corev1alpha1.LabelTrueValue {
+		if nsInWorker.Labels[global.OwnedResourceLabelKey] == global.LabelTrueValue {
 			if err := workerCluster.KubeRuntimeClient().Delete(ctx, nsInWorker); err != nil {
 				if !errors.IsNotFound(err) {
 					return err
@@ -251,7 +252,7 @@ func (r *SpaceReconciler) applyResources(ctx context.Context, workerCluster clus
 			return err
 		}
 	} else {
-		if nsInMaster.Labels[corev1alpha1.RequiredResourceLabelKey] != corev1alpha1.LabelTrueValue {
+		if nsInMaster.Labels[global.OwnedResourceLabelKey] != global.LabelTrueValue {
 			return fmt.Errorf("namespace %s in master cluster is not managed by ketches", namespace.Name)
 		}
 	}
@@ -268,7 +269,7 @@ func (r *SpaceReconciler) applyResources(ctx context.Context, workerCluster clus
 			return err
 		}
 	} else {
-		if nsInWorker.Labels[corev1alpha1.RequiredResourceLabelKey] != corev1alpha1.LabelTrueValue {
+		if nsInWorker.Labels[global.OwnedResourceLabelKey] != global.LabelTrueValue {
 			return fmt.Errorf("namespace %s in worker cluster is not managed by ketches", namespace.Name)
 		}
 	}

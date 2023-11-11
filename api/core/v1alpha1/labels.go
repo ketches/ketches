@@ -18,16 +18,11 @@ package v1alpha1
 
 import (
 	"time"
+
+	"github.com/ketches/ketches/pkg/global"
 )
 
 const (
-	RequiredResourceLabel    = "ketches.io/owned=true"
-	RequiredResourceLabelKey = "ketches.io/owned"
-	LabelTrueValue           = "true"
-	LabelFalseValue          = "false"
-	BuiltinResourceLabel     = "ketches.io/builtin=true"
-	BuiltinResourceLabelKey  = "ketches.io/builtin"
-
 	ClusterLabelKey = "ketches.io/cluster"
 
 	SpaceLabelKey = "ketches.io/space"
@@ -42,15 +37,15 @@ const (
 
 func BuiltinResourceLabels() map[string]string {
 	return map[string]string{
-		RequiredResourceLabelKey: LabelTrueValue,
-		BuiltinResourceLabelKey:  LabelTrueValue,
+		global.OwnedResourceLabelKey:   global.LabelTrueValue,
+		global.BuiltinResourceLabelKey: global.LabelTrueValue,
 	}
 }
 
 func ClusterRequiredLabelSet(cluster string) map[string]string {
 	return map[string]string{
-		RequiredResourceLabel: LabelTrueValue,
-		ClusterLabelKey:       cluster,
+		global.OwnedResourceLabelKey: global.LabelTrueValue,
+		ClusterLabelKey:              cluster,
 	}
 }
 
@@ -61,8 +56,8 @@ func (cluster *Cluster) CheckOrSetRequiredLabels() bool {
 	if cluster.Labels == nil {
 		cluster.Labels = make(map[string]string)
 	}
-	if cluster.Labels[RequiredResourceLabelKey] != LabelTrueValue {
-		cluster.Labels[RequiredResourceLabelKey] = LabelTrueValue
+	if cluster.Labels[global.OwnedResourceLabelKey] != global.LabelTrueValue {
+		cluster.Labels[global.OwnedResourceLabelKey] = global.LabelTrueValue
 		result = true
 	}
 	if cluster.Labels[ClusterLabelKey] != cluster.Name {
@@ -74,8 +69,8 @@ func (cluster *Cluster) CheckOrSetRequiredLabels() bool {
 
 func SpaceRequiredLabelSet(space string) map[string]string {
 	return map[string]string{
-		RequiredResourceLabelKey: LabelTrueValue,
-		SpaceLabelKey:            space,
+		global.OwnedResourceLabelKey: global.LabelTrueValue,
+		SpaceLabelKey:                space,
 	}
 }
 
@@ -86,8 +81,8 @@ func (space *Space) CheckOrSetRequiredLabels() bool {
 	if space.Labels == nil {
 		space.Labels = make(map[string]string)
 	}
-	if space.Labels[RequiredResourceLabelKey] != LabelTrueValue {
-		space.Labels[RequiredResourceLabelKey] = LabelTrueValue
+	if space.Labels[global.OwnedResourceLabelKey] != global.LabelTrueValue {
+		space.Labels[global.OwnedResourceLabelKey] = global.LabelTrueValue
 		result = true
 	}
 	if space.Labels[SpaceLabelKey] != space.Name {
@@ -108,16 +103,12 @@ func (extension *Extension) CheckOrSetRequiredLabels() bool {
 	if extension.Labels == nil {
 		extension.Labels = make(map[string]string)
 	}
-	if extension.Labels[RequiredResourceLabelKey] != LabelTrueValue {
-		extension.Labels[RequiredResourceLabelKey] = LabelTrueValue
+	if extension.Labels[global.OwnedResourceLabelKey] != global.LabelTrueValue {
+		extension.Labels[global.OwnedResourceLabelKey] = global.LabelTrueValue
 		result = true
 	}
 	if extension.Labels[ExtensionLabelKey] != extension.Name {
 		extension.Labels[ExtensionLabelKey] = extension.Name
-		result = true
-	}
-	if extension.Labels[ClusterLabelKey] != extension.Spec.Cluster {
-		extension.Labels[ClusterLabelKey] = extension.Spec.Cluster
 		result = true
 	}
 	return result
@@ -130,8 +121,8 @@ func (hr *HelmRepository) CheckOrSetRequiredLabels() bool {
 	if hr.Labels == nil {
 		hr.Labels = make(map[string]string)
 	}
-	if hr.Labels[RequiredResourceLabelKey] != LabelTrueValue {
-		hr.Labels[RequiredResourceLabelKey] = LabelTrueValue
+	if hr.Labels[global.OwnedResourceLabelKey] != global.LabelTrueValue {
+		hr.Labels[global.OwnedResourceLabelKey] = global.LabelTrueValue
 		result = true
 	}
 	if hr.Labels[HelmRepositoryLabelKey] != hr.Name {
@@ -147,17 +138,17 @@ func (hr *HelmRepository) CheckOrSetRequiredLabels() bool {
 
 func applicationRequiredLabelSet(app string) map[string]string {
 	return map[string]string{
-		RequiredResourceLabelKey:   LabelTrueValue,
-		ApplicationLabelKey:        app,
-		ApplicationEditionLabelKey: NewApplicationEditionLabelValue(),
+		global.OwnedResourceLabelKey: global.LabelTrueValue,
+		ApplicationLabelKey:          app,
+		ApplicationEditionLabelKey:   NewApplicationEditionLabelValue(),
 	}
 }
 
 func (app *Application) StableLabelSet() map[string]string {
 	return map[string]string{
-		RequiredResourceLabelKey: LabelTrueValue,
-		ApplicationLabelKey:      app.Name,
-		SpaceLabelKey:            app.Namespace,
+		global.OwnedResourceLabelKey: global.LabelTrueValue,
+		ApplicationLabelKey:          app.Name,
+		SpaceLabelKey:                app.Namespace,
 	}
 }
 
@@ -172,8 +163,8 @@ func (app *Application) CheckOrSetRequiredLabels() bool {
 	if app.Labels == nil {
 		app.Labels = make(map[string]string)
 	}
-	if app.Labels[RequiredResourceLabelKey] != LabelTrueValue {
-		app.Labels[RequiredResourceLabelKey] = LabelTrueValue
+	if app.Labels[global.OwnedResourceLabelKey] != global.LabelTrueValue {
+		app.Labels[global.OwnedResourceLabelKey] = global.LabelTrueValue
 		result = true
 	}
 	if app.Labels[ApplicationLabelKey] != app.Name {

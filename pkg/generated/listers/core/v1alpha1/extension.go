@@ -30,9 +30,8 @@ type ExtensionLister interface {
 	// List lists all Extensions in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Extension, err error)
-	// Get retrieves the Extension from the index for a given name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.Extension, error)
+	// Extensions returns an object that can list and get Extensions.
+	Extensions(namespace string) ExtensionNamespaceLister
 	ExtensionListerExpansion
 }
 
@@ -54,9 +53,41 @@ func (s *extensionLister) List(selector labels.Selector) (ret []*v1alpha1.Extens
 	return ret, err
 }
 
-// Get retrieves the Extension from the index for a given name.
-func (s *extensionLister) Get(name string) (*v1alpha1.Extension, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// Extensions returns an object that can list and get Extensions.
+func (s *extensionLister) Extensions(namespace string) ExtensionNamespaceLister {
+	return extensionNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// ExtensionNamespaceLister helps list and get Extensions.
+// All objects returned here must be treated as read-only.
+type ExtensionNamespaceLister interface {
+	// List lists all Extensions in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1alpha1.Extension, err error)
+	// Get retrieves the Extension from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1alpha1.Extension, error)
+	ExtensionNamespaceListerExpansion
+}
+
+// extensionNamespaceLister implements the ExtensionNamespaceLister
+// interface.
+type extensionNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all Extensions in the indexer for a given namespace.
+func (s extensionNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Extension, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1alpha1.Extension))
+	})
+	return ret, err
+}
+
+// Get retrieves the Extension from the indexer for a given namespace and name.
+func (s extensionNamespaceLister) Get(name string) (*v1alpha1.Extension, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

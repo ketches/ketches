@@ -19,10 +19,11 @@ package service
 import (
 	"context"
 	"fmt"
+
 	"github.com/ketches/ketches/pkg/generated/clientset/versioned"
 	"github.com/ketches/ketches/pkg/ketches"
 
-	"github.com/ketches/ketches/internal/global"
+	"github.com/ketches/ketches/pkg/global"
 	"github.com/ketches/ketches/pkg/kube"
 	"k8s.io/client-go/kubernetes"
 )

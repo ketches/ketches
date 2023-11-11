@@ -28,5 +28,25 @@ import (
 // Public to allow building arbitrary schemes.
 // All generated defaulters are covering - they call all nested defaulters.
 func RegisterDefaults(scheme *runtime.Scheme) error {
+	scheme.AddTypeDefaultingFunc(&Application{}, func(obj interface{}) { SetObjectDefaults_Application(obj.(*Application)) })
+	scheme.AddTypeDefaultingFunc(&ApplicationList{}, func(obj interface{}) { SetObjectDefaults_ApplicationList(obj.(*ApplicationList)) })
 	return nil
+}
+
+func SetObjectDefaults_Application(in *Application) {
+	if in.Spec.Healthz != nil {
+		if in.Spec.Healthz.ProbeHandler.GRPC != nil {
+			if in.Spec.Healthz.ProbeHandler.GRPC.Service == nil {
+				var ptrVar1 string = ""
+				in.Spec.Healthz.ProbeHandler.GRPC.Service = &ptrVar1
+			}
+		}
+	}
+}
+
+func SetObjectDefaults_ApplicationList(in *ApplicationList) {
+	for i := range in.Items {
+		a := &in.Items[i]
+		SetObjectDefaults_Application(a)
+	}
 }

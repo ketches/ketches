@@ -18,9 +18,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/ketches/ketches/internal/global"
 	"os"
 
+	"github.com/ketches/ketches/pkg/global"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

@@ -14,24 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package handler
+package spec
 
-import (
-	"github.com/gin-gonic/gin"
-	"github.com/ketches/ketches/pkg/global"
-)
-
-type Handler interface {
-	AccountID(c *gin.Context) string
-}
-
-type handler struct {
-}
-
-func NewHandler() Handler {
-	return &handler{}
-}
-
-func (h *handler) AccountID(c *gin.Context) string {
-	return c.GetString(global.ContextKeyAccountID)
+// +k8s:deepcopy-gen=true
+type ViewSpec struct {
+	DisplayName string `json:"displayName,omitempty"`
+	Description string `json:"description,omitempty"`
 }

@@ -17,15 +17,16 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/ketches/ketches/api/spec"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // RoleSpec defines the desired state of Role
 type RoleSpec struct {
-	//+kubebuilder:validation:Enum=platform;space
-	Scope       RoleScope `json:"scope,omitempty"`
-	Builtin     bool      `json:"builtin,omitempty"`
-	DisplayName string    `json:"displayName,omitempty"`
+	spec.ViewSpec `json:",inline"`
+	// +kubebuilder:validation:Enum=platform;space
+	Scope   RoleScope `json:"scope,omitempty"`
+	Builtin bool      `json:"builtin,omitempty"`
 }
 
 type RoleScope string
@@ -39,9 +40,9 @@ const (
 type RoleStatus struct {
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
 // +genclient
 // +genclient:nonNamespaced
 
@@ -54,7 +55,7 @@ type Role struct {
 	Status RoleStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // RoleList contains a list of Role
 type RoleList struct {

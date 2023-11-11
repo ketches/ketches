@@ -75,12 +75,11 @@ func (r *HelmRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	// update cluster status
 	space := &corev1alpha1.Space{}
 	err := r.Get(ctx, types.NamespacedName{Name: helmRepository.Namespace}, space)
 	if err != nil {
 		helmRepository.Status.Phase = corev1alpha1.HelmRepositoryPhasePending
-		helmRepository.SetStatusCondition(corev1alpha1.HelmRepositoryConditionTypeClusterReady, err)
+		helmRepository.SetStatusCondition(corev1alpha1.HelmRepositoryConditionTypeSpaceReady, err)
 		if err := kube.UpdateResourceStatus(ctx, r.Client, helmRepository); err != nil {
 			log.Error(err, "unable to update HelmRepository status")
 			return ctrl.Result{}, err
@@ -88,7 +87,6 @@ func (r *HelmRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{Requeue: true}, fmt.Errorf("space %s not found", helmRepository.Namespace)
 	}
 
-	// check space status
 	if space.Status.Phase != corev1alpha1.SpacePhaseReady {
 		helmRepository.SetStatusCondition(corev1alpha1.HelmRepositoryConditionTypeSpaceReady, fmt.Errorf("space %s not ready", space.Name))
 		err := kube.UpdateResourceStatus(ctx, r.Client, helmRepository)
@@ -99,22 +97,6 @@ func (r *HelmRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if !ok {
 		log.Error(err, "unable to get worker cluster")
 		return ctrl.Result{RequeueAfter: time.Second * 1}, nil
-	}
-	if helmRepository.CheckOrSetRequiredLabels() {
-		if err := kube.ApplyResource(ctx, r.Client, helmRepository); err != nil {
-			log.Error(err, "failed to update HelmRepository labels")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{Requeue: true}, nil
-	}
-
-	if helmRepository.Status.Phase == "" {
-		helmRepository.Status.Phase = corev1alpha1.HelmRepositoryPhasePending
-		if err := kube.UpdateResourceStatus(ctx, r.Client, helmRepository); err != nil {
-			log.Error(err, "unable to update HelmRepository status")
-			return ctrl.Result{Requeue: true}, err
-		}
-		return ctrl.Result{}, nil
 	}
 
 	if helmRepository.GetDeletionTimestamp() != nil {

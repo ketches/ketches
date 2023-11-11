@@ -1,7 +1,7 @@
-# REGISTRY ?= docker.io
-REGISTRY ?= registry.cn-hangzhou.aliyuncs.com
-CONTROLLER_MANAGER_IMG ?= ${REGISTRY}/ketches/controller-manager:latest
-API_SERVER_IMG ?= ${REGISTRY}/ketches/api-server:latest
+VERSION ?= v0.0.1-alpha.1
+REGISTRY ?= docker.io
+CONTROLLER_MANAGER_IMG ?= ${REGISTRY}/ketches/controller-manager:${VERSION}
+API_SERVER_IMG ?= ${REGISTRY}/ketches/api-server:${VERSION}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.27.1
 
@@ -85,11 +85,11 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build-controller-manager
 build-controller-manager: manifests generate fmt vet ## Build controller-manager binary.
-	go build -o bin/ketches-controller-manager ./cmd/controller-manager/main.go
+	go build -ldflags "-X github.com/ketches/ketches/pkg/global/version.version=${VERSION}" -o bin/ketches-controller-manager ./cmd/controller-manager/main.go
 
 .PHONY: build-api-server
 build-api-server: manifests generate fmt vet ## Build api-server binary.
-	go build -o bin/ketches-api-server ./cmd/api-server/main.go
+	go build -ldflags "-X github.com/ketches/ketches/pkg/global/version.version=${VERSION}" -o bin/ketches-api-server ./cmd/api-server/main.go
 
 .PHONY: run-controller-manager
 run-controller-manager: manifests generate fmt vet ## Run a controller-manager from your host.

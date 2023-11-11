@@ -20,9 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/ketches/ketches/internal/global"
-	"github.com/spf13/cast"
 	"log"
 	"net/http"
 	"os"
@@ -30,11 +27,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/initializer"
 	"github.com/ketches/ketches/internal/middleware"
 	"github.com/ketches/ketches/internal/route"
 	_ "github.com/ketches/ketches/openapi"
+	"github.com/ketches/ketches/pkg/global"
+	"github.com/spf13/cast"
 )
 
 // @title Ketches Http Server

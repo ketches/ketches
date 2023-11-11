@@ -14,24 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package handler
+package model
 
-import (
-	"github.com/gin-gonic/gin"
-	"github.com/ketches/ketches/pkg/global"
-)
-
-type Handler interface {
-	AccountID(c *gin.Context) string
+type VirtualMachine struct {
 }
 
-type handler struct {
+type CreateVirtualMachineRequest struct {
+	SpaceUri           string `json:",inline"`
+	Name               string `json:"name" binding:"required"`
+	ContainerDiskImage string `json:"container_disk_image" binding:"required"`
+	Ports              []Port `json:"ports"`
 }
 
-func NewHandler() Handler {
-	return &handler{}
-}
-
-func (h *handler) AccountID(c *gin.Context) string {
-	return c.GetString(global.ContextKeyAccountID)
+type CreateVirtualMachineResponse struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
 }

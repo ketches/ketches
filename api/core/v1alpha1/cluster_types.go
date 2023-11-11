@@ -17,12 +17,13 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/ketches/ketches/api/spec"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ClusterSpec defines the desired state of Cluster
 type ClusterSpec struct {
-	Description     string   `json:"description,omitempty"`
+	spec.ViewSpec   `json:",inline"`
 	KubeConfig      string   `json:"kubeConfig,omitempty"`
 	WildCardDomains []string `json:"wildCardDomains,omitempty"`
 }
@@ -39,15 +40,15 @@ type ClusterStatus struct {
 	Extensions     map[string]ExtensionPhase `json:"extensions,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
-//+kubebuilder:printcolumn:name="Spaces",type="integer",JSONPath=".status.spaceCount",description="number of spaces"
-//+kubebuilder:printcolumn:name="Extensions",type="integer",JSONPath=".status.extensionCount",description="number of extensions"
-//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
-//+kubebuilder:printcolumn:name="Server",type="string",JSONPath=".status.server",description="server"
-//+kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.version",description="version"
-//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:printcolumn:name="Spaces",type="integer",JSONPath=".status.spaceCount",description="number of spaces"
+// +kubebuilder:printcolumn:name="Extensions",type="integer",JSONPath=".status.extensionCount",description="number of extensions"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="status"
+// +kubebuilder:printcolumn:name="Server",type="string",JSONPath=".status.server",description="server"
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.version",description="version"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="age"
 // +genclient
 // +genclient:nonNamespaced
 
@@ -60,7 +61,7 @@ type Cluster struct {
 	Status ClusterStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ClusterList contains a list of Cluster
 type ClusterList struct {

@@ -44,28 +44,15 @@ type ApplicationFilter struct {
 type CreateApplicationRequest struct {
 	SpaceUri    `json:",inline"`
 	Type        string
-	Name        string            `json:"name" binding:"required"`
-	DisplayName string            `json:"display_name"`
-	Description string            `json:"description"`
-	Replicas    int32             `json:"replicas"`
-	Image       string            `json:"image" binding:"required"`
-	Command     string            `json:"command"`
-	Args        []string          `json:"args"`
-	EnvVars     []KeyValue        `json:"env_vars"`
-	Ports       []ApplicationPort `json:"ports"`
-}
-
-type ApplicationPort struct {
-	Number   int32                    `json:"number"`
-	Gateways []ApplicationPortGateway `json:"gateways"`
-}
-
-type ApplicationPortGateway struct {
-	Type                string         `json:"type"`
-	NodePort            int32          `json:"node_port"`
-	Host                string         `json:"host"`
-	Path                string         `json:"path"`
-	PortAdvancedOptions map[string]any `json:"port_advanced_options"`
+	Name        string     `json:"name" binding:"required"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	Replicas    int32      `json:"replicas"`
+	Image       string     `json:"image" binding:"required"`
+	Command     string     `json:"command"`
+	Args        []string   `json:"args"`
+	EnvVars     []KeyValue `json:"env_vars"`
+	Ports       []Port     `json:"ports"`
 }
 
 type CreateApplicationResponse struct {
@@ -91,12 +78,41 @@ type ImportApplicationsResponse struct {
 	Message string `json:"message"`
 }
 
-type BackupApplicationsRequest struct {
-	SpaceUri `json:",inline"`
+type ApplicationBackup struct {
+	ID             string `json:"id"`
+	CreatedAt      string `json:"created_at"`
+	CreatedBy      string `json:"created_by"`
+	TotalItems     int64  `json:"total_items"`
+	CompletedItems int64  `json:"completed_items"`
+	ExpiredAt      string `json:"expired_at"`
+	Status         string `json:"status"`
 }
 
-type BackupApplicationsResponse struct {
+type BackupApplicationRequest struct {
+	SpaceUri       `json:",inline"`
+	ApplicationUri `json:",inline"`
+}
+
+type BackupApplicationResponse struct {
 	Body []byte `json:"body"`
+}
+
+type ListApplicationBackupsRequest struct {
+	SpaceUri       `json:",inline"`
+	ApplicationUri `json:",inline"`
+}
+
+type ListApplicationBackupsResponse struct {
+	Backups []ApplicationBackup `json:"backups"`
+}
+
+type CreateApplicationBackupScheduleRequest struct {
+	SpaceUri       `json:",inline"`
+	ApplicationUri `json:",inline"`
+	Cron           string `json:"cron"`
+}
+
+type CreateApplicationBackupScheduleResponse struct {
 }
 
 type RestoreApplicationsRequest struct {

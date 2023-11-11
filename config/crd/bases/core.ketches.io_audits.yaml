@@ -34,6 +34,10 @@ spec:
           spec:
             description: AuditSpec defines the desired state of Audit
             properties:
+              description:
+                type: string
+              displayName:
+                type: string
               operator:
                 type: string
               requestMethod:
