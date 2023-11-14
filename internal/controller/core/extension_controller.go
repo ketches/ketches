@@ -31,10 +31,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
-	"github.com/ketches/ketches/pkg/clusterset"
 	"github.com/ketches/ketches/pkg/extension/helm"
-	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/pkg/kube"
+	"github.com/ketches/ketches/pkg/kube/incluster"
+	"github.com/ketches/ketches/pkg/kube/workercluster"
 )
 
 // ExtensionReconciler reconciles a Extension object
@@ -95,7 +95,7 @@ func (r *ExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	workerCluster, ok := ketches.Store().Clusterset().Cluster(space.Spec.Cluster)
+	workerCluster, ok := incluster.Store().Clusterset().Cluster(space.Spec.Cluster)
 	if !ok {
 		log.Error(err, "unable to get worker cluster")
 		return ctrl.Result{RequeueAfter: time.Second * 1}, nil
@@ -113,13 +113,21 @@ func (r *ExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	switch extension.Status.Phase {
-	case corev1alpha1.ExtensionPhasePending:
-		r.installExtension(ctx, extension, workerCluster)
-	case corev1alpha1.ExtensionPhaseInstalled:
-		return ctrl.Result{}, nil
-	case corev1alpha1.ExtensionPhaseFailed:
-		// TODO: implement
+	if extension.Spec.DesiredState == corev1alpha1.ExtensionDesiredStateInstalled {
+		switch extension.Status.Phase {
+		case corev1alpha1.ExtensionPhasePending, corev1alpha1.ExtensionPhaseUninstalled:
+			r.installExtension(ctx, extension, workerCluster)
+		case corev1alpha1.ExtensionPhaseInstalled:
+			// TODO: check vision and upgrade if needed?
+			return ctrl.Result{}, nil
+		case corev1alpha1.ExtensionPhaseFailed:
+			// TODO: implement
+		}
+	} else {
+		if extension.Status.Phase == corev1alpha1.ExtensionPhaseUninstalled {
+			return ctrl.Result{}, nil
+		}
+		r.uninstallExtension(ctx, extension, workerCluster)
 	}
 
 	err = kube.UpdateResourceStatus(ctx, r.Client, extension)
@@ -137,7 +145,7 @@ func (r *ExtensionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *ExtensionReconciler) installExtension(ctx context.Context, extension *corev1alpha1.Extension, workerCluster clusterset.Cluster) error {
+func (r *ExtensionReconciler) installExtension(ctx context.Context, extension *corev1alpha1.Extension, workerCluster workercluster.Cluster) error {
 	var err error
 	switch extension.Spec.InstallType {
 	case corev1alpha1.ExtensionInstallTypeHelm:
@@ -148,7 +156,18 @@ func (r *ExtensionReconciler) installExtension(ctx context.Context, extension *c
 	return err
 }
 
-func (r *ExtensionReconciler) installHelmExtension(ctx context.Context, extension *corev1alpha1.Extension, workerCluster clusterset.Cluster) error {
+func (r *ExtensionReconciler) uninstallExtension(ctx context.Context, extension *corev1alpha1.Extension, workerCluster workercluster.Cluster) error {
+	var err error
+	switch extension.Spec.InstallType {
+	case corev1alpha1.ExtensionInstallTypeHelm:
+		err = r.uninstallExtension(ctx, extension, workerCluster)
+	case corev1alpha1.ExtensionInstallTypeKubeApply:
+		err = r.uninstallKubeApplyExtension(ctx, extension)
+	}
+	return err
+}
+
+func (r *ExtensionReconciler) installHelmExtension(ctx context.Context, extension *corev1alpha1.Extension, workerCluster workercluster.Cluster) error {
 	rel, existed := helm.Status(workerCluster.RESTConfig(), extension.Spec.HelmInstallation.Name, extension.Spec.TargetNamespace)
 	if existed {
 		setHelmChartInstalledStatus(extension, rel, nil)
@@ -173,6 +192,31 @@ func (r *ExtensionReconciler) installHelmExtension(ctx context.Context, extensio
 	return nil
 }
 
+func (r *ExtensionReconciler) uninstallHelmExtension(ctx context.Context, extension *corev1alpha1.Extension, workerCluster workercluster.Cluster) error {
+	rel, existed := helm.Status(workerCluster.RESTConfig(), extension.Spec.HelmInstallation.Name, extension.Spec.TargetNamespace)
+	if !existed {
+		setHelmChartUninstalledStatus(extension, rel, nil)
+		return nil
+	}
+
+	hr := &corev1alpha1.HelmRepository{}
+	err := r.Get(ctx, types.NamespacedName{Namespace: adminSpaceName(workerCluster.Name()), Name: extension.Spec.HelmInstallation.Repository}, hr)
+	if err != nil || hr.Status.Phase != corev1alpha1.HelmRepositoryPhaseAdded {
+		extension.Status.Phase = corev1alpha1.ExtensionPhaseFailed
+		extension.SetStatusCondition(corev1alpha1.ExtensionConditionTypeHelmRepositoryAdded, fmt.Errorf("helm repository %s is not added", extension.Spec.HelmInstallation.Repository))
+		return fmt.Errorf("helm repository %s is not added", extension.Spec.HelmInstallation.Repository)
+	}
+
+	rel, err = helm.Uninstall(workerCluster.RESTConfig(), extension.Spec.HelmInstallation.Name, extension.Spec.TargetNamespace)
+	if err != nil {
+		setHelmChartUninstalledStatus(extension, rel, err)
+		return err
+	}
+
+	setHelmChartUninstalledStatus(extension, rel, nil)
+	return nil
+}
+
 func setHelmChartInstalledStatus(extension *corev1alpha1.Extension, r *release.Release, err error) {
 	extension.Status.Phase = corev1alpha1.ExtensionPhaseInstalled
 	if err != nil {
@@ -182,23 +226,35 @@ func setHelmChartInstalledStatus(extension *corev1alpha1.Extension, r *release.R
 	extension.Status.HelmRelease = parseHelmRelease(r)
 }
 
-func parseHelmRelease(r *release.Release) *corev1alpha1.HelmRelease {
-	result := &corev1alpha1.HelmRelease{}
-	if r != nil {
-		if r.Info != nil {
-			var resourcesCount int
-			for _, resources := range r.Info.Resources {
-				resourcesCount += len(resources)
-			}
-			result.Resources = resourcesCount
-			result.Revision = r.Version
-			result.Status = r.Info.Status.String()
-		}
-		if r.Chart != nil {
-			result.AppVersion = r.Chart.AppVersion()
-			result.Chart = r.Chart.Metadata.Name
-		}
+func setHelmChartUninstalledStatus(extension *corev1alpha1.Extension, r *release.Release, err error) {
+	extension.Status.Phase = corev1alpha1.ExtensionPhaseUninstalled
+	if err != nil {
+		extension.Status.Phase = corev1alpha1.ExtensionPhaseFailed
 	}
+	extension.SetStatusCondition(corev1alpha1.ExtensionConditionTypeHelmChartUninstalled, err)
+	extension.Status.HelmRelease = parseHelmRelease(r)
+}
+
+func parseHelmRelease(r *release.Release) *corev1alpha1.HelmRelease {
+	if r == nil {
+		return nil
+	}
+
+	result := &corev1alpha1.HelmRelease{}
+	if r.Info != nil {
+		var resourcesCount int
+		for _, resources := range r.Info.Resources {
+			resourcesCount += len(resources)
+		}
+		result.Resources = resourcesCount
+		result.Revision = r.Version
+		result.Status = r.Info.Status.String()
+	}
+	if r.Chart != nil {
+		result.AppVersion = r.Chart.AppVersion()
+		result.Chart = r.Chart.Metadata.Name
+	}
+
 	return result
 }
 
@@ -207,7 +263,12 @@ func (r *ExtensionReconciler) installKubeApplyExtension(ctx context.Context, ext
 	return nil
 }
 
-func (r *ExtensionReconciler) onExtensionDeleted(ctx context.Context, extension *corev1alpha1.Extension, workerCluster clusterset.Cluster) (ctrl.Result, error) {
+func (r *ExtensionReconciler) uninstallKubeApplyExtension(ctx context.Context, extension *corev1alpha1.Extension) error {
+	// TODO: implement
+	return nil
+}
+
+func (r *ExtensionReconciler) onExtensionDeleted(ctx context.Context, extension *corev1alpha1.Extension, workerCluster workercluster.Cluster) (ctrl.Result, error) {
 	var result ctrl.Result
 	var err error
 	switch extension.Spec.InstallType {
@@ -223,7 +284,7 @@ func (r *ExtensionReconciler) onExtensionDeleted(ctx context.Context, extension 
 	return result, err
 }
 
-func onHelmExtensionDeleted(ctx context.Context, extension *corev1alpha1.Extension, workerCluster clusterset.Cluster) (ctrl.Result, error) {
+func onHelmExtensionDeleted(ctx context.Context, extension *corev1alpha1.Extension, workerCluster workercluster.Cluster) (ctrl.Result, error) {
 	_, err := helm.Uninstall(workerCluster.RESTConfig(), extension.Spec.HelmInstallation.Name, extension.Spec.TargetNamespace)
 	return ctrl.Result{Requeue: err != nil}, err
 }

@@ -89,7 +89,6 @@ type ApplicationBackup struct {
 }
 
 type BackupApplicationRequest struct {
-	SpaceUri       `json:",inline"`
 	ApplicationUri `json:",inline"`
 }
 
@@ -98,7 +97,6 @@ type BackupApplicationResponse struct {
 }
 
 type ListApplicationBackupsRequest struct {
-	SpaceUri       `json:",inline"`
 	ApplicationUri `json:",inline"`
 }
 
@@ -107,7 +105,6 @@ type ListApplicationBackupsResponse struct {
 }
 
 type CreateApplicationBackupScheduleRequest struct {
-	SpaceUri       `json:",inline"`
 	ApplicationUri `json:",inline"`
 	Cron           string `json:"cron"`
 }
@@ -124,8 +121,8 @@ type RestoreApplicationsResponse struct {
 }
 
 type GetPodsAndContainersRequest struct {
-	SpaceUri       `json:",inline"`
-	ApplicationUri `json:",inline"`
+	ApplicationUri     `json:",inline"`
+	ApplicationVersion string `json:"application_version"`
 }
 
 type GetPodsAndContainersResponse struct {
@@ -143,7 +140,6 @@ type Container struct {
 }
 
 type GetApplicationContainerLogsRequest struct {
-	SpaceUri       `json:",inline"`
 	ApplicationUri `json:",inline"`
 	Pod            string `json:"pod"`
 	Container      string `json:"container"`

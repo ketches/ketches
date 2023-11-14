@@ -22,17 +22,21 @@ import (
 	"github.com/ketches/ketches/pkg/global"
 )
 
+type ApplicationVersion string
+
 const (
-	ClusterLabelKey = "ketches.io/cluster"
-
-	SpaceLabelKey = "ketches.io/space"
-
-	ExtensionLabelKey = "ketches.io/extension"
-
-	HelmRepositoryLabelKey = "ketches.io/helm-repository"
-
+	ClusterLabelKey            = "ketches.io/cluster"
+	SpaceLabelKey              = "ketches.io/space"
+	ExtensionLabelKey          = "ketches.io/extension"
+	HelmRepositoryLabelKey     = "ketches.io/helmrepository"
 	ApplicationLabelKey        = "ketches.io/application"
+	ApplicationVersionLabelKey = "ketches.io/application-version"
 	ApplicationEditionLabelKey = "ketches.io/application-edition"
+	ApplicationVersionStable   = "stable"
+	ApplicationVersionCanary   = "canary"
+	ApplicationGroupLabelKey   = "ketches.io/applicationgroup"
+	AuditSourceKeyLableKey     = "ketches.io/audit-source-key"
+	AuditSourceValueLableKey   = "ketches.io/audit-source-value"
 )
 
 func BuiltinResourceLabels() map[string]string {
@@ -141,14 +145,25 @@ func applicationRequiredLabelSet(app string) map[string]string {
 		global.OwnedResourceLabelKey: global.LabelTrueValue,
 		ApplicationLabelKey:          app,
 		ApplicationEditionLabelKey:   NewApplicationEditionLabelValue(),
+		ApplicationVersionLabelKey:   "stable",
 	}
 }
 
 func (app *Application) StableLabelSet() map[string]string {
 	return map[string]string{
 		global.OwnedResourceLabelKey: global.LabelTrueValue,
-		ApplicationLabelKey:          app.Name,
 		SpaceLabelKey:                app.Namespace,
+		ApplicationLabelKey:          app.Name,
+		ApplicationVersionLabelKey:   ApplicationVersionStable,
+	}
+}
+
+func (app *Application) CanaryLabelSet() map[string]string {
+	return map[string]string{
+		global.OwnedResourceLabelKey: global.LabelTrueValue,
+		SpaceLabelKey:                app.Namespace,
+		ApplicationLabelKey:          app.Name,
+		ApplicationVersionLabelKey:   ApplicationVersionCanary,
 	}
 }
 

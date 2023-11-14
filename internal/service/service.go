@@ -21,15 +21,15 @@ import (
 	"fmt"
 
 	"github.com/ketches/ketches/pkg/generated/clientset/versioned"
-	"github.com/ketches/ketches/pkg/ketches"
+	"github.com/ketches/ketches/pkg/kube/incluster"
 
 	"github.com/ketches/ketches/pkg/global"
-	"github.com/ketches/ketches/pkg/kube"
 	"k8s.io/client-go/kubernetes"
 )
 
 // Service is an interface for all services
 type Service interface {
+	InClusterStore() incluster.StoreInterface
 	KubeClient() kubernetes.Interface
 	KetchesClient() versioned.Interface
 	AccountID(ctx context.Context) string
@@ -41,27 +41,31 @@ type Service interface {
 var serviceInstance Service
 
 type service struct {
-	kubeClient    kubernetes.Interface
-	ketchesClient versioned.Interface
+	inclusterKubeClient    kubernetes.Interface
+	inclusterKetchesClient versioned.Interface
 }
 
 func LoadService() Service {
 	if serviceInstance == nil {
 		serviceInstance = &service{
-			kubeClient:    kube.Client(),
-			ketchesClient: ketches.Client(),
+			inclusterKubeClient:    incluster.Client(),
+			inclusterKetchesClient: incluster.KetchesClient(),
 		}
 	}
 
 	return serviceInstance
 }
 
+func (s *service) InClusterStore() incluster.StoreInterface {
+	return incluster.Store()
+}
+
 func (s *service) KubeClient() kubernetes.Interface {
-	return s.kubeClient
+	return s.inclusterKubeClient
 }
 
 func (s *service) KetchesClient() versioned.Interface {
-	return s.ketchesClient
+	return s.inclusterKetchesClient
 }
 
 func (s *service) AccountID(ctx context.Context) string {

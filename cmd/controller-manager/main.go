@@ -24,7 +24,7 @@ import (
 	apiextscheme "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -52,7 +52,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	// Add required schemes
 	utilruntime.Must(apiextscheme.AddToScheme(scheme))
-	utilruntime.Must(gatewayapi.AddToScheme(scheme))
+	utilruntime.Must(gatewayapisv1.AddToScheme(scheme))
 	utilruntime.Must(veleroscheme.AddToScheme(scheme))
 
 	utilruntime.Must(corev1alpha1.AddToScheme(scheme))

@@ -22,17 +22,20 @@ import (
 
 	"slices"
 
+	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
 	"github.com/ketches/ketches/internal/model"
 	"github.com/ketches/ketches/pkg/global"
-	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/util/conv"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	vmGKR  = kubevirtcorev1.SchemeGroupVersion.WithResource("virtualmachines")
+	vmiGKR = kubevirtcorev1.SchemeGroupVersion.WithResource("virtualmachineinstances")
 )
 
 type VirtualMachineService interface {
@@ -51,8 +54,8 @@ func NewVirtualMachineService() VirtualMachineService {
 
 var _ VirtualMachineService = (*virtualMachineService)(nil)
 
-func (c *virtualMachineService) Create(ctx context.Context, req *model.CreateVirtualMachineRequest) (*model.CreateVirtualMachineResponse, error) {
-	space, err := ketches.Store().SpaceLister().Get(req.SpaceUri)
+func (s *virtualMachineService) Create(ctx context.Context, req *model.CreateVirtualMachineRequest) (*model.CreateVirtualMachineResponse, error) {
+	space, err := s.InClusterStore().SpaceLister().Get(req.SpaceUri)
 	if err != nil {
 		return nil, err
 	}
@@ -66,15 +69,29 @@ func (c *virtualMachineService) Create(ctx context.Context, req *model.CreateVir
 		req.Ports = append(req.Ports, model.Port{Number: 22})
 	}
 
-	cluster, ok := ketches.Store().Clusterset().Cluster(space.Spec.Cluster)
+	workerCluster, ok := s.InClusterStore().Clusterset().Cluster(space.Spec.Cluster)
 	if !ok {
 		return nil, fmt.Errorf("cluster %s not found", space.Spec.Cluster)
 	}
 
+	got, err := workerCluster.DynamicClient().Resource(vmGKR).Get(ctx, req.Name, metav1.GetOptions{})
+	if got != nil {
+		return nil, fmt.Errorf("virtual machine %s already exists", req.Name)
+	}
+
 	vm := &kubevirtcorev1.VirtualMachine{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "VirtualMachine",
+			APIVersion: kubevirtcorev1.SchemeGroupVersion.String(),
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      req.Name,
 			Namespace: space.Name,
+			Labels: map[string]string{
+				global.OwnedResourceLabelKey: global.LabelTrueValue,
+				corev1alpha1.SpaceLabelKey:   space.Name,
+				"ketches.io/virtualmachine":  req.Name,
+			},
 		},
 		Spec: kubevirtcorev1.VirtualMachineSpec{
 			Running: conv.Ptr(true),
@@ -82,8 +99,7 @@ func (c *virtualMachineService) Create(ctx context.Context, req *model.CreateVir
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						global.OwnedResourceLabelKey: global.LabelTrueValue,
-						"kubevirt.io/size":           "small",
-						"kubevirt.io/domain":         req.Name,
+						"ketches.io/virtualmachine":  req.Name,
 					},
 				},
 				Spec: kubevirtcorev1.VirtualMachineInstanceSpec{
@@ -150,36 +166,39 @@ func (c *virtualMachineService) Create(ctx context.Context, req *model.CreateVir
 			},
 		},
 	}
-	err = cluster.KubevirtRuntimeClient().Get(ctx, client.ObjectKeyFromObject(vm), &kubevirtcorev1.VirtualMachine{})
+
+	err = workerCluster.KubeRuntimeClient().Create(ctx, vm)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			err = cluster.KubevirtRuntimeClient().Create(ctx, vm)
-			if err != nil {
-				return nil, err
-			}
-			// TODO: construct services or gateways
-			for _, port := range req.Ports {
-				svc := &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      fmt.Sprintf("%s-%d", req.Name, port.Number),
-						Namespace: space.Name,
-					},
-					Spec: corev1.ServiceSpec{
-						Ports: []corev1.ServicePort{
-							{
-								Name:       fmt.Sprintf("%d", port.Number),
-								Protocol:   corev1.ProtocolTCP,
-								Port:       port.Number,
-								TargetPort: intstr.FromInt32(port.Number),
-							},
-						},
-					},
-				}
-				cluster.KubeRuntimeClient().Create(ctx, svc)
-			}
-			return &model.CreateVirtualMachineResponse{Name: vm.Name, Status: string(vm.Status.PrintableStatus)}, nil
-		}
 		return nil, err
 	}
-	return nil, fmt.Errorf("virtual machine %s already exists", vm.Name)
+	// TODO: construct services or gateways
+	for _, port := range req.Ports {
+		svc := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-%d", req.Name, port.Number),
+				Namespace: space.Name,
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name:       fmt.Sprintf("%d", port.Number),
+						Protocol:   corev1.ProtocolTCP,
+						Port:       port.Number,
+						TargetPort: intstr.FromInt32(port.Number),
+					},
+				},
+			},
+		}
+		err := workerCluster.KubeRuntimeClient().Create(ctx, svc)
+		if err != nil {
+			return nil, err
+		} else {
+			// TODO: construct gateway
+
+		}
+	}
+	return &model.CreateVirtualMachineResponse{
+		Name:   vm.Name,
+		Status: string(vm.Status.PrintableStatus),
+	}, nil
 }

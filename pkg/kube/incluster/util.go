@@ -14,59 +14,51 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube
+package incluster
 
 import (
-	"bytes"
 	"context"
 	"reflect"
 
-	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
-func RESTConfigFromKubeConfig(kubeConfig string) (*rest.Config, error) {
-	return clientcmd.RESTConfigFromKubeConfig([]byte(kubeConfig))
-}
-
-func ClientForConfig(config *rest.Config) (kubernetes.Interface, error) {
-	return kubernetes.NewForConfig(config)
-}
-
-func DynamicClientForConfig(config *rest.Config) (dynamic.Interface, error) {
-	return dynamic.NewForConfig(config)
-}
-
-type GetContainerOptions struct {
-	Follow    bool
-	TailLines *int64
-	Previous  bool
-}
-
-func GetContainerLogs(ctx context.Context, kubeClient kubernetes.Interface, namespace, pod, container string, opt GetContainerOptions) ([]byte, error) {
-	rc, err := kubeClient.CoreV1().Pods(namespace).GetLogs(pod, &corev1.PodLogOptions{
-		Container: container,
-		Follow:    opt.Follow,
-		TailLines: opt.TailLines,
-		Previous:  opt.Previous,
-	}).Stream(ctx)
-	if err != nil {
-		return nil, err
+func ListIngressClasses() map[string]bool {
+	ics, _ := Store().IngressClassLister().List(labels.Everything())
+	result := make(map[string]bool, len(ics))
+	for _, ic := range ics {
+		v, ok := ic.Annotations[networkingv1.AnnotationIsDefaultIngressClass]
+		result[ic.Name] = ok && v == "true"
 	}
+	return result
+}
 
-	defer rc.Close()
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(rc)
-	if err != nil {
-		return nil, err
+func DefaultIngressClass() string {
+	var result string
+	ics, _ := Store().IngressClassLister().List(labels.Everything())
+	for _, ic := range ics {
+		if val, ok := ic.Annotations[networkingv1.AnnotationIsDefaultIngressClass]; ok && val == "true" {
+			result = ic.Name
+			break
+		}
+		result = ic.Name
 	}
-	return buf.Bytes(), nil
+	return result
+}
+
+func DefaultGatewayClass(gatewayAPIClient versioned.Interface) string {
+	var result string
+	gcs, _ := gatewayAPIClient.GatewayV1beta1().GatewayClasses().List(context.Background(), metav1.ListOptions{})
+	if len(gcs.Items) > 0 {
+		result = gcs.Items[0].Name
+	}
+	return result
 }
 
 // newEmptyObjectFrom returns a new empty object of the same type as the given object.

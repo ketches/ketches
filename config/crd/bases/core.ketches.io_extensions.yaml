@@ -68,6 +68,8 @@ spec:
                 type: object
               description:
                 type: string
+              desiredState:
+                type: string
               displayName:
                 type: string
               helmInstallation:
@@ -90,7 +92,6 @@ spec:
               installType:
                 type: string
               targetNamespace:
-                description: //+kubebuilder:validation:Required Cluster string `json:"cluster,omitempty"`
                 type: string
             type: object
           status:

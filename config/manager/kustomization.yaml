@@ -4,5 +4,5 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: controller
-  newName: registry.cn-hangzhou.aliyuncs.com/ketches/controller-manager
-  newTag: latest
+  newName: docker.io/ketches/controller-manager
+  newTag: v0.0.1-alpha.1

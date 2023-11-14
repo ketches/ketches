@@ -14,25 +14,38 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ketches
+package incluster
 
 import (
 	"github.com/ketches/ketches/pkg/generated/clientset/versioned"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var (
-	inClusterClient versioned.Interface
+	kubeClient    kubernetes.Interface
+	ketchesClient versioned.Interface
+	dynamicClient dynamic.Interface
 )
 
-func Client() versioned.Interface {
-	if inClusterClient == nil {
-		inClusterClient = versioned.NewForConfigOrDie(ctrl.GetConfigOrDie())
+func Client() kubernetes.Interface {
+	if kubeClient == nil {
+		kubeClient = kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	}
-	return inClusterClient
+	return kubeClient
 }
 
-func ClientFromConfig(config *rest.Config) (versioned.Interface, error) {
-	return versioned.NewForConfig(config)
+func KetchesClient() versioned.Interface {
+	if ketchesClient == nil {
+		ketchesClient = versioned.NewForConfigOrDie(ctrl.GetConfigOrDie())
+	}
+	return ketchesClient
+}
+
+func DynamicClient() dynamic.Interface {
+	if dynamicClient == nil {
+		dynamicClient = dynamic.NewForConfigOrDie(ctrl.GetConfigOrDie())
+	}
+	return dynamicClient
 }

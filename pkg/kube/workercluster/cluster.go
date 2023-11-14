@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package clusterset
+package workercluster
 
 import (
 	"slices"
@@ -28,12 +28,12 @@ import (
 	veleroscheme "github.com/vmware-tanzu/velero/pkg/generated/clientset/versioned/scheme"
 	apiextclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiextscheme "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	kubevirtscheme "kubevirt.io/client-go/generated/kubevirt/clientset/versioned/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	gatewayapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
 )
@@ -48,6 +48,7 @@ type Cluster interface {
 	RESTConfig() *rest.Config
 
 	KubeClientset() kubernetes.Interface
+	DynamicClient() dynamic.Interface
 	APIExtClientset() apiextclientset.Interface
 	KetchesClientset() ketchesversioned.Interface
 	VeleroClientset() veleroversioned.Interface
@@ -58,7 +59,8 @@ type Cluster interface {
 	KetchesRuntimeClient() client.Client
 	GatewayAPIRuntimeClient() client.Client
 	VeleroRuntimeClient() client.Client
-	KubevirtRuntimeClient() client.Client
+
+	Store() StoreInterface
 }
 
 var _ Cluster = (*cluster)(nil)
@@ -67,6 +69,7 @@ type cluster struct {
 	resource         *corev1alpha1.Cluster
 	restConfig       *rest.Config
 	kubeClient       kubernetes.Interface
+	dynamicClient    dynamic.Interface
 	ketchesClient    ketchesversioned.Interface
 	apiextClient     apiextclientset.Interface
 	gatewayapiClient gatewayapiversioned.Interface
@@ -77,7 +80,6 @@ type cluster struct {
 	apiextRuntimeClient     client.Client
 	gatewayapiRuntimeClient client.Client
 	veleroRuntimeClient     client.Client
-	kubevirtRuntimeClient   client.Client
 }
 
 func NewCluster(clusterResource *corev1alpha1.Cluster) Cluster {
@@ -146,6 +148,20 @@ func (c *cluster) KubeClientset() kubernetes.Interface {
 		c.kubeClient = kubeClient
 	}
 	return c.kubeClient
+}
+
+func (c *cluster) DynamicClient() dynamic.Interface {
+	if c == nil {
+		return nil
+	}
+	if c.dynamicClient == nil {
+		dynamicClient, err := dynamic.NewForConfig(c.RESTConfig())
+		if err != nil {
+			return nil
+		}
+		c.dynamicClient = dynamicClient
+	}
+	return c.dynamicClient
 }
 
 func (c *cluster) APIExtClientset() apiextclientset.Interface {
@@ -279,7 +295,7 @@ func (c *cluster) GatewayAPIRuntimeClient() client.Client {
 		return nil
 	}
 
-	if !slices.Contains(c.APIGroups(), gatewayapi.GroupName) {
+	if !slices.Contains(c.APIGroups(), gatewayapisv1.GroupName) {
 		return nil
 	}
 
@@ -317,23 +333,10 @@ func (c *cluster) VeleroRuntimeClient() client.Client {
 	return c.veleroRuntimeClient
 }
 
-func (c *cluster) KubevirtRuntimeClient() client.Client {
+func (c *cluster) Store() StoreInterface {
 	if c == nil {
 		return nil
 	}
 
-	if !slices.Contains(c.APIGroups(), velero.SchemeGroupVersion.Group) {
-		return nil
-	}
-
-	if c.kubevirtRuntimeClient == nil {
-		cli, err := client.New(c.restConfig, client.Options{
-			Scheme: kubevirtscheme.Scheme,
-		})
-		if err != nil {
-			return nil
-		}
-		c.kubevirtRuntimeClient = cli
-	}
-	return c.kubevirtRuntimeClient
+	return cachedStore(c)
 }

@@ -31,11 +31,17 @@ const (
 	ExtensionInstallTypeKubeApply ExtensionInstallType = "kube-apply"
 )
 
+type ExtensionDesiredState string
+
+const (
+	ExtensionDesiredStateInstalled   ExtensionDesiredState = "Installed"
+	ExtensionDesiredStateUninstalled ExtensionDesiredState = "Uninstalled"
+)
+
 // ExtensionSpec defines the desired state of Extension
 type ExtensionSpec struct {
 	spec.ViewSpec `json:",inline"`
-	// //+kubebuilder:validation:Required
-	// Cluster string `json:"cluster,omitempty"`
+	DesiredState  ExtensionDesiredState `json:"desiredState,omitempty"`
 	// +kubebuilder:validation:Required
 	TargetNamespace string `json:"targetNamespace,omitempty"`
 	// +kubebuilder:validation:Required

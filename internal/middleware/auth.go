@@ -22,11 +22,11 @@ import (
 	"strings"
 
 	"github.com/ketches/ketches/internal/http"
-	"github.com/ketches/ketches/pkg/ketches"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/ketches/ketches/pkg/global"
+	"github.com/ketches/ketches/pkg/kube/incluster"
 	jwtutil "github.com/ketches/ketches/util/jwt"
 )
 
@@ -70,7 +70,7 @@ func Auth() gin.HandlerFunc {
 			return
 		}
 
-		user, err := ketches.Store().UserLister().Get(claims.AccountID)
+		user, err := incluster.Store().UserLister().Get(claims.AccountID)
 		if err != nil {
 			http.ForbiddenWithError(c, err)
 			c.Abort()

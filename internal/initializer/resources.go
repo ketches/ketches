@@ -18,15 +18,15 @@ package initializer
 
 import (
 	"context"
-	"github.com/ketches/ketches/api/spec"
 	"slices"
+
+	"github.com/ketches/ketches/api/spec"
 
 	"github.com/fatih/color"
 	"github.com/ketches/ketches/api/core/v1alpha1"
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
 	"github.com/ketches/ketches/pkg/global"
-	"github.com/ketches/ketches/pkg/ketches"
-	"github.com/ketches/ketches/pkg/kube"
+	"github.com/ketches/ketches/pkg/kube/incluster"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -37,9 +37,9 @@ import (
 
 func InitializePlatform() error {
 	// builtin namespace
-	_, err := kube.Client().CoreV1().Namespaces().Get(context.Background(), global.BuiltinNamespace, metav1.GetOptions{})
+	_, err := incluster.Client().CoreV1().Namespaces().Get(context.Background(), global.BuiltinNamespace, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
-		_, err := kube.Client().CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{
+		_, err := incluster.Client().CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   global.BuiltinNamespace,
 				Labels: corev1alpha1.BuiltinResourceLabels(),
@@ -51,9 +51,9 @@ func InitializePlatform() error {
 	}
 
 	// builtin admin user
-	_, err = ketches.Store().UserLister().Get("admin")
+	_, err = incluster.Store().UserLister().Get("admin")
 	if err != nil && errors.IsNotFound(err) {
-		_, err := ketches.Client().CoreV1alpha1().Users().Create(context.Background(), builtinAdminUser, metav1.CreateOptions{})
+		_, err := incluster.KetchesClient().CoreV1alpha1().Users().Create(context.Background(), builtinAdminUser, metav1.CreateOptions{})
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func InitializePlatform() error {
 	}
 
 	// builtin roles
-	roles, err := ketches.Store().RoleLister().List(labels.Everything())
+	roles, err := incluster.Store().RoleLister().List(labels.Everything())
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func InitializePlatform() error {
 		if !slices.ContainsFunc(roles, func(r *v1alpha1.Role) bool {
 			return r.Name == role.Name
 		}) {
-			_, err = ketches.Client().CoreV1alpha1().Roles().Create(context.Background(), &role, metav1.CreateOptions{})
+			_, err = incluster.KetchesClient().CoreV1alpha1().Roles().Create(context.Background(), &role, metav1.CreateOptions{})
 			if err != nil {
 				return err
 			}

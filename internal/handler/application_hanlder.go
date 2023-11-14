@@ -57,8 +57,14 @@ func ListApplications(c *gin.Context) {
 func GetApplication(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	appID := c.Param("application_id")
+	req := model.ApplicationUri{
+		SpaceUri: model.SpaceUri{
+			SpaceID: spaceID,
+		},
+		ApplicationID: appID,
+	}
 	applicationService := service.NewApplicationService()
-	resp, err := applicationService.Get(c, spaceID, appID)
+	resp, err := applicationService.Get(c, &req)
 	if err != nil {
 		http.Error(c, err)
 		return
@@ -86,8 +92,14 @@ func CreateApplication(c *gin.Context) {
 func StartApplication(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	appID := c.Param("application_id")
+	req := model.ApplicationUri{
+		SpaceUri: model.SpaceUri{
+			SpaceID: spaceID,
+		},
+		ApplicationID: appID,
+	}
 	applicationService := service.NewApplicationService()
-	resp, err := applicationService.Start(c, spaceID, appID)
+	resp, err := applicationService.Start(c, &req)
 	if err != nil {
 		http.Error(c, err)
 		return
@@ -98,8 +110,14 @@ func StartApplication(c *gin.Context) {
 func StopApplication(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	appID := c.Param("application_id")
+	req := model.ApplicationUri{
+		SpaceUri: model.SpaceUri{
+			SpaceID: spaceID,
+		},
+		ApplicationID: appID,
+	}
 	applicationService := service.NewApplicationService()
-	resp, err := applicationService.Stop(c, spaceID, appID)
+	resp, err := applicationService.Stop(c, &req)
 	if err != nil {
 		http.Error(c, err)
 		return
@@ -110,8 +128,14 @@ func StopApplication(c *gin.Context) {
 func RestartApplication(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	appID := c.Param("application_id")
+	req := model.ApplicationUri{
+		SpaceUri: model.SpaceUri{
+			SpaceID: spaceID,
+		},
+		ApplicationID: appID,
+	}
 	applicationService := service.NewApplicationService()
-	resp, err := applicationService.Restart(c, spaceID, appID)
+	resp, err := applicationService.Restart(c, &req)
 	if err != nil {
 		http.Error(c, err)
 		return
@@ -160,8 +184,14 @@ func GetApplicationContainerLogs(c *gin.Context) {
 func DeleteApplication(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	appID := c.Param("application_id")
+	req := model.ApplicationUri{
+		SpaceUri: model.SpaceUri{
+			SpaceID: spaceID,
+		},
+		ApplicationID: appID,
+	}
 	applicationService := service.NewApplicationService()
-	err := applicationService.Delete(c, spaceID, appID)
+	err := applicationService.Delete(c, &req)
 	if err != nil {
 		http.Error(c, err)
 		return

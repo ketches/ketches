@@ -23,9 +23,9 @@ import (
 	"time"
 
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
-	"github.com/ketches/ketches/pkg/clusterset"
-	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/pkg/kube"
+	"github.com/ketches/ketches/pkg/kube/incluster"
+	"github.com/ketches/ketches/pkg/kube/workercluster"
 	"github.com/ketches/ketches/util/conv"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -39,7 +39,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // ApplicationReconciler reconciles an Application object
@@ -81,7 +81,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return r.updateStatus(ctx, app, nil)
 	}
 
-	workerCluster, ok := ketches.Store().Clusterset().Cluster(space.Spec.Cluster)
+	workerCluster, ok := incluster.Store().Clusterset().Cluster(space.Spec.Cluster)
 	if !ok {
 		log.Error(err, "unable to get worker cluster")
 		return ctrl.Result{RequeueAfter: 1 * time.Second}, nil
@@ -130,7 +130,7 @@ func (r *ApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // onApplicationDeleted handles Application deletion
-func (r *ApplicationReconciler) onApplicationDeleted(ctx context.Context, app *corev1alpha1.Application, workerCluster clusterset.Cluster) (ctrl.Result, error) {
+func (r *ApplicationReconciler) onApplicationDeleted(ctx context.Context, app *corev1alpha1.Application, workerCluster workercluster.Cluster) (ctrl.Result, error) {
 	err := workerCluster.KubeClientset().CoreV1().ServiceAccounts(app.Namespace).Delete(ctx, applicationOwnerServiceAccountName(app.Name), metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return ctrl.Result{Requeue: true}, err
@@ -141,7 +141,7 @@ func (r *ApplicationReconciler) onApplicationDeleted(ctx context.Context, app *c
 	return ctrl.Result{}, err
 }
 
-func (r *ApplicationReconciler) applyApplicationDerivedResources(ctx context.Context, workerCluster clusterset.Cluster, app *corev1alpha1.Application) error {
+func (r *ApplicationReconciler) applyApplicationDerivedResources(ctx context.Context, workerCluster workercluster.Cluster, app *corev1alpha1.Application) error {
 	// apply owner service account
 	ownerServiceAccount, err := workerCluster.KubeClientset().CoreV1().ServiceAccounts(app.Namespace).Get(ctx, applicationOwnerServiceAccountName(app.Name), metav1.GetOptions{})
 	if err != nil {
@@ -346,7 +346,7 @@ func (r *ApplicationReconciler) applyApplicationDerivedResources(ctx context.Con
 	return nil
 }
 
-func (r *ApplicationReconciler) completeApplicationStatus(ctx context.Context, app *corev1alpha1.Application, workerCluster clusterset.Cluster) {
+func (r *ApplicationReconciler) completeApplicationStatus(ctx context.Context, app *corev1alpha1.Application, workerCluster workercluster.Cluster) {
 	switch workloadType(app) {
 	case corev1alpha1.WorkloadTypeDeployment:
 		workload := &appsv1.Deployment{}
@@ -356,7 +356,7 @@ func (r *ApplicationReconciler) completeApplicationStatus(ctx context.Context, a
 		}
 		app.Status.DeploymentConditions = workload.Status.Conditions
 		switch app.Spec.DesiredState {
-		case corev1alpha1.DesiredStateRunning:
+		case corev1alpha1.ApplicationDesiredStateRunning:
 			if workload.Spec.Replicas == conv.Ptr(int32(0)) {
 				if workload.Status.Replicas == 0 {
 					app.Status.Phase = corev1alpha1.ApplicationPhaseStopped
@@ -372,7 +372,7 @@ func (r *ApplicationReconciler) completeApplicationStatus(ctx context.Context, a
 					app.Status.Phase = corev1alpha1.ApplicationPhaseStarting
 				}
 			}
-		case corev1alpha1.DesiredStateStopped:
+		case corev1alpha1.ApplicationDesiredStateStopped:
 			if workload.Spec.Replicas == conv.Ptr(int32(0)) {
 				if workload.Status.Replicas == 0 {
 					app.Status.Phase = corev1alpha1.ApplicationPhaseStopped
@@ -391,7 +391,7 @@ func (r *ApplicationReconciler) completeApplicationStatus(ctx context.Context, a
 		}
 		app.Status.StatefulSetConditions = workload.Status.Conditions
 		switch app.Spec.DesiredState {
-		case corev1alpha1.DesiredStateRunning:
+		case corev1alpha1.ApplicationDesiredStateRunning:
 			if workload.Spec.Replicas == conv.Ptr(int32(0)) {
 				if workload.Status.Replicas == 0 {
 					app.Status.Phase = corev1alpha1.ApplicationPhasePending
@@ -407,7 +407,7 @@ func (r *ApplicationReconciler) completeApplicationStatus(ctx context.Context, a
 					app.Status.Phase = corev1alpha1.ApplicationPhaseStarting
 				}
 			}
-		case corev1alpha1.DesiredStateStopped:
+		case corev1alpha1.ApplicationDesiredStateStopped:
 			if workload.Spec.Replicas == conv.Ptr(int32(0)) {
 				if workload.Status.Replicas == 0 {
 					app.Status.Phase = corev1alpha1.ApplicationPhaseStopped
@@ -540,7 +540,7 @@ func constructWorkload(app *corev1alpha1.Application, owners ...metav1.OwnerRefe
 		})
 	}
 	replicas := app.Spec.Replicas
-	if app.Spec.DesiredState == corev1alpha1.DesiredStateStopped {
+	if app.Spec.DesiredState == corev1alpha1.ApplicationDesiredStateStopped {
 		replicas = 0
 	}
 	switch app.Spec.Type {
@@ -743,8 +743,8 @@ func constructService(app *corev1alpha1.Application, port *corev1alpha1.Port, ow
 // 	return result
 // }
 
-func constructHTTPRoute(app *corev1alpha1.Application, port *corev1alpha1.Port, owners ...metav1.OwnerReference) []*gatewayapi.HTTPRoute {
-	var result []*gatewayapi.HTTPRoute
+func constructHTTPRoute(app *corev1alpha1.Application, port *corev1alpha1.Port, owners ...metav1.OwnerReference) []*gatewayapisv1.HTTPRoute {
+	var result []*gatewayapisv1.HTTPRoute
 	for _, gateway := range port.Gateways {
 		// name := gatewayName(gateway.ClassName)
 
@@ -752,40 +752,40 @@ func constructHTTPRoute(app *corev1alpha1.Application, port *corev1alpha1.Port, 
 		if len(httpPath) == 0 {
 			httpPath = "/"
 		}
-		result = append(result, &gatewayapi.HTTPRoute{
+		result = append(result, &gatewayapisv1.HTTPRoute{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            gateway.Name,
 				Namespace:       app.Namespace,
 				Labels:          app.Labels,
 				OwnerReferences: owners,
 			},
-			Spec: gatewayapi.HTTPRouteSpec{
-				CommonRouteSpec: gatewayapi.CommonRouteSpec{
-					ParentRefs: []gatewayapi.ParentReference{
+			Spec: gatewayapisv1.HTTPRouteSpec{
+				CommonRouteSpec: gatewayapisv1.CommonRouteSpec{
+					ParentRefs: []gatewayapisv1.ParentReference{
 						{
-							Name: gatewayapi.ObjectName(gateway.Name),
+							Name: gatewayapisv1.ObjectName(gateway.Name),
 						},
 					},
 				},
-				Hostnames: []gatewayapi.Hostname{
-					gatewayapi.Hostname(gateway.Host),
+				Hostnames: []gatewayapisv1.Hostname{
+					gatewayapisv1.Hostname(gateway.Host),
 				},
-				Rules: []gatewayapi.HTTPRouteRule{
+				Rules: []gatewayapisv1.HTTPRouteRule{
 					{
-						Matches: []gatewayapi.HTTPRouteMatch{
+						Matches: []gatewayapisv1.HTTPRouteMatch{
 							{
-								Path: &gatewayapi.HTTPPathMatch{
-									Type:  conv.Ptr(gatewayapi.PathMatchPathPrefix),
+								Path: &gatewayapisv1.HTTPPathMatch{
+									Type:  conv.Ptr(gatewayapisv1.PathMatchPathPrefix),
 									Value: conv.Ptr(httpPath),
 								},
 							},
 						},
-						BackendRefs: []gatewayapi.HTTPBackendRef{
+						BackendRefs: []gatewayapisv1.HTTPBackendRef{
 							{
-								BackendRef: gatewayapi.BackendRef{
-									BackendObjectReference: gatewayapi.BackendObjectReference{
-										Name: gatewayapi.ObjectName(portName(app, port)),
-										Port: conv.Ptr(gatewayapi.PortNumber(port.Number)),
+								BackendRef: gatewayapisv1.BackendRef{
+									BackendObjectReference: gatewayapisv1.BackendObjectReference{
+										Name: gatewayapisv1.ObjectName(portName(app, port)),
+										Port: conv.Ptr(gatewayapisv1.PortNumber(port.Number)),
 									},
 								},
 							},

@@ -24,7 +24,6 @@ import (
 	"github.com/google/uuid"
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
 	"github.com/ketches/ketches/internal/model"
-	"github.com/ketches/ketches/pkg/ketches"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/strings"
@@ -52,8 +51,8 @@ func (s *auditService) CreateAudit(ctx context.Context, req *model.CreateAuditRe
 		ObjectMeta: metav1.ObjectMeta{
 			Name: req.SourceValue + "-" + strings.ShortenString(uuid.NewString(), 8),
 			Labels: map[string]string{
-				"ketches.io/source-key":   req.SourceKey,
-				"ketches.io/source-value": req.SourceValue,
+				corev1alpha1.AuditSourceKeyLableKey:   req.SourceKey,
+				corev1alpha1.AuditSourceValueLableKey: req.SourceValue,
 			},
 		},
 		Spec: corev1alpha1.AuditSpec{
@@ -69,12 +68,12 @@ func (s *auditService) CreateAudit(ctx context.Context, req *model.CreateAuditRe
 }
 
 func (s *auditService) ListAudits(ctx context.Context, req *model.ListAuditsRequest) (*model.ListAuditsResponse, error) {
-	list, err := ketches.Store().AuditLister().List(labels.SelectorFromSet(labels.Set{
-		"ketches.io/source-key":   req.SourceKey,
-		"ketches.io/source-value": req.SourceValue,
+	list, err := s.InClusterStore().AuditLister().List(labels.SelectorFromSet(labels.Set{
+		corev1alpha1.AuditSourceKeyLableKey:   req.SourceKey,
+		corev1alpha1.AuditSourceValueLableKey: req.SourceValue,
 	}))
 	if err != nil {
-		slog.Error("list audits error", err)
+		slog.Error("failed to list audits", "error", err)
 		return nil, err
 	}
 

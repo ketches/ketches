@@ -18,9 +18,9 @@ package service
 
 import (
 	"context"
+
 	"github.com/ketches/ketches/internal/model"
-	"github.com/ketches/ketches/pkg/clusterset"
-	"github.com/ketches/ketches/pkg/ketches"
+	"github.com/ketches/ketches/pkg/kube/workercluster"
 )
 
 type ClusterService interface {
@@ -43,9 +43,9 @@ func NewClusterService() ClusterService {
 
 var _ ClusterService = (*clusterService)(nil)
 
-func (c clusterService) List(ctx context.Context) ([]*model.ClusterModel, error) {
+func (s *clusterService) List(ctx context.Context) ([]*model.ClusterModel, error) {
 	var result []*model.ClusterModel
-	cs := ketches.Store().Clusterset().List(clusterset.ListOptions{})
+	cs := s.InClusterStore().Clusterset().List(workercluster.ListOptions{})
 	for _, c := range cs {
 		result = append(result, &model.ClusterModel{
 			Name:        c.Name(),
@@ -57,22 +57,22 @@ func (c clusterService) List(ctx context.Context) ([]*model.ClusterModel, error)
 	return result, nil
 }
 
-func (c clusterService) Get(ctx context.Context, name string) (*model.ClusterModel, error) {
+func (s *clusterService) Get(ctx context.Context, name string) (*model.ClusterModel, error) {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (c clusterService) Add(ctx context.Context, req *model.AddClusterRequest) (*model.AddClusterResponse, error) {
+func (s *clusterService) Add(ctx context.Context, req *model.AddClusterRequest) (*model.AddClusterResponse, error) {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (c clusterService) Update(ctx context.Context, req *model.UpdateClusterRequest) (*model.UpdateClusterResponse, error) {
+func (s *clusterService) Update(ctx context.Context, req *model.UpdateClusterRequest) (*model.UpdateClusterResponse, error) {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (c clusterService) Remove(ctx context.Context, name string) error {
+func (s *clusterService) Remove(ctx context.Context, name string) error {
 	// TODO implement me
 	panic("implement me")
 }

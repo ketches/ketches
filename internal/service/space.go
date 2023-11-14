@@ -19,12 +19,13 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/ketches/ketches/api/spec"
 	"unicode"
+
+	"github.com/ketches/ketches/api/spec"
 
 	"github.com/ketches/ketches/api/core/v1alpha1"
 	"github.com/ketches/ketches/internal/model"
-	"github.com/ketches/ketches/pkg/ketches"
+	"github.com/ketches/ketches/pkg/kube/incluster"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,12 +55,12 @@ func NewSpaceService() SpaceService {
 }
 
 func (s *spaceService) List(ctx context.Context) (*model.ListSpacesResponse, error) {
-	user, err := ketches.Store().UserLister().Get(s.AccountID(ctx))
+	user, err := incluster.Store().UserLister().Get(s.AccountID(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	listed, err := ketches.Store().SpaceLister().List(labels.Everything())
+	listed, err := incluster.Store().SpaceLister().List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func (s *spaceService) List(ctx context.Context) (*model.ListSpacesResponse, err
 }
 
 func (s *spaceService) Get(ctx context.Context, space string) (*model.GetSpaceResponse, error) {
-	got, err := ketches.Store().SpaceLister().Get(space)
+	got, err := incluster.Store().SpaceLister().Get(space)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +117,7 @@ func (s *spaceService) Create(ctx context.Context, req *model.CreateSpaceRequest
 		req.DisplayName = req.Name
 	}
 
-	_, err := ketches.Store().SpaceLister().Get(req.Name)
+	_, err := incluster.Store().SpaceLister().Get(req.Name)
 	if err != nil && errors.IsAlreadyExists(err) {
 		return nil, fmt.Errorf("space name %s already exists", req.Name)
 	}
@@ -151,13 +152,13 @@ func (s *spaceService) Create(ctx context.Context, req *model.CreateSpaceRequest
 }
 
 func (s *spaceService) Update(ctx context.Context, req *model.UpdateSpaceRequest) (*model.UpdateSpaceResponse, error) {
-	got, err := ketches.Store().SpaceLister().Get(req.SpaceID)
+	got, err := incluster.Store().SpaceLister().Get(req.SpaceID)
 	if err != nil {
 		return nil, err
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		newest, err := ketches.Store().SpaceLister().Get(req.SpaceID)
+		newest, err := incluster.Store().SpaceLister().Get(req.SpaceID)
 		if err != nil {
 			return err
 		}
@@ -184,7 +185,7 @@ func (s *spaceService) Update(ctx context.Context, req *model.UpdateSpaceRequest
 }
 
 func (s *spaceService) AddMembers(ctx context.Context, req *model.AddMembersRequest) error {
-	got, err := ketches.Store().SpaceLister().Get(req.SpaceID)
+	got, err := incluster.Store().SpaceLister().Get(req.SpaceID)
 	if err != nil {
 		return err
 	}
@@ -202,7 +203,7 @@ func (s *spaceService) AddMembers(ctx context.Context, req *model.AddMembersRequ
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		newest, err := ketches.Store().SpaceLister().Get(req.SpaceID)
+		newest, err := incluster.Store().SpaceLister().Get(req.SpaceID)
 		if err != nil {
 			return err
 		}
@@ -218,7 +219,7 @@ func (s *spaceService) AddMembers(ctx context.Context, req *model.AddMembersRequ
 }
 
 func (s *spaceService) ListMembers(ctx context.Context, space string) (*model.ListSpaceMembersResponse, error) {
-	got, err := ketches.Store().SpaceLister().Get(space)
+	got, err := incluster.Store().SpaceLister().Get(space)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +227,7 @@ func (s *spaceService) ListMembers(ctx context.Context, space string) (*model.Li
 		Members: make([]model.SpaceMemberDetailModel, len(got.Spec.Members)),
 	}
 	for accountID, roles := range got.Spec.Members {
-		user, err := ketches.Store().UserLister().Get(accountID)
+		user, err := incluster.Store().UserLister().Get(accountID)
 		if err != nil {
 			continue
 		}
@@ -241,7 +242,7 @@ func (s *spaceService) ListMembers(ctx context.Context, space string) (*model.Li
 }
 
 func (s *spaceService) RemoveMembers(ctx context.Context, req *model.RemoveSpacesRequest) error {
-	got, err := ketches.Store().SpaceLister().Get(req.SpaceID)
+	got, err := incluster.Store().SpaceLister().Get(req.SpaceID)
 	if err != nil {
 		return err
 	}
@@ -252,7 +253,7 @@ func (s *spaceService) RemoveMembers(ctx context.Context, req *model.RemoveSpace
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		newest, err := ketches.Store().SpaceLister().Get(req.SpaceID)
+		newest, err := incluster.Store().SpaceLister().Get(req.SpaceID)
 		if err != nil {
 			return err
 		}
@@ -267,7 +268,7 @@ func (s *spaceService) RemoveMembers(ctx context.Context, req *model.RemoveSpace
 }
 
 func (s *spaceService) Delete(ctx context.Context, space string) error {
-	got, err := ketches.Store().SpaceLister().Get(space)
+	got, err := incluster.Store().SpaceLister().Get(space)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -284,7 +285,7 @@ func (s *spaceService) Delete(ctx context.Context, space string) error {
 func readMembers(space *v1alpha1.Space) []model.SpaceMemberDetailModel {
 	result := make([]model.SpaceMemberDetailModel, len(space.Spec.Members))
 	for accountID, roles := range space.Spec.Members {
-		user, err := ketches.Store().UserLister().Get(accountID)
+		user, err := incluster.Store().UserLister().Get(accountID)
 		if err != nil {
 			continue
 		}

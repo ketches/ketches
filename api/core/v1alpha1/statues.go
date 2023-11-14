@@ -54,9 +54,10 @@ const (
 	SpacePhaseNotReady SpacePhase = "NotReady"
 	SpacePhaseReady    SpacePhase = "Ready"
 
-	ExtensionPhasePending   ExtensionPhase = "Pending"
-	ExtensionPhaseInstalled ExtensionPhase = "Installed"
-	ExtensionPhaseFailed    ExtensionPhase = "Failed"
+	ExtensionPhasePending     ExtensionPhase = "Pending"
+	ExtensionPhaseInstalled   ExtensionPhase = "Installed"
+	ExtensionPhaseFailed      ExtensionPhase = "Failed"
+	ExtensionPhaseUninstalled ExtensionPhase = "Uninstalled"
 
 	HelmRepositoryPhasePending HelmRepositoryPhase = "Pending"
 	HelmRepositoryPhaseAdded   HelmRepositoryPhase = "Added"

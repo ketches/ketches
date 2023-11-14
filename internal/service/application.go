@@ -19,16 +19,17 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/ketches/ketches/api/spec"
 	"log"
+	"log/slog"
 	"strings"
 	"unicode"
+
+	"github.com/ketches/ketches/api/spec"
 
 	"github.com/google/uuid"
 	"github.com/ketches/ketches/api/core/v1alpha1"
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
 	"github.com/ketches/ketches/internal/model"
-	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/pkg/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -40,22 +41,22 @@ import (
 )
 
 type ApplicationService interface {
-	List(ctx context.Context, af *model.ApplicationFilter) ([]*model.ApplicationModel, error)
-	Get(ctx context.Context, spaceID string, appID string) (*model.ApplicationModel, error)
+	List(ctx context.Context, req *model.ApplicationFilter) ([]*model.ApplicationModel, error)
+	Get(ctx context.Context, req *model.ApplicationUri) (*model.ApplicationModel, error)
 	Create(ctx context.Context, req *model.CreateApplicationRequest) (*model.CreateApplicationResponse, error)
-	Start(ctx context.Context, spaceID string, appID string) (*model.ApplicationModel, error)
-	Stop(ctx context.Context, spaceID string, appID string) (*model.ApplicationModel, error)
-	Restart(ctx context.Context, spaceID string, appID string) (*model.ApplicationModel, error)
+	Start(ctx context.Context, req *model.ApplicationUri) (*model.ApplicationModel, error)
+	Stop(ctx context.Context, req *model.ApplicationUri) (*model.ApplicationModel, error)
+	Restart(ctx context.Context, req *model.ApplicationUri) (*model.ApplicationModel, error)
 	GetPodsAndContainers(ctx context.Context, req *model.GetPodsAndContainersRequest) (*model.GetPodsAndContainersResponse, error)
 	GetContainerLogs(ctx context.Context, req *model.GetApplicationContainerLogsRequest) (*model.GetApplicationContainerLogsResponse, error)
-	Delete(ctx context.Context, spaceID string, appID string) error
+	Delete(ctx context.Context, req *model.ApplicationUri) error
 	Export(ctx context.Context, req *model.ExportApplicationsRequest) (*model.ExportApplicationsResponse, error)
 	Import(ctx context.Context, req *model.ImportApplicationsRequest) (*model.ImportApplicationsResponse, error)
 	Backup(ctx context.Context, req *model.BackupApplicationRequest) (*model.BackupApplicationResponse, error)
 	ListBackups(ctx context.Context, req *model.ListApplicationBackupsRequest) ([]*model.ListApplicationBackupsResponse, error)
 	CreateBackupSchedule(ctx context.Context, req *model.CreateApplicationBackupScheduleRequest) (*model.CreateApplicationBackupScheduleResponse, error)
 	Restore(ctx context.Context, req *model.RestoreApplicationsRequest) (*model.RestoreApplicationsResponse, error)
-	ListRestores(ctx context.Context, spaceID string, appID string) ([]*model.BackupApplicationResponse, error)
+	ListRestores(ctx context.Context, req *model.ApplicationUri) ([]*model.BackupApplicationResponse, error)
 }
 
 type applicationService struct {
@@ -71,7 +72,7 @@ func NewApplicationService() ApplicationService {
 var _ ApplicationService = (*applicationService)(nil)
 
 func (s *applicationService) List(ctx context.Context, af *model.ApplicationFilter) ([]*model.ApplicationModel, error) {
-	listed, err := ketches.Store().ApplicationLister().Applications(af.SpaceID).List(labels.Everything())
+	listed, err := s.InClusterStore().ApplicationLister().Applications(af.SpaceID).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +94,8 @@ func (s *applicationService) List(ctx context.Context, af *model.ApplicationFilt
 	return ret, nil
 }
 
-func (s *applicationService) Get(ctx context.Context, spaceID, appID string) (*model.ApplicationModel, error) {
-	app, err := ketches.Store().ApplicationLister().Applications(spaceID).Get(appID)
+func (s *applicationService) Get(ctx context.Context, req *model.ApplicationUri) (*model.ApplicationModel, error) {
+	app, err := s.InClusterStore().ApplicationLister().Applications(req.SpaceID).Get(req.ApplicationID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +115,8 @@ func (s *applicationService) Create(ctx context.Context, req *model.CreateApplic
 		return nil, err
 	}
 
-	got, err := ketches.Store().ApplicationLister().Applications(req.SpaceID).Get(req.Name)
-	if err == nil {
+	got, _ := s.InClusterStore().ApplicationLister().Applications(req.SpaceID).Get(req.Name)
+	if got != nil {
 		return nil, fmt.Errorf("application %s already exists", got.Name)
 	}
 
@@ -160,7 +161,7 @@ func (s *applicationService) Create(ctx context.Context, req *model.CreateApplic
 				DisplayName: req.DisplayName,
 				Description: req.Description,
 			},
-			DesiredState:     v1alpha1.DesiredStateRunning,
+			DesiredState:     v1alpha1.ApplicationDesiredStateRunning,
 			Image:            req.Image,
 			Replicas:         req.Replicas,
 			Command:          strings.Split(req.Command, " "),
@@ -220,22 +221,22 @@ func (s *applicationService) validateCreateApplication(am *model.CreateApplicati
 	return nil
 }
 
-func (s *applicationService) Start(ctx context.Context, spaceID, appID string) (*model.ApplicationModel, error) {
+func (s *applicationService) Start(ctx context.Context, req *model.ApplicationUri) (*model.ApplicationModel, error) {
 	var app *v1alpha1.Application
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		got, err := ketches.Store().ApplicationLister().Applications(spaceID).Get(appID)
+		got, err := s.InClusterStore().ApplicationLister().Applications(req.SpaceID).Get(req.ApplicationID)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				return fmt.Errorf("application %s/%s not found", spaceID, appID)
+				return fmt.Errorf("application %s/%s not found", req.SpaceID, req.ApplicationID)
 			}
-			log.Printf("failed to get application %s/%s: %v", spaceID, appID, err)
-			return fmt.Errorf("failed to get application %s/%s", spaceID, appID)
+			log.Printf("failed to get application %s/%s: %v", req.SpaceID, req.ApplicationID, err)
+			return fmt.Errorf("failed to get application %s/%s", req.SpaceID, req.ApplicationID)
 		}
-		got.Spec.DesiredState = v1alpha1.DesiredStateRunning
-		app, err = s.KetchesClient().CoreV1alpha1().Applications(spaceID).Update(ctx, got, metav1.UpdateOptions{})
+		got.Spec.DesiredState = v1alpha1.ApplicationDesiredStateRunning
+		app, err = s.KetchesClient().CoreV1alpha1().Applications(req.SpaceID).Update(ctx, got, metav1.UpdateOptions{})
 		if err != nil {
-			log.Printf("failed to start application %s/%s: %v", spaceID, appID, err)
-			return fmt.Errorf("failed to start application %s/%s", spaceID, appID)
+			log.Printf("failed to start application %s/%s: %v", req.SpaceID, req.ApplicationID, err)
+			return fmt.Errorf("failed to start application %s/%s", req.SpaceID, req.ApplicationID)
 		}
 		return nil
 	})
@@ -254,22 +255,22 @@ func (s *applicationService) Start(ctx context.Context, spaceID, appID string) (
 	return ret, err
 }
 
-func (s *applicationService) Stop(ctx context.Context, spaceID, appID string) (*model.ApplicationModel, error) {
+func (s *applicationService) Stop(ctx context.Context, req *model.ApplicationUri) (*model.ApplicationModel, error) {
 	var newApp *v1alpha1.Application
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		app, err := ketches.Store().ApplicationLister().Applications(spaceID).Get(appID)
+		app, err := s.InClusterStore().ApplicationLister().Applications(req.SpaceID).Get(req.ApplicationID)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				return fmt.Errorf("application %s/%s not found", spaceID, appID)
+				return fmt.Errorf("application %s/%s not found", req.SpaceID, req.ApplicationID)
 			}
-			log.Printf("failed to get application %s/%s: %v", spaceID, appID, err)
-			return fmt.Errorf("failed to get application %s/%s", spaceID, appID)
+			log.Printf("failed to get application %s/%s: %v", req.SpaceID, req.ApplicationID, err)
+			return fmt.Errorf("failed to get application %s/%s", req.SpaceID, req.ApplicationID)
 		}
-		app.Spec.DesiredState = v1alpha1.DesiredStateStopped
-		newApp, err = s.KetchesClient().CoreV1alpha1().Applications(spaceID).Update(ctx, app, metav1.UpdateOptions{})
+		app.Spec.DesiredState = v1alpha1.ApplicationDesiredStateStopped
+		newApp, err = s.KetchesClient().CoreV1alpha1().Applications(req.SpaceID).Update(ctx, app, metav1.UpdateOptions{})
 		if err != nil {
-			log.Printf("failed to stop application %s/%s: %v", spaceID, appID, err)
-			return fmt.Errorf("failed to stop application %s/%s", spaceID, appID)
+			log.Printf("failed to stop application %s/%s: %v", req.SpaceID, req.ApplicationID, err)
+			return fmt.Errorf("failed to stop application %s/%s", req.SpaceID, req.ApplicationID)
 		}
 		return nil
 	})
@@ -288,22 +289,22 @@ func (s *applicationService) Stop(ctx context.Context, spaceID, appID string) (*
 	return ret, err
 }
 
-func (s *applicationService) Restart(ctx context.Context, spaceID, appID string) (*model.ApplicationModel, error) {
+func (s *applicationService) Restart(ctx context.Context, req *model.ApplicationUri) (*model.ApplicationModel, error) {
 	var app *v1alpha1.Application
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		got, err := ketches.Store().ApplicationLister().Applications(spaceID).Get(appID)
+		got, err := s.InClusterStore().ApplicationLister().Applications(req.SpaceID).Get(req.ApplicationID)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				return fmt.Errorf("application %s/%s not found", spaceID, appID)
+				return fmt.Errorf("application %s/%s not found", req.SpaceID, req.ApplicationID)
 			}
-			log.Printf("failed to get application %s/%s: %v", spaceID, appID, err)
-			return fmt.Errorf("failed to get application %s/%s", spaceID, appID)
+			log.Printf("failed to get application %s/%s: %v", req.SpaceID, req.ApplicationID, err)
+			return fmt.Errorf("failed to get application %s/%s", req.SpaceID, req.ApplicationID)
 		}
 		got.Labels[corev1alpha1.ApplicationEditionLabelKey] = corev1alpha1.NewApplicationEditionLabelValue()
-		app, err = s.KetchesClient().CoreV1alpha1().Applications(spaceID).Update(ctx, got, metav1.UpdateOptions{})
+		app, err = s.KetchesClient().CoreV1alpha1().Applications(req.SpaceID).Update(ctx, got, metav1.UpdateOptions{})
 		if err != nil {
-			log.Printf("failed to restart application %s/%s: %v", spaceID, appID, err)
-			return fmt.Errorf("failed to restart application %s/%s", spaceID, appID)
+			log.Printf("failed to restart application %s/%s: %v", req.SpaceID, req.ApplicationID, err)
+			return fmt.Errorf("failed to restart application %s/%s", req.SpaceID, req.ApplicationID)
 		}
 		return nil
 	})
@@ -323,8 +324,17 @@ func (s *applicationService) Restart(ctx context.Context, spaceID, appID string)
 }
 
 func (s *applicationService) GetPodsAndContainers(ctx context.Context, req *model.GetPodsAndContainersRequest) (*model.GetPodsAndContainersResponse, error) {
-	selector := labels.SelectorFromSet(labels.Set{corev1alpha1.ApplicationLabelKey: req.ApplicationID})
-	pods, err := kube.Store().PodLister().Pods(req.SpaceID).List(selector)
+	workerCluster, err := getWorkerClusterBySpace(req.SpaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.ApplicationVersion != string(corev1alpha1.ApplicationVersionStable) && req.ApplicationVersion != string(corev1alpha1.ApplicationVersionCanary) {
+		req.ApplicationVersion = corev1alpha1.ApplicationVersionStable
+	}
+
+	selector := labels.SelectorFromSet(labels.Set{corev1alpha1.ApplicationLabelKey: req.ApplicationID, corev1alpha1.ApplicationVersionLabelKey: req.ApplicationVersion})
+	pods, err := workerCluster.Store().PodLister().Pods(req.SpaceID).List(selector)
 	if err != nil {
 		return nil, err
 	}
@@ -355,39 +365,42 @@ func (s *applicationService) GetPodsAndContainers(ctx context.Context, req *mode
 }
 
 func (s *applicationService) GetContainerLogs(ctx context.Context, req *model.GetApplicationContainerLogsRequest) (*model.GetApplicationContainerLogsResponse, error) {
-	selector := labels.SelectorFromSet(labels.Set{corev1alpha1.ApplicationLabelKey: req.ApplicationID})
-	pods, err := kube.Store().PodLister().Pods(req.SpaceID).List(selector)
+	workerCluster, err := getWorkerClusterBySpace(req.SpaceID)
 	if err != nil {
 		return nil, err
 	}
 
+	pod, err := workerCluster.Store().PodLister().Pods(req.SpaceID).Get(req.Pod)
+	if err != nil {
+		slog.Error("failed to get pod", "pod", req.Pod, "err", err)
+		return nil, fmt.Errorf("failed to get pod %s", req.Pod)
+	}
+
 	result := new(model.GetApplicationContainerLogsResponse)
-	for _, pod := range pods {
-		for _, c := range pod.Spec.Containers {
-			if c.Name == req.Container {
-				result.Body, err = kube.GetContainerLogs(ctx, req.SpaceID, pod.Name, req.Container, kube.GetContainerOptions{
-					Follow:    req.Follow,
-					TailLines: &req.TailLines,
-					Previous:  req.Previous,
-				})
-				if err != nil {
-					return nil, err
-				}
+	for _, c := range pod.Spec.Containers {
+		if c.Name == req.Container {
+			result.Body, err = kube.GetContainerLogs(ctx, workerCluster.KubeClientset(), req.SpaceID, pod.Name, req.Container, kube.GetContainerOptions{
+				Follow:    req.Follow,
+				TailLines: &req.TailLines,
+				Previous:  req.Previous,
+			})
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
 	return result, nil
 }
 
-func (s *applicationService) Delete(ctx context.Context, spaceID, appID string) error {
-	return s.KetchesClient().CoreV1alpha1().Applications(spaceID).Delete(ctx, appID, metav1.DeleteOptions{})
+func (s *applicationService) Delete(ctx context.Context, req *model.ApplicationUri) error {
+	return s.KetchesClient().CoreV1alpha1().Applications(req.SpaceID).Delete(ctx, req.ApplicationID, metav1.DeleteOptions{})
 }
 
 func (s *applicationService) Export(ctx context.Context, req *model.ExportApplicationsRequest) (*model.ExportApplicationsResponse, error) {
 	ls := new(v1alpha1.ApplicationList)
 
 	for _, app := range req.Applications {
-		got, err := ketches.Store().ApplicationLister().Applications(req.SpaceID).Get(app)
+		got, err := s.InClusterStore().ApplicationLister().Applications(req.SpaceID).Get(app)
 		if err != nil {
 			return nil, err
 		}
@@ -440,7 +453,7 @@ func (s *applicationService) DeleteRestoreRecord(ctx context.Context, app string
 	return nil
 }
 
-func (s *applicationService) ListRestores(ctx context.Context, spaceID, appID string) ([]*model.BackupApplicationResponse, error) {
+func (s *applicationService) ListRestores(ctx context.Context, req *model.ApplicationUri) ([]*model.BackupApplicationResponse, error) {
 	return nil, nil
 }
 

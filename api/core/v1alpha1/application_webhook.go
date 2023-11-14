@@ -43,7 +43,7 @@ func (r *Application) Default() {
 	applicationlog.Info("default", "name", r.Name)
 
 	if r.Spec.DesiredState == "" {
-		r.Spec.DesiredState = DesiredStateRunning
+		r.Spec.DesiredState = ApplicationDesiredStateRunning
 	}
 
 	if r.Spec.DisplayName == "" {

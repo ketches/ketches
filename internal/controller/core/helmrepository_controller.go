@@ -29,10 +29,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
-	"github.com/ketches/ketches/pkg/clusterset"
 	"github.com/ketches/ketches/pkg/extension/helm"
-	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/pkg/kube"
+	"github.com/ketches/ketches/pkg/kube/incluster"
+	"github.com/ketches/ketches/pkg/kube/workercluster"
 )
 
 // HelmRepositoryReconciler reconciles a HelmRepository object
@@ -93,7 +93,7 @@ func (r *HelmRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	workerCluster, ok := ketches.Store().Clusterset().Cluster(space.Spec.Cluster)
+	workerCluster, ok := incluster.Store().Clusterset().Cluster(space.Spec.Cluster)
 	if !ok {
 		log.Error(err, "unable to get worker cluster")
 		return ctrl.Result{RequeueAfter: time.Second * 1}, nil
@@ -136,7 +136,7 @@ func (r *HelmRepositoryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *HelmRepositoryReconciler) onHelmRepositoryDeleted(ctx context.Context, helmRepository *corev1alpha1.HelmRepository, workerCluster clusterset.Cluster) (ctrl.Result, error) {
+func (r *HelmRepositoryReconciler) onHelmRepositoryDeleted(ctx context.Context, helmRepository *corev1alpha1.HelmRepository, workerCluster workercluster.Cluster) (ctrl.Result, error) {
 	err := helm.RepoRemove(helmRepository.Name)
 	if err == nil {
 		helmRepository.SetFinalizers(nil)
@@ -145,7 +145,7 @@ func (r *HelmRepositoryReconciler) onHelmRepositoryDeleted(ctx context.Context, 
 	return ctrl.Result{}, err
 }
 
-func addHelmRepository(ctx context.Context, helmRepository *corev1alpha1.HelmRepository, workerCluster clusterset.Cluster) error {
+func addHelmRepository(ctx context.Context, helmRepository *corev1alpha1.HelmRepository, workerCluster workercluster.Cluster) error {
 	err := helm.RepoAdd(helmRepository.Name, helmRepository.Spec.Url)
 	setHelmRepositoryAddStatus(helmRepository, err)
 	return err

@@ -25,6 +25,7 @@ type SpaceUri struct {
 }
 
 type ApplicationUri struct {
+	SpaceUri      `uri:",inline"`
 	ApplicationID string `uri:"application_id"`
 }
 

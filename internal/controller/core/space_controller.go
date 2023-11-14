@@ -25,10 +25,10 @@ import (
 
 	civ1alpha1 "github.com/ketches/ketches/api/ci/v1alpha1"
 	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
-	"github.com/ketches/ketches/pkg/clusterset"
 	"github.com/ketches/ketches/pkg/global"
-	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/pkg/kube"
+	"github.com/ketches/ketches/pkg/kube/incluster"
+	"github.com/ketches/ketches/pkg/kube/workercluster"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,7 +96,7 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	workerCluster, ok := ketches.Store().Clusterset().Cluster(space.Spec.Cluster)
+	workerCluster, ok := incluster.Store().Clusterset().Cluster(space.Spec.Cluster)
 	if !ok {
 		clusterNotFountErr := fmt.Errorf("cluster %s not found", space.Spec.Cluster)
 		space.Status.Phase = corev1alpha1.SpacePhaseNotReady
@@ -107,6 +107,8 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 		return ctrl.Result{}, clusterNotFountErr
 	}
+
+	space.SetStatusCondition(corev1alpha1.SpaceConditionTypeClusterReady, nil)
 
 	if space.GetDeletionTimestamp() != nil {
 		return r.onSpaceDeleted(ctx, space, workerCluster)
@@ -148,7 +150,7 @@ func (r *SpaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *SpaceReconciler) onSpaceDeleted(ctx context.Context, space *corev1alpha1.Space, workerCluster clusterset.Cluster) (ctrl.Result, error) {
+func (r *SpaceReconciler) onSpaceDeleted(ctx context.Context, space *corev1alpha1.Space, workerCluster workercluster.Cluster) (ctrl.Result, error) {
 	var recycleNamespace = func(namespace string) error {
 		nsInMaster := &corev1.Namespace{}
 		err := r.Client.Get(ctx, types.NamespacedName{Name: namespace}, nsInMaster)
@@ -236,7 +238,7 @@ func (r *SpaceReconciler) updateStatus(ctx context.Context, space *corev1alpha1.
 	})
 }
 
-func (r *SpaceReconciler) applyResources(ctx context.Context, workerCluster clusterset.Cluster, space *corev1alpha1.Space) error {
+func (r *SpaceReconciler) applyResources(ctx context.Context, workerCluster workercluster.Cluster, space *corev1alpha1.Space) error {
 	// apply namespace in master cluster
 	namespace := r.constructNamespace(space)
 	nsInMaster := &corev1.Namespace{}
@@ -260,6 +262,7 @@ func (r *SpaceReconciler) applyResources(ctx context.Context, workerCluster clus
 	// apply namespace in worker cluster
 	if err := workerCluster.KubeRuntimeClient().Get(ctx, client.ObjectKeyFromObject(namespace), nsInWorker); err != nil {
 		if errors.IsNotFound(err) {
+			namespace.SetResourceVersion("")
 			err = workerCluster.KubeRuntimeClient().Create(ctx, namespace)
 			space.SetStatusCondition(corev1alpha1.SpaceConditionTypeNamespaceReady, err)
 			if err != nil {

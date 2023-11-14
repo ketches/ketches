@@ -14,19 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube
+package incluster
 
-import "k8s.io/apimachinery/pkg/version"
+import (
+	"testing"
 
-func Version() string {
-	vi, err := VersionInfo()
+	"k8s.io/apimachinery/pkg/labels"
+)
+
+func TestListNamespaces(t *testing.T) {
+	scs, err := Store().IngressClassLister().List(labels.Everything())
+
 	if err != nil {
-		return ""
+		t.Fatal(err)
 	}
-
-	return vi.GitVersion
-}
-
-func VersionInfo() (*version.Info, error) {
-	return Client().Discovery().ServerVersion()
+	for _, ns := range scs {
+		t.Log("\t- ", ns.Name, ns.Spec.Controller)
+	}
 }

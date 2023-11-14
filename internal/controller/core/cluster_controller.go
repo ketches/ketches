@@ -19,26 +19,24 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/ketches/ketches/api/spec"
 	"time"
 
-	"github.com/ketches/ketches/pkg/clusterset"
+	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
+	"github.com/ketches/ketches/api/spec"
 	"github.com/ketches/ketches/pkg/global"
-	"github.com/ketches/ketches/pkg/ketches"
 	"github.com/ketches/ketches/pkg/kube"
+	"github.com/ketches/ketches/pkg/kube/incluster"
+	"github.com/ketches/ketches/pkg/kube/workercluster"
 	"github.com/ketches/ketches/util/conv"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/util/retry"
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
-
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	corev1alpha1 "github.com/ketches/ketches/api/core/v1alpha1"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // ClusterReconciler reconciles a Cluster object
@@ -82,7 +80,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	workerCluster, ok := ketches.Store().Clusterset().Cluster(cluster.Name)
+	workerCluster, ok := incluster.Store().Clusterset().Cluster(cluster.Name)
 	if !ok {
 		return ctrl.Result{RequeueAfter: time.Second * 1}, nil
 	}
@@ -111,14 +109,14 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *ClusterReconciler) onClusterDeleted(ctx context.Context, cluster *corev1alpha1.Cluster) (ctrl.Result, error) {
-	err := ketches.Client().CoreV1alpha1().Spaces().DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: corev1alpha1.ClusterLabelKey + "=" + cluster.Name})
+	err := incluster.KetchesClient().CoreV1alpha1().Spaces().DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: corev1alpha1.ClusterLabelKey + "=" + cluster.Name})
 	if err != nil {
 		return ctrl.Result{Requeue: true}, err
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *ClusterReconciler) completeClusterStatus(ctx context.Context, cluster *corev1alpha1.Cluster, workerCluster clusterset.Cluster) {
+func (r *ClusterReconciler) completeClusterStatus(ctx context.Context, cluster *corev1alpha1.Cluster, workerCluster workercluster.Cluster) {
 	cluster.Status.Version = "unknown"
 
 	err := r.pingWorkerCluster(ctx, workerCluster)
@@ -160,21 +158,27 @@ func (r *ClusterReconciler) updateStatus(ctx context.Context, cluster *corev1alp
 	})
 }
 
-func (r *ClusterReconciler) applyClusterDerivedResources(ctx context.Context, cluster *corev1alpha1.Cluster, workerCluster clusterset.Cluster) error {
+func (r *ClusterReconciler) applyClusterDerivedResources(ctx context.Context, cluster *corev1alpha1.Cluster, workerCluster workercluster.Cluster) error {
 	adminSpace := r.constructAdminSpace(ctx, cluster)
 	err := kube.ApplyResource(ctx, r.Client, adminSpace)
 	cluster.SetStatusCondition(corev1alpha1.ClusterConditionTypeAdminSpaceReady, err)
 	if err != nil {
+		return err
+	}
+
+	if adminSpace.Status.Phase == corev1alpha1.SpacePhaseReady {
 		extensionHelmRepository := r.constructExtensionHelmRepository(cluster)
 		err = kube.ApplyResource(ctx, r.Client, extensionHelmRepository)
 		cluster.SetStatusCondition(corev1alpha1.ClusterConditionTypeExtensionHelmRepositoryReady, err)
 		if err != nil {
-			defaultExts := r.constructDefaultExtensions(cluster)
-			for _, ext := range defaultExts {
-				err := kube.ApplyResource(ctx, r.Client, ext)
-				cluster.SetStatusCondition(corev1alpha1.ClusterConditionTypeDefaultExtensionReady, err)
-			}
+			return err
 		}
+
+		// defaultExts := r.constructDefaultExtensions(cluster)
+		// for _, ext := range defaultExts {
+		// 	err := kube.ApplyResource(ctx, r.Client, ext)
+		// 	cluster.SetStatusCondition(corev1alpha1.ClusterConditionTypeDefaultExtensionReady, err)
+		// }
 
 		if workerCluster.GatewayAPIRuntimeClient() != nil {
 			gateways := r.constructGateway(ctx, cluster, workerCluster.GatewayAPIRuntimeClient())
@@ -228,62 +232,62 @@ func (r *ClusterReconciler) constructExtensionHelmRepository(cluster *corev1alph
 	return result
 }
 
-func (r *ClusterReconciler) constructDefaultExtensions(cluster *corev1alpha1.Cluster) []*corev1alpha1.Extension {
-	var result []*corev1alpha1.Extension
-	// Velero extension
-	veleroExt := &corev1alpha1.Extension{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      global.VeleroExtensionName,
-			Namespace: adminSpaceName(cluster.Name),
-			Labels:    corev1alpha1.BuiltinResourceLabels(),
-		},
-		Spec: corev1alpha1.ExtensionSpec{
-			ViewSpec: spec.ViewSpec{
-				DisplayName: "Velero",
-				Description: "Velero is a tool to back up and restore Kubernetes cluster resources and persistent volumes.",
-			},
-			TargetNamespace: "velero",
-			InstallType:     corev1alpha1.ExtensionInstallTypeHelm,
-			HelmInstallation: &corev1alpha1.HelmInstallation{
-				Repository: global.ExtensionHelmRepositoryName,
-				Name:       global.VeleroExtensionName,
-				Chart:      global.VeleroExtensionChart,
-			},
-		},
-	}
-	veleroExt.CheckOrSetRequiredLabels()
-	result = append(result)
+// func (r *ClusterReconciler) constructDefaultExtensions(cluster *corev1alpha1.Cluster) []*corev1alpha1.Extension {
+// 	var result []*corev1alpha1.Extension
+// 	// Velero extension
+// 	veleroExt := &corev1alpha1.Extension{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      global.VeleroExtensionName,
+// 			Namespace: adminSpaceName(cluster.Name),
+// 			Labels:    corev1alpha1.BuiltinResourceLabels(),
+// 		},
+// 		Spec: corev1alpha1.ExtensionSpec{
+// 			ViewSpec: spec.ViewSpec{
+// 				DisplayName: "Velero",
+// 				Description: "Velero is a tool to back up and restore Kubernetes cluster resources and persistent volumes.",
+// 			},
+// 			TargetNamespace: "velero",
+// 			InstallType:     corev1alpha1.ExtensionInstallTypeHelm,
+// 			HelmInstallation: &corev1alpha1.HelmInstallation{
+// 				Repository: global.ExtensionHelmRepositoryName,
+// 				Name:       global.VeleroExtensionName,
+// 				Chart:      global.VeleroExtensionChart,
+// 			},
+// 		},
+// 	}
+// 	veleroExt.CheckOrSetRequiredLabels()
+// 	result = append(result)
 
-	// Kubevirt extension
-	// kubevirtExt := &corev1alpha1.Extension{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name:      global.KubevirtExtensionName,
-	// 		Namespace: adminSpaceName(cluster.Name),
-	// 		Labels:    corev1alpha1.BuiltinResourceLabels(),
-	// 	},
-	// 	Spec: corev1alpha1.ExtensionSpec{
-	// 		ViewSpec: meta.ViewSpec{
-	// 			DisplayName: "Kubevirt",
-	// 			Description: "KubeVirt is a virtual machine management add-on for Kubernetes.",
-	// 		},
-	// 		TargetNamespace: "kubevirt",
-	// 		InstallType:     corev1alpha1.ExtensionInstallTypeHelm,
-	// 		HelmInstallation: &corev1alpha1.HelmInstallation{
-	// 			Repository: global.ExtensionHelmRepositoryName,
-	// 			Name:       global.KubevirtExtensionName,
-	// 			Chart:      global.KubevirtExtensionChart,
-	// 		},
-	// 	},
-	// }
-	// kubevirtExt.CheckOrSetRequiredLabels()
-	result = append(result)
+// 	// Kubevirt extension
+// 	// kubevirtExt := &corev1alpha1.Extension{
+// 	// 	ObjectMeta: metav1.ObjectMeta{
+// 	// 		Name:      global.KubevirtExtensionName,
+// 	// 		Namespace: adminSpaceName(cluster.Name),
+// 	// 		Labels:    corev1alpha1.BuiltinResourceLabels(),
+// 	// 	},
+// 	// 	Spec: corev1alpha1.ExtensionSpec{
+// 	// 		ViewSpec: meta.ViewSpec{
+// 	// 			DisplayName: "Kubevirt",
+// 	// 			Description: "KubeVirt is a virtual machine management add-on for Kubernetes.",
+// 	// 		},
+// 	// 		TargetNamespace: "kubevirt",
+// 	// 		InstallType:     corev1alpha1.ExtensionInstallTypeHelm,
+// 	// 		HelmInstallation: &corev1alpha1.HelmInstallation{
+// 	// 			Repository: global.ExtensionHelmRepositoryName,
+// 	// 			Name:       global.KubevirtExtensionName,
+// 	// 			Chart:      global.KubevirtExtensionChart,
+// 	// 		},
+// 	// 	},
+// 	// }
+// 	// kubevirtExt.CheckOrSetRequiredLabels()
+// 	result = append(result)
 
-	return result
-}
+// 	return result
+// }
 
-func (r *ClusterReconciler) constructGateway(ctx context.Context, cluster *corev1alpha1.Cluster, gatewayClient client.Client) []*gatewayapi.Gateway {
-	var result []*gatewayapi.Gateway
-	gcl := &gatewayapi.GatewayList{}
+func (r *ClusterReconciler) constructGateway(ctx context.Context, cluster *corev1alpha1.Cluster, gatewayClient client.Client) []*gatewayapisv1.Gateway {
+	var result []*gatewayapisv1.Gateway
+	gcl := &gatewayapisv1.GatewayList{}
 	err := gatewayClient.List(ctx, gcl)
 	if err != nil {
 		return nil
@@ -292,29 +296,29 @@ func (r *ClusterReconciler) constructGateway(ctx context.Context, cluster *corev
 	for _, gc := range gcl.Items {
 		name := gatewayName(gc.Name)
 
-		var listeners []gatewayapi.Listener
+		var listeners []gatewayapisv1.Listener
 		for _, domain := range cluster.Spec.WildCardDomains {
-			listeners = append(listeners, gatewayapi.Listener{
-				Name:     gatewayapi.SectionName(name),
-				Hostname: conv.Ptr(gatewayapi.Hostname(domain)),
-				Port:     gatewayapi.PortNumber(80),
-				Protocol: gatewayapi.HTTPProtocolType,
-				AllowedRoutes: &gatewayapi.AllowedRoutes{
-					Namespaces: &gatewayapi.RouteNamespaces{
-						From: conv.Ptr(gatewayapi.NamespacesFromAll),
+			listeners = append(listeners, gatewayapisv1.Listener{
+				Name:     gatewayapisv1.SectionName(name),
+				Hostname: conv.Ptr(gatewayapisv1.Hostname(domain)),
+				Port:     gatewayapisv1.PortNumber(80),
+				Protocol: gatewayapisv1.HTTPProtocolType,
+				AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+					Namespaces: &gatewayapisv1.RouteNamespaces{
+						From: conv.Ptr(gatewayapisv1.NamespacesFromAll),
 					},
 				},
 			})
 		}
 
-		result = append(result, &gatewayapi.Gateway{
+		result = append(result, &gatewayapisv1.Gateway{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: adminSpaceName(cluster.Name),
 				Labels:    cluster.Labels,
 			},
-			Spec: gatewayapi.GatewaySpec{
-				GatewayClassName: gatewayapi.ObjectName(gc.Name),
+			Spec: gatewayapisv1.GatewaySpec{
+				GatewayClassName: gatewayapisv1.ObjectName(gc.Name),
 				Listeners:        listeners,
 			},
 		})
@@ -330,7 +334,7 @@ func gatewayName(gcName string) string {
 	return "ketches-gateway-" + gcName
 }
 
-func (r *ClusterReconciler) pingWorkerCluster(ctx context.Context, workerCluster clusterset.Cluster) error {
+func (r *ClusterReconciler) pingWorkerCluster(ctx context.Context, workerCluster workercluster.Cluster) error {
 	content, err := workerCluster.KubeClientset().Discovery().RESTClient().Get().AbsPath("/livez").DoRaw(ctx)
 	if err != nil {
 		return err

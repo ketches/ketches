@@ -19,15 +19,13 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/ketches/ketches/api/spec"
 	"log"
 	"log/slog"
 	"regexp"
 	"unicode"
 
-	"github.com/ketches/ketches/pkg/ketches"
-
 	"github.com/ketches/ketches/api/core/v1alpha1"
+	"github.com/ketches/ketches/api/spec"
 	"github.com/ketches/ketches/internal/model"
 	"github.com/ketches/ketches/util/jwt"
 	"golang.org/x/crypto/bcrypt"
@@ -71,7 +69,7 @@ func (s *userService) List(ctx context.Context, filter *model.UserFilter) ([]*mo
 			"space.core.ketches.io/" + filter.SpaceID: "true",
 		})
 	}
-	userList, err := ketches.Store().UserLister().List(selector)
+	userList, err := s.InClusterStore().UserLister().List(selector)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +91,7 @@ func (s *userService) List(ctx context.Context, filter *model.UserFilter) ([]*mo
 }
 
 func (s *userService) Get(ctx context.Context, accountID string) (*model.UserModel, error) {
-	user, err := ketches.Store().UserLister().Get(accountID)
+	user, err := s.InClusterStore().UserLister().Get(accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +110,7 @@ func (s *userService) SignUp(ctx context.Context, user *model.UserSignUpModel) (
 		return nil, err
 	}
 
-	_, err := ketches.Store().UserLister().Get(user.AccountID)
+	_, err := s.InClusterStore().UserLister().Get(user.AccountID)
 	if err == nil {
 		return nil, fmt.Errorf("user %s already exists", user.AccountID)
 	}
@@ -155,7 +153,7 @@ func (s *userService) SignIn(ctx context.Context, user *model.UserSignInRequest)
 		return nil, err
 	}
 
-	got, err := ketches.Store().UserLister().Get(user.AccountID)
+	got, err := s.InClusterStore().UserLister().Get(user.AccountID)
 	if err != nil {
 		return nil, fmt.Errorf("user %s does not exist", user.AccountID)
 	}
@@ -185,7 +183,7 @@ func (s *userService) Update(ctx context.Context, user *model.UserUpdateRequest)
 		return nil, fmt.Errorf("email is empty")
 	}
 
-	got, err := ketches.Store().UserLister().Get(user.AccountID)
+	got, err := s.InClusterStore().UserLister().Get(user.AccountID)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, fmt.Errorf("user %s does not exist", user.AccountID)
@@ -232,7 +230,7 @@ func (s *userService) Rename(ctx context.Context, req *model.UserRenameRequest) 
 		return nil, fmt.Errorf("password is empty")
 	}
 
-	got, err := ketches.Store().UserLister().Get(req.AccountID)
+	got, err := s.InClusterStore().UserLister().Get(req.AccountID)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, fmt.Errorf("user %s does not exist", req.AccountID)
@@ -285,7 +283,7 @@ func (s *userService) Rename(ctx context.Context, req *model.UserRenameRequest) 
 }
 
 func (s *userService) ResetPassword(ctx context.Context, in *model.UserResetPasswordRequest) (*model.UserModel, error) {
-	got, err := ketches.Store().UserLister().Get(in.AccountID)
+	got, err := s.InClusterStore().UserLister().Get(in.AccountID)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, fmt.Errorf("user %s does not exist", in.AccountID)
@@ -304,7 +302,7 @@ func (s *userService) ResetPassword(ctx context.Context, in *model.UserResetPass
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		newest, err := ketches.Store().UserLister().Get(in.AccountID)
+		newest, err := s.InClusterStore().UserLister().Get(in.AccountID)
 		if err != nil {
 			return err
 		}
@@ -363,7 +361,7 @@ func (s *userService) Delete(ctx context.Context, user *model.DeleteUserRequest)
 		return err
 	}
 
-	got, err := ketches.Store().UserLister().Get(user.AccountID)
+	got, err := s.InClusterStore().UserLister().Get(user.AccountID)
 	if err != nil && errors.IsNotFound(err) {
 		return fmt.Errorf("user %s does not exist", user.AccountID)
 	}

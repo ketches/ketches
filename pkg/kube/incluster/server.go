@@ -14,13 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube
+package incluster
 
-import (
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-)
+import "k8s.io/apimachinery/pkg/version"
 
-func RESTConfigFromKubeConfig(kubeConfig string) (*rest.Config, error) {
-	return clientcmd.RESTConfigFromKubeConfig([]byte(kubeConfig))
+func Version() string {
+	vi, err := VersionInfo()
+	if err != nil {
+		return ""
+	}
+
+	return vi.GitVersion
+}
+
+func VersionInfo() (*version.Info, error) {
+	return Client().Discovery().ServerVersion()
 }

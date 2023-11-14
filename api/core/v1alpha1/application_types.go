@@ -32,10 +32,10 @@ type ApplicationSpec struct {
 	// +kubebuilder:validation:Enum=Deployment;StatefulSet;CronJob;Job
 	Type WorkloadType `json:"type,omitempty"`
 	// +kubebuilder:validation:Enum=Running;Stopped
-	DesiredState     DesiredState `json:"desiredState,omitempty"`
-	Image            string       `json:"image,omitempty"`
-	ImagePullSecrets []string     `json:"imagePullSecret,omitempty"`
-	Replicas         int32        `json:"replicas,omitempty"`
+	DesiredState     ApplicationDesiredState `json:"desiredState,omitempty"`
+	Image            string                  `json:"image,omitempty"`
+	ImagePullSecrets []string                `json:"imagePullSecret,omitempty"`
+	Replicas         int32                   `json:"replicas,omitempty"`
 	// Schedule is a cron expression, e.g. "0 0 * * *" for every day at midnight
 	// only used for CronJob workload type
 	// +optional
@@ -53,11 +53,11 @@ type ApplicationSpec struct {
 	Privileged       bool                        `json:"privileged,omitempty"`
 }
 
-type DesiredState string
+type ApplicationDesiredState string
 
 const (
-	DesiredStateRunning DesiredState = "Running"
-	DesiredStateStopped DesiredState = "Stopped"
+	ApplicationDesiredStateRunning ApplicationDesiredState = "Running"
+	ApplicationDesiredStateStopped ApplicationDesiredState = "Stopped"
 )
 
 // ApplicationStatus defines the observed state of Application

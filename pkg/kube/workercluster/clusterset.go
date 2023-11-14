@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package clusterset
+package workercluster
 
 import (
-	"golang.org/x/exp/maps"
 	"sync"
+
+	"golang.org/x/exp/maps"
 )
 
 type Clusterset interface {
