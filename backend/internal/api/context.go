@@ -1,0 +1,39 @@
+package api
+
+import (
+	"context"
+
+	"github.com/gin-gonic/gin"
+	"github.com/ketches/ketches/internal/app"
+)
+
+const contextKeyUserID = "user_id"
+const contextKeyUserRole = "user_role"
+
+func SetUserID(ctx *gin.Context, userID string) {
+	ctx.Set(contextKeyUserID, userID)
+}
+
+func SetUserRole(ctx *gin.Context, userRole string) {
+	ctx.Set(contextKeyUserRole, userRole)
+}
+
+func UserID(ctx context.Context) string {
+	userID := ctx.Value(contextKeyUserID)
+	if userID == nil {
+		return ""
+	}
+	return userID.(string)
+}
+
+func UserRole(ctx context.Context) string {
+	userRole := ctx.Value(contextKeyUserRole)
+	if userRole == nil {
+		return ""
+	}
+	return userRole.(string)
+}
+
+func IsAdmin(ctx context.Context) bool {
+	return UserRole(ctx) == app.UserRoleAdmin
+}

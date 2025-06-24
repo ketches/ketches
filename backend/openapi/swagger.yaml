@@ -1,0 +1,2156 @@
+definitions:
+  api.Response:
+    properties:
+      data: {}
+      error:
+        type: string
+    type: object
+  app.AppAction:
+    enum:
+    - deploy
+    - start
+    - stop
+    - rollback
+    - rollingUpdate
+    - redeploy
+    type: string
+    x-enum-varnames:
+    - AppActionDeploy
+    - AppActionStart
+    - AppActionStop
+    - AppActionRollback
+    - AppActionRollingUpdate
+    - AppActionRedeploy
+  app.WorkloadType:
+    enum:
+    - Deployment
+    - StatefulSet
+    type: string
+    x-enum-varnames:
+    - WorkloadTypeDeployment
+    - WorkloadTypeStatefulSet
+  model.AddProjectMembersRequest:
+    properties:
+      projectMembers:
+        items:
+          $ref: '#/definitions/model.ProjectMemberRole'
+        type: array
+        uniqueItems: true
+    required:
+    - projectMembers
+    type: object
+  model.AppActionRequest:
+    properties:
+      action:
+        allOf:
+        - $ref: '#/definitions/app.AppAction'
+        enum:
+        - deploy
+        - start
+        - stop
+        - rollingUpdate
+        - rollback
+        - redeploy
+    required:
+    - action
+    type: object
+  model.AppInstanceContainerModel:
+    properties:
+      containerName:
+        type: string
+      image:
+        type: string
+      status:
+        type: string
+    type: object
+  model.AppInstanceModel:
+    properties:
+      appID:
+        type: string
+      containerCount:
+        type: integer
+      containers:
+        items:
+          $ref: '#/definitions/model.AppInstanceContainerModel'
+        type: array
+      initContainers:
+        items:
+          $ref: '#/definitions/model.AppInstanceContainerModel'
+        type: array
+      instanceIP:
+        type: string
+      instanceName:
+        type: string
+      limitCPU:
+        description: e.g., "1", "2", "4"
+        type: string
+      limitMemory:
+        description: e.g., "512Mi", "1Gi", "2Gi"
+        type: string
+      nodeIP:
+        type: string
+      nodeName:
+        type: string
+      requestCPU:
+        description: e.g., "500m", "1", "2"
+        type: string
+      requestMemory:
+        description: e.g., "256Mi", "512Mi", "1Gi"
+        type: string
+      revision:
+        type: string
+      runningDuration:
+        description: e.g., "5m", "2h30m"
+        type: string
+      status:
+        type: string
+    type: object
+  model.AppModel:
+    properties:
+      actualReplicas:
+        description: Number of currently running replicas
+        type: integer
+      appID:
+        type: string
+      clusterID:
+        type: string
+      clusterNamespace:
+        type: string
+      clusterSlug:
+        type: string
+      containerImage:
+        type: string
+      createdAt:
+        description: ISO 8601 format
+        type: string
+      deployVersion:
+        type: string
+      deployed:
+        type: boolean
+      description:
+        type: string
+      displayName:
+        type: string
+      envID:
+        type: string
+      envSlug:
+        type: string
+      limitCPU:
+        description: in milliCPU (e.g., 1000 for 1 CPU, 2000 for 2 CPUs)
+        type: integer
+      limitMemory:
+        description: in MiB
+        type: integer
+      projectID:
+        type: string
+      projectSlug:
+        type: string
+      registryPassword:
+        type: string
+      registryUsername:
+        type: string
+      replicas:
+        description: Number of replicas for the app
+        type: integer
+      requestCPU:
+        description: in milliCPU (e.g., 500 for 0.5 CPU, 1000 for 1 CPU)
+        type: integer
+      requestMemory:
+        description: in MiB
+        type: integer
+      slug:
+        type: string
+      status:
+        description: e.g., "undeployed", "starting", "running", "stopped", "stopping",
+          "deploying", "rolling-update"
+        type: string
+      workloadType:
+        allOf:
+        - $ref: '#/definitions/app.WorkloadType'
+        description: e.g., "deployment", "statefulset", "daemonset"
+    type: object
+  model.AppRef:
+    properties:
+      appID:
+        type: string
+      displayName:
+        type: string
+      envID:
+        type: string
+      projectID:
+        type: string
+      slug:
+        type: string
+    type: object
+  model.ClusterModel:
+    properties:
+      clusterID:
+        type: string
+      description:
+        type: string
+      displayName:
+        type: string
+      enabled:
+        type: boolean
+      kubeConfig:
+        type: string
+      slug:
+        type: string
+    type: object
+  model.ClusterRef:
+    properties:
+      clusterID:
+        type: string
+      displayName:
+        type: string
+      slug:
+        type: string
+    type: object
+  model.CreateAppRequest:
+    properties:
+      containerImage:
+        type: string
+      deploy:
+        type: boolean
+      description:
+        type: string
+      displayName:
+        type: string
+      envID:
+        type: string
+      limitCPU:
+        description: in milliCPU (e.g., 1000 for 1 CPU, 2000 for 2 CPUs)
+        type: integer
+      limitMemory:
+        description: in MiB
+        type: integer
+      registryPassword:
+        type: string
+      registryUsername:
+        type: string
+      replicas:
+        description: Number of replicas for the app
+        maximum: 100
+        minimum: 1
+        type: integer
+      requestCPU:
+        description: in milliCPU (e.g., 500 for 0.5 CPU, 1000 for 1 CPU)
+        type: integer
+      requestMemory:
+        description: in MiB
+        type: integer
+      slug:
+        type: string
+      workloadType:
+        enum:
+        - Deployment
+        - StatefulSet
+        type: string
+    required:
+    - containerImage
+    - displayName
+    - envID
+    - replicas
+    - slug
+    - workloadType
+    type: object
+  model.CreateClusterRequest:
+    properties:
+      description:
+        type: string
+      displayName:
+        type: string
+      kubeConfig:
+        type: string
+      slug:
+        type: string
+    required:
+    - displayName
+    - kubeConfig
+    - slug
+    type: object
+  model.CreateEnvRequest:
+    properties:
+      clusterID:
+        type: string
+      description:
+        type: string
+      displayName:
+        type: string
+      projectID:
+        type: string
+      slug:
+        type: string
+    required:
+    - clusterID
+    - displayName
+    - projectID
+    - slug
+    type: object
+  model.CreateProjectRequest:
+    properties:
+      description:
+        type: string
+      displayName:
+        type: string
+      slug:
+        type: string
+    required:
+    - displayName
+    - slug
+    type: object
+  model.DeleteUserRequest:
+    properties:
+      password:
+        type: string
+    required:
+    - password
+    type: object
+  model.EnvModel:
+    properties:
+      clusterID:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      displayName:
+        type: string
+      envID:
+        type: string
+      projectID:
+        type: string
+      slug:
+        type: string
+    type: object
+  model.EnvRef:
+    properties:
+      displayName:
+        type: string
+      envID:
+        type: string
+      projectID:
+        type: string
+      slug:
+        type: string
+    type: object
+  model.ExecAppContainerTerminalRequest:
+    properties:
+      appID:
+        type: string
+      containerName:
+        type: string
+      instanceName:
+        type: string
+    type: object
+  model.ListAppsResponse:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/model.AppModel'
+        type: array
+      total:
+        type: integer
+    type: object
+  model.ListClustersResponse:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/model.ClusterModel'
+        type: array
+      total:
+        type: integer
+    type: object
+  model.ListEnvsResponse:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/model.EnvModel'
+        type: array
+      total:
+        type: integer
+    type: object
+  model.ListProjectMembersResponse:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/model.ProjectMemberModel'
+        type: array
+      total:
+        type: integer
+    type: object
+  model.ListProjectResponse:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/model.ProjectModel'
+        type: array
+      total:
+        type: integer
+    type: object
+  model.ListUsersResponse:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/model.UserModel'
+        type: array
+      total:
+        type: integer
+    type: object
+  model.ProjectMemberModel:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      fullname:
+        type: string
+      phone:
+        type: string
+      projectID:
+        type: string
+      projectRole:
+        type: string
+      userID:
+        type: string
+      username:
+        type: string
+    type: object
+  model.ProjectMemberRole:
+    properties:
+      projectRole:
+        enum:
+        - owner
+        - developer
+        - viewer
+        type: string
+      userID:
+        type: string
+    required:
+    - projectRole
+    type: object
+  model.ProjectModel:
+    properties:
+      description:
+        type: string
+      displayName:
+        type: string
+      projectID:
+        type: string
+      slug:
+        type: string
+    type: object
+  model.ProjectRef:
+    properties:
+      displayName:
+        type: string
+      projectID:
+        type: string
+      slug:
+        type: string
+    type: object
+  model.TerminateAppInstanceRequest:
+    properties:
+      appID:
+        type: string
+      instanceName:
+        type: string
+    required:
+    - instanceName
+    type: object
+  model.UpdateAppImageRequest:
+    properties:
+      containerImage:
+        type: string
+      registryPassword:
+        type: string
+      registryUsername:
+        type: string
+    required:
+    - containerImage
+    type: object
+  model.UpdateAppRequest:
+    properties:
+      description:
+        type: string
+      displayName:
+        type: string
+    required:
+    - displayName
+    type: object
+  model.UpdateClusterRequest:
+    properties:
+      description:
+        type: string
+      displayName:
+        type: string
+      kubeConfig:
+        type: string
+    required:
+    - displayName
+    - kubeConfig
+    type: object
+  model.UpdateEnvRequest:
+    properties:
+      description:
+        type: string
+      displayName:
+        type: string
+      envID:
+        type: string
+    required:
+    - displayName
+    type: object
+  model.UpdateProjectMemberRequest:
+    properties:
+      projectRole:
+        type: string
+    required:
+    - projectRole
+    type: object
+  model.UpdateProjectRequest:
+    properties:
+      description:
+        type: string
+      displayName:
+        type: string
+    required:
+    - displayName
+    type: object
+  model.UserChangeRoleRequest:
+    properties:
+      newRole:
+        enum:
+        - admin
+        - user
+        type: string
+    required:
+    - newRole
+    type: object
+  model.UserModel:
+    properties:
+      accessToken:
+        type: string
+      email:
+        type: string
+      fullname:
+        type: string
+      gender:
+        type: integer
+      phone:
+        type: string
+      refreshToken:
+        type: string
+      role:
+        type: string
+      userID:
+        type: string
+      username:
+        type: string
+    type: object
+  model.UserRenameRequest:
+    properties:
+      newUsername:
+        type: string
+      password:
+        type: string
+    required:
+    - newUsername
+    - password
+    type: object
+  model.UserResetPasswordRequest:
+    properties:
+      newPassword:
+        maxLength: 32
+        minLength: 8
+        type: string
+      password:
+        type: string
+    required:
+    - newPassword
+    type: object
+  model.UserSignInRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  model.UserSignOutRequest:
+    properties:
+      userID:
+        type: string
+    required:
+    - userID
+    type: object
+  model.UserSignUpRequest:
+    properties:
+      email:
+        type: string
+      fullname:
+        maxLength: 64
+        minLength: 3
+        type: string
+      password:
+        maxLength: 32
+        minLength: 8
+        type: string
+      phone:
+        type: string
+      role:
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - email
+    - fullname
+    - password
+    - username
+    type: object
+  model.UserUpdateRequest:
+    properties:
+      email:
+        type: string
+      fullname:
+        type: string
+      gender:
+        type: integer
+      phone:
+        type: string
+    required:
+    - email
+    type: object
+info:
+  contact: {}
+  description: Ketches api server
+  title: Ketches API Server
+  version: v1
+paths:
+  /api/v1/apps:
+    get:
+      consumes:
+      - application/json
+      description: List apps
+      parameters:
+      - in: query
+        name: envID
+        type: string
+      - in: query
+        name: pageNo
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      - in: query
+        name: projectID
+        type: string
+      - in: query
+        name: query
+        type: string
+      - in: query
+        name: sortBy
+        type: string
+      - in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListAppsResponse'
+              type: object
+      summary: List Apps
+      tags:
+      - App
+    post:
+      consumes:
+      - application/json
+      description: Create a new app
+      parameters:
+      - description: App data
+        in: body
+        name: app
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateAppRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AppModel'
+              type: object
+      summary: Create App
+      tags:
+      - App
+  /api/v1/apps/{appID}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an app by app ID
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Delete App
+      tags:
+      - App
+    get:
+      consumes:
+      - application/json
+      description: Get app by app ID
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AppModel'
+              type: object
+      summary: Get App
+      tags:
+      - App
+    put:
+      consumes:
+      - application/json
+      description: Update an existing app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Updated app data
+        in: body
+        name: app
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateAppRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AppModel'
+              type: object
+      summary: Update App
+      tags:
+      - App
+  /api/v1/apps/{appID}/action:
+    post:
+      consumes:
+      - application/json
+      description: Perform an action on an app (e.g., deploy, restart)
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Action to perform on the app
+        in: body
+        name: action
+        required: true
+        schema:
+          $ref: '#/definitions/model.AppActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AppModel'
+              type: object
+      summary: App Action
+      tags:
+      - App
+  /api/v1/apps/{appID}/image:
+    put:
+      consumes:
+      - application/json
+      description: Update the image of an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: New app image
+        in: body
+        name: image
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateAppImageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AppModel'
+              type: object
+      summary: Update App Image
+      tags:
+      - App
+  /api/v1/apps/{appID}/instances:
+    get:
+      consumes:
+      - application/json
+      description: List instances of an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.AppInstanceModel'
+                  type: array
+              type: object
+      summary: List App Instances
+      tags:
+      - App
+  /api/v1/apps/{appID}/instances/{instanceName}/containers/{containerName}/exec:
+    get:
+      consumes:
+      - application/json
+      description: Exec into a terminal of a specific container in an app instance
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Instance name
+        in: path
+        name: instanceName
+        required: true
+        type: string
+      - description: Container name
+        in: path
+        name: containerName
+        required: true
+        type: string
+      - description: Request to execute command in container
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ExecAppContainerTerminalRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Exec App Container Terminal
+      tags:
+      - App
+  /api/v1/apps/{appID}/instances/{instanceName}/containers/{containerName}/logs:
+    get:
+      consumes:
+      - application/json
+      description: View logs of a specific container in an app instance
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Instance name
+        in: path
+        name: instanceName
+        required: true
+        type: string
+      - description: Container name
+        in: path
+        name: containerName
+        required: true
+        type: string
+      - in: query
+        name: appID
+        type: string
+      - description: Optional container name to filter logs
+        in: query
+        name: containerName
+        type: string
+      - description: Whether to stream logs
+        in: query
+        name: follow
+        type: boolean
+      - in: query
+        name: instanceName
+        type: string
+      - description: Number of log lines to return
+        in: query
+        name: limit
+        type: integer
+      - description: Whether to fetch logs from the previous instance of the container
+        in: query
+        name: previous
+        type: boolean
+      - description: Whether to include timestamps in logs
+        in: query
+        name: showTimestamps
+        type: boolean
+      - description: Fetch logs since this many seconds ago
+        in: query
+        name: sinceSeconds
+        type: integer
+      - description: Fetch logs since this time (RFC3339 format)
+        in: query
+        name: sinceTime
+        type: string
+      - description: Number of log lines to return from the end
+        in: query
+        name: tailLines
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: View App Container Logs
+      tags:
+      - App
+  /api/v1/apps/{appID}/instances/terminate:
+    post:
+      consumes:
+      - application/json
+      description: Terminate a specific instance of an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Terminate app instance request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.TerminateAppInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Terminate App Instance
+      tags:
+      - App
+  /api/v1/apps/{appID}/ref:
+    get:
+      consumes:
+      - application/json
+      description: Get app ref by app ID
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AppRef'
+              type: object
+      summary: Get App Ref
+      tags:
+      - App
+  /api/v1/apps/refs:
+    get:
+      consumes:
+      - application/json
+      description: Get all apps for refs under a specific environment
+      parameters:
+      - in: query
+        name: envID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.AppRef'
+                  type: array
+              type: object
+      summary: All App Refs Under Environment
+      tags:
+      - App
+  /api/v1/clusters:
+    get:
+      consumes:
+      - application/json
+      description: List clusters
+      parameters:
+      - in: query
+        name: pageNo
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      - in: query
+        name: query
+        type: string
+      - in: query
+        name: sortBy
+        type: string
+      - in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListClustersResponse'
+              type: object
+      summary: List Clusters
+      tags:
+      - Cluster
+    post:
+      consumes:
+      - application/json
+      description: Create a new cluster
+      parameters:
+      - description: Cluster information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateClusterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ClusterModel'
+              type: object
+      summary: Create Cluster
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a cluster by cluster ID
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Delete Cluster
+      tags:
+      - Cluster
+    get:
+      consumes:
+      - application/json
+      description: Get cluster by cluster ID
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ClusterModel'
+              type: object
+      summary: Get Cluster
+      tags:
+      - Cluster
+    put:
+      consumes:
+      - application/json
+      description: Update an existing cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      - description: Updated cluster information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateClusterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ClusterModel'
+              type: object
+      summary: Update Cluster
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/disable:
+    put:
+      consumes:
+      - application/json
+      description: Disable a cluster by cluster ID
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Disable Cluster
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/enable:
+    put:
+      consumes:
+      - application/json
+      description: Enable a cluster by cluster ID
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Enable Cluster
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/ref:
+    get:
+      consumes:
+      - application/json
+      description: Get cluster ref by cluster ID
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ClusterRef'
+              type: object
+      summary: Get Cluster Ref
+      tags:
+      - Cluster
+  /api/v1/clusters/refs:
+    get:
+      consumes:
+      - application/json
+      description: Get all clusters for refs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.ClusterRef'
+                  type: array
+              type: object
+      summary: All Cluster Refs
+      tags:
+      - Cluster
+  /api/v1/envs:
+    get:
+      consumes:
+      - application/json
+      description: List envs
+      parameters:
+      - in: query
+        name: pageNo
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      - in: query
+        name: projectID
+        type: string
+      - in: query
+        name: query
+        type: string
+      - in: query
+        name: sortBy
+        type: string
+      - in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListEnvsResponse'
+              type: object
+      summary: List Envs
+      tags:
+      - Env
+    post:
+      consumes:
+      - application/json
+      description: Create a new env
+      parameters:
+      - description: Create Env Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateEnvRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.EnvModel'
+              type: object
+      summary: Create Env
+      tags:
+      - Env
+  /api/v1/envs/{envID}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an env by env ID
+      parameters:
+      - description: Env ID
+        in: path
+        name: envID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Delete Env
+      tags:
+      - Env
+    get:
+      consumes:
+      - application/json
+      description: Get env by env ID
+      parameters:
+      - description: Env ID
+        in: path
+        name: envID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.EnvModel'
+              type: object
+      summary: Get Env
+      tags:
+      - Env
+    put:
+      consumes:
+      - application/json
+      description: Update an existing env
+      parameters:
+      - description: Env ID
+        in: path
+        name: envID
+        required: true
+        type: string
+      - description: Update Env Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateEnvRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.EnvModel'
+              type: object
+      summary: Update Env
+      tags:
+      - Env
+  /api/v1/envs/{envID}/ref:
+    get:
+      consumes:
+      - application/json
+      description: Get env ref by env ID
+      parameters:
+      - description: Env ID
+        in: path
+        name: envID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.EnvRef'
+              type: object
+      summary: Get Env Ref
+      tags:
+      - Env
+  /api/v1/envs/refs:
+    get:
+      consumes:
+      - application/json
+      description: Get all envs for refs under a specific cluster
+      parameters:
+      - in: query
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.EnvRef'
+                  type: array
+              type: object
+      summary: All Env Refs Under Cluster
+      tags:
+      - Env
+  /api/v1/projects:
+    get:
+      consumes:
+      - application/json
+      description: List projects
+      parameters:
+      - in: query
+        name: pageNo
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      - in: query
+        name: query
+        type: string
+      - in: query
+        name: sortBy
+        type: string
+      - in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListProjectResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List Projects
+      tags:
+      - Project
+    post:
+      consumes:
+      - application/json
+      description: Create a new project
+      parameters:
+      - description: Project data
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ProjectModel'
+              type: object
+      summary: Create Project
+      tags:
+      - Project
+  /api/v1/projects/{projectID}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a project by project ID
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Delete Project
+      tags:
+      - Project
+    get:
+      consumes:
+      - application/json
+      description: Get project by project ID
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ProjectModel'
+              type: object
+      summary: Get Project
+      tags:
+      - Project
+    put:
+      consumes:
+      - application/json
+      description: Update an existing project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Project data
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ProjectModel'
+              type: object
+      summary: Update Project
+      tags:
+      - Project
+  /api/v1/projects/{projectID}/members:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a member from a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Remove Project Member
+      tags:
+      - Project
+    get:
+      consumes:
+      - application/json
+      description: List members of a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - in: query
+        name: pageNo
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      - in: query
+        name: query
+        type: string
+      - in: query
+        name: sortBy
+        type: string
+      - in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListProjectMembersResponse'
+              type: object
+      summary: List Project Members
+      tags:
+      - Project
+    post:
+      consumes:
+      - application/json
+      description: Add members to a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Project members data
+        in: body
+        name: members
+        required: true
+        schema:
+          $ref: '#/definitions/model.AddProjectMembersRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.ProjectMemberModel'
+                  type: array
+              type: object
+      summary: Add Project Members
+      tags:
+      - Project
+  /api/v1/projects/{projectID}/members/{userID}:
+    put:
+      consumes:
+      - application/json
+      description: Update a project member's role
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      - description: Project member data
+        in: body
+        name: member
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateProjectMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ProjectMemberModel'
+              type: object
+      summary: Update Project Member
+      tags:
+      - Project
+  /api/v1/projects/{projectID}/members/addable:
+    get:
+      consumes:
+      - application/json
+      description: List users that can be added to a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.ProjectMemberModel'
+                  type: array
+              type: object
+      summary: List Addable Project Members
+      tags:
+      - Project
+  /api/v1/projects/{projectID}/ref:
+    get:
+      consumes:
+      - application/json
+      description: Get project ref by project ID
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ProjectRef'
+              type: object
+      summary: Get Project Ref
+      tags:
+      - Project
+  /api/v1/projects/refs:
+    get:
+      consumes:
+      - application/json
+      description: Get all projects for refs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.ProjectRef'
+                  type: array
+              type: object
+      summary: All Project Refs
+      tags:
+      - Project
+  /api/v1/users:
+    get:
+      consumes:
+      - application/json
+      description: List users
+      parameters:
+      - in: query
+        name: pageNo
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      - in: query
+        name: query
+        type: string
+      - in: query
+        name: sortBy
+        type: string
+      - in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListUsersResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List Users
+      tags:
+      - User
+  /api/v1/users/{userID}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete user by user ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      - description: Delete user request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteUserRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Delete User
+      tags:
+      - User
+    get:
+      consumes:
+      - application/json
+      description: Get user by user ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Get User
+      tags:
+      - User
+    put:
+      consumes:
+      - application/json
+      description: Update user information
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      - description: User update request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Update User
+      tags:
+      - User
+  /api/v1/users/{userID}/change-role:
+    put:
+      consumes:
+      - application/json
+      description: Change user role
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      - description: User change role request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserChangeRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Change User Role
+      tags:
+      - User
+  /api/v1/users/{userID}/rename:
+    put:
+      consumes:
+      - application/json
+      description: Rename user with password verification
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      - description: User rename request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserRenameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Rename User
+      tags:
+      - User
+  /api/v1/users/{userID}/reset-password:
+    put:
+      consumes:
+      - application/json
+      description: Reset user password
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      - description: User reset password request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Reset User Password
+      tags:
+      - User
+  /api/v1/users/refresh-token:
+    post:
+      consumes:
+      - application/json
+      description: Refresh user access token using refresh token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Refresh User Token
+      tags:
+      - User
+  /api/v1/users/sign-in:
+    post:
+      consumes:
+      - application/json
+      description: Sign in an existing user
+      parameters:
+      - description: User sign in request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserSignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Sign In User
+      tags:
+      - User
+  /api/v1/users/sign-out:
+    post:
+      consumes:
+      - application/json
+      description: Sign out user by clearing cookies
+      parameters:
+      - description: User sign out request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserSignOutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Sign Out User
+      tags:
+      - User
+  /api/v1/users/sign-up:
+    post:
+      consumes:
+      - application/json
+      description: Sign up a new user
+      parameters:
+      - description: User sign up request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserSignUpRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserModel'
+              type: object
+      summary: Sign Up User
+      tags:
+      - User
+  /healthz:
+    get:
+      description: Get api server health status
+      responses: {}
+      summary: Healthz
+  /version:
+    get:
+      description: Get api server version
+      responses: {}
+      summary: Version
+swagger: "2.0"

@@ -1,0 +1,17 @@
+app:
+  host: localhost # 0.0.0.0
+  port: 8080
+  runMode: dev
+  jwtSecret: ketches
+db:
+  # Postgres config
+  type: postgres
+  dns: host=localhost port=5432 user=root password=root dbname=ketches sslmode=disable
+
+  # MySQL config
+  # type: mysql
+  # dns: root:root@tcp(localhost:3306)/ketches?charset=utf8&parseTime=True&loc=Local
+
+  # SQLite config
+  # type: sqlite
+  # dns: file:ketches.db?cache=shared&mode=rwc
