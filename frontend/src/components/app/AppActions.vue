@@ -52,19 +52,21 @@ const appActions = computed<appAction[]>(() => {
     case "stopped":
       return [{ label: "启动", icon: Play, action: onStart }];
     case "starting":
+    case "rollingUpdate":
+    case "abnormal":
       return [
         { label: "关闭", icon: Power, action: onStop },
-        { label: "重新部署", icon: CloudUpload, action: onRedeploy },
-      ];
-    case "rollingUpdate":
-      return [
-        { label: "停止", icon: Power, action: onStop },
         { label: "重新部署", icon: CloudUpload, action: onRedeploy },
       ];
     case "running":
       return [
         { label: "关闭", icon: Power, action: onStop },
         { label: "滚动更新", icon: ArrowUpDown, action: onRollingUpdate },
+        { label: "重新部署", icon: CloudUpload, action: onRedeploy },
+      ];
+    case "completed":
+      return [
+        { label: "关闭", icon: Power, action: onStop },
         { label: "重新部署", icon: CloudUpload, action: onRedeploy },
       ];
     case "error":

@@ -125,8 +125,6 @@ export function appStatusToText(status: string): string {
     switch (status) {
         case 'undeployed':
             return '未部署'
-        case 'deployed':
-            return '已部署'
         case 'starting':
             return '启动中'
         case 'running':
@@ -137,6 +135,10 @@ export function appStatusToText(status: string): string {
             return '已关闭'
         case 'rollingUpdate':
             return '滚动更新中'
+        case 'abnormal':
+            return '异常'
+        case 'completed':
+            return '已完成'
         case 'unknown':
             return '未知'
         default:

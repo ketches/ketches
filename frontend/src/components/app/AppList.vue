@@ -184,6 +184,7 @@ const columns: ColumnDef<appModel>[] = [
             let labelStyle = "";
             switch (row.getValue("status")) {
                 case "running":
+                case "completed":
                     labelStyle = "text-green-500";
                     break;
                 case "starting":
@@ -192,6 +193,9 @@ const columns: ColumnDef<appModel>[] = [
                     break;
                 case "stopping":
                     labelStyle = "text-yellow-500";
+                    break;
+                case "abnormal":
+                    labelStyle = "text-red-500";
                     break;
                 default:
                     labelStyle = "text-gray-500";
