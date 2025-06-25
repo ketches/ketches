@@ -1,5 +1,5 @@
 import api from '@/api/axios'
-import type { appInstanceModel, appModel, appRefModel, logsRequestModel } from '@/types/app'
+import type { appEnvVarModel, appInstanceModel, appModel, appRefModel, createAppEnvVarModel, logsRequestModel, updateAppEnvVarModel, appUpdateImageModel as updateAppImageModel } from '@/types/app'
 import { toast } from 'vue-sonner'
 
 export async function getApp(appID: string): Promise<appModel> {
@@ -20,6 +20,11 @@ export async function appAction(appID: string, action: 'deploy' | 'start' | 'sto
 export async function deleteApp(appID: string): Promise<void> {
     await api.delete(`/apps/${appID}`)
     return
+}
+
+export async function updateAppImage(appID: string, model: updateAppImageModel): Promise<appModel> {
+    const response = await api.put(`/apps/${appID}/image`, model)
+    return response.data as appModel
 }
 
 export async function listAppInstances(appID: string): Promise<{ deployVersion: string, instances: appInstanceModel[] }> {
@@ -71,6 +76,36 @@ export function getExecAppInstanceTerminalUrl(appID: string, instanceName: strin
     const apibaseURL = import.meta.env.VITE_API_BASE_URL;
     return `${apibaseURL}/apps/${appID}/instances/${instanceName}/containers/${containerName}/exec`;
 }
+
+export async function listAppEnvVars(appID: string): Promise<appEnvVarModel[]> {
+    const response = await api.get(`/apps/${appID}/envVars`)
+    return response.data as appEnvVarModel[]
+}
+
+export async function createAppEnvVar(appID: string, model: createAppEnvVarModel): Promise<appEnvVarModel> {
+    const response = await api.post(`/apps/${appID}/envVars`, model)
+    return response.data as appEnvVarModel
+}
+
+export async function updateAppEnvVar(appID: string, envVarID: string, model: updateAppEnvVarModel): Promise<appEnvVarModel> {
+    const response = await api.put(`/apps/${appID}/envVars/${envVarID}`, model)
+    return response.data as appEnvVarModel
+}
+
+export async function deleteAppEnvVar(appID: string, envVarID: string): Promise<void> {
+    return deleteAppEnvVars(appID, [envVarID])
+}
+
+export async function deleteAppEnvVars(appID: string, envVarIDs: string[]): Promise<void> {
+    await api.delete(`/apps/${appID}/envVars`, {
+        data: {
+            envVarIDs: envVarIDs
+        }
+    })
+    return
+}
+
+
 
 export function appStatusToText(status: string): string {
     switch (status) {

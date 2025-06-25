@@ -31,6 +31,7 @@ func (r *APIV1Route) Register() {
 	registerProjectRoute(r)
 	registerEnvRoute(r)
 	registerAppRoute(r)
+	registerAppEnvVarRoute(r)
 }
 
 func registerClusterRoute(r *APIV1Route) {
@@ -62,7 +63,7 @@ func registerUserRoute(r *APIV1Route) {
 }
 
 func registerProjectRoute(r *APIV1Route) {
-	projects := r.Group("/projects", middlewares.ProjectMember())
+	projects := r.Group("/projects")
 
 	projects.GET("", handlers.ListProjects)
 	projects.GET("/refs", handlers.AllProjectRefs)
@@ -114,18 +115,26 @@ func registerAppRoute(r *APIV1Route) {
 	apps := r.Group("/apps/:appID")
 
 	// Routes that require project membership (read-only)
-	appMember := apps.Group("", middlewares.ProjectMember())
-	appMember.GET("", handlers.GetApp)
-	appMember.GET("/ref", handlers.GetAppRef)
-	appMember.GET("/instances", handlers.ListAppInstances)
+	projectMember := apps.Group("", middlewares.ProjectMember())
+	projectMember.GET("", handlers.GetApp)
+	projectMember.GET("/ref", handlers.GetAppRef)
+	projectMember.GET("/instances", handlers.ListAppInstances)
+	projectMember.GET("/envVars", handlers.ListAppEnvVars)
 
 	// Routes that require developer or owner role (read-write)
-	appDeveloper := apps.Group("", middlewares.ProjectDeveloperOrAbove())
-	appDeveloper.PUT("", handlers.UpdateApp)
-	appDeveloper.DELETE("", handlers.DeleteApp)
-	appDeveloper.PUT("/image", handlers.UpdateAppImage)
-	appDeveloper.POST("/action", handlers.AppAction)
-	appDeveloper.DELETE("/instances", handlers.TerminateAppInstance)
-	appDeveloper.GET("/instances/:instanceName/containers/:containerName/logs", handlers.ViewAppContainerLogs)
-	appDeveloper.GET("/instances/:instanceName/containers/:containerName/exec", handlers.ExecAppContainerTerminal)
+	projectDeveloper := apps.Group("", middlewares.ProjectDeveloperOrAbove())
+	projectDeveloper.PUT("", handlers.UpdateApp)
+	projectDeveloper.DELETE("", handlers.DeleteApp)
+	projectDeveloper.PUT("/image", handlers.UpdateAppImage)
+	projectDeveloper.POST("/action", handlers.AppAction)
+	projectDeveloper.DELETE("/instances", handlers.TerminateAppInstance)
+	projectDeveloper.GET("/instances/:instanceName/containers/:containerName/logs", handlers.ViewAppContainerLogs)
+	projectDeveloper.GET("/instances/:instanceName/containers/:containerName/exec", handlers.ExecAppContainerTerminal)
+	projectDeveloper.POST("/envVars", handlers.CreateAppEnvVar)
+	projectDeveloper.PUT("/envVars/:envVarID", handlers.UpdateAppEnvVar)
+	projectDeveloper.DELETE("/envVars", handlers.DeleteAppEnvVars)
+}
+
+func registerAppEnvVarRoute(r *APIV1Route) {
+	// Routes that require developer or owner role (write)
 }

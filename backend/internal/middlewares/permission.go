@@ -46,16 +46,16 @@ func ProjectPermission(requiredRoles ...string) gin.HandlerFunc {
 			return
 		}
 
-		// If no specific roles are required, allow access
-		if len(requiredRoles) == 0 {
-			c.Next()
-			return
-		}
-
 		userProjectRole, err := getUserProjectRole(c)
 		if err != nil {
 			api.Error(c, err)
 			c.Abort()
+			return
+		}
+
+		if len(requiredRoles) == 0 {
+			// If no specific roles are required, any project role is sufficient
+			c.Next()
 			return
 		}
 
@@ -98,7 +98,7 @@ func getUserProjectRole(c *gin.Context) (string, app.Error) {
 	if ok && appID != "" {
 		return getProjectRoleFromAppIDRoute(c, appID)
 	}
-	return "", nil
+	return "", app.ErrPermissionDenied
 }
 
 func getProjectRoleFromEnvIDRoute(c *gin.Context, envID string) (string, app.Error) {

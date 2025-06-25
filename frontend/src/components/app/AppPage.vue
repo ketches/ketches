@@ -17,6 +17,8 @@ import { useRoute } from "vue-router";
 import AppActions from "./AppActions.vue";
 import Breadcrumb from "./breadcrumb/AppManagerBreadcrumb.vue";
 import InstanceList from "./instance/InstanceList.vue";
+import SettingDialog from "./setting/SettingDialog.vue";
+import Settings from "./setting/Settings.vue";
 
 const { toggleSidebar, open } = useSidebar();
 
@@ -62,6 +64,8 @@ const statusColor = (status: string) => {
 const monitorExtensionInstalled = ref(false);
 const logsExtensionInstalled = ref(false);
 const deployedInSourceCode = ref(false);
+
+const settingDialogOpen = ref(false);
 </script>
 
 <template>
@@ -102,29 +106,35 @@ const deployedInSourceCode = ref(false);
         <span>部署版本: <Badge variant="secondary" class="font-mono">{{ app?.deployVersion || '未知' }}</Badge></span>
       </div>
 
-      <Tabs v-model="currentTab" class="mt-2 w-full">
-        <TabsList class="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">
-            <Boxes />
-            实例
-          </TabsTrigger>
-          <TabsTrigger value="monitor" :disabled="monitorExtensionInstalled">
-            <Monitor />
-            监控
-          </TabsTrigger>
-          <TabsTrigger value="logs" :disabled="logsExtensionInstalled">
-            <Archive />
-            归档日志
-          </TabsTrigger>
-          <TabsTrigger value="builds" :disabled="deployedInSourceCode">
-            <History />
-            构建历史
-          </TabsTrigger>
-          <TabsTrigger value="settings" :disabled="deployedInSourceCode">
-            <Settings2 />
-            配置
-          </TabsTrigger>
-        </TabsList>
+      <Tabs v-model="currentTab" class="mt-2">
+        <div class="flex items-center justify-between">
+          <TabsList class="grid grid-cols-5">
+            <TabsTrigger value="overview">
+              <Boxes />
+              实例
+            </TabsTrigger>
+            <TabsTrigger value="monitor" :disabled="monitorExtensionInstalled">
+              <Monitor />
+              监控
+            </TabsTrigger>
+            <TabsTrigger value="logs" :disabled="logsExtensionInstalled">
+              <Archive />
+              归档日志
+            </TabsTrigger>
+            <TabsTrigger value="builds" :disabled="deployedInSourceCode">
+              <History />
+              构建历史
+            </TabsTrigger>
+            <TabsTrigger value="settings" :disabled="deployedInSourceCode">
+              <Settings2 />
+              设置
+            </TabsTrigger>
+          </TabsList>
+          <Button variant="default" class=" flex ml-4" @click="settingDialogOpen = true">
+            <Settings2 class="w-4 h-4 mr-2" />
+            设置
+          </Button>
+        </div>
         <TabsContent value="overview">
           <InstanceList />
         </TabsContent>
@@ -137,7 +147,11 @@ const deployedInSourceCode = ref(false);
         <TabsContent value="builds">
           <div class="mt-4 text-muted-foreground">构建历史功能开发中...</div>
         </TabsContent>
+        <TabsContent value="settings">
+          <Settings v-if="app" :app="app" />
+        </TabsContent>
       </Tabs>
     </div>
+    <SettingDialog v-model="settingDialogOpen" />
   </SidebarInset>
 </template>

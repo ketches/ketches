@@ -46,6 +46,12 @@ export interface appCreateModel {
     limitMemory?: number
 }
 
+export interface appUpdateImageModel {
+    containerImage: string
+    registryUsername?: string
+    registryPassword?: string
+}
+
 export interface appInstanceContainerModel {
     containerName: string
     status: string
@@ -72,4 +78,20 @@ export interface logsRequestModel {
     sinceSeconds?: number
     sinceTime?: string
     previous?: boolean
+}
+
+export interface appEnvVarModel {
+    envVarID: string
+    key: string
+    value: string
+    appID: string
+}
+
+export interface createAppEnvVarModel {
+    key: string
+    value: string
+}
+
+export interface updateAppEnvVarModel {
+    value: string
 }

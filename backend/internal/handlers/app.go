@@ -125,22 +125,12 @@ func DeleteApp(c *gin.Context) {
 // @Success 200 {object} api.Response{data=models.AppModel}
 // @Router /api/v1/apps/{appID}/image [put]
 func UpdateAppImage(c *gin.Context) {
-	appID := c.Param("appID")
-	if appID == "" {
-		api.Error(c, app.NewError(http.StatusBadRequest, "App ID is required"))
-		return
-	}
 	var req models.UpdateAppImageRequest
-	if err := c.ShouldBindUri(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-	req.AppID = appID
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
 		return
 	}
+	req.AppID = c.Param("appID")
 
 	s := services.NewAppService()
 	app, err := s.UpdateAppImage(c, &req)
@@ -162,17 +152,12 @@ func UpdateAppImage(c *gin.Context) {
 // @Success 200 {object} api.Response{data=models.AppModel}
 // @Router /api/v1/apps/{appID}/action [post]
 func AppAction(c *gin.Context) {
-	appID := c.Param("appID")
-	if appID == "" {
-		api.Error(c, app.NewError(http.StatusBadRequest, "App ID is required"))
-		return
-	}
 	var req models.AppActionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
 		return
 	}
-	req.AppID = appID
+	req.AppID = c.Param("appID")
 
 	s := services.NewAppService()
 	app, err := s.AppAction(c, &req)
@@ -193,15 +178,9 @@ func AppAction(c *gin.Context) {
 // @Success 200 {object} api.Response{data=[]models.AppInstanceModel}
 // @Router /api/v1/apps/{appID}/instances [get]
 func ListAppInstances(c *gin.Context) {
-	appID := c.Param("appID")
-	if appID == "" {
-		api.Error(c, app.NewError(http.StatusBadRequest, "App ID is required"))
-		return
-	}
-
 	s := services.NewAppService()
 	instances, err := s.ListAppInstances(c, &models.ListAppInstancesRequest{
-		AppID: appID,
+		AppID: c.Param("appID"),
 	})
 	if err != nil {
 		api.Error(c, err)
@@ -221,18 +200,12 @@ func ListAppInstances(c *gin.Context) {
 // @Success 204 {object} api.Response{}
 // @Router /api/v1/apps/{appID}/instances/terminate [post]
 func TerminateAppInstance(c *gin.Context) {
-	appID := c.Param("appID")
-	if appID == "" {
-		api.Error(c, app.NewError(http.StatusBadRequest, "App ID is required"))
-		return
-	}
-
 	var req models.TerminateAppInstanceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
 		return
 	}
-	req.AppID = appID
+	req.AppID = c.Param("appID")
 
 	s := services.NewAppService()
 	if err := s.TerminateAppInstance(c, &req); err != nil {
@@ -255,32 +228,14 @@ func TerminateAppInstance(c *gin.Context) {
 // @Success 200 {object} api.Response{}
 // @Router /api/v1/apps/{appID}/instances/{instanceName}/containers/{containerName}/logs [get]
 func ViewAppContainerLogs(c *gin.Context) {
-	appID := c.Param("appID")
-	if appID == "" {
-		api.Error(c, app.NewError(http.StatusBadRequest, "App ID is required"))
-		return
-	}
-
-	instanceName := c.Param("instanceName")
-	if instanceName == "" {
-		api.Error(c, app.NewError(http.StatusBadRequest, "Instance name is required"))
-		return
-	}
-
-	containerName := c.Param("containerName")
-	if containerName == "" {
-		api.Error(c, app.NewError(http.StatusBadRequest, "Container name is required"))
-		return
-	}
-
 	var req models.ViewAppContainerLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		api.Error(c, app.NewError(http.StatusBadRequest, "Invalid request body"))
 		return
 	}
-	req.AppID = appID
-	req.InstanceName = instanceName
-	req.ContainerName = containerName
+	req.AppID = c.Param("appID")
+	req.InstanceName = c.Param("instanceName")
+	req.ContainerName = c.Param("containerName")
 
 	req.Request = c.Request
 	req.ResponseWriter = c.Writer

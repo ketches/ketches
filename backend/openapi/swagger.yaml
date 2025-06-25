@@ -54,6 +54,17 @@ definitions:
     required:
     - action
     type: object
+  models.AppEnvVarModel:
+    properties:
+      appID:
+        type: string
+      envVarID:
+        type: string
+      key:
+        type: string
+      value:
+        type: string
+    type: object
   models.AppInstanceContainerModel:
     properties:
       containerName:
@@ -296,6 +307,16 @@ definitions:
     required:
     - displayName
     - slug
+    type: object
+  models.DeleteAppEnvVarsRequest:
+    properties:
+      envVarIDs:
+        description: List of env var IDs to delete
+        items:
+          type: string
+        type: array
+    required:
+    - envVarIDs
     type: object
   models.DeleteUserRequest:
     properties:
@@ -738,6 +759,65 @@ paths:
       summary: App Action
       tags:
       - App
+  /api/v1/apps/{appID}/envVars:
+    get:
+      consumes:
+      - application/json
+      description: List environment variables for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.AppEnvVarModel'
+                  type: array
+              type: object
+      summary: List App Env Vars
+      tags:
+      - AppEnvVar
+    post:
+      consumes:
+      - application/json
+      description: Create a new environment variable for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Env Var
+        in: body
+        name: envVar
+        required: true
+        schema:
+          $ref: '#/definitions/models.AppEnvVarModel'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppEnvVarModel'
+              type: object
+      summary: Create App Env Var
+      tags:
+      - AppEnvVar
   /api/v1/apps/{appID}/image:
     put:
       consumes:
@@ -957,6 +1037,60 @@ paths:
       summary: Get App Ref
       tags:
       - App
+  /api/v1/apps/envVars:
+    delete:
+      consumes:
+      - application/json
+      description: Delete environment variables for an app
+      parameters:
+      - description: EnvVar IDs
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeleteAppEnvVarsRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Delete App Env Vars
+      tags:
+      - AppEnvVar
+  /api/v1/apps/envVars/{envVarID}:
+    put:
+      consumes:
+      - application/json
+      description: Update an environment variable for an app
+      parameters:
+      - description: Env Var ID
+        in: path
+        name: envVarID
+        required: true
+        type: string
+      - description: Env Var
+        in: body
+        name: envVar
+        required: true
+        schema:
+          $ref: '#/definitions/models.AppEnvVarModel'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppEnvVarModel'
+              type: object
+      summary: Update App Env Var
+      tags:
+      - AppEnvVar
   /api/v1/clusters:
     get:
       consumes:
