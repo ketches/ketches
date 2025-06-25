@@ -1,25 +1,7 @@
 import api from '@/api/axios';
+import type { appCreateModel, appModel, appRefModel } from '@/types/app';
 import type { QueryAndPagedRequest } from '@/types/common';
-import type { envCreateModel, envModel, envRefModel, updateEnvModel } from '@/types/env';
-
-export async function listEnvs(projectID: string, filter: QueryAndPagedRequest): Promise<{ total: number, records: envModel[] }> {
-    const response = await api.get(`/envs`, {
-        params: {
-            ...filter,
-            projectID
-        }
-    })
-    return response.data as { total: number, records: envModel[] }
-}
-
-export async function fetchEnvRefs(projectID: string): Promise<envRefModel[]> {
-    const response = await api.get(`/envs/refs`, {
-        params: {
-            projectID
-        }
-    })
-    return response.data as envRefModel[]
-}
+import type { envModel, envRefModel, updateEnvModel } from '@/types/env';
 
 export async function getEnv(envID: string): Promise<envModel> {
     const response = await api.get(`/envs/${envID}`)
@@ -31,11 +13,6 @@ export async function getEnvRef(envID: string): Promise<envRefModel> {
     return response.data as envRefModel
 }
 
-export async function createEnv(model: envCreateModel): Promise<envModel> {
-    const response = await api.post(`/envs`, model)
-    return response.data as envModel
-}
-
 export async function updateEnv(envID: string, model: updateEnvModel): Promise<envModel> {
     const response = await api.put(`/envs/${envID}`, model)
     return response.data as envModel
@@ -44,4 +21,21 @@ export async function updateEnv(envID: string, model: updateEnvModel): Promise<e
 export async function deleteEnv(envID: string): Promise<boolean> {
     await api.delete(`/envs/${envID}`)
     return true
+}
+
+export async function listApps(envID: string, filter: QueryAndPagedRequest): Promise<{ total: number, records: appModel[] }> {
+    const response = await api.get(`/envs/${envID}/apps`, {
+        params: filter,
+    })
+    return response.data as { total: number, records: appModel[] }
+}
+
+export async function fetchAppRefs(envID: string): Promise<appRefModel[]> {
+    const response = await api.get(`/envs/${envID}/apps/refs`)
+    return response.data as appRefModel[]
+}
+
+export async function createApp(envID: string, model: appCreateModel): Promise<appModel> {
+    const response = await api.post(`/envs/${envID}/apps`, model)
+    return response.data as appModel
 }

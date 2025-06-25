@@ -10,63 +10,13 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
-// @Summary List Envs
-// @Description List envs
-// @Tags Env
-// @Accept json
-// @Produce json
-// @Param query query model.ListEnvsRequest false "Query parameters for filtering and pagination"
-// @Success 200 {object} api.Response{data=model.ListEnvsResponse}
-// @Router /api/v1/envs [get]
-func ListEnvs(c *gin.Context) {
-	var req models.ListEnvsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-
-	es := services.NewEnvService()
-	resp, err := es.ListEnvs(c, &req)
-	if err != nil {
-		api.Error(c, err)
-		return
-	}
-
-	api.Success(c, resp)
-}
-
-// @Summary All Env Refs Under Cluster
-// @Description Get all envs for refs under a specific cluster
-// @Tags Env
-// @Accept json
-// @Produce json
-// @Param query query model.AllEnvRefsRequest false "Query parameters for filtering refs"
-// @Success 200 {object} api.Response{data=[]model.EnvRef}
-// @Router /api/v1/envs/refs [get]
-func AllEnvRefs(c *gin.Context) {
-	var req models.AllEnvRefsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-
-	as := services.NewEnvService()
-	refs, err := as.AllEnvRefs(c, &req)
-	if err != nil {
-		api.Error(c, err)
-		return
-	}
-
-	api.Success(c, refs)
-}
-
 // @Summary Get Env
 // @Description Get env by env ID
 // @Tags Env
 // @Accept json
 // @Produce json
 // @Param envID path string true "Env ID"
-// @Success 200 {object} api.Response{data=model.EnvModel}
+// @Success 200 {object} api.Response{data=models.EnvModel}
 // @Router /api/v1/envs/{envID} [get]
 func GetEnv(c *gin.Context) {
 	envID := c.Param("envID")
@@ -75,8 +25,8 @@ func GetEnv(c *gin.Context) {
 		return
 	}
 
-	es := services.NewEnvService()
-	env, err := es.GetEnv(c, &models.GetEnvRequest{
+	s := services.NewEnvService()
+	env, err := s.GetEnv(c, &models.GetEnvRequest{
 		EnvID: envID,
 	})
 	if err != nil {
@@ -93,7 +43,7 @@ func GetEnv(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param envID path string true "Env ID"
-// @Success 200 {object} api.Response{data=model.EnvRef}
+// @Success 200 {object} api.Response{data=models.EnvRef}
 // @Router /api/v1/envs/{envID}/ref [get]
 func GetEnvRef(c *gin.Context) {
 	var req models.GetEnvRefRequest
@@ -102,8 +52,8 @@ func GetEnvRef(c *gin.Context) {
 		return
 	}
 
-	as := services.NewEnvService()
-	ref, err := as.GetEnvRef(c, &req)
+	s := services.NewEnvService()
+	ref, err := s.GetEnvRef(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -112,39 +62,14 @@ func GetEnvRef(c *gin.Context) {
 	api.Success(c, ref)
 }
 
-// @Summary Create Env
-// @Description Create a new env
-// @Tags Env
-// @Accept json
-// @Produce json
-// @Param request body model.CreateEnvRequest true "Create Env Request"
-// @Success 201 {object} api.Response{data=model.EnvModel}
-// @Router /api/v1/envs [post]
-func CreateEnv(c *gin.Context) {
-	var req models.CreateEnvRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-
-	es := services.NewEnvService()
-	env, err := es.CreateEnv(c, &req)
-	if err != nil {
-		api.Error(c, err)
-		return
-	}
-
-	api.Success(c, env)
-}
-
 // @Summary Update Env
 // @Description Update an existing env
 // @Tags Env
 // @Accept json
 // @Produce json
 // @Param envID path string true "Env ID"
-// @Param request body model.UpdateEnvRequest true "Update Env Request"
-// @Success 200 {object} api.Response{data=model.EnvModel}
+// @Param request body models.UpdateEnvRequest true "Update Env Request"
+// @Success 200 {object} api.Response{data=models.EnvModel}
 // @Router /api/v1/envs/{envID} [put]
 func UpdateEnv(c *gin.Context) {
 	envID := c.Param("envID")
@@ -160,8 +85,8 @@ func UpdateEnv(c *gin.Context) {
 	}
 	req.EnvID = envID
 
-	es := services.NewEnvService()
-	env, err := es.UpdateEnv(c, &req)
+	s := services.NewEnvService()
+	env, err := s.UpdateEnv(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -185,8 +110,8 @@ func DeleteEnv(c *gin.Context) {
 		return
 	}
 
-	es := services.NewEnvService()
-	err := es.DeleteEnv(c, &models.DeleteEnvRequest{
+	s := services.NewEnvService()
+	err := s.DeleteEnv(c, &models.DeleteEnvRequest{
 		EnvID: envID,
 	})
 	if err != nil {
@@ -195,4 +120,80 @@ func DeleteEnv(c *gin.Context) {
 	}
 
 	api.NoContent(c)
+}
+
+// @Summary List Apps Under Env
+// @Description List apps under a specific env
+// @Tags Env
+// @Accept json
+// @Produce json
+// @Param envID path string true "Env ID"
+// @Param query query models.ListAppsRequest false "Query parameters for filtering and pagination"
+// @Success 200 {object} api.Response{data=models.ListAppsResponse}
+// @Router /api/v1/envs/{envID}/apps [get]
+func ListApps(c *gin.Context) {
+	var req models.ListAppsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.EnvID = c.Param("envID")
+
+	s := services.NewEnvService()
+	resp, err := s.ListApps(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, resp)
+}
+
+// @Summary All App Refs Under Env
+// @Description Get all apps for refs under a specific env
+// @Tags App
+// @Accept json
+// @Produce json
+// @Param envID path string true "Env ID"
+// @Param query query models.AllAppRefsRequest false "Query parameters for filtering refs"
+// @Success 200 {object} api.Response{data=[]models.AppRef}
+// @Router /api/v1/envs/{envID}/apps/refs [get]
+func AllAppRefs(c *gin.Context) {
+	s := services.NewEnvService()
+	refs, err := s.AllAppRefs(c, &models.AllAppRefsRequest{
+		EnvID: c.Param("envID"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, refs)
+}
+
+// @Summary Create App Under Env
+// @Description Create a new app under a specific env
+// @Tags App
+// @Accept json
+// @Produce json
+// @Param envID path string true "Env ID"
+// @Param app body models.CreateAppRequest true "App data"
+// @Success 201 {object} api.Response{data=models.AppModel}
+// @Router /api/v1/envs/{envID}/apps [post]
+func CreateApp(c *gin.Context) {
+	var req models.CreateAppRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.EnvID = c.Param("envID")
+
+	s := services.NewEnvService()
+	app, err := s.CreateApp(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Created(c, app)
 }

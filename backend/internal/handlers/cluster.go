@@ -15,8 +15,8 @@ import (
 // @Tags Cluster
 // @Accept json
 // @Produce json
-// @Param query query model.ListClustersRequest false "Query parameters for filtering and pagination"
-// @Success 200 {object} api.Response{data=model.ListClustersResponse}
+// @Param query query models.ListClustersRequest false "Query parameters for filtering and pagination"
+// @Success 200 {object} api.Response{data=models.ListClustersResponse}
 // @Router /api/v1/clusters [get]
 func ListClusters(c *gin.Context) {
 	var req models.ListClustersRequest
@@ -25,8 +25,8 @@ func ListClusters(c *gin.Context) {
 		return
 	}
 
-	cs := services.NewClusterService()
-	resp, err := cs.ListClusters(c, &req)
+	s := services.NewClusterService()
+	resp, err := s.ListClusters(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -40,11 +40,11 @@ func ListClusters(c *gin.Context) {
 // @Tags Cluster
 // @Accept json
 // @Produce json
-// @Success 200 {object} api.Response{data=[]model.ClusterRef}
+// @Success 200 {object} api.Response{data=[]models.ClusterRef}
 // @Router /api/v1/clusters/refs [get]
 func AllClusterRefs(c *gin.Context) {
-	cs := services.NewClusterService()
-	refs, err := cs.AllClusterRefs(c)
+	s := services.NewClusterService()
+	refs, err := s.AllClusterRefs(c)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -59,7 +59,7 @@ func AllClusterRefs(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param clusterID path string true "Cluster ID"
-// @Success 200 {object} api.Response{data=model.ClusterModel}
+// @Success 200 {object} api.Response{data=models.ClusterModel}
 // @Router /api/v1/clusters/{clusterID} [get]
 func GetCluster(c *gin.Context) {
 	clusterID := c.Param("clusterID")
@@ -68,8 +68,8 @@ func GetCluster(c *gin.Context) {
 		return
 	}
 
-	cs := services.NewClusterService()
-	cluster, err := cs.GetCluster(c, &models.GetClusterRequest{
+	s := services.NewClusterService()
+	cluster, err := s.GetCluster(c, &models.GetClusterRequest{
 		ClusterID: clusterID,
 	})
 	if err != nil {
@@ -86,7 +86,7 @@ func GetCluster(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param clusterID path string true "Cluster ID"
-// @Success 200 {object} api.Response{data=model.ClusterRef}
+// @Success 200 {object} api.Response{data=models.ClusterRef}
 // @Router /api/v1/clusters/{clusterID}/ref [get]
 func GetClusterRef(c *gin.Context) {
 	var req models.GetClusterRefRequest
@@ -95,8 +95,8 @@ func GetClusterRef(c *gin.Context) {
 		return
 	}
 
-	as := services.NewClusterService()
-	ref, err := as.GetClusterRef(c, &req)
+	s := services.NewClusterService()
+	ref, err := s.GetClusterRef(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -110,8 +110,8 @@ func GetClusterRef(c *gin.Context) {
 // @Tags Cluster
 // @Accept json
 // @Produce json
-// @Param request body model.CreateClusterRequest true "Cluster information"
-// @Success 201 {object} api.Response{data=model.ClusterModel}
+// @Param request body models.CreateClusterRequest true "Cluster information"
+// @Success 201 {object} api.Response{data=models.ClusterModel}
 // @Router /api/v1/clusters [post]
 func CreateCluster(c *gin.Context) {
 	var req models.CreateClusterRequest
@@ -120,8 +120,8 @@ func CreateCluster(c *gin.Context) {
 		return
 	}
 
-	cs := services.NewClusterService()
-	cluster, err := cs.CreateCluster(c, &req)
+	s := services.NewClusterService()
+	cluster, err := s.CreateCluster(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -136,8 +136,8 @@ func CreateCluster(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param clusterID path string true "Cluster ID"
-// @Param request body model.UpdateClusterRequest true "Updated cluster information"
-// @Success 200 {object} api.Response{data=model.ClusterModel}
+// @Param request body models.UpdateClusterRequest true "Updated cluster information"
+// @Success 200 {object} api.Response{data=models.ClusterModel}
 // @Router /api/v1/clusters/{clusterID} [put]
 func UpdateCluster(c *gin.Context) {
 	clusterID := c.Param("clusterID")
@@ -153,8 +153,8 @@ func UpdateCluster(c *gin.Context) {
 	}
 	req.ClusterID = clusterID
 
-	cs := services.NewClusterService()
-	cluster, err := cs.UpdateCluster(c, &req)
+	s := services.NewClusterService()
+	cluster, err := s.UpdateCluster(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -178,8 +178,8 @@ func DeleteCluster(c *gin.Context) {
 		return
 	}
 
-	cs := services.NewClusterService()
-	if err := cs.DeleteCluster(c, &models.DeleteClusterRequest{
+	s := services.NewClusterService()
+	if err := s.DeleteCluster(c, &models.DeleteClusterRequest{
 		ClusterID: clusterID,
 	}); err != nil {
 		api.Error(c, err)
@@ -211,8 +211,8 @@ func EnableCluster(c *gin.Context) {
 	}
 	req.ClusterID = clusterID
 
-	cs := services.NewClusterService()
-	err := cs.EnableCluster(c, &req)
+	s := services.NewClusterService()
+	err := s.EnableCluster(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -243,8 +243,8 @@ func DisableCluster(c *gin.Context) {
 	}
 	req.ClusterID = clusterID
 
-	cs := services.NewClusterService()
-	err := cs.DisableCluster(c, &req)
+	s := services.NewClusterService()
+	err := s.DisableCluster(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return

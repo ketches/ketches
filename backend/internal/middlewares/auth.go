@@ -17,36 +17,18 @@ limitations under the License.
 package middlewares
 
 import (
-	"errors"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
-	"github.com/ketches/ketches/internal/db/entity"
-)
-
-var (
-	MsgUserPasswordMustReset = "user password must be reset"
-	ErrUserPasswordMustReset = errors.New(MsgUserPasswordMustReset)
+	"github.com/ketches/ketches/internal/db/entities"
 )
 
 func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		skipPaths := []string{
-			"/api/v1/users/sign-in",
-			"/api/v1/users/sign-up",
-			"/api/v1/users/refresh-token",
-			"/api/v1/users/reset-password",
-		}
-		if slices.Contains(skipPaths, c.Request.URL.Path) {
-			c.Next()
-			return
-		}
-
 		accessToken, err := c.Cookie("access_token")
 		if err != nil {
 			auth := c.GetHeader("Authorization")
@@ -69,7 +51,7 @@ func Auth() gin.HandlerFunc {
 			return
 		}
 
-		user := new(entity.User)
+		user := new(entities.User)
 		if err := db.Instance().Select("id, role").First(user, "id = ?", claims.UserID).Error; err != nil {
 			if db.IsErrRecordNotFound(err) {
 				api.Error(c, app.NewError(http.StatusNotFound, "User not found"))
@@ -81,6 +63,13 @@ func Auth() gin.HandlerFunc {
 
 		api.SetUserID(c, user.ID)
 		api.SetUserRole(c, user.Role)
+
+		// TODO: check user must reset password
+		if user.MustResetPassword {
+			api.Error(c, app.ErrUserPasswordMustReset)
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}

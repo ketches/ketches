@@ -2,14 +2,13 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
-	"github.com/ketches/ketches/internal/db/entity"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/db/orm"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
@@ -19,13 +18,13 @@ import (
 )
 
 type EnvService interface {
-	ListEnvs(ctx context.Context, req *models.ListEnvsRequest) (*models.ListEnvsResponse, app.Error)
-	AllEnvRefs(ctx context.Context, req *models.AllEnvRefsRequest) ([]*models.EnvRef, app.Error)
 	GetEnv(ctx context.Context, req *models.GetEnvRequest) (*models.EnvModel, app.Error)
 	GetEnvRef(ctx context.Context, req *models.GetEnvRefRequest) (*models.EnvRef, app.Error)
-	CreateEnv(ctx context.Context, req *models.CreateEnvRequest) (*models.EnvModel, app.Error)
 	UpdateEnv(ctx context.Context, req *models.UpdateEnvRequest) (*models.EnvModel, app.Error)
 	DeleteEnv(ctx context.Context, req *models.DeleteEnvRequest) app.Error
+	ListApps(ctx context.Context, req *models.ListAppsRequest) (*models.ListAppsResponse, app.Error)
+	AllAppRefs(ctx context.Context, req *models.AllAppRefsRequest) ([]*models.AppRef, app.Error)
+	CreateApp(ctx context.Context, req *models.CreateAppRequest) (*models.AppModel, app.Error)
 }
 
 type envService struct {
@@ -38,66 +37,8 @@ func NewEnvService() EnvService {
 	}
 }
 
-func (s *envService) ListEnvs(ctx context.Context, req *models.ListEnvsRequest) (*models.ListEnvsResponse, app.Error) {
-	query := db.Instance().Model(&entity.Env{})
-	if len(req.ProjectID) > 0 {
-		if _, err := s.CheckProjectPermissions(ctx, req.ProjectID); err != nil {
-			return nil, err
-		}
-
-		query = query.Where("project_id = ?", req.ProjectID)
-	}
-
-	if len(req.Query) > 0 {
-		query = db.CaseInsensitiveLike(query, req.Query, "slug", "display_name")
-	}
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		log.Printf("failed to count envs: %v", err)
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	envs := []*entity.Env{}
-	if err := req.PagedSQL(query).Find(&envs).Error; err != nil {
-		log.Printf("failed to list envs: %v", err)
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	result := &models.ListEnvsResponse{
-		Total:   total,
-		Records: make([]*models.EnvModel, 0, len(envs)),
-	}
-	for _, env := range envs {
-		result.Records = append(result.Records, &models.EnvModel{
-			EnvID:       env.ID,
-			Slug:        env.Slug,
-			DisplayName: env.DisplayName,
-			Description: env.Description,
-			ProjectID:   env.ProjectID,
-			CreatedAt:   utils.HumanizeTime(env.CreatedAt),
-		})
-	}
-
-	return result, nil
-}
-
-func (s *envService) AllEnvRefs(ctx context.Context, req *models.AllEnvRefsRequest) ([]*models.EnvRef, app.Error) {
-	if _, err := s.CheckProjectPermissions(ctx, req.ProjectID); err != nil {
-		return nil, err
-	}
-
-	refs := []*models.EnvRef{}
-	if err := db.Instance().Model(&entity.Env{}).Where("project_id = ?", req.ProjectID).Find(&refs).Error; err != nil {
-		log.Printf("failed to list env refs: %v", err)
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	return refs, nil
-}
-
 func (s *envService) GetEnv(ctx context.Context, req *models.GetEnvRequest) (*models.EnvModel, app.Error) {
-	env := new(entity.Env)
+	env := new(entities.Env)
 	if err := db.Instance().First(env, "id = ?", req.EnvID).Error; err != nil {
 		log.Printf("failed to get env %s: %v", req.EnvID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -106,9 +47,7 @@ func (s *envService) GetEnv(ctx context.Context, req *models.GetEnvRequest) (*mo
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	if _, err := s.CheckProjectPermissions(ctx, env.ProjectID); err != nil {
-		return nil, err
-	}
+	// Permission check is now handled by middleware
 
 	return &models.EnvModel{
 		EnvID:       env.ID,
@@ -122,75 +61,20 @@ func (s *envService) GetEnv(ctx context.Context, req *models.GetEnvRequest) (*mo
 
 func (s *envService) GetEnvRef(ctx context.Context, req *models.GetEnvRefRequest) (*models.EnvRef, app.Error) {
 	result := &models.EnvRef{}
-	if err := db.Instance().Model(&entity.Env{}).First(result, "id = ?", req.EnvID).Error; err != nil {
+	if err := db.Instance().Model(&entities.Env{}).First(result, "id = ?", req.EnvID).Error; err != nil {
 		if db.IsErrRecordNotFound(err) {
 			return nil, app.NewError(http.StatusNotFound, "Env not found")
 		}
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	if _, err := s.CheckProjectPermissions(ctx, result.ProjectID); err != nil {
-		return nil, err
-	}
+	// Permission check is now handled by middleware
 
 	return result, nil
 }
 
-func (s *envService) CreateEnv(ctx context.Context, req *models.CreateEnvRequest) (*models.EnvModel, app.Error) {
-	projectRole, err := s.CheckProjectPermissions(ctx, req.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	if projectRole != app.ProjectRoleOwner {
-		return nil, app.NewError(http.StatusForbidden, "You do not have permission to create env in this project")
-	}
-
-	projectSlug, err := orm.GetProjectSlugByID(ctx, req.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-
-	clusterSlug, err := orm.GetClusterSlugByID(ctx, req.ClusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	env := &entity.Env{
-		Slug:             req.Slug,
-		DisplayName:      req.DisplayName,
-		Description:      req.Description,
-		ProjectID:        req.ProjectID,
-		ProjectSlug:      projectSlug,
-		ClusterID:        req.ClusterID,
-		ClusterSlug:      clusterSlug,
-		ClusterNamespace: fmt.Sprintf("%s-%s", projectSlug, req.Slug),
-	}
-
-	// Create namespace for the env in the cluster
-	if _, err := kube.CreateNamespace(ctx, env.ClusterID, buildNamespace(env)); err != nil {
-		return nil, err
-	}
-
-	if err := db.Instance().Create(env).Error; err != nil {
-		log.Printf("failed to create env: %v", err)
-		if db.IsErrDuplicatedKey(err) {
-			return nil, app.NewError(http.StatusConflict, "Env with this slug already exists in the project")
-		}
-		return nil, app.NewError(http.StatusInternalServerError, "Failed to create env")
-	}
-
-	return &models.EnvModel{
-		EnvID:       env.ID,
-		Slug:        env.Slug,
-		DisplayName: env.DisplayName,
-		Description: env.Description,
-		ProjectID:   env.ProjectID,
-		ClusterID:   env.ClusterID,
-	}, nil
-}
-
 func (s *envService) UpdateEnv(ctx context.Context, req *models.UpdateEnvRequest) (*models.EnvModel, app.Error) {
-	env := &entity.Env{}
+	env := &entities.Env{}
 	if err := db.Instance().First(env, "id = ?", req.EnvID).Error; err != nil {
 		log.Printf("failed to find env %s: %v", req.EnvID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -199,22 +83,16 @@ func (s *envService) UpdateEnv(ctx context.Context, req *models.UpdateEnvRequest
 		return nil, app.NewError(http.StatusInternalServerError, "Failed to get env")
 	}
 
-	projectRole, err := s.CheckProjectPermissions(ctx, env.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	if projectRole != app.ProjectRoleOwner {
-		return nil, app.NewError(http.StatusForbidden, "You do not have permission to update this env")
-	}
+	// Permission check is now handled by middleware
 
 	env.DisplayName = req.DisplayName
 	env.Description = req.Description
 
-	if err := db.Instance().Updates(&entity.Env{
+	if err := db.Instance().Updates(&entities.Env{
 		UUIDBase:    env.UUIDBase,
 		DisplayName: env.DisplayName,
 		Description: env.Description,
-		AuditBase: entity.AuditBase{
+		AuditBase: entities.AuditBase{
 			UpdatedBy: api.UserID(ctx),
 		},
 	}).Error; err != nil {
@@ -232,7 +110,7 @@ func (s *envService) UpdateEnv(ctx context.Context, req *models.UpdateEnvRequest
 }
 
 func (s *envService) DeleteEnv(ctx context.Context, req *models.DeleteEnvRequest) app.Error {
-	env := &entity.Env{}
+	env := &entities.Env{}
 	if err := db.Instance().First(env, "id = ?", req.EnvID).Error; err != nil {
 		log.Printf("failed to find env %s: %v", req.EnvID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -241,13 +119,7 @@ func (s *envService) DeleteEnv(ctx context.Context, req *models.DeleteEnvRequest
 		return app.NewError(http.StatusInternalServerError, "Failed to get env")
 	}
 
-	projectRole, err := s.CheckProjectPermissions(ctx, env.ProjectID)
-	if err != nil {
-		return err
-	}
-	if projectRole != app.ProjectRoleOwner {
-		return app.NewError(http.StatusForbidden, "You do not have permission to delete this env")
-	}
+	// Permission check is now handled by middleware
 
 	count, err := orm.CountEnvApps(ctx, env.ID)
 	if err != nil {
@@ -270,7 +142,170 @@ func (s *envService) DeleteEnv(ctx context.Context, req *models.DeleteEnvRequest
 	return nil
 }
 
-func buildNamespace(env *entity.Env) *corev1.Namespace {
+func (s *envService) ListApps(ctx context.Context, req *models.ListAppsRequest) (*models.ListAppsResponse, app.Error) {
+	query := db.Instance().Model(&entities.App{}).Where("env_id = ?", req.EnvID)
+
+	if req.Query != "" {
+		query = db.CaseInsensitiveLike(query, req.Query, "slug", "display_name")
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		log.Printf("failed to count apps: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	apps := []*entities.App{}
+	if err := req.PagedSQL(query).Find(&apps).Error; err != nil {
+		log.Printf("failed to list apps: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	result := &models.ListAppsResponse{
+		Total:   total,
+		Records: make([]*models.AppModel, 0, len(apps)),
+	}
+	for _, app := range apps {
+		resultItem := &models.AppModel{
+			AppID:            app.ID,
+			Slug:             app.Slug,
+			DisplayName:      app.DisplayName,
+			WorkloadType:     app.WorkloadType,
+			Replicas:         app.Replicas,
+			ContainerImage:   app.ContainerImage,
+			Deployed:         app.Deployed,
+			DeployVersion:    app.DeployVersion,
+			EnvID:            app.EnvID,
+			ProjectID:        app.ProjectID,
+			ClusterNamespace: app.ClusterNamespace,
+			CreatedAt:        utils.HumanizeTime(app.CreatedAt),
+		}
+
+		resultItem.ActualReplicas, resultItem.Status = getAppStatus(ctx, app)
+
+		result.Records = append(result.Records, resultItem)
+	}
+
+	return result, nil
+}
+
+func (s *envService) AllAppRefs(ctx context.Context, req *models.AllAppRefsRequest) ([]*models.AppRef, app.Error) {
+	refs := []*models.AppRef{}
+	if err := db.Instance().Model(&entities.App{}).Where("env_id = ?", req.EnvID).Find(&refs).Error; err != nil {
+		log.Printf("failed to list app refs: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return refs, nil
+}
+
+func (s *envService) CreateApp(ctx context.Context, req *models.CreateAppRequest) (*models.AppModel, app.Error) {
+	env, err := orm.GetEnvByID(ctx, req.EnvID)
+	if err != nil {
+		return nil, err
+	}
+
+	appEntity := &entities.App{
+		Slug:             req.Slug,
+		DisplayName:      req.DisplayName,
+		Description:      req.Description,
+		ContainerImage:   req.ContainerImage,
+		WorkloadType:     req.WorkloadType,
+		Replicas:         req.Replicas,
+		RegistryUsername: req.RegistryUsername,
+		RegistryPassword: req.RegistryPassword,
+		RequestCPU:       req.RequestCPU,
+		RequestMemory:    req.RequestMemory,
+		LimitCPU:         req.LimitCPU,
+		LimitMemory:      req.LimitMemory,
+		EnvID:            req.EnvID,
+		EnvSlug:          env.Slug,
+		ProjectID:        env.ProjectID,
+		ProjectSlug:      env.ProjectSlug,
+		ClusterID:        env.ClusterID,
+		ClusterSlug:      env.ClusterSlug,
+		ClusterNamespace: env.ClusterNamespace,
+		AuditBase: entities.AuditBase{
+			CreatedBy: api.UserID(ctx),
+			UpdatedBy: api.UserID(ctx),
+		},
+	}
+
+	if err := db.Instance().Create(appEntity).Error; err != nil {
+		log.Printf("failed to create app: %v", err)
+
+		if db.IsErrDuplicatedKey(err) {
+			return nil, app.NewError(http.StatusConflict, "App with this slug already exists in the env")
+		}
+		return nil, app.NewError(http.StatusInternalServerError, "Failed to create app")
+	}
+
+	result := &models.AppModel{
+		AppID:            appEntity.ID,
+		Slug:             appEntity.Slug,
+		DisplayName:      appEntity.DisplayName,
+		Description:      appEntity.Description,
+		WorkloadType:     appEntity.WorkloadType,
+		Replicas:         appEntity.Replicas,
+		ContainerImage:   appEntity.ContainerImage,
+		RegistryUsername: appEntity.RegistryUsername,
+		RegistryPassword: appEntity.RegistryPassword,
+		RequestCPU:       appEntity.RequestCPU,
+		RequestMemory:    appEntity.RequestMemory,
+		LimitCPU:         appEntity.LimitCPU,
+		LimitMemory:      appEntity.LimitMemory,
+		EnvID:            appEntity.EnvID,
+		EnvSlug:          env.Slug,
+		ProjectID:        appEntity.ProjectID,
+		ProjectSlug:      env.ProjectSlug,
+		ClusterID:        appEntity.ClusterID,
+		ClusterSlug:      env.ClusterSlug,
+		ClusterNamespace: appEntity.ClusterNamespace,
+	}
+
+	if req.Deploy {
+		appEntity.Deployed = true
+		appEntity.DeployVersion = newDeployVersion()
+
+		// Step 1: deploy app in cluster
+		switch appEntity.WorkloadType {
+		case app.WorkloadTypeDeployment:
+			// For Deployment, we create a Deployment resource in the cluster
+			deployment := buildDeployment(appEntity, nil, true)
+			if _, err := kube.CreateDeployment(ctx, env.ClusterID, deployment); err != nil {
+				log.Printf("failed to create deployment [%s/%s] for app: %v", deployment.Namespace, deployment.Name, err)
+				return nil, err
+			}
+		case app.WorkloadTypeStatefulSet:
+			statefulSet := buildStatefulSet(appEntity, nil, true)
+			// For StatefulSet, we create a StatefulSet resource in the cluster
+			if _, err := kube.CreateStatefulSet(ctx, env.ClusterID, statefulSet); err != nil {
+				log.Printf("failed to create statefulset [%s/%s] for app: %v", statefulSet.Namespace, statefulSet.Name, err)
+				return nil, err
+			}
+		}
+
+		// Step 2: update app deploy flag
+		if err := db.Instance().Updates(entities.App{
+			UUIDBase:      appEntity.UUIDBase,
+			Deployed:      appEntity.Deployed,
+			DeployVersion: appEntity.DeployVersion,
+			AuditBase: entities.AuditBase{
+				UpdatedBy: api.UserID(ctx),
+			},
+		}).Error; err != nil {
+			log.Printf("failed to update app deploy info: %v", err)
+			return nil, app.ErrDatabaseOperationFailed
+		}
+		result.Deployed = appEntity.Deployed
+		result.DeployVersion = appEntity.DeployVersion
+		result.ActualReplicas, result.Status = getAppStatus(ctx, appEntity)
+	}
+
+	return result, nil
+}
+
+func buildNamespace(env *entities.Env) *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: env.ClusterNamespace,

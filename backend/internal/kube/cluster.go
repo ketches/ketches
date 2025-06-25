@@ -7,7 +7,7 @@ import (
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
-	"github.com/ketches/ketches/internal/db/entity"
+	"github.com/ketches/ketches/internal/db/entities"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -58,7 +58,7 @@ func RestConfig(ctx context.Context, clusterID string) (*rest.Config, app.Error)
 		return restConfig, nil
 	}
 
-	cluster := &entity.Cluster{}
+	cluster := &entities.Cluster{}
 	if err := db.Instance().First(&cluster, "id = ?", clusterID).Error; err != nil {
 		log.Printf("Failed to get cluster %s: %v", clusterID, err)
 		if db.IsErrRecordNotFound(err) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { createEnv } from '@/api/env';
+import { createEnv } from '@/api/project';
 import {
     Dialog,
     DialogContent,
@@ -100,10 +100,7 @@ const onSubmit = handleSubmit(async (values) => {
     if (!activeProjectRef.value) {
         toast.error('未找到当前项目，请先选择一个项目。');
     } else {
-        const resp = await createEnv({
-            projectID: activeProjectRef.value.projectID,
-            ...values
-        })
+        const resp = await createEnv(activeProjectRef.value.projectID, values)
         if (resp) {
             resourceRefStore.addEnv(resp);
             toast.success('创建环境成功！');

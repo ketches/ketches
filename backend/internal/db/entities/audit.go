@@ -1,4 +1,4 @@
-package entity
+package entities
 
 type Audit struct {
 	UUIDBase

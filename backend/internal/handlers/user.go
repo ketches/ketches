@@ -31,8 +31,8 @@ import (
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param query query model.ListUsersRequest false "Query parameters for filtering and pagination"
-// @Success 200 {object} api.Response{data=model.ListUsersResponse}
+// @Param query query models.ListUsersRequest false "Query parameters for filtering and pagination"
+// @Success 200 {object} api.Response{data=models.ListUsersResponse}
 // @Router /api/v1/users [get]
 // @Security BearerAuth
 func ListUsers(c *gin.Context) {
@@ -42,8 +42,8 @@ func ListUsers(c *gin.Context) {
 		return
 	}
 
-	us := services.NewUserService()
-	resp, err := us.List(c, &req)
+	s := services.NewUserService()
+	resp, err := s.List(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -58,7 +58,7 @@ func ListUsers(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param userID path string true "User ID"
-// @Success 200 {object} api.Response{data=model.UserModel}
+// @Success 200 {object} api.Response{data=models.UserModel}
 // @Router /api/v1/users/{userID} [get]
 func GetUser(c *gin.Context) {
 	var req models.GetUserProfileRequest
@@ -66,8 +66,8 @@ func GetUser(c *gin.Context) {
 		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
 		return
 	}
-	us := services.NewUserService()
-	user, err := us.Get(c, &req)
+	s := services.NewUserService()
+	user, err := s.Get(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -81,8 +81,8 @@ func GetUser(c *gin.Context) {
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param user body model.UserSignUpRequest true "User sign up request"
-// @Success 201 {object} api.Response{data=model.UserModel}
+// @Param user body models.UserSignUpRequest true "User sign up request"
+// @Success 201 {object} api.Response{data=models.UserModel}
 // @Router /api/v1/users/sign-up [post]
 func UserSignUp(c *gin.Context) {
 	var req models.UserSignUpRequest
@@ -91,8 +91,8 @@ func UserSignUp(c *gin.Context) {
 		return
 	}
 
-	us := services.NewUserService()
-	user, err := us.SignUp(c, &req)
+	s := services.NewUserService()
+	user, err := s.SignUp(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -106,8 +106,8 @@ func UserSignUp(c *gin.Context) {
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param user body model.UserSignInRequest true "User sign in request"
-// @Success 201 {object} api.Response{data=model.UserModel}
+// @Param user body models.UserSignInRequest true "User sign in request"
+// @Success 201 {object} api.Response{data=models.UserModel}
 // @Router /api/v1/users/sign-in [post]
 func UserSignIn(c *gin.Context) {
 	var req models.UserSignInRequest
@@ -116,8 +116,8 @@ func UserSignIn(c *gin.Context) {
 		return
 	}
 
-	us := services.NewUserService()
-	user, err := us.SignIn(c, &req)
+	s := services.NewUserService()
+	user, err := s.SignIn(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -134,10 +134,10 @@ func UserSignIn(c *gin.Context) {
 // @Tags User
 // @Accept json
 // @Produce json
-// @Success 200 {object} api.Response{data=model.UserModel}
+// @Success 200 {object} api.Response{data=models.UserModel}
 // @Router /api/v1/users/refresh-token [post]
 func UserRefreshToken(c *gin.Context) {
-	us := services.NewUserService()
+	s := services.NewUserService()
 	refreshToken, e := c.Cookie("refresh_token")
 	if e != nil {
 		api.Error(c, app.NewError(http.StatusBadRequest, e.Error()))
@@ -148,7 +148,7 @@ func UserRefreshToken(c *gin.Context) {
 		return
 	}
 
-	user, err := us.RefreshToken(c, refreshToken)
+	user, err := s.RefreshToken(c, refreshToken)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -164,9 +164,10 @@ func UserRefreshToken(c *gin.Context) {
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param user body model.UserSignOutRequest true "User sign out request"
-// @Success 200 {object} api.Response{data=model.UserModel}
-// @Router /api/v1/users/sign-out [post]
+// @Param userID path string true "User ID"
+// @Param user body models.UserSignOutRequest true "User sign out request"
+// @Success 200 {object} api.Response{data=models.UserModel}
+// @Router /api/v1/users/{userID}/sign-out [post]
 func UserSignOut(c *gin.Context) {
 	var req models.UserSignOutRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -180,8 +181,8 @@ func UserSignOut(c *gin.Context) {
 		return
 	}
 
-	us := services.NewUserService()
-	if err := us.SignOut(c, &req, refreshToken); err != nil {
+	s := services.NewUserService()
+	if err := s.SignOut(c, &req, refreshToken); err != nil {
 		api.Error(c, err)
 		return
 	}
@@ -198,8 +199,8 @@ func UserSignOut(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param userID path string true "User ID"
-// @Param user body model.UserUpdateRequest true "User update request"
-// @Success 200 {object} api.Response{data=model.UserModel}
+// @Param user body models.UserUpdateRequest true "User update request"
+// @Success 200 {object} api.Response{data=models.UserModel}
 // @Router /api/v1/users/{userID} [put]
 func UserUpdate(c *gin.Context) {
 	userID := c.Param("userID")
@@ -215,8 +216,8 @@ func UserUpdate(c *gin.Context) {
 	}
 	req.UserID = userID
 
-	us := services.NewUserService()
-	user, err := us.Update(c, &req)
+	s := services.NewUserService()
+	user, err := s.Update(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -231,8 +232,8 @@ func UserUpdate(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param userID path string true "User ID"
-// @Param user body model.UserChangeRoleRequest true "User change role request"
-// @Success 200 {object} api.Response{data=model.UserModel}
+// @Param user body models.UserChangeRoleRequest true "User change role request"
+// @Success 200 {object} api.Response{data=models.UserModel}
 // @Router /api/v1/users/{userID}/change-role [put]
 func UserChangeRole(c *gin.Context) {
 	userID := c.Param("userID")
@@ -248,8 +249,8 @@ func UserChangeRole(c *gin.Context) {
 	}
 	req.UserID = userID
 
-	us := services.NewUserService()
-	user, err := us.ChangeRole(c, &req)
+	s := services.NewUserService()
+	user, err := s.ChangeRole(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -264,8 +265,8 @@ func UserChangeRole(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param userID path string true "User ID"
-// @Param user body model.UserResetPasswordRequest true "User reset password request"
-// @Success 200 {object} api.Response{data=model.UserModel}
+// @Param user body models.UserResetPasswordRequest true "User reset password request"
+// @Success 200 {object} api.Response{data=models.UserModel}
 // @Router /api/v1/users/{userID}/reset-password [put]
 func UserResetPassword(c *gin.Context) {
 	userID := c.Param("userID")
@@ -281,8 +282,8 @@ func UserResetPassword(c *gin.Context) {
 	}
 	req.UserID = userID
 
-	us := services.NewUserService()
-	um, err := us.ResetPassword(c, &req)
+	s := services.NewUserService()
+	um, err := s.ResetPassword(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -300,8 +301,8 @@ func UserResetPassword(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param userID path string true "User ID"
-// @Param user body model.UserRenameRequest true "User rename request"
-// @Success 200 {object} api.Response{data=model.UserModel}
+// @Param user body models.UserRenameRequest true "User rename request"
+// @Success 200 {object} api.Response{data=models.UserModel}
 // @Router /api/v1/users/{userID}/rename [put]
 func UserRename(c *gin.Context) {
 	userID := c.Param("userID")
@@ -317,8 +318,8 @@ func UserRename(c *gin.Context) {
 	}
 	req.UserID = userID
 
-	us := services.NewUserService()
-	user, err := us.Rename(c, &req)
+	s := services.NewUserService()
+	user, err := s.Rename(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -333,8 +334,8 @@ func UserRename(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param userID path string true "User ID"
-// @Param user body model.DeleteUserRequest true "Delete user request"
-// @Success 204 {object} api.Response{data=model.UserModel}
+// @Param user body models.DeleteUserRequest true "Delete user request"
+// @Success 204 {object} api.Response{data=models.UserModel}
 // @Router /api/v1/users/{userID} [delete]
 func DeleteUser(c *gin.Context) {
 	userID := c.Param("userID")
@@ -350,8 +351,8 @@ func DeleteUser(c *gin.Context) {
 	}
 	req.UserID = userID
 
-	us := services.NewUserService()
-	err := us.Delete(c, &req)
+	s := services.NewUserService()
+	err := s.Delete(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return

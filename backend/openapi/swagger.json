@@ -7,168 +7,6 @@
         "version": "v1"
     },
     "paths": {
-        "/api/v1/apps": {
-            "get": {
-                "description": "List apps",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "App"
-                ],
-                "summary": "List Apps",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "name": "envID",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "name": "pageNo",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "name": "pageSize",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "projectID",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "query",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "sortOrder",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.ListAppsResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Create a new app",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "App"
-                ],
-                "summary": "Create App",
-                "parameters": [
-                    {
-                        "description": "App data",
-                        "name": "app",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.CreateAppRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.AppModel"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/apps/refs": {
-            "get": {
-                "description": "Get all apps for refs under a specific environment",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "App"
-                ],
-                "summary": "All App Refs Under Environment",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "name": "envID",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/model.AppRef"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/apps/{appID}": {
             "get": {
                 "description": "Get app by app ID",
@@ -203,7 +41,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppModel"
+                                            "$ref": "#/definitions/models.AppModel"
                                         }
                                     }
                                 }
@@ -238,7 +76,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateAppRequest"
+                            "$ref": "#/definitions/models.UpdateAppRequest"
                         }
                     }
                 ],
@@ -254,7 +92,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppModel"
+                                            "$ref": "#/definitions/models.AppModel"
                                         }
                                     }
                                 }
@@ -321,7 +159,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.AppActionRequest"
+                            "$ref": "#/definitions/models.AppActionRequest"
                         }
                     }
                 ],
@@ -337,7 +175,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppModel"
+                                            "$ref": "#/definitions/models.AppModel"
                                         }
                                     }
                                 }
@@ -374,7 +212,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateAppImageRequest"
+                            "$ref": "#/definitions/models.UpdateAppImageRequest"
                         }
                     }
                 ],
@@ -390,7 +228,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppModel"
+                                            "$ref": "#/definitions/models.AppModel"
                                         }
                                     }
                                 }
@@ -436,7 +274,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.AppInstanceModel"
+                                                "$ref": "#/definitions/models.AppInstanceModel"
                                             }
                                         }
                                     }
@@ -474,7 +312,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.TerminateAppInstanceRequest"
+                            "$ref": "#/definitions/models.TerminateAppInstanceRequest"
                         }
                     }
                 ],
@@ -529,7 +367,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ExecAppContainerTerminalRequest"
+                            "$ref": "#/definitions/models.ExecAppContainerTerminalRequest"
                         }
                     }
                 ],
@@ -681,7 +519,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppRef"
+                                            "$ref": "#/definitions/models.AppRef"
                                         }
                                     }
                                 }
@@ -743,7 +581,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ListClustersResponse"
+                                            "$ref": "#/definitions/models.ListClustersResponse"
                                         }
                                     }
                                 }
@@ -771,7 +609,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateClusterRequest"
+                            "$ref": "#/definitions/models.CreateClusterRequest"
                         }
                     }
                 ],
@@ -787,7 +625,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ClusterModel"
+                                            "$ref": "#/definitions/models.ClusterModel"
                                         }
                                     }
                                 }
@@ -824,7 +662,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ClusterRef"
+                                                "$ref": "#/definitions/models.ClusterRef"
                                             }
                                         }
                                     }
@@ -869,7 +707,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ClusterModel"
+                                            "$ref": "#/definitions/models.ClusterModel"
                                         }
                                     }
                                 }
@@ -904,7 +742,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateClusterRequest"
+                            "$ref": "#/definitions/models.UpdateClusterRequest"
                         }
                     }
                 ],
@@ -920,7 +758,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ClusterModel"
+                                            "$ref": "#/definitions/models.ClusterModel"
                                         }
                                     }
                                 }
@@ -1055,164 +893,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ClusterRef"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/envs": {
-            "get": {
-                "description": "List envs",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Env"
-                ],
-                "summary": "List Envs",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "name": "pageNo",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "name": "pageSize",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "projectID",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "query",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "sortOrder",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.ListEnvsResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Create a new env",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Env"
-                ],
-                "summary": "Create Env",
-                "parameters": [
-                    {
-                        "description": "Create Env Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.CreateEnvRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.EnvModel"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/envs/refs": {
-            "get": {
-                "description": "Get all envs for refs under a specific cluster",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Env"
-                ],
-                "summary": "All Env Refs Under Cluster",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "name": "projectID",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/model.EnvRef"
-                                            }
+                                            "$ref": "#/definitions/models.ClusterRef"
                                         }
                                     }
                                 }
@@ -1256,7 +937,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.EnvModel"
+                                            "$ref": "#/definitions/models.EnvModel"
                                         }
                                     }
                                 }
@@ -1291,7 +972,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateEnvRequest"
+                            "$ref": "#/definitions/models.UpdateEnvRequest"
                         }
                     }
                 ],
@@ -1307,7 +988,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.EnvModel"
+                                            "$ref": "#/definitions/models.EnvModel"
                                         }
                                     }
                                 }
@@ -1347,6 +1028,184 @@
                 }
             }
         },
+        "/api/v1/envs/{envID}/apps": {
+            "get": {
+                "description": "List apps under a specific env",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Env"
+                ],
+                "summary": "List Apps Under Env",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Env ID",
+                        "name": "envID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "envID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageNo",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "sortOrder",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ListAppsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new app under a specific env",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "Create App Under Env",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Env ID",
+                        "name": "envID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "App data",
+                        "name": "app",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateAppRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/envs/{envID}/apps/refs": {
+            "get": {
+                "description": "Get all apps for refs under a specific env",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "All App Refs Under Env",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Env ID",
+                        "name": "envID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "envID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.AppRef"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/envs/{envID}/ref": {
             "get": {
                 "description": "Get env ref by env ID",
@@ -1381,7 +1240,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.EnvRef"
+                                            "$ref": "#/definitions/models.EnvRef"
                                         }
                                     }
                                 }
@@ -1448,7 +1307,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ListProjectResponse"
+                                            "$ref": "#/definitions/models.ListProjectResponse"
                                         }
                                     }
                                 }
@@ -1476,7 +1335,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateProjectRequest"
+                            "$ref": "#/definitions/models.CreateProjectRequest"
                         }
                     }
                 ],
@@ -1492,7 +1351,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectModel"
+                                            "$ref": "#/definitions/models.ProjectModel"
                                         }
                                     }
                                 }
@@ -1529,7 +1388,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ProjectRef"
+                                                "$ref": "#/definitions/models.ProjectRef"
                                             }
                                         }
                                     }
@@ -1574,7 +1433,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectModel"
+                                            "$ref": "#/definitions/models.ProjectModel"
                                         }
                                     }
                                 }
@@ -1609,7 +1468,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateProjectRequest"
+                            "$ref": "#/definitions/models.UpdateProjectRequest"
                         }
                     }
                 ],
@@ -1625,7 +1484,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectModel"
+                                            "$ref": "#/definitions/models.ProjectModel"
                                         }
                                     }
                                 }
@@ -1658,6 +1517,184 @@
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{projectID}/envs": {
+            "get": {
+                "description": "List envs under a specific project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "List Envs Under Project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageNo",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "projectID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "sortOrder",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ListEnvsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new env under a specific project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Create Env Under Project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Create Env Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateEnvRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.EnvModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{projectID}/envs/refs": {
+            "get": {
+                "description": "Get all envs for refs under a specific project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Env"
+                ],
+                "summary": "All Env Refs Under Project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "projectID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.EnvRef"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
                     }
                 }
             }
@@ -1721,7 +1758,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ListProjectMembersResponse"
+                                            "$ref": "#/definitions/models.ListProjectMembersResponse"
                                         }
                                     }
                                 }
@@ -1756,7 +1793,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.AddProjectMembersRequest"
+                            "$ref": "#/definitions/models.AddProjectMembersRequest"
                         }
                     }
                 ],
@@ -1774,7 +1811,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ProjectMemberModel"
+                                                "$ref": "#/definitions/models.ProjectMemberModel"
                                             }
                                         }
                                     }
@@ -1848,7 +1885,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ProjectMemberModel"
+                                                "$ref": "#/definitions/models.ProjectMemberModel"
                                             }
                                         }
                                     }
@@ -1893,7 +1930,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateProjectMemberRequest"
+                            "$ref": "#/definitions/models.UpdateProjectMemberRequest"
                         }
                     }
                 ],
@@ -1909,7 +1946,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectMemberModel"
+                                            "$ref": "#/definitions/models.ProjectMemberModel"
                                         }
                                     }
                                 }
@@ -1953,7 +1990,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectRef"
+                                            "$ref": "#/definitions/models.ProjectRef"
                                         }
                                     }
                                 }
@@ -2020,7 +2057,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ListUsersResponse"
+                                            "$ref": "#/definitions/models.ListUsersResponse"
                                         }
                                     }
                                 }
@@ -2055,7 +2092,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2085,7 +2122,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserSignInRequest"
+                            "$ref": "#/definitions/models.UserSignInRequest"
                         }
                     }
                 ],
@@ -2101,53 +2138,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/users/sign-out": {
-            "post": {
-                "description": "Sign out user by clearing cookies",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User"
-                ],
-                "summary": "Sign Out User",
-                "parameters": [
-                    {
-                        "description": "User sign out request",
-                        "name": "user",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.UserSignOutRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2177,7 +2168,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserSignUpRequest"
+                            "$ref": "#/definitions/models.UserSignUpRequest"
                         }
                     }
                 ],
@@ -2193,7 +2184,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2237,7 +2228,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2272,7 +2263,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserUpdateRequest"
+                            "$ref": "#/definitions/models.UserUpdateRequest"
                         }
                     }
                 ],
@@ -2288,7 +2279,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2323,7 +2314,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.DeleteUserRequest"
+                            "$ref": "#/definitions/models.DeleteUserRequest"
                         }
                     }
                 ],
@@ -2339,7 +2330,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2376,7 +2367,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserChangeRoleRequest"
+                            "$ref": "#/definitions/models.UserChangeRoleRequest"
                         }
                     }
                 ],
@@ -2392,7 +2383,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2429,7 +2420,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserRenameRequest"
+                            "$ref": "#/definitions/models.UserRenameRequest"
                         }
                     }
                 ],
@@ -2445,7 +2436,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2482,7 +2473,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserResetPasswordRequest"
+                            "$ref": "#/definitions/models.UserResetPasswordRequest"
                         }
                     }
                 ],
@@ -2498,7 +2489,60 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{userID}/sign-out": {
+            "post": {
+                "description": "Sign out user by clearing cookies",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Sign Out User",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User sign out request",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UserSignOutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2563,7 +2607,7 @@
                 "WorkloadTypeStatefulSet"
             ]
         },
-        "model.AddProjectMembersRequest": {
+        "models.AddProjectMembersRequest": {
             "type": "object",
             "required": [
                 "projectMembers"
@@ -2573,12 +2617,12 @@
                     "type": "array",
                     "uniqueItems": true,
                     "items": {
-                        "$ref": "#/definitions/model.ProjectMemberRole"
+                        "$ref": "#/definitions/models.ProjectMemberRole"
                     }
                 }
             }
         },
-        "model.AppActionRequest": {
+        "models.AppActionRequest": {
             "type": "object",
             "required": [
                 "action"
@@ -2601,7 +2645,7 @@
                 }
             }
         },
-        "model.AppInstanceContainerModel": {
+        "models.AppInstanceContainerModel": {
             "type": "object",
             "properties": {
                 "containerName": {
@@ -2615,7 +2659,7 @@
                 }
             }
         },
-        "model.AppInstanceModel": {
+        "models.AppInstanceModel": {
             "type": "object",
             "properties": {
                 "appID": {
@@ -2627,13 +2671,13 @@
                 "containers": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.AppInstanceContainerModel"
+                        "$ref": "#/definitions/models.AppInstanceContainerModel"
                     }
                 },
                 "initContainers": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.AppInstanceContainerModel"
+                        "$ref": "#/definitions/models.AppInstanceContainerModel"
                     }
                 },
                 "instanceIP": {
@@ -2676,7 +2720,7 @@
                 }
             }
         },
-        "model.AppModel": {
+        "models.AppModel": {
             "type": "object",
             "properties": {
                 "actualReplicas": {
@@ -2769,7 +2813,7 @@
                 }
             }
         },
-        "model.AppRef": {
+        "models.AppRef": {
             "type": "object",
             "properties": {
                 "appID": {
@@ -2789,7 +2833,7 @@
                 }
             }
         },
-        "model.ClusterModel": {
+        "models.ClusterModel": {
             "type": "object",
             "properties": {
                 "clusterID": {
@@ -2812,7 +2856,7 @@
                 }
             }
         },
-        "model.ClusterRef": {
+        "models.ClusterRef": {
             "type": "object",
             "properties": {
                 "clusterID": {
@@ -2826,12 +2870,11 @@
                 }
             }
         },
-        "model.CreateAppRequest": {
+        "models.CreateAppRequest": {
             "type": "object",
             "required": [
                 "containerImage",
                 "displayName",
-                "envID",
                 "replicas",
                 "slug",
                 "workloadType"
@@ -2892,7 +2935,7 @@
                 }
             }
         },
-        "model.CreateClusterRequest": {
+        "models.CreateClusterRequest": {
             "type": "object",
             "required": [
                 "displayName",
@@ -2914,12 +2957,11 @@
                 }
             }
         },
-        "model.CreateEnvRequest": {
+        "models.CreateEnvRequest": {
             "type": "object",
             "required": [
                 "clusterID",
                 "displayName",
-                "projectID",
                 "slug"
             ],
             "properties": {
@@ -2940,7 +2982,7 @@
                 }
             }
         },
-        "model.CreateProjectRequest": {
+        "models.CreateProjectRequest": {
             "type": "object",
             "required": [
                 "displayName",
@@ -2958,7 +3000,7 @@
                 }
             }
         },
-        "model.DeleteUserRequest": {
+        "models.DeleteUserRequest": {
             "type": "object",
             "required": [
                 "password"
@@ -2969,7 +3011,7 @@
                 }
             }
         },
-        "model.EnvModel": {
+        "models.EnvModel": {
             "type": "object",
             "properties": {
                 "clusterID": {
@@ -2995,7 +3037,7 @@
                 }
             }
         },
-        "model.EnvRef": {
+        "models.EnvRef": {
             "type": "object",
             "properties": {
                 "displayName": {
@@ -3012,7 +3054,7 @@
                 }
             }
         },
-        "model.ExecAppContainerTerminalRequest": {
+        "models.ExecAppContainerTerminalRequest": {
             "type": "object",
             "properties": {
                 "appID": {
@@ -3026,13 +3068,13 @@
                 }
             }
         },
-        "model.ListAppsResponse": {
+        "models.ListAppsResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.AppModel"
+                        "$ref": "#/definitions/models.AppModel"
                     }
                 },
                 "total": {
@@ -3040,13 +3082,13 @@
                 }
             }
         },
-        "model.ListClustersResponse": {
+        "models.ListClustersResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.ClusterModel"
+                        "$ref": "#/definitions/models.ClusterModel"
                     }
                 },
                 "total": {
@@ -3054,13 +3096,13 @@
                 }
             }
         },
-        "model.ListEnvsResponse": {
+        "models.ListEnvsResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.EnvModel"
+                        "$ref": "#/definitions/models.EnvModel"
                     }
                 },
                 "total": {
@@ -3068,13 +3110,13 @@
                 }
             }
         },
-        "model.ListProjectMembersResponse": {
+        "models.ListProjectMembersResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.ProjectMemberModel"
+                        "$ref": "#/definitions/models.ProjectMemberModel"
                     }
                 },
                 "total": {
@@ -3082,13 +3124,13 @@
                 }
             }
         },
-        "model.ListProjectResponse": {
+        "models.ListProjectResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.ProjectModel"
+                        "$ref": "#/definitions/models.ProjectModel"
                     }
                 },
                 "total": {
@@ -3096,13 +3138,13 @@
                 }
             }
         },
-        "model.ListUsersResponse": {
+        "models.ListUsersResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.UserModel"
+                        "$ref": "#/definitions/models.UserModel"
                     }
                 },
                 "total": {
@@ -3110,7 +3152,7 @@
                 }
             }
         },
-        "model.ProjectMemberModel": {
+        "models.ProjectMemberModel": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -3139,7 +3181,7 @@
                 }
             }
         },
-        "model.ProjectMemberRole": {
+        "models.ProjectMemberRole": {
             "type": "object",
             "required": [
                 "projectRole"
@@ -3158,7 +3200,7 @@
                 }
             }
         },
-        "model.ProjectModel": {
+        "models.ProjectModel": {
             "type": "object",
             "properties": {
                 "description": {
@@ -3175,7 +3217,7 @@
                 }
             }
         },
-        "model.ProjectRef": {
+        "models.ProjectRef": {
             "type": "object",
             "properties": {
                 "displayName": {
@@ -3189,7 +3231,7 @@
                 }
             }
         },
-        "model.TerminateAppInstanceRequest": {
+        "models.TerminateAppInstanceRequest": {
             "type": "object",
             "required": [
                 "instanceName"
@@ -3203,7 +3245,7 @@
                 }
             }
         },
-        "model.UpdateAppImageRequest": {
+        "models.UpdateAppImageRequest": {
             "type": "object",
             "required": [
                 "containerImage"
@@ -3220,7 +3262,7 @@
                 }
             }
         },
-        "model.UpdateAppRequest": {
+        "models.UpdateAppRequest": {
             "type": "object",
             "required": [
                 "displayName"
@@ -3234,7 +3276,7 @@
                 }
             }
         },
-        "model.UpdateClusterRequest": {
+        "models.UpdateClusterRequest": {
             "type": "object",
             "required": [
                 "displayName",
@@ -3252,7 +3294,7 @@
                 }
             }
         },
-        "model.UpdateEnvRequest": {
+        "models.UpdateEnvRequest": {
             "type": "object",
             "required": [
                 "displayName"
@@ -3269,7 +3311,7 @@
                 }
             }
         },
-        "model.UpdateProjectMemberRequest": {
+        "models.UpdateProjectMemberRequest": {
             "type": "object",
             "required": [
                 "projectRole"
@@ -3280,7 +3322,7 @@
                 }
             }
         },
-        "model.UpdateProjectRequest": {
+        "models.UpdateProjectRequest": {
             "type": "object",
             "required": [
                 "displayName"
@@ -3294,7 +3336,7 @@
                 }
             }
         },
-        "model.UserChangeRoleRequest": {
+        "models.UserChangeRoleRequest": {
             "type": "object",
             "required": [
                 "newRole"
@@ -3309,7 +3351,7 @@
                 }
             }
         },
-        "model.UserModel": {
+        "models.UserModel": {
             "type": "object",
             "properties": {
                 "accessToken": {
@@ -3341,7 +3383,7 @@
                 }
             }
         },
-        "model.UserRenameRequest": {
+        "models.UserRenameRequest": {
             "type": "object",
             "required": [
                 "newUsername",
@@ -3356,7 +3398,7 @@
                 }
             }
         },
-        "model.UserResetPasswordRequest": {
+        "models.UserResetPasswordRequest": {
             "type": "object",
             "required": [
                 "newPassword"
@@ -3372,7 +3414,7 @@
                 }
             }
         },
-        "model.UserSignInRequest": {
+        "models.UserSignInRequest": {
             "type": "object",
             "required": [
                 "password",
@@ -3387,7 +3429,7 @@
                 }
             }
         },
-        "model.UserSignOutRequest": {
+        "models.UserSignOutRequest": {
             "type": "object",
             "required": [
                 "userID"
@@ -3398,7 +3440,7 @@
                 }
             }
         },
-        "model.UserSignUpRequest": {
+        "models.UserSignUpRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -3433,7 +3475,7 @@
                 }
             }
         },
-        "model.UserUpdateRequest": {
+        "models.UserUpdateRequest": {
             "type": "object",
             "required": [
                 "email"

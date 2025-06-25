@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { appStatusToText, deleteApp, exportApps, listApps } from "@/api/app";
+import { appStatusToText, deleteApp, exportApps } from "@/api/app";
+import { listApps } from "@/api/env";
 import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -158,7 +159,7 @@ const columns: ColumnDef<appModel>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: "slug",
+        accessorKey: 'displayName',
         header: "应用",
         cell: ({ row }) =>
             h("div", { class: "space-y-1" }, [

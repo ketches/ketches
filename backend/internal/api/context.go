@@ -9,6 +9,7 @@ import (
 
 const contextKeyUserID = "user_id"
 const contextKeyUserRole = "user_role"
+const contextKeyProjectRole = "project_role"
 
 func SetUserID(ctx *gin.Context, userID string) {
 	ctx.Set(contextKeyUserID, userID)
@@ -16,6 +17,10 @@ func SetUserID(ctx *gin.Context, userID string) {
 
 func SetUserRole(ctx *gin.Context, userRole string) {
 	ctx.Set(contextKeyUserRole, userRole)
+}
+
+func SetProjectRole(ctx *gin.Context, projectRole string) {
+	ctx.Set(contextKeyProjectRole, projectRole)
 }
 
 func UserID(ctx context.Context) string {
@@ -34,6 +39,26 @@ func UserRole(ctx context.Context) string {
 	return userRole.(string)
 }
 
+func ProjectRole(ctx context.Context) string {
+	projectRole := ctx.Value(contextKeyProjectRole)
+	if projectRole == nil {
+		return ""
+	}
+	return projectRole.(string)
+}
+
 func IsAdmin(ctx context.Context) bool {
 	return UserRole(ctx) == app.UserRoleAdmin
+}
+
+func IsProjectOwner(ctx context.Context) bool {
+	return ProjectRole(ctx) == app.ProjectRoleOwner
+}
+
+func IsProjectDeveloper(ctx context.Context) bool {
+	return ProjectRole(ctx) == app.ProjectRoleDeveloper
+}
+
+func IsProjectViewer(ctx context.Context) bool {
+	return ProjectRole(ctx) == app.ProjectRoleViewer
 }

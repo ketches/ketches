@@ -12,9 +12,16 @@ type APIV1Route struct {
 
 func NewAPIV1Route(e *gin.Engine) *APIV1Route {
 	r := e.Group("/api/v1")
-	r.Use(middlewares.Auth())
+
+	// No authentication required for these routes
+	r.POST("/users/sign-in", handlers.UserSignIn)
+	r.POST("/users/sign-up", handlers.UserSignUp)
+	r.POST("/users/refresh-token", handlers.UserRefreshToken)
+	r.POST("/users/reset-password", handlers.UserResetPassword)
+
+	auth := r.Group("", middlewares.Auth())
 	return &APIV1Route{
-		RouterGroup: r,
+		RouterGroup: auth,
 	}
 }
 
@@ -28,16 +35,18 @@ func (r *APIV1Route) Register() {
 
 func registerClusterRoute(r *APIV1Route) {
 	clusters := r.Group("/clusters")
-
-	clusters.GET("", handlers.ListClusters)
 	clusters.GET("/refs", handlers.AllClusterRefs)
-	clusters.GET("/:clusterID", handlers.GetCluster)
 	clusters.GET("/:clusterID/ref", handlers.GetClusterRef)
-	clusters.POST("", handlers.CreateCluster)
-	clusters.PUT("/:clusterID", handlers.UpdateCluster)
-	clusters.DELETE("/:clusterID", handlers.DeleteCluster)
-	clusters.PUT("/:clusterID/enable", handlers.EnableCluster)
-	clusters.PUT("/:clusterID/disable", handlers.DisableCluster)
+
+	// Routes that require admin permissions
+	adminOnly := clusters.Group("", middlewares.AdminOnly())
+	adminOnly.GET("", handlers.ListClusters)
+	adminOnly.GET("/:clusterID", handlers.GetCluster)
+	adminOnly.POST("", handlers.CreateCluster)
+	adminOnly.PUT("/:clusterID", handlers.UpdateCluster)
+	adminOnly.DELETE("/:clusterID", handlers.DeleteCluster)
+	adminOnly.PUT("/:clusterID/enable", handlers.EnableCluster)
+	adminOnly.PUT("/:clusterID/disable", handlers.DisableCluster)
 }
 
 func registerUserRoute(r *APIV1Route) {
@@ -45,10 +54,7 @@ func registerUserRoute(r *APIV1Route) {
 
 	users.GET("", handlers.ListUsers)
 	users.GET("/:userID", handlers.GetUser)
-	users.POST("/sign-up", handlers.UserSignUp)
-	users.POST("/sign-in", handlers.UserSignIn)
 	users.POST("/sign-out", handlers.UserSignOut)
-	users.POST("/refresh-token", handlers.UserRefreshToken)
 	users.PUT("/:userID", handlers.UserUpdate)
 	users.PUT("/:userID/reset-password", handlers.UserResetPassword)
 	users.PUT("/:userID/rename", handlers.UserRename)
@@ -56,49 +62,70 @@ func registerUserRoute(r *APIV1Route) {
 }
 
 func registerProjectRoute(r *APIV1Route) {
-	projects := r.Group("/projects")
+	projects := r.Group("/projects", middlewares.ProjectMember())
 
 	projects.GET("", handlers.ListProjects)
 	projects.GET("/refs", handlers.AllProjectRefs)
-	projects.GET("/:projectID", handlers.GetProject)
-	projects.GET("/:projectID/ref", handlers.GetProjectRef)
 	projects.POST("", handlers.CreateProject)
-	projects.PUT("/:projectID", handlers.UpdateProject)
-	projects.DELETE("/:projectID", handlers.DeleteProject)
 
-	projects.GET("/:projectID/members", handlers.ListProjectMembers)
-	projects.GET("/:projectID/members/addable", handlers.ListAddableProjectMembers)
-	projects.POST("/:projectID/members", handlers.AddProjectMembers)
-	projects.PUT("/:projectID/members/:userID", handlers.UpdateProjectMember)
-	projects.DELETE("/:projectID/members", handlers.RemoveProjectMember)
+	// Routes that require project membership
+	projectMember := projects.Group("/:projectID", middlewares.ProjectMember())
+	projectMember.GET("", handlers.GetProject)
+	projectMember.GET("/ref", handlers.GetProjectRef)
+	projectMember.GET("/members", handlers.ListProjectMembers)
+	projectMember.GET("/members/addable", handlers.ListAddableProjectMembers)
+	projectMember.GET("/envs", handlers.ListEnvs)
+	projectMember.GET("/envs/refs", handlers.AllEnvRefs)
+
+	// Routes that require project owner role
+	projectOwner := projects.Group("/:projectID", middlewares.ProjectOwnerOnly())
+	projectOwner.PUT("", handlers.UpdateProject)
+	projectOwner.DELETE("", handlers.DeleteProject)
+	projectOwner.POST("/members", handlers.AddProjectMembers)
+	projectOwner.PUT("/members/:userID", handlers.UpdateProjectMember)
+	projectOwner.DELETE("/members", handlers.RemoveProjectMember)
+
+	// Routes that require project developer or above role
+	projectDeveloper := projects.Group("/:projectID", middlewares.ProjectDeveloperOrAbove())
+	projectDeveloper.POST("/envs", handlers.CreateEnv)
 }
 
 func registerEnvRoute(r *APIV1Route) {
-	envs := r.Group("/envs")
+	envs := r.Group("/envs/:envID")
 
-	envs.GET("", handlers.ListEnvs)
-	envs.GET("/refs", handlers.AllEnvRefs)
-	envs.GET("/:envID", handlers.GetEnv)
-	envs.GET("/:envID/ref", handlers.GetEnvRef)
-	envs.POST("", handlers.CreateEnv)
-	envs.PUT("/:envID", handlers.UpdateEnv)
-	envs.DELETE("/:envID", handlers.DeleteEnv)
+	// Routes that require project membership
+	projectMember := envs.Group("", middlewares.ProjectMember())
+	projectMember.GET("", handlers.GetEnv)
+	projectMember.GET("/ref", handlers.GetEnvRef)
+	projectMember.GET("/apps", handlers.ListApps)
+	projectMember.GET("/apps/refs", handlers.AllAppRefs)
+
+	// Routes that require project owner role
+	projectOwner := envs.Group("", middlewares.ProjectOwnerOnly())
+	projectOwner.PUT("", handlers.UpdateEnv)
+	projectOwner.DELETE("", handlers.DeleteEnv)
+
+	// Routes that require project developer or above role
+	projectDeveloper := envs.Group("", middlewares.ProjectDeveloperOrAbove())
+	projectDeveloper.POST("", handlers.CreateApp)
 }
 
 func registerAppRoute(r *APIV1Route) {
-	apps := r.Group("/apps")
+	apps := r.Group("/apps/:appID")
 
-	apps.GET("", handlers.ListApps)
-	apps.GET("/refs", handlers.AllAppRefs)
-	apps.GET("/:appID", handlers.GetApp)
-	apps.GET("/:appID/ref", handlers.GetAppRef)
-	apps.POST("", handlers.CreateApp)
-	apps.PUT("/:appID", handlers.UpdateApp)
-	apps.DELETE("/:appID", handlers.DeleteApp)
-	apps.PUT("/:appID/image", handlers.UpdateAppImage)
-	apps.POST("/:appID/action", handlers.AppAction)
-	apps.GET("/:appID/instances", handlers.ListAppInstances)
-	apps.DELETE("/:appID/instances", handlers.TerminateAppInstance)
-	apps.GET("/:appID/instances/:instanceName/containers/:containerName/logs", handlers.ViewAppContainerLogs)
-	apps.GET("/:appID/instances/:instanceName/containers/:containerName/exec", handlers.ExecAppContainerTerminal)
+	// Routes that require project membership (read-only)
+	appMember := apps.Group("", middlewares.ProjectMember())
+	appMember.GET("", handlers.GetApp)
+	appMember.GET("/ref", handlers.GetAppRef)
+	appMember.GET("/instances", handlers.ListAppInstances)
+
+	// Routes that require developer or owner role (read-write)
+	appDeveloper := apps.Group("", middlewares.ProjectDeveloperOrAbove())
+	appDeveloper.PUT("", handlers.UpdateApp)
+	appDeveloper.DELETE("", handlers.DeleteApp)
+	appDeveloper.PUT("/image", handlers.UpdateAppImage)
+	appDeveloper.POST("/action", handlers.AppAction)
+	appDeveloper.DELETE("/instances", handlers.TerminateAppInstance)
+	appDeveloper.GET("/instances/:instanceName/containers/:containerName/logs", handlers.ViewAppContainerLogs)
+	appDeveloper.GET("/instances/:instanceName/containers/:containerName/exec", handlers.ExecAppContainerTerminal)
 }

@@ -64,7 +64,7 @@ func Instance() *gorm.DB {
 		log.Fatalf("error connecting to database, %v", err)
 	}
 
-	// Migrate(instance)
+	Migrate(instance)
 
 	return instance
 }

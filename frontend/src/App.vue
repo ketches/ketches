@@ -31,24 +31,26 @@ watch(
 
     await router.isReady();
 
-    switch (routeName) {
-      case "appPage":
-        const appID = route.params.id as string;
-        if (appID != activeAppRef.value?.appID) {
-          await resourceRefStore.initFromAppID(appID);
-        }
-        break;
-      case "envPage":
-        const envID = route.params.id as string;
-        if (envID != activeEnvRef.value?.envID) {
-          await resourceRefStore.initFromEnvID(envID);
-        }
-        break;
-      default:
-        if (!activeProjectRef.value?.projectID) {
-          await resourceRefStore.initFromProject();
-        }
-        break;
+    if (user.value) {
+      switch (routeName) {
+        case "appPage":
+          const appID = route.params.id as string;
+          if (appID != activeAppRef.value?.appID) {
+            await resourceRefStore.initFromAppID(appID);
+          }
+          break;
+        case "envPage":
+          const envID = route.params.id as string;
+          if (envID != activeEnvRef.value?.envID) {
+            await resourceRefStore.initFromEnvID(envID);
+          }
+          break;
+        default:
+          if (!activeProjectRef.value?.projectID) {
+            await resourceRefStore.initFromProject();
+          }
+          break;
+      }
     }
   },
   { immediate: true }

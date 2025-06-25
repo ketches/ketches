@@ -54,23 +54,23 @@ User panel
 
 - [ ] Project management(WIP)
   - [x] Project membership management
-- [ ] Environment management(WIP)
-- [ ] Application management(WIP)
-  - [x] Deploy application in container image format
-  - [ ] Deploy application in kubernetes manifest format
-  - [ ] Deploy application in source code format
-  - [ ] Deploy application from AppHub
-  - [ ] Application environment variables management
-  - [ ] Application volume management
-  - [ ] Application mutli-container management(Plugins)
-  - [ ] Application gateway management
-  - [ ] Application health check management
-  - [ ] Application scaling management
-  - [ ] Application schedule management
-  - [x] Application instance container logs
-  - [x] Application instance container terminal
-  - [ ] Application observability(Need cluster extension installed)
-  - [ ] Application logs archive(Need cluster extension installed)
+- [ ] Env management(WIP)
+- [ ] App management(WIP)
+  - [x] Deploy app in container image format
+  - [ ] Deploy app in kubernetes manifest format
+  - [ ] Deploy app in source code format
+  - [ ] Deploy app from AppHub
+  - [ ] App environment variables management
+  - [ ] App volume management
+  - [ ] App mutli-container management(Plugins)
+  - [ ] App gateway management
+  - [ ] App health check management
+  - [ ] App scaling management
+  - [ ] App schedule management
+  - [x] App instance container logs
+  - [x] App instance container terminal
+  - [ ] App observability(Need cluster extension installed)
+  - [ ] App logs archive(Need cluster extension installed)
 - [ ] Volume management(WIP)
 - [ ] AppHub management(WIP)
 

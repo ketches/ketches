@@ -38,8 +38,7 @@ type AppModel struct {
 
 type ListAppsRequest struct {
 	api.QueryAndPagedFilter `form:",inline"`
-	EnvID                   string `form:"envID"`
-	ProjectID               string `form:"projectID"`
+	EnvID                   string `uri:"envID"`
 }
 
 type ListAppsResponse struct {
@@ -48,7 +47,7 @@ type ListAppsResponse struct {
 }
 
 type AllAppRefsRequest struct {
-	EnvID string `form:"envID" binding:"required"`
+	EnvID string `uri:"envID" binding:"required"`
 }
 
 type GetAppRefRequest struct {
@@ -68,7 +67,7 @@ type GetAppRequest struct {
 }
 
 type CreateAppRequest struct {
-	EnvID            string `json:"envID" binding:"required"`
+	EnvID            string `uri:"envID"`
 	Slug             string `json:"slug" binding:"required"`
 	DisplayName      string `json:"displayName" binding:"required"`
 	Description      string `json:"description,omitempty"`

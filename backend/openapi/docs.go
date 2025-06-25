@@ -15,168 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/apps": {
-            "get": {
-                "description": "List apps",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "App"
-                ],
-                "summary": "List Apps",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "name": "envID",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "name": "pageNo",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "name": "pageSize",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "projectID",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "query",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "sortOrder",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.ListAppsResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Create a new app",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "App"
-                ],
-                "summary": "Create App",
-                "parameters": [
-                    {
-                        "description": "App data",
-                        "name": "app",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.CreateAppRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.AppModel"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/apps/refs": {
-            "get": {
-                "description": "Get all apps for refs under a specific environment",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "App"
-                ],
-                "summary": "All App Refs Under Environment",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "name": "envID",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/model.AppRef"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/apps/{appID}": {
             "get": {
                 "description": "Get app by app ID",
@@ -211,7 +49,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppModel"
+                                            "$ref": "#/definitions/models.AppModel"
                                         }
                                     }
                                 }
@@ -246,7 +84,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateAppRequest"
+                            "$ref": "#/definitions/models.UpdateAppRequest"
                         }
                     }
                 ],
@@ -262,7 +100,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppModel"
+                                            "$ref": "#/definitions/models.AppModel"
                                         }
                                     }
                                 }
@@ -329,7 +167,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.AppActionRequest"
+                            "$ref": "#/definitions/models.AppActionRequest"
                         }
                     }
                 ],
@@ -345,7 +183,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppModel"
+                                            "$ref": "#/definitions/models.AppModel"
                                         }
                                     }
                                 }
@@ -382,7 +220,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateAppImageRequest"
+                            "$ref": "#/definitions/models.UpdateAppImageRequest"
                         }
                     }
                 ],
@@ -398,7 +236,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppModel"
+                                            "$ref": "#/definitions/models.AppModel"
                                         }
                                     }
                                 }
@@ -444,7 +282,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.AppInstanceModel"
+                                                "$ref": "#/definitions/models.AppInstanceModel"
                                             }
                                         }
                                     }
@@ -482,7 +320,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.TerminateAppInstanceRequest"
+                            "$ref": "#/definitions/models.TerminateAppInstanceRequest"
                         }
                     }
                 ],
@@ -537,7 +375,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ExecAppContainerTerminalRequest"
+                            "$ref": "#/definitions/models.ExecAppContainerTerminalRequest"
                         }
                     }
                 ],
@@ -689,7 +527,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AppRef"
+                                            "$ref": "#/definitions/models.AppRef"
                                         }
                                     }
                                 }
@@ -751,7 +589,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ListClustersResponse"
+                                            "$ref": "#/definitions/models.ListClustersResponse"
                                         }
                                     }
                                 }
@@ -779,7 +617,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateClusterRequest"
+                            "$ref": "#/definitions/models.CreateClusterRequest"
                         }
                     }
                 ],
@@ -795,7 +633,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ClusterModel"
+                                            "$ref": "#/definitions/models.ClusterModel"
                                         }
                                     }
                                 }
@@ -832,7 +670,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ClusterRef"
+                                                "$ref": "#/definitions/models.ClusterRef"
                                             }
                                         }
                                     }
@@ -877,7 +715,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ClusterModel"
+                                            "$ref": "#/definitions/models.ClusterModel"
                                         }
                                     }
                                 }
@@ -912,7 +750,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateClusterRequest"
+                            "$ref": "#/definitions/models.UpdateClusterRequest"
                         }
                     }
                 ],
@@ -928,7 +766,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ClusterModel"
+                                            "$ref": "#/definitions/models.ClusterModel"
                                         }
                                     }
                                 }
@@ -1063,164 +901,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ClusterRef"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/envs": {
-            "get": {
-                "description": "List envs",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Env"
-                ],
-                "summary": "List Envs",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "name": "pageNo",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "name": "pageSize",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "projectID",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "query",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "name": "sortOrder",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.ListEnvsResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Create a new env",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Env"
-                ],
-                "summary": "Create Env",
-                "parameters": [
-                    {
-                        "description": "Create Env Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.CreateEnvRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.EnvModel"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/envs/refs": {
-            "get": {
-                "description": "Get all envs for refs under a specific cluster",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Env"
-                ],
-                "summary": "All Env Refs Under Cluster",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "name": "projectID",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/model.EnvRef"
-                                            }
+                                            "$ref": "#/definitions/models.ClusterRef"
                                         }
                                     }
                                 }
@@ -1264,7 +945,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.EnvModel"
+                                            "$ref": "#/definitions/models.EnvModel"
                                         }
                                     }
                                 }
@@ -1299,7 +980,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateEnvRequest"
+                            "$ref": "#/definitions/models.UpdateEnvRequest"
                         }
                     }
                 ],
@@ -1315,7 +996,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.EnvModel"
+                                            "$ref": "#/definitions/models.EnvModel"
                                         }
                                     }
                                 }
@@ -1355,6 +1036,184 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/envs/{envID}/apps": {
+            "get": {
+                "description": "List apps under a specific env",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Env"
+                ],
+                "summary": "List Apps Under Env",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Env ID",
+                        "name": "envID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "envID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageNo",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "sortOrder",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ListAppsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new app under a specific env",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "Create App Under Env",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Env ID",
+                        "name": "envID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "App data",
+                        "name": "app",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateAppRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/envs/{envID}/apps/refs": {
+            "get": {
+                "description": "Get all apps for refs under a specific env",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "All App Refs Under Env",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Env ID",
+                        "name": "envID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "envID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.AppRef"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/envs/{envID}/ref": {
             "get": {
                 "description": "Get env ref by env ID",
@@ -1389,7 +1248,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.EnvRef"
+                                            "$ref": "#/definitions/models.EnvRef"
                                         }
                                     }
                                 }
@@ -1456,7 +1315,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ListProjectResponse"
+                                            "$ref": "#/definitions/models.ListProjectResponse"
                                         }
                                     }
                                 }
@@ -1484,7 +1343,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateProjectRequest"
+                            "$ref": "#/definitions/models.CreateProjectRequest"
                         }
                     }
                 ],
@@ -1500,7 +1359,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectModel"
+                                            "$ref": "#/definitions/models.ProjectModel"
                                         }
                                     }
                                 }
@@ -1537,7 +1396,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ProjectRef"
+                                                "$ref": "#/definitions/models.ProjectRef"
                                             }
                                         }
                                     }
@@ -1582,7 +1441,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectModel"
+                                            "$ref": "#/definitions/models.ProjectModel"
                                         }
                                     }
                                 }
@@ -1617,7 +1476,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateProjectRequest"
+                            "$ref": "#/definitions/models.UpdateProjectRequest"
                         }
                     }
                 ],
@@ -1633,7 +1492,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectModel"
+                                            "$ref": "#/definitions/models.ProjectModel"
                                         }
                                     }
                                 }
@@ -1666,6 +1525,184 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{projectID}/envs": {
+            "get": {
+                "description": "List envs under a specific project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "List Envs Under Project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageNo",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "projectID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "sortOrder",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ListEnvsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new env under a specific project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Create Env Under Project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Create Env Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateEnvRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.EnvModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{projectID}/envs/refs": {
+            "get": {
+                "description": "Get all envs for refs under a specific project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Env"
+                ],
+                "summary": "All Env Refs Under Project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "projectID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.EnvRef"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
                     }
                 }
             }
@@ -1729,7 +1766,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ListProjectMembersResponse"
+                                            "$ref": "#/definitions/models.ListProjectMembersResponse"
                                         }
                                     }
                                 }
@@ -1764,7 +1801,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.AddProjectMembersRequest"
+                            "$ref": "#/definitions/models.AddProjectMembersRequest"
                         }
                     }
                 ],
@@ -1782,7 +1819,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ProjectMemberModel"
+                                                "$ref": "#/definitions/models.ProjectMemberModel"
                                             }
                                         }
                                     }
@@ -1856,7 +1893,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.ProjectMemberModel"
+                                                "$ref": "#/definitions/models.ProjectMemberModel"
                                             }
                                         }
                                     }
@@ -1901,7 +1938,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateProjectMemberRequest"
+                            "$ref": "#/definitions/models.UpdateProjectMemberRequest"
                         }
                     }
                 ],
@@ -1917,7 +1954,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectMemberModel"
+                                            "$ref": "#/definitions/models.ProjectMemberModel"
                                         }
                                     }
                                 }
@@ -1961,7 +1998,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ProjectRef"
+                                            "$ref": "#/definitions/models.ProjectRef"
                                         }
                                     }
                                 }
@@ -2028,7 +2065,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.ListUsersResponse"
+                                            "$ref": "#/definitions/models.ListUsersResponse"
                                         }
                                     }
                                 }
@@ -2063,7 +2100,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2093,7 +2130,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserSignInRequest"
+                            "$ref": "#/definitions/models.UserSignInRequest"
                         }
                     }
                 ],
@@ -2109,53 +2146,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/users/sign-out": {
-            "post": {
-                "description": "Sign out user by clearing cookies",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User"
-                ],
-                "summary": "Sign Out User",
-                "parameters": [
-                    {
-                        "description": "User sign out request",
-                        "name": "user",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.UserSignOutRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2185,7 +2176,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserSignUpRequest"
+                            "$ref": "#/definitions/models.UserSignUpRequest"
                         }
                     }
                 ],
@@ -2201,7 +2192,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2245,7 +2236,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2280,7 +2271,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserUpdateRequest"
+                            "$ref": "#/definitions/models.UserUpdateRequest"
                         }
                     }
                 ],
@@ -2296,7 +2287,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2331,7 +2322,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.DeleteUserRequest"
+                            "$ref": "#/definitions/models.DeleteUserRequest"
                         }
                     }
                 ],
@@ -2347,7 +2338,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2384,7 +2375,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserChangeRoleRequest"
+                            "$ref": "#/definitions/models.UserChangeRoleRequest"
                         }
                     }
                 ],
@@ -2400,7 +2391,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2437,7 +2428,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserRenameRequest"
+                            "$ref": "#/definitions/models.UserRenameRequest"
                         }
                     }
                 ],
@@ -2453,7 +2444,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2490,7 +2481,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserResetPasswordRequest"
+                            "$ref": "#/definitions/models.UserResetPasswordRequest"
                         }
                     }
                 ],
@@ -2506,7 +2497,60 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserModel"
+                                            "$ref": "#/definitions/models.UserModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{userID}/sign-out": {
+            "post": {
+                "description": "Sign out user by clearing cookies",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Sign Out User",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User sign out request",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UserSignOutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.UserModel"
                                         }
                                     }
                                 }
@@ -2571,7 +2615,7 @@ const docTemplate = `{
                 "WorkloadTypeStatefulSet"
             ]
         },
-        "model.AddProjectMembersRequest": {
+        "models.AddProjectMembersRequest": {
             "type": "object",
             "required": [
                 "projectMembers"
@@ -2581,12 +2625,12 @@ const docTemplate = `{
                     "type": "array",
                     "uniqueItems": true,
                     "items": {
-                        "$ref": "#/definitions/model.ProjectMemberRole"
+                        "$ref": "#/definitions/models.ProjectMemberRole"
                     }
                 }
             }
         },
-        "model.AppActionRequest": {
+        "models.AppActionRequest": {
             "type": "object",
             "required": [
                 "action"
@@ -2609,7 +2653,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.AppInstanceContainerModel": {
+        "models.AppInstanceContainerModel": {
             "type": "object",
             "properties": {
                 "containerName": {
@@ -2623,7 +2667,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.AppInstanceModel": {
+        "models.AppInstanceModel": {
             "type": "object",
             "properties": {
                 "appID": {
@@ -2635,13 +2679,13 @@ const docTemplate = `{
                 "containers": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.AppInstanceContainerModel"
+                        "$ref": "#/definitions/models.AppInstanceContainerModel"
                     }
                 },
                 "initContainers": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.AppInstanceContainerModel"
+                        "$ref": "#/definitions/models.AppInstanceContainerModel"
                     }
                 },
                 "instanceIP": {
@@ -2684,7 +2728,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.AppModel": {
+        "models.AppModel": {
             "type": "object",
             "properties": {
                 "actualReplicas": {
@@ -2777,7 +2821,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.AppRef": {
+        "models.AppRef": {
             "type": "object",
             "properties": {
                 "appID": {
@@ -2797,7 +2841,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ClusterModel": {
+        "models.ClusterModel": {
             "type": "object",
             "properties": {
                 "clusterID": {
@@ -2820,7 +2864,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ClusterRef": {
+        "models.ClusterRef": {
             "type": "object",
             "properties": {
                 "clusterID": {
@@ -2834,12 +2878,11 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateAppRequest": {
+        "models.CreateAppRequest": {
             "type": "object",
             "required": [
                 "containerImage",
                 "displayName",
-                "envID",
                 "replicas",
                 "slug",
                 "workloadType"
@@ -2900,7 +2943,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateClusterRequest": {
+        "models.CreateClusterRequest": {
             "type": "object",
             "required": [
                 "displayName",
@@ -2922,12 +2965,11 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateEnvRequest": {
+        "models.CreateEnvRequest": {
             "type": "object",
             "required": [
                 "clusterID",
                 "displayName",
-                "projectID",
                 "slug"
             ],
             "properties": {
@@ -2948,7 +2990,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateProjectRequest": {
+        "models.CreateProjectRequest": {
             "type": "object",
             "required": [
                 "displayName",
@@ -2966,7 +3008,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.DeleteUserRequest": {
+        "models.DeleteUserRequest": {
             "type": "object",
             "required": [
                 "password"
@@ -2977,7 +3019,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.EnvModel": {
+        "models.EnvModel": {
             "type": "object",
             "properties": {
                 "clusterID": {
@@ -3003,7 +3045,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.EnvRef": {
+        "models.EnvRef": {
             "type": "object",
             "properties": {
                 "displayName": {
@@ -3020,7 +3062,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ExecAppContainerTerminalRequest": {
+        "models.ExecAppContainerTerminalRequest": {
             "type": "object",
             "properties": {
                 "appID": {
@@ -3034,13 +3076,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ListAppsResponse": {
+        "models.ListAppsResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.AppModel"
+                        "$ref": "#/definitions/models.AppModel"
                     }
                 },
                 "total": {
@@ -3048,13 +3090,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ListClustersResponse": {
+        "models.ListClustersResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.ClusterModel"
+                        "$ref": "#/definitions/models.ClusterModel"
                     }
                 },
                 "total": {
@@ -3062,13 +3104,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ListEnvsResponse": {
+        "models.ListEnvsResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.EnvModel"
+                        "$ref": "#/definitions/models.EnvModel"
                     }
                 },
                 "total": {
@@ -3076,13 +3118,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ListProjectMembersResponse": {
+        "models.ListProjectMembersResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.ProjectMemberModel"
+                        "$ref": "#/definitions/models.ProjectMemberModel"
                     }
                 },
                 "total": {
@@ -3090,13 +3132,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ListProjectResponse": {
+        "models.ListProjectResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.ProjectModel"
+                        "$ref": "#/definitions/models.ProjectModel"
                     }
                 },
                 "total": {
@@ -3104,13 +3146,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ListUsersResponse": {
+        "models.ListUsersResponse": {
             "type": "object",
             "properties": {
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.UserModel"
+                        "$ref": "#/definitions/models.UserModel"
                     }
                 },
                 "total": {
@@ -3118,7 +3160,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ProjectMemberModel": {
+        "models.ProjectMemberModel": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -3147,7 +3189,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ProjectMemberRole": {
+        "models.ProjectMemberRole": {
             "type": "object",
             "required": [
                 "projectRole"
@@ -3166,7 +3208,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ProjectModel": {
+        "models.ProjectModel": {
             "type": "object",
             "properties": {
                 "description": {
@@ -3183,7 +3225,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ProjectRef": {
+        "models.ProjectRef": {
             "type": "object",
             "properties": {
                 "displayName": {
@@ -3197,7 +3239,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.TerminateAppInstanceRequest": {
+        "models.TerminateAppInstanceRequest": {
             "type": "object",
             "required": [
                 "instanceName"
@@ -3211,7 +3253,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdateAppImageRequest": {
+        "models.UpdateAppImageRequest": {
             "type": "object",
             "required": [
                 "containerImage"
@@ -3228,7 +3270,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdateAppRequest": {
+        "models.UpdateAppRequest": {
             "type": "object",
             "required": [
                 "displayName"
@@ -3242,7 +3284,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdateClusterRequest": {
+        "models.UpdateClusterRequest": {
             "type": "object",
             "required": [
                 "displayName",
@@ -3260,7 +3302,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdateEnvRequest": {
+        "models.UpdateEnvRequest": {
             "type": "object",
             "required": [
                 "displayName"
@@ -3277,7 +3319,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdateProjectMemberRequest": {
+        "models.UpdateProjectMemberRequest": {
             "type": "object",
             "required": [
                 "projectRole"
@@ -3288,7 +3330,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdateProjectRequest": {
+        "models.UpdateProjectRequest": {
             "type": "object",
             "required": [
                 "displayName"
@@ -3302,7 +3344,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UserChangeRoleRequest": {
+        "models.UserChangeRoleRequest": {
             "type": "object",
             "required": [
                 "newRole"
@@ -3317,7 +3359,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UserModel": {
+        "models.UserModel": {
             "type": "object",
             "properties": {
                 "accessToken": {
@@ -3349,7 +3391,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UserRenameRequest": {
+        "models.UserRenameRequest": {
             "type": "object",
             "required": [
                 "newUsername",
@@ -3364,7 +3406,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UserResetPasswordRequest": {
+        "models.UserResetPasswordRequest": {
             "type": "object",
             "required": [
                 "newPassword"
@@ -3380,7 +3422,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UserSignInRequest": {
+        "models.UserSignInRequest": {
             "type": "object",
             "required": [
                 "password",
@@ -3395,7 +3437,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UserSignOutRequest": {
+        "models.UserSignOutRequest": {
             "type": "object",
             "required": [
                 "userID"
@@ -3406,7 +3448,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UserSignUpRequest": {
+        "models.UserSignUpRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -3441,7 +3483,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UserUpdateRequest": {
+        "models.UserUpdateRequest": {
             "type": "object",
             "required": [
                 "email"

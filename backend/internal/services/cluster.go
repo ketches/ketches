@@ -8,7 +8,7 @@ import (
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
-	"github.com/ketches/ketches/internal/db/entity"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 )
 
@@ -36,10 +36,10 @@ func NewClusterService() ClusterService {
 
 func (s *clusterService) ListClusters(ctx context.Context, req *models.ListClustersRequest) (*models.ListClustersResponse, app.Error) {
 	if !api.IsAdmin(ctx) {
-		return nil, app.NewError(http.StatusForbidden, "only admins can create clusters")
+		return nil, app.ErrPermissionDenied
 	}
 
-	query := db.Instance().Model(&entity.Cluster{})
+	query := db.Instance().Model(&entities.Cluster{})
 	if len(req.Query) > 0 {
 		query = db.CaseInsensitiveLike(query, req.Query, "slug", "display_name")
 	}
@@ -50,7 +50,7 @@ func (s *clusterService) ListClusters(ctx context.Context, req *models.ListClust
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	var clusters []*entity.Cluster
+	var clusters []*entities.Cluster
 	if err := req.PagedSQL(query).Find(&clusters).Error; err != nil {
 		log.Printf("failed to list clusters for user %s: %v", api.UserID(ctx), err)
 		return nil, app.ErrDatabaseOperationFailed
@@ -80,7 +80,7 @@ func (s *clusterService) ListClusters(ctx context.Context, req *models.ListClust
 
 func (s *clusterService) AllClusterRefs(ctx context.Context) ([]*models.ClusterRef, app.Error) {
 	result := []*models.ClusterRef{}
-	if err := db.Instance().Model(&entity.Cluster{}).Where("enabled = ?", true).Find(&result).Error; err != nil {
+	if err := db.Instance().Model(&entities.Cluster{}).Where("enabled = ?", true).Find(&result).Error; err != nil {
 		log.Printf("failed to list cluster refs: %v", err)
 		return nil, app.ErrDatabaseOperationFailed
 	}
@@ -90,10 +90,10 @@ func (s *clusterService) AllClusterRefs(ctx context.Context) ([]*models.ClusterR
 
 func (s *clusterService) GetCluster(ctx context.Context, req *models.GetClusterRequest) (*models.ClusterModel, app.Error) {
 	if !api.IsAdmin(ctx) {
-		return nil, app.NewError(http.StatusForbidden, "only admins can create clusters")
+		return nil, app.ErrPermissionDenied
 	}
 
-	cluster := &entity.Cluster{}
+	cluster := &entities.Cluster{}
 	if err := db.Instance().Where("id = ?", req.ClusterID).First(cluster).Error; err != nil {
 		log.Printf("failed to get cluster %s for user %s: %v", req.ClusterID, api.UserID(ctx), err)
 		if db.IsErrRecordNotFound(err) {
@@ -118,7 +118,7 @@ func (s *clusterService) GetCluster(ctx context.Context, req *models.GetClusterR
 
 func (s *clusterService) GetClusterRef(ctx context.Context, req *models.GetClusterRefRequest) (*models.ClusterRef, app.Error) {
 	result := &models.ClusterRef{}
-	if err := db.Instance().Model(&entity.Cluster{}).First(result, "id = ?", req.ClusterID).Error; err != nil {
+	if err := db.Instance().Model(&entities.Cluster{}).First(result, "id = ?", req.ClusterID).Error; err != nil {
 		if db.IsErrRecordNotFound(err) {
 			return nil, app.NewError(http.StatusNotFound, "Cluster not found")
 		}
@@ -130,16 +130,16 @@ func (s *clusterService) GetClusterRef(ctx context.Context, req *models.GetClust
 
 func (s *clusterService) CreateCluster(ctx context.Context, req *models.CreateClusterRequest) (*models.ClusterModel, app.Error) {
 	if !api.IsAdmin(ctx) {
-		return nil, app.NewError(http.StatusForbidden, "only admins can create clusters")
+		return nil, app.ErrPermissionDenied
 	}
 
-	cluster := &entity.Cluster{
+	cluster := &entities.Cluster{
 		Slug:        req.Slug,
 		DisplayName: req.DisplayName,
 		KubeConfig:  req.KubeConfig,
 		Description: req.Description,
 		Enabled:     true,
-		AuditBase: entity.AuditBase{
+		AuditBase: entities.AuditBase{
 			CreatedBy: api.UserID(ctx),
 			UpdatedBy: api.UserID(ctx),
 		},
@@ -165,10 +165,10 @@ func (s *clusterService) CreateCluster(ctx context.Context, req *models.CreateCl
 
 func (s *clusterService) UpdateCluster(ctx context.Context, req *models.UpdateClusterRequest) (*models.ClusterModel, app.Error) {
 	if !api.IsAdmin(ctx) {
-		return nil, app.NewError(http.StatusForbidden, "only admins can update clusters")
+		return nil, app.ErrPermissionDenied
 	}
 
-	cluster := &entity.Cluster{}
+	cluster := &entities.Cluster{}
 	if err := db.Instance().Where("id = ?", req.ClusterID).First(cluster).Error; err != nil {
 		log.Printf("failed to get cluster %s for user %s: %v", req.ClusterID, api.UserID(ctx), err)
 		if db.IsErrRecordNotFound(err) {
@@ -181,12 +181,12 @@ func (s *clusterService) UpdateCluster(ctx context.Context, req *models.UpdateCl
 	cluster.KubeConfig = req.KubeConfig
 	cluster.Description = req.Description
 
-	if err := db.Instance().Updates(&entity.Cluster{
+	if err := db.Instance().Updates(&entities.Cluster{
 		UUIDBase:    cluster.UUIDBase,
 		DisplayName: cluster.DisplayName,
 		KubeConfig:  cluster.KubeConfig,
 		Description: cluster.Description,
-		AuditBase: entity.AuditBase{
+		AuditBase: entities.AuditBase{
 			UpdatedBy: api.UserID(ctx),
 		},
 	}).Error; err != nil {
@@ -206,11 +206,11 @@ func (s *clusterService) UpdateCluster(ctx context.Context, req *models.UpdateCl
 
 func (s *clusterService) DeleteCluster(ctx context.Context, req *models.DeleteClusterRequest) app.Error {
 	if !api.IsAdmin(ctx) {
-		return app.NewError(http.StatusForbidden, "only admins can delete clusters")
+		return app.ErrPermissionDenied
 	}
 
 	var envCount int64
-	if err := db.Instance().Model(&entity.Env{}).Where("cluster_id = ?", req.ClusterID).Count(&envCount).Error; err != nil {
+	if err := db.Instance().Model(&entities.Env{}).Where("cluster_id = ?", req.ClusterID).Count(&envCount).Error; err != nil {
 		log.Printf("failed to count environments for cluster %s for user %s: %v", req.ClusterID, api.UserID(ctx), err)
 		return app.ErrDatabaseOperationFailed
 	}
@@ -219,7 +219,7 @@ func (s *clusterService) DeleteCluster(ctx context.Context, req *models.DeleteCl
 		return app.NewError(http.StatusConflict, "cluster has associated environments")
 	}
 
-	if err := db.Instance().Delete(&entity.Cluster{}, "id = ?", req.ClusterID).Error; err != nil {
+	if err := db.Instance().Delete(&entities.Cluster{}, "id = ?", req.ClusterID).Error; err != nil {
 		log.Printf("failed to delete cluster %s for user %s: %v", req.ClusterID, api.UserID(ctx), err)
 		return app.ErrDatabaseOperationFailed
 	}
@@ -229,14 +229,14 @@ func (s *clusterService) DeleteCluster(ctx context.Context, req *models.DeleteCl
 
 func (s *clusterService) EnableCluster(ctx context.Context, req *models.EnabledClusterRequest) app.Error {
 	if !api.IsAdmin(ctx) {
-		return app.NewError(http.StatusForbidden, "only admins can enable clusters")
+		return app.ErrPermissionDenied
 	}
 
-	if err := db.Instance().Updates(&entity.Cluster{
-		UUIDBase: entity.UUIDBase{
+	if err := db.Instance().Updates(&entities.Cluster{
+		UUIDBase: entities.UUIDBase{
 			ID: req.ClusterID},
 		Enabled: true,
-		AuditBase: entity.AuditBase{
+		AuditBase: entities.AuditBase{
 			UpdatedBy: api.UserID(ctx),
 		},
 	}).Error; err != nil {
@@ -249,15 +249,15 @@ func (s *clusterService) EnableCluster(ctx context.Context, req *models.EnabledC
 
 func (s *clusterService) DisableCluster(ctx context.Context, req *models.DisableClusterRequest) app.Error {
 	if !api.IsAdmin(ctx) {
-		return app.NewError(http.StatusForbidden, "only admins can disable clusters")
+		return app.ErrPermissionDenied
 	}
 
-	if err := db.Instance().Updates(&entity.Cluster{
-		UUIDBase: entity.UUIDBase{
+	if err := db.Instance().Updates(&entities.Cluster{
+		UUIDBase: entities.UUIDBase{
 			ID: req.ClusterID,
 		},
 		Enabled: false,
-		AuditBase: entity.AuditBase{
+		AuditBase: entities.AuditBase{
 			UpdatedBy: api.UserID(ctx),
 		},
 	}).Error; err != nil {

@@ -14,7 +14,7 @@ type EnvModel struct {
 
 type ListEnvsRequest struct {
 	api.QueryAndPagedFilter `form:",inline"`
-	ProjectID               string `form:"projectID"`
+	ProjectID               string `uri:"projectID"`
 }
 
 type ListEnvsResponse struct {
@@ -23,7 +23,7 @@ type ListEnvsResponse struct {
 }
 
 type AllEnvRefsRequest struct {
-	ProjectID string `form:"projectID" binding:"required"`
+	ProjectID string `uri:"projectID" binding:"required"`
 }
 
 type GetEnvRefRequest struct {
@@ -42,7 +42,7 @@ type GetEnvRequest struct {
 }
 
 type CreateEnvRequest struct {
-	ProjectID   string `json:"projectID" binding:"required"`
+	ProjectID   string `uri:"projectID"`
 	ClusterID   string `json:"clusterID" binding:"required"`
 	Slug        string `json:"slug" binding:"required"`
 	DisplayName string `json:"displayName" binding:"required"`

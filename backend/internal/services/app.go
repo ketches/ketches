@@ -12,7 +12,7 @@ import (
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
-	"github.com/ketches/ketches/internal/db/entity"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/db/orm"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
@@ -28,11 +28,8 @@ import (
 )
 
 type AppService interface {
-	ListApps(ctx context.Context, req *models.ListAppsRequest) (*models.ListAppsResponse, app.Error)
-	AllAppRefs(ctx context.Context, req *models.AllAppRefsRequest) ([]*models.AppRef, app.Error)
 	GetApp(ctx context.Context, req *models.GetAppRequest) (*models.AppModel, app.Error)
 	GetAppRef(ctx context.Context, req *models.GetAppRefRequest) (*models.AppRef, app.Error)
-	CreateApp(ctx context.Context, req *models.CreateAppRequest) (*models.AppModel, app.Error)
 	UpdateApp(ctx context.Context, req *models.UpdateAppRequest) (*models.AppModel, app.Error)
 	DeleteApp(ctx context.Context, req *models.DeleteAppRequest) app.Error
 	UpdateAppImage(ctx context.Context, req *models.UpdateAppImageRequest) (*models.AppModel, app.Error)
@@ -55,98 +52,9 @@ func NewAppService() AppService {
 	return appServiceInstance
 }
 
-func (s *appService) ListApps(ctx context.Context, req *models.ListAppsRequest) (*models.ListAppsResponse, app.Error) {
-	query := db.Instance().Model(&entity.App{})
-	if len(req.ProjectID) > 0 {
-		if _, err := s.CheckProjectPermissions(ctx, req.ProjectID); err != nil {
-			return nil, err
-		}
-
-		query = query.Where("project_id = ?", req.ProjectID)
-	}
-
-	if len(req.EnvID) > 0 {
-		env, err := orm.GetEnvByID(ctx, req.EnvID)
-		if err != nil {
-			return nil, err
-		}
-		if _, err := s.CheckProjectPermissions(ctx, env.ProjectID); err != nil {
-			return nil, err
-		}
-
-		query = query.Where("env_id = ?", req.EnvID)
-	}
-
-	if req.Query != "" {
-		query = db.CaseInsensitiveLike(query, req.Query, "slug", "display_name")
-	}
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		log.Printf("failed to count apps: %v", err)
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	apps := []*entity.App{}
-	if err := req.PagedSQL(query).Find(&apps).Error; err != nil {
-		log.Printf("failed to list apps: %v", err)
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	result := &models.ListAppsResponse{
-		Total:   total,
-		Records: make([]*models.AppModel, 0, len(apps)),
-	}
-	for _, app := range apps {
-		resultItem := &models.AppModel{
-			AppID:            app.ID,
-			Slug:             app.Slug,
-			DisplayName:      app.DisplayName,
-			WorkloadType:     app.WorkloadType,
-			Replicas:         app.Replicas,
-			ContainerImage:   app.ContainerImage,
-			Deployed:         app.Deployed,
-			DeployVersion:    app.DeployVersion,
-			EnvID:            app.EnvID,
-			ProjectID:        app.ProjectID,
-			ClusterNamespace: app.ClusterNamespace,
-			CreatedAt:        utils.HumanizeTime(app.CreatedAt),
-		}
-
-		resultItem.ActualReplicas, resultItem.Status = getAppStatus(ctx, app)
-
-		result.Records = append(result.Records, resultItem)
-	}
-
-	return result, nil
-}
-
-func (s *appService) AllAppRefs(ctx context.Context, req *models.AllAppRefsRequest) ([]*models.AppRef, app.Error) {
-	projectID, err := orm.GetProjectIDByEnvID(ctx, req.EnvID)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := s.CheckProjectPermissions(ctx, projectID); err != nil {
-		return nil, err
-	}
-
-	refs := []*models.AppRef{}
-	if err := db.Instance().Model(&entity.App{}).Where("env_id = ?", req.EnvID).Find(&refs).Error; err != nil {
-		log.Printf("failed to list app refs: %v", err)
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	return refs, nil
-}
-
 func (s *appService) GetApp(ctx context.Context, req *models.GetAppRequest) (*models.AppModel, app.Error) {
 	appEntity, err := orm.GetAppByID(ctx, req.AppID)
 	if err != nil {
-		return nil, err
-	}
-
-	if _, err := s.CheckProjectPermissions(ctx, appEntity.ProjectID); err != nil {
 		return nil, err
 	}
 
@@ -178,15 +86,11 @@ func (s *appService) GetApp(ctx context.Context, req *models.GetAppRequest) (*mo
 
 func (s *appService) GetAppRef(ctx context.Context, req *models.GetAppRefRequest) (*models.AppRef, app.Error) {
 	result := &models.AppRef{}
-	if err := db.Instance().Model(&entity.App{}).First(result, "id = ?", req.AppID).Error; err != nil {
+	if err := db.Instance().Model(&entities.App{}).First(result, "id = ?", req.AppID).Error; err != nil {
 		if db.IsErrRecordNotFound(err) {
 			return nil, app.NewError(http.StatusNotFound, "App not found")
 		}
 		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	if _, err := s.CheckProjectPermissions(ctx, result.ProjectID); err != nil {
-		return nil, err
 	}
 
 	return result, nil
@@ -198,127 +102,11 @@ func (s *appService) GetEnvRef(ctx context.Context, envID string) (*models.EnvRe
 		return nil, err
 	}
 
-	if _, err := s.CheckProjectPermissions(ctx, env.ProjectID); err != nil {
-		return nil, err
-	}
-
 	return &models.EnvRef{
 		EnvID:       env.ID,
 		Slug:        env.Slug,
 		DisplayName: env.DisplayName,
 	}, nil
-}
-
-func (s *appService) CreateApp(ctx context.Context, req *models.CreateAppRequest) (*models.AppModel, app.Error) {
-	env, err := orm.GetEnvByID(ctx, req.EnvID)
-	if err != nil {
-		return nil, err
-	}
-
-	if projectRole, err := s.CheckProjectPermissions(ctx, env.ProjectID); err != nil {
-		return nil, err
-	} else if projectRole == app.ProjectRoleViewer {
-		return nil, app.ErrPermissionDenied
-	}
-
-	appEntity := &entity.App{
-		Slug:             req.Slug,
-		DisplayName:      req.DisplayName,
-		Description:      req.Description,
-		ContainerImage:   req.ContainerImage,
-		WorkloadType:     req.WorkloadType,
-		Replicas:         req.Replicas,
-		RegistryUsername: req.RegistryUsername,
-		RegistryPassword: req.RegistryPassword,
-		RequestCPU:       req.RequestCPU,
-		RequestMemory:    req.RequestMemory,
-		LimitCPU:         req.LimitCPU,
-		LimitMemory:      req.LimitMemory,
-		EnvID:            req.EnvID,
-		EnvSlug:          env.Slug,
-		ProjectID:        env.ProjectID,
-		ProjectSlug:      env.ProjectSlug,
-		ClusterID:        env.ClusterID,
-		ClusterSlug:      env.ClusterSlug,
-		ClusterNamespace: env.ClusterNamespace,
-		AuditBase: entity.AuditBase{
-			CreatedBy: api.UserID(ctx),
-			UpdatedBy: api.UserID(ctx),
-		},
-	}
-
-	if err := db.Instance().Create(appEntity).Error; err != nil {
-		log.Printf("failed to create app: %v", err)
-
-		if db.IsErrDuplicatedKey(err) {
-			return nil, app.NewError(http.StatusConflict, "App with this slug already exists in the env")
-		}
-		return nil, app.NewError(http.StatusInternalServerError, "Failed to create app")
-	}
-
-	result := &models.AppModel{
-		AppID:            appEntity.ID,
-		Slug:             appEntity.Slug,
-		DisplayName:      appEntity.DisplayName,
-		Description:      appEntity.Description,
-		WorkloadType:     appEntity.WorkloadType,
-		Replicas:         appEntity.Replicas,
-		ContainerImage:   appEntity.ContainerImage,
-		RegistryUsername: appEntity.RegistryUsername,
-		RegistryPassword: appEntity.RegistryPassword,
-		RequestCPU:       appEntity.RequestCPU,
-		RequestMemory:    appEntity.RequestMemory,
-		LimitCPU:         appEntity.LimitCPU,
-		LimitMemory:      appEntity.LimitMemory,
-		EnvID:            appEntity.EnvID,
-		EnvSlug:          env.Slug,
-		ProjectID:        appEntity.ProjectID,
-		ProjectSlug:      env.ProjectSlug,
-		ClusterID:        appEntity.ClusterID,
-		ClusterSlug:      env.ClusterSlug,
-		ClusterNamespace: appEntity.ClusterNamespace,
-	}
-
-	if req.Deploy {
-		appEntity.Deployed = true
-		appEntity.DeployVersion = newDeployVersion()
-
-		// Step 1: deploy app in cluster
-		switch appEntity.WorkloadType {
-		case app.WorkloadTypeDeployment:
-			// For Deployment, we create a Deployment resource in the cluster
-			deployment := buildDeployment(appEntity, nil, true)
-			if _, err := kube.CreateDeployment(ctx, env.ClusterID, deployment); err != nil {
-				log.Printf("failed to create deployment [%s/%s] for app: %v", deployment.Namespace, deployment.Name, err)
-				return nil, err
-			}
-		case app.WorkloadTypeStatefulSet:
-			statefulSet := buildStatefulSet(appEntity, nil, true)
-			// For StatefulSet, we create a StatefulSet resource in the cluster
-			if _, err := kube.CreateStatefulSet(ctx, env.ClusterID, statefulSet); err != nil {
-				log.Printf("failed to create statefulset [%s/%s] for app: %v", statefulSet.Namespace, statefulSet.Name, err)
-				return nil, err
-			}
-		}
-
-		// Step 2: update app deploy flag
-		if err := db.Instance().Updates(entity.App{
-			UUIDBase:      appEntity.UUIDBase,
-			Deployed:      appEntity.Deployed,
-			DeployVersion: appEntity.DeployVersion,
-			AuditBase: entity.AuditBase{
-				UpdatedBy: api.UserID(ctx),
-			},
-		}).Error; err != nil {
-			log.Printf("failed to update app deploy info: %v", err)
-			return nil, app.ErrDatabaseOperationFailed
-		}
-		result.Deployed = appEntity.Deployed
-		result.DeployVersion = appEntity.DeployVersion
-		result.ActualReplicas, result.Status = getAppStatus(ctx, appEntity)
-	}
-
-	return result, nil
 }
 
 func (s *appService) UpdateApp(ctx context.Context, req *models.UpdateAppRequest) (*models.AppModel, app.Error) {
@@ -327,16 +115,10 @@ func (s *appService) UpdateApp(ctx context.Context, req *models.UpdateAppRequest
 		return nil, err
 	}
 
-	if projectRole, err := s.CheckProjectPermissions(ctx, appEntity.ProjectID); err != nil {
-		return nil, err
-	} else if projectRole == app.ProjectRoleViewer {
-		return nil, app.ErrPermissionDenied
-	}
-
 	appEntity.DisplayName = req.DisplayName
 	appEntity.Description = req.Description
 
-	if err := db.Instance().Model(appEntity).Updates(entity.App{
+	if err := db.Instance().Model(appEntity).Updates(entities.App{
 		DisplayName: appEntity.DisplayName,
 		Description: appEntity.Description,
 	}).Error; err != nil {
@@ -360,12 +142,6 @@ func (s *appService) DeleteApp(ctx context.Context, req *models.DeleteAppRequest
 		return err
 	}
 
-	if projectRole, err := s.CheckProjectPermissions(ctx, appEntity.ProjectID); err != nil {
-		return err
-	} else if projectRole == app.ProjectRoleViewer {
-		return app.ErrPermissionDenied
-	}
-
 	// 1. delete app in cluster
 	if appEntity.Deployed {
 		if err := db.Instance().Model(appEntity).Update("deployed", false).Where("id = ?", appEntity.ID).Error; err != nil {
@@ -385,17 +161,17 @@ func (s *appService) DeleteApp(ctx context.Context, req *models.DeleteAppRequest
 			return err
 		}
 
-		if err := tx.Delete(&entity.AppEnvVar{}, "app_id = ?", appEntity.ID).Error; err != nil {
+		if err := tx.Delete(&entities.AppEnvVar{}, "app_id = ?", appEntity.ID).Error; err != nil {
 			log.Printf("failed to delete app env vars for app %s: %v", req.AppID, err)
 			return err
 		}
 
-		if err := tx.Delete(&entity.AppPort{}, "app_id = ?", appEntity.ID).Error; err != nil {
+		if err := tx.Delete(&entities.AppPort{}, "app_id = ?", appEntity.ID).Error; err != nil {
 			log.Printf("failed to delete app ports for app %s: %v", req.AppID, err)
 			return err
 		}
 
-		if err := tx.Delete(&entity.AppGateway{}, "app_id = ?", appEntity.ID).Error; err != nil {
+		if err := tx.Delete(&entities.AppGateway{}, "app_id = ?", appEntity.ID).Error; err != nil {
 			log.Printf("failed to delete app gateways for app %s: %v", req.AppID, err)
 			return err
 		}
@@ -419,17 +195,11 @@ func (s *appService) UpdateAppImage(ctx context.Context, req *models.UpdateAppIm
 		return nil, app.NewError(http.StatusBadRequest, "No changes detected in app image or registry credentials")
 	}
 
-	if projectRole, err := s.CheckProjectPermissions(ctx, appEntity.ProjectID); err != nil {
-		return nil, err
-	} else if projectRole == app.ProjectRoleViewer {
-		return nil, app.ErrPermissionDenied
-	}
-
 	appEntity.ContainerImage = req.ContainerImage
 	appEntity.RegistryUsername = req.RegistryUsername
 	appEntity.RegistryPassword = req.RegistryPassword
 
-	if err := db.Instance().Model(appEntity).Updates(entity.App{
+	if err := db.Instance().Model(appEntity).Updates(entities.App{
 		ContainerImage:   appEntity.ContainerImage,
 		RegistryUsername: appEntity.RegistryUsername,
 		RegistryPassword: appEntity.RegistryPassword,
@@ -505,12 +275,6 @@ func (s *appService) AppAction(ctx context.Context, req *models.AppActionRequest
 		return nil, err
 	}
 
-	if projectRole, err := s.CheckProjectPermissions(ctx, appEntity.ProjectID); err != nil {
-		return nil, err
-	} else if projectRole == app.ProjectRoleViewer {
-		return nil, app.ErrPermissionDenied
-	}
-
 	// TODO: execute action based on req.Action
 	switch req.Action {
 	case app.AppActionDeploy:
@@ -545,11 +309,6 @@ func (s *appService) ListAppInstances(ctx context.Context, req *models.ListAppIn
 	appEntity, err := orm.GetAppByID(ctx, req.AppID)
 	if err != nil {
 		return nil, err
-	}
-	if projectRole, err := s.CheckProjectPermissions(ctx, appEntity.ProjectID); err != nil {
-		return nil, err
-	} else if projectRole == app.ProjectRoleViewer {
-		return nil, app.ErrPermissionDenied
 	}
 
 	pods, err := kube.ListPods(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
@@ -611,12 +370,6 @@ func (s *appService) TerminateAppInstance(ctx context.Context, req *models.Termi
 		return err
 	}
 
-	if projectRole, err := s.CheckProjectPermissions(ctx, appEntity.ProjectID); err != nil {
-		return err
-	} else if projectRole == app.ProjectRoleViewer {
-		return app.ErrPermissionDenied
-	}
-
 	if err := kube.DeletePod(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, req.InstanceName); err != nil {
 		return err
 	}
@@ -628,12 +381,6 @@ func (s *appService) ViewAppContainerLogs(ctx context.Context, req *models.ViewA
 	appEntity, err := orm.GetAppByID(ctx, req.AppID)
 	if err != nil {
 		return err
-	}
-
-	if projectRole, err := s.CheckProjectPermissions(ctx, appEntity.ProjectID); err != nil {
-		return err
-	} else if projectRole == app.ProjectRoleViewer {
-		return app.ErrPermissionDenied
 	}
 
 	w := req.ResponseWriter
@@ -699,12 +446,6 @@ func (s *appService) ExecAppContainerTerminal(ctx context.Context, req *models.E
 		return err
 	}
 
-	if projectRole, err := s.CheckProjectPermissions(ctx, appEntity.ProjectID); err != nil {
-		return err
-	} else if projectRole == app.ProjectRoleViewer {
-		return app.ErrPermissionDenied
-	}
-
 	w := req.ResponseWriter
 	r := req.Request
 	conn, err := websocket.NewConn(w, r)
@@ -763,7 +504,7 @@ func (s *appService) ExecAppContainerTerminal(ctx context.Context, req *models.E
 	return nil
 }
 
-func (s appService) deployApp(ctx context.Context, appEntity *entity.App, start bool) app.Error {
+func (s appService) deployApp(ctx context.Context, appEntity *entities.App, start bool) app.Error {
 	envVars, err := orm.AllAppEnvVars(appEntity.ID)
 	if err != nil {
 		return err
@@ -785,13 +526,13 @@ func (s appService) deployApp(ctx context.Context, appEntity *entity.App, start 
 		}
 	}
 
-	if err := db.Instance().Updates(&entity.App{
-		UUIDBase: entity.UUIDBase{
+	if err := db.Instance().Updates(&entities.App{
+		UUIDBase: entities.UUIDBase{
 			ID: appEntity.ID,
 		},
 		Deployed:      appEntity.Deployed,
 		DeployVersion: appEntity.DeployVersion,
-		AuditBase: entity.AuditBase{
+		AuditBase: entities.AuditBase{
 			UpdatedBy: api.UserID(ctx),
 		},
 	}).Error; err != nil {
@@ -802,7 +543,7 @@ func (s appService) deployApp(ctx context.Context, appEntity *entity.App, start 
 	return nil
 }
 
-func (s appService) startApp(ctx context.Context, appEntity *entity.App) app.Error {
+func (s appService) startApp(ctx context.Context, appEntity *entities.App) app.Error {
 	switch appEntity.WorkloadType {
 	case app.WorkloadTypeDeployment:
 		deployment, err := kube.GetDeployment(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
@@ -837,7 +578,7 @@ func (s appService) startApp(ctx context.Context, appEntity *entity.App) app.Err
 	return nil
 }
 
-func (s appService) stopApp(ctx context.Context, appEntity *entity.App) app.Error {
+func (s appService) stopApp(ctx context.Context, appEntity *entities.App) app.Error {
 	switch appEntity.WorkloadType {
 	case app.WorkloadTypeDeployment:
 		deployment, err := kube.GetDeployment(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
@@ -870,7 +611,7 @@ func (s appService) stopApp(ctx context.Context, appEntity *entity.App) app.Erro
 	return nil
 }
 
-func (s appService) redeployApp(ctx context.Context, appEntity *entity.App, start bool) app.Error {
+func (s appService) redeployApp(ctx context.Context, appEntity *entities.App, start bool) app.Error {
 	// delete existing resources
 	if err := deleteClusterAppResources(ctx, appEntity); err != nil {
 		return err
@@ -886,7 +627,7 @@ func (s appService) redeployApp(ctx context.Context, appEntity *entity.App, star
 	return nil
 }
 
-func (s appService) rollingUpdateApp(ctx context.Context, appEntity *entity.App) app.Error {
+func (s appService) rollingUpdateApp(ctx context.Context, appEntity *entities.App) app.Error {
 	switch appEntity.WorkloadType {
 	case app.WorkloadTypeDeployment:
 		deployment, err := kube.GetDeployment(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
@@ -927,7 +668,7 @@ func (s appService) rollingUpdateApp(ctx context.Context, appEntity *entity.App)
 	return nil
 }
 
-func getAppStatus(ctx context.Context, appEntity *entity.App) (int32, string) {
+func getAppStatus(ctx context.Context, appEntity *entities.App) (int32, string) {
 	if !appEntity.Deployed {
 		return 0, app.AppStatusUndeployed
 	}
@@ -999,7 +740,7 @@ func getAppStatus(ctx context.Context, appEntity *entity.App) (int32, string) {
 // buildDeployment creates a Kubernetes Deployment resource based on the app entity and environment variables.
 // TODO: 1. Registry credentials should be handled securely, not as plain text.
 //  2. Consider adding volume mounts and persistent storage if needed.
-func buildDeployment(app *entity.App, appEnvVars []*entity.AppEnvVar, start bool) *appsv1.Deployment {
+func buildDeployment(app *entities.App, appEnvVars []*entities.AppEnvVar, start bool) *appsv1.Deployment {
 	envs := make([]corev1.EnvVar, 0, len(appEnvVars))
 	for _, envVar := range appEnvVars {
 		envs = append(envs, corev1.EnvVar{
@@ -1055,7 +796,7 @@ func buildDeployment(app *entity.App, appEnvVars []*entity.AppEnvVar, start bool
 	}
 }
 
-func buildStatefulSet(app *entity.App, appEnvVars []*entity.AppEnvVar, start bool) *appsv1.StatefulSet {
+func buildStatefulSet(app *entities.App, appEnvVars []*entities.AppEnvVar, start bool) *appsv1.StatefulSet {
 	envs := make([]corev1.EnvVar, 0, len(appEnvVars))
 	for _, envVar := range appEnvVars {
 		envs = append(envs, corev1.EnvVar{
@@ -1108,7 +849,7 @@ func buildStatefulSet(app *entity.App, appEnvVars []*entity.AppEnvVar, start boo
 	}
 }
 
-func buildWorkloadLabels(app *entity.App) map[string]string {
+func buildWorkloadLabels(app *entities.App) map[string]string {
 	return map[string]string{
 		"ketches/owned":          "true",
 		"ketches/app":            app.Slug,
@@ -1118,7 +859,7 @@ func buildWorkloadLabels(app *entity.App) map[string]string {
 	}
 }
 
-func deleteClusterAppResources(ctx context.Context, appEntity *entity.App) app.Error {
+func deleteClusterAppResources(ctx context.Context, appEntity *entities.App) app.Error {
 	switch appEntity.WorkloadType {
 	case app.WorkloadTypeDeployment:
 		// Delete deployment

@@ -10,63 +10,13 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
-// @Summary List Apps
-// @Description List apps
-// @Tags App
-// @Accept json
-// @Produce json
-// @Param query query model.ListAppsRequest false "Query parameters for filtering and pagination"
-// @Success 200 {object} api.Response{data=model.ListAppsResponse}
-// @Router /api/v1/apps [get]
-func ListApps(c *gin.Context) {
-	var req models.ListAppsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-
-	as := services.NewAppService()
-	resp, err := as.ListApps(c, &req)
-	if err != nil {
-		api.Error(c, err)
-		return
-	}
-
-	api.Success(c, resp)
-}
-
-// @Summary All App Refs Under Environment
-// @Description Get all apps for refs under a specific environment
-// @Tags App
-// @Accept json
-// @Produce json
-// @Param query query model.AllAppRefsRequest false "Query parameters for filtering refs"
-// @Success 200 {object} api.Response{data=[]model.AppRef}
-// @Router /api/v1/apps/refs [get]
-func AllAppRefs(c *gin.Context) {
-	var req models.AllAppRefsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-
-	as := services.NewAppService()
-	refs, err := as.AllAppRefs(c, &req)
-	if err != nil {
-		api.Error(c, err)
-		return
-	}
-
-	api.Success(c, refs)
-}
-
 // @Summary Get App
 // @Description Get app by app ID
 // @Tags App
 // @Accept json
 // @Produce json
 // @Param appID path string true "App ID"
-// @Success 200 {object} api.Response{data=model.AppModel}
+// @Success 200 {object} api.Response{data=models.AppModel}
 // @Router /api/v1/apps/{appID} [get]
 func GetApp(c *gin.Context) {
 	var req models.GetAppRequest
@@ -75,8 +25,8 @@ func GetApp(c *gin.Context) {
 		return
 	}
 
-	as := services.NewAppService()
-	app, err := as.GetApp(c, &req)
+	s := services.NewAppService()
+	app, err := s.GetApp(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -91,7 +41,7 @@ func GetApp(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param appID path string true "App ID"
-// @Success 200 {object} api.Response{data=model.AppRef}
+// @Success 200 {object} api.Response{data=models.AppRef}
 // @Router /api/v1/apps/{appID}/ref [get]
 func GetAppRef(c *gin.Context) {
 	var req models.GetAppRefRequest
@@ -100,8 +50,8 @@ func GetAppRef(c *gin.Context) {
 		return
 	}
 
-	as := services.NewAppService()
-	ref, err := as.GetAppRef(c, &req)
+	s := services.NewAppService()
+	ref, err := s.GetAppRef(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -110,39 +60,14 @@ func GetAppRef(c *gin.Context) {
 	api.Success(c, ref)
 }
 
-// @Summary Create App
-// @Description Create a new app
-// @Tags App
-// @Accept json
-// @Produce json
-// @Param app body model.CreateAppRequest true "App data"
-// @Success 201 {object} api.Response{data=model.AppModel}
-// @Router /api/v1/apps [post]
-func CreateApp(c *gin.Context) {
-	var req models.CreateAppRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-
-	as := services.NewAppService()
-	app, err := as.CreateApp(c, &req)
-	if err != nil {
-		api.Error(c, err)
-		return
-	}
-
-	api.Created(c, app)
-}
-
 // @Summary Update App
 // @Description Update an existing app
 // @Tags App
 // @Accept json
 // @Produce json
 // @Param appID path string true "App ID"
-// @Param app body model.UpdateAppRequest true "Updated app data"
-// @Success 200 {object} api.Response{data=model.AppModel}
+// @Param app body models.UpdateAppRequest true "Updated app data"
+// @Success 200 {object} api.Response{data=models.AppModel}
 // @Router /api/v1/apps/{appID} [put]
 func UpdateApp(c *gin.Context) {
 	var req models.UpdateAppRequest
@@ -156,8 +81,8 @@ func UpdateApp(c *gin.Context) {
 		return
 	}
 
-	as := services.NewAppService()
-	app, err := as.UpdateApp(c, &req)
+	s := services.NewAppService()
+	app, err := s.UpdateApp(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -181,8 +106,8 @@ func DeleteApp(c *gin.Context) {
 		return
 	}
 
-	as := services.NewAppService()
-	if err := as.DeleteApp(c, &req); err != nil {
+	s := services.NewAppService()
+	if err := s.DeleteApp(c, &req); err != nil {
 		api.Error(c, err)
 		return
 	}
@@ -196,8 +121,8 @@ func DeleteApp(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param appID path string true "App ID"
-// @Param image body model.UpdateAppImageRequest true "New app image"
-// @Success 200 {object} api.Response{data=model.AppModel}
+// @Param image body models.UpdateAppImageRequest true "New app image"
+// @Success 200 {object} api.Response{data=models.AppModel}
 // @Router /api/v1/apps/{appID}/image [put]
 func UpdateAppImage(c *gin.Context) {
 	appID := c.Param("appID")
@@ -217,8 +142,8 @@ func UpdateAppImage(c *gin.Context) {
 		return
 	}
 
-	as := services.NewAppService()
-	app, err := as.UpdateAppImage(c, &req)
+	s := services.NewAppService()
+	app, err := s.UpdateAppImage(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -233,8 +158,8 @@ func UpdateAppImage(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param appID path string true "App ID"
-// @Param action body model.AppActionRequest true "Action to perform on the app"
-// @Success 200 {object} api.Response{data=model.AppModel}
+// @Param action body models.AppActionRequest true "Action to perform on the app"
+// @Success 200 {object} api.Response{data=models.AppModel}
 // @Router /api/v1/apps/{appID}/action [post]
 func AppAction(c *gin.Context) {
 	appID := c.Param("appID")
@@ -249,8 +174,8 @@ func AppAction(c *gin.Context) {
 	}
 	req.AppID = appID
 
-	as := services.NewAppService()
-	app, err := as.AppAction(c, &req)
+	s := services.NewAppService()
+	app, err := s.AppAction(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -265,7 +190,7 @@ func AppAction(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param appID path string true "App ID"
-// @Success 200 {object} api.Response{data=[]model.AppInstanceModel}
+// @Success 200 {object} api.Response{data=[]models.AppInstanceModel}
 // @Router /api/v1/apps/{appID}/instances [get]
 func ListAppInstances(c *gin.Context) {
 	appID := c.Param("appID")
@@ -274,8 +199,8 @@ func ListAppInstances(c *gin.Context) {
 		return
 	}
 
-	as := services.NewAppService()
-	instances, err := as.ListAppInstances(c, &models.ListAppInstancesRequest{
+	s := services.NewAppService()
+	instances, err := s.ListAppInstances(c, &models.ListAppInstancesRequest{
 		AppID: appID,
 	})
 	if err != nil {
@@ -292,7 +217,7 @@ func ListAppInstances(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param appID path string true "App ID"
-// @Param request body model.TerminateAppInstanceRequest true "Terminate app instance request"
+// @Param request body models.TerminateAppInstanceRequest true "Terminate app instance request"
 // @Success 204 {object} api.Response{}
 // @Router /api/v1/apps/{appID}/instances/terminate [post]
 func TerminateAppInstance(c *gin.Context) {
@@ -309,8 +234,8 @@ func TerminateAppInstance(c *gin.Context) {
 	}
 	req.AppID = appID
 
-	as := services.NewAppService()
-	if err := as.TerminateAppInstance(c, &req); err != nil {
+	s := services.NewAppService()
+	if err := s.TerminateAppInstance(c, &req); err != nil {
 		api.Error(c, err)
 		return
 	}
@@ -326,7 +251,7 @@ func TerminateAppInstance(c *gin.Context) {
 // @Param appID path string true "App ID"
 // @Param instanceName path string true "Instance name"
 // @Param containerName path string true "Container name"
-// @Param request query model.ViewAppContainerLogsRequest false "Query parameters for viewing logs"
+// @Param request query models.ViewAppContainerLogsRequest false "Query parameters for viewing logs"
 // @Success 200 {object} api.Response{}
 // @Router /api/v1/apps/{appID}/instances/{instanceName}/containers/{containerName}/logs [get]
 func ViewAppContainerLogs(c *gin.Context) {
@@ -360,8 +285,8 @@ func ViewAppContainerLogs(c *gin.Context) {
 	req.Request = c.Request
 	req.ResponseWriter = c.Writer
 
-	as := services.NewAppService()
-	if err := as.ViewAppContainerLogs(c, &req); err != nil {
+	s := services.NewAppService()
+	if err := s.ViewAppContainerLogs(c, &req); err != nil {
 		api.Error(c, err)
 		return
 	}
@@ -375,7 +300,7 @@ func ViewAppContainerLogs(c *gin.Context) {
 // @Param appID path string true "App ID"
 // @Param instanceName path string true "Instance name"
 // @Param containerName path string true "Container name"
-// @Param request body model.ExecAppContainerTerminalRequest true "Request to execute command in container"
+// @Param request body models.ExecAppContainerTerminalRequest true "Request to execute command in container"
 // @Success 200 {object} api.Response{}
 // @Router /api/v1/apps/{appID}/instances/{instanceName}/containers/{containerName}/exec [get]
 func ExecAppContainerTerminal(c *gin.Context) {
@@ -408,8 +333,8 @@ func ExecAppContainerTerminal(c *gin.Context) {
 	req.Request = c.Request
 	req.ResponseWriter = c.Writer
 
-	as := services.NewAppService()
-	if err := as.ExecAppContainerTerminal(c, &req); err != nil {
+	s := services.NewAppService()
+	if err := s.ExecAppContainerTerminal(c, &req); err != nil {
 		api.Error(c, err)
 		return
 	}

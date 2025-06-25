@@ -15,8 +15,8 @@ import (
 // @Tags Project
 // @Accept json
 // @Produce json
-// @Param query query model.ListProjectsRequest false "Query parameters for filtering and pagination"
-// @Success 200 {object} api.Response{data=model.ListProjectResponse}
+// @Param query query models.ListProjectsRequest false "Query parameters for filtering and pagination"
+// @Success 200 {object} api.Response{data=models.ListProjectResponse}
 // @Router /api/v1/projects [get]
 // @Security BearerAuth
 func ListProjects(c *gin.Context) {
@@ -26,8 +26,8 @@ func ListProjects(c *gin.Context) {
 		return
 	}
 
-	ps := services.NewProjectService()
-	resp, err := ps.ListProjects(c, &req)
+	s := services.NewProjectService()
+	resp, err := s.ListProjects(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -41,11 +41,11 @@ func ListProjects(c *gin.Context) {
 // @Tags Project
 // @Accept json
 // @Produce json
-// @Success 200 {object} api.Response{data=[]model.ProjectRef}
+// @Success 200 {object} api.Response{data=[]models.ProjectRef}
 // @Router /api/v1/projects/refs [get]
 func AllProjectRefs(c *gin.Context) {
-	ps := services.NewProjectService()
-	refs, err := ps.AllProjectRefs(c)
+	s := services.NewProjectService()
+	refs, err := s.AllProjectRefs(c)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -60,7 +60,7 @@ func AllProjectRefs(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param projectID path string true "Project ID"
-// @Success 200 {object} api.Response{data=model.ProjectModel}
+// @Success 200 {object} api.Response{data=models.ProjectModel}
 // @Router /api/v1/projects/{projectID} [get]
 func GetProject(c *gin.Context) {
 	projectID := c.Param("projectID")
@@ -69,8 +69,8 @@ func GetProject(c *gin.Context) {
 		return
 	}
 
-	ps := services.NewProjectService()
-	project, err := ps.GetProject(c, &models.GetProjectRequest{
+	s := services.NewProjectService()
+	project, err := s.GetProject(c, &models.GetProjectRequest{
 		ProjectID: projectID,
 	})
 	if err != nil {
@@ -87,7 +87,7 @@ func GetProject(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param projectID path string true "Project ID"
-// @Success 200 {object} api.Response{data=model.ProjectRef}
+// @Success 200 {object} api.Response{data=models.ProjectRef}
 // @Router /api/v1/projects/{projectID}/ref [get]
 func GetProjectRef(c *gin.Context) {
 	var req models.GetProjectRefRequest
@@ -96,8 +96,8 @@ func GetProjectRef(c *gin.Context) {
 		return
 	}
 
-	as := services.NewProjectService()
-	ref, err := as.GetProjectRef(c, &req)
+	s := services.NewProjectService()
+	ref, err := s.GetProjectRef(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -111,8 +111,8 @@ func GetProjectRef(c *gin.Context) {
 // @Tags Project
 // @Accept json
 // @Produce json
-// @Param project body model.CreateProjectRequest true "Project data"
-// @Success 201 {object} api.Response{data=model.ProjectModel}
+// @Param project body models.CreateProjectRequest true "Project data"
+// @Success 201 {object} api.Response{data=models.ProjectModel}
 // @Router /api/v1/projects [post]
 func CreateProject(c *gin.Context) {
 	var req models.CreateProjectRequest
@@ -121,8 +121,8 @@ func CreateProject(c *gin.Context) {
 		return
 	}
 
-	ps := services.NewProjectService()
-	project, err := ps.CreateProject(c, &req)
+	s := services.NewProjectService()
+	project, err := s.CreateProject(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -137,8 +137,8 @@ func CreateProject(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param projectID path string true "Project ID"
-// @Param project body model.UpdateProjectRequest true "Project data"
-// @Success 200 {object} api.Response{data=model.ProjectModel}
+// @Param project body models.UpdateProjectRequest true "Project data"
+// @Success 200 {object} api.Response{data=models.ProjectModel}
 // @Router /api/v1/projects/{projectID} [put]
 func UpdateProject(c *gin.Context) {
 	projectID := c.Param("projectID")
@@ -154,8 +154,8 @@ func UpdateProject(c *gin.Context) {
 	}
 	req.ProjectID = projectID
 
-	ps := services.NewProjectService()
-	project, err := ps.UpdateProject(c, &req)
+	s := services.NewProjectService()
+	project, err := s.UpdateProject(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -179,8 +179,8 @@ func DeleteProject(c *gin.Context) {
 		return
 	}
 
-	ps := services.NewProjectService()
-	err := ps.DeleteProject(c, &models.DeleteProjectRequest{
+	s := services.NewProjectService()
+	err := s.DeleteProject(c, &models.DeleteProjectRequest{
 		ProjectID: projectID,
 	})
 	if err != nil {
@@ -197,8 +197,8 @@ func DeleteProject(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param projectID path string true "Project ID"
-// @Param query query model.ListClustersRequest false "Query parameters for filtering and pagination"
-// @Success 200 {object} api.Response{data=model.ListProjectMembersResponse}
+// @Param query query models.ListClustersRequest false "Query parameters for filtering and pagination"
+// @Success 200 {object} api.Response{data=models.ListProjectMembersResponse}
 // @Router /api/v1/projects/{projectID}/members [get]
 func ListProjectMembers(c *gin.Context) {
 	projectID := c.Param("projectID")
@@ -214,8 +214,8 @@ func ListProjectMembers(c *gin.Context) {
 	}
 	req.ProjectID = projectID
 
-	ps := services.NewProjectService()
-	resp, err := ps.ListProjectMembers(c, &req)
+	s := services.NewProjectService()
+	resp, err := s.ListProjectMembers(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -230,7 +230,7 @@ func ListProjectMembers(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param projectID path string true "Project ID"
-// @Success 200 {object} api.Response{data=[]model.ProjectMemberModel}
+// @Success 200 {object} api.Response{data=[]models.ProjectMemberModel}
 // @Router /api/v1/projects/{projectID}/members/addable [get]
 func ListAddableProjectMembers(c *gin.Context) {
 	projectID := c.Param("projectID")
@@ -239,8 +239,8 @@ func ListAddableProjectMembers(c *gin.Context) {
 		return
 	}
 
-	ps := services.NewProjectService()
-	members, err := ps.ListAddableProjectMembers(c, projectID)
+	s := services.NewProjectService()
+	members, err := s.ListAddableProjectMembers(c, projectID)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -255,8 +255,8 @@ func ListAddableProjectMembers(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param projectID path string true "Project ID"
-// @Param members body model.AddProjectMembersRequest true "Project members data"
-// @Success 201 {object} api.Response{data=[]model.ProjectMemberModel}
+// @Param members body models.AddProjectMembersRequest true "Project members data"
+// @Success 201 {object} api.Response{data=[]models.ProjectMemberModel}
 // @Router /api/v1/projects/{projectID}/members [post]
 func AddProjectMembers(c *gin.Context) {
 	projectID := c.Param("projectID")
@@ -272,8 +272,8 @@ func AddProjectMembers(c *gin.Context) {
 	}
 	req.ProjectID = projectID
 
-	ps := services.NewProjectService()
-	err := ps.AddProjectMembers(c, &req)
+	s := services.NewProjectService()
+	err := s.AddProjectMembers(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -289,8 +289,8 @@ func AddProjectMembers(c *gin.Context) {
 // @Produce json
 // @Param projectID path string true "Project ID"
 // @Param userID path string true "User ID"
-// @Param member body model.UpdateProjectMemberRequest true "Project member data"
-// @Success 200 {object} api.Response{data=model.ProjectMemberModel}
+// @Param member body models.UpdateProjectMemberRequest true "Project member data"
+// @Success 200 {object} api.Response{data=models.ProjectMemberModel}
 // @Router /api/v1/projects/{projectID}/members/{userID} [put]
 func UpdateProjectMember(c *gin.Context) {
 	projectID := c.Param("projectID")
@@ -312,8 +312,8 @@ func UpdateProjectMember(c *gin.Context) {
 	req.ProjectID = projectID
 	req.UserID = userID
 
-	ps := services.NewProjectService()
-	member, err := ps.UpdateProjectMember(c, &req)
+	s := services.NewProjectService()
+	member, err := s.UpdateProjectMember(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -343,8 +343,8 @@ func RemoveProjectMember(c *gin.Context) {
 		return
 	}
 
-	ps := services.NewProjectService()
-	err := ps.RemoveProjectMembers(c, &models.RemoveProjectMembersRequest{
+	s := services.NewProjectService()
+	err := s.RemoveProjectMembers(c, &models.RemoveProjectMembersRequest{
 		ProjectID: projectID,
 		UserIDs:   req.UserIDs,
 	})
@@ -354,4 +354,80 @@ func RemoveProjectMember(c *gin.Context) {
 	}
 
 	api.NoContent(c)
+}
+
+// @Summary List Envs Under Project
+// @Description List envs under a specific project
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Param projectID path string true "Project ID"
+// @Param query query models.ListEnvsRequest false "Query parameters for filtering and pagination"
+// @Success 200 {object} api.Response{data=models.ListEnvsResponse}
+// @Router /api/v1/projects/{projectID}/envs [get]
+func ListEnvs(c *gin.Context) {
+	var req models.ListEnvsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.ProjectID = c.Param("projectID")
+
+	s := services.NewProjectService()
+	resp, err := s.ListEnvs(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, resp)
+}
+
+// @Summary All Env Refs Under Project
+// @Description Get all envs for refs under a specific project
+// @Tags Env
+// @Accept json
+// @Produce json
+// @Param projectID path string true "Project ID"
+// @Param query query models.AllEnvRefsRequest false "Query parameters for filtering refs"
+// @Success 200 {object} api.Response{data=[]models.EnvRef}
+// @Router /api/v1/projects/{projectID}/envs/refs [get]
+func AllEnvRefs(c *gin.Context) {
+	s := services.NewProjectService()
+	refs, err := s.AllEnvRefs(c, &models.AllEnvRefsRequest{
+		ProjectID: c.Param("projectID"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, refs)
+}
+
+// @Summary Create Env Under Project
+// @Description Create a new env under a specific project
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Param projectID path string true "Project ID"
+// @Param request body models.CreateEnvRequest true "Create Env Request"
+// @Success 201 {object} api.Response{data=models.EnvModel}
+// @Router /api/v1/projects/{projectID}/envs [post]
+func CreateEnv(c *gin.Context) {
+	var req models.CreateEnvRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.ProjectID = c.Param("projectID")
+
+	s := services.NewProjectService()
+	env, err := s.CreateEnv(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, env)
 }

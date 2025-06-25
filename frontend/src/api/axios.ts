@@ -67,6 +67,8 @@ instance.interceptors.response.use(
                 // For non-401 errors, display the error from response body
                 const errorMessage = responseData?.error || '请求失败，请稍后再试。';
                 toast.dismiss(); // Dismiss any previous toast notifications
+                console.log("called");
+
                 toast.error(error.response.statusText, {
                     description: errorMessage,
                 });

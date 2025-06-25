@@ -69,11 +69,6 @@ const { follow, tailLines, showTimestamps } = toRefs(logsRequest.value);
 
 watch(open, async (isOpen) => {
     if (isOpen) {
-        logsRequest.value = {
-            follow: true,
-            tailLines: 100,
-            showTimestamps: false,
-        };
         fetchAppInstanceLogs();
     } else {
         if (es) {
@@ -111,6 +106,7 @@ function fetchAppInstanceLogs() {
         es.close();
         es = null;
     }
+
     es = new EventSource(logsUrl, { withCredentials: true });
     es.onmessage = (event) => {
         logsContent.value += event.data + "\n";

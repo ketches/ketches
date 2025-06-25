@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { listEnvs } from '@/api/env'
+import { listEnvs } from '@/api/project'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -55,7 +55,7 @@ import CreateEnv from './CreateEnv.vue'
 import EnvActions from './EnvActions.vue'
 
 const resourceRefStore = useResourceRefStore()
-const { activeProjectRef, envRefs } = storeToRefs(resourceRefStore)
+const { activeProjectRef } = storeToRefs(resourceRefStore)
 
 const noData = ref(false)
 const pagedData = ref<envModel[]>([])
@@ -125,7 +125,7 @@ const columns: ColumnDef<envModel>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: 'slug',
+        accessorKey: 'displayName',
         header: "环境",
         cell: ({ row }) => h('div', { class: 'space-y-1' }, [
             h(RouterLink, { to: `/console/env/${row.original.envID}`, class: 'font-medium text-blue-500' }, () => row.original.displayName || row.getValue('slug')),

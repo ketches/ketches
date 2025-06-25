@@ -10,8 +10,11 @@ import (
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
-	"github.com/ketches/ketches/internal/db/entity"
+	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/db/orm"
+	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/pkg/utils"
 	"gorm.io/gorm"
 )
 
@@ -28,6 +31,9 @@ type ProjectService interface {
 	AddProjectMembers(ctx context.Context, req *models.AddProjectMembersRequest) app.Error
 	UpdateProjectMember(ctx context.Context, req *models.UpdateProjectMemberRequest) (*models.ProjectMemberModel, app.Error)
 	RemoveProjectMembers(ctx context.Context, req *models.RemoveProjectMembersRequest) app.Error
+	ListEnvs(ctx context.Context, req *models.ListEnvsRequest) (*models.ListEnvsResponse, app.Error)
+	AllEnvRefs(ctx context.Context, req *models.AllEnvRefsRequest) ([]*models.EnvRef, app.Error)
+	CreateEnv(ctx context.Context, req *models.CreateEnvRequest) (*models.EnvModel, app.Error)
 }
 
 type projectService struct {
@@ -41,8 +47,8 @@ func NewProjectService() ProjectService {
 }
 
 func (s *projectService) ListProjects(ctx context.Context, req *models.ListProjectsRequest) (*models.ListProjectResponse, app.Error) {
-	projects := []*entity.Project{}
-	query := db.Instance().Model(&entity.Project{})
+	projects := []*entities.Project{}
+	query := db.Instance().Model(&entities.Project{})
 	if !api.IsAdmin(ctx) {
 		query = query.Joins("INNER JOIN project_members ON project_members.project_id = projects.id").Where("project_members.user_id = ?", api.UserID(ctx))
 	}
@@ -80,7 +86,7 @@ func (s *projectService) ListProjects(ctx context.Context, req *models.ListProje
 
 func (s *projectService) AllProjectRefs(ctx context.Context) ([]*models.ProjectRef, app.Error) {
 	refs := []*models.ProjectRef{}
-	if err := db.Instance().Model(&entity.Project{}).
+	if err := db.Instance().Model(&entities.Project{}).
 		Select("projects.id, projects.slug, projects.display_name").
 		Joins("INNER JOIN project_members ON project_members.project_id = projects.id").Where("project_members.user_id = ?", api.UserID(ctx)).
 		Find(&refs).Error; err != nil {
@@ -92,11 +98,9 @@ func (s *projectService) AllProjectRefs(ctx context.Context) ([]*models.ProjectR
 }
 
 func (s *projectService) GetProject(ctx context.Context, req *models.GetProjectRequest) (*models.ProjectModel, app.Error) {
-	if _, err := s.CheckProjectPermissions(ctx, req.ProjectID); err != nil {
-		return nil, err
-	}
+	// Permission check is now handled by middleware
 
-	project := new(entity.Project)
+	project := new(entities.Project)
 	if err := db.Instance().First(project, "id = ?", req.ProjectID).Error; err != nil {
 		log.Printf("failed to get project %s: %v", req.ProjectID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -114,12 +118,10 @@ func (s *projectService) GetProject(ctx context.Context, req *models.GetProjectR
 }
 
 func (s *projectService) GetProjectRef(ctx context.Context, req *models.GetProjectRefRequest) (*models.ProjectRef, app.Error) {
-	if _, err := s.CheckProjectPermissions(ctx, req.ProjectID); err != nil {
-		return nil, err
-	}
+	// Permission check is now handled by middleware
 
 	result := &models.ProjectRef{}
-	if err := db.Instance().Model(&entity.Project{}).First(result, "id = ?", req.ProjectID).Error; err != nil {
+	if err := db.Instance().Model(&entities.Project{}).First(result, "id = ?", req.ProjectID).Error; err != nil {
 		if db.IsErrRecordNotFound(err) {
 			return nil, app.NewError(http.StatusNotFound, "Project not found")
 		}
@@ -134,11 +136,11 @@ func (s *projectService) CreateProject(ctx context.Context, req *models.CreatePr
 	if operator == "" {
 		operator = api.UserID(ctx)
 	}
-	project := &entity.Project{
+	project := &entities.Project{
 		Slug:        req.Slug,
 		DisplayName: req.DisplayName,
 		Description: req.Description,
-		AuditBase: entity.AuditBase{
+		AuditBase: entities.AuditBase{
 			CreatedBy: operator,
 			UpdatedBy: operator,
 		},
@@ -150,7 +152,7 @@ func (s *projectService) CreateProject(ctx context.Context, req *models.CreatePr
 			return err
 		}
 
-		pm := &entity.ProjectMember{
+		pm := &entities.ProjectMember{
 			ProjectID:   project.ID,
 			UserID:      operator,
 			ProjectRole: app.ProjectRoleOwner,
@@ -181,15 +183,9 @@ func (s *projectService) CreateProject(ctx context.Context, req *models.CreatePr
 }
 
 func (s *projectService) UpdateProject(ctx context.Context, req *models.UpdateProjectRequest) (*models.ProjectModel, app.Error) {
-	projectRole, err := s.CheckProjectPermissions(ctx, req.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	if projectRole != app.ProjectRoleOwner {
-		return nil, app.NewError(http.StatusForbidden, "You do not have permission to update this project")
-	}
+	// Permission check is now handled by middleware
 
-	project := &entity.Project{}
+	project := &entities.Project{}
 	if err := db.Instance().First(project, "id = ?", req.ProjectID).Error; err != nil {
 		if db.IsErrRecordNotFound(err) {
 			return nil, app.NewError(http.StatusNotFound, "Project not found")
@@ -212,19 +208,13 @@ func (s *projectService) UpdateProject(ctx context.Context, req *models.UpdatePr
 }
 
 func (s *projectService) DeleteProject(ctx context.Context, req *models.DeleteProjectRequest) app.Error {
-	projectRole, err := s.CheckProjectPermissions(ctx, req.ProjectID)
-	if err != nil {
-		return err
-	}
-	if projectRole != app.ProjectRoleOwner {
-		return app.NewError(http.StatusForbidden, "You do not have permission to delete this project")
-	}
+	// Permission check is now handled by middleware
 
 	if err := db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(entity.Project{}, "id = ?", req.ProjectID).Error; err != nil {
+		if err := tx.Delete(entities.Project{}, "id = ?", req.ProjectID).Error; err != nil {
 			return err
 		}
-		if err := tx.Delete(entity.ProjectMember{}, "project_id = ?", req.ProjectID).Error; err != nil {
+		if err := tx.Delete(entities.ProjectMember{}, "project_id = ?", req.ProjectID).Error; err != nil {
 			return err
 		}
 
@@ -238,11 +228,9 @@ func (s *projectService) DeleteProject(ctx context.Context, req *models.DeletePr
 }
 
 func (s *projectService) ListProjectMembers(ctx context.Context, req *models.ListProjectMembersRequest) (*models.ListProjectMembersResponse, app.Error) {
-	if _, err := s.CheckProjectPermissions(ctx, req.ProjectID); err != nil {
-		return nil, err
-	}
+	// Permission check is now handled by middleware
 
-	query := db.Instance().Model(&entity.ProjectMember{}).
+	query := db.Instance().Model(&entities.ProjectMember{}).
 		Select("project_members.project_id,project_members.user_id,users.username,users.fullname,users.email,users.phone,project_members.project_role,project_members.created_at").
 		Joins("LEFT JOIN users ON users.id = project_members.user_id AND project_members.project_id = ?", req.ProjectID).
 		Where("project_members.project_id = ?", req.ProjectID)
@@ -272,12 +260,10 @@ func (s *projectService) ListProjectMembers(ctx context.Context, req *models.Lis
 }
 
 func (s *projectService) ListAddableProjectMembers(ctx context.Context, projectID string) ([]*models.UserRef, app.Error) {
-	if _, err := s.CheckProjectPermissions(ctx, projectID); err != nil {
-		return nil, err
-	}
+	// Permission check is now handled by middleware
 
 	members := []*models.UserRef{}
-	query := db.Instance().Model(&entity.User{}).
+	query := db.Instance().Model(&entities.User{}).
 		Select("users.id, users.username, users.fullname, users.email, users.phone").
 		Joins("LEFT JOIN project_members ON project_members.user_id = users.id AND project_members.project_id = ?", projectID).
 		Where("project_members.user_id IS NULL")
@@ -289,25 +275,18 @@ func (s *projectService) ListAddableProjectMembers(ctx context.Context, projectI
 }
 
 func (s *projectService) AddProjectMembers(ctx context.Context, req *models.AddProjectMembersRequest) app.Error {
-	projectRole, err := s.CheckProjectPermissions(ctx, req.ProjectID)
-	if err != nil {
-		return err
-	}
+	// Permission check is now handled by middleware
 
-	if projectRole != app.ProjectRoleOwner {
-		return app.NewError(http.StatusForbidden, "You do not have permission to add members to this project")
-	}
-
-	members := make([]*entity.ProjectMember, 0, len(req.ProjectMemberRoles))
+	members := make([]*entities.ProjectMember, 0, len(req.ProjectMemberRoles))
 	for _, role := range req.ProjectMemberRoles {
 		if !slices.Contains(app.ProjectRoles, role.ProjectRole) {
 			return app.NewError(http.StatusBadRequest, fmt.Sprintf("%s is not one of the valid project roles: %v", role.ProjectRole, app.ProjectRoles))
 		}
-		members = append(members, &entity.ProjectMember{
+		members = append(members, &entities.ProjectMember{
 			ProjectID:   req.ProjectID,
 			UserID:      role.UserID,
 			ProjectRole: role.ProjectRole,
-			AuditBase: entity.AuditBase{
+			AuditBase: entities.AuditBase{
 				CreatedBy: api.UserID(ctx),
 				UpdatedBy: api.UserID(ctx),
 			},
@@ -332,19 +311,13 @@ func (s *projectService) AddProjectMembers(ctx context.Context, req *models.AddP
 }
 
 func (s *projectService) UpdateProjectMember(ctx context.Context, req *models.UpdateProjectMemberRequest) (*models.ProjectMemberModel, app.Error) {
-	projectRole, err := s.CheckProjectPermissions(ctx, req.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	if projectRole != app.ProjectRoleOwner {
-		return nil, app.NewError(http.StatusForbidden, "You do not have permission to update members in this project")
-	}
+	// Permission check is now handled by middleware
 
 	if !slices.Contains(app.ProjectRoles, req.ProjectRole) {
 		return nil, app.NewError(http.StatusBadRequest, fmt.Sprintf("%s is not one of the valid project roles: %v", req.ProjectRole, app.ProjectRoles))
 	}
 
-	member := &entity.ProjectMember{}
+	member := &entities.ProjectMember{}
 	if err := db.Instance().First(member, "project_id = ? AND user_id = ?", req.ProjectID, req.UserID).Error; err != nil {
 		log.Printf("failed to find project member %s in project %s: %v", req.UserID, req.ProjectID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -367,19 +340,13 @@ func (s *projectService) UpdateProjectMember(ctx context.Context, req *models.Up
 }
 
 func (s *projectService) RemoveProjectMembers(ctx context.Context, req *models.RemoveProjectMembersRequest) app.Error {
-	projectRole, err := s.CheckProjectPermissions(ctx, req.ProjectID)
-	if err != nil {
-		return err
-	}
-	if projectRole != app.ProjectRoleOwner {
-		return app.NewError(http.StatusForbidden, "You do not have permission to remove members from this project")
-	}
+	// Permission check is now handled by middleware
 
 	var (
 		failureCount int
 	)
 	for _, userID := range req.UserIDs {
-		if err := db.Instance().Delete(&entity.ProjectMember{}, "project_id = ? AND user_id = ?", req.ProjectID, userID).Error; err != nil {
+		if err := db.Instance().Delete(&entities.ProjectMember{}, "project_id = ? AND user_id = ?", req.ProjectID, userID).Error; err != nil {
 			log.Printf("failed to remove project member %s from project %s: %v", userID, req.ProjectID, err)
 			if db.IsErrRecordNotFound(err) {
 				continue // Ignore if member not found
@@ -393,4 +360,104 @@ func (s *projectService) RemoveProjectMembers(ctx context.Context, req *models.R
 	}
 
 	return nil
+}
+
+func (s *projectService) ListEnvs(ctx context.Context, req *models.ListEnvsRequest) (*models.ListEnvsResponse, app.Error) {
+	query := db.Instance().Model(&entities.Env{})
+	if len(req.ProjectID) > 0 {
+		// Permission check is now handled by middleware when accessing specific project resources
+		query = query.Where("project_id = ?", req.ProjectID)
+	}
+
+	if len(req.Query) > 0 {
+		query = db.CaseInsensitiveLike(query, req.Query, "slug", "display_name")
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		log.Printf("failed to count envs: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	envs := []*entities.Env{}
+	if err := req.PagedSQL(query).Find(&envs).Error; err != nil {
+		log.Printf("failed to list envs: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	result := &models.ListEnvsResponse{
+		Total:   total,
+		Records: make([]*models.EnvModel, 0, len(envs)),
+	}
+	for _, env := range envs {
+		result.Records = append(result.Records, &models.EnvModel{
+			EnvID:       env.ID,
+			Slug:        env.Slug,
+			DisplayName: env.DisplayName,
+			Description: env.Description,
+			ProjectID:   env.ProjectID,
+			CreatedAt:   utils.HumanizeTime(env.CreatedAt),
+		})
+	}
+
+	return result, nil
+}
+
+func (s *projectService) AllEnvRefs(ctx context.Context, req *models.AllEnvRefsRequest) ([]*models.EnvRef, app.Error) {
+	// Permission check is now handled by middleware
+
+	refs := []*models.EnvRef{}
+	if err := db.Instance().Model(&entities.Env{}).Where("project_id = ?", req.ProjectID).Find(&refs).Error; err != nil {
+		log.Printf("failed to list env refs: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return refs, nil
+}
+
+func (s *projectService) CreateEnv(ctx context.Context, req *models.CreateEnvRequest) (*models.EnvModel, app.Error) {
+	// Permission check is now handled by middleware
+
+	projectSlug, err := orm.GetProjectSlugByID(ctx, req.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	clusterSlug, err := orm.GetClusterSlugByID(ctx, req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	env := &entities.Env{
+		Slug:             req.Slug,
+		DisplayName:      req.DisplayName,
+		Description:      req.Description,
+		ProjectID:        req.ProjectID,
+		ProjectSlug:      projectSlug,
+		ClusterID:        req.ClusterID,
+		ClusterSlug:      clusterSlug,
+		ClusterNamespace: fmt.Sprintf("%s-%s", projectSlug, req.Slug),
+	}
+
+	// Create namespace for the env in the cluster
+	if _, err := kube.CreateNamespace(ctx, env.ClusterID, buildNamespace(env)); err != nil {
+		return nil, err
+	}
+
+	if err := db.Instance().Create(env).Error; err != nil {
+		log.Printf("failed to create env: %v", err)
+		if db.IsErrDuplicatedKey(err) {
+			return nil, app.NewError(http.StatusConflict, "Env with this slug already exists in the project")
+		}
+		return nil, app.NewError(http.StatusInternalServerError, "Failed to create env")
+	}
+
+	return &models.EnvModel{
+		EnvID:       env.ID,
+		Slug:        env.Slug,
+		DisplayName: env.DisplayName,
+		Description: env.Description,
+		ProjectID:   env.ProjectID,
+		ClusterID:   env.ClusterID,
+	}, nil
 }

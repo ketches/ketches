@@ -36,6 +36,16 @@ func NewError(code int, message string) Error {
 }
 
 var (
+	ErrNotAuthorized = &appError{
+		code:    http.StatusUnauthorized,
+		message: "Not authorized",
+	}
+
+	ErrUserPasswordMustReset = &appError{
+		code:    http.StatusUnauthorized,
+		message: "User password must be reset",
+	}
+
 	ErrPermissionDenied = &appError{
 		code:    http.StatusForbidden,
 		message: "Permission denied",

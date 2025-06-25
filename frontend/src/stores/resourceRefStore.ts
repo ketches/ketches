@@ -1,6 +1,6 @@
-import { fetchAppRefs, getAppRef } from '@/api/app';
-import { fetchEnvRefs, getEnvRef } from '@/api/env';
-import { fetchProjectRefs, getProjectRef } from '@/api/project';
+import { getAppRef } from '@/api/app';
+import { fetchAppRefs, getEnvRef } from '@/api/env';
+import { fetchEnvRefs, fetchProjectRefs, getProjectRef } from '@/api/project';
 import type { appRefModel } from '@/types/app';
 import type { clusterRefModel } from '@/types/cluster';
 import type { envRefModel } from '@/types/env';

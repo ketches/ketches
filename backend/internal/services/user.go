@@ -27,7 +27,7 @@ import (
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
-	"github.com/ketches/ketches/internal/db/entity"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -63,7 +63,7 @@ func NewUserService() UserService {
 }
 
 func (s *userService) List(ctx context.Context, req *models.ListUsersRequest) (*models.ListUsersResponse, app.Error) {
-	query := db.Instance().Model(&entity.User{})
+	query := db.Instance().Model(&entities.User{})
 
 	if req.Query != "" {
 		query = db.CaseInsensitiveLike(query, req.Query, "username", "fullname")
@@ -75,7 +75,7 @@ func (s *userService) List(ctx context.Context, req *models.ListUsersRequest) (*
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	users := []entity.User{}
+	users := []entities.User{}
 	if err := query.Find(&users).Error; err != nil {
 		return nil, app.ErrDatabaseOperationFailed
 	}
@@ -100,7 +100,7 @@ func (s *userService) List(ctx context.Context, req *models.ListUsersRequest) (*
 }
 
 func (s *userService) Get(ctx context.Context, req *models.GetUserProfileRequest) (*models.UserModel, app.Error) {
-	user := new(entity.User)
+	user := new(entities.User)
 	if err := db.Instance().First(user, "id = ?", req.UserID).Error; err != nil {
 		log.Printf("user %s does not exist: %v\n", req.UserID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -130,7 +130,7 @@ func (s *userService) SignUp(ctx context.Context, req *models.UserSignUpRequest)
 		return nil, app.NewError(http.StatusInternalServerError, fmt.Sprintf("failed to generate password hash: %v", err))
 	}
 
-	user := &entity.User{
+	user := &entities.User{
 		Username: req.Username,
 		Email:    req.Email,
 		Fullname: req.Fullname,
@@ -168,7 +168,7 @@ func (s *userService) SignUp(ctx context.Context, req *models.UserSignUpRequest)
 }
 
 func (s *userService) SignIn(ctx context.Context, req *models.UserSignInRequest) (*models.UserModel, app.Error) {
-	user := new(entity.User)
+	user := new(entities.User)
 	if err := db.Instance().First(user, "username = ?", req.Username).Error; err != nil {
 		if db.IsErrRecordNotFound(err) {
 			if err := db.Instance().First(user, "email = ?", req.Username).Error; err != nil {
@@ -214,12 +214,12 @@ func (s *userService) SignIn(ctx context.Context, req *models.UserSignInRequest)
 		return nil, app.NewError(http.StatusInternalServerError, fmt.Sprintf("failed to generate user %s refresh token", user.ID))
 	}
 
-	if err := db.Instance().Create(&entity.UserToken{
+	if err := db.Instance().Create(&entities.UserToken{
 		UserID:    user.ID,
 		Token:     refreshToken,
 		TokenType: string(app.TokenTypeRefreshToken),
 		ExpiresAt: expiresAt.Unix(),
-		AuditBase: entity.AuditBase{
+		AuditBase: entities.AuditBase{
 			CreatedBy: user.ID,
 		},
 	}).Error; err != nil {
@@ -248,7 +248,7 @@ func (s *userService) SignOut(ctx context.Context, req *models.UserSignOutReques
 		return app.NewError(http.StatusBadRequest, "refresh token is required")
 	}
 
-	if err := db.Instance().Delete(&entity.UserToken{}, "user_id = ? AND token = ? AND token_type = ?", req.UserID, refreshToken, app.TokenTypeRefreshToken).Error; err != nil {
+	if err := db.Instance().Delete(&entities.UserToken{}, "user_id = ? AND token = ? AND token_type = ?", req.UserID, refreshToken, app.TokenTypeRefreshToken).Error; err != nil {
 		log.Printf("failed to delete user %s refresh token: %v\n", req.UserID, err)
 		return app.ErrDatabaseOperationFailed
 	}
@@ -266,7 +266,7 @@ func (s *userService) Update(ctx context.Context, req *models.UserUpdateRequest)
 		return nil, app.NewError(http.StatusBadRequest, "email is required")
 	}
 
-	user := new(entity.User)
+	user := new(entities.User)
 	if err := db.Instance().First(user, "id = ?", req.UserID).Error; err != nil {
 		log.Printf("failed to get user %s: %v\n", req.UserID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -309,7 +309,7 @@ func (s *userService) Rename(ctx context.Context, req *models.UserRenameRequest)
 		return nil, app.NewError(http.StatusBadRequest, "password is required")
 	}
 
-	user := new(entity.User)
+	user := new(entities.User)
 	if err := db.Instance().First(user, "id = ?", req.UserID).Error; err != nil {
 		log.Printf("failed to get user %s: %v\n", req.UserID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -335,19 +335,11 @@ func (s *userService) Rename(ctx context.Context, req *models.UserRenameRequest)
 }
 
 func (s *userService) ChangeRole(ctx context.Context, req *models.UserChangeRoleRequest) (*models.UserModel, app.Error) {
-	if req.UserID == "" {
-		return nil, app.NewError(http.StatusBadRequest, "user id is required")
-	}
-
-	if req.NewRole == "" {
-		return nil, app.NewError(http.StatusBadRequest, "role is required")
-	}
-
 	if !api.IsAdmin(ctx) {
-		return nil, app.NewError(http.StatusForbidden, "only admin can change user role")
+		return nil, app.ErrPermissionDenied
 	}
 
-	user := new(entity.User)
+	user := new(entities.User)
 	if err := db.Instance().First(user, "id = ?", req.UserID).Error; err != nil {
 		log.Printf("failed to get user %s: %v\n", req.UserID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -370,7 +362,7 @@ func (s *userService) ChangeRole(ctx context.Context, req *models.UserChangeRole
 }
 
 func (s *userService) ResetPassword(ctx context.Context, req *models.UserResetPasswordRequest) (*models.UserModel, app.Error) {
-	user := new(entity.User)
+	user := new(entities.User)
 	if err := db.Instance().First(user, "id = ?", req.UserID).Error; err != nil {
 		log.Printf("failed to get user %s: %v\n", req.UserID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -401,7 +393,7 @@ func (s *userService) ResetPassword(ctx context.Context, req *models.UserResetPa
 			return err
 		}
 
-		if err := tx.Delete(&entity.UserToken{}, "user_id = ? AND token_type = ?", user.ID, app.TokenTypeRefreshToken).Error; err != nil {
+		if err := tx.Delete(&entities.UserToken{}, "user_id = ? AND token_type = ?", user.ID, app.TokenTypeRefreshToken).Error; err != nil {
 			log.Printf("failed to delete user %s refresh token: %v\n", user.ID, err)
 			return err
 		}
@@ -427,7 +419,7 @@ func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*m
 		return result, app.NewError(http.StatusUnauthorized, fmt.Sprintf("invalid refresh token %s: %v", refreshToken, err))
 	}
 
-	userToken := &entity.UserToken{}
+	userToken := &entities.UserToken{}
 	if err := db.Instance().First(userToken, "token = ? AND token_type = ?", refreshToken, app.TokenTypeRefreshToken).Error; err != nil {
 		log.Printf("failed to find refresh access token %s: %v\n", refreshToken, err)
 		return result, app.NewError(http.StatusUnauthorized, fmt.Sprintf("invalid refresh token %s", refreshToken))
@@ -466,7 +458,7 @@ func (s *userService) Delete(ctx context.Context, req *models.DeleteUserRequest)
 		return app.NewError(http.StatusBadRequest, "password is required to delete another user")
 	}
 
-	user := new(entity.User)
+	user := new(entities.User)
 	if err := db.Instance().First(user, "id = ?", req.UserID).Error; err != nil {
 		log.Printf("failed to get user %s: %v\n", req.UserID, err)
 		if db.IsErrRecordNotFound(err) {
@@ -482,12 +474,12 @@ func (s *userService) Delete(ctx context.Context, req *models.DeleteUserRequest)
 	}
 
 	if err := db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&entity.UserToken{}, "user_id = ?", user.ID).Error; err != nil {
+		if err := tx.Delete(&entities.UserToken{}, "user_id = ?", user.ID).Error; err != nil {
 			log.Printf("failed to delete user %s tokens: %v\n", user.ID, err)
 			return err
 		}
 
-		if err := tx.Delete(&entity.User{}, "id = ?", user.ID).Error; err != nil {
+		if err := tx.Delete(&entities.User{}, "id = ?", user.ID).Error; err != nil {
 			log.Printf("failed to delete user %s: %v\n", user.ID, err)
 			return err
 		}

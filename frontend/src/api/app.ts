@@ -1,50 +1,6 @@
 import api from '@/api/axios'
-import type { appCreateModel, appInstanceModel, appModel, appRefModel, logsRequestModel } from '@/types/app'
-import type { QueryAndPagedRequest as queryAndPagedRequest } from '@/types/common'
-import { defineStore } from 'pinia'
+import type { appInstanceModel, appModel, appRefModel, logsRequestModel } from '@/types/app'
 import { toast } from 'vue-sonner'
-
-export const useAppStore = defineStore('appStore', {
-    state: () => ({
-        activeApp: null as appModel | null,
-        appRefs: [] as appRefModel[],
-    }),
-    actions: {
-        async setActiveApp(app: appModel) {
-            this.activeApp = app;
-            const fetchedAppSelectedOptions = await fetchAppRefs(app.envID);
-            if (fetchedAppSelectedOptions) {
-                this.setAppRefs(fetchedAppSelectedOptions);
-            }
-        },
-        setAppRefs(refs: appRefModel[]) {
-            this.appRefs = refs;
-        },
-        clearActiveApp() {
-            this.activeApp = null;
-        }
-    },
-})
-
-
-export async function listApps(envID: string, filter: queryAndPagedRequest): Promise<{ total: number, records: appModel[] }> {
-    const response = await api.get(`/apps`, {
-        params: {
-            ...filter,
-            envID
-        }
-    })
-    return response.data as { total: number, records: appModel[] }
-}
-
-export async function fetchAppRefs(envID: string): Promise<appRefModel[]> {
-    const response = await api.get(`/apps/refs`, {
-        params: {
-            envID
-        }
-    })
-    return response.data as appRefModel[]
-}
 
 export async function getApp(appID: string): Promise<appModel> {
     const response = await api.get(`/apps/${appID}`)
@@ -54,11 +10,6 @@ export async function getApp(appID: string): Promise<appModel> {
 export async function getAppRef(appID: string): Promise<appRefModel> {
     const response = await api.get(`/apps/${appID}/ref`)
     return response.data as appRefModel
-}
-
-export async function createApp(model: appCreateModel): Promise<appModel> {
-    const response = await api.post('/apps', model)
-    return response.data as appModel
 }
 
 export async function appAction(appID: string, action: 'deploy' | 'start' | 'stop' | 'redeploy' | 'rollback' | 'rollingUpdate'): Promise<appModel> {

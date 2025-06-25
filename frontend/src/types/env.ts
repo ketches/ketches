@@ -16,7 +16,6 @@ export interface envRefModel {
 }
 
 export interface envCreateModel {
-    projectID: string
     slug: string
     displayName: string
     description?: string | ""

@@ -1,56 +1,8 @@
 import api from '@/api/axios';
 import type { QueryAndPagedRequest } from '@/types/common';
+import type { envCreateModel, envModel, envRefModel } from '@/types/env';
 import type { createProjectModel, projectMemberModel, projectModel, projectRefModel } from '@/types/project';
 import type { userRefModel } from '@/types/user';
-
-// export const useProjectStore = defineStore('projectStore', {
-//     state: () => ({
-//         projects: [] as projectModel[],
-//         activeProject: null as projectModel | null,
-//     }),
-//     actions: {
-//         setProjects(newProjects: projectModel[]) {
-//             this.projects = newProjects;
-//             const lastActiveProjectID = localStorage.getItem('lastActiveProjectID');
-//             if (lastActiveProjectID) {
-//                 const match = newProjects.find(p => p.projectID === lastActiveProjectID);
-//                 if (match) {
-//                     this.setActiveProject(match);
-//                     return
-//                 }
-//             }
-
-//             if (newProjects.length > 0) {
-//                 this.setActiveProject(newProjects[0]);
-//             } else {
-//                 this.clearActiveProject();
-//             }
-//         },
-//         addProject(newProject: projectModel) {
-//             if (this.projects.length == 0) {
-//                 this.setActiveProject(newProject);
-//             }
-//             this.projects.push(newProject);
-//         },
-//         removeProject(projectID: string) {
-//             this.projects = this.projects.filter(project => project.projectID !== projectID);
-//             if (this.activeProject && this.activeProject.projectID === projectID) {
-//                 this.clearActiveProject();
-//                 if (this.projects.length > 0) {
-//                     this.setActiveProject(this.projects[0]);
-//                 }
-//             }
-//         },
-//         setActiveProject(project: projectModel | null) {
-//             this.activeProject = project;
-//             localStorage.setItem('lastActiveProjectID', project ? project.projectID : '');
-//         },
-//         clearActiveProject() {
-//             this.activeProject = null;
-//             localStorage.removeItem('lastActiveProjectID');
-//         },
-//     },
-// })
 
 export async function listProjects(filter: QueryAndPagedRequest): Promise<projectModel[]> {
     const response = await api.get('/projects', {
@@ -125,4 +77,21 @@ export async function updateProjectMemberRole(projectID: string, userID: string,
         projectRole
     })
     return response.data as projectMemberModel
+}
+
+export async function listEnvs(projectID: string, filter: QueryAndPagedRequest): Promise<{ total: number, records: envModel[] }> {
+    const response = await api.get(`/projects/${projectID}/envs`, {
+        params: filter,
+    })
+    return response.data as { total: number, records: envModel[] }
+}
+
+export async function fetchEnvRefs(projectID: string): Promise<envRefModel[]> {
+    const response = await api.get(`/projects/${projectID}/envs/refs`)
+    return response.data as envRefModel[]
+}
+
+export async function createEnv(projectID: string, model: envCreateModel): Promise<envModel> {
+    const response = await api.post(`/projects/${projectID}/envs`, model)
+    return response.data as envModel
 }

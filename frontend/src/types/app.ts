@@ -32,7 +32,6 @@ export interface appRefModel {
 }
 
 export interface appCreateModel {
-    envID: string
     slug: string
     displayName: string
     description?: string
