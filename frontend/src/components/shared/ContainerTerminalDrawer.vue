@@ -88,7 +88,6 @@ function initTerminal() {
 
         ws.onopen = () => {
             if (terminal) {
-                // terminal.writeln('连接到终端成功');
                 toast.success('终端连接成功', {
                     description: '您可以开始输入命令。',
                     duration: 1000,
@@ -111,14 +110,17 @@ function initTerminal() {
         ws.onclose = () => {
             if (terminal) {
                 terminal.writeln('\r\n终端连接已关闭');
-                toast.info('终端连接已关闭', {
-                    description: '请检查容器状态或重新连接。',
-                });
+                if (toast.getToasts().length === 0) {
+                    // 如果没有其他 toast，则显示一个新的 toast
+                    toast.info('终端连接已关闭', {
+                        description: '请检查容器状态或重新连接。',
+                    });
+                }
             }
         };
 
         // 终端输入转发到 ws
-        terminal.onData((data) => {
+        terminal.onData((data: any) => {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(data);
             }
