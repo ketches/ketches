@@ -10,8 +10,8 @@ type Project struct {
 
 type ProjectMember struct {
 	UUIDBase
-	ProjectID   string `json:"project_id" gorm:"not null;uniqueIndex:idx_projectID_userID;index;size:64"` // Project UUID
-	UserID      string `json:"user_id" gorm:"not null;uniqueIndex:idx_projectID_userID;index;size:64"`    // User UUID
+	ProjectID   string `json:"project_id" gorm:"not null;uniqueIndex:idx_projectID_userID;index;size:36"` // Project UUID
+	UserID      string `json:"user_id" gorm:"not null;uniqueIndex:idx_projectID_userID;index;size:36"`    // User UUID
 	ProjectRole string `json:"project_role" gorm:"not null;size:32"`                                      // e.g., 'admin', 'member', 'viewer'
 	AuditBase
 }

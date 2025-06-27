@@ -1,13 +1,14 @@
 package db
 
-import (
-	// "go-apiserver-template/internal/config"
-	// "go-apiserver-template/internal/global"
-	// "go-apiserver-template/pkg/log"
+// "go-apiserver-template/internal/config"
+// "go-apiserver-template/internal/global"
+// "go-apiserver-template/pkg/log"
 
+import (
 	"errors"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/ketches/ketches/internal/app"
 	"gorm.io/gorm"
@@ -21,7 +22,9 @@ const (
 	DBTypeSQLite   = "sqlite"
 )
 
+// 全局只初始化一次
 var (
+	once     sync.Once
 	instance *gorm.DB
 )
 
@@ -39,33 +42,29 @@ func newDB(dialector gorm.Dialector) (*gorm.DB, error) {
 	})
 }
 
-// Instance returns a singleton instance of the database
 func Instance() *gorm.DB {
-	if instance != nil {
-		return instance
-	}
+	once.Do(func() {
+		var (
+			err      error
+			dbConfig = app.Config().DB
+		)
+		switch dbConfig.Type {
+		case DBTypeMySQL:
+			instance, err = newMySQL(dbConfig.DNS)
+		case DBTypePostgres:
+			instance, err = newPostgres(dbConfig.DNS)
+		case DBTypeSQLite:
+			instance, err = NewSQLite(dbConfig.DNS)
+		default:
+			log.Fatalf("unsupported database type, %v", dbConfig.Type)
+		}
 
-	var (
-		err      error
-		dbConfig = app.Config().DB
-	)
-	switch dbConfig.Type {
-	case DBTypeMySQL:
-		instance, err = newMySQL(dbConfig.DNS)
-	case DBTypePostgres:
-		instance, err = newPostgres(dbConfig.DNS)
-	case DBTypeSQLite:
-		instance, err = NewSQLite(dbConfig.DNS)
-	default:
-		log.Fatalf("unsupported database type, %v", dbConfig.Type)
-	}
+		if err != nil {
+			log.Fatalf("error connecting to database, %v", err)
+		}
 
-	if err != nil {
-		log.Fatalf("error connecting to database, %v", err)
-	}
-
-	Migrate(instance)
-
+		Migrate(instance)
+	})
 	return instance
 }
 

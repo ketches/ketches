@@ -9,14 +9,17 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
-	clusterClientset  = map[string]kubernetes.Interface{}
-	clusterKubeConfig = map[string]*rest.Config{}
-	clusterStoreset   = map[string]storeInterface{}
+	clusterClientset     = map[string]kubernetes.Interface{}
+	clusterRuntimeClient = map[string]client.Client{}
+	clusterKubeConfig    = map[string]*rest.Config{}
+	clusterStoreset      = map[string]storeInterface{}
 )
 
 func ClusterStore(ctx context.Context, clusterID string) (storeInterface, app.Error) {
@@ -42,6 +45,10 @@ func ClusterClientset(ctx context.Context, clusterID string, refresh bool) (kube
 	}
 
 	restConfig, err := RestConfig(ctx, clusterID)
+	if err != nil {
+		return nil, err
+	}
+
 	clusterKubeConfig[clusterID] = restConfig
 
 	clientset, err := clientsetFromRestConfig(restConfig)
@@ -51,6 +58,27 @@ func ClusterClientset(ctx context.Context, clusterID string, refresh bool) (kube
 
 	clusterClientset[clusterID] = clientset
 	return clientset, nil
+}
+
+func ClusterRuntimeClient(ctx context.Context, clusterID string) (client.Client, app.Error) {
+	if c, ok := clusterRuntimeClient[clusterID]; ok {
+		return c, nil
+	}
+
+	restConfig, err := RestConfig(ctx, clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	clusterKubeConfig[clusterID] = restConfig
+
+	runtimeClient, err := runtimeClientFromRestConfig(restConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	clusterRuntimeClient[clusterID] = runtimeClient
+	return runtimeClient, nil
 }
 
 func RestConfig(ctx context.Context, clusterID string) (*rest.Config, app.Error) {
@@ -89,6 +117,18 @@ func clientsetFromRestConfig(restConfig *rest.Config) (kubernetes.Interface, app
 	}
 
 	return clientset, nil
+}
+
+func runtimeClientFromRestConfig(restConfig *rest.Config) (client.Client, app.Error) {
+	kubeRuntimeClient, err := client.New(restConfig, client.Options{
+		Scheme: scheme.Scheme,
+	})
+	if err != nil {
+		log.Printf("Failed to create Kubernetes runtime client: %v", err)
+		return nil, app.NewError(http.StatusInternalServerError, "Failed to create Kubernetes runtime client")
+	}
+
+	return kubeRuntimeClient, nil
 }
 
 func restConfigFromKubeConfigBytes(kubeConfigBytes []byte) (*rest.Config, app.Error) {

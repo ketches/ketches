@@ -11,16 +11,22 @@ definitions:
     - start
     - stop
     - rollback
-    - rollingUpdate
+    - update
     - redeploy
+    - debug
+    - debugOff
+    - delete
     type: string
     x-enum-varnames:
     - AppActionDeploy
     - AppActionStart
     - AppActionStop
     - AppActionRollback
-    - AppActionRollingUpdate
+    - AppActionUpdate
     - AppActionRedeploy
+    - AppActionDebug
+    - AppActionDebugOff
+    - AppActionDelete
   app.WorkloadType:
     enum:
     - Deployment
@@ -42,15 +48,7 @@ definitions:
   models.AppActionRequest:
     properties:
       action:
-        allOf:
-        - $ref: '#/definitions/app.AppAction'
-        enum:
-        - deploy
-        - start
-        - stop
-        - rollingUpdate
-        - rollback
-        - redeploy
+        $ref: '#/definitions/app.AppAction'
     required:
     - action
     type: object
@@ -118,6 +116,9 @@ definitions:
     type: object
   models.AppModel:
     properties:
+      actualEdition:
+        description: Edition of the currently running app
+        type: string
       actualReplicas:
         description: Number of currently running replicas
         type: integer
@@ -129,18 +130,18 @@ definitions:
         type: string
       clusterSlug:
         type: string
+      containerCommand:
+        type: string
       containerImage:
         type: string
       createdAt:
         description: ISO 8601 format
         type: string
-      deployVersion:
-        type: string
-      deployed:
-        type: boolean
       description:
         type: string
       displayName:
+        type: string
+      edition:
         type: string
       envID:
         type: string
@@ -172,8 +173,7 @@ definitions:
       slug:
         type: string
       status:
-        description: e.g., "undeployed", "starting", "running", "stopped", "stopping",
-          "deploying", "rolling-update"
+        description: e.g., "undeployed", "starting", "running", "stopped", "stopping"
         type: string
       workloadType:
         allOf:
@@ -191,6 +191,32 @@ definitions:
       projectID:
         type: string
       slug:
+        type: string
+    type: object
+  models.AppVolumeModel:
+    properties:
+      accessModes:
+        items:
+          type: string
+        type: array
+      appID:
+        type: string
+      capacity:
+        type: integer
+      mountPath:
+        type: string
+      slug:
+        type: string
+      storageClass:
+        type: string
+      subPath:
+        description: Optional sub-path within the mount
+        type: string
+      volumeID:
+        type: string
+      volumeMode:
+        type: string
+      volumeType:
         type: string
     type: object
   models.ClusterModel:
@@ -264,6 +290,37 @@ definitions:
     - slug
     - workloadType
     type: object
+  models.CreateAppVolumeRequest:
+    properties:
+      accessModes:
+        items:
+          type: string
+        type: array
+      capacity:
+        type: integer
+      mountPath:
+        type: string
+      slug:
+        type: string
+      storageClass:
+        type: string
+      subPath:
+        type: string
+      volumeMode:
+        enum:
+        - Filesystem
+        - Block
+        type: string
+      volumeType:
+        type: string
+    required:
+    - accessModes
+    - capacity
+    - mountPath
+    - slug
+    - volumeMode
+    - volumeType
+    type: object
   models.CreateClusterRequest:
     properties:
       description:
@@ -317,6 +374,16 @@ definitions:
         type: array
     required:
     - envVarIDs
+    type: object
+  models.DeleteAppVolumesRequest:
+    properties:
+      volumeIDs:
+        description: List of volume IDs to delete
+        items:
+          type: string
+        type: array
+    required:
+    - volumeIDs
     type: object
   models.DeleteUserRequest:
     properties:
@@ -468,6 +535,11 @@ definitions:
       slug:
         type: string
     type: object
+  models.SetAppCommandRequest:
+    properties:
+      containerCommand:
+        type: string
+    type: object
   models.TerminateAppInstanceRequest:
     properties:
       appID:
@@ -496,6 +568,15 @@ definitions:
         type: string
     required:
     - displayName
+    type: object
+  models.UpdateAppVolumeRequest:
+    properties:
+      mountPath:
+        type: string
+      subPath:
+        type: string
+    required:
+    - mountPath
     type: object
   models.UpdateClusterRequest:
     properties:
@@ -672,30 +753,7 @@ paths:
       tags:
       - App
     get:
-      consumes:
-      - application/json
-      description: Get app by app ID
-      parameters:
-      - description: App ID
-        in: path
-        name: appID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.AppModel'
-              type: object
-      summary: Get App
-      tags:
-      - App
+      responses: {}
     put:
       consumes:
       - application/json
@@ -757,6 +815,38 @@ paths:
                   $ref: '#/definitions/models.AppModel'
               type: object
       summary: App Action
+      tags:
+      - App
+  /api/v1/apps/{appID}/command:
+    put:
+      consumes:
+      - application/json
+      description: Set the startup command of an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: New app command
+        in: body
+        name: command
+        required: true
+        schema:
+          $ref: '#/definitions/models.SetAppCommandRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppModel'
+              type: object
+      summary: Set App Command
       tags:
       - App
   /api/v1/apps/{appID}/envVars:
@@ -1037,6 +1127,97 @@ paths:
       summary: Get App Ref
       tags:
       - App
+  /api/v1/apps/{appID}/volumes:
+    get:
+      consumes:
+      - application/json
+      description: List storage volumes for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.AppVolumeModel'
+                  type: array
+              type: object
+      summary: List App Volumes
+      tags:
+      - AppVolume
+    post:
+      consumes:
+      - application/json
+      description: Create a new storage volume for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Volume
+        in: body
+        name: volume
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAppVolumeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppVolumeModel'
+              type: object
+      summary: Create App Volume
+      tags:
+      - AppVolume
+  /api/v1/apps/{appID}/volumes/{volumeID}:
+    put:
+      consumes:
+      - application/json
+      description: Update a storage volume for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Volume
+        in: body
+        name: volume
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateAppVolumeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppVolumeModel'
+              type: object
+      summary: Update App Volume
+      tags:
+      - AppVolume
   /api/v1/apps/envVars:
     delete:
       consumes:
@@ -1091,6 +1272,28 @@ paths:
       summary: Update App Env Var
       tags:
       - AppEnvVar
+  /api/v1/apps/volumes:
+    delete:
+      consumes:
+      - application/json
+      description: Delete storage volumes for an app
+      parameters:
+      - description: Volume IDs
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeleteAppVolumesRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Delete App Volumes
+      tags:
+      - AppVolume
   /api/v1/clusters:
     get:
       consumes:
@@ -1438,7 +1641,7 @@ paths:
               type: object
       summary: List Apps Under Env
       tags:
-      - Env
+      - App
     post:
       consumes:
       - application/json
@@ -1710,7 +1913,7 @@ paths:
               type: object
       summary: List Envs Under Project
       tags:
-      - Project
+      - Env
     post:
       consumes:
       - application/json
@@ -1741,7 +1944,7 @@ paths:
               type: object
       summary: Create Env Under Project
       tags:
-      - Project
+      - Env
   /api/v1/projects/{projectID}/envs/refs:
     get:
       consumes:

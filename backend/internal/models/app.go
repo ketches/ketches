@@ -18,12 +18,12 @@ type AppModel struct {
 	ContainerImage   string           `json:"containerImage"`
 	RegistryUsername string           `json:"registryUsername,omitempty"`
 	RegistryPassword string           `json:"registryPassword,omitempty"`
+	ContainerCommand string           `json:"containerCommand,omitempty"`
 	RequestCPU       int32            `json:"requestCPU,omitempty"`    // in milliCPU (e.g., 500 for 0.5 CPU, 1000 for 1 CPU)
 	RequestMemory    int32            `json:"requestMemory,omitempty"` // in MiB
 	LimitCPU         int32            `json:"limitCPU,omitempty"`      // in milliCPU (e.g., 1000 for 1 CPU, 2000 for 2 CPUs)
 	LimitMemory      int32            `json:"limitMemory,omitempty"`   // in MiB
-	Deployed         bool             `json:"deployed,omitempty"`
-	DeployVersion    string           `json:"deployVersion,omitempty"`
+	Edition          string           `json:"edition,omitempty"`
 	EnvID            string           `json:"envID,omitempty"`
 	EnvSlug          string           `json:"envSlug,omitempty"`
 	ProjectID        string           `json:"projectID,omitempty"`
@@ -32,7 +32,8 @@ type AppModel struct {
 	ClusterSlug      string           `json:"clusterSlug,omitempty"`
 	ClusterNamespace string           `json:"clusterNamespace,omitempty"`
 	ActualReplicas   int32            `json:"actualReplicas,omitempty"` // Number of currently running replicas
-	Status           string           `json:"status,omitempty"`         // e.g., "undeployed", "starting", "running", "stopped", "stopping", "deploying", "rolling-update"
+	ActualEdition    string           `json:"actualEdition,omitempty"`  // Edition of the currently running app
+	Status           string           `json:"status,omitempty"`         // e.g., "undeployed", "starting", "running", "stopped", "stopping"
 	CreatedAt        string           `json:"createdAt,omitempty"`      // ISO 8601 format
 }
 
@@ -96,13 +97,18 @@ type UpdateAppImageRequest struct {
 	RegistryPassword string `json:"registryPassword,omitempty"`
 }
 
+type SetAppCommandRequest struct {
+	AppID            string `json:"-" uri:"appID"`
+	ContainerCommand string `json:"containerCommand"`
+}
+
 type DeleteAppRequest struct {
 	AppID string `uri:"appID" binding:"required"`
 }
 
 type AppActionRequest struct {
 	AppID  string        `json:"-" uri:"appID"`
-	Action app.AppAction `json:"action" binding:"required,oneof=deploy start stop rollingUpdate rollback redeploy"`
+	Action app.AppAction `json:"action" binding:"required"`
 }
 
 type AppInstanceContainerModel struct {
@@ -126,7 +132,7 @@ type AppInstanceModel struct {
 	RequestMemory   string                       `json:"requestMemory,omitempty"` // e.g., "256Mi", "512Mi", "1Gi"
 	LimitCPU        string                       `json:"limitCPU,omitempty"`      // e.g., "1", "2", "4"
 	LimitMemory     string                       `json:"limitMemory,omitempty"`   // e.g., "512Mi", "1Gi", "2Gi"
-	DeployVersion   string                       `json:"revision,omitempty"`
+	Edition         string                       `json:"revision,omitempty"`
 }
 
 type ListAppInstancesRequest struct {
@@ -134,8 +140,8 @@ type ListAppInstancesRequest struct {
 }
 
 type ListAppInstancesResponse struct {
-	DeployVersion string              `json:"revision,omitempty"`
-	Instances     []*AppInstanceModel `json:"instances"`
+	Edition   string              `json:"revision,omitempty"`
+	Instances []*AppInstanceModel `json:"instances"`
 }
 
 type TerminateAppInstanceRequest struct {

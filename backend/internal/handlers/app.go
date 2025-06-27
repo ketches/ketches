@@ -10,6 +10,82 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
+// @Summary List Apps Under Env
+// @Description List apps under a specific env
+// @Tags App
+// @Accept json
+// @Produce json
+// @Param envID path string true "Env ID"
+// @Param query query models.ListAppsRequest false "Query parameters for filtering and pagination"
+// @Success 200 {object} api.Response{data=models.ListAppsResponse}
+// @Router /api/v1/envs/{envID}/apps [get]
+func ListApps(c *gin.Context) {
+	var req models.ListAppsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.EnvID = c.Param("envID")
+
+	s := services.NewAppService()
+	resp, err := s.ListApps(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, resp)
+}
+
+// @Summary All App Refs Under Env
+// @Description Get all apps for refs under a specific env
+// @Tags App
+// @Accept json
+// @Produce json
+// @Param envID path string true "Env ID"
+// @Param query query models.AllAppRefsRequest false "Query parameters for filtering refs"
+// @Success 200 {object} api.Response{data=[]models.AppRef}
+// @Router /api/v1/envs/{envID}/apps/refs [get]
+func AllAppRefs(c *gin.Context) {
+	s := services.NewAppService()
+	refs, err := s.AllAppRefs(c, &models.AllAppRefsRequest{
+		EnvID: c.Param("envID"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, refs)
+}
+
+// @Summary Create App Under Env
+// @Description Create a new app under a specific env
+// @Tags App
+// @Accept json
+// @Produce json
+// @Param envID path string true "Env ID"
+// @Param app body models.CreateAppRequest true "App data"
+// @Success 201 {object} api.Response{data=models.AppModel}
+// @Router /api/v1/envs/{envID}/apps [post]
+func CreateApp(c *gin.Context) {
+	var req models.CreateAppRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.EnvID = c.Param("envID")
+
+	s := services.NewAppService()
+	app, err := s.CreateApp(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Created(c, app)
+}
+
 // @Summary Get App
 // @Description Get app by app ID
 // @Tags App
@@ -17,6 +93,34 @@ import (
 // @Produce json
 // @Param appID path string true "App ID"
 // @Success 200 {object} api.Response{data=models.AppModel}
+
+// @Summary Set App Command
+// @Description Set the startup command of an app
+// @Tags App
+// @Accept json
+// @Produce json
+// @Param appID path string true "App ID"
+// @Param command body models.SetAppCommandRequest true "New app command"
+// @Success 200 {object} api.Response{data=models.AppModel}
+// @Router /api/v1/apps/{appID}/command [put]
+func SetAppCommand(c *gin.Context) {
+	var req models.SetAppCommandRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.AppID = c.Param("appID")
+
+	s := services.NewAppService()
+	app, err := s.SetAppCommand(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, app)
+}
+
 // @Router /api/v1/apps/{appID} [get]
 func GetApp(c *gin.Context) {
 	var req models.GetAppRequest
@@ -71,15 +175,11 @@ func GetAppRef(c *gin.Context) {
 // @Router /api/v1/apps/{appID} [put]
 func UpdateApp(c *gin.Context) {
 	var req models.UpdateAppRequest
-	if err := c.ShouldBindUri(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
 		return
 	}
+	req.AppID = c.Param("appID")
 
 	s := services.NewAppService()
 	app, err := s.UpdateApp(c, &req)

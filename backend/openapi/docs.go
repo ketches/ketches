@@ -102,9 +102,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/apps/{appID}": {
-            "get": {
-                "description": "Get app by app ID",
+        "/api/v1/apps/volumes": {
+            "delete": {
+                "description": "Delete storage volumes for an app",
                 "consumes": [
                     "application/json"
                 ],
@@ -112,38 +112,33 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "App"
+                    "AppVolume"
                 ],
-                "summary": "Get App",
+                "summary": "Delete App Volumes",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "App ID",
-                        "name": "appID",
-                        "in": "path",
-                        "required": true
+                        "description": "Volume IDs",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DeleteAppVolumesRequest"
+                        }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "204": {
+                        "description": "No Content",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.AppModel"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/api.Response"
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/apps/{appID}": {
+            "get": {
+                "responses": {}
             },
             "put": {
                 "description": "Update an existing app",
@@ -255,6 +250,59 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/models.AppActionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/apps/{appID}/command": {
+            "put": {
+                "description": "Set the startup command of an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "Set App Command",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New app command",
+                        "name": "command",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SetAppCommandRequest"
                         }
                     }
                 ],
@@ -713,6 +761,157 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/models.AppRef"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/apps/{appID}/volumes": {
+            "get": {
+                "description": "List storage volumes for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppVolume"
+                ],
+                "summary": "List App Volumes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.AppVolumeModel"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new storage volume for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppVolume"
+                ],
+                "summary": "Create App Volume",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Volume",
+                        "name": "volume",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateAppVolumeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppVolumeModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/apps/{appID}/volumes/{volumeID}": {
+            "put": {
+                "description": "Update a storage volume for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppVolume"
+                ],
+                "summary": "Update App Volume",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Volume",
+                        "name": "volume",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateAppVolumeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppVolumeModel"
                                         }
                                     }
                                 }
@@ -1231,7 +1430,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Env"
+                    "App"
                 ],
                 "summary": "List Apps Under Env",
                 "parameters": [
@@ -1724,7 +1923,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Project"
+                    "Env"
                 ],
                 "summary": "List Envs Under Project",
                 "parameters": [
@@ -1796,7 +1995,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Project"
+                    "Env"
                 ],
                 "summary": "Create Env Under Project",
                 "parameters": [
@@ -2777,16 +2976,22 @@ const docTemplate = `{
                 "start",
                 "stop",
                 "rollback",
-                "rollingUpdate",
-                "redeploy"
+                "update",
+                "redeploy",
+                "debug",
+                "debugOff",
+                "delete"
             ],
             "x-enum-varnames": [
                 "AppActionDeploy",
                 "AppActionStart",
                 "AppActionStop",
                 "AppActionRollback",
-                "AppActionRollingUpdate",
-                "AppActionRedeploy"
+                "AppActionUpdate",
+                "AppActionRedeploy",
+                "AppActionDebug",
+                "AppActionDebugOff",
+                "AppActionDelete"
             ]
         },
         "app.WorkloadType": {
@@ -2822,19 +3027,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "action": {
-                    "enum": [
-                        "deploy",
-                        "start",
-                        "stop",
-                        "rollingUpdate",
-                        "rollback",
-                        "redeploy"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/app.AppAction"
-                        }
-                    ]
+                    "$ref": "#/definitions/app.AppAction"
                 }
             }
         },
@@ -2933,6 +3126,10 @@ const docTemplate = `{
         "models.AppModel": {
             "type": "object",
             "properties": {
+                "actualEdition": {
+                    "description": "Edition of the currently running app",
+                    "type": "string"
+                },
                 "actualReplicas": {
                     "description": "Number of currently running replicas",
                     "type": "integer"
@@ -2949,6 +3146,9 @@ const docTemplate = `{
                 "clusterSlug": {
                     "type": "string"
                 },
+                "containerCommand": {
+                    "type": "string"
+                },
                 "containerImage": {
                     "type": "string"
                 },
@@ -2956,16 +3156,13 @@ const docTemplate = `{
                     "description": "ISO 8601 format",
                     "type": "string"
                 },
-                "deployVersion": {
-                    "type": "string"
-                },
-                "deployed": {
-                    "type": "boolean"
-                },
                 "description": {
                     "type": "string"
                 },
                 "displayName": {
+                    "type": "string"
+                },
+                "edition": {
                     "type": "string"
                 },
                 "envID": {
@@ -3010,7 +3207,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "description": "e.g., \"undeployed\", \"starting\", \"running\", \"stopped\", \"stopping\", \"deploying\", \"rolling-update\"",
+                    "description": "e.g., \"undeployed\", \"starting\", \"running\", \"stopped\", \"stopping\"",
                     "type": "string"
                 },
                 "workloadType": {
@@ -3039,6 +3236,45 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AppVolumeModel": {
+            "type": "object",
+            "properties": {
+                "accessModes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "appID": {
+                    "type": "string"
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "mountPath": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "storageClass": {
+                    "type": "string"
+                },
+                "subPath": {
+                    "description": "Optional sub-path within the mount",
+                    "type": "string"
+                },
+                "volumeID": {
+                    "type": "string"
+                },
+                "volumeMode": {
+                    "type": "string"
+                },
+                "volumeType": {
                     "type": "string"
                 }
             }
@@ -3145,6 +3381,50 @@ const docTemplate = `{
                 }
             }
         },
+        "models.CreateAppVolumeRequest": {
+            "type": "object",
+            "required": [
+                "accessModes",
+                "capacity",
+                "mountPath",
+                "slug",
+                "volumeMode",
+                "volumeType"
+            ],
+            "properties": {
+                "accessModes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "mountPath": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "storageClass": {
+                    "type": "string"
+                },
+                "subPath": {
+                    "type": "string"
+                },
+                "volumeMode": {
+                    "type": "string",
+                    "enum": [
+                        "Filesystem",
+                        "Block"
+                    ]
+                },
+                "volumeType": {
+                    "type": "string"
+                }
+            }
+        },
         "models.CreateClusterRequest": {
             "type": "object",
             "required": [
@@ -3218,6 +3498,21 @@ const docTemplate = `{
             "properties": {
                 "envVarIDs": {
                     "description": "List of env var IDs to delete",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.DeleteAppVolumesRequest": {
+            "type": "object",
+            "required": [
+                "volumeIDs"
+            ],
+            "properties": {
+                "volumeIDs": {
+                    "description": "List of volume IDs to delete",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3456,6 +3751,14 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SetAppCommandRequest": {
+            "type": "object",
+            "properties": {
+                "containerCommand": {
+                    "type": "string"
+                }
+            }
+        },
         "models.TerminateAppInstanceRequest": {
             "type": "object",
             "required": [
@@ -3497,6 +3800,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "displayName": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateAppVolumeRequest": {
+            "type": "object",
+            "required": [
+                "mountPath"
+            ],
+            "properties": {
+                "mountPath": {
+                    "type": "string"
+                },
+                "subPath": {
                     "type": "string"
                 }
             }

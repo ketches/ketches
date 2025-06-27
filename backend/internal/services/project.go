@@ -11,10 +11,7 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
-	"github.com/ketches/ketches/internal/db/orm"
-	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
-	"github.com/ketches/ketches/pkg/utils"
 	"gorm.io/gorm"
 )
 
@@ -31,9 +28,6 @@ type ProjectService interface {
 	AddProjectMembers(ctx context.Context, req *models.AddProjectMembersRequest) app.Error
 	UpdateProjectMember(ctx context.Context, req *models.UpdateProjectMemberRequest) (*models.ProjectMemberModel, app.Error)
 	RemoveProjectMembers(ctx context.Context, req *models.RemoveProjectMembersRequest) app.Error
-	ListEnvs(ctx context.Context, req *models.ListEnvsRequest) (*models.ListEnvsResponse, app.Error)
-	AllEnvRefs(ctx context.Context, req *models.AllEnvRefsRequest) ([]*models.EnvRef, app.Error)
-	CreateEnv(ctx context.Context, req *models.CreateEnvRequest) (*models.EnvModel, app.Error)
 }
 
 type projectService struct {
@@ -98,8 +92,6 @@ func (s *projectService) AllProjectRefs(ctx context.Context) ([]*models.ProjectR
 }
 
 func (s *projectService) GetProject(ctx context.Context, req *models.GetProjectRequest) (*models.ProjectModel, app.Error) {
-	// Permission check is now handled by middleware
-
 	project := new(entities.Project)
 	if err := db.Instance().First(project, "id = ?", req.ProjectID).Error; err != nil {
 		log.Printf("failed to get project %s: %v", req.ProjectID, err)
@@ -118,8 +110,6 @@ func (s *projectService) GetProject(ctx context.Context, req *models.GetProjectR
 }
 
 func (s *projectService) GetProjectRef(ctx context.Context, req *models.GetProjectRefRequest) (*models.ProjectRef, app.Error) {
-	// Permission check is now handled by middleware
-
 	result := &models.ProjectRef{}
 	if err := db.Instance().Model(&entities.Project{}).First(result, "id = ?", req.ProjectID).Error; err != nil {
 		if db.IsErrRecordNotFound(err) {
@@ -183,8 +173,6 @@ func (s *projectService) CreateProject(ctx context.Context, req *models.CreatePr
 }
 
 func (s *projectService) UpdateProject(ctx context.Context, req *models.UpdateProjectRequest) (*models.ProjectModel, app.Error) {
-	// Permission check is now handled by middleware
-
 	project := &entities.Project{}
 	if err := db.Instance().First(project, "id = ?", req.ProjectID).Error; err != nil {
 		if db.IsErrRecordNotFound(err) {
@@ -208,8 +196,6 @@ func (s *projectService) UpdateProject(ctx context.Context, req *models.UpdatePr
 }
 
 func (s *projectService) DeleteProject(ctx context.Context, req *models.DeleteProjectRequest) app.Error {
-	// Permission check is now handled by middleware
-
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(entities.Project{}, "id = ?", req.ProjectID).Error; err != nil {
 			return err
@@ -228,8 +214,6 @@ func (s *projectService) DeleteProject(ctx context.Context, req *models.DeletePr
 }
 
 func (s *projectService) ListProjectMembers(ctx context.Context, req *models.ListProjectMembersRequest) (*models.ListProjectMembersResponse, app.Error) {
-	// Permission check is now handled by middleware
-
 	query := db.Instance().Model(&entities.ProjectMember{}).
 		Select("project_members.project_id,project_members.user_id,users.username,users.fullname,users.email,users.phone,project_members.project_role,project_members.created_at").
 		Joins("LEFT JOIN users ON users.id = project_members.user_id AND project_members.project_id = ?", req.ProjectID).
@@ -260,8 +244,6 @@ func (s *projectService) ListProjectMembers(ctx context.Context, req *models.Lis
 }
 
 func (s *projectService) ListAddableProjectMembers(ctx context.Context, projectID string) ([]*models.UserRef, app.Error) {
-	// Permission check is now handled by middleware
-
 	members := []*models.UserRef{}
 	query := db.Instance().Model(&entities.User{}).
 		Select("users.id, users.username, users.fullname, users.email, users.phone").
@@ -275,8 +257,6 @@ func (s *projectService) ListAddableProjectMembers(ctx context.Context, projectI
 }
 
 func (s *projectService) AddProjectMembers(ctx context.Context, req *models.AddProjectMembersRequest) app.Error {
-	// Permission check is now handled by middleware
-
 	members := make([]*entities.ProjectMember, 0, len(req.ProjectMemberRoles))
 	for _, role := range req.ProjectMemberRoles {
 		if !slices.Contains(app.ProjectRoles, role.ProjectRole) {
@@ -311,8 +291,6 @@ func (s *projectService) AddProjectMembers(ctx context.Context, req *models.AddP
 }
 
 func (s *projectService) UpdateProjectMember(ctx context.Context, req *models.UpdateProjectMemberRequest) (*models.ProjectMemberModel, app.Error) {
-	// Permission check is now handled by middleware
-
 	if !slices.Contains(app.ProjectRoles, req.ProjectRole) {
 		return nil, app.NewError(http.StatusBadRequest, fmt.Sprintf("%s is not one of the valid project roles: %v", req.ProjectRole, app.ProjectRoles))
 	}
@@ -340,8 +318,6 @@ func (s *projectService) UpdateProjectMember(ctx context.Context, req *models.Up
 }
 
 func (s *projectService) RemoveProjectMembers(ctx context.Context, req *models.RemoveProjectMembersRequest) app.Error {
-	// Permission check is now handled by middleware
-
 	var (
 		failureCount int
 	)
@@ -360,104 +336,4 @@ func (s *projectService) RemoveProjectMembers(ctx context.Context, req *models.R
 	}
 
 	return nil
-}
-
-func (s *projectService) ListEnvs(ctx context.Context, req *models.ListEnvsRequest) (*models.ListEnvsResponse, app.Error) {
-	query := db.Instance().Model(&entities.Env{})
-	if len(req.ProjectID) > 0 {
-		// Permission check is now handled by middleware when accessing specific project resources
-		query = query.Where("project_id = ?", req.ProjectID)
-	}
-
-	if len(req.Query) > 0 {
-		query = db.CaseInsensitiveLike(query, req.Query, "slug", "display_name")
-	}
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		log.Printf("failed to count envs: %v", err)
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	envs := []*entities.Env{}
-	if err := req.PagedSQL(query).Find(&envs).Error; err != nil {
-		log.Printf("failed to list envs: %v", err)
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	result := &models.ListEnvsResponse{
-		Total:   total,
-		Records: make([]*models.EnvModel, 0, len(envs)),
-	}
-	for _, env := range envs {
-		result.Records = append(result.Records, &models.EnvModel{
-			EnvID:       env.ID,
-			Slug:        env.Slug,
-			DisplayName: env.DisplayName,
-			Description: env.Description,
-			ProjectID:   env.ProjectID,
-			CreatedAt:   utils.HumanizeTime(env.CreatedAt),
-		})
-	}
-
-	return result, nil
-}
-
-func (s *projectService) AllEnvRefs(ctx context.Context, req *models.AllEnvRefsRequest) ([]*models.EnvRef, app.Error) {
-	// Permission check is now handled by middleware
-
-	refs := []*models.EnvRef{}
-	if err := db.Instance().Model(&entities.Env{}).Where("project_id = ?", req.ProjectID).Find(&refs).Error; err != nil {
-		log.Printf("failed to list env refs: %v", err)
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	return refs, nil
-}
-
-func (s *projectService) CreateEnv(ctx context.Context, req *models.CreateEnvRequest) (*models.EnvModel, app.Error) {
-	// Permission check is now handled by middleware
-
-	projectSlug, err := orm.GetProjectSlugByID(ctx, req.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-
-	clusterSlug, err := orm.GetClusterSlugByID(ctx, req.ClusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	env := &entities.Env{
-		Slug:             req.Slug,
-		DisplayName:      req.DisplayName,
-		Description:      req.Description,
-		ProjectID:        req.ProjectID,
-		ProjectSlug:      projectSlug,
-		ClusterID:        req.ClusterID,
-		ClusterSlug:      clusterSlug,
-		ClusterNamespace: fmt.Sprintf("%s-%s", projectSlug, req.Slug),
-	}
-
-	// Create namespace for the env in the cluster
-	if _, err := kube.CreateNamespace(ctx, env.ClusterID, buildNamespace(env)); err != nil {
-		return nil, err
-	}
-
-	if err := db.Instance().Create(env).Error; err != nil {
-		log.Printf("failed to create env: %v", err)
-		if db.IsErrDuplicatedKey(err) {
-			return nil, app.NewError(http.StatusConflict, "Env with this slug already exists in the project")
-		}
-		return nil, app.NewError(http.StatusInternalServerError, "Failed to create env")
-	}
-
-	return &models.EnvModel{
-		EnvID:       env.ID,
-		Slug:        env.Slug,
-		DisplayName: env.DisplayName,
-		Description: env.Description,
-		ProjectID:   env.ProjectID,
-		ClusterID:   env.ClusterID,
-	}, nil
 }

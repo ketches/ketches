@@ -64,28 +64,16 @@ func IsPodAbnormal(pod *corev1.Pod) bool {
 		return true
 	}
 
-	if pod.Status.Phase == corev1.PodPending {
-		for _, cond := range pod.Status.Conditions {
-			if cond.Type == corev1.PodScheduled &&
-				cond.Status == corev1.ConditionFalse &&
-				cond.Reason == "Unschedulable" {
-				return true
-			}
-		}
-	}
-
 	now := time.Now()
 	for _, cond := range pod.Status.Conditions {
 		switch cond.Type {
 		case corev1.PodReady, corev1.ContainersReady:
-			if cond.Status != corev1.ConditionTrue && cond.LastTransitionTime.Time.Before(now.Add(-3*time.Minute)) {
+			if cond.Status != corev1.ConditionTrue && cond.LastTransitionTime.Time.Before(now.Add(-2*time.Minute)) {
 				return true
 			}
 		case corev1.PodScheduled:
-			if cond.Status != corev1.ConditionTrue {
-				if cond.Status == corev1.ConditionFalse && cond.Reason == "Unschedulable" {
-					return true
-				}
+			if cond.Status != corev1.ConditionTrue && cond.Reason == "Unschedulable" {
+				return true
 			}
 		}
 	}

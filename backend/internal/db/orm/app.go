@@ -4,22 +4,15 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/spf13/cast"
 )
-
-func AllAppEnvVars(appID string) ([]*entities.AppEnvVar, app.Error) {
-	var result []*entities.AppEnvVar
-	if err := db.Instance().Find(&result, "app_id = ?", appID).Error; err != nil {
-		return nil, app.ErrDatabaseOperationFailed
-	}
-
-	return result, nil
-}
 
 func GetAppByID(ctx context.Context, appID string) (*entities.App, app.Error) {
 	result := &entities.App{}
@@ -68,20 +61,46 @@ func GetProjectRoleByAppID(ctx context.Context, appID string) (string, app.Error
 	return entity.ProjectRole, nil
 }
 
-func UpdateAppDeployInfo(ctx context.Context, appID string, deployed bool, deployVersion string) app.Error {
+func UpdateAppEdition(ctx context.Context, appID string) app.Error {
 	if err := db.Instance().Updates(&entities.App{
 		UUIDBase: entities.UUIDBase{
 			ID: appID,
 		},
-		Deployed:      deployed,
-		DeployVersion: deployVersion,
+		Edition: cast.ToString(time.Now().UnixMilli()),
 		AuditBase: entities.AuditBase{
 			UpdatedBy: api.UserID(ctx),
 		},
 	}).Error; err != nil {
-		log.Printf("failed to update app info on deploy: %v", err)
+		log.Printf("failed to update app edition: %v", err)
 		return app.ErrDatabaseOperationFailed
 	}
 
 	return nil
+}
+
+func AllAppEnvVars(appID string) ([]*entities.AppEnvVar, app.Error) {
+	var result []*entities.AppEnvVar
+	if err := db.Instance().Find(&result, "app_id = ?", appID).Error; err != nil {
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return result, nil
+}
+
+func AllAppVolumes(appID string) ([]*entities.AppVolume, app.Error) {
+	var result []*entities.AppVolume
+	if err := db.Instance().Find(&result, "app_id = ?", appID).Error; err != nil {
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return result, nil
+}
+
+func AllAppPorts(appID string) ([]*entities.AppPort, app.Error) {
+	var result []*entities.AppPort
+	if err := db.Instance().Find(&result, "app_id = ?", appID).Error; err != nil {
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return result, nil
 }

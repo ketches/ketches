@@ -26,6 +26,7 @@ func Migrate(db *gorm.DB) {
 		&entities.AppEnvVar{},
 		&entities.AppPort{},
 		&entities.AppGateway{},
+		&entities.AppVolume{},
 	); err != nil {
 		log.Fatalf("failed to migrate database, %v", err)
 	}

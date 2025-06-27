@@ -103,6 +103,8 @@ func DeleteAppEnvVars(c *gin.Context) {
 		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
 		return
 	}
+	req.AppID = c.Param("appID")
+
 	s := services.NewAppEnvVarService()
 	if err := s.DeleteAppEnvVars(c, &req); err != nil {
 		api.Error(c, err)

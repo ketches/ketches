@@ -15,7 +15,7 @@ type User struct {
 
 type UserToken struct {
 	UUIDBase
-	UserID    string `json:"user_id" gorm:"not null;index;size:64"`      // User UUID this token belongs to
+	UserID    string `json:"user_id" gorm:"not null;index;size:36"`      // User UUID this token belongs to
 	Token     string `json:"token" gorm:"not null;uniqueIndex;size:512"` // Unique token for the user session
 	TokenType string `json:"token_type" gorm:"not null;size:32"`         // access_token, refresh_token
 	ExpiresAt int64  `json:"expires_at"`                                 // Expiration timestamp for the token

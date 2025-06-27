@@ -11,6 +11,7 @@ import (
 
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
+	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/db/orm"
@@ -20,19 +21,20 @@ import (
 	"github.com/ketches/ketches/pkg/websocket"
 	"github.com/spf13/cast"
 	"gorm.io/gorm"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
 type AppService interface {
+	ListApps(ctx context.Context, req *models.ListAppsRequest) (*models.ListAppsResponse, app.Error)
+	AllAppRefs(ctx context.Context, req *models.AllAppRefsRequest) ([]*models.AppRef, app.Error)
+	CreateApp(ctx context.Context, req *models.CreateAppRequest) (*models.AppModel, app.Error)
 	GetApp(ctx context.Context, req *models.GetAppRequest) (*models.AppModel, app.Error)
 	GetAppRef(ctx context.Context, req *models.GetAppRefRequest) (*models.AppRef, app.Error)
 	UpdateApp(ctx context.Context, req *models.UpdateAppRequest) (*models.AppModel, app.Error)
 	DeleteApp(ctx context.Context, req *models.DeleteAppRequest) app.Error
 	UpdateAppImage(ctx context.Context, req *models.UpdateAppImageRequest) (*models.AppModel, app.Error)
+	SetAppCommand(ctx context.Context, req *models.SetAppCommandRequest) (*models.AppModel, app.Error)
 	AppAction(ctx context.Context, req *models.AppActionRequest) (*models.AppModel, app.Error)
 	ListAppInstances(ctx context.Context, req *models.ListAppInstancesRequest) (*models.ListAppInstancesResponse, app.Error)
 	TerminateAppInstance(ctx context.Context, req *models.TerminateAppInstanceRequest) app.Error
@@ -50,6 +52,138 @@ var appServiceInstance = &appService{
 
 func NewAppService() AppService {
 	return appServiceInstance
+}
+
+func (s *appService) ListApps(ctx context.Context, req *models.ListAppsRequest) (*models.ListAppsResponse, app.Error) {
+	query := db.Instance().Model(&entities.App{}).Where("env_id = ?", req.EnvID)
+
+	if req.Query != "" {
+		query = db.CaseInsensitiveLike(query, req.Query, "slug", "display_name")
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		log.Printf("failed to count apps: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	apps := []*entities.App{}
+	if err := req.PagedSQL(query).Find(&apps).Error; err != nil {
+		log.Printf("failed to list apps: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	result := &models.ListAppsResponse{
+		Total:   total,
+		Records: make([]*models.AppModel, 0, len(apps)),
+	}
+	for _, app := range apps {
+		resultItem := &models.AppModel{
+			AppID:            app.ID,
+			Slug:             app.Slug,
+			DisplayName:      app.DisplayName,
+			WorkloadType:     app.WorkloadType,
+			Replicas:         app.Replicas,
+			ContainerImage:   app.ContainerImage,
+			Edition:          app.Edition,
+			EnvID:            app.EnvID,
+			ProjectID:        app.ProjectID,
+			ClusterNamespace: app.ClusterNamespace,
+			CreatedAt:        utils.HumanizeTime(app.CreatedAt),
+		}
+
+		appStatus := core.GetAppStatus(ctx, app)
+		resultItem.ActualReplicas, resultItem.Status = appStatus.ActualReplicas, appStatus.Status
+
+		result.Records = append(result.Records, resultItem)
+	}
+
+	return result, nil
+}
+
+func (s *appService) AllAppRefs(ctx context.Context, req *models.AllAppRefsRequest) ([]*models.AppRef, app.Error) {
+	refs := []*models.AppRef{}
+	if err := db.Instance().Model(&entities.App{}).Where("env_id = ?", req.EnvID).Find(&refs).Error; err != nil {
+		log.Printf("failed to list app refs: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return refs, nil
+}
+
+func (s *appService) CreateApp(ctx context.Context, req *models.CreateAppRequest) (*models.AppModel, app.Error) {
+	env, err := orm.GetEnvByID(ctx, req.EnvID)
+	if err != nil {
+		return nil, err
+	}
+
+	appEntity := &entities.App{
+		Slug:             req.Slug,
+		DisplayName:      req.DisplayName,
+		Description:      req.Description,
+		ContainerImage:   req.ContainerImage,
+		WorkloadType:     req.WorkloadType,
+		Replicas:         req.Replicas,
+		RegistryUsername: req.RegistryUsername,
+		RegistryPassword: req.RegistryPassword,
+		RequestCPU:       req.RequestCPU,
+		RequestMemory:    req.RequestMemory,
+		LimitCPU:         req.LimitCPU,
+		LimitMemory:      req.LimitMemory,
+		Edition:          cast.ToString(time.Now().UnixMilli()),
+		EnvID:            req.EnvID,
+		EnvSlug:          env.Slug,
+		ProjectID:        env.ProjectID,
+		ProjectSlug:      env.ProjectSlug,
+		ClusterID:        env.ClusterID,
+		ClusterSlug:      env.ClusterSlug,
+		ClusterNamespace: env.ClusterNamespace,
+		AuditBase: entities.AuditBase{
+			CreatedBy: api.UserID(ctx),
+			UpdatedBy: api.UserID(ctx),
+		},
+	}
+
+	if err := db.Instance().Create(appEntity).Error; err != nil {
+		log.Printf("failed to create app: %v", err)
+
+		if db.IsErrDuplicatedKey(err) {
+			return nil, app.NewError(http.StatusConflict, "App with this slug already exists in the env")
+		}
+		return nil, app.NewError(http.StatusInternalServerError, "Failed to create app")
+	}
+
+	result := &models.AppModel{
+		AppID:            appEntity.ID,
+		Slug:             appEntity.Slug,
+		DisplayName:      appEntity.DisplayName,
+		Description:      appEntity.Description,
+		WorkloadType:     appEntity.WorkloadType,
+		Replicas:         appEntity.Replicas,
+		ContainerImage:   appEntity.ContainerImage,
+		RegistryUsername: appEntity.RegistryUsername,
+		RegistryPassword: appEntity.RegistryPassword,
+		RequestCPU:       appEntity.RequestCPU,
+		RequestMemory:    appEntity.RequestMemory,
+		LimitCPU:         appEntity.LimitCPU,
+		LimitMemory:      appEntity.LimitMemory,
+		Edition:          appEntity.Edition,
+		EnvID:            appEntity.EnvID,
+		EnvSlug:          env.Slug,
+		ProjectID:        appEntity.ProjectID,
+		ProjectSlug:      env.ProjectSlug,
+		ClusterID:        appEntity.ClusterID,
+		ClusterSlug:      env.ClusterSlug,
+		ClusterNamespace: appEntity.ClusterNamespace,
+	}
+
+	if req.Deploy {
+		if err := s.deployApp(ctx, appEntity, nil); err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
 }
 
 func (s *appService) GetApp(ctx context.Context, req *models.GetAppRequest) (*models.AppModel, app.Error) {
@@ -72,15 +206,16 @@ func (s *appService) GetApp(ctx context.Context, req *models.GetAppRequest) (*mo
 		ContainerImage:   appEntity.ContainerImage,
 		RegistryUsername: appEntity.RegistryUsername,
 		RegistryPassword: appEntity.RegistryPassword,
-		Deployed:         appEntity.Deployed,
-		DeployVersion:    appEntity.DeployVersion,
+		ContainerCommand: appEntity.ContainerCommand,
+		Edition:          appEntity.Edition,
 		EnvID:            appEntity.EnvID,
 		ProjectID:        appEntity.ProjectID,
 		ClusterID:        appEntity.ClusterID,
 		ClusterNamespace: appEntity.ClusterNamespace,
 		CreatedAt:        utils.HumanizeTime(appEntity.CreatedAt),
 	}
-	result.ActualReplicas, result.Status = getAppStatus(ctx, appEntity)
+	appStatus := core.GetAppStatus(ctx, appEntity)
+	result.ActualReplicas, result.ActualEdition, result.Status = appStatus.ActualReplicas, appStatus.ActualEdition, appStatus.Status
 	return result, nil
 }
 
@@ -118,9 +253,14 @@ func (s *appService) UpdateApp(ctx context.Context, req *models.UpdateAppRequest
 	appEntity.DisplayName = req.DisplayName
 	appEntity.Description = req.Description
 
-	if err := db.Instance().Model(appEntity).Updates(entities.App{
+	if err := db.Instance().Model(appEntity).Select(
+		"DisplayName", "Description", "UpdatedBy",
+	).Updates(entities.App{
 		DisplayName: appEntity.DisplayName,
 		Description: appEntity.Description,
+		AuditBase: entities.AuditBase{
+			UpdatedBy: api.UserID(ctx),
+		},
 	}).Error; err != nil {
 		log.Printf("failed to update app: %v", err)
 		return nil, app.ErrDatabaseOperationFailed
@@ -142,47 +282,7 @@ func (s *appService) DeleteApp(ctx context.Context, req *models.DeleteAppRequest
 		return err
 	}
 
-	// 1. delete app in cluster
-	if appEntity.Deployed {
-		if err := db.Instance().Model(appEntity).Update("deployed", false).Where("id = ?", appEntity.ID).Error; err != nil {
-			log.Printf("failed to update app deploy info: %v", err)
-			return app.ErrDatabaseOperationFailed
-		}
-
-		if err := deleteClusterAppResources(ctx, appEntity); err != nil {
-			return err
-		}
-	}
-
-	// 2. delete app in database
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(appEntity).Error; err != nil {
-			log.Printf("failed to delete app %s: %v", req.AppID, err)
-			return err
-		}
-
-		if err := tx.Delete(&entities.AppEnvVar{}, "app_id = ?", appEntity.ID).Error; err != nil {
-			log.Printf("failed to delete app env vars for app %s: %v", req.AppID, err)
-			return err
-		}
-
-		if err := tx.Delete(&entities.AppPort{}, "app_id = ?", appEntity.ID).Error; err != nil {
-			log.Printf("failed to delete app ports for app %s: %v", req.AppID, err)
-			return err
-		}
-
-		if err := tx.Delete(&entities.AppGateway{}, "app_id = ?", appEntity.ID).Error; err != nil {
-			log.Printf("failed to delete app gateways for app %s: %v", req.AppID, err)
-			return err
-		}
-
-		log.Printf("app %s deleted successfully", req.AppID)
-		return nil
-	}); err != nil {
-		return app.ErrDatabaseOperationFailed
-	}
-
-	return nil
+	return s.deleteApp(ctx, appEntity)
 }
 
 func (s *appService) UpdateAppImage(ctx context.Context, req *models.UpdateAppImageRequest) (*models.AppModel, app.Error) {
@@ -195,62 +295,45 @@ func (s *appService) UpdateAppImage(ctx context.Context, req *models.UpdateAppIm
 		return nil, app.NewError(http.StatusBadRequest, "No changes detected in app image or registry credentials")
 	}
 
-	appEntity.ContainerImage = req.ContainerImage
-	appEntity.RegistryUsername = req.RegistryUsername
-	appEntity.RegistryPassword = req.RegistryPassword
+	result := &models.AppModel{
+		AppID:            appEntity.ID,
+		Slug:             appEntity.Slug,
+		DisplayName:      appEntity.DisplayName,
+		Description:      appEntity.Description,
+		ContainerImage:   req.ContainerImage,
+		RegistryUsername: req.RegistryUsername,
+		RegistryPassword: req.RegistryPassword,
+		Edition:          cast.ToString(time.Now().UnixMilli()),
+		EnvID:            appEntity.EnvID,
+		ProjectID:        appEntity.ProjectID,
+	}
 
-	if err := db.Instance().Model(appEntity).Updates(entities.App{
-		ContainerImage:   appEntity.ContainerImage,
-		RegistryUsername: appEntity.RegistryUsername,
-		RegistryPassword: appEntity.RegistryPassword,
+	if err := db.Instance().Model(appEntity).Select(
+		"ContainerImage", "RegistryUsername", "RegistryPassword", "Edition", "UpdatedBy",
+	).Updates(entities.App{
+		ContainerImage:   result.ContainerImage,
+		RegistryUsername: result.RegistryUsername,
+		RegistryPassword: result.RegistryPassword,
+		Edition:          result.Edition,
+		AuditBase: entities.AuditBase{
+			UpdatedBy: api.UserID(ctx),
+		},
 	}).Error; err != nil {
 		log.Printf("failed to update app image: %v", err)
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	if appEntity.Deployed {
-		switch appEntity.WorkloadType {
-		case app.WorkloadTypeDeployment:
-			deployment, err := kube.GetDeployment(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-			if err != nil {
-				if err.Code() != http.StatusNotFound {
-					return nil, err
-				}
-				// Deployment not found, we need to redeploy the app
-				if err := s.deployApp(ctx, appEntity, true); err != nil {
-					return nil, err
-				}
-			} else {
-				for i := range deployment.Spec.Template.Spec.Containers {
-					if deployment.Spec.Template.Spec.Containers[i].Name == mainContainerName(appEntity.Slug) {
-						deployment.Spec.Template.Spec.Containers[i].Image = appEntity.ContainerImage
-					}
-				}
-				if _, err := kube.UpdateDeployment(ctx, appEntity.ClusterID, deployment); err != nil {
-					return nil, err
-				}
-			}
-		case app.WorkloadTypeStatefulSet:
-			statefulSet, err := kube.GetStatefulSet(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-			if err != nil {
-				if err.Code() != http.StatusNotFound {
-					return nil, err
-				}
-				// StatefulSet not found, we need to redeploy the app
-				if err := s.deployApp(ctx, appEntity, true); err != nil {
-					return nil, err
-				}
-			} else {
-				for i := range statefulSet.Spec.Template.Spec.Containers {
-					if statefulSet.Spec.Template.Spec.Containers[i].Name == mainContainerName(appEntity.Slug) {
-						statefulSet.Spec.Template.Spec.Containers[i].Image = appEntity.ContainerImage
-					}
-				}
-				if _, err := kube.UpdateStatefulSet(ctx, appEntity.ClusterID, statefulSet); err != nil {
-					return nil, err
-				}
-			}
-		}
+	return result, nil
+}
+
+func (s *appService) SetAppCommand(ctx context.Context, req *models.SetAppCommandRequest) (*models.AppModel, app.Error) {
+	appEntity, err := orm.GetAppByID(ctx, req.AppID)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.ContainerCommand == appEntity.ContainerCommand {
+		return nil, app.NewError(http.StatusBadRequest, "No changes detected in app command")
 	}
 
 	result := &models.AppModel{
@@ -258,12 +341,23 @@ func (s *appService) UpdateAppImage(ctx context.Context, req *models.UpdateAppIm
 		Slug:             appEntity.Slug,
 		DisplayName:      appEntity.DisplayName,
 		Description:      appEntity.Description,
-		ContainerImage:   appEntity.ContainerImage,
-		RegistryUsername: appEntity.RegistryUsername,
-		RegistryPassword: appEntity.RegistryPassword,
+		ContainerCommand: req.ContainerCommand,
+		Edition:          cast.ToString(time.Now().UnixMilli()),
 		EnvID:            appEntity.EnvID,
-		Deployed:         appEntity.Deployed,
 		ProjectID:        appEntity.ProjectID,
+	}
+
+	if err := db.Instance().Model(appEntity).
+		Select("ContainerCommand", "Edition", "UpdatedBy").
+		Updates(entities.App{
+			ContainerCommand: result.ContainerCommand,
+			Edition:          result.Edition,
+			AuditBase: entities.AuditBase{
+				UpdatedBy: api.UserID(ctx),
+			},
+		}).Error; err != nil {
+		log.Printf("failed to update app command: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
 	}
 
 	return result, nil
@@ -275,20 +369,23 @@ func (s *appService) AppAction(ctx context.Context, req *models.AppActionRequest
 		return nil, err
 	}
 
-	// TODO: execute action based on req.Action
 	switch req.Action {
-	case app.AppActionDeploy:
-		err = s.deployApp(ctx, appEntity, true)
-	case app.AppActionStart:
-		err = s.startApp(ctx, appEntity)
+	case app.AppActionDeploy, app.AppActionStart, app.AppActionUpdate, app.AppActionDebugOff:
+		err = s.deployApp(ctx, appEntity, nil)
 	case app.AppActionStop:
-		err = s.stopApp(ctx, appEntity)
-	case app.AppActionRollingUpdate:
-		err = s.rollingUpdateApp(ctx, appEntity)
+		err = s.deployApp(ctx, appEntity, &core.AppDeployOption{
+			ZeroReplicas: true,
+		})
 	case app.AppActionRollback:
 		// TODO: Implement rollback logic
 	case app.AppActionRedeploy:
-		s.redeployApp(ctx, appEntity, true)
+		err = s.redeployApp(ctx, appEntity)
+	case app.AppActionDebug:
+		err = s.deployApp(ctx, appEntity, &core.AppDeployOption{
+			DebugMode: true,
+		})
+	case app.AppActionDelete:
+		err = s.deleteApp(ctx, appEntity)
 	default:
 		return nil, app.NewError(http.StatusBadRequest, "Unknown app action")
 	}
@@ -317,8 +414,8 @@ func (s *appService) ListAppInstances(ctx context.Context, req *models.ListAppIn
 	}
 
 	result := &models.ListAppInstancesResponse{
-		DeployVersion: appEntity.DeployVersion,
-		Instances:     make([]*models.AppInstanceModel, 0, len(pods)),
+		Edition:   appEntity.Edition,
+		Instances: make([]*models.AppInstanceModel, 0, len(pods)),
 	}
 	for _, pod := range pods {
 		mainContainer := mainContainer(appEntity.Slug, pod)
@@ -357,7 +454,7 @@ func (s *appService) ListAppInstances(ctx context.Context, req *models.ListAppIn
 			RequestMemory:   mainContainer.Resources.Requests.Memory().String(),
 			LimitCPU:        mainContainer.Resources.Limits.Cpu().String(),
 			LimitMemory:     mainContainer.Resources.Limits.Memory().String(),
-			DeployVersion:   pod.Labels["ketches/deploy-version"],
+			Edition:         pod.Labels["ketches/edition"],
 		}
 		result.Instances = append(result.Instances, instance)
 	}
@@ -504,387 +601,103 @@ func (s *appService) ExecAppContainerTerminal(ctx context.Context, req *models.E
 	return nil
 }
 
-func (s appService) deployApp(ctx context.Context, appEntity *entities.App, start bool) app.Error {
-	envVars, err := orm.AllAppEnvVars(appEntity.ID)
+func (s *appService) deployApp(ctx context.Context, appEntity *entities.App, options *core.AppDeployOption) app.Error {
+	cli, err := kube.ClusterRuntimeClient(ctx, appEntity.ClusterID)
 	if err != nil {
 		return err
 	}
-	appEntity.Deployed = true
-	appEntity.DeployVersion = newDeployVersion()
 
-	switch appEntity.WorkloadType {
-	case app.WorkloadTypeDeployment:
-		deployment := buildDeployment(appEntity, envVars, start)
-		if _, err := kube.CreateDeployment(ctx, appEntity.ClusterID, deployment); err != nil {
-			return err
-		}
-
-	case app.WorkloadTypeStatefulSet:
-		statefulSet := buildStatefulSet(appEntity, envVars, start)
-		if _, err := kube.CreateStatefulSet(ctx, appEntity.ClusterID, statefulSet); err != nil {
-			return err
-		}
+	appMetadata, err := core.NewAppMetadataBuilderFromAppEntity(ctx, appEntity).Build()
+	if err != nil {
+		return err
 	}
 
-	if err := db.Instance().Updates(&entities.App{
-		UUIDBase: entities.UUIDBase{
-			ID: appEntity.ID,
-		},
-		Deployed:      appEntity.Deployed,
-		DeployVersion: appEntity.DeployVersion,
+	if err := appMetadata.Deploy(ctx, cli, options); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *appService) undeployApp(ctx context.Context, appEntity *entities.App) app.Error {
+	cli, err := kube.ClusterRuntimeClient(ctx, appEntity.ClusterID)
+	if err != nil {
+		return err
+	}
+
+	appMetadata, err := core.NewAppMetadataBuilderFromAppEntity(ctx, appEntity).Build()
+	if err != nil {
+		return err
+	}
+
+	if err := appMetadata.Undeploy(ctx, cli); err != nil {
+		return err
+	}
+
+	if err := db.Instance().Model(appEntity).Updates(entities.App{
 		AuditBase: entities.AuditBase{
 			UpdatedBy: api.UserID(ctx),
 		},
 	}).Error; err != nil {
-		log.Printf("failed to update app info on deploy: %v", err)
+		log.Printf("failed to update app deploy info: %v", err)
 		return app.ErrDatabaseOperationFailed
 	}
 
 	return nil
 }
 
-func (s appService) startApp(ctx context.Context, appEntity *entities.App) app.Error {
-	switch appEntity.WorkloadType {
-	case app.WorkloadTypeDeployment:
-		deployment, err := kube.GetDeployment(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-		if err != nil {
-			if err.Code() != http.StatusNotFound {
-				return err
-			}
-			// Deployment not found, we need to redeploy the app
-			return s.deployApp(ctx, appEntity, true)
-		} else {
-			deployment.Spec.Replicas = &appEntity.Replicas
-			if _, err := kube.UpdateDeployment(ctx, appEntity.ClusterID, deployment); err != nil {
-				return err
-			}
-		}
-	case app.WorkloadTypeStatefulSet:
-		statefulSet, err := kube.GetStatefulSet(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-		if err != nil {
-			if err.Code() != http.StatusNotFound {
-				return err
-			}
-			// StatefulSet not found, we need to redeploy the app
-			return s.deployApp(ctx, appEntity, true)
-		} else {
-			statefulSet.Spec.Replicas = &appEntity.Replicas
-			if _, err := kube.UpdateStatefulSet(ctx, appEntity.ClusterID, statefulSet); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (s appService) stopApp(ctx context.Context, appEntity *entities.App) app.Error {
-	switch appEntity.WorkloadType {
-	case app.WorkloadTypeDeployment:
-		deployment, err := kube.GetDeployment(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-		if err != nil {
-			if err.Code() != http.StatusNotFound {
-				return err
-			}
-			return s.deployApp(ctx, appEntity, false)
-		} else {
-			deployment.Spec.Replicas = utils.Ptr[int32](0) // Set replicas to 0 to stop the app
-			if _, err := kube.UpdateDeployment(ctx, appEntity.ClusterID, deployment); err != nil {
-				return err
-			}
-		}
-	case app.WorkloadTypeStatefulSet:
-		statefulSet, err := kube.GetStatefulSet(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-		if err != nil {
-			if err.Code() != http.StatusNotFound {
-				return err
-			}
-			return s.deployApp(ctx, appEntity, false)
-		} else {
-			statefulSet.Spec.Replicas = utils.Ptr[int32](0) // Set replicas to 0 to stop the app
-			if _, err := kube.UpdateStatefulSet(ctx, appEntity.ClusterID, statefulSet); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (s appService) redeployApp(ctx context.Context, appEntity *entities.App, start bool) app.Error {
-	// delete existing resources
-	if err := deleteClusterAppResources(ctx, appEntity); err != nil {
+func (s appService) redeployApp(ctx context.Context, appEntity *entities.App) app.Error {
+	// Step 1: undeploy the app
+	if err := s.undeployApp(ctx, appEntity); err != nil {
 		return err
 	}
 
 	go func() {
 		// wait for resources to be deleted
 		time.Sleep(5 * time.Second)
-		s.deployApp(ctx, appEntity, start)
-		// TODO: create associated resources like services, ingress, etc.
+		s.deployApp(ctx, appEntity, nil)
 	}()
 
 	return nil
 }
 
-func (s appService) rollingUpdateApp(ctx context.Context, appEntity *entities.App) app.Error {
-	switch appEntity.WorkloadType {
-	case app.WorkloadTypeDeployment:
-		deployment, err := kube.GetDeployment(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-		if err != nil {
-			if err.Code() != http.StatusNotFound {
-				return err
-			}
-			// Deployment not found, we need to redeploy the app
-			return s.deployApp(ctx, appEntity, true)
-		} else {
-			if deployment.Spec.Template.Annotations == nil {
-				deployment.Spec.Template.Annotations = make(map[string]string)
-			}
-			deployment.Spec.Template.Annotations["ketches/rolling-update"] = fmt.Sprintf("%d", time.Now().UnixMilli())
-			if _, err := kube.UpdateDeployment(ctx, appEntity.ClusterID, deployment); err != nil {
-				return err
-			}
-		}
-	case app.WorkloadTypeStatefulSet:
-		statefulSet, err := kube.GetStatefulSet(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-		if err != nil {
-			if err.Code() != http.StatusNotFound {
-				return err
-			}
-			// StatefulSet not found, we need to redeploy the app
-			return s.deployApp(ctx, appEntity, true)
-		} else {
-			if statefulSet.Spec.Template.Annotations == nil {
-				statefulSet.Spec.Template.Annotations = make(map[string]string)
-			}
-			statefulSet.Spec.Template.Annotations["ketches/rolling-update"] = fmt.Sprintf("%d", time.Now().UnixMilli())
-			if _, err := kube.UpdateStatefulSet(ctx, appEntity.ClusterID, statefulSet); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func getAppStatus(ctx context.Context, appEntity *entities.App) (int32, string) {
-	if !appEntity.Deployed {
-		return 0, app.AppStatusUndeployed
-	}
-
-	pods, err := kube.ListPods(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-	if err != nil {
-		return 0, app.AppStatusUnknown
-	}
-
-	if len(pods) == 0 {
-		return 0, app.AppStatusStopped
-	}
-
-	actualReplicas := int32(len(pods))
-
-	var (
-		rollingUpdate       bool
-		runningPodCount     int32
-		pendingPodCount     int32
-		terminatingPodCount int32
-	)
-	for _, pod := range pods {
-		if kube.IsPodAbnormal(pod) {
-			return actualReplicas, app.AppStatusAbnormal
-		}
-
-		deployVersion := pod.Labels["ketches/deploy-version"]
-		if deployVersion != appEntity.DeployVersion {
-			rollingUpdate = true
-			continue
-		}
-
-		if pod.DeletionTimestamp != nil {
-			terminatingPodCount++
-			continue
-		}
-
-		switch pod.Status.Phase {
-		case corev1.PodRunning:
-			runningPodCount++
-		case corev1.PodPending:
-			pendingPodCount++
-		}
-	}
-
-	if rollingUpdate {
-		return actualReplicas, app.AppStatusRollingUpdate
-	}
-
-	if terminatingPodCount > 0 {
-		if runningPodCount == 0 && pendingPodCount == 0 {
-			return actualReplicas, app.AppStatusStopped
-		} else {
-			return actualReplicas, app.AppStatusStopping
-		}
-	}
-
-	if pendingPodCount > 0 {
-		return actualReplicas, app.AppStatusStarting
-	}
-
-	if runningPodCount == actualReplicas {
-		return actualReplicas, app.AppStatusRunning
-	}
-
-	return actualReplicas, app.AppStatusUnknown
-}
-
-// buildDeployment creates a Kubernetes Deployment resource based on the app entity and environment variables.
-// TODO: 1. Registry credentials should be handled securely, not as plain text.
-//  2. Consider adding volume mounts and persistent storage if needed.
-func buildDeployment(app *entities.App, appEnvVars []*entities.AppEnvVar, start bool) *appsv1.Deployment {
-	envs := make([]corev1.EnvVar, 0, len(appEnvVars))
-	for _, envVar := range appEnvVars {
-		envs = append(envs, corev1.EnvVar{
-			Name:  envVar.Key,
-			Value: envVar.Value,
-		})
-	}
-
-	replicas := app.Replicas
-	if !start {
-		replicas = 0
-	}
-
-	labels := buildWorkloadLabels(app)
-
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      app.Slug,
-			Namespace: app.ClusterNamespace,
-			Labels:    labels,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:            mainContainerName(app.Slug),
-							Image:           app.ContainerImage,
-							ImagePullPolicy: corev1.PullAlways,
-							Env:             envs,
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%dm", app.RequestCPU)),
-									corev1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", app.RequestMemory)),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%dm", app.LimitCPU)),
-									corev1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", app.LimitMemory)),
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func buildStatefulSet(app *entities.App, appEnvVars []*entities.AppEnvVar, start bool) *appsv1.StatefulSet {
-	envs := make([]corev1.EnvVar, 0, len(appEnvVars))
-	for _, envVar := range appEnvVars {
-		envs = append(envs, corev1.EnvVar{
-			Name:  envVar.Key,
-			Value: envVar.Value,
-		})
-	}
-
-	replicas := app.Replicas
-	if !start {
-		replicas = 0
-	}
-
-	labels := buildWorkloadLabels(app)
-
-	return &appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      app.Slug,
-			Namespace: app.ClusterNamespace,
-			Labels:    labels,
-		},
-		Spec: appsv1.StatefulSetSpec{
-			// VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
-			ServiceName: app.Slug,
-			Replicas:    &replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:            mainContainerName(app.Slug),
-							Image:           app.ContainerImage,
-							ImagePullPolicy: corev1.PullAlways,
-							Env:             envs,
-							// VolumeMounts: []corev1.VolumeMount{},
-						},
-					},
-					// Volumes: []corev1.Volume{},
-				},
-			},
-			PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
-				WhenDeleted: appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
-			},
-		},
-	}
-}
-
-func buildWorkloadLabels(app *entities.App) map[string]string {
-	return map[string]string{
-		"ketches/owned":          "true",
-		"ketches/app":            app.Slug,
-		"ketches/env":            app.EnvSlug,
-		"ketches/project":        app.ProjectSlug,
-		"ketches/deploy-version": app.DeployVersion,
-	}
-}
-
-func deleteClusterAppResources(ctx context.Context, appEntity *entities.App) app.Error {
-	switch appEntity.WorkloadType {
-	case app.WorkloadTypeDeployment:
-		// Delete deployment
-		if err := kube.DeleteDeployment(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug); err != nil {
-			log.Printf("failed to delete deployment for app %s: %v", appEntity.Slug, err)
-			return err
-		}
-	case app.WorkloadTypeStatefulSet:
-		// Delete statefulset
-		if err := kube.DeleteStatefulSet(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug); err != nil {
-			log.Printf("failed to delete statefulset for app %s: %v", appEntity.Slug, err)
-			return err
-		}
-	}
-
-	// Delete services
-	services, err := kube.ListServices(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
-	if err != nil {
+func (s *appService) deleteApp(ctx context.Context, appEntity *entities.App) app.Error {
+	// Step 1. undeploy the app
+	if err := s.undeployApp(ctx, appEntity); err != nil {
 		return err
 	}
-	for _, service := range services {
-		if err := kube.DeleteService(ctx, appEntity.ClusterID, service.Namespace, service.Name); err != nil {
-			log.Printf("failed to delete service for app %s: %v", appEntity.Slug, err)
+
+	// Step 2. delete app in database
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(appEntity).Error; err != nil {
+			log.Printf("failed to delete app %s: %v", appEntity.ID, err)
 			return err
 		}
+
+		if err := tx.Delete(&entities.AppEnvVar{}, "app_id = ?", appEntity.ID).Error; err != nil {
+			log.Printf("failed to delete app env vars for app %s: %v", appEntity.ID, err)
+			return err
+		}
+
+		if err := tx.Delete(&entities.AppVolume{}, "app_id = ?", appEntity.ID).Error; err != nil {
+			log.Printf("failed to delete app volumes for app %s: %v", appEntity.ID, err)
+			return err
+		}
+
+		if err := tx.Delete(&entities.AppPort{}, "app_id = ?", appEntity.ID).Error; err != nil {
+			log.Printf("failed to delete app ports for app %s: %v", appEntity.ID, err)
+			return err
+		}
+
+		if err := tx.Delete(&entities.AppGateway{}, "app_id = ?", appEntity.ID).Error; err != nil {
+			log.Printf("failed to delete app gateways for app %s: %v", appEntity.ID, err)
+			return err
+		}
+
+		log.Printf("app %s deleted successfully", appEntity.ID)
+		return nil
+	}); err != nil {
+		return app.ErrDatabaseOperationFailed
 	}
 
 	return nil
@@ -892,17 +705,9 @@ func deleteClusterAppResources(ctx context.Context, appEntity *entities.App) app
 
 func mainContainer(appSlug string, pod *corev1.Pod) *corev1.Container {
 	for _, container := range pod.Spec.Containers {
-		if container.Name == mainContainerName(appSlug) {
+		if container.Name == appSlug {
 			return &container
 		}
 	}
 	return nil
-}
-
-func mainContainerName(appSlug string) string {
-	return fmt.Sprintf("mc-%s", appSlug)
-}
-
-func newDeployVersion() string {
-	return cast.ToString(time.Now().UnixMilli())
 }

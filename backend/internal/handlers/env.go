@@ -10,6 +10,82 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
+// @Summary List Envs Under Project
+// @Description List envs under a specific project
+// @Tags Env
+// @Accept json
+// @Produce json
+// @Param projectID path string true "Project ID"
+// @Param query query models.ListEnvsRequest false "Query parameters for filtering and pagination"
+// @Success 200 {object} api.Response{data=models.ListEnvsResponse}
+// @Router /api/v1/projects/{projectID}/envs [get]
+func ListEnvs(c *gin.Context) {
+	var req models.ListEnvsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.ProjectID = c.Param("projectID")
+
+	s := services.NewEnvService()
+	resp, err := s.ListEnvs(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, resp)
+}
+
+// @Summary All Env Refs Under Project
+// @Description Get all envs for refs under a specific project
+// @Tags Env
+// @Accept json
+// @Produce json
+// @Param projectID path string true "Project ID"
+// @Param query query models.AllEnvRefsRequest false "Query parameters for filtering refs"
+// @Success 200 {object} api.Response{data=[]models.EnvRef}
+// @Router /api/v1/projects/{projectID}/envs/refs [get]
+func AllEnvRefs(c *gin.Context) {
+	s := services.NewEnvService()
+	refs, err := s.AllEnvRefs(c, &models.AllEnvRefsRequest{
+		ProjectID: c.Param("projectID"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, refs)
+}
+
+// @Summary Create Env Under Project
+// @Description Create a new env under a specific project
+// @Tags Env
+// @Accept json
+// @Produce json
+// @Param projectID path string true "Project ID"
+// @Param request body models.CreateEnvRequest true "Create Env Request"
+// @Success 201 {object} api.Response{data=models.EnvModel}
+// @Router /api/v1/projects/{projectID}/envs [post]
+func CreateEnv(c *gin.Context) {
+	var req models.CreateEnvRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.ProjectID = c.Param("projectID")
+
+	s := services.NewEnvService()
+	env, err := s.CreateEnv(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, env)
+}
+
 // @Summary Get Env
 // @Description Get env by env ID
 // @Tags Env
@@ -120,80 +196,4 @@ func DeleteEnv(c *gin.Context) {
 	}
 
 	api.NoContent(c)
-}
-
-// @Summary List Apps Under Env
-// @Description List apps under a specific env
-// @Tags Env
-// @Accept json
-// @Produce json
-// @Param envID path string true "Env ID"
-// @Param query query models.ListAppsRequest false "Query parameters for filtering and pagination"
-// @Success 200 {object} api.Response{data=models.ListAppsResponse}
-// @Router /api/v1/envs/{envID}/apps [get]
-func ListApps(c *gin.Context) {
-	var req models.ListAppsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-	req.EnvID = c.Param("envID")
-
-	s := services.NewEnvService()
-	resp, err := s.ListApps(c, &req)
-	if err != nil {
-		api.Error(c, err)
-		return
-	}
-
-	api.Success(c, resp)
-}
-
-// @Summary All App Refs Under Env
-// @Description Get all apps for refs under a specific env
-// @Tags App
-// @Accept json
-// @Produce json
-// @Param envID path string true "Env ID"
-// @Param query query models.AllAppRefsRequest false "Query parameters for filtering refs"
-// @Success 200 {object} api.Response{data=[]models.AppRef}
-// @Router /api/v1/envs/{envID}/apps/refs [get]
-func AllAppRefs(c *gin.Context) {
-	s := services.NewEnvService()
-	refs, err := s.AllAppRefs(c, &models.AllAppRefsRequest{
-		EnvID: c.Param("envID"),
-	})
-	if err != nil {
-		api.Error(c, err)
-		return
-	}
-
-	api.Success(c, refs)
-}
-
-// @Summary Create App Under Env
-// @Description Create a new app under a specific env
-// @Tags App
-// @Accept json
-// @Produce json
-// @Param envID path string true "Env ID"
-// @Param app body models.CreateAppRequest true "App data"
-// @Success 201 {object} api.Response{data=models.AppModel}
-// @Router /api/v1/envs/{envID}/apps [post]
-func CreateApp(c *gin.Context) {
-	var req models.CreateAppRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
-		return
-	}
-	req.EnvID = c.Param("envID")
-
-	s := services.NewEnvService()
-	app, err := s.CreateApp(c, &req)
-	if err != nil {
-		api.Error(c, err)
-		return
-	}
-
-	api.Created(c, app)
 }
