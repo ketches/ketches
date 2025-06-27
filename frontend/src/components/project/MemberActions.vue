@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { projectMemberModel } from "@/types/project";
-import { MoreHorizontal, Trash } from "lucide-vue-next";
+import { MoreVertical, Trash } from "lucide-vue-next";
 import { ref } from "vue";
 import { toast } from "vue-sonner";
 
@@ -43,7 +43,7 @@ async function onRemove() {
     <DropdownMenu>
         <DropdownMenuTrigger as-child>
             <Button variant="ghost" class="flex h-8 w-8 p-0 data-[state=open]:bg-muted">
-                <MoreHorizontal class="h-4 w-4" />
+                <MoreVertical class="h-4 w-4" />
                 <span class="sr-only">Open menu</span>
             </Button>
         </DropdownMenuTrigger>

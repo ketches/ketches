@@ -6,19 +6,20 @@ export interface appModel {
     workloadType: string
     replicas: number
     containerImage: string
+    containerCommand: string
     registryUsername: string
     registryPassword: string
     requestCPU: number
     requestMemory: number
     limitCPU: number
     limitMemory: number
-    deployed: boolean
-    deployVersion: string
+    edition: string
     envID: string
     projectID: string
     clusterID: string
     clusterNamespace: string
     actualReplicas: number
+    actualEdition: string
     status: string
     createdAt: string
 }
@@ -31,7 +32,7 @@ export interface appRefModel {
     projectID: string
 }
 
-export interface appCreateModel {
+export interface createAppModel {
     slug: string
     displayName: string
     description?: string
@@ -46,10 +47,19 @@ export interface appCreateModel {
     limitMemory?: number
 }
 
-export interface appUpdateImageModel {
+export interface updateAppModel {
+    displayName: string
+    description?: string
+}
+
+export interface updateAppImageModel {
     containerImage: string
     registryUsername?: string
     registryPassword?: string
+}
+
+export interface setAppCommandModel {
+    containerCommand: string
 }
 
 export interface appInstanceContainerModel {
@@ -68,7 +78,7 @@ export interface appInstanceModel {
     initContainers: appInstanceContainerModel[]
     nodeName: string
     nodeIP: string
-    deployVersion: string
+    edition: string
 }
 
 export interface logsRequestModel {
@@ -94,4 +104,33 @@ export interface createAppEnvVarModel {
 
 export interface updateAppEnvVarModel {
     value: string
+}
+
+export interface appVolumeModel {
+    volumeID: string
+    slug: string
+    mountPath: string
+    subPath?: string
+    volumeMode?: string
+    accessModes: string[]
+    storageClass?: string
+    capacity: number
+    volumeType?: string
+    appID: string
+}
+
+export interface createAppVolumeModel {
+    slug: string
+    mountPath: string
+    subPath?: string
+    volumeMode?: string
+    accessModes: string[]
+    storageClass?: string
+    capacity: number
+    volumeType?: string
+}
+
+export interface updateAppVolumeModel {
+    mountPath: string
+    subPath?: string
 }

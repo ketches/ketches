@@ -34,6 +34,7 @@ import { RefreshCcw } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import { h, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { appInstanceStatusDisplay } from "../data/appInstanceStatus";
 import InstanceActions from "./InstanceActions.vue";
 
 const route = useRoute();
@@ -48,7 +49,7 @@ const totalCount = ref(0);
 async function fetchListData(appID?: string) {
     if (appID) {
         const { instances } = (await listAppInstances(appID)) || {
-            deployVersion: 0,
+            edition: 0,
             instances: [],
         };
         listData.value = instances;
@@ -90,32 +91,15 @@ const columns: ColumnDef<appInstanceModel>[] = [
         accessorKey: "status",
         header: () => centeredHeader("状态"),
         cell: ({ row }) => {
-            let labelStyle = "";
-            switch (row.getValue("status")) {
-                case "Pending":
-                    labelStyle = "text-yellow-500";
-                    break;
-                case "Running":
-                case "Succeeded":
-                    labelStyle = "text-green-500";
-                    break;
-                case "Failed":
-                    labelStyle = "text-red-500";
-                    break;
-                case "Unknown":
-                    labelStyle = "text-gray-500";
-                    break;
-                default:
-                    labelStyle = "text-gray-500";
-            }
+            const instanceStatusDisplay = appInstanceStatusDisplay(row.getValue("status"));
             return h("div", { class: `flex items-center justify-center` }, [
                 h(
                     Badge,
                     {
                         variant: "secondary",
-                        class: `capitalize flex justify-center text-center ${labelStyle}`,
+                        class: `capitalize flex justify-center text-center ${instanceStatusDisplay.fgColor}`,
                     },
-                    () => h("span", {}, row.getValue("status"))
+                    () => [h(instanceStatusDisplay.icon, {}, instanceStatusDisplay.label), h("span", {}, instanceStatusDisplay.label)],
                 ),
             ]);
         },

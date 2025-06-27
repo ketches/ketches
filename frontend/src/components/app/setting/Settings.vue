@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { Separator } from '@/components/ui/separator';
 import type { appModel } from '@/types/app';
-import { Settings2 } from 'lucide-vue-next';
 import { ref } from 'vue';
 import SidebarNav from './SidebarNav.vue';
 import { appSettingItems } from './data/settings';
@@ -21,14 +19,14 @@ function onSwitchAppSetting(title: string) {
 </script>
 
 <template>
-    <div class="hidden space-y-2 p-2 pb-8 md:block">
-        <div class="space-y-0.5">
+    <div class="hidden space-y-2 py-4 pb-8 md:block">
+        <!-- <div class="space-y-0.5">
             <h2 class="text-2xl font-bold tracking-tight">
                 <Settings2 class="inline-block w-6 h-6 mr-2" />
                 应用配置
             </h2>
         </div>
-        <Separator class="my-6" />
+        <Separator class="my-6" /> -->
         <div class="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
             <aside>
                 <SidebarNav :currentTab="currentTab" @switchAppSetting="onSwitchAppSetting" />

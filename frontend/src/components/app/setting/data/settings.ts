@@ -1,4 +1,4 @@
-import { Box, Braces, CircleCheckBig, Code, HardDrive, Network, Radar } from "lucide-vue-next"
+import { Braces, CircleCheckBig, Code, Cpu, Disc3, HardDrive, Library, Network, Radar, Rocket } from "lucide-vue-next"
 import { defineAsyncComponent, type Component } from "vue"
 
 interface Item {
@@ -10,9 +10,16 @@ interface Item {
 
 export const appSettingItems: Item[] = [
     {
+        title: '基础信息',
+        tab: 'appProfile',
+        icon: Library,
+        comp: defineAsyncComponent(() => import('../forms/AppProfile.vue')),
+    },
+
+    {
         title: '容器镜像',
         tab: 'containerImage',
-        icon: Box,
+        icon: Disc3,
         comp: defineAsyncComponent(() => import('../forms/ContainerImage.vue')),
     },
     {
@@ -22,16 +29,28 @@ export const appSettingItems: Item[] = [
         comp: defineAsyncComponent(() => import('../forms/SourceCodeBuild.vue')),
     },
     {
+        title: '资源配置',
+        tab: 'resourceConfig',
+        icon: Cpu,
+        comp: defineAsyncComponent(() => import('../forms/ResourceConfig.vue')),
+    },
+    {
         title: '环境变量',
         tab: 'envVar',
         icon: Braces,
         comp: defineAsyncComponent(() => import('../forms/EnvVar.vue')),
     },
     {
-        title: '持久化存储',
+        title: '存储卷',
         tab: 'volume',
         icon: HardDrive,
         comp: defineAsyncComponent(() => import('../forms/Volume.vue')),
+    },
+    {
+        title: '启动命令',
+        tab: 'containerCommand',
+        icon: Rocket,
+        comp: defineAsyncComponent(() => import('../forms/ContainerCommand.vue')),
     },
     {
         title: '网关',

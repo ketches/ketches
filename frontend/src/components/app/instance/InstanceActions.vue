@@ -17,7 +17,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { appInstanceModel } from "@/types/app";
-import { Logs, MoreHorizontal, SquareX, Terminal, View } from "lucide-vue-next";
+import { Logs, MoreVertical, SquareX, Terminal, View } from "lucide-vue-next";
 import { ref } from "vue";
 import { toast } from "vue-sonner";
 
@@ -99,7 +99,7 @@ const openContainerTerminalDrawer = ref(false);
         <DropdownMenu>
             <DropdownMenuTrigger as-child>
                 <Button variant="ghost" class="flex h-8 w-8 p-0 data-[state=open]:bg-muted">
-                    <MoreHorizontal class="h-4 w-4" />
+                    <MoreVertical class="h-4 w-4" />
                     <span class="sr-only">Open menu</span>
                 </Button>
             </DropdownMenuTrigger>

@@ -18,6 +18,7 @@ import Label from '@/components/ui/label/Label.vue';
 import { Separator } from '@/components/ui/separator';
 import type { appModel } from '@/types/app';
 import { Info } from 'lucide-vue-next';
+import { toast } from 'vue-sonner';
 
 const props = defineProps({
     app: {
@@ -56,6 +57,7 @@ const onSubmit = handleSubmit(async (values) => {
     app.value.containerImage = values.containerImage
     app.value.registryUsername = values.registryUsername ?? ''
     app.value.registryPassword = values.registryPassword ?? ''
+    toast.success('容器镜像已更新。')
 })
 </script>
 
@@ -80,7 +82,7 @@ const onSubmit = handleSubmit(async (values) => {
             </FormItem>
         </FormField>
 
-        <Label class="text-yellow-500">
+        <Label class="text-amber-500">
             <Info class="inline mr-1 h6 w-6" />
             私有镜像仓库需要提供以下信息：
         </Label>

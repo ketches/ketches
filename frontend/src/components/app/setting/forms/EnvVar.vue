@@ -250,7 +250,7 @@ const table = useVueTable({
             <Input class="max-w-sm" placeholder="搜索环境变量"
                 :model-value="table.getColumn('key')?.getFilterValue() as string"
                 @update:model-value=" table.getColumn('key')?.setFilterValue($event)" />
-            <Button variant="default" class="ml-auto" @click="addEnvVarRow">
+            <Button variant="outline" size="sm" class="ml-auto" @click="addEnvVarRow">
                 <Plus />
                 新增
             </Button>

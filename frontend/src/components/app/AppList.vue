@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { appStatusToText, deleteApp, exportApps } from "@/api/app";
+import { deleteApp, exportApps } from "@/api/app";
 import { listApps } from "@/api/env";
 import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import { Button } from "@/components/ui/button";
@@ -58,11 +58,9 @@ import {
     CloudDownload,
     CloudUpload,
     MoreVertical,
-    PackageCheck,
-    PackageMinus,
     Plus,
     RefreshCcw,
-    Trash,
+    Trash
 } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import { h, onMounted, ref, watch } from "vue";
@@ -73,6 +71,7 @@ import DropdownMenuItem from "../ui/dropdown-menu/DropdownMenuItem.vue";
 import DropdownMenuSeparator from "../ui/dropdown-menu/DropdownMenuSeparator.vue";
 import AppActions from "./AppActions.vue";
 import CreateApp from "./CreateApp.vue";
+import { appStatusDisplay } from "./data/appStatus";
 
 const resourceRefStore = useResourceRefStore();
 const { activeEnvRef } = storeToRefs(resourceRefStore);
@@ -182,38 +181,19 @@ const columns: ColumnDef<appModel>[] = [
         accessorKey: "status",
         header: () => centeredHeader("状态"),
         cell: ({ row }) => {
-            let labelStyle = "";
-            switch (row.getValue("status")) {
-                case "running":
-                case "completed":
-                    labelStyle = "text-green-500";
-                    break;
-                case "starting":
-                case "rollingUpdate":
-                    labelStyle = "text-blue-500";
-                    break;
-                case "stopping":
-                    labelStyle = "text-yellow-500";
-                    break;
-                case "abnormal":
-                    labelStyle = "text-red-500";
-                    break;
-                default:
-                    labelStyle = "text-gray-500";
-            }
-            const isDeployed = row.original.deployed;
+            const statusDisplay = appStatusDisplay(row.getValue("status"));
             return h("div", { class: `flex items-center justify-center` }, [
                 h(
                     Badge,
                     {
                         variant: "secondary",
-                        class: `capitalize flex justify-center text-center ${labelStyle}`,
+                        class: `${statusDisplay.fgColor}`,
                     },
                     () => [
-                        h(isDeployed ? PackageCheck : PackageMinus, {
+                        h(statusDisplay.icon, {
                             class: "h-4 w-4 mr-1",
                         }),
-                        h("span", {}, appStatusToText(row.getValue("status"))),
+                        h("span", {}, statusDisplay.label),
                     ]
                 ),
             ]);
@@ -318,7 +298,7 @@ async function exportSelectedApps(appIDs: string[]) {
     await exportApps(appIDs);
 }
 
-async function rollingUpdateSelectedApps(appIDs: string[]) {
+async function updateSelectedApps(appIDs: string[]) {
     if (appIDs.length === 0) {
         alert("请选择要更新的应用");
         return;
@@ -397,7 +377,7 @@ async function doDeleteSelectedApps(appIDs: string[]) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuItem @click="
-                        rollingUpdateSelectedApps(
+                        updateSelectedApps(
                             table
                                 .getFilteredSelectedRowModel()
                                 .rows.map((row) => row.original.appID)

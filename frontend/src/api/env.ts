@@ -1,5 +1,5 @@
 import api from '@/api/axios';
-import type { appCreateModel, appModel, appRefModel } from '@/types/app';
+import type { appModel, appRefModel, createAppModel } from '@/types/app';
 import type { QueryAndPagedRequest } from '@/types/common';
 import type { envModel, envRefModel, updateEnvModel } from '@/types/env';
 
@@ -35,7 +35,7 @@ export async function fetchAppRefs(envID: string): Promise<appRefModel[]> {
     return response.data as appRefModel[]
 }
 
-export async function createApp(envID: string, model: appCreateModel): Promise<appModel> {
+export async function createApp(envID: string, model: createAppModel): Promise<appModel> {
     const response = await api.post(`/envs/${envID}/apps`, model)
     return response.data as appModel
 }

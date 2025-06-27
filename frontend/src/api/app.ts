@@ -1,5 +1,5 @@
 import api from '@/api/axios'
-import type { appEnvVarModel, appInstanceModel, appModel, appRefModel, createAppEnvVarModel, logsRequestModel, updateAppEnvVarModel, appUpdateImageModel as updateAppImageModel } from '@/types/app'
+import type { appEnvVarModel, appInstanceModel, appModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, updateAppEnvVarModel, updateAppImageModel, updateAppModel, updateAppVolumeModel } from '@/types/app'
 import { toast } from 'vue-sonner'
 
 export async function getApp(appID: string): Promise<appModel> {
@@ -12,8 +12,13 @@ export async function getAppRef(appID: string): Promise<appRefModel> {
     return response.data as appRefModel
 }
 
-export async function appAction(appID: string, action: 'deploy' | 'start' | 'stop' | 'redeploy' | 'rollback' | 'rollingUpdate'): Promise<appModel> {
+export async function appAction(appID: string, action: string): Promise<appModel> {
     const response = await api.post(`/apps/${appID}/action`, { action })
+    return response.data as appModel
+}
+
+export async function updateAppInfo(appID: string, model: updateAppModel): Promise<appModel> {
+    const response = await api.put(`/apps/${appID}`, model)
     return response.data as appModel
 }
 
@@ -27,9 +32,14 @@ export async function updateAppImage(appID: string, model: updateAppImageModel):
     return response.data as appModel
 }
 
-export async function listAppInstances(appID: string): Promise<{ deployVersion: string, instances: appInstanceModel[] }> {
+export async function setAppCommand(appID: string, model: setAppCommandModel): Promise<appModel> {
+    const response = await api.put(`/apps/${appID}/command`, model)
+    return response.data as appModel
+}
+
+export async function listAppInstances(appID: string): Promise<{ edition: string, instances: appInstanceModel[] }> {
     const response = await api.get(`/apps/${appID}/instances`)
-    return response.data as { deployVersion: string, instances: appInstanceModel[] }
+    return response.data as { edition: string, instances: appInstanceModel[] }
 }
 
 export async function terminateAppInstance(appID: string, instanceName: string): Promise<void> {
@@ -106,30 +116,33 @@ export async function deleteAppEnvVars(appID: string, envVarIDs: string[]): Prom
 }
 
 
+export async function listAppVolumes(appID: string): Promise<appVolumeModel[]> {
+    const response = await api.get(`/apps/${appID}/volumes`)
+    return response.data as appVolumeModel[]
+}
 
-export function appStatusToText(status: string): string {
-    switch (status) {
-        case 'undeployed':
-            return '未部署'
-        case 'starting':
-            return '启动中'
-        case 'running':
-            return '运行中'
-        case 'stopping':
-            return '关闭中'
-        case 'stopped':
-            return '已关闭'
-        case 'rollingUpdate':
-            return '滚动更新中'
-        case 'abnormal':
-            return '异常'
-        case 'completed':
-            return '已完成'
-        case 'unknown':
-            return '未知'
-        default:
-            return status
-    }
+
+export async function createAppVolume(appID: string, model: createAppVolumeModel): Promise<appVolumeModel> {
+    const response = await api.post(`/apps/${appID}/volumes`, model)
+    return response.data as appVolumeModel
+}
+
+export async function updateAppVolume(appID: string, volumeID: string, model: updateAppVolumeModel): Promise<appVolumeModel> {
+    const response = await api.put(`/apps/${appID}/volumes/${volumeID}`, model)
+    return response.data as appVolumeModel
+}
+
+export async function deleteAppVolume(appID: string, volumeID: string): Promise<void> {
+    return deleteAppVolumes(appID, [volumeID])
+}
+
+export async function deleteAppVolumes(appID: string, volumeIDs: string[]): Promise<void> {
+    await api.delete(`/apps/${appID}/volumes`, {
+        data: {
+            volumeIDs: volumeIDs
+        }
+    })
+    return
 }
 
 export async function exportApps(appIDs: string[]) {

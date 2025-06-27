@@ -11,17 +11,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { appModel } from "@/types/app";
 import {
-  ArrowUpDown,
-  CloudCog,
-  CloudUpload,
-  MoreHorizontal,
-  Play,
-  Power,
+  BugPlay,
+  Dot,
+  MoreVertical,
   Trash
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { toast } from "vue-sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { appStatusActions, type appStatusAction } from "./data/appStatus";
 
 const router = useRouter();
 
@@ -37,90 +36,22 @@ const props = defineProps({
 });
 const emit = defineEmits(["action-completed"]);
 
-export interface appAction {
-  label: string;
-  icon: any;
-  action: () => void;
-}
+const appActions = computed<appStatusAction[]>(() => {
+  return appStatusActions(props.app.status, props.app.edition, props.app.actualEdition)
+});
 
-const appActions = computed<appAction[]>(() => {
-  const appStatus = props.app.status;
-  switch (appStatus) {
-    case "undeployed":
-      return [{ label: "部署", icon: CloudCog, action: onDeploy }];
-    case "deployed":
-    case "stopped":
-      return [{ label: "启动", icon: Play, action: onStart }];
-    case "starting":
-    case "rollingUpdate":
-    case "abnormal":
-      return [
-        { label: "关闭", icon: Power, action: onStop },
-        { label: "重新部署", icon: CloudUpload, action: onRedeploy },
-      ];
-    case "running":
-      return [
-        { label: "关闭", icon: Power, action: onStop },
-        { label: "滚动更新", icon: ArrowUpDown, action: onRollingUpdate },
-        { label: "重新部署", icon: CloudUpload, action: onRedeploy },
-      ];
-    case "completed":
-      return [
-        { label: "关闭", icon: Power, action: onStop },
-        { label: "重新部署", icon: CloudUpload, action: onRedeploy },
-      ];
-    case "error":
-    default:
-      return [];
+const debugActionAvailable = computed(() => {
+  if (props.fromAppList) {
+    return false; // Debug action not available in app list
+  }
+  if (["starting", "updating", "abnormal", "running"].includes(props.app.status)) {
+    return true; // Debug action available in these statuses
   }
 });
 
-async function onDeploy() {
-  await appAction(props.app.appID, "deploy").then(() => {
-    toast.success("部署成功！", {
-      description: `应用 ${props.app.slug} 已成功部署。`,
-    });
-    emit("action-completed");
-  });
-}
-
-async function onRedeploy() {
-  await appAction(props.app.appID, "redeploy").then(() => {
-    toast.success("应用正在重新部署", {
-      description: `应用 ${props.app.slug} 正在重新部署。`,
-    });
-    emit("action-completed");
-  });
-}
-
-async function onStart() {
-  await appAction(props.app.appID, "start").then(() => {
-    toast.success("应用正在启动", {
-      description: `应用 ${props.app.slug} 正在启动。`,
-    });
-    emit("action-completed");
-  });
-}
-
-async function onStop() {
-  await appAction(props.app.appID, "stop").then(() => {
-    toast.success("应用正在停止", {
-      description: `应用 ${props.app.slug} 正在停止。`,
-    });
-    emit("action-completed");
-  });
-}
-
-async function onRollingUpdate() {
-  await appAction(props.app.appID, "rollingUpdate").then(() => {
-    toast.success("应用正在更新", {
-      description: `应用 ${props.app.slug} 正在进行滚动更新。`,
-    });
-    emit("action-completed");
-  });
-}
-
 const showDeleteAppDialog = ref(false);
+const showDebugAppDialog = ref(false);
+
 async function onDelete() {
   await deleteApp(props.app.appID).then(() => {
     toast.success("应用已删除", {
@@ -134,26 +65,54 @@ async function onDelete() {
 
   showDeleteAppDialog.value = false;
 }
+
+async function onDebug() {
+  await appAction(props.app.appID, "debug").then(() => {
+    toast.success("应用开始进入调试", {
+      description: `等待应用实例重启完成后，您可以进入实例终端进行调试操作。`,
+    });
+    emit("action-completed");
+  });
+
+  showDebugAppDialog.value = false;
+}
 </script>
 
 <template>
   <div class="flex items-center gap-2">
-    <Button v-for="action in appActions.slice(0, 2)" :key="action.label" @click="action.action" size="sm"
-      :variant="fromAppList ? 'ghost' : 'outline'" class="data-[state=open]:bg-muted">
-      <component :is="action.icon" class="h-4 w-4" />
-      <span v-if="!fromAppList">{{ action.label }}</span>
-    </Button>
+    <TooltipProvider v-for="action in appActions.slice(0, 2)" :delay-duration="500" :disabled="!fromAppList">
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <Button :key="action.label" @click="action.action(app.appID)" size="sm"
+            :variant="fromAppList ? 'ghost' : 'outline'" class="data-[state=open]:bg-muted font-normal">
+            <component :is="action.icon" :class="`${action.tip ? 'text-blue-500' : ''} h-4 w-4`" />
+            <Dot v-if="action.tip" class="text-blue-500" stroke-width="8" />
+            <span v-if="!fromAppList">{{ action.label }}</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{{ action.label }}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <Button variant="ghost" class="flex h-8 w-8 p-0 data-[state=open]:bg-muted">
-          <MoreHorizontal class="h-4 w-4" />
+        <Button :variant="fromAppList ? 'ghost' : 'outline'" class="flex h-8 w-8 p-0 data-[state=open]:bg-muted">
+          <MoreVertical class="h-4 w-4" />
           <span class="sr-only">Open menu</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem v-for="action in appActions.slice(2)" :key="action.label" @click="action.action">
+        <DropdownMenuItem v-for="action in appActions.slice(2)" :key="action.label"
+          @click="{ action.action(app.appID); emit('action-completed') }">
           <component :is="action.icon" class="mr-2 h-4 w-4" />
+          <Dot v-if="action.tip" class="text-blue-500" stroke-width="8" />
           <span>{{ action.label }}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem v-if="debugActionAvailable" @click.prevent="showDebugAppDialog = true"
+          class="text-orange-500 focus:text-orange-500">
+          <BugPlay class="mr-2 h-4 w-4 text-orange-500" />
+          调试
         </DropdownMenuItem>
         <DropdownMenuSeparator v-if="appActions.length > 2" />
         <DropdownMenuItem @select.prevent="showDeleteAppDialog = true" class="text-destructive focus:text-destructive">
@@ -165,4 +124,6 @@ async function onDelete() {
   </div>
   <ConfirmDialog v-if="showDeleteAppDialog" title="删除应用" description="您确定要删除此应用吗？此操作无法撤销。" @confirm="onDelete"
     @cancel="showDeleteAppDialog = false" />
+  <ConfirmDialog v-if="showDebugAppDialog" title="调试应用" description="调试期间应用服务不可用，确定要继续吗？" @confirm="onDebug"
+    @cancel="showDebugAppDialog = false" />
 </template>

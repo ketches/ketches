@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { appStatusToText, getApp } from "@/api/app";
+import { getApp } from "@/api/app";
 import Badge from "@/components/ui/badge/Badge.vue";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -10,12 +10,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useResourceRefStore } from "@/stores/resourceRefStore";
 import type { appModel } from "@/types/app";
-import { Archive, Boxes, History, Monitor, PackageCheck, PackageMinus, PanelLeftClose, PanelLeftOpen, Settings2, Undo2 } from "lucide-vue-next";
+import { Archive, Boxes, History, Monitor, PanelLeftClose, PanelLeftOpen, Settings2 } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import AppActions from "./AppActions.vue";
 import Breadcrumb from "./breadcrumb/AppManagerBreadcrumb.vue";
+import { appStatusDisplay } from "./data/appStatus";
 import InstanceList from "./instance/InstanceList.vue";
 import SettingDialog from "./setting/SettingDialog.vue";
 import Settings from "./setting/Settings.vue";
@@ -47,25 +48,15 @@ watch(activeAppRef, async (newAppRef) => {
   }
 });
 
-const statusColor = (status: string) => {
-  switch (status) {
-    case "running":
-      return "text-green-500";
-    case "starting":
-    case "rollingUpdate":
-      return "text-blue-500";
-    case "stopping":
-      return "text-yellow-500";
-    default:
-      return "text-gray-500";
-  }
-};
-
 const monitorExtensionInstalled = ref(false);
 const logsExtensionInstalled = ref(false);
 const deployedInSourceCode = ref(false);
 
 const settingDialogOpen = ref(false);
+
+const appStatus = computed(() => {
+  return appStatusDisplay(app.value?.status || 'unknown')
+});
 </script>
 
 <template>
@@ -83,30 +74,43 @@ const settingDialogOpen = ref(false);
     </header>
     <div class="flex flex-col gap-4 mx-4 border-t pt-4">
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <h1 class="text-2xl font-bold">{{ app?.displayName || "应用名称" }}</h1>
-          <Badge variant="secondary" :class="statusColor(app?.status || 'unknown')">
-            <PackageCheck v-if="app?.deployed === true" class="w-4 h-4 mr-1" />
-            <PackageMinus v-else class="w-4 h-4 mr-1" />
-            {{ appStatusToText(app?.status || "unknown") }}
-          </Badge>
+        <div class="flex justify-between space-x-4 w-full items-center">
+          <component :is="appStatus.icon" :class="`w-12 h-12 ${appStatus.fgColor} rounded-sm`" stroke-width="1" />
+          <div class="space-y-2 flex-1 gap-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <h1 class="text-xl font-semibold">
+                  {{ app?.displayName || "应用名称" }}
+                </h1>
+                <Separator orientation="vertical" class="h-4" />
+                <Badge variant="secondary" class="font-mono text-muted-foreground">
+                  应用类型：{{ app?.workloadType || '未知' }}</Badge>
+                <Separator orientation="vertical" class="h-4" />
+                <Badge variant="secondary" class="font-mono text-muted-foreground">部署版本：{{ app?.edition ||
+                  '未知'
+                }}</Badge>
+              </div>
+
+              <div style="margin-left:auto;">
+                <Button variant="secondary" size="sm" :class="`${appStatus.fgColor}`">
+                  <component :is="appStatus.icon" class="w-5 h-5 mr-1" />
+                  <span>{{ appStatus.label }}</span>
+                </Button>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-muted-foreground">
+                {{ app?.description || "写一句话描述该应用吧。" }}
+              </p>
+              <div class="flex items-center gap-4 text-sm text-muted-foreground">
+                <AppActions v-if="app" :app="app" @action-completed="fetchAppInfo(appID)" />
+              </div>
+            </div>
+          </div>
         </div>
-        <AppActions v-if="app" :app="app" @action-completed="fetchAppInfo(appID)" />
-      </div>
-      <div class="flex items-center gap-4 text-sm text-muted-foreground">
-        <Button variant="link" class="text-sm font-normal text-muted-foreground hover:text-primary p-0 h-auto" size="sm"
-          @click="$router.push({ name: 'app' })">
-          <Undo2 class="w-4 h-4 mr-1" /> 返回应用列表
-        </Button>
-        <Separator orientation="vertical" class="h-4" />
-        <div class="font-mono">{{ app?.slug }}</div>
-        <Separator orientation="vertical" class="h-4" />
-        <span>应用类型: <Badge variant="secondary">{{ app?.workloadType || '未知' }}</Badge></span>
-        <Separator orientation="vertical" class="h-4" />
-        <span>部署版本: <Badge variant="secondary" class="font-mono">{{ app?.deployVersion || '未知' }}</Badge></span>
       </div>
 
-      <Tabs v-model="currentTab" class="mt-2">
+      <Tabs v-model="currentTab" class="">
         <div class="flex items-center justify-between">
           <TabsList class="grid grid-cols-5">
             <TabsTrigger value="overview">
@@ -135,6 +139,7 @@ const settingDialogOpen = ref(false);
             设置
           </Button>
         </div>
+        <Separator class="h-4" />
         <TabsContent value="overview">
           <InstanceList />
         </TabsContent>
