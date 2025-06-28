@@ -1,5 +1,6 @@
 import api from '@/api/axios'
 import type { appEnvVarModel, appInstanceModel, appModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, updateAppEnvVarModel, updateAppImageModel, updateAppModel, updateAppVolumeModel } from '@/types/app'
+import { getApiBaseUrl } from '@/utils/env'
 import { toast } from 'vue-sonner'
 
 export async function getApp(appID: string): Promise<appModel> {
@@ -78,12 +79,12 @@ export function getViewAppInstanceLogsUrl(appID: string, instanceName: string, c
         }
     }
     const query = new URLSearchParams(stringParams).toString();
-    const apibaseURL = import.meta.env.VITE_API_BASE_URL;
+    const apibaseURL = getApiBaseUrl();
     return `${apibaseURL}/apps/${appID}/instances/${instanceName}/containers/${containerName}/logs?${query}`;
 }
 
 export function getExecAppInstanceTerminalUrl(appID: string, instanceName: string, containerName: string) {
-    const apibaseURL = import.meta.env.VITE_API_BASE_URL;
+    const apibaseURL = getApiBaseUrl();
     return `${apibaseURL}/apps/${appID}/instances/${instanceName}/containers/${containerName}/exec`;
 }
 

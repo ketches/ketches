@@ -2,11 +2,12 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 // If useRouter() causes issues at the top level, import the router instance directly:
 // import router from '@/router'; // Assuming your router is configured and exported
 import { useUserStore } from '@/stores/userStore'; // Adjust the import path as necessary
+import { getApiBaseUrl } from '@/utils/env';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 
-const apibaseURL = import.meta.env.VITE_API_BASE_URL;
+const apibaseURL = getApiBaseUrl();
 
 const instance = axios.create({
     baseURL: apibaseURL,

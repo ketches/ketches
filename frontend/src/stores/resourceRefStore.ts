@@ -5,7 +5,6 @@ import type { appRefModel } from '@/types/app';
 import type { clusterRefModel } from '@/types/cluster';
 import type { envRefModel } from '@/types/env';
 import type { projectRefModel } from '@/types/project';
-import { saveResourceRefCache } from '@/utils/cache';
 import { defineStore } from 'pinia';
 
 export const useResourceRefStore = defineStore('resourceRefStore', {
@@ -42,21 +41,12 @@ export const useResourceRefStore = defineStore('resourceRefStore', {
             this.appRefs = await fetchAppRefs(envID)
 
             await this.loadSiblingResources()
-
-            saveResourceRefCache({
-                lastActiveProjectID: this.activeEnvRef.projectID,
-                lastActiveEnvID: this.activeEnvRef.envID,
-            })
         },
         async initFromProjectID(projectID: string) {
             this.projectRefs = await fetchProjectRefs()
             this.activeProjectRef = await getProjectRef(projectID)
 
             await this.loadSiblingResources()
-
-            saveResourceRefCache({
-                lastActiveProjectID: projectID,
-            })
         },
         async initFromProject() {
             this.projectRefs = await fetchProjectRefs()
