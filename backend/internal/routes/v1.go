@@ -108,7 +108,7 @@ func registerEnvRoute(r *APIV1Route) {
 
 	// Routes that require project developer or above role
 	projectDeveloper := envs.Group("", middlewares.ProjectDeveloperOrAbove())
-	projectDeveloper.POST("", handlers.CreateApp)
+	projectDeveloper.POST("/apps", handlers.CreateApp)
 }
 
 func registerAppRoute(r *APIV1Route) {

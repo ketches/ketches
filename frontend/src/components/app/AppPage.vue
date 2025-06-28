@@ -75,7 +75,7 @@ const appStatus = computed(() => {
     <div class="flex flex-col gap-4 mx-4 border-t pt-4">
       <div class="flex items-center justify-between">
         <div class="flex justify-between space-x-4 w-full items-center">
-          <component :is="appStatus.icon" :class="`w-12 h-12 ${appStatus.fgColor} rounded-sm`" stroke-width="1" />
+          <component :is="appStatus.icon" :class="`w-16 h-16 ${appStatus.fgColor} rounded-sm`" stroke-width="1.2" />
           <div class="space-y-2 flex-1 gap-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
@@ -88,7 +88,7 @@ const appStatus = computed(() => {
                 <Separator orientation="vertical" class="h-4" />
                 <Badge variant="secondary" class="font-mono text-muted-foreground">部署版本：{{ app?.edition ||
                   '未知'
-                }}</Badge>
+                  }}</Badge>
               </div>
 
               <div style="margin-left:auto;">

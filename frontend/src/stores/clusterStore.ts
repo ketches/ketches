@@ -10,7 +10,7 @@ export const useClusterStore = defineStore('clusterStore', {
     actions: {
         async loadClusterRefs(refresh = false) {
             if (this.clusterRefs.length === 0 || refresh) {
-                this.clusterRefs = (await fetchClusterRefs()).records
+                this.clusterRefs = (await fetchClusterRefs())
             }
         },
         setClusterRefs(newClusterRefs: clusterRefModel[]) {

@@ -161,7 +161,7 @@ const columns: ColumnDef<appModel>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: 'displayName',
+        accessorKey: 'slug',
         header: "应用",
         cell: ({ row }) =>
             h("div", { class: "space-y-1" }, [
