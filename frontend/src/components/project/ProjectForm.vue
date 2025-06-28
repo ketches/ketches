@@ -80,7 +80,6 @@ const { isFieldDirty, handleSubmit } = useForm({
 const onSubmit = handleSubmit(async (values) => {
     const resp = await createProject(values as createProjectModel)
     if (resp) {
-        // projectStore.addProject(resp);
         projectRefs.value.push({
             projectID: resp.projectID,
             slug: resp.slug,

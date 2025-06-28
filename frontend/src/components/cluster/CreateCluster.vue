@@ -24,9 +24,9 @@ import {
 } from '@/components/ui/tooltip';
 import type { createClusterModel } from '@/types/cluster';
 import { toTypedSchema } from '@vee-validate/zod';
-import { Upload } from 'lucide-vue-next';
+import { CloudUpload, Link } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import * as z from 'zod';
 import Button from '../ui/button/Button.vue';
@@ -95,11 +95,28 @@ const onSubmit = handleSubmit(async (values) => {
     open.value = false;
 })
 
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+function handleUploadClick() {
+    fileInputRef.value?.click();
+}
+
+function handleFileChange(e: Event) {
+    const files = (e.target as HTMLInputElement).files;
+    if (files && files.length > 0) {
+        const file = files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setFieldValue('kubeConfig', event.target?.result as string || '');
+        };
+        reader.readAsText(file);
+    }
+}
 </script>
 
 <template>
     <Dialog :open="open" @update:open="open = $event">
-        <DialogContent class="sm:max-w-[500px]">
+        <DialogContent class="sm:max-w-[700px]">
             <DialogHeader>
                 <DialogTitle>创建集群</DialogTitle>
                 <DialogDescription>
@@ -163,15 +180,19 @@ const onSubmit = handleSubmit(async (values) => {
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                            <Button variant="link" class="text-xs text-muted-foreground ml-auto">
-                                <Upload />
+                            <Button variant="link" size="sm"
+                                class="h-4 text-xs text-muted-foreground ml-auto hover:text-primary" type="button"
+                                @click="handleUploadClick">
+                                <CloudUpload />
+                                上传 KubeConfig 配置文件
                             </Button>
+                            <input ref="fileInputRef" type="file" accept="" class="hidden" @change="handleFileChange" />
                         </FormLabel>
                         <FormControl>
                             <Textarea v-bind="componentField" class="w-full bg-accent font-mono text-xs max-h-32"
                                 placeholder="">
-                            <ScrollArea />
-                                </Textarea>
+                                <ScrollArea />
+                            </Textarea>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -181,14 +202,19 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>集群描述</FormLabel>
                         <FormControl>
                             <Textarea v-bind="componentField" class="w-full text-2xl max-h-32" placeholder="">
-                                <ScrollArea />
-                            </Textarea>
+                                    <ScrollArea />
+                                </Textarea>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
                 </FormField>
-                <DialogFooter>
-                    <Button type="submit" class="w-full">
+                <DialogFooter class="flex w-full px-0">
+                    <Button v-if="values.kubeConfig" variant="outline" type="button" @click="open = false"
+                        class="mr-auto">
+                        <Link />
+                        连通性测试
+                    </Button>
+                    <Button type="submit" class="ml-auto min-w-[100px]">
                         创建
                     </Button>
                 </DialogFooter>

@@ -12,6 +12,7 @@ import type { clusterModel } from "@/types/cluster";
 import { Edit, MoreVertical, Trash } from "lucide-vue-next";
 import { ref } from "vue";
 import { toast } from "vue-sonner";
+import UpdateCluster from "./UpdateCluster.vue";
 
 const emit = defineEmits(["action-completed"]);
 
@@ -59,5 +60,6 @@ const openUpdateClusterForm = ref(false);
         @cancel="showDeleteClusterDialog = false" />
     </DropdownMenuContent>
   </DropdownMenu>
-  <UpdateCluster v-model="openUpdateClusterForm" :clusterID="props.cluster.clusterID" />
+  <UpdateCluster v-model="openUpdateClusterForm" :clusterID="props.cluster.clusterID"
+    @cluster-updated="emit('action-completed')" />
 </template>

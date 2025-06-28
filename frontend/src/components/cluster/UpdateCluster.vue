@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getEnv, updateEnv } from '@/api/env';
+import { getCluster, updateCluster } from '@/api/cluster';
 import {
     Dialog,
     DialogContent,
@@ -20,10 +20,9 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useResourceRefStore } from '@/stores/resourceRefStore';
-import type { envModel, updateEnvModel } from '@/types/env';
+import type { clusterModel, updateClusterModel } from '@/types/cluster';
 import { toTypedSchema } from '@vee-validate/zod';
-import { storeToRefs } from 'pinia';
+import { CloudUpload, Link } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -31,6 +30,7 @@ import * as z from 'zod';
 import Button from '../ui/button/Button.vue';
 import DialogFooter from '../ui/dialog/DialogFooter.vue';
 import Input from '../ui/input/Input.vue';
+import ScrollArea from '../ui/scroll-area/ScrollArea.vue';
 import Textarea from '../ui/textarea/Textarea.vue';
 
 const props = defineProps({
@@ -38,18 +38,16 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
-    envID: {
+    clusterID: {
         type: String,
         required: true,
     },
 })
 
-const resourceRefStore = useResourceRefStore()
-const { envRefs } = storeToRefs(resourceRefStore)
 
-const env = ref<envModel>();
+const cluster = ref<clusterModel>();
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'cluster-updated']);
 
 const open = computed({
     get: () => props.modelValue,
@@ -61,36 +59,41 @@ const open = computed({
 const formSchema = toTypedSchema(z.object({
     slug: z
         .string({
-            required_error: 'Slug is required.',
+            required_error: '集群标识必填',
         })
         .min(2)
         .max(32),
     displayName: z
         .string({
-            required_error: 'Display name is required.',
+            required_error: '集群名称必填',
         })
         .min(2)
-        .max(100, {
-            message: 'Display name must be at most 100 characters long.',
+        .max(50, {
+            message: '集群名称最长不能超过 50'
+        }),
+    kubeConfig: z
+        .string({
+            message: 'KubeConfig 必填'
         }),
     description: z
         .string()
-        .optional()
+        .optional(),
 }));
 
-const { isFieldDirty, handleSubmit, resetForm } = useForm({
+const { isFieldDirty, handleSubmit, resetForm, setFieldValue } = useForm({
     validationSchema: formSchema,
 })
 
 watch(open, async (isOpen) => {
     if (isOpen) {
-        env.value = await getEnv(props.envID);
-        if (env.value) {
+        cluster.value = await getCluster(props.clusterID);
+        if (cluster.value) {
             resetForm({
                 values: {
-                    slug: env.value.slug,
-                    displayName: env.value.displayName,
-                    description: env.value.description || '',
+                    slug: cluster.value.slug,
+                    displayName: cluster.value.displayName,
+                    kubeConfig: cluster.value.kubeConfig || '',
+                    description: cluster.value.description || '',
                 },
             });
         }
@@ -98,32 +101,47 @@ watch(open, async (isOpen) => {
 });
 
 const onSubmit = handleSubmit(async (values) => {
-    let envID = env.value?.envID;
-    if (!envID) {
-        toast.error('环境未提供，请检查配置。');
+    let clusterID = cluster.value?.clusterID;
+    if (!clusterID) {
+        toast.error('集群未提供，请检查配置。');
         return;
     }
 
-    const resp = await updateEnv(envID, {
-        displayName: values.displayName,
-        description: values.description
-    } as updateEnvModel)
+    const resp = await updateCluster(clusterID, values as updateClusterModel)
     if (resp) {
         toast.success('环境更新成功！');
-        envRefs.value = envRefs.value.map(e => e.envID === envID ? resp : e);
+        emit('cluster-updated');
     }
 
     open.value = false;
 })
+
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+function handleUploadClick() {
+    fileInputRef.value?.click();
+}
+
+function handleFileChange(e: Event) {
+    const files = (e.target as HTMLInputElement).files;
+    if (files && files.length > 0) {
+        const file = files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setFieldValue('kubeConfig', event.target?.result as string || '');
+        };
+        reader.readAsText(file);
+    }
+}
 </script>
 
 <template>
     <Dialog :open="open" @update:open="open = $event">
-        <DialogContent class="sm:max-w-[500px]">
+        <DialogContent class="sm:max-w-[700px]">
             <DialogHeader>
-                <DialogTitle>更新环境</DialogTitle>
+                <DialogTitle>更新集群</DialogTitle>
                 <DialogDescription>
-                    填写环境的标识和名称，标识用于唯一标识环境，名称用于展示。
+                    填写集群的标识和名称，标识用于唯一标识集群，名称用于展示。
                 </DialogDescription>
             </DialogHeader>
             <form class="space-y-6" @submit="onSubmit">
@@ -133,10 +151,10 @@ const onSubmit = handleSubmit(async (values) => {
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger class="hover:bg-secondary">
-                                        环境标识
+                                        集群标识
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
-                                        <p>环境标识用于唯一标识环境，不能重复。</p>
+                                        <p>集群标识用于唯一标识集群，不能重复。</p>
                                         <li>只能包含小写字母、数字和短横线</li>
                                         <li>必须以字母开头</li>
                                         <li>不能以短横线结尾。</li>
@@ -156,31 +174,68 @@ const onSubmit = handleSubmit(async (values) => {
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger class="hover:bg-secondary">
-                                        环境名称
+                                        集群名称
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
-                                        <p>环境名称用于展示，便于识别。</p>
+                                        <p>集群名称用于展示，便于识别。</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         </FormLabel>
                         <FormControl>
-                            <Input v-bind="componentField" class="w-full" placeholder="例如：开发环境、预发布环境、生产环境" />
+                            <Input v-bind="componentField" class="w-full" placeholder="" />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                </FormField>
+                <FormField v-slot="{ componentField }" name="kubeConfig" :validate-on-blur="!isFieldDirty">
+                    <FormItem>
+                        <FormLabel class="flex items-center gap-2">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        KubeConfig
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p>KubeConfig 是集群的配置文件，用于连接和管理集群。</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <Button variant="link" size="sm"
+                                class="h-4 text-xs text-muted-foreground ml-auto hover:text-primary" type="button"
+                                @click="handleUploadClick">
+                                <CloudUpload />
+                                上传 KubeConfig 配置文件
+                            </Button>
+                            <input ref="fileInputRef" type="file" accept="" class="hidden" @change="handleFileChange" />
+                        </FormLabel>
+                        <FormControl>
+                            <Textarea v-bind="componentField" class="w-full bg-accent font-mono text-xs max-h-32"
+                                placeholder="">
+                                <ScrollArea />
+                            </Textarea>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
                 </FormField>
                 <FormField v-slot="{ componentField }" name="description" :validate-on-blur="!isFieldDirty">
                     <FormItem>
-                        <FormLabel>环境描述</FormLabel>
+                        <FormLabel>集群描述</FormLabel>
                         <FormControl>
-                            <Textarea v-bind="componentField" class="col-span-3" />
+                            <Textarea v-bind="componentField" class="col-span-3">
+                                <ScrollArea />
+                            </Textarea>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
                 </FormField>
-                <DialogFooter>
-                    <Button type="submit" class="w-full">
+                <DialogFooter class="flex w-full px-0">
+                    <Button v-if="cluster?.kubeConfig" variant="outline" type="button" @click="open = false"
+                        class="mr-auto">
+                        <Link />
+                        连通性测试
+                    </Button>
+                    <Button type="submit" class="ml-auto min-w-[100px]">
                         更新
                     </Button>
                 </DialogFooter>

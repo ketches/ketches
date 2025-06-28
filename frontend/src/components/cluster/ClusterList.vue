@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { listClusters } from '@/api/cluster'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -58,6 +57,7 @@ const resourceRefStore = useResourceRefStore()
 const { activeProjectRef } = storeToRefs(resourceRefStore)
 
 const noData = ref(false)
+const hasData = ref(false)
 const pagedData = ref<clusterModel[]>([])
 const totalCount = ref(0)
 
@@ -79,6 +79,7 @@ async function fetchPagedData() {
 
     if (!queryModel.value.query) {
         noData.value = total === 0
+        hasData.value = total > 0
     }
 }
 
@@ -106,33 +107,22 @@ const centeredHeader = (text: string) => h('div', { class: 'text-center' }, text
 
 const columns: ColumnDef<clusterModel>[] = [
     {
-        id: 'select',
-        header: ({ table }) => h(Checkbox, {
-            'class': [table.getIsAllPageRowsSelected() || table.getIsSomePageRowsSelected() ? '' : 'invisible group-hover:visible'],
-            'modelValue':
-                table.getIsAllPageRowsSelected()
-                    ? true
-                    : table.getIsSomePageRowsSelected()
-                        ? 'indeterminate'
-                        : false,
-            'onUpdate:modelValue': value => table.toggleAllPageRowsSelected(!!value),
-            'ariaLabel': 'Select all',
-        }),
-        cell: ({ row }) => h(Checkbox, {
-            'class': [row.getIsSelected() ? '' : 'invisible group-hover:visible'],
-            'modelValue': row.getIsSelected(),
-            'onUpdate:modelValue': value => row.toggleSelected(!!value),
-            'ariaLabel': 'Select row',
-        }),
-        enableSorting: false,
-        enableHiding: false,
-    },
-    {
-        accessorKey: 'displayName',
-        header: "集群",
-        cell: ({ row }) => h('div', { class: 'space-y-1' }, [
-            h(RouterLink, { to: `/console/cluster/${row.original.clusterID}`, class: 'font-medium text-blue-500' }, () => row.original.displayName || row.getValue('slug')),
-            h('div', { class: 'text-sm text-muted-foreground font-mono' }, row.getValue('slug'))
+        accessorKey: 'slug',
+        header: () => h("div", { class: "ml-2" }, "集群"),
+        cell: ({ row }) => h("div", { class: "space-y-1 ml-2" }, [
+            h(
+                RouterLink,
+                {
+                    to: `/console/cluster/${row.original.clusterID}`,
+                    class: "font-medium text-blue-500",
+                },
+                () => row.original.displayName || row.getValue("slug")
+            ),
+            h(
+                "div",
+                { class: "text-sm text-muted-foreground font-mono" },
+                row.getValue("slug")
+            ),
         ]),
     },
     {
@@ -190,7 +180,7 @@ const openClusterForm = ref(false)
             创建集群
         </Button>
     </div>
-    <div v-if="pagedData.length > 0" class="flex flex-col flex-grow">
+    <div v-if="hasData" class="flex flex-col flex-grow">
         <div class="flex gap-2 items-center py-4 w-full">
             <Input class="max-w-sm" placeholder="搜索集群" v-model="query" @keyup.enter="onQueryEnter" />
             <DropdownMenu>

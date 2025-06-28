@@ -39,16 +39,7 @@ const openClusterForm = ref(false)
       </div>
     </header>
     <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <!-- <div v-if="noClusters"
-        class="flex flex-col flex-grow text-balance text-center text-sm text-muted-foreground justify-center items-center">
-        <span class="block mb-2">当前项目还没有集群，让我们先来创建一个吧！</span>
-        <Button variant="default" class="my-4" @click="openClusterForm = true">
-          <Plus />
-          创建集群
-        </Button>
-      </div> -->
       <ClusterList />
     </div>
   </SidebarInset>
-  <!-- <CreateCluster v-model="openClusterForm" @cluster-created=""/> -->
 </template>
