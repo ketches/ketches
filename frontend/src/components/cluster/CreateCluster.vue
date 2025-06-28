@@ -22,6 +22,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import type { createClusterModel } from '@/types/cluster';
 import { toTypedSchema } from '@vee-validate/zod';
 import { useForm } from 'vee-validate';
 import { computed } from 'vue';
@@ -75,9 +76,7 @@ const { isFieldDirty, handleSubmit } = useForm({
 })
 
 const onSubmit = handleSubmit(async (values) => {
-    const resp = await createCluster({
-        ...values
-    })
+    const resp = await createCluster(values as createClusterModel)
     if (resp) {
         toast.success('创建集群成功！');
     } else {

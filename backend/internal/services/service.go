@@ -21,7 +21,6 @@ import (
 	"net/http"
 
 	"github.com/ketches/ketches/internal/app"
-	"github.com/ketches/ketches/pkg/kube/incluster"
 
 	"k8s.io/client-go/kubernetes"
 )
@@ -41,9 +40,7 @@ type service struct {
 
 func LoadService() Service {
 	if serviceInstance == nil {
-		serviceInstance = &service{
-			inclusterKubeClient: incluster.Client(),
-		}
+		serviceInstance = &service{}
 	}
 
 	return serviceInstance

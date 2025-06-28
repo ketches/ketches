@@ -21,7 +21,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useResourceRefStore } from '@/stores/resourceRefStore';
-import type { envModel } from '@/types/env';
+import type { envModel, updateEnvModel } from '@/types/env';
 import { toTypedSchema } from '@vee-validate/zod';
 import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
@@ -104,7 +104,10 @@ const onSubmit = handleSubmit(async (values) => {
         return;
     }
 
-    const resp = await updateEnv(envID, values)
+    const resp = await updateEnv(envID, {
+        displayName: values.displayName,
+        description: values.description
+    } as updateEnvModel)
     if (resp) {
         toast.success('环境更新成功！');
         envRefs.value = envRefs.value.map(e => e.envID === envID ? resp : e);

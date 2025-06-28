@@ -44,19 +44,22 @@ func newDB(dialector gorm.Dialector) (*gorm.DB, error) {
 
 func Instance() *gorm.DB {
 	once.Do(func() {
-		var (
-			err      error
-			dbConfig = app.Config().DB
-		)
-		switch dbConfig.Type {
+
+		dbType := app.GetEnv("DB_TYPE", "sqlite")
+		dbDNS := app.GetEnv("DB_DNS", "file:ketches.db?cache=shared&mode=rwc")
+		// dbType := app.GetEnv("DB_TYPE", "postgres"),
+		// dbDNS := app.GetEnv("DB_DNS", "host=postgres port=5432 user=postgres password=postgres dbname=ketches sslmode=disable"),
+
+		var err error
+		switch dbType {
 		case DBTypeMySQL:
-			instance, err = newMySQL(dbConfig.DNS)
+			instance, err = newMySQL(dbDNS)
 		case DBTypePostgres:
-			instance, err = newPostgres(dbConfig.DNS)
+			instance, err = newPostgres(dbDNS)
 		case DBTypeSQLite:
-			instance, err = NewSQLite(dbConfig.DNS)
+			instance, err = NewSQLite(dbDNS)
 		default:
-			log.Fatalf("unsupported database type, %v", dbConfig.Type)
+			log.Fatalf("unsupported database type, %v", dbType)
 		}
 
 		if err != nil {

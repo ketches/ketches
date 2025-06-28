@@ -54,7 +54,7 @@ func Auth() gin.HandlerFunc {
 		user := new(entities.User)
 		if err := db.Instance().Select("id, role").First(user, "id = ?", claims.UserID).Error; err != nil {
 			if db.IsErrRecordNotFound(err) {
-				api.Error(c, app.NewError(http.StatusNotFound, "User not found"))
+				api.Error(c, app.NewError(http.StatusUnauthorized, "User not found"))
 				return
 			}
 			api.Error(c, app.NewError(http.StatusInternalServerError, "Database error: "+err.Error()))

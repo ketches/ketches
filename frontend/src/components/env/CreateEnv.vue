@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useResourceRefStore } from '@/stores/resourceRefStore';
+import type { envCreateModel } from '@/types/env';
 import { toTypedSchema } from '@vee-validate/zod';
 import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
@@ -100,7 +101,7 @@ const onSubmit = handleSubmit(async (values) => {
     if (!activeProjectRef.value) {
         toast.error('未找到当前项目，请先选择一个项目。');
     } else {
-        const resp = await createEnv(activeProjectRef.value.projectID, values)
+        const resp = await createEnv(activeProjectRef.value.projectID, values as envCreateModel)
         if (resp) {
             resourceRefStore.addEnv(resp);
             toast.success('创建环境成功！');

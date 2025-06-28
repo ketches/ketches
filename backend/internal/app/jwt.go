@@ -16,14 +16,12 @@ limitations under the License.
 package app
 
 import (
-	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
-	// jwtIssuer         = "Ketches"
 	NormalTokenTTL  = time.Hour * 24     // 24 hours
 	AccessTokenTTL  = time.Hour * 2      // 2 hours
 	RefreshTokenTTL = time.Hour * 24 * 7 // 7 days
@@ -32,12 +30,7 @@ const (
 var jwtSecret string
 
 func loadJwtSecret() string {
-	jwtSecret = Config().App.JWTSecret
-
-	if jwtSecret == "" {
-		log.Fatal(`jwt secret is not set in config file.`)
-	}
-	return jwtSecret
+	return GetEnv("APP_JWT_SECRET", "ketches")
 }
 
 type TokenClaims struct {

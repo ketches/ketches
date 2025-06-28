@@ -49,40 +49,41 @@ instance.interceptors.response.use(
 
             if (status === 401) {
                 const userStore = useUserStore();
-                if (!originalRequest._retry) {
-                    originalRequest._retry = true;
-                    const refreshTokenResponse = await instance.post('/users/refresh-token');
-
-                    if (refreshTokenResponse.data.userID) { // Check custom success code
-                        // If new access/refresh tokens are provided by refresh API, store them here.
-                        userStore.setUser(refreshTokenResponse.data); // Assuming setUser updates the user state
-                        return instance(originalRequest); // Retry the original request
-                    }
+                if (originalRequest.url === '/users/refresh-token') {
+                    // 401 but already on /users/refresh-token
+                    userStore.clearUser();
+                    const routerInstance = useRouter();
+                    routerInstance.push('/sign-in?redirectUrl=' + encodeURIComponent(routerInstance.currentRoute.value.fullPath));
+                    return Promise.reject(error);
                 }
-                userStore.clearUser(); // Clear user state
-                const routerInstance = useRouter();
-                routerInstance.push('/sign-in?redirectUrl=' + encodeURIComponent(routerInstance.currentRoute.value.fullPath));
-                return Promise.reject(error);
+
+                // Retry to refresh token
+                const refreshTokenResponse = await instance.post('/users/refresh-token');
+                if (refreshTokenResponse.data.userID) { // Check custom success code
+                    userStore.setUser(refreshTokenResponse.data);
+                    return instance(originalRequest);
+                } else {
+                    userStore.clearUser();
+                    const routerInstance = useRouter();
+                    routerInstance.push('/sign-in?redirectUrl=' + encodeURIComponent(routerInstance.currentRoute.value.fullPath));
+                    return Promise.reject(error);
+                }
             } else {
                 // For non-401 errors, display the error from response body
-                const errorMessage = responseData?.error || '请求失败，请稍后再试。';
-                toast.dismiss(); // Dismiss any previous toast notifications
-                console.log("called");
-
-                toast.error(error.response.statusText, {
+                const errorMessage = (error.response?.data as any)?.error || '请求失败，请稍后再试。';
+                toast.dismiss();
+                toast.error(error.response?.statusText || "请求错误", {
                     description: errorMessage,
                 });
                 return Promise.reject(error);
             }
         } else if (error.request) {
-            // The request was made but no response was received (network error)
-            toast.dismiss(); // Dismiss any previous toast notifications
+            toast.dismiss();
             toast.error("网络错误", {
                 description: '请求未响应，请检查网络连接或稍后再试。',
             });
             return Promise.reject(error);
         } else {
-            // Something happened in setting up the request that triggered an Error
             toast.dismiss();
             toast.error("请求错误", {
                 description: error.message || '请求配置错误，请稍后再试。',

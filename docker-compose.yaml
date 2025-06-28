@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  frontend:
+    image: registry.cn-hangzhou.aliyuncs.com/ketches/ketches-ui:latest
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api/v1
+    depends_on:
+      - backend
+
+  backend:
+    image: registry.cn-hangzhou.aliyuncs.com/ketches/ketches-api:latest
+    ports:
+      - "8080:8080"
+    environment:
+      # - DB_TYPE=sqlite
+      # - DB_DNS=file:ketches.db?cache=shared&mode=rwc
+      - DB_TYPE=postgres
+      - DB_DNS=host=postgres port=5432 user=postgres password=postgres dbname=ketches sslmode=disable
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_DB: ketches
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

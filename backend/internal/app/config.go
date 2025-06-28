@@ -1,46 +1,42 @@
 package app
 
 import (
-	"log"
-
-	"github.com/spf13/viper"
+	"os"
 )
 
-// config is the struct for config file
-type config struct {
-	App AppConfig `yaml:"app"`
-	DB  DBConfig  `yaml:"db"`
-}
+// AppConfig holds the application configuration
+// type AppConfig struct {
+// 	Host      string
+// 	Port      int32
+// 	RunMode   string
+// 	JWTSecret string
+// }
 
-type AppConfig struct {
-	Host      string `yaml:"host"`
-	Port      int32  `yaml:"port"`
-	RunMode   string `yaml:"runMode"`
-	JWTSecret string `yaml:"jwtSecret"`
-}
+// // DBConfig holds the database configuration
+// type DBConfig struct {
+// 	Type string
+// 	DNS  string
+// }
 
-// DBConfig is the struct for database config
-type DBConfig struct {
-	Type string `yaml:"type"`
-	DNS  string `yaml:"dns"`
-}
+// // ConfigFromEnv returns config from environment variables
+// func ConfigFromEnv() (AppConfig, DBConfig) {
+// 	port, _ := strconv.Atoi(GetEnv("APP_PORT", "8080"))
+// 	return AppConfig{
+// 			Host:      GetEnv("APP_HOST", "0.0.0.0"),
+// 			Port:      int32(port),
+// 			RunMode:   GetEnv("APP_RUNMODE", "dev"),
+// 			JWTSecret: GetEnv("APP_JWT_SECRET", "ketches"),
+// 		}, DBConfig{
+// 			Type: GetEnv("DB_TYPE", "sqlite"),
+// 			DNS:  GetEnv("DB_DNS", "file:ketches.db?cache=shared&mode=rwc"),
+// 		}
+// }
 
-// configInstance is the singleton instance of the config
-var configInstance *config
-
-// Config returns a singleton instance of the config
-func Config() *config {
-	if configInstance == nil {
-		viper.SetConfigFile("config/config.yaml")
-
-		if err := viper.ReadInConfig(); err != nil {
-			log.Fatalf("error reading config file, %v", err)
-		}
-
-		if err := viper.Unmarshal(&configInstance); err != nil {
-			log.Fatalf("unable to decode config into struct, %v", err)
-		}
+// GetEnv returns the value of the environment variable named by the key.
+// It returns defaultVal if the variable is not present.
+func GetEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
 	}
-
-	return configInstance
+	return defaultVal
 }

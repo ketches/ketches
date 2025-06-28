@@ -39,7 +39,7 @@ import (
 // @version v1
 func main() {
 	server := http.Server{
-		Addr:    fmt.Sprintf("%s:%d", app.Config().App.Host, app.Config().App.Port),
+		Addr:    fmt.Sprintf("%s:%s", app.GetEnv("APP_HOST", "0.0.0.0"), app.GetEnv("APP_PORT", "8080")), // default to 8080 if not set
 		Handler: newHttpHandler(),
 	}
 

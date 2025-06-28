@@ -1,10 +1,10 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import App from './App.vue'
 import './style.css'
 
-const routes = [
+const routes: RouteRecordRaw[] = [
     {
         name: "home",
         path: "/",

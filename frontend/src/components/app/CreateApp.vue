@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/tooltip';
 
 import { useResourceRefStore } from '@/stores/resourceRefStore';
+import type { createAppModel } from '@/types/app';
 import { toTypedSchema } from '@vee-validate/zod';
 import { SquareDashed, SquareDot, SquaresUnite } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
@@ -123,7 +124,7 @@ const onSubmit = handleSubmit(async (values) => {
     if (!activeEnvRef.value) {
         toast.error('未找到当前环境，请先选择一个环境。');
     } else {
-        const resp = await createApp(activeEnvRef.value.envID, values)
+        const resp = await createApp(activeEnvRef.value.envID, values as createAppModel)
         if (resp) {
             resourceRefStore.addApp(resp);
             toast.success('创建应用成功！');

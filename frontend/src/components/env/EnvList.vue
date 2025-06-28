@@ -111,7 +111,12 @@ const columns: ColumnDef<envModel>[] = [
         id: 'select',
         header: ({ table }) => h(Checkbox, {
             'class': [table.getIsAllPageRowsSelected() || table.getIsSomePageRowsSelected() ? '' : 'invisible group-hover:visible'],
-            'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate'),
+            'modelValue':
+                table.getIsAllPageRowsSelected()
+                    ? true
+                    : table.getIsSomePageRowsSelected()
+                        ? 'indeterminate'
+                        : false,
             'onUpdate:modelValue': value => table.toggleAllPageRowsSelected(!!value),
             'ariaLabel': 'Select all',
         }),

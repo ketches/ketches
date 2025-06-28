@@ -24,6 +24,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useResourceRefStore } from '@/stores/resourceRefStore';
+import type { createProjectModel } from '@/types/project';
 import { toTypedSchema } from '@vee-validate/zod';
 import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
@@ -33,7 +34,6 @@ import * as z from 'zod';
 import Button from '../ui/button/Button.vue';
 import Textarea from '../ui/textarea/Textarea.vue';
 
-// const projectStore = useProjectStore();
 const resourceRefStore = useResourceRefStore();
 const { projectRefs } = storeToRefs(resourceRefStore);
 
@@ -78,9 +78,7 @@ const { isFieldDirty, handleSubmit } = useForm({
 })
 
 const onSubmit = handleSubmit(async (values) => {
-    const resp = await createProject({
-        ...values
-    })
+    const resp = await createProject(values as createProjectModel)
     if (resp) {
         // projectStore.addProject(resp);
         projectRefs.value.push({

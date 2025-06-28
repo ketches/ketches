@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Label from '@/components/ui/label/Label.vue';
 import { Separator } from '@/components/ui/separator';
-import type { appModel } from '@/types/app';
+import type { appModel, updateAppImageModel } from '@/types/app';
 import { Info } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 
@@ -53,7 +53,7 @@ const { handleSubmit, resetForm } = useForm({
 })
 
 const onSubmit = handleSubmit(async (values) => {
-    await updateAppImage(app.value.appID, values)
+    await updateAppImage(app.value.appID, values as updateAppImageModel)
     app.value.containerImage = values.containerImage
     app.value.registryUsername = values.registryUsername ?? ''
     app.value.registryPassword = values.registryPassword ?? ''
