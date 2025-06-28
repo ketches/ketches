@@ -1,5 +1,5 @@
-go 1.24
+go 1.24.0
 
-use (
-	./backend
-)
+toolchain go1.24.3
+
+use ./backend

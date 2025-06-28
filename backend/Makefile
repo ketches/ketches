@@ -12,8 +12,7 @@ build: swag
 run: swag
 	go mod tidy
 	@if [ -f .env ]; then \
-		echo "Loading .env environment variables..."; \
-		export $(grep -v '^#' .env | xargs); \
+		set -a; . .env; set +a; \
 	fi; \
 	go run cmd/api/main.go
 
