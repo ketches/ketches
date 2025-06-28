@@ -6,7 +6,7 @@ import {
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { useUserStore } from '@/stores/userStore';
-import { Box, Boxes, EllipsisVertical, Gauge, Grid2X2, Plus, UsersRound } from "lucide-vue-next";
+import { Box, Boxes, EllipsisVertical, Grid2X2, Plus, Telescope, UsersRound } from "lucide-vue-next";
 import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
 import CreateCluster from '../cluster/CreateCluster.vue';
@@ -31,14 +31,12 @@ const openClusterForm = ref(false);
 <template>
     <SidebarGroup v-if="user">
         <SidebarMenu v-if="user?.role === 'admin'">
-            <SidebarMenuItem>
-                <!-- <SidebarMenuButton> -->
+            <SidebarMenuItem class="pb-4">
                 <Spot />
-                <!-- </SidebarMenuButton> -->
             </SidebarMenuItem>
             <SidebarMenuItem>
                 <SidebarMenuButton>
-                    <Gauge />
+                    <Telescope />
                     <RouterLink :to="{ name: 'admin-overview' }" class="flex w-full">
                         <span>总览</span>
                     </RouterLink>
@@ -74,7 +72,7 @@ const openClusterForm = ref(false);
             <SidebarMenuItem>
                 <RouterLink :to="{ name: 'overview' }" class="flex items-center gap-2">
                     <SidebarMenuButton tooltip="总览">
-                        <Gauge class="h-4 w-4" />
+                        <Telescope class="h-4 w-4" />
                         <span class="flex-1">总览</span>
                     </SidebarMenuButton>
                 </RouterLink>
