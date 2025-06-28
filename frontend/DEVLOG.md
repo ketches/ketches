@@ -1,4 +1,4 @@
-# 开发日志
+# Development Log
 
 Initialize project.
 
