@@ -19,6 +19,7 @@ import {
     useSidebar,
 } from "../ui/sidebar";
 import SidebarMenuAction from '../ui/sidebar/SidebarMenuAction.vue';
+import Spot from './Spot.vue';
 
 const { isMobile } = useSidebar();
 
@@ -31,9 +32,14 @@ const openClusterForm = ref(false);
     <SidebarGroup v-if="user">
         <SidebarMenu v-if="user?.role === 'admin'">
             <SidebarMenuItem>
+                <!-- <SidebarMenuButton> -->
+                <Spot />
+                <!-- </SidebarMenuButton> -->
+            </SidebarMenuItem>
+            <SidebarMenuItem>
                 <SidebarMenuButton>
                     <Gauge />
-                    <RouterLink :to="{ name: 'cluster-overview' }" class="flex w-full">
+                    <RouterLink :to="{ name: 'admin-overview' }" class="flex w-full">
                         <span>总览</span>
                     </RouterLink>
                 </SidebarMenuButton>

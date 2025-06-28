@@ -2,7 +2,6 @@ import { getAppRef } from '@/api/app';
 import { fetchAppRefs, getEnvRef } from '@/api/env';
 import { fetchEnvRefs, fetchProjectRefs, getProjectRef } from '@/api/project';
 import type { appRefModel } from '@/types/app';
-import type { clusterRefModel } from '@/types/cluster';
 import type { envRefModel } from '@/types/env';
 import type { projectRefModel } from '@/types/project';
 import { defineStore } from 'pinia';
@@ -16,7 +15,7 @@ export const useResourceRefStore = defineStore('resourceRefStore', {
         projectRefs: [] as projectRefModel[],
         envRefs: [] as envRefModel[],
         appRefs: [] as appRefModel[],
-        clusterRefs: [] as clusterRefModel[],
+        // clusterRefs: [] as clusterRefModel[],
     }),
     actions: {
         getActiveProjectRef() {
@@ -164,6 +163,6 @@ export const useResourceRefStore = defineStore('resourceRefStore', {
             if (!this.activeAppRef) {
                 this.activeAppRef = newApp
             }
-        }
+        },
     },
 })

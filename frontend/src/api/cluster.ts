@@ -2,16 +2,16 @@ import api from '@/api/axios';
 import type { clusterModel, clusterRefModel, createClusterModel, updateClusterModel } from '@/types/cluster';
 import type { QueryAndPagedRequest } from '@/types/common.ts';
 
-export async function listClusters(filter: QueryAndPagedRequest): Promise<clusterModel[] | null> {
+export async function listClusters(filter: QueryAndPagedRequest): Promise<{ total: number, records: clusterModel[] }> {
     const response = await api.get('/clusters', {
         params: filter
     });
-    return response.data as clusterModel[];
+    return response.data as { total: number, records: clusterModel[] };
 }
 
-export async function fetchClusterRefs(): Promise<{ total: number, records: clusterRefModel[] }> {
+export async function fetchClusterRefs(): Promise<clusterRefModel[]> {
     const response = await api.get(`/clusters/refs`)
-    return response.data as { total: number, records: clusterRefModel[] }
+    return response.data as clusterRefModel[];
 }
 
 export async function getCluster(clusterID: string): Promise<clusterModel> {

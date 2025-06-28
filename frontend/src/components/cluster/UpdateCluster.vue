@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { createCluster } from '@/api/cluster';
+import { getEnv, updateEnv } from '@/api/env';
 import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle
 } from '@/components/ui/dialog';
@@ -15,22 +14,23 @@ import {
     FormLabel,
     FormMessage
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { createClusterModel } from '@/types/cluster';
+import { useResourceRefStore } from '@/stores/resourceRefStore';
+import type { envModel, updateEnvModel } from '@/types/env';
 import { toTypedSchema } from '@vee-validate/zod';
-import { Upload } from 'lucide-vue-next';
+import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import * as z from 'zod';
 import Button from '../ui/button/Button.vue';
-import ScrollArea from '../ui/scroll-area/ScrollArea.vue';
+import DialogFooter from '../ui/dialog/DialogFooter.vue';
+import Input from '../ui/input/Input.vue';
 import Textarea from '../ui/textarea/Textarea.vue';
 
 const props = defineProps({
@@ -38,9 +38,18 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    envID: {
+        type: String,
+        required: true,
+    },
 })
 
-const emit = defineEmits(['update:modelValue', 'cluster-created']);
+const resourceRefStore = useResourceRefStore()
+const { envRefs } = storeToRefs(resourceRefStore)
+
+const env = ref<envModel>();
+
+const emit = defineEmits(['update:modelValue']);
 
 const open = computed({
     get: () => props.modelValue,
@@ -52,58 +61,69 @@ const open = computed({
 const formSchema = toTypedSchema(z.object({
     slug: z
         .string({
-            required_error: '集群标识必填',
+            required_error: 'Slug is required.',
         })
         .min(2)
         .max(32),
     displayName: z
         .string({
-            required_error: '集群名称必填',
+            required_error: 'Display name is required.',
         })
         .min(2)
-        .max(50, {
-            message: '集群名称最长不能超过 50'
-        }),
-    kubeConfig: z
-        .string({
-            message: 'KubeConfig 必填'
+        .max(100, {
+            message: 'Display name must be at most 100 characters long.',
         }),
     description: z
         .string()
-        .optional(),
+        .optional()
 }));
 
-const { isFieldDirty, handleSubmit, values, setFieldValue } = useForm({
+const { isFieldDirty, handleSubmit, resetForm } = useForm({
     validationSchema: formSchema,
 })
 
-watch(() => values.slug, (newSlug, oldSlug) => {
-    if (values.displayName === oldSlug || !values.displayName) {
-        setFieldValue('displayName', newSlug);
+watch(open, async (isOpen) => {
+    if (isOpen) {
+        env.value = await getEnv(props.envID);
+        if (env.value) {
+            resetForm({
+                values: {
+                    slug: env.value.slug,
+                    displayName: env.value.displayName,
+                    description: env.value.description || '',
+                },
+            });
+        }
     }
 });
 
 const onSubmit = handleSubmit(async (values) => {
-    const resp = await createCluster(values as createClusterModel)
-    if (resp) {
-        toast.success('创建集群成功！');
-    } else {
-        toast.error('创建集群失败，请重试。');
+    let envID = env.value?.envID;
+    if (!envID) {
+        toast.error('环境未提供，请检查配置。');
+        return;
     }
-    emit('cluster-created');
+
+    const resp = await updateEnv(envID, {
+        displayName: values.displayName,
+        description: values.description
+    } as updateEnvModel)
+    if (resp) {
+        toast.success('环境更新成功！');
+        envRefs.value = envRefs.value.map(e => e.envID === envID ? resp : e);
+    }
 
     open.value = false;
 })
-
 </script>
 
 <template>
     <Dialog :open="open" @update:open="open = $event">
         <DialogContent class="sm:max-w-[500px]">
             <DialogHeader>
-                <DialogTitle>创建集群</DialogTitle>
+                <DialogTitle>更新环境</DialogTitle>
                 <DialogDescription>
-                    请填写集群的标识、名称和 KubeConfig 等信息。
+                    填写环境的标识和名称，标识用于唯一标识环境，名称用于展示。
                 </DialogDescription>
             </DialogHeader>
             <form class="space-y-6" @submit="onSubmit">
@@ -113,10 +133,10 @@ const onSubmit = handleSubmit(async (values) => {
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger class="hover:bg-secondary">
-                                        集群标识
+                                        环境标识
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
-                                        <p>集群标识用于唯一标识集群，不能重复。</p>
+                                        <p>环境标识用于唯一标识环境，不能重复。</p>
                                         <li>只能包含小写字母、数字和短横线</li>
                                         <li>必须以字母开头</li>
                                         <li>不能以短横线结尾。</li>
@@ -125,7 +145,7 @@ const onSubmit = handleSubmit(async (values) => {
                             </TooltipProvider>
                         </FormLabel>
                         <FormControl>
-                            <Input v-bind="componentField" class="w-full" />
+                            <Input v-bind="componentField" class="w-full" disabled />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -136,60 +156,32 @@ const onSubmit = handleSubmit(async (values) => {
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger class="hover:bg-secondary">
-                                        集群名称
+                                        环境名称
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
-                                        <p>集群名称用于展示，便于识别。</p>
+                                        <p>环境名称用于展示，便于识别。</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         </FormLabel>
                         <FormControl>
-                            <Input v-bind="componentField" class="w-full" placeholder="" />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                </FormField>
-                <FormField v-slot="{ componentField }" name="kubeConfig" :validate-on-blur="!isFieldDirty">
-                    <FormItem>
-                        <FormLabel class="flex items-center gap-2">
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>
-                                        KubeConfig
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right">
-                                        <p>KubeConfig 是集群的配置文件，用于连接和管理集群。</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            <Button variant="link" class="text-xs text-muted-foreground ml-auto">
-                                <Upload />
-                            </Button>
-                        </FormLabel>
-                        <FormControl>
-                            <Textarea v-bind="componentField" class="w-full bg-accent font-mono text-xs max-h-32"
-                                placeholder="">
-                            <ScrollArea />
-                                </Textarea>
+                            <Input v-bind="componentField" class="w-full" placeholder="例如：开发环境、预发布环境、生产环境" />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
                 </FormField>
                 <FormField v-slot="{ componentField }" name="description" :validate-on-blur="!isFieldDirty">
                     <FormItem>
-                        <FormLabel>集群描述</FormLabel>
+                        <FormLabel>环境描述</FormLabel>
                         <FormControl>
-                            <Textarea v-bind="componentField" class="w-full text-2xl max-h-32" placeholder="">
-                                <ScrollArea />
-                            </Textarea>
+                            <Textarea v-bind="componentField" class="col-span-3" />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
                 </FormField>
                 <DialogFooter>
                     <Button type="submit" class="w-full">
-                        创建
+                        更新
                     </Button>
                 </DialogFooter>
             </form>

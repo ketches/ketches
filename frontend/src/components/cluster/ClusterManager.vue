@@ -1,27 +1,28 @@
 <script setup lang="ts">
+import { fetchClusterRefs } from "@/api/cluster"
 import {
   useSidebar
 } from "@/components/ui/sidebar"
-import { useResourceRefStore } from '@/stores/resourceRefStore'
+import type { clusterRefModel } from "@/types/cluster"
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
-import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
 import Button from '../ui/button/Button.vue'
 import Separator from '../ui/separator/Separator.vue'
 import SidebarInset from '../ui/sidebar/SidebarInset.vue'
-import AppList from './AppList.vue'
-import AppManagerBreadcrumb from './breadcrumb/AppManagerBreadcrumb.vue'
+import ClusterManagerBreadcrumb from './breadcrumb/ClusterManagerBreadcrumb.vue'
+import ClusterList from './ClusterList.vue'
 const { toggleSidebar, open } = useSidebar();
 
-const resourceRefStore = useResourceRefStore()
-const { envRefs } = storeToRefs(resourceRefStore)
+const noClusters = ref(false)
 
-const noEnvs = ref(false)
-watch(envRefs, (newEnvRefs) => {
-  noEnvs.value = newEnvRefs.length === 0
+const clusterRefs = ref<clusterRefModel[]>([])
+
+onMounted(async () => {
+  clusterRefs.value = await fetchClusterRefs()
+  noClusters.value = clusterRefs.value.length === 0
 })
 
-const openEnvForm = ref(false)
+const openClusterForm = ref(false)
 </script>
 
 <template>
@@ -34,21 +35,20 @@ const openEnvForm = ref(false)
           <PanelLeftClose v-else />
         </Button>
         <Separator orientation="vertical" class="mr-2 h-4" />
-        <AppManagerBreadcrumb />
+        <ClusterManagerBreadcrumb :clusterRefs="clusterRefs" />
       </div>
     </header>
     <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <!-- <div v-if="noEnvs"
+      <!-- <div v-if="noClusters"
         class="flex flex-col flex-grow text-balance text-center text-sm text-muted-foreground justify-center items-center">
-        <span class="block mb-2">当前项目还没有环境，让我们先来创建一个吧！</span>
-        <Button variant="default" class="my-4" @click="openEnvForm = true">
+        <span class="block mb-2">当前项目还没有集群，让我们先来创建一个吧！</span>
+        <Button variant="default" class="my-4" @click="openClusterForm = true">
           <Plus />
-          创建环境
+          创建集群
         </Button>
       </div> -->
-      <!-- <AppList v-else /> -->
-      <AppList />
+      <ClusterList />
     </div>
   </SidebarInset>
-  <!-- <CreateEnv v-model="openEnvForm" /> -->
+  <!-- <CreateCluster v-model="openClusterForm" @cluster-created=""/> -->
 </template>
