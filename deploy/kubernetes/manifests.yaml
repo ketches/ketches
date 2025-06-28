@@ -38,7 +38,7 @@ data:
         keepalive_timeout  65;
         server {
             listen       80;
-            server_name  localhost;·
+            server_name  localhost;
             location /api/ {
                 proxy_pass http://ketches-api:8080/api/;
                 proxy_set_header Host $host;
