@@ -1,0 +1,209 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ketches
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: ketches
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ketches-ui-nginx-conf
+  namespace: ketches
+  labels:
+    app: ketches-ui
+data:
+  nginx.conf: |
+    user  nginx;
+    worker_processes  auto;
+    error_log  /var/log/nginx/error.log warn;
+    pid        /var/run/nginx.pid;
+    events {
+        worker_connections  1024;
+    }
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+        sendfile        on;
+        keepalive_timeout  65;
+        server {
+            listen       80;
+            server_name  localhost;·
+            location /api/ {
+                proxy_pass http://ketches-api:8080/api/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+            location / {
+                root   /usr/share/nginx/html;
+                try_files $uri $uri/ /index.html;
+                index  index.html index.htm;
+            }
+            error_page   500 502 503 504  /50x.html;
+            location = /50x.html {
+                root   /usr/share/nginx/html;
+            }
+        }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: ketches
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: ketches
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:latest
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "ketches"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "postgres"
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-storage
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ketches-api
+  namespace: ketches
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: ketches-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ketches-api
+  namespace: ketches
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ketches-api
+  template:
+    metadata:
+      labels:
+        app: ketches-api
+    spec:
+      containers:
+        - name: ketches-api
+          image: registry.cn-hangzhou.aliyuncs.com/ketches/ketches-api:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_TYPE
+              value: "postgres"
+            - name: DB_DNS
+              value: "host=postgres port=5432 user=postgres password=postgres dbname=ketches sslmode=disable"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ketches-ui
+  namespace: ketches
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: ketches-ui
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ketches-ui
+  namespace: ketches
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ketches-ui
+  template:
+    metadata:
+      labels:
+        app: ketches-ui
+    spec:
+      containers:
+        - name: ketches-ui
+          image: registry.cn-hangzhou.aliyuncs.com/ketches/ketches-ui:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: VITE_API_BASE_URL
+              value: "http://ketches-api:8080/api/v1"
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: ketches-ui-nginx-conf

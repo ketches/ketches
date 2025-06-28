@@ -63,7 +63,6 @@ func GenerateToken(mc TokenClaims) (string, time.Time, error) {
 	claims := TokenClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
-			// Issuer:    jwtIssuer,
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 		},

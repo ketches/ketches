@@ -31,9 +31,12 @@ var (
 // newDB is a helper function to create a new *gorm.DB instance with
 // default configurations
 func newDB(dialector gorm.Dialector) (*gorm.DB, error) {
-	loglevel := logger.Error
-	loglevel = logger.Info
-
+	var loglevel logger.LogLevel
+	if app.GetEnv("APP_RUNMODE", "dev") == "dev" {
+		loglevel = logger.Info
+	} else {
+		loglevel = logger.Error
+	}
 	return gorm.Open(dialector, &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: false,
@@ -47,8 +50,6 @@ func Instance() *gorm.DB {
 
 		dbType := app.GetEnv("DB_TYPE", "sqlite")
 		dbDNS := app.GetEnv("DB_DNS", "file:ketches.db?cache=shared&mode=rwc")
-		// dbType := app.GetEnv("DB_TYPE", "postgres"),
-		// dbDNS := app.GetEnv("DB_DNS", "host=postgres port=5432 user=postgres password=postgres dbname=ketches sslmode=disable"),
 
 		var err error
 		switch dbType {

@@ -18,6 +18,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/handlers"
 	swaggerfiles "github.com/swaggo/files"
 	ginswagger "github.com/swaggo/gin-swagger"
@@ -32,7 +33,9 @@ func NewRoute(e *gin.Engine) *RootRoute {
 }
 
 func (r *RootRoute) Register() {
-	r.GET("/openapi/*any", ginswagger.WrapHandler(swaggerfiles.Handler))
+	if app.GetEnv("APP_RUNMODE", "dev") == "dev" {
+		r.GET("/openapi/*any", ginswagger.WrapHandler(swaggerfiles.Handler))
+	}
 	r.GET("/version", handlers.Version)
 	r.GET("/healthz", handlers.Healthz)
 

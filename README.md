@@ -1,14 +1,42 @@
 # Ketches
 
+English | [简体中文](./README_zh-CN.md)
+
 A cloud-native application platform for building and deploying applications.
 
 ## Installation
 
-### Backend
+### Kubernetes
 
-1. Configure configs in [config.yaml](./backend/config/config.yaml)
+1. Make sure you have a Kubernetes cluster running and `kubectl` configured to access it.
+2. Apply the Kubernetes manifests to deploy Ketches:
 
-2. Run the backend server
+```bash
+kubectl apply -f https://raw.githubusercontent.com/ketches/ketches/master/deploy/kubernetes/manifests.yaml
+```
+
+### Docker Compose
+
+1. Make sure you have Docker and Docker Compose installed.
+2. Download the Docker Compose file:
+
+```bash
+mkdir ketches && cd ketches
+curl -O https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker-compose/docker-compose.yaml
+
+docker compose up -d
+```
+
+### Source Code
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/ketches/ketches.git
+cd ketches
+```
+
+2. Run the backend server(Storage is SQLite by default, you can change it in the `.env` file):
 
 ```bash
 cd backend
@@ -31,6 +59,11 @@ yarn dev
 This will start the frontend server on port 5173.
 
 Here you go! You can now access the Ketches application at `http://localhost:5173`.
+
+## Backend Congiguration
+
+T
+Moe details about backend configurations, see [docs/backend-env-en.md](./docs/backend-env-en.md).
 
 ## Features
 
@@ -60,8 +93,8 @@ User panel
   - [ ] Deploy app in kubernetes manifest format
   - [ ] Deploy app in source code format
   - [ ] Deploy app from AppHub
-  - [ ] App environment variables management
-  - [ ] App volume management
+  - [x] App environment variables management
+  - [x] App volume management
   - [ ] App mutli-container management(Plugins)
   - [ ] App gateway management
   - [ ] App health check management
