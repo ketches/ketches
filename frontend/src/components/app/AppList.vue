@@ -77,6 +77,7 @@ const userStore = useUserStore();
 const { activeAppRef, activeEnvRef } = storeToRefs(userStore);
 
 const noData = ref(false);
+const hasData = ref(false);
 const pagedData = ref<appModel[]>([]);
 const totalCount = ref(0);
 
@@ -99,6 +100,7 @@ async function fetchPagedData(envID?: string) {
 
         if (!queryModel.value.query) {
             noData.value = total === 0;
+            hasData.value = total > 0;
         }
     }
 }
@@ -348,7 +350,7 @@ async function doDeleteSelectedApps(appIDs: string[]) {
             创建应用
         </Button>
     </div>
-    <div v-else class="flex flex-col flex-grow">
+    <div v-if="hasData" class="flex flex-col flex-grow">
         <div class="flex gap-2 items-center py-4 w-full">
             <Input class="max-w-sm" placeholder="搜索应用" v-model="query" @keyup.enter="onQueryEnter" />
             <DropdownMenu>

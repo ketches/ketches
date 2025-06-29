@@ -30,7 +30,6 @@ import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import * as z from 'zod';
 import Button from '../ui/button/Button.vue';
-import ScrollArea from '../ui/scroll-area/ScrollArea.vue';
 import Textarea from '../ui/textarea/Textarea.vue';
 
 const props = defineProps({
@@ -190,9 +189,7 @@ function handleFileChange(e: Event) {
                         </FormLabel>
                         <FormControl>
                             <Textarea v-bind="componentField" class="w-full bg-accent font-mono text-xs max-h-32"
-                                placeholder="">
-                                <ScrollArea />
-                            </Textarea>
+                                placeholder="" />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -201,9 +198,7 @@ function handleFileChange(e: Event) {
                     <FormItem>
                         <FormLabel>集群描述</FormLabel>
                         <FormControl>
-                            <Textarea v-bind="componentField" class="w-full text-2xl max-h-32" placeholder="">
-                                    <ScrollArea />
-                                </Textarea>
+                            <Textarea v-bind="componentField" class="w-full text-2xl max-h-32" placeholder="" />
                         </FormControl>
                         <FormMessage />
                     </FormItem>

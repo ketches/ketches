@@ -10,7 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserStore } from "@/stores/userStore";
 import type { appModel } from "@/types/app";
-import { Archive, Boxes, History, Monitor, PanelLeftClose, PanelLeftOpen, Settings2 } from "lucide-vue-next";
+import { Archive, Boxes, History, Monitor, PanelLeftClose, PanelLeftOpen, Settings2, SquarePen } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -20,6 +20,7 @@ import { appStatusDisplay } from "./data/appStatus";
 import InstanceList from "./instance/InstanceList.vue";
 import SettingDialog from "./setting/SettingDialog.vue";
 import Settings from "./setting/Settings.vue";
+import UpdateApp from "./UpdateApp.vue";
 
 const { toggleSidebar, open } = useSidebar();
 
@@ -53,6 +54,7 @@ const logsExtensionInstalled = ref(false);
 const deployedInSourceCode = ref(false);
 
 const settingDialogOpen = ref(false);
+const openUpdateAppInfoDialog = ref(false);
 
 const appStatus = computed(() => {
   return appStatusDisplay(app.value?.status || 'unknown')
@@ -82,13 +84,15 @@ const appStatus = computed(() => {
                 <h1 class="text-xl font-semibold">
                   {{ app?.displayName || "应用名称" }}
                 </h1>
+                <SquarePen class="w-4 h-4 text-muted-foreground hover:text-primary"
+                  @click="openUpdateAppInfoDialog = true" />
                 <Separator orientation="vertical" class="h-4" />
                 <Badge variant="secondary" class="font-mono text-muted-foreground">
                   应用类型：{{ app?.workloadType || '未知' }}</Badge>
                 <Separator orientation="vertical" class="h-4" />
                 <Badge variant="secondary" class="font-mono text-muted-foreground">部署版本：{{ app?.edition ||
                   '未知'
-                  }}</Badge>
+                }}</Badge>
               </div>
 
               <div style="margin-left:auto;">
@@ -158,5 +162,6 @@ const appStatus = computed(() => {
       </Tabs>
     </div>
     <SettingDialog v-model="settingDialogOpen" />
+    <UpdateApp v-model="openUpdateAppInfoDialog" :app="app" @app-updated="fetchAppInfo(app.appID)" />
   </SidebarInset>
 </template>

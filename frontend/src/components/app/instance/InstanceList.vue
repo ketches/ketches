@@ -32,7 +32,7 @@ import {
 } from "@tanstack/vue-table";
 import { RefreshCcw } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
-import { h, onMounted, ref, watch } from "vue";
+import { h, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { appInstanceStatusDisplay } from "../data/appInstanceStatus";
 import InstanceActions from "./InstanceActions.vue";
@@ -56,10 +56,6 @@ async function fetchListData(appID?: string) {
         totalCount.value = instances.length;
     }
 }
-
-onMounted(async () => {
-    await fetchListData(appID);
-});
 
 watch(activeAppRef, async (newAppRef) => {
     await fetchListData(newAppRef.appID);

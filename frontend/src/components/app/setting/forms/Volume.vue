@@ -144,7 +144,6 @@ const columns: ColumnDef<appVolumeModel>[] = [
                 h(Button, {
                     variant: 'outline',
                     onClick: () => {
-                        console.log('Editing volume:', row.original);
                         selectedVolume.value = row.original
                         openUpdateVolumeDialog.value = true
                     }

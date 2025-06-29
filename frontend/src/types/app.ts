@@ -47,7 +47,7 @@ export interface createAppModel {
     limitMemory?: number
 }
 
-export interface updateAppModel {
+export interface updateAppInfoModel {
     displayName: string
     description?: string
 }

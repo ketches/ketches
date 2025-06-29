@@ -1,5 +1,5 @@
 import api from '@/api/axios'
-import type { appEnvVarModel, appInstanceModel, appModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, updateAppEnvVarModel, updateAppImageModel, updateAppModel, updateAppVolumeModel } from '@/types/app'
+import type { appEnvVarModel, appInstanceModel, appModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, updateAppEnvVarModel, updateAppImageModel, updateAppInfoModel, updateAppVolumeModel } from '@/types/app'
 import { getApiBaseUrl } from '@/utils/env'
 import { toast } from 'vue-sonner'
 
@@ -18,7 +18,7 @@ export async function appAction(appID: string, action: string): Promise<appModel
     return response.data as appModel
 }
 
-export async function updateAppInfo(appID: string, model: updateAppModel): Promise<appModel> {
+export async function updateAppInfo(appID: string, model: updateAppInfoModel): Promise<appModel> {
     const response = await api.put(`/apps/${appID}`, model)
     return response.data as appModel
 }

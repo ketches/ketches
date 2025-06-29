@@ -28,6 +28,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useUserStore } from '@/stores/userStore';
 import type { userRefModel } from '@/types/user';
 import { toTypedSchema } from '@vee-validate/zod';
 import { storeToRefs } from 'pinia';

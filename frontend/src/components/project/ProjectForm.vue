@@ -153,7 +153,7 @@ const onSubmit = handleSubmit(async (values) => {
                     <FormItem>
                         <FormLabel>项目描述</FormLabel>
                         <FormControl>
-                            <Textarea v-bind="componentField" class="w-full" placeholder="项目的详细描述" />
+                            <Textarea v-bind="componentField" class="w-full text-2xl max-h-32" placeholder="项目的详细描述" />
                         </FormControl>
                         <FormMessage />
                     </FormItem>

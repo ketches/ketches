@@ -83,52 +83,52 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
           <ComboboxInput placeholder="输入搜索 ..."
             class="bg-transparent w-full px-4 py-3 outline-none placeholder-muted-foreground" @keydown.enter.prevent />
 
-          <ComboboxContent class="border-t border-muted-foreground/30 p-2 max-h-[20rem] overflow-y-auto"
+          <ComboboxContent class="border-t border-muted-foreground/30 max-h-[20rem] overflow-y-auto"
             @escape-key-down="open = false">
             <ComboboxEmpty class="text-center text-muted-foreground p-4">
               No results
             </ComboboxEmpty>
-            <ScrollArea>
-              <ComboboxGroup v-if="userResources.apps.length > 0">
+            <ScrollArea class="w-full h-full flex-1 min-h-0 flex flex-col">
+              <ComboboxGroup v-if="userResources.apps.length > 0" class="px-4">
                 <ComboboxLabel
-                  class="px-4 inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
+                  class="inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
                   <Box class="h-4 w-4" />
                   应用
                 </ComboboxLabel>
                 <!-- <RouterLink v-for="item in userResources.apps" :key="item.appID"
                   :to="{ name: 'appPage', params: { id: item.appID } }"> -->
                 <ComboboxItem v-for="item in userResources.apps" :key="item.appID" :value="item"
-                  class="cursor-default pl-12 py-2 rounded-md data-[highlighted]:bg-muted inline-flex w-full items-center gap-4"
+                  class="cursor-default pl-8 py-2 rounded-md data-[highlighted]:bg-muted inline-flex w-full items-center gap-4"
                   @select="handleSelect($event, 'app', item.appID)">
                   <span>{{ item.displayName }}</span>
                   <span class="text-xs text-muted-foreground font-mono">{{ item.slug }}</span>
                 </ComboboxItem>
                 <!-- </RouterLink> -->
               </ComboboxGroup>
-              <ComboboxGroup v-if="userResources.envs.length > 0">
+              <ComboboxGroup v-if="userResources.envs.length > 0" class="px-4">
                 <ComboboxLabel
-                  class="px-4 inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
+                  class="inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
                   <Grid2X2 class="h-4 w-4" />
                   环境
                 </ComboboxLabel>
                 <!-- <RouterLink v-for="item in userResources.envs" :key="item.envID"
                   :to="{ name: 'envPage', params: { id: item.envID } }"> -->
                 <ComboboxItem v-for="item in userResources.envs" :key="item.envID" :value="item"
-                  class="cursor-default pl-12 py-2 rounded-md data-[highlighted]:bg-muted inline-flex w-full items-center gap-4"
+                  class="cursor-default pl-8 py-2 rounded-md data-[highlighted]:bg-muted inline-flex w-full items-center gap-4"
                   @select="handleSelect($event, 'env', item.envID)">
                   <span>{{ item.displayName }}</span>
                   <span class="text-xs text-muted-foreground font-mono">{{ item.slug }}</span>
                 </ComboboxItem>
                 <!-- </RouterLink> -->
               </ComboboxGroup>
-              <ComboboxGroup v-if="userResources.projects.length > 0">
+              <ComboboxGroup v-if="userResources.projects.length > 0" class="px-4">
                 <ComboboxLabel
-                  class="px-4 inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
+                  class="inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
                   <GalleryHorizontalEnd class="h-4 w-4" />
                   项目
                 </ComboboxLabel>
                 <ComboboxItem v-for="item in userResources.projects" :key="item.projectID" :value="item"
-                  class="cursor-default pl-12 py-2 rounded-md data-[highlighted]:bg-muted inline-flex w-full items-center gap-4"
+                  class="cursor-default pl-8 py-2 rounded-md data-[highlighted]:bg-muted inline-flex w-full items-center gap-4"
                   @select="handleSelect($event, 'project', item.projectID)">
                   <span>{{ item.displayName }}</span>
                   <span class="text-xs text-muted-foreground font-mono">{{ item.slug }}</span>

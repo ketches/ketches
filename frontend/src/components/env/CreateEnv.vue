@@ -206,7 +206,7 @@ const onSubmit = handleSubmit(async (values) => {
                     <FormItem>
                         <FormLabel>环境描述</FormLabel>
                         <FormControl>
-                            <Textarea v-bind="componentField" class="col-span-3" />
+                            <Textarea v-bind="componentField" class="w-full text-2xl max-h-32" />
                         </FormControl>
                         <FormMessage />
                     </FormItem>

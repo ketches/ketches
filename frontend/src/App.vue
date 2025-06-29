@@ -12,7 +12,7 @@ const route = useRoute();
 const router = useRouter();
 
 const userStore = useUserStore();
-const { user, userResources, activeAppRef, activeEnvRef, activeProjectRef } = storeToRefs(userStore);
+const { user, userResources, activeProjectRef } = storeToRefs(userStore);
 
 watch(
   () => route.name,

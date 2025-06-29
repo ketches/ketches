@@ -11,7 +11,7 @@ export const useUserStore = defineStore('userStore', {
         user: null as userModel | null,
 
         // Admin resource references
-        clusterRefs: [] as clusterRefModel[], // Assuming clusterRefModel has clusterID and name
+        clusterRefs: [] as clusterRefModel[],
 
         // User resource references
         userResources: null as userResourcesModel | null,
@@ -29,7 +29,6 @@ export const useUserStore = defineStore('userStore', {
                 this.clearUser();
             }
         },
-        // getter 方式已在下方实现
         setUser(newUser: userModel) {
             this.user = newUser;
             localStorage.setItem('userID', newUser.userID);
@@ -46,11 +45,7 @@ export const useUserStore = defineStore('userStore', {
             this.userResources = await fetchUserResourceRefs();
             return this.userResources;
         },
-        // async activateApp(appID: string) {
         activateApp(appID: string) {
-            // if (!this.userResources) {
-            //     await this.fetchUserResourceRefs();
-            // }
             this.activeAppRef = this.userResources.apps.find(app => app.appID === appID) || null;
             if (this.activeAppRef) {
                 localStorage.setItem('lastActiveAppID', this.activeAppRef.appID);
@@ -64,11 +59,7 @@ export const useUserStore = defineStore('userStore', {
                 localStorage.setItem('lastActiveProjectID', this.activeProjectRef.projectID);
             }
         },
-        //  activateEnv(envID: string) {
         activateEnv(envID: string) {
-            //     if (!this.userResources) {
-            //         await this.fetchUserResourceRefs();
-            //     }
             this.activeEnvRef = this.userResources.envs.find(env => env.envID === envID) || null;
             if (this.activeEnvRef) {
                 localStorage.setItem('lastActiveEnvID', this.activeEnvRef.envID);
@@ -78,15 +69,10 @@ export const useUserStore = defineStore('userStore', {
                 localStorage.setItem('lastActiveProjectID', this.activeProjectRef.projectID);
             }
         },
-        // async ensureActiveProject() {
         ensureActiveProject() {
             if (this.activeProjectRef) {
                 return;
             }
-
-            // if (!this.userResources) {
-            //     await this.fetchUserResourceRefs();
-            // }
 
             if (!this.userResources.projects || this.userResources.projects.length === 0) {
                 this.activeProjectRef = null;
@@ -101,38 +87,43 @@ export const useUserStore = defineStore('userStore', {
             if (!this.activeProjectRef) {
                 this.activeProjectRef = this.userResources.projects.length > 0 ? this.userResources.projects[0] : null;
             }
+
+            if (this.activeProjectRef) {
+                localStorage.setItem('lastActiveProjectID', this.activeProjectRef.projectID);
+            }
+
+            const lastActiveEnvID = localStorage.getItem('lastActiveEnvID');
+            if (lastActiveEnvID) {
+                const lastActiveEnv = this.userResources.envs.find(env => env.envID === lastActiveEnvID);
+                if (lastActiveEnv && lastActiveEnv.projectID === this.activeProjectRef.projectID) {
+                    this.activeEnvRef = lastActiveEnv;
+                } else {
+                    this.activeEnvRef = this.userResources.envs.find(env => env.projectID === this.activeProjectRef.projectID) || null;
+                }
+            }
+            if (!this.activeEnvRef) {
+                this.activeEnvRef = this.userResources.envs.find(env => env.projectID === this.activeProjectRef.projectID) || null;
+            }
         },
-        // async activateProject(projectID: string) {
         activateProject(projectID: string) {
-            // if (!this.userResources) {
-            //     await this.fetchUserResourceRefs();
-            // }
             this.activeProjectRef = this.userResources.projects.find(project => project.projectID === projectID) || null;
             if (this.activeProjectRef) {
                 localStorage.setItem('lastActiveProjectID', this.activeProjectRef.projectID);
                 this.activeEnvRef = this.userResources.envs.find(env => env.projectID === this.activeProjectRef.projectID) || null;
             }
         },
-        // getter 方式已在下方实现
-        // async addOrUpdateApp(app: appRefModel) {
         addOrUpdateApp(app: appRefModel) {
-            // if (!this.userResources) {
-            //     await this.fetchUserResourceRefs();
-            // }
-
             const index = this.userResources.apps.findIndex(a => a.appID === app.appID);
             if (index !== -1) {
                 this.userResources.apps[index] = app;
             } else {
                 this.userResources.apps.push(app);
             }
+            if (this.activeAppRef && this.activeAppRef.appID === app.appID) {
+                this.activeAppRef = app;
+            }
         },
-        // async deleteApp(appID: string) {
         deleteApp(appID: string) {
-            // if (!this.userResources) {
-            //     await this.fetchUserResourceRefs();
-            // }
-
             const index = this.userResources.apps.findIndex(a => a.appID === appID);
             if (index !== -1) {
                 this.userResources.apps.splice(index, 1);
@@ -172,12 +163,12 @@ export const useUserStore = defineStore('userStore', {
             return state.user;
         },
         getCurrentAppRefs(state): appRefModel[] {
-            if (!state.userResources || !state.activeAppRef) return [];
-            return state.userResources.apps.filter(app => app.envID === state.activeAppRef.envID);
+            if (!state.userResources || !state.activeEnvRef) return [];
+            return state.userResources.apps.filter(app => app.envID === state.activeEnvRef.envID);
         },
         getCurrentEnvRefs(state): envRefModel[] {
-            if (!state.userResources || !state.activeEnvRef) return [];
-            return state.userResources.envs.filter(env => env.projectID === state.activeEnvRef.projectID);
+            if (!state.userResources || !state.activeProjectRef) return [];
+            return state.userResources.envs.filter(env => env.projectID === state.activeProjectRef.projectID);
         },
         getCurrentProjectRefs(state): projectRefModel[] {
             return state.userResources?.projects ?? [];

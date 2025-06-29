@@ -6,9 +6,10 @@ import {
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { useUserStore } from '@/stores/userStore';
-import { Box, Boxes, EllipsisVertical, Grid2X2, Plus, Telescope, UsersRound } from "lucide-vue-next";
+import { Boxes, EllipsisVertical, Plus, Telescope } from "lucide-vue-next";
 import { storeToRefs } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import CreateCluster from '../cluster/CreateCluster.vue';
 import Collapsible from "../ui/collapsible/Collapsible.vue";
 import {
@@ -20,12 +21,21 @@ import {
 } from "../ui/sidebar";
 import SidebarMenuAction from '../ui/sidebar/SidebarMenuAction.vue';
 import Spot from './Spot.vue';
+import { userNavContents as rawNavContents } from './navContent';
 
 const { isMobile } = useSidebar();
 
 const { user } = storeToRefs(useUserStore());
 
 const openClusterForm = ref(false);
+
+const route = useRoute();
+const userNavContents = computed(() =>
+    rawNavContents.map(item => ({
+        ...item,
+        isActive: route.matched.some(r => r.name === item.route.name)
+    }))
+);
 </script>
 
 <template>
@@ -72,35 +82,11 @@ const openClusterForm = ref(false);
             <SidebarMenuItem class="pb-4">
                 <Spot />
             </SidebarMenuItem>
-            <SidebarMenuItem>
-                <RouterLink :to="{ name: 'overview' }" class="flex items-center gap-2">
-                    <SidebarMenuButton tooltip="总览">
-                        <Telescope class="h-4 w-4" />
-                        <span class="flex-1">总览</span>
-                    </SidebarMenuButton>
-                </RouterLink>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-                <RouterLink :to="{ name: 'env' }" class="flex items-center gap-2">
-                    <SidebarMenuButton tooltip="环境">
-                        <Grid2X2 class="h-4 w-4" />
-                        <span class="flex-1">环境</span>
-                    </SidebarMenuButton>
-                </RouterLink>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-                <RouterLink :to="{ name: 'app' }" class="flex items-center gap-2">
-                    <SidebarMenuButton tooltip="应用">
-                        <Box class="h-4 w-4" />
-                        <span class="flex-1">应用</span>
-                    </SidebarMenuButton>
-                </RouterLink>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-                <RouterLink :to="{ name: 'member' }" class="flex items-center gap-2">
-                    <SidebarMenuButton tooltip="成员">
-                        <UsersRound class="h-4 w-4" />
-                        <span class="flex-1">成员</span>
+            <SidebarMenuItem v-for="item in userNavContents" :key="item.title">
+                <RouterLink :to="item.route" class="flex items-center gap-2">
+                    <SidebarMenuButton :tooltip="item.title" :is-active="item.isActive">
+                        <component :is="item.icon" class="h-4 w-4" />
+                        <span class="flex-1">{{ item.title }}</span>
                     </SidebarMenuButton>
                 </RouterLink>
             </SidebarMenuItem>

@@ -106,7 +106,7 @@ const onSubmit = handleSubmit(async (values) => {
                     应用描述
                 </FormLabel>
                 <FormControl>
-                    <Textarea type="text" placeholder="" v-bind="componentField" />
+                    <Textarea v-bind="componentField" class="w-full text-2xl max-h-32" />
                 </FormControl>
                 <FormMessage />
             </FormItem>
