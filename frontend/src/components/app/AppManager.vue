@@ -3,9 +3,10 @@ import {
   useSidebar
 } from "@/components/ui/sidebar"
 import { useResourceRefStore } from '@/stores/resourceRefStore'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
+import { PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
+import CreateEnv from "../env/CreateEnv.vue"
 import Button from '../ui/button/Button.vue'
 import Separator from '../ui/separator/Separator.vue'
 import SidebarInset from '../ui/sidebar/SidebarInset.vue'
@@ -17,9 +18,12 @@ const resourceRefStore = useResourceRefStore()
 const { envRefs } = storeToRefs(resourceRefStore)
 
 const noEnvs = ref(false)
+const hasEnvs = ref(false)
+
 watch(envRefs, (newEnvRefs) => {
   noEnvs.value = newEnvRefs.length === 0
-})
+  hasEnvs.value = newEnvRefs.length > 0
+}, { immediate: true })
 
 const openEnvForm = ref(false)
 </script>
@@ -38,17 +42,16 @@ const openEnvForm = ref(false)
       </div>
     </header>
     <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <!-- <div v-if="noEnvs"
+      <div v-if="noEnvs"
         class="flex flex-col flex-grow text-balance text-center text-sm text-muted-foreground justify-center items-center">
         <span class="block mb-2">当前项目还没有环境，让我们先来创建一个吧！</span>
         <Button variant="default" class="my-4" @click="openEnvForm = true">
           <Plus />
           创建环境
         </Button>
-      </div> -->
-      <!-- <AppList v-else /> -->
-      <AppList />
+      </div>
+      <AppList v-if="hasEnvs" />
     </div>
   </SidebarInset>
-  <!-- <CreateEnv v-model="openEnvForm" /> -->
+  <CreateEnv v-model="openEnvForm" />
 </template>

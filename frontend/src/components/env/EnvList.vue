@@ -58,6 +58,7 @@ const resourceRefStore = useResourceRefStore()
 const { activeProjectRef } = storeToRefs(resourceRefStore)
 
 const noData = ref(false)
+const hasData = ref(false)
 const pagedData = ref<envModel[]>([])
 const totalCount = ref(0)
 
@@ -80,6 +81,7 @@ async function fetchPagedData(projectID?: string) {
 
         if (!queryModel.value.query) {
             noData.value = total === 0
+            hasData.value = total > 0
         }
     }
 }
@@ -192,7 +194,7 @@ const openEnvForm = ref(false)
             创建环境
         </Button>
     </div>
-    <div v-else class="flex flex-col flex-grow">
+    <div v-if="hasData" class="flex flex-col flex-grow">
         <div class="flex gap-2 items-center py-4 w-full">
             <Input class="max-w-sm" placeholder="搜索环境" v-model="query" @keyup.enter="onQueryEnter" />
             <DropdownMenu>

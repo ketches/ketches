@@ -363,3 +363,21 @@ func DeleteUser(c *gin.Context) {
 
 	api.NoContent(c)
 }
+
+// @Summary Get all resources user can access
+// @Description Get all ProjectRef, EnvRef, AppRef user has permission to query
+// @Tags User
+// @Accept json
+// @Produce json
+// @Success 200 {object} api.Response{data=models.GetUserResourcesResponse}
+// @Router /api/v1/users/resources [get]
+// @Security BearerAuth
+func GetUserResources(c *gin.Context) {
+	svc := services.NewUserService()
+	result, err := svc.GetUserResources(c)
+	if err != nil {
+		api.Error(c, app.NewError(http.StatusInternalServerError, err.Error()))
+		return
+	}
+	api.Success(c, result)
+}

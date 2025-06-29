@@ -50,6 +50,7 @@ type UserService interface {
 	ChangeRole(ctx context.Context, req *models.UserChangeRoleRequest) (*models.UserModel, app.Error)
 	ResetPassword(ctx context.Context, req *models.UserResetPasswordRequest) (*models.UserModel, app.Error)
 	Delete(ctx context.Context, req *models.DeleteUserRequest) app.Error
+	GetUserResources(ctx context.Context) (*models.GetUserResourcesResponse, error)
 }
 
 type userService struct {
@@ -490,6 +491,55 @@ func (s *userService) Delete(ctx context.Context, req *models.DeleteUserRequest)
 	}
 
 	return nil
+}
+
+func (s *userService) GetUserResources(ctx context.Context) (*models.GetUserResourcesResponse, error) {
+	userID := api.UserID(ctx)
+	isAdmin := api.IsAdmin(ctx)
+
+	var projects []*models.ProjectRef
+	var envs []*models.EnvRef
+	var apps []*models.AppRef
+
+	projectQuery := db.Instance().Model(&entities.Project{})
+	if !isAdmin {
+		projectQuery = projectQuery.
+			Select("projects.id, projects.slug, projects.display_name").
+			Joins("INNER JOIN project_members ON project_members.project_id = projects.id").
+			Where("project_members.user_id = ?", userID).Find(&projects)
+	}
+	if err := projectQuery.Find(&projects).Error; err != nil {
+		return nil, err
+	}
+
+	envQuery := db.Instance().Model(&entities.Env{})
+	if !isAdmin {
+		envQuery = envQuery.
+			Select("envs.id, envs.slug, envs.display_name, envs.project_id").
+			Joins("INNER JOIN projects ON envs.project_id = projects.id").
+			Joins("INNER JOIN project_members ON project_members.project_id = envs.project_id").
+			Where("project_members.user_id = ?", userID).Find(&envs)
+	}
+	if err := envQuery.Find(&envs).Error; err != nil {
+		return nil, err
+	}
+
+	appQuery := db.Instance().Model(&entities.App{})
+	if !isAdmin {
+		appQuery = appQuery.
+			Select("apps.id, apps.slug, apps.display_name, apps.env_id, apps.project_id").
+			Joins("INNER JOIN project_members ON project_members.project_id = apps.project_id").
+			Where("project_members.user_id = ?", userID).Find(&apps)
+	}
+	if err := appQuery.Find(&apps).Error; err != nil {
+		return nil, err
+	}
+
+	return &models.GetUserResourcesResponse{
+		Projects: projects,
+		Envs:     envs,
+		Apps:     apps,
+	}, nil
 }
 
 func (s *userService) validateSignUpUser(req *models.UserSignUpRequest) app.Error {

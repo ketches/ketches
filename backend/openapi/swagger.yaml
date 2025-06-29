@@ -429,6 +429,21 @@ definitions:
       instanceName:
         type: string
     type: object
+  models.GetUserResourcesResponse:
+    properties:
+      apps:
+        items:
+          $ref: '#/definitions/models.AppRef'
+        type: array
+      envs:
+        items:
+          $ref: '#/definitions/models.EnvRef'
+        type: array
+      projects:
+        items:
+          $ref: '#/definitions/models.ProjectRef'
+        type: array
+    type: object
   models.ListAppsResponse:
     properties:
       records:
@@ -2454,6 +2469,28 @@ paths:
                   $ref: '#/definitions/models.UserModel'
               type: object
       summary: Refresh User Token
+      tags:
+      - User
+  /api/v1/users/resources:
+    get:
+      consumes:
+      - application/json
+      description: Get all ProjectRef, EnvRef, AppRef user has permission to query
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GetUserResourcesResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get all resources user can access
       tags:
       - User
   /api/v1/users/sign-in:

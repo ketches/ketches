@@ -27,6 +27,7 @@ watch(
 
     if (!user.value) {
       await userStore.initUser();
+      await userStore.fetchUserResourceRefs();
     }
 
     await router.isReady();

@@ -22,30 +22,37 @@ export const useResourceRefStore = defineStore('resourceRefStore', {
             return this.activeProjectRef;
         },
         async initFromAppID(appID: string) {
-            this.projectRefs = await fetchProjectRefs()
             this.activeAppRef = await getAppRef(appID)
             this.activeEnvRef = await getEnvRef(this.activeAppRef.envID)
             this.activeProjectRef = await getProjectRef(this.activeAppRef.projectID)
-
-            await this.loadSiblingResources()
-
+            this.projectRefs = await fetchProjectRefs()
+            this.envRefs = await fetchEnvRefs(this.activeProjectRef.projectID)
+            this.appRefs = await fetchAppRefs(this.activeEnvRef.envID)
             localStorage.setItem('lastActiveAppID', appID)
             localStorage.setItem('lastActiveEnvID', this.activeEnvRef.envID)
-            localStorage.setItem('lastActiveProjectID', this.activeProjectRef.projectID)
+            localStorage.setItem('lastActiveProjectID', this.activeProjectRef.projectID);
         },
         async initFromEnvID(envID: string) {
-            this.projectRefs = await fetchProjectRefs()
             this.activeEnvRef = await getEnvRef(envID)
             this.envRefs = await fetchEnvRefs(this.activeEnvRef.projectID)
+            this.activeProjectRef = await getProjectRef(this.activeEnvRef.projectID)
+            this.projectRefs = await fetchProjectRefs()
             this.appRefs = await fetchAppRefs(envID)
 
-            await this.loadSiblingResources()
+            localStorage.setItem('lastActiveEnvID', envID)
+            localStorage.setItem('lastActiveProjectID', this.activeEnvRef.projectID)
         },
         async initFromProjectID(projectID: string) {
-            this.projectRefs = await fetchProjectRefs()
             this.activeProjectRef = await getProjectRef(projectID)
-
-            await this.loadSiblingResources()
+            this.projectRefs = await fetchProjectRefs()
+            this.envRefs = await fetchEnvRefs(projectID)
+            if (this.activeEnvRef) {
+                this.activeEnvRef = this.envRefs.length > 0 ? this.envRefs.find(env => env.envID === this.activeEnvRef.envID) || this.envRefs[0] : null;
+            } else {
+                this.activeEnvRef = this.envRefs.length > 0 ? this.envRefs[0] : null;
+            }
+            localStorage.setItem('lastActiveProjectID', projectID)
+            localStorage.setItem('lastActiveEnvID', this.activeEnvRef?.envID || '')
         },
         async initFromProject() {
             this.projectRefs = await fetchProjectRefs()
@@ -76,15 +83,6 @@ export const useResourceRefStore = defineStore('resourceRefStore', {
 
             localStorage.setItem('lastActiveProjectID', this.activeProjectRef?.projectID || '')
             localStorage.setItem('lastActiveEnvID', this.activeEnvRef?.envID || '')
-        },
-        async loadSiblingResources() {
-            if (this.activeProjectRef?.projectID) {
-                this.envRefs = await fetchEnvRefs(this.activeProjectRef.projectID)
-            }
-
-            if (this.activeEnvRef?.envID) {
-                this.appRefs = await fetchAppRefs(this.activeEnvRef.envID)
-            }
         },
         async setActiveAppRef(appRef: appRefModel) {
             this.activeAppRef = appRef;
@@ -128,14 +126,19 @@ export const useResourceRefStore = defineStore('resourceRefStore', {
             localStorage.setItem('lastActiveEnvID', this.activeEnvRef?.envID || '')
         },
         async switchEnv(envID: string) {
-            this.clearAppRefs()
-            this.activeEnvRef = await getEnvRef(envID)
+            // this.clearAppRefs()
+            // this.activeEnvRef = await getEnvRef(envID)
 
-            this.appRefs = await fetchAppRefs(envID)
-            this.activeAppRef = null
+            // if (this.activeProjectRef?.projectID !== this.activeEnvRef?.projectID) {
+            //     this.activeProjectRef = await getProjectRef(this.activeEnvRef.projectID)
+            // }
 
-            localStorage.setItem('lastActiveEnvID', envID)
-            localStorage.setItem('lastActiveProjectID', this.activeEnvRef?.projectID || '')
+            // this.appRefs = await fetchAppRefs(envID)
+            // this.activeAppRef = null
+
+            // localStorage.setItem('lastActiveEnvID', envID)
+            // localStorage.setItem('lastActiveProjectID', this.activeEnvRef?.projectID || '')
+            this.initFromEnvID(envID);
         },
         async addEnv(newEnv: envRefModel) {
             this.envRefs.push(newEnv)
@@ -151,11 +154,19 @@ export const useResourceRefStore = defineStore('resourceRefStore', {
             }
         },
         async switchApp(appID: string) {
-            this.activeAppRef = await getAppRef(appID)
+            // this.activeAppRef = await getAppRef(appID)
+            // if (this.activeProjectRef?.projectID !== this.activeAppRef?.projectID) {
+            //     this.activeProjectRef = await getProjectRef(this.activeAppRef.projectID)
+            // }
+            // if (this.activeEnvRef?.envID !== this.activeAppRef?.envID) {
+            //     this.activeEnvRef = await getEnvRef(this.activeAppRef.envID)
+            // }
 
-            localStorage.setItem('lastActiveAppID', appID)
-            localStorage.setItem('lastActiveEnvID', this.activeAppRef?.envID || '')
-            localStorage.setItem('lastActiveProjectID', this.activeAppRef?.projectID || '')
+            // localStorage.setItem('lastActiveAppID', appID)
+            // localStorage.setItem('lastActiveEnvID', this.activeAppRef?.envID || '')
+            // localStorage.setItem('lastActiveProjectID', this.activeAppRef?.projectID || '')
+
+            this.initFromAppID(appID)
         },
         async addApp(newApp: appRefModel) {
             this.appRefs.push(newApp)

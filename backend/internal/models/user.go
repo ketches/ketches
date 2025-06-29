@@ -96,3 +96,9 @@ type DeleteUserRequest struct {
 	UserID   string `json:"-" uri:"userID"`
 	Password string `json:"password" binding:"required"`
 }
+
+type GetUserResourcesResponse struct {
+	Projects []*ProjectRef `json:"projects"`
+	Envs     []*EnvRef     `json:"envs"`
+	Apps     []*AppRef     `json:"apps"`
+}

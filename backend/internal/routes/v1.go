@@ -60,6 +60,9 @@ func registerUserRoute(r *APIV1Route) {
 	users.PUT("/:userID/reset-password", handlers.UserResetPassword)
 	users.PUT("/:userID/rename", handlers.UserRename)
 	users.DELETE("/:userID", handlers.DeleteUser)
+
+	// 用户资源聚合接口
+	r.GET("/users/resources", handlers.GetUserResources)
 }
 
 func registerProjectRoute(r *APIV1Route) {

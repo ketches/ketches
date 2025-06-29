@@ -69,6 +69,9 @@ const openClusterForm = ref(false);
             </Collapsible>
         </SidebarMenu>
         <SidebarMenu v-else-if="user?.role === 'user'">
+            <SidebarMenuItem class="pb-4">
+                <Spot />
+            </SidebarMenuItem>
             <SidebarMenuItem>
                 <RouterLink :to="{ name: 'overview' }" class="flex items-center gap-2">
                     <SidebarMenuButton tooltip="总览">

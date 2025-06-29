@@ -15,7 +15,7 @@ import SidebarMenuButton from "@/components/ui/sidebar/SidebarMenuButton.vue";
 import SidebarMenuItem from "@/components/ui/sidebar/SidebarMenuItem.vue";
 import { useResourceRefStore } from '@/stores/resourceRefStore';
 import { useUserStore } from "@/stores/userStore";
-import { Check, ChevronsUpDown, Cog, GalleryHorizontalEnd, GalleryHorizontalEndIcon, Plus } from 'lucide-vue-next';
+import { Check, ChevronsUpDown, Cog, GalleryHorizontalEnd, Plus } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
 import ProjectForm from '../project/ProjectForm.vue';
@@ -77,7 +77,7 @@ const openProjectForm = ref(false);
                         @click="onSwitchProject(projectRef.projectID)"
                         :disabled="activeProjectRef?.projectID === projectRef.projectID">
                         <div class="flex size-6 items-center justify-center rounded-sm border">
-                            <GalleryHorizontalEndIcon class="size-3.5 shrink-0" />
+                            <GalleryHorizontalEnd class="size-3.5 shrink-0" />
                         </div>
                         {{ projectRef.displayName }}
                         <Check v-if="activeProjectRef?.projectID === projectRef.projectID" class="ml-auto right-0" />

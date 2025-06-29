@@ -2494,6 +2494,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/users/resources": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all ProjectRef, EnvRef, AppRef user has permission to query",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get all resources user can access",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.GetUserResourcesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users/sign-in": {
             "post": {
                 "description": "Sign in an existing user",
@@ -3585,6 +3625,29 @@ const docTemplate = `{
                 },
                 "instanceName": {
                     "type": "string"
+                }
+            }
+        },
+        "models.GetUserResourcesResponse": {
+            "type": "object",
+            "properties": {
+                "apps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.AppRef"
+                    }
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.EnvRef"
+                    }
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ProjectRef"
+                    }
                 }
             }
         },
