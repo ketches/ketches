@@ -96,6 +96,7 @@ yarn dev
 
 ## 截图
 
+![聚焦搜索](docs/images/spot.png)
 ![应用页面](docs/images/app-page.png)
 ![实例日志](docs/images/app-instance-logs.png)
 ![实例终端](docs/images/app-instance-terminal.png)

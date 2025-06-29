@@ -80,7 +80,7 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
         </VisuallyHidden>
 
         <ComboboxRoot :open="true">
-          <ComboboxInput placeholder="输入搜索 ..."
+          <ComboboxInput placeholder="搜索我的资源 ..."
             class="bg-transparent w-full px-4 py-3 outline-none placeholder-muted-foreground" @keydown.enter.prevent />
 
           <ComboboxContent class="border-t border-muted-foreground/30 max-h-[20rem] overflow-y-auto"
