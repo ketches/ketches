@@ -23,10 +23,9 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useResourceRefStore } from '@/stores/resourceRefStore';
+import { useUserStore } from '@/stores/userStore';
 import type { createProjectModel } from '@/types/project';
 import { toTypedSchema } from '@vee-validate/zod';
-import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
 import { computed } from 'vue';
 import { toast } from 'vue-sonner';
@@ -34,8 +33,7 @@ import * as z from 'zod';
 import Button from '../ui/button/Button.vue';
 import Textarea from '../ui/textarea/Textarea.vue';
 
-const resourceRefStore = useResourceRefStore();
-const { projectRefs } = storeToRefs(resourceRefStore);
+const userStore = useUserStore();
 
 const props = defineProps({
     modelValue: {
@@ -80,7 +78,7 @@ const { isFieldDirty, handleSubmit } = useForm({
 const onSubmit = handleSubmit(async (values) => {
     const resp = await createProject(values as createProjectModel)
     if (resp) {
-        projectRefs.value.push({
+        userStore.addOrUpdateProject({
             projectID: resp.projectID,
             slug: resp.slug,
             displayName: resp.displayName,

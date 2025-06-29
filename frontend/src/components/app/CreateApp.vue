@@ -29,7 +29,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-import { useResourceRefStore } from '@/stores/resourceRefStore';
+import { useUserStore } from '@/stores/userStore';
 import type { createAppModel } from '@/types/app';
 import { toTypedSchema } from '@vee-validate/zod';
 import { SquareDashed, SquareDot, SquaresUnite } from 'lucide-vue-next';
@@ -60,8 +60,8 @@ const open = computed({
     }
 });
 
-const resourceRefStore = useResourceRefStore()
-const { activeEnvRef } = storeToRefs(resourceRefStore)
+const userStore = useUserStore()
+const { activeEnvRef } = storeToRefs(userStore)
 
 const formSchema = toTypedSchema(z.object({
     slug: z
@@ -126,7 +126,7 @@ const onSubmit = handleSubmit(async (values) => {
     } else {
         const resp = await createApp(activeEnvRef.value.envID, values as createAppModel)
         if (resp) {
-            resourceRefStore.addApp(resp);
+            userStore.addOrUpdateApp(resp);
             toast.success('创建应用成功！');
             emit('app-created');
         }

@@ -10,7 +10,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useResourceRefStore } from '@/stores/resourceRefStore'
+import { useUserStore } from '@/stores/userStore'
 import { Check, ChevronDown, ChevronRight, Grid2X2 } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
@@ -19,17 +19,18 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const envHover = ref(false)
 
-const resourceRefStore = useResourceRefStore()
-const { activeEnvRef, activeAppRef, envRefs } = storeToRefs(resourceRefStore)
+const userStore = useUserStore()
+const { activeEnvRef, activeAppRef } = storeToRefs(userStore)
 
 async function onSwitchEnv(envID: string) {
-    await resourceRefStore.switchEnv(envID!)
+    await userStore.activateEnv(envID!)
     router.push({ name: 'app' });
 }
 </script>
 
 <template>
-    <BreadcrumbItem v-if="envRefs.length > 0" @mouseenter="envHover = true" @mouseleave="envHover = false">
+    <BreadcrumbItem v-if="userStore.getCurrentEnvRefs.length > 0" @mouseenter="envHover = true"
+        @mouseleave="envHover = false">
         <DropdownMenu>
             <DropdownMenuTrigger class="flex items-center gap-1">
                 <Button variant="ghost" size="sm">
@@ -50,7 +51,8 @@ async function onSwitchEnv(envID: string) {
                         </Badge>
                     </RouterLink>
                 </DropdownMenuItem>
-                <DropdownMenuItem v-for="envRef in envRefs.filter(env => env.envID !== activeEnvRef?.envID)"
+                <DropdownMenuItem
+                    v-for="envRef in userStore.getCurrentEnvRefs.filter(env => env.envID !== activeEnvRef?.envID)"
                     @click="onSwitchEnv(envRef.envID)" :key="envRef.envID">
                     <div class="h-4 w-4" />
                     <span>{{ envRef.displayName }}</span>

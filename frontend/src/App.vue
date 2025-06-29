@@ -3,7 +3,6 @@ import { Toaster } from '@/components/ui/sonner';
 import 'vue-sonner/style.css';
 
 // 统一在这里加载必要的store
-import { useResourceRefStore } from '@/stores/resourceRefStore';
 import { storeToRefs } from 'pinia';
 import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -13,10 +12,7 @@ const route = useRoute();
 const router = useRouter();
 
 const userStore = useUserStore();
-const { user } = storeToRefs(userStore);
-
-const resourceRefStore = useResourceRefStore();
-const { activeProjectRef, activeEnvRef, activeAppRef } = storeToRefs(resourceRefStore);
+const { user, userResources, activeAppRef, activeEnvRef, activeProjectRef } = storeToRefs(userStore);
 
 watch(
   () => route.name,
@@ -27,6 +23,9 @@ watch(
 
     if (!user.value) {
       await userStore.initUser();
+    }
+
+    if (!userResources.value) {
       await userStore.fetchUserResourceRefs();
     }
 
@@ -36,20 +35,14 @@ watch(
       switch (routeName) {
         case "appPage":
           const appID = route.params.id as string;
-          if (appID != activeAppRef.value?.appID) {
-            await resourceRefStore.initFromAppID(appID);
-          }
+          await userStore.activateApp(appID);
           break;
         case "envPage":
           const envID = route.params.id as string;
-          if (envID != activeEnvRef.value?.envID) {
-            await resourceRefStore.initFromEnvID(envID);
-          }
+          await userStore.activateEnv(envID);
           break;
         default:
-          if (!activeProjectRef.value?.projectID) {
-            await resourceRefStore.initFromProject();
-          }
+          await userStore.ensureActiveProject();
           break;
       }
     }

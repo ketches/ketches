@@ -11,7 +11,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { useResourceRefStore } from "@/stores/resourceRefStore";
+import { useUserStore } from "@/stores/userStore";
 import type { appInstanceModel } from "@/types/app";
 import { valueUpdater } from "@/utils/valueUpdater";
 import type {
@@ -40,8 +40,8 @@ import InstanceActions from "./InstanceActions.vue";
 const route = useRoute();
 const appID = route.params.id as string;
 
-const resourceRefStore = useResourceRefStore();
-const { activeAppRef } = storeToRefs(resourceRefStore);
+const userStore = useUserStore();
+const { activeAppRef } = storeToRefs(userStore);
 
 const listData = ref<appInstanceModel[]>([]);
 const totalCount = ref(0);
@@ -62,9 +62,7 @@ onMounted(async () => {
 });
 
 watch(activeAppRef, async (newAppRef) => {
-    if (newAppRef && newAppRef.appID !== appID) {
-        await fetchListData(newAppRef.appID);
-    }
+    await fetchListData(newAppRef.appID);
 });
 
 const centeredHeader = (text: string) => h("div", { class: "text-center" }, text);

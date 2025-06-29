@@ -5,14 +5,14 @@ import DialogContent from '@/components/ui/dialog/DialogContent.vue'
 import DialogDescription from '@/components/ui/dialog/DialogDescription.vue'
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue'
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
-import { useResourceRefStore } from '@/stores/resourceRefStore'
+import { useUserStore } from '@/stores/userStore'
 import type { appModel } from '@/types/app'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import Settings from './Settings.vue'
 
-const { activeAppRef } = storeToRefs(useResourceRefStore())
+const { activeAppRef } = storeToRefs(useUserStore())
 
 const props = defineProps({
     modelValue: {

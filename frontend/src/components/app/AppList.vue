@@ -29,7 +29,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { useResourceRefStore } from "@/stores/resourceRefStore";
+import { useUserStore } from "@/stores/userStore";
 import type { appModel } from "@/types/app";
 import type { QueryAndPagedRequest } from "@/types/common";
 import { valueUpdater } from "@/utils/valueUpdater";
@@ -73,8 +73,8 @@ import AppActions from "./AppActions.vue";
 import CreateApp from "./CreateApp.vue";
 import { appStatusDisplay } from "./data/appStatus";
 
-const resourceRefStore = useResourceRefStore();
-const { activeEnvRef } = storeToRefs(resourceRefStore);
+const userStore = useUserStore();
+const { activeAppRef, activeEnvRef } = storeToRefs(userStore);
 
 const noData = ref(false);
 const pagedData = ref<appModel[]>([]);

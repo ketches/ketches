@@ -6,7 +6,7 @@ import {
   SidebarInset,
   useSidebar
 } from "@/components/ui/sidebar";
-import { useResourceRefStore } from "@/stores/resourceRefStore";
+import { useUserStore } from "@/stores/userStore";
 import type { envModel } from "@/types/env";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
@@ -19,8 +19,8 @@ const { toggleSidebar, open } = useSidebar();
 const route = useRoute();
 const envID = route.params.id as string;
 
-const resourceRefStore = useResourceRefStore()
-const { activeEnvRef } = storeToRefs(resourceRefStore);
+const userStore = useUserStore()
+const { activeEnvRef } = storeToRefs(userStore);
 
 const env = ref<envModel | null>(null);
 

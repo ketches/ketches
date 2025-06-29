@@ -27,7 +27,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
-import { useResourceRefStore } from '@/stores/resourceRefStore'
+import { useUserStore } from '@/stores/userStore'
 import type { QueryAndPagedRequest } from '@/types/common'
 import type { envModel } from '@/types/env'
 import { valueUpdater } from '@/utils/valueUpdater'
@@ -54,8 +54,8 @@ import { RouterLink } from 'vue-router'
 import CreateEnv from './CreateEnv.vue'
 import EnvActions from './EnvActions.vue'
 
-const resourceRefStore = useResourceRefStore()
-const { activeProjectRef } = storeToRefs(resourceRefStore)
+const userStore = useUserStore()
+const { activeProjectRef } = storeToRefs(userStore)
 
 const noData = ref(false)
 const hasData = ref(false)
@@ -132,7 +132,7 @@ const columns: ColumnDef<envModel>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: 'displayName',
+        accessorKey: 'slug',
         header: "环境",
         cell: ({ row }) => h('div', { class: 'space-y-1' }, [
             h(RouterLink, { to: `/console/env/${row.original.envID}`, class: 'font-medium text-blue-500' }, () => row.original.displayName || row.getValue('slug')),

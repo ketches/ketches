@@ -13,8 +13,7 @@ import {
 import SidebarMenu from "@/components/ui/sidebar/SidebarMenu.vue";
 import SidebarMenuButton from "@/components/ui/sidebar/SidebarMenuButton.vue";
 import SidebarMenuItem from "@/components/ui/sidebar/SidebarMenuItem.vue";
-import { useResourceRefStore } from '@/stores/resourceRefStore';
-import { useUserStore } from "@/stores/userStore";
+import { useUserStore } from '@/stores/userStore';
 import { Check, ChevronsUpDown, Cog, GalleryHorizontalEnd, Plus } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
@@ -22,16 +21,14 @@ import ProjectForm from '../project/ProjectForm.vue';
 import Button from '../ui/button/Button.vue';
 
 const { isMobile } = useSidebar();
-const userStore = storeToRefs(useUserStore());
-const userInfo = userStore.user;
+const userStore = useUserStore()
 
 const noProjects = ref(false);
 
-const resourceRefStore = useResourceRefStore()
-const { activeProjectRef, projectRefs } = storeToRefs(resourceRefStore)
+const { user, activeProjectRef } = storeToRefs(userStore)
 
 function onSwitchProject(projectID: string) {
-    resourceRefStore.switchProject(projectID!);
+    userStore.activateProject(projectID!);
 }
 
 const openProjectForm = ref(false);
@@ -39,7 +36,7 @@ const openProjectForm = ref(false);
 
 <template>
     <SidebarMenu>
-        <SidebarMenuItem v-if="userInfo?.role === 'admin'">
+        <SidebarMenuItem v-if="user?.role === 'admin'">
             <SidebarMenuButton size="lg" as-child>
                 <a href="#">
                     <img src="/ketches.svg" alt="Ketches Logo" style="height: 100%" />
@@ -50,8 +47,8 @@ const openProjectForm = ref(false);
                 </a>
             </SidebarMenuButton>
         </SidebarMenuItem>
-        <SidebarMenuItem v-else-if="userInfo?.role === 'user'">
-            <DropdownMenu v-if="projectRefs.length > 0">
+        <SidebarMenuItem v-else-if="user?.role === 'user'">
+            <DropdownMenu v-if="userStore.getCurrentProjectRefs.length > 0">
                 <DropdownMenuTrigger as-child>
                     <SidebarMenuButton size="lg"
                         class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
@@ -73,8 +70,8 @@ const openProjectForm = ref(false);
                     <DropdownMenuLabel class="text-xs text-muted-foreground">
                         项目
                     </DropdownMenuLabel>
-                    <DropdownMenuItem v-for="projectRef in projectRefs" :key="projectRef.slug" class="gap-2 p-2"
-                        @click="onSwitchProject(projectRef.projectID)"
+                    <DropdownMenuItem v-for="projectRef in userStore.getCurrentProjectRefs" :key="projectRef.slug"
+                        class="gap-2 p-2" @click="onSwitchProject(projectRef.projectID)"
                         :disabled="activeProjectRef?.projectID === projectRef.projectID">
                         <div class="flex size-6 items-center justify-center rounded-sm border">
                             <GalleryHorizontalEnd class="size-3.5 shrink-0" />

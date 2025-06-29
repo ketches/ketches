@@ -21,7 +21,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
-import { useResourceRefStore } from '@/stores/resourceRefStore'
 import type { QueryAndPagedRequest } from '@/types/common'
 import { type projectMemberModel } from '@/types/project'
 import { valueUpdater } from '@/utils/valueUpdater'
@@ -48,8 +47,8 @@ import AddMember from './AddMember.vue'
 import MemberActions from './MemberActions.vue'
 import RoleCell from './RoleCell.vue'
 
-const resourceRefStore = useResourceRefStore()
-const { activeProjectRef } = storeToRefs(resourceRefStore)
+const userStore = useUserStore()
+const { activeProjectRef } = storeToRefs(userStore)
 
 const pagedData = ref<projectMemberModel[]>([])
 const totalCount = ref(0)

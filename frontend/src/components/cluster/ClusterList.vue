@@ -26,7 +26,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
-import { useResourceRefStore } from '@/stores/resourceRefStore'
+import { useUserStore } from '@/stores/userStore'
 import type { clusterModel } from '@/types/cluster'
 import type { QueryAndPagedRequest } from '@/types/common'
 import { valueUpdater } from '@/utils/valueUpdater'
@@ -53,8 +53,8 @@ import { RouterLink } from 'vue-router'
 import ClusterActions from './ClusterActions.vue'
 import CreateCluster from './CreateCluster.vue'
 
-const resourceRefStore = useResourceRefStore()
-const { activeProjectRef } = storeToRefs(resourceRefStore)
+const userStore = useUserStore()
+const { activeProjectRef } = storeToRefs(userStore)
 
 const noData = ref(false)
 const hasData = ref(false)

@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useResourceRefStore } from "@/stores/resourceRefStore";
+import { useUserStore } from "@/stores/userStore";
 import type { envModel } from "@/types/env";
 import { Edit, MoreVertical, Trash } from "lucide-vue-next";
 import { ref } from "vue";
@@ -17,7 +17,7 @@ import UpdateEnv from "./UpdateEnv.vue";
 
 const emit = defineEmits(["action-completed"]);
 
-const resourceRefStore = useResourceRefStore();
+const userStore = useUserStore();
 
 const props = defineProps({
   env: {
@@ -32,7 +32,7 @@ async function onDelete() {
     toast.success("环境已删除", {
       description: `环境 ${props.env.slug} 已成功删除。`,
     });
-    resourceRefStore.removeEnv(props.env.envID);
+    userStore.deleteEnv(props.env.envID);
   });
 
   emit("action-completed");

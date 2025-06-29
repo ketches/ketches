@@ -4,8 +4,7 @@ import {
   BreadcrumbItem,
   BreadcrumbList,
 } from '@/components/ui/breadcrumb';
-import { useResourceRefStore } from '@/stores/resourceRefStore';
-import { storeToRefs } from 'pinia';
+import { useUserStore } from '@/stores/userStore';
 import AppBreadcrumb from './AppBreadcrumb.vue';
 import EnvBreadcrumb from './EnvBreadcrumb.vue';
 defineProps({
@@ -15,14 +14,13 @@ defineProps({
   },
 });
 
-const resourceRefStore = useResourceRefStore();
-const { envRefs } = storeToRefs(resourceRefStore);
+const userStore = useUserStore();
 </script>
 
 <template>
   <Breadcrumb>
     <BreadcrumbList>
-      <EnvBreadcrumb v-if="envRefs.length > 0" />
+      <EnvBreadcrumb v-if="userStore.getCurrentEnvRefs.length > 0" />
       <!-- <BreadcrumbList v-else> -->
       <BreadcrumbItem v-else>应用管理</BreadcrumbItem>
       <!-- </BreadcrumbList> -->

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useResourceRefStore } from "@/stores/resourceRefStore.ts";
 import { useUserStore } from "@/stores/userStore.ts";
 import { useMagicKeys, whenever } from "@vueuse/core";
 import { Box, GalleryHorizontalEnd, Grid2X2, Search } from "lucide-vue-next";
@@ -30,104 +29,51 @@ const router = useRouter();
 
 const open = ref(false);
 const userStore = useUserStore();
-const resourceRefStore = useResourceRefStore()
-const { projectRefs, envRefs, appRefs } = storeToRefs(resourceRefStore);
 const { userResources } = storeToRefs(userStore);
 
-const { meta_j, ctrl_j } = useMagicKeys();
-const anyJPressed = computed(() => meta_j.value || ctrl_j.value);
-whenever(anyJPressed, () => {
+const { meta_k, ctrl_k } = useMagicKeys();
+const anyKPressed = computed(() => meta_k.value || ctrl_k.value);
+whenever(anyKPressed, () => {
   open.value = true;
 });
 
-// watch(projectRefs, (newRefs, oldRefs) => {
-//   if (newRefs.length > 0 && newRefs[0].projectID !== oldRefs[0]?.projectID) {
-//     if (userResources.value.projects.length === 0) {
-//       userResources.value.projects.push(newRefs[0]);
-//     } else {
-//       const existingProjectIndex = userResources.value.projects.findIndex(
-//         (project) => project.projectID === newRefs[0].projectID
-//       );
-//       if (existingProjectIndex === -1) {
-//         userResources.value.projects.push(newRefs[0]);
-//       } else {
-//         userResources.value.projects[existingProjectIndex] = newRefs[0];
-//       }
-//     }
-//   }
-// });
-
-// watch(envRefs, (newRefs, oldRefs) => {
-//   if (newRefs.length > 0 && newRefs[0].envID !== oldRefs[0]?.envID) {
-//     if (userResources.value.envs.length === 0) {
-//       userResources.value.envs.push(newRefs[0]);
-//     } else {
-//       const existingEnvIndex = userResources.value.envs.findIndex(
-//         (env) => env.envID === newRefs[0].envID
-//       );
-//       if (existingEnvIndex === -1) {
-//         userResources.value.envs.push(newRefs[0]);
-//       } else {
-//         userResources.value.envs[existingEnvIndex] = newRefs[0];
-//       }
-//     }
-//   }
-// });
-
-// watch(appRefs, (newRefs, oldRefs) => {
-//   if (newRefs.length > 0 && newRefs[0].appID !== oldRefs[0]?.appID) {
-//     if (userResources.value.apps.length === 0) {
-//       userResources.value.apps.push(newRefs[0]);
-//     } else {
-//       const existingAppIndex = userResources.value.apps.findIndex(
-//         (app) => app.appID === newRefs[0].appID
-//       );
-//       if (existingAppIndex === -1) {
-//         userResources.value.apps.push(newRefs[0]);
-//       } else {
-//         userResources.value.apps[existingAppIndex] = newRefs[0];
-//       }
-//     }
-//   }
-// });
-
-
-function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: string) {
-  // ev.preventDefault();
+async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: string) {
+  ev.preventDefault();
   open.value = false;
-  // eslint-disable-next-line no-console
-  console.log("Selected: ", ev.detail.value);
 
+  // eslint-disable-next-line no-console
   if (resourceType === "project") {
-    resourceRefStore.switchProject(resourceID);
-    // 刷新页面
-    // window.location.reload();
+    await userStore.activateProject(resourceID);
   } else if (resourceType === "env") {
-    resourceRefStore.switchEnv(resourceID);
+    await userStore.activateEnv(resourceID);
     router.push({ name: 'envPage', params: { id: resourceID } });
   } else if (resourceType === "app") {
-    resourceRefStore.switchApp(resourceID);
+    await userStore.activateApp(resourceID);
     router.push({ name: 'appPage', params: { id: resourceID } });
   }
 }
 </script>
 
 <template>
-  <DialogRoot v-model:open="open">
+  <DialogRoot v-model:open="open" :returnFocusOnClose="false">
     <DialogTrigger class="w-full">
       <SidebarMenuButton class="dark:text-white border flex items-center justify-between text-muted-foreground">
         <Search />
         <span class="justify-center flex-1">聚焦</span>
         <span
-          class="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[12px] font-medium text-muted-foreground opacity-100"><kbd><span
-              class="text-sm">⌘</span> J</kbd></span>
+          class="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[12px] font-medium text-muted-foreground/50 opacity-100">
+          <kbd class="inline-flex items-center gap-0.5 align-middle">
+            <span style="font-size:1.2em;line-height:1;display:inline-block;vertical-align:middle;">⌘</span>
+            <span style="margin-left:2px;vertical-align:middle;">K, Ctrl K</span>
+          </kbd>
+        </span>
       </SidebarMenuButton>
     </DialogTrigger>
 
     <DialogPortal>
       <DialogOverlay class="bg-background/80 fixed inset-0 z-30" />
       <DialogContent
-        class="fixed top-[15%] left-[50%] max-h-[85vh] w-[90vw] max-w-[24rem] translate-x-[-50%] text-sm rounded-xl overflow-hidden border border-muted-foreground/30 bg-card focus:outline-none z-[100]">
+        class="fixed top-[15%] left-[50%] max-h-[85vh] w-[120vw] max-w-[36rem] translate-x-[-50%] text-sm rounded-xl overflow-hidden border border-muted-foreground/30 bg-card focus:outline-none z-[100]">
         <VisuallyHidden>
           <DialogTitle>Command Menu</DialogTitle>
           <DialogDescription>Search for command</DialogDescription>
@@ -143,9 +89,9 @@ function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: string
               No results
             </ComboboxEmpty>
             <ScrollArea>
-              <ComboboxGroup>
+              <ComboboxGroup v-if="userResources.apps.length > 0">
                 <ComboboxLabel
-                  class="px-4 inline-flex w-full items-center gap-4 text-muted-foreground font-semibold mt-3 mb-3">
+                  class="px-4 inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
                   <Box class="h-4 w-4" />
                   应用
                 </ComboboxLabel>
@@ -159,9 +105,9 @@ function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: string
                 </ComboboxItem>
                 <!-- </RouterLink> -->
               </ComboboxGroup>
-              <ComboboxGroup>
+              <ComboboxGroup v-if="userResources.envs.length > 0">
                 <ComboboxLabel
-                  class="px-4 inline-flex w-full items-center gap-4 text-muted-foreground font-semibold mt-3 mb-3">
+                  class="px-4 inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
                   <Grid2X2 class="h-4 w-4" />
                   环境
                 </ComboboxLabel>
@@ -175,9 +121,9 @@ function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: string
                 </ComboboxItem>
                 <!-- </RouterLink> -->
               </ComboboxGroup>
-              <ComboboxGroup>
+              <ComboboxGroup v-if="userResources.projects.length > 0">
                 <ComboboxLabel
-                  class="px-4 inline-flex w-full items-center gap-4 text-muted-foreground font-semibold mt-3 mb-3">
+                  class="px-4 inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
                   <GalleryHorizontalEnd class="h-4 w-4" />
                   项目
                 </ComboboxLabel>

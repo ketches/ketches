@@ -10,7 +10,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useResourceRefStore } from '@/stores/resourceRefStore'
+import { useUserStore } from '@/stores/userStore'
 import { Box, Check, ChevronDown } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
@@ -19,21 +19,13 @@ import { RouterLink, useRouter } from 'vue-router'
 const appHover = ref(false)
 
 const router = useRouter()
-const resourceRefStore = useResourceRefStore()
-const { activeAppRef, appRefs } = storeToRefs(resourceRefStore)
-
-// const selectedAppID = ref(activeAppRef.value?.appID)
+const userStore = useUserStore()
+const { activeAppRef } = storeToRefs(userStore)
 
 async function onSwitchApp(appID: string) {
-    await resourceRefStore.switchApp(appID)
-    // selectedAppID.value = appID
+    await userStore.activateApp(appID)
     router.push(`/console/app/${appID}`)
 }
-
-// watch(selectedAppID, async (newAppID) => {
-//     await resourceRefStore.switchApp(newAppID!)
-//     router.push(`/console/app/${newAppID}`)
-// })
 
 </script>
 
@@ -58,7 +50,8 @@ async function onSwitchApp(appID: string) {
                         </Badge>
                     </RouterLink>
                 </DropdownMenuItem>
-                <DropdownMenuItem v-for="appRef in appRefs.filter(app => app.appID !== activeAppRef?.appID)"
+                <DropdownMenuItem
+                    v-for="appRef in userStore.getCurrentAppRefs.filter(app => app.appID !== activeAppRef?.appID)"
                     @click="onSwitchApp(appRef.appID)" :key="appRef.appID">
                     <div class="h-4 w-4" />
                     <span>{{ appRef.displayName }}</span>

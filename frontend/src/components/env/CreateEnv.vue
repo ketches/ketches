@@ -29,7 +29,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useClusterStore } from '@/stores/clusterStore';
-import { useResourceRefStore } from '@/stores/resourceRefStore';
+import { useUserStore } from '@/stores/userStore';
 import type { envCreateModel } from '@/types/env';
 import { toTypedSchema } from '@vee-validate/zod';
 import { storeToRefs } from 'pinia';
@@ -49,8 +49,8 @@ const props = defineProps({
     },
 })
 
-const resourceRefStore = useResourceRefStore()
-const { activeProjectRef } = storeToRefs(resourceRefStore)
+const userStore = useUserStore()
+const { activeProjectRef } = storeToRefs(userStore)
 
 const emit = defineEmits(['update:modelValue', 'env-created']);
 
@@ -103,7 +103,12 @@ const onSubmit = handleSubmit(async (values) => {
     } else {
         const resp = await createEnv(activeProjectRef.value.projectID, values as envCreateModel)
         if (resp) {
-            resourceRefStore.addEnv(resp);
+            userStore.addOrUpdateEnv({
+                envID: resp.envID,
+                slug: resp.slug,
+                displayName: resp.displayName,
+                projectID: resp.projectID,
+            });
             toast.success('创建环境成功！');
             emit('env-created');
         }

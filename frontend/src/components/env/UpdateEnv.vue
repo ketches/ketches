@@ -20,10 +20,9 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useResourceRefStore } from '@/stores/resourceRefStore';
+import { useUserStore } from '@/stores/userStore';
 import type { envModel, updateEnvModel } from '@/types/env';
 import { toTypedSchema } from '@vee-validate/zod';
-import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -44,8 +43,7 @@ const props = defineProps({
     },
 })
 
-const resourceRefStore = useResourceRefStore()
-const { envRefs } = storeToRefs(resourceRefStore)
+const userStore = useUserStore()
 
 const env = ref<envModel>();
 
@@ -110,7 +108,7 @@ const onSubmit = handleSubmit(async (values) => {
     } as updateEnvModel)
     if (resp) {
         toast.success('环境更新成功！');
-        envRefs.value = envRefs.value.map(e => e.envID === envID ? resp : e);
+        userStore.addOrUpdateEnv(resp);
     }
 
     open.value = false;

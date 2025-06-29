@@ -28,7 +28,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useResourceRefStore } from '@/stores/resourceRefStore';
 import type { userRefModel } from '@/types/user';
 import { toTypedSchema } from '@vee-validate/zod';
 import { storeToRefs } from 'pinia';
@@ -47,8 +46,8 @@ const props = defineProps({
     },
 })
 
-const resourceRefStore = useResourceRefStore()
-const { activeProjectRef } = storeToRefs(resourceRefStore)
+const userStore = useUserStore()
+const { activeProjectRef } = storeToRefs(userStore)
 
 const emit = defineEmits(['update:modelValue', 'member-added']);
 

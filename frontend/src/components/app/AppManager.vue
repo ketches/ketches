@@ -2,10 +2,9 @@
 import {
   useSidebar
 } from "@/components/ui/sidebar"
-import { useResourceRefStore } from '@/stores/resourceRefStore'
+import { useUserStore } from "@/stores/userStore"
 import { PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-vue-next'
-import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
 import CreateEnv from "../env/CreateEnv.vue"
 import Button from '../ui/button/Button.vue'
 import Separator from '../ui/separator/Separator.vue'
@@ -14,16 +13,21 @@ import AppList from './AppList.vue'
 import AppManagerBreadcrumb from './breadcrumb/AppManagerBreadcrumb.vue'
 const { toggleSidebar, open } = useSidebar();
 
-const resourceRefStore = useResourceRefStore()
-const { envRefs } = storeToRefs(resourceRefStore)
+const userStore = useUserStore();
 
 const noEnvs = ref(false)
 const hasEnvs = ref(false)
 
-watch(envRefs, (newEnvRefs) => {
-  noEnvs.value = newEnvRefs.length === 0
-  hasEnvs.value = newEnvRefs.length > 0
-}, { immediate: true })
+// watch(() => userStore.getCurrentEnvRefs(), (newEnvRefs) => {
+//   noEnvs.value = newEnvRefs.length === 0
+//   hasEnvs.value = newEnvRefs.length > 0
+// }, { immediate: true })
+
+onMounted(async () => {
+  const envRefs = userStore.getCurrentEnvRefs
+  noEnvs.value = envRefs.length === 0
+  hasEnvs.value = envRefs.length > 0
+})
 
 const openEnvForm = ref(false)
 </script>

@@ -8,7 +8,6 @@ import {
     useSidebar
 } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useResourceRefStore } from "@/stores/resourceRefStore";
 import type { appModel } from "@/types/app";
 import { Archive, Boxes, History, Monitor, PanelLeftClose, PanelLeftOpen, Settings2 } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
@@ -26,8 +25,8 @@ const { toggleSidebar, open } = useSidebar();
 const route = useRoute();
 const appID = route.params.id as string;
 
-const resourceRefStore = useResourceRefStore()
-const { activeAppRef } = storeToRefs(resourceRefStore);
+const userStore = useUserStore()
+const { activeAppRef } = storeToRefs(userStore);
 const currentTab = ref("overview");
 
 const app = ref<appModel | null>(null);

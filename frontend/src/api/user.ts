@@ -1,5 +1,4 @@
 import api from '@/api/axios';
-import { useResourceRefStore } from '@/stores/resourceRefStore';
 import { useUserStore } from '@/stores/userStore';
 import type { QueryAndPagedRequest } from '@/types/common';
 import type { userModel, userResourcesModel } from '@/types/user';
@@ -37,7 +36,7 @@ export async function signUp({
 
 export async function signOut() {
     const userStore = useUserStore()
-    const user = userStore.getUser()
+    const user = userStore.getUser
     if (!user) {
         console.warn('No user found in localStorage, skipping sign-out')
         return { success: true }
@@ -46,7 +45,7 @@ export async function signOut() {
         "userID": user.userID
     })
     userStore.clearUser()
-    useResourceRefStore().$reset() // Reset resource references
+    useUserStore().$reset() // Reset resource references
     return { success: true, data: user }
 }
 
@@ -65,7 +64,7 @@ export async function getUserInfo(userID: string) {
 
 export async function fetchUserResourceRefs(): Promise<userResourcesModel> {
     const userStore = useUserStore()
-    if (!userStore.getUser()) {
+    if (!userStore.getUser) {
         await userStore.initUser()
     }
 

@@ -29,12 +29,8 @@ const clusterHover = ref(false)
 
 const selectedClusterRef = ref<clusterRefModel | null>(props.clusterRefs.length > 0 ? props.clusterRefs[0] : null)
 
-// const resourceRefStore = useResourceRefStore()
-// const { activeEnvRef, activeAppRef, envRefs } = storeToRefs(resourceRefStore)
-
 async function onSwitchCluster(clusterID: string) {
-    // await resourceRefStore.switchEnv(envID!)
-    // router.push({ name: 'app' });
+    // TODO: Implement cluster switching logic
 }
 </script>
 
