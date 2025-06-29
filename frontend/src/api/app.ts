@@ -1,5 +1,5 @@
 import api from '@/api/axios'
-import type { appEnvVarModel, appInstanceModel, appModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, updateAppEnvVarModel, updateAppImageModel, updateAppInfoModel, updateAppVolumeModel } from '@/types/app'
+import type { appEnvVarModel, appInstanceModel, appModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, setAppResourceModel, updateAppEnvVarModel, updateAppImageModel, updateAppInfoModel, updateAppVolumeModel } from '@/types/app'
 import { getApiBaseUrl } from '@/utils/env'
 import { toast } from 'vue-sonner'
 
@@ -35,6 +35,11 @@ export async function updateAppImage(appID: string, model: updateAppImageModel):
 
 export async function setAppCommand(appID: string, model: setAppCommandModel): Promise<appModel> {
     const response = await api.put(`/apps/${appID}/command`, model)
+    return response.data as appModel
+}
+
+export async function setAppResource(appID: string, model: setAppResourceModel): Promise<appModel> {
+    const response = await api.put(`/apps/${appID}/resource`, model)
     return response.data as appModel
 }
 

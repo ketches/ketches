@@ -93,6 +93,23 @@ func CreateApp(c *gin.Context) {
 // @Produce json
 // @Param appID path string true "App ID"
 // @Success 200 {object} api.Response{data=models.AppModel}
+// @Router /api/v1/apps/{appID} [get]
+func GetApp(c *gin.Context) {
+	var req models.GetAppRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+
+	s := services.NewAppService()
+	app, err := s.GetApp(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, app)
+}
 
 // @Summary Set App Command
 // @Description Set the startup command of an app
@@ -100,7 +117,7 @@ func CreateApp(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param appID path string true "App ID"
-// @Param command body models.SetAppCommandRequest true "New app command"
+// @Param command body models.SetAppCommandRequest true "Set app command"
 // @Success 200 {object} api.Response{data=models.AppModel}
 // @Router /api/v1/apps/{appID}/command [put]
 func SetAppCommand(c *gin.Context) {
@@ -121,16 +138,25 @@ func SetAppCommand(c *gin.Context) {
 	api.Success(c, app)
 }
 
-// @Router /api/v1/apps/{appID} [get]
-func GetApp(c *gin.Context) {
-	var req models.GetAppRequest
-	if err := c.ShouldBindUri(&req); err != nil {
+// @Summary Set App Resource
+// @Description Set the resource of an app
+// @Tags App
+// @Accept json
+// @Produce json
+// @Param appID path string true "App ID"
+// @Param resource body models.SetAppResourceRequest true "Set app resource"
+// @Success 200 {object} api.Response{data=models.AppModel}
+// @Router /api/v1/apps/{appID}/resource [put]
+func SetAppResource(c *gin.Context) {
+	var req models.SetAppResourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
 		return
 	}
+	req.AppID = c.Param("appID")
 
 	s := services.NewAppService()
-	app, err := s.GetApp(c, &req)
+	app, err := s.SetAppResource(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return

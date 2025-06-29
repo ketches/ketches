@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { appModel } from '@/types/app';
-import { ref } from 'vue';
+import { ref, toRef } from 'vue';
 import SidebarNav from './SidebarNav.vue';
 import { appSettingItems } from './data/settings';
 
@@ -10,6 +10,9 @@ const props = defineProps({
         required: true,
     },
 });
+
+// 保证 app 是响应式的
+const app = toRef(props, 'app');
 
 const currentTab = ref(appSettingItems[0].tab);
 
@@ -34,7 +37,7 @@ function onSwitchAppSetting(title: string) {
             <div class="w-full flex-1 overflow-auto">
                 <div class="space-y-6 px-2">
                     <template v-for="(item, index) in appSettingItems" :key="index">
-                        <component v-if="currentTab === item.tab" :is="item.comp" :app="props.app" />
+                        <component v-if="currentTab === item.tab" :is="item.comp" :app="app" />
                     </template>
                 </div>
             </div>

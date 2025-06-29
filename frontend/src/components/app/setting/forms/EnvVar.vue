@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, ref } from 'vue';
+import { h, ref, toRef, watch } from 'vue';
 
 import { createAppEnvVar, deleteAppEnvVar, listAppEnvVars, updateAppEnvVar } from '@/api/app';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ const props = defineProps({
     },
 });
 
-const app = ref<appModel>(props.app)
+const app = toRef(props, 'app');
 
 const listData = ref<appEnvVarModel[]>([])
 
@@ -58,6 +58,11 @@ onMounted(async () => {
     await fetchListData(app.value.appID)
 })
 
+watch(app, async (newApp) => {
+    if (newApp.appID) {
+        await fetchListData(newApp.appID)
+    }
+})
 
 const centeredHeader = (text: string) => h('div', { class: 'text-center' }, text)
 

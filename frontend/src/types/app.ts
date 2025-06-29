@@ -62,6 +62,14 @@ export interface setAppCommandModel {
     containerCommand: string
 }
 
+export interface setAppResourceModel {
+    replicas: number
+    requestCPU?: number
+    requestMemory?: number
+    limitCPU?: number
+    limitMemory?: number
+}
+
 export interface appInstanceContainerModel {
     containerName: string
     status: string

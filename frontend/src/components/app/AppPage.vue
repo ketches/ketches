@@ -92,7 +92,7 @@ const appStatus = computed(() => {
                 <Separator orientation="vertical" class="h-4" />
                 <Badge variant="secondary" class="font-mono text-muted-foreground">部署版本：{{ app?.edition ||
                   '未知'
-                }}</Badge>
+                  }}</Badge>
               </div>
 
               <div style="margin-left:auto;">

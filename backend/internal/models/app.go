@@ -15,7 +15,7 @@ type AppModel struct {
 	Description      string           `json:"description,omitempty"`
 	WorkloadType     app.WorkloadType `json:"workloadType,omitempty"` // e.g., "deployment", "statefulset", "daemonset"
 	Replicas         int32            `json:"replicas,omitempty"`     // Number of replicas for the app
-	ContainerImage   string           `json:"containerImage"`
+	ContainerImage   string           `json:"containerImage,omitempty"`
 	RegistryUsername string           `json:"registryUsername,omitempty"`
 	RegistryPassword string           `json:"registryPassword,omitempty"`
 	ContainerCommand string           `json:"containerCommand,omitempty"`
@@ -100,6 +100,15 @@ type UpdateAppImageRequest struct {
 type SetAppCommandRequest struct {
 	AppID            string `json:"-" uri:"appID"`
 	ContainerCommand string `json:"containerCommand"`
+}
+
+type SetAppResourceRequest struct {
+	AppID         string `json:"-" uri:"appID"`
+	Replicas      int32  `json:"replicas,omitempty" binding:"required,min=1,max=100"` // Number of replicas for the app
+	RequestCPU    int32  `json:"requestCPU,omitempty"`                                // in milliCPU (e.g., 500 for 0.5 CPU, 1000 for 1 CPU)
+	RequestMemory int32  `json:"requestMemory,omitempty"`                             // in MiB
+	LimitCPU      int32  `json:"limitCPU,omitempty"`                                  // in milliCPU
+	LimitMemory   int32  `json:"limitMemory,omitempty"`                               // in MiB
 }
 
 type DeleteAppRequest struct {

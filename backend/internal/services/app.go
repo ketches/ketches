@@ -35,6 +35,7 @@ type AppService interface {
 	DeleteApp(ctx context.Context, req *models.DeleteAppRequest) app.Error
 	UpdateAppImage(ctx context.Context, req *models.UpdateAppImageRequest) (*models.AppModel, app.Error)
 	SetAppCommand(ctx context.Context, req *models.SetAppCommandRequest) (*models.AppModel, app.Error)
+	SetAppResource(ctx context.Context, req *models.SetAppResourceRequest) (*models.AppModel, app.Error)
 	AppAction(ctx context.Context, req *models.AppActionRequest) (*models.AppModel, app.Error)
 	ListAppInstances(ctx context.Context, req *models.ListAppInstancesRequest) (*models.ListAppInstancesResponse, app.Error)
 	TerminateAppInstance(ctx context.Context, req *models.TerminateAppInstanceRequest) app.Error
@@ -333,7 +334,7 @@ func (s *appService) SetAppCommand(ctx context.Context, req *models.SetAppComman
 	}
 
 	if req.ContainerCommand == appEntity.ContainerCommand {
-		return nil, app.NewError(http.StatusBadRequest, "No changes detected in app command")
+		return nil, app.NewError(http.StatusBadRequest, "No changes detected in app container command")
 	}
 
 	result := &models.AppModel{
@@ -357,6 +358,55 @@ func (s *appService) SetAppCommand(ctx context.Context, req *models.SetAppComman
 			},
 		}).Error; err != nil {
 		log.Printf("failed to update app command: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return result, nil
+}
+
+func (s *appService) SetAppResource(ctx context.Context, req *models.SetAppResourceRequest) (*models.AppModel, app.Error) {
+	appEntity, err := orm.GetAppByID(ctx, req.AppID)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Replicas == appEntity.Replicas &&
+		req.RequestCPU == appEntity.RequestCPU &&
+		req.RequestMemory == appEntity.RequestMemory &&
+		req.LimitCPU == appEntity.LimitCPU &&
+		req.LimitMemory == appEntity.LimitMemory {
+		return nil, app.NewError(http.StatusBadRequest, "No changes detected in app resources")
+	}
+
+	result := &models.AppModel{
+		AppID:         appEntity.ID,
+		Slug:          appEntity.Slug,
+		DisplayName:   appEntity.DisplayName,
+		Description:   appEntity.Description,
+		Replicas:      req.Replicas,
+		RequestCPU:    req.RequestCPU,
+		RequestMemory: req.RequestMemory,
+		LimitCPU:      req.LimitCPU,
+		LimitMemory:   req.LimitMemory,
+		Edition:       cast.ToString(time.Now().UnixMilli()),
+		EnvID:         appEntity.EnvID,
+		ProjectID:     appEntity.ProjectID,
+	}
+
+	if err := db.Instance().Model(appEntity).
+		Select("Replicas", "RequestCPU", "RequestMemory", "LimitCPU", "LimitMemory", "Edition", "UpdatedBy").
+		Updates(entities.App{
+			Replicas:      result.Replicas,
+			RequestCPU:    result.RequestCPU,
+			RequestMemory: result.RequestMemory,
+			LimitCPU:      result.LimitCPU,
+			LimitMemory:   result.LimitMemory,
+			Edition:       result.Edition,
+			AuditBase: entities.AuditBase{
+				UpdatedBy: api.UserID(ctx),
+			},
+		}).Error; err != nil {
+		log.Printf("failed to update app resources: %v", err)
 		return nil, app.ErrDatabaseOperationFailed
 	}
 

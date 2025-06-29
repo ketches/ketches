@@ -130,7 +130,46 @@
         },
         "/api/v1/apps/{appID}": {
             "get": {
-                "responses": {}
+                "description": "Get app by app ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "Get App",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
             },
             "put": {
                 "description": "Update an existing app",
@@ -289,7 +328,7 @@
                         "required": true
                     },
                     {
-                        "description": "New app command",
+                        "description": "Set app command",
                         "name": "command",
                         "in": "body",
                         "required": true,
@@ -753,6 +792,59 @@
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/models.AppRef"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/apps/{appID}/resource": {
+            "put": {
+                "description": "Set the resource of an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "Set App Resource",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Set app resource",
+                        "name": "resource",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SetAppResourceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppModel"
                                         }
                                     }
                                 }
@@ -3811,6 +3903,36 @@
             "properties": {
                 "containerCommand": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SetAppResourceRequest": {
+            "type": "object",
+            "required": [
+                "replicas"
+            ],
+            "properties": {
+                "limitCPU": {
+                    "description": "in milliCPU",
+                    "type": "integer"
+                },
+                "limitMemory": {
+                    "description": "in MiB",
+                    "type": "integer"
+                },
+                "replicas": {
+                    "description": "Number of replicas for the app",
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1
+                },
+                "requestCPU": {
+                    "description": "in milliCPU (e.g., 500 for 0.5 CPU, 1000 for 1 CPU)",
+                    "type": "integer"
+                },
+                "requestMemory": {
+                    "description": "in MiB",
+                    "type": "integer"
                 }
             }
         },

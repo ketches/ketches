@@ -555,6 +555,28 @@ definitions:
       containerCommand:
         type: string
     type: object
+  models.SetAppResourceRequest:
+    properties:
+      limitCPU:
+        description: in milliCPU
+        type: integer
+      limitMemory:
+        description: in MiB
+        type: integer
+      replicas:
+        description: Number of replicas for the app
+        maximum: 100
+        minimum: 1
+        type: integer
+      requestCPU:
+        description: in milliCPU (e.g., 500 for 0.5 CPU, 1000 for 1 CPU)
+        type: integer
+      requestMemory:
+        description: in MiB
+        type: integer
+    required:
+    - replicas
+    type: object
   models.TerminateAppInstanceRequest:
     properties:
       appID:
@@ -768,7 +790,30 @@ paths:
       tags:
       - App
     get:
-      responses: {}
+      consumes:
+      - application/json
+      description: Get app by app ID
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppModel'
+              type: object
+      summary: Get App
+      tags:
+      - App
     put:
       consumes:
       - application/json
@@ -843,7 +888,7 @@ paths:
         name: appID
         required: true
         type: string
-      - description: New app command
+      - description: Set app command
         in: body
         name: command
         required: true
@@ -1140,6 +1185,38 @@ paths:
                   $ref: '#/definitions/models.AppRef'
               type: object
       summary: Get App Ref
+      tags:
+      - App
+  /api/v1/apps/{appID}/resource:
+    put:
+      consumes:
+      - application/json
+      description: Set the resource of an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Set app resource
+        in: body
+        name: resource
+        required: true
+        schema:
+          $ref: '#/definitions/models.SetAppResourceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppModel'
+              type: object
+      summary: Set App Resource
       tags:
       - App
   /api/v1/apps/{appID}/volumes:

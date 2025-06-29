@@ -33,12 +33,8 @@ import {
 import { RefreshCcw } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import { h, ref, watch } from "vue";
-import { useRoute } from "vue-router";
 import { appInstanceStatusDisplay } from "../data/appInstanceStatus";
 import InstanceActions from "./InstanceActions.vue";
-
-const route = useRoute();
-const appID = route.params.id as string;
 
 const userStore = useUserStore();
 const { activeAppRef } = storeToRefs(userStore);
@@ -58,8 +54,13 @@ async function fetchListData(appID?: string) {
 }
 
 watch(activeAppRef, async (newAppRef) => {
-    await fetchListData(newAppRef.appID);
-});
+    if (newAppRef && newAppRef.appID) {
+        await fetchListData(newAppRef.appID);
+    } else {
+        listData.value = [];
+        totalCount.value = 0;
+    }
+}, { immediate: true });
 
 const centeredHeader = (text: string) => h("div", { class: "text-center" }, text);
 

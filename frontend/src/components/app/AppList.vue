@@ -74,7 +74,7 @@ import CreateApp from "./CreateApp.vue";
 import { appStatusDisplay } from "./data/appStatus";
 
 const userStore = useUserStore();
-const { activeAppRef, activeEnvRef } = storeToRefs(userStore);
+const { activeEnvRef } = storeToRefs(userStore);
 
 const noData = ref(false);
 const hasData = ref(false);

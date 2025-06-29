@@ -32,7 +32,7 @@ import {
     useVueTable,
 } from '@tanstack/vue-table';
 import { ChevronsLeft, ChevronsRight, Delete, Plus, SquarePen } from 'lucide-vue-next';
-import { h, onMounted, ref } from 'vue';
+import { h, onMounted, ref, toRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import CreateVolume from './CreateVolume.vue';
 import UpdateVolume from './UpdateVolume.vue';
@@ -44,7 +44,7 @@ const props = defineProps({
     },
 });
 
-const app = ref<appModel>(props.app)
+const app = toRef(props, 'app');
 const listData = ref<appVolumeModel[]>([])
 
 async function fetchListData(appID?: string) {
@@ -58,6 +58,11 @@ onMounted(async () => {
     await fetchListData(app.value.appID)
 })
 
+watch(app, async (newApp) => {
+    if (newApp.appID) {
+        await fetchListData(newApp.appID)
+    }
+})
 
 const centeredHeader = (text: string) => h('div', { class: 'text-center' }, text)
 

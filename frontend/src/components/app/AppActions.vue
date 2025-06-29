@@ -16,7 +16,7 @@ import {
   MoreVertical,
   Trash
 } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, ref, toRef } from "vue";
 import { useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -34,17 +34,20 @@ const props = defineProps({
     default: false,
   },
 });
+
+const app = toRef(props, 'app');
+
 const emit = defineEmits(["action-completed"]);
 
 const appActions = computed<appStatusAction[]>(() => {
-  return appStatusActions(props.app.status, props.app.edition, props.app.actualEdition)
+  return appStatusActions(app.value.status, app.value.edition, app.value.actualEdition)
 });
 
 const debugActionAvailable = computed(() => {
   if (props.fromAppList) {
     return false; // Debug action not available in app list
   }
-  if (["starting", "updating", "abnormal", "running"].includes(props.app.status)) {
+  if (["starting", "updating", "abnormal", "running"].includes(app.value.status)) {
     return true; // Debug action available in these statuses
   }
 });
@@ -53,28 +56,30 @@ const showDeleteAppDialog = ref(false);
 const showDebugAppDialog = ref(false);
 
 async function onDelete() {
-  await deleteApp(props.app.appID).then(() => {
-    toast.success("应用已删除", {
-      description: `应用 ${props.app.slug} 已成功删除。`,
-    });
-    emit("action-completed");
-    if (!props.fromAppList) {
-      router.push({ name: "app" });
-    }
+  await deleteApp(app.value.appID)
+  toast.success("应用已删除", {
+    description: `应用 ${app.value.slug} 已成功删除。`,
   });
+  emit("action-completed");
+  if (!props.fromAppList) {
+    router.push({ name: "app" });
+  }
 
   showDeleteAppDialog.value = false;
 }
 
 async function onDebug() {
-  await appAction(props.app.appID, "debug").then(() => {
-    toast.success("应用开始进入调试", {
-      description: `等待应用实例重启完成后，您可以进入实例终端进行调试操作。`,
-    });
-    emit("action-completed");
+  await appAction(app.value.appID, "debug")
+  toast.success("应用开始进入调试", {
+    description: `等待应用实例重启完成后，您可以进入实例终端进行调试操作。`,
   });
-
+  emit("action-completed");
   showDebugAppDialog.value = false;
+}
+
+async function onAction(action: (appID: string) => Promise<appModel> | Promise<void>) {
+  await action(app.value.appID)
+  emit("action-completed");
 }
 </script>
 
@@ -83,7 +88,7 @@ async function onDebug() {
     <TooltipProvider v-for="action in appActions.slice(0, 2)" :delay-duration="500" :disabled="!fromAppList">
       <Tooltip>
         <TooltipTrigger as-child>
-          <Button :key="action.label" @click="action.action(app.appID)" size="sm"
+          <Button :key="action.label" @click="onAction(action.action)" size="sm"
             :variant="fromAppList ? 'ghost' : 'outline'" class="data-[state=open]:bg-muted font-normal">
             <component :is="action.icon" :class="`${action.tip ? 'text-blue-500' : ''} h-4 w-4`" />
             <Dot v-if="action.tip" class="text-blue-500" stroke-width="8" />
@@ -103,8 +108,7 @@ async function onDebug() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem v-for="action in appActions.slice(2)" :key="action.label"
-          @click="{ action.action(app.appID); emit('action-completed') }">
+        <DropdownMenuItem v-for="action in appActions.slice(2)" :key="action.label" @click="onAction(action.action)">
           <component :is="action.icon" class="mr-2 h-4 w-4" />
           <Dot v-if="action.tip" class="text-blue-500" stroke-width="8" />
           <span>{{ action.label }}</span>

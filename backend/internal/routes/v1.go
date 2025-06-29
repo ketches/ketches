@@ -131,6 +131,7 @@ func registerAppRoute(r *APIV1Route) {
 	projectDeveloper.DELETE("", handlers.DeleteApp)
 	projectDeveloper.PUT("/image", handlers.UpdateAppImage)
 	projectDeveloper.PUT("/command", handlers.SetAppCommand)
+	projectDeveloper.PUT("/resource", handlers.SetAppResource)
 	projectDeveloper.POST("/action", handlers.AppAction)
 	projectDeveloper.DELETE("/instances", handlers.TerminateAppInstance)
 	projectDeveloper.GET("/instances/:instanceName/containers/:containerName/logs", handlers.ViewAppContainerLogs)

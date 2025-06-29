@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import { useForm } from 'vee-validate';
-import { ref } from 'vue';
+import { toRef, watch } from 'vue';
 import * as z from 'zod';
 
 import { updateAppImage } from '@/api/app';
@@ -27,7 +27,7 @@ const props = defineProps({
     },
 });
 
-const app = ref<appModel>(props.app)
+const app = toRef(props, 'app');
 
 const profileFormSchema = toTypedSchema(z.object({
     containerImage: z
@@ -50,6 +50,16 @@ const { handleSubmit, resetForm } = useForm({
         registryUsername: app.value.registryUsername || '',
         registryPassword: app.value.registryPassword || '',
     },
+})
+
+watch(app, async (newApp) => {
+    resetForm({
+        values: {
+            containerImage: app.value.containerImage || '',
+            registryUsername: app.value.registryUsername || '',
+            registryPassword: app.value.registryPassword || '',
+        }
+    });
 })
 
 const onSubmit = handleSubmit(async (values) => {
