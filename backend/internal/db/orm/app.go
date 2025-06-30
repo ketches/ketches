@@ -96,8 +96,8 @@ func AllAppVolumes(appID string) ([]*entities.AppVolume, app.Error) {
 	return result, nil
 }
 
-func AllAppPorts(appID string) ([]*entities.AppPort, app.Error) {
-	var result []*entities.AppPort
+func AllAppGateways(appID string) ([]*entities.AppGateway, app.Error) {
+	var result []*entities.AppGateway
 	if err := db.Instance().Find(&result, "app_id = ?", appID).Error; err != nil {
 		return nil, app.ErrDatabaseOperationFailed
 	}

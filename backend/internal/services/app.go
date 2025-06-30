@@ -823,11 +823,6 @@ func (s *appService) deleteApp(ctx context.Context, appEntity *entities.App) app
 			return err
 		}
 
-		if err := tx.Delete(&entities.AppPort{}, "app_id = ?", appEntity.ID).Error; err != nil {
-			log.Printf("failed to delete app ports for app %s: %v", appEntity.ID, err)
-			return err
-		}
-
 		if err := tx.Delete(&entities.AppGateway{}, "app_id = ?", appEntity.ID).Error; err != nil {
 			log.Printf("failed to delete app gateways for app %s: %v", appEntity.ID, err)
 			return err

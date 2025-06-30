@@ -25,7 +25,6 @@ func Migrate(db *gorm.DB) {
 		&entities.Env{},
 		&entities.App{},
 		&entities.AppEnvVar{},
-		&entities.AppPort{},
 		&entities.AppGateway{},
 		&entities.AppVolume{},
 	); err != nil {
@@ -53,7 +52,7 @@ func checkOrInitAdminUser(db *gorm.DB) {
 			},
 			Username:          "admin",
 			Fullname:          "Ketches Admin",
-			Email:             fmt.Sprintf("%s.admin@ketches.cn", adminUserID[:6]),
+			Email:             fmt.Sprintf("admin.%s@ketches.cn", adminUserID[:6]),
 			Password:          string(passwordHashBytes),
 			Role:              app.UserRoleAdmin,
 			MustResetPassword: true,

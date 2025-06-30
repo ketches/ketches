@@ -152,3 +152,35 @@ export interface updateAppVolumeModel {
     mountPath: string
     subPath?: string
 }
+
+export interface appGatewayModel {
+    gatewayID: string
+    port: number
+    protocol: string
+    domain: string
+    path: string
+    certID: string
+    gatewayPort: number
+    exposed: boolean
+    appID: string
+}
+
+export interface createAppGatewayModel {
+    port: number
+    protocol: string
+    domain: string
+    path: string
+    certID: string
+    gatewayPort: number
+    exposed: boolean
+}
+
+export interface updateAppGatewayModel {
+    port: number
+    protocol: string
+    domain: string
+    path: string
+    certID: string
+    gatewayPort: number
+    exposed: boolean
+}

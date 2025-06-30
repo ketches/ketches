@@ -88,7 +88,7 @@ watch(open, (isOpen) => {
         });
         subPathHasValue.value = !!props.volume.subPath;
     }
-})
+}, { immediate: true })
 
 // 提交时同步 subPath 到表单
 const onSubmit = handleSubmit(async (values) => {
@@ -98,6 +98,7 @@ const onSubmit = handleSubmit(async (values) => {
         subPath: values.subPath,
     });
     toast.success('存储卷更新成功！');
+    emit('volume-updated');
     open.value = false;
 })
 </script>

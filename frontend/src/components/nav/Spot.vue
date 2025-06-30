@@ -61,7 +61,7 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
         <Search />
         <span class="justify-center flex-1">聚焦</span>
         <span
-          class="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[12px] font-medium text-muted-foreground/50 opacity-100">
+          class="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded bg-muted px-1.5 font-mono text-[12px] font-medium text-muted-foreground/50 opacity-100">
           <kbd class="inline-flex items-center gap-0.5 align-middle">
             <span style="font-size:1.2em;line-height:1;display:inline-block;vertical-align:middle;">⌘</span>
             <span style="margin-left:2px;vertical-align:middle;">K, Ctrl K</span>
@@ -73,7 +73,7 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
     <DialogPortal>
       <DialogOverlay class="bg-background/80 fixed inset-0 z-30" />
       <DialogContent
-        class="fixed top-[15%] left-[50%] max-h-[85vh] w-[120vw] max-w-[36rem] translate-x-[-50%] text-sm rounded-xl overflow-hidden border border-muted-foreground/30 bg-card focus:outline-none z-[100]">
+        class="fixed top-[15%] left-[50%] max-h-[85vh] w-[120vw] max-w-[36rem] translate-x-[-50%] text-sm rounded-xl overflow-hidden border border-muted-foreground/30 bg-card focus:outline-none z-[100] shadow-accent-foreground/25 shadow-2xl">
         <VisuallyHidden>
           <DialogTitle>Command Menu</DialogTitle>
           <DialogDescription>Search for command</DialogDescription>

@@ -1,5 +1,5 @@
 import api from '@/api/axios'
-import type { appEnvVarModel, appInstanceModel, appModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, setAppResourceModel, updateAppEnvVarModel, updateAppImageModel, updateAppInfoModel, updateAppVolumeModel } from '@/types/app'
+import type { appEnvVarModel, appGatewayModel, appInstanceModel, appModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppGatewayModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, setAppResourceModel, updateAppEnvVarModel, updateAppGatewayModel, updateAppImageModel, updateAppInfoModel, updateAppVolumeModel } from '@/types/app'
 import { getApiBaseUrl } from '@/utils/env'
 import { toast } from 'vue-sonner'
 
@@ -153,6 +153,29 @@ export async function deleteAppVolumes(appID: string, volumeIDs: string[]): Prom
         }
     })
     return
+}
+
+export async function listAppGateways(appID: string) {
+    const response = await api.get(`/apps/${appID}/gateways`);
+    return response.data as appGatewayModel[];
+}
+
+export async function createAppGateway(appID: string, model: createAppGatewayModel) {
+    const response = await api.post(`/apps/${appID}/gateways`, model);
+    return response.data as appGatewayModel;
+}
+
+export async function updateAppGateway(appID: string, gatewayID: string, model: updateAppGatewayModel) {
+    const response = await api.put(`/apps/${appID}/gateways/${gatewayID}`, model);
+    return response.data as appGatewayModel;
+}
+
+export async function deleteAppGateway(appID: string, gatewayIDs: string[]) {
+    await api.delete(`/apps/${appID}/gateways`, {
+        data: {
+            gatewayIDs: gatewayIDs
+        }
+    });
 }
 
 export async function exportApps(appIDs: string[]) {

@@ -457,6 +457,203 @@
                 }
             }
         },
+        "/api/v1/apps/{appID}/gateways": {
+            "get": {
+                "description": "List gateways for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppGateway"
+                ],
+                "summary": "List App Gateways",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.AppGatewayModel"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new gateway for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppGateway"
+                ],
+                "summary": "Create App Gateway",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Gateway",
+                        "name": "gateway",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateAppGatewayRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppGatewayModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a gateway for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppGateway"
+                ],
+                "summary": "Delete App Gateway",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Gateway IDs",
+                        "name": "gatewayIDs",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DeleteAppGatewaysRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/apps/{appID}/gateways/{gatewayID}": {
+            "put": {
+                "description": "Update a gateway for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppGateway"
+                ],
+                "summary": "Update App Gateway",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Gateway ID",
+                        "name": "gatewayID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Gateway",
+                        "name": "gateway",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateAppGatewayRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppGatewayModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/apps/{appID}/image": {
             "put": {
                 "description": "Update the image of an app",
@@ -3262,6 +3459,43 @@
                 }
             }
         },
+        "models.AppGatewayModel": {
+            "type": "object",
+            "required": [
+                "gatewayPort"
+            ],
+            "properties": {
+                "appID": {
+                    "type": "string"
+                },
+                "certID": {
+                    "type": "string"
+                },
+                "domain": {
+                    "type": "string"
+                },
+                "exposed": {
+                    "type": "boolean"
+                },
+                "gatewayID": {
+                    "type": "string"
+                },
+                "gatewayPort": {
+                    "type": "integer",
+                    "maximum": 65535,
+                    "minimum": 1
+                },
+                "path": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "protocol": {
+                    "type": "string"
+                }
+            }
+        },
         "models.AppInstanceContainerModel": {
             "type": "object",
             "properties": {
@@ -3527,6 +3761,44 @@
                 }
             }
         },
+        "models.CreateAppGatewayRequest": {
+            "type": "object",
+            "required": [
+                "port",
+                "protocol"
+            ],
+            "properties": {
+                "certID": {
+                    "type": "string"
+                },
+                "domain": {
+                    "type": "string"
+                },
+                "exposed": {
+                    "type": "boolean"
+                },
+                "gatewayPort": {
+                    "type": "integer"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer",
+                    "maximum": 65535,
+                    "minimum": 1
+                },
+                "protocol": {
+                    "type": "string",
+                    "enum": [
+                        "http",
+                        "https",
+                        "tcp",
+                        "udp"
+                    ]
+                }
+            }
+        },
         "models.CreateAppRequest": {
             "type": "object",
             "required": [
@@ -3709,6 +3981,20 @@
             "properties": {
                 "envVarIDs": {
                     "description": "List of env var IDs to delete",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.DeleteAppGatewaysRequest": {
+            "type": "object",
+            "required": [
+                "gatewayIDs"
+            ],
+            "properties": {
+                "gatewayIDs": {
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -4031,6 +4317,44 @@
             "properties": {
                 "instanceName": {
                     "type": "string"
+                }
+            }
+        },
+        "models.UpdateAppGatewayRequest": {
+            "type": "object",
+            "required": [
+                "port",
+                "protocol"
+            ],
+            "properties": {
+                "certID": {
+                    "type": "string"
+                },
+                "domain": {
+                    "type": "string"
+                },
+                "exposed": {
+                    "type": "boolean"
+                },
+                "gatewayPort": {
+                    "type": "integer"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer",
+                    "maximum": 65535,
+                    "minimum": 1
+                },
+                "protocol": {
+                    "type": "string",
+                    "enum": [
+                        "http",
+                        "https",
+                        "tcp",
+                        "udp"
+                    ]
                 }
             }
         },

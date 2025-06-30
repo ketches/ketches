@@ -63,6 +63,31 @@ definitions:
       value:
         type: string
     type: object
+  models.AppGatewayModel:
+    properties:
+      appID:
+        type: string
+      certID:
+        type: string
+      domain:
+        type: string
+      exposed:
+        type: boolean
+      gatewayID:
+        type: string
+      gatewayPort:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      path:
+        type: string
+      port:
+        type: integer
+      protocol:
+        type: string
+    required:
+    - gatewayPort
+    type: object
   models.AppInstanceContainerModel:
     properties:
       containerName:
@@ -241,6 +266,33 @@ definitions:
       slug:
         type: string
     type: object
+  models.CreateAppGatewayRequest:
+    properties:
+      certID:
+        type: string
+      domain:
+        type: string
+      exposed:
+        type: boolean
+      gatewayPort:
+        type: integer
+      path:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      protocol:
+        enum:
+        - http
+        - https
+        - tcp
+        - udp
+        type: string
+    required:
+    - port
+    - protocol
+    type: object
   models.CreateAppRequest:
     properties:
       containerImage:
@@ -372,6 +424,15 @@ definitions:
         type: array
     required:
     - envVarIDs
+    type: object
+  models.DeleteAppGatewaysRequest:
+    properties:
+      gatewayIDs:
+        items:
+          type: string
+        type: array
+    required:
+    - gatewayIDs
     type: object
   models.DeleteAppVolumesRequest:
     properties:
@@ -581,6 +642,33 @@ definitions:
         type: string
     required:
     - instanceName
+    type: object
+  models.UpdateAppGatewayRequest:
+    properties:
+      certID:
+        type: string
+      domain:
+        type: string
+      exposed:
+        type: boolean
+      gatewayPort:
+        type: integer
+      path:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      protocol:
+        enum:
+        - http
+        - https
+        - tcp
+        - udp
+        type: string
+    required:
+    - port
+    - protocol
     type: object
   models.UpdateAppImageRequest:
     properties:
@@ -964,6 +1052,128 @@ paths:
       summary: Create App Env Var
       tags:
       - AppEnvVar
+  /api/v1/apps/{appID}/gateways:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a gateway for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Gateway IDs
+        in: body
+        name: gatewayIDs
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeleteAppGatewaysRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Delete App Gateway
+      tags:
+      - AppGateway
+    get:
+      consumes:
+      - application/json
+      description: List gateways for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.AppGatewayModel'
+                  type: array
+              type: object
+      summary: List App Gateways
+      tags:
+      - AppGateway
+    post:
+      consumes:
+      - application/json
+      description: Create a new gateway for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Gateway
+        in: body
+        name: gateway
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAppGatewayRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppGatewayModel'
+              type: object
+      summary: Create App Gateway
+      tags:
+      - AppGateway
+  /api/v1/apps/{appID}/gateways/{gatewayID}:
+    put:
+      consumes:
+      - application/json
+      description: Update a gateway for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Gateway ID
+        in: path
+        name: gatewayID
+        required: true
+        type: string
+      - description: Gateway
+        in: body
+        name: gateway
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateAppGatewayRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppGatewayModel'
+              type: object
+      summary: Update App Gateway
+      tags:
+      - AppGateway
   /api/v1/apps/{appID}/image:
     put:
       consumes:

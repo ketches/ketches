@@ -34,22 +34,16 @@ type AppEnvVar struct {
 	AuditBase
 }
 
-type AppPort struct {
-	UUIDBase
-	AppID    string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_port;index;size:36"` // App UUID this port belongs to
-	Port     int32  `json:"port" gorm:"not null;uniqueIndex:idx_appID_port"`                // Port number for the app
-	Protocol string `json:"protocol" gorm:"not null;size:16"`                               // Protocol used by the port (e.g., 'http', 'https', 'tcp', 'udp')
-	AuditBase
-}
-
 type AppGateway struct {
 	UUIDBase
-	AppID     string `json:"appID" gorm:"not null;index;size:36"`     // App UUID this gateway belongs to
-	AppPortID string `json:"appPortID" gorm:"not null;index;size:36"` // AppPort UUID this gateway is associated with
-	Domain    string `json:"domain" gorm:"not null;size:255"`         // Domain name for the gateway
-	Path      string `json:"path" gorm:"not null;size:255"`           // Path for the gateway
-	CertID    string `json:"certID" gorm:"size:36"`                   // Certificate UUID for TLS termination
-	Enabled   bool   `json:"enabled" gorm:"not null;default:true"`    // Whether the gateway is enabled
+	AppID       string `json:"appID" gorm:"not null;index;size:36"`
+	Port        int32  `json:"port" gorm:"not null"`
+	Protocol    string `json:"protocol" gorm:"not null;size:16"`
+	Domain      string `json:"domain" gorm:"not null;size:255"`
+	Path        string `json:"path" gorm:"not null;size:255"`
+	CertID      string `json:"certID" gorm:"size:36"`
+	GatewayPort int32  `json:"gatewayPort" gorm:"not null"`
+	Exposed     bool   `json:"exposed" gorm:"not null;default:false"`
 	AuditBase
 }
 

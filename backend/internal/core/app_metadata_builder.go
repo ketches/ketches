@@ -48,7 +48,7 @@ func (b *appMetadataBuilder) Build() (*AppMetadata, app.Error) {
 		return nil, err
 	}
 
-	appPorts, err := orm.AllAppPorts(b.appEntity.ID)
+	appPorts, err := orm.AllAppGateways(b.appEntity.ID)
 	if err != nil {
 		return nil, err
 	}
