@@ -171,6 +171,7 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 		args    []string
 	)
 	if a.ContainerCommand != "" {
+		labels["ketches/debugging"] = "true" // Mark as debugging if command is set
 		command = []string{"sh"}
 		args = []string{"-c", a.ContainerCommand}
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/models"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -90,11 +91,12 @@ func GetAppStatus(ctx context.Context, appEntity *entities.App) AppStatus {
 		updating            bool
 		runningPodCount     int32
 		pendingPodCount     int32
+		abnormalPodCount    int32
 		terminatingPodCount int32
 	)
 	for _, pod := range pods {
-		if kube.IsPodAbnormal(pod) {
-			result.Status = AppWorkloadStatusAbnormal
+		if kube.IsAbnormalPod(pod) {
+			abnormalPodCount++
 		}
 
 		edition := pod.Labels["ketches/edition"]
@@ -114,6 +116,11 @@ func GetAppStatus(ctx context.Context, appEntity *entities.App) AppStatus {
 		case corev1.PodPending:
 			pendingPodCount++
 		}
+	}
+
+	if abnormalPodCount > 0 {
+		result.Status = AppWorkloadStatusAbnormal
+		return result
 	}
 
 	if updating {
@@ -138,6 +145,97 @@ func GetAppStatus(ctx context.Context, appEntity *entities.App) AppStatus {
 
 	if runningPodCount == result.ActualReplicas {
 		result.Status = AppWorkloadStatusRunning
+		return result
+	}
+
+	result.Status = AppWorkloadStatusUnknown
+	return result
+}
+
+type AppRunningStatus struct {
+	ActualReplicas int32             `json:"actualReplicas"`
+	ActualEdition  string            `json:"actualEdition"`
+	Status         AppWorkloadStatus `json:"status"`
+}
+
+func GetAppStatusFromInstances(ctx context.Context, instances []*models.AppInstanceModel) *AppRunningStatus {
+	result := &AppRunningStatus{
+		ActualReplicas: int32(len(instances)),
+	}
+	if len(instances) == 0 {
+		result.Status = AppWorkloadStatusStopped
+		return result
+	}
+
+	var (
+		edition             = instances[0].Edition
+		updating            bool
+		runningPodCount     int32
+		succeedPodCount     int32
+		pendingPodCount     int32
+		abnormalPodCount    int32
+		terminatingPodCount int32
+	)
+	for _, instance := range instances {
+		if edition != instance.Edition {
+			updating = true
+			edition = max(edition, instance.Edition)
+		}
+
+		switch instance.Status {
+		case string(kube.PodStatusRunning):
+			runningPodCount++
+		case string(kube.PodStatusSucceeded):
+			succeedPodCount++
+		case string(kube.PodStatusPending):
+			pendingPodCount++
+		case string(kube.PodStatusAbnormal):
+			abnormalPodCount++
+		case string(kube.PodStatusTerminating):
+			terminatingPodCount++
+		case string(kube.PodStatusDebugging):
+			result.Status = AppWorkloadStatusDebugging
+		}
+	}
+
+	result.ActualEdition = edition
+
+	if result.Status == string(kube.PodStatusDebugging) {
+		return result
+	}
+
+	if abnormalPodCount > 0 {
+		result.Status = AppWorkloadStatusAbnormal
+		return result
+	}
+
+	if updating {
+		result.Status = AppWorkloadStatusUpdating
+		return result
+	}
+
+	if terminatingPodCount > 0 {
+		if runningPodCount == 0 && succeedPodCount == 0 && pendingPodCount == 0 {
+			result.Status = AppWorkloadStatusStopped
+			return result
+		} else {
+			result.Status = AppWorkloadStatusStopping
+			return result
+		}
+	}
+
+	if pendingPodCount > 0 {
+		result.Status = AppWorkloadStatusStarting
+		return result
+	}
+
+	if runningPodCount == result.ActualReplicas {
+		result.Status = AppWorkloadStatusRunning
+		return result
+	}
+
+	if succeedPodCount == result.ActualReplicas {
+		result.Status = AppWorkloadStatusCompleted
 		return result
 	}
 

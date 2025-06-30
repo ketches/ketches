@@ -63,10 +63,11 @@ watch(app, async (newApp) => {
 })
 
 const onSubmit = handleSubmit(async (values) => {
-    await updateAppImage(app.value.appID, values as updateAppImageModel)
-    app.value.containerImage = values.containerImage
-    app.value.registryUsername = values.registryUsername ?? ''
-    app.value.registryPassword = values.registryPassword ?? ''
+    const resp = await updateAppImage(app.value.appID, values as updateAppImageModel)
+    app.value.containerImage = resp.containerImage ?? ''
+    app.value.registryUsername = resp.registryUsername ?? ''
+    app.value.registryPassword = resp.registryPassword ?? ''
+    app.value.edition = resp.edition ?? ''
     toast.success("源码构建已更新。")
 })
 </script>

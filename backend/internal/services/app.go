@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
@@ -38,6 +39,7 @@ type AppService interface {
 	SetAppResource(ctx context.Context, req *models.SetAppResourceRequest) (*models.AppModel, app.Error)
 	AppAction(ctx context.Context, req *models.AppActionRequest) (*models.AppModel, app.Error)
 	ListAppInstances(ctx context.Context, req *models.ListAppInstancesRequest) (*models.ListAppInstancesResponse, app.Error)
+	GetAppRunningInfo(ctx context.Context, req *models.GetAppRunningInfoRequest) app.Error
 	TerminateAppInstance(ctx context.Context, req *models.TerminateAppInstanceRequest) app.Error
 	ViewAppContainerLogs(ctx context.Context, req *models.ViewAppContainerLogsRequest) app.Error
 	ExecAppContainerTerminal(ctx context.Context, req *models.ExecAppContainerTerminalRequest) app.Error
@@ -464,11 +466,13 @@ func (s *appService) ListAppInstances(ctx context.Context, req *models.ListAppIn
 	}
 
 	result := &models.ListAppInstancesResponse{
+		AppID:     appEntity.ID,
+		Slug:      appEntity.Slug,
 		Edition:   appEntity.Edition,
 		Instances: make([]*models.AppInstanceModel, 0, len(pods)),
 	}
 	for _, pod := range pods {
-		mainContainer := mainContainer(appEntity.Slug, pod)
+		mainContainer := kube.MainContainer(appEntity.Slug, pod)
 		containers := make([]*models.AppInstanceContainerModel, 0, len(pod.Spec.Containers))
 		initContainers := make([]*models.AppInstanceContainerModel, 0, len(pod.Spec.InitContainers))
 		for _, container := range pod.Status.ContainerStatuses {
@@ -490,9 +494,8 @@ func (s *appService) ListAppInstances(ctx context.Context, req *models.ListAppIn
 			})
 		}
 		instance := &models.AppInstanceModel{
-			AppID:           appEntity.ID,
 			InstanceName:    pod.Name,
-			Status:          string(pod.Status.Phase),
+			Status:          kube.GetPodStatus(pod),
 			RunningDuration: utils.HumanizeTime(pod.CreationTimestamp.Time),
 			InstanceIP:      pod.Status.PodIP,
 			Containers:      containers,
@@ -509,6 +512,92 @@ func (s *appService) ListAppInstances(ctx context.Context, req *models.ListAppIn
 		result.Instances = append(result.Instances, instance)
 	}
 	return result, nil
+}
+
+func (s *appService) GetAppRunningInfo(ctx context.Context, req *models.GetAppRunningInfoRequest) app.Error {
+	appEntity, err := orm.GetAppByID(ctx, req.AppID)
+	if err != nil {
+		return err
+	}
+
+	w := req.ResponseWriter
+	// r := req.Request
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		return app.NewError(http.StatusInternalServerError, "Streaming unsupported")
+	}
+
+	// Set headers for SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	client := &kube.AppInstanceSSEClient{
+		Key:     fmt.Sprintf("%s/%s", appEntity.ClusterNamespace, appEntity.Slug),
+		Ctx:     ctx,
+		MsgChan: make(chan []*models.AppInstanceModel, 1),
+	}
+
+	// Register the client
+	kube.AppInstanceSSEClients.Lock()
+	kube.AppInstanceSSEClients.List[client] = struct{}{}
+	kube.AppInstanceSSEClients.Unlock()
+
+	// Initialize the channel with the current instances
+	instances := kube.GetPodList(client.Key)
+	client.MsgChan <- instances
+
+	go func() {
+		for {
+			select {
+			case instances, ok := <-client.MsgChan:
+				if !ok {
+					// Channel closed, clean up
+					kube.AppInstanceSSEClients.Lock()
+					delete(kube.AppInstanceSSEClients.List, client)
+					kube.AppInstanceSSEClients.Unlock()
+					return
+				}
+
+				for _, instance := range instances {
+					instance.RunningDuration = utils.HumanizeTime(instance.CreatedAt)
+				}
+
+				runningStatus := core.GetAppStatusFromInstances(ctx, instances)
+				runningInfo := &models.GetAppRunningInfoResponse{
+					AppID:          appEntity.ID,
+					Slug:           appEntity.Slug,
+					Replicas:       appEntity.Replicas,
+					Edition:        appEntity.Edition,
+					Status:         runningStatus.Status,
+					ActualReplicas: runningStatus.ActualReplicas,
+					ActualEdition:  runningStatus.ActualEdition,
+					Instances:      instances,
+				}
+				data, err := json.Marshal(runningInfo)
+				if err != nil {
+					log.Printf("failed to marshal running info: %v", err)
+					continue
+				}
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", data) // [data: ] is required for SSE
+				flusher.Flush()
+			case <-ctx.Done():
+				// Context cancelled, clean up
+				kube.AppInstanceSSEClients.Lock()
+				delete(kube.AppInstanceSSEClients.List, client)
+				kube.AppInstanceSSEClients.Unlock()
+				return
+			}
+		}
+	}()
+
+	<-ctx.Done()
+
+	kube.AppInstanceSSEClients.Lock()
+	delete(kube.AppInstanceSSEClients.List, client)
+	kube.AppInstanceSSEClients.Unlock()
+
+	return nil
 }
 
 func (s *appService) TerminateAppInstance(ctx context.Context, req *models.TerminateAppInstanceRequest) app.Error {
@@ -750,14 +839,5 @@ func (s *appService) deleteApp(ctx context.Context, appEntity *entities.App) app
 		return app.ErrDatabaseOperationFailed
 	}
 
-	return nil
-}
-
-func mainContainer(appSlug string, pod *corev1.Pod) *corev1.Container {
-	for _, container := range pod.Spec.Containers {
-		if container.Name == appSlug {
-			return &container
-		}
-	}
 	return nil
 }

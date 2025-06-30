@@ -862,6 +862,96 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/apps/{appID}/running/info": {
+            "get": {
+                "description": "Get the running information app, including status and instances",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "Get App Running Info",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "appID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional container name to filter logs",
+                        "name": "containerName",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Whether to stream logs",
+                        "name": "follow",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "instanceName",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of log lines to return",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Whether to fetch logs from the previous instance of the container",
+                        "name": "previous",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Whether to include timestamps in logs",
+                        "name": "showTimestamps",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Fetch logs since this many seconds ago",
+                        "name": "sinceSeconds",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Fetch logs since this time (RFC3339 format)",
+                        "name": "sinceTime",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of log lines to return from the end",
+                        "name": "tailLines",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/apps/{appID}/volumes": {
             "get": {
                 "description": "List storage volumes for an app",
@@ -3197,9 +3287,6 @@ const docTemplate = `{
         "models.AppInstanceModel": {
             "type": "object",
             "properties": {
-                "appID": {
-                    "type": "string"
-                },
                 "containerCount": {
                     "type": "integer"
                 },
@@ -3950,9 +4037,6 @@ const docTemplate = `{
                 "instanceName"
             ],
             "properties": {
-                "appID": {
-                    "type": "string"
-                },
                 "instanceName": {
                     "type": "string"
                 }

@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { listAppInstances } from "@/api/app";
 import Badge from "@/components/ui/badge/Badge.vue";
-import { Button } from "@/components/ui/button";
 import Label from "@/components/ui/label/Label.vue";
 import {
     Table,
@@ -30,37 +28,50 @@ import {
     getSortedRowModel,
     useVueTable,
 } from "@tanstack/vue-table";
-import { RefreshCcw } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
-import { h, ref, watch } from "vue";
+import { h, ref, toRef, type PropType } from "vue";
 import { appInstanceStatusDisplay } from "../data/appInstanceStatus";
 import InstanceActions from "./InstanceActions.vue";
+
+const props = defineProps({
+    appID: {
+        type: String,
+        required: true,
+    },
+    instances: {
+        type: Array as PropType<appInstanceModel[]>,
+        required: false,
+    },
+});
+
+const appID = toRef(props, 'appID');
+const instances = toRef(props, 'instances');
 
 const userStore = useUserStore();
 const { activeAppRef } = storeToRefs(userStore);
 
-const listData = ref<appInstanceModel[]>([]);
+// const listData = ref<appInstanceModel[]>([]);
 const totalCount = ref(0);
 
-async function fetchListData(appID?: string) {
-    if (appID) {
-        const { instances } = (await listAppInstances(appID)) || {
-            edition: 0,
-            instances: [],
-        };
-        listData.value = instances;
-        totalCount.value = instances.length;
-    }
-}
+// async function fetchListData(appID?: string) {
+//     if (appID) {
+//         const { instances } = (await listAppInstances(appID)) || {
+//             edition: 0,
+//             instances: [],
+//         };
+//         listData.value = instances;
+//         totalCount.value = instances.length;
+//     }
+// }
 
-watch(activeAppRef, async (newAppRef) => {
-    if (newAppRef && newAppRef.appID) {
-        await fetchListData(newAppRef.appID);
-    } else {
-        listData.value = [];
-        totalCount.value = 0;
-    }
-}, { immediate: true });
+// watch(activeAppRef, async (newAppRef) => {
+//     if (newAppRef && newAppRef.appID) {
+//         await fetchListData(newAppRef.appID);
+//     } else {
+//         listData.value = [];
+//         totalCount.value = 0;
+//     }
+// }, { immediate: true });
 
 const centeredHeader = (text: string) => h("div", { class: "text-center" }, text);
 
@@ -134,8 +145,9 @@ const columns: ColumnDef<appInstanceModel>[] = [
             h("div", { class: "flex justify-end mr-2" },
                 h(InstanceActions, {
                     appInstance: row.original,
-                    onActionCompleted: () =>
-                        fetchListData(activeAppRef.value?.appID),
+                    appID: appID.value,
+                    // onActionCompleted: () =>
+                    //     fetchListData(activeAppRef.value?.appID),
                 })
             ),
     },
@@ -148,7 +160,7 @@ const rowSelection = ref({});
 const expanded = ref<ExpandedState>({});
 
 const table = useVueTable({
-    data: listData,
+    data: instances,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -188,10 +200,10 @@ const table = useVueTable({
         <div class="flex justify-between items-center py-4 w-full">
             <Label class="text-muted-foreground font-medium mx-2">应用实例</Label>
             <div class="flex gap-2">
-                <Button variant="secondary" size="sm" @click="fetchListData(activeAppRef?.appID)">
+                <!-- <Button variant="secondary" size="sm" @click="fetchListData(activeAppRef?.appID)">
                     <RefreshCcw class="w-4 h-4 mr-2" />
                     刷新
-                </Button>
+                </Button> -->
             </div>
         </div>
         <div class="rounded-md border">

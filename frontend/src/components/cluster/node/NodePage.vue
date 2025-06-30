@@ -13,9 +13,10 @@ import { Archive, Boxes, History, Monitor, PanelLeftClose, PanelLeftOpen, Settin
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
-import AppActions from "./AppActions.vue";
+import NodeActions from "./NodeActions.vue";
 import Breadcrumb from "./breadcrumb/AppManagerBreadcrumb.vue";
 // import { appStatusDisplay } from "./data/appStatus";
+import { useUserStore } from "@/stores/userStore";
 import InstanceList from "./instance/InstanceList.vue";
 import SettingDialog from "./setting/SettingDialog.vue";
 import Settings from "./setting/Settings.vue";
@@ -27,23 +28,24 @@ const appID = route.params.id as string;
 
 const userStore = useUserStore()
 const { activeAppRef } = storeToRefs(userStore);
+
 const currentTab = ref("overview");
 
 const app = ref<appModel | null>(null);
 
-async function fetchAppInfo(appID?: string) {
+async function fetchNodeInfo(appID?: string) {
     if (appID) {
         app.value = await getApp(appID)
     }
 }
 
 onMounted(async () => {
-    await fetchAppInfo(appID);
+    await fetchNodeInfo(appID);
 });
 
 watch(activeAppRef, async (newAppRef) => {
     if (newAppRef && newAppRef.appID !== app.value?.appID) {
-        await fetchAppInfo(newAppRef.appID);
+        await fetchNodeInfo(newAppRef.appID);
     }
 });
 
@@ -89,7 +91,7 @@ const appStatus = computed(() => {
                                 <Badge variant="secondary" class="font-mono text-muted-foreground">部署版本：{{ app?.edition
                                     ||
                                     '未知'
-                                }}</Badge>
+                                    }}</Badge>
                             </div>
 
                             <div style="margin-left:auto;">
@@ -104,7 +106,7 @@ const appStatus = computed(() => {
                                 {{ app?.description || "写一句话描述该应用吧。" }}
                             </p>
                             <div class="flex items-center gap-4 text-sm text-muted-foreground">
-                                <AppActions v-if="app" :app="app" @action-completed="fetchAppInfo(appID)" />
+                                <NodeActions v-if="app" :app="app" @action-completed="fetchNodeInfo(appID)" />
                             </div>
                         </div>
                     </div>

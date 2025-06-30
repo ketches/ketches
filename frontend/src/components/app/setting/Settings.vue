@@ -31,11 +31,11 @@ function onSwitchAppSetting(title: string) {
         </div>
         <Separator class="my-6" /> -->
         <div class="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
-            <aside>
+            <aside class="lg:w-1/7 me-6">
                 <SidebarNav :currentTab="currentTab" @switchAppSetting="onSwitchAppSetting" />
             </aside>
             <div class="w-full flex-1 overflow-auto">
-                <div class="space-y-6 px-2">
+                <div class="space-y-4 px-2">
                     <template v-for="(item, index) in appSettingItems" :key="index">
                         <component v-if="currentTab === item.tab" :is="item.comp" :app="app" />
                     </template>

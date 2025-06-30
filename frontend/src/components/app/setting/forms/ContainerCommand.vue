@@ -54,8 +54,9 @@ const onSubmit = handleSubmit(async (values) => {
         toast.warning('没有修改任何内容。')
         return
     }
-    await setAppCommand(app.value.appID, { containerCommand: values.containerCommand ?? '' })
-    app.value.containerCommand = values.containerCommand ?? ''
+    const resp = await setAppCommand(app.value.appID, { containerCommand: values.containerCommand ?? '' })
+    app.value.containerCommand = resp.containerCommand ?? ''
+    app.value.edition = resp.edition ?? ''
     toast.success('启动命令已更新。')
 })
 </script>

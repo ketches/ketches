@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import type { appModel } from "@/types/app";
+import type { appModel, appRunningInfoModel } from "@/types/app";
 import {
   BugPlay,
   Dot,
@@ -25,8 +25,16 @@ import { appStatusActions, type appStatusAction } from "./data/appStatus";
 const router = useRouter();
 
 const props = defineProps({
+  appEdition: {
+    type: String,
+    default: "",
+  },
   app: {
     type: Object as () => appModel,
+    required: false,
+  },
+  appRunningInfo: {
+    type: Object as () => appRunningInfoModel,
     required: true,
   },
   fromAppList: {
@@ -35,19 +43,24 @@ const props = defineProps({
   },
 });
 
+const appRunningInfo = toRef(props, 'appRunningInfo');
+const appEdition = toRef(props, 'appEdition');
 const app = toRef(props, 'app');
 
 const emit = defineEmits(["action-completed"]);
 
 const appActions = computed<appStatusAction[]>(() => {
-  return appStatusActions(app.value.status, app.value.edition, app.value.actualEdition)
+  if (props.fromAppList) {
+    return appStatusActions(app.value.status, appEdition.value || "", app.value.actualEdition) || [];
+  }
+  return appStatusActions(appRunningInfo.value.status, appEdition.value || "", appRunningInfo.value.actualEdition) || [];
 });
 
 const debugActionAvailable = computed(() => {
   if (props.fromAppList) {
     return false; // Debug action not available in app list
   }
-  if (["starting", "updating", "abnormal", "running"].includes(app.value.status)) {
+  if (["starting", "updating", "abnormal", "running"].includes(appRunningInfo.value.status)) {
     return true; // Debug action available in these statuses
   }
 });
@@ -56,9 +69,9 @@ const showDeleteAppDialog = ref(false);
 const showDebugAppDialog = ref(false);
 
 async function onDelete() {
-  await deleteApp(app.value.appID)
+  await deleteApp(appRunningInfo.value.appID)
   toast.success("应用已删除", {
-    description: `应用 ${app.value.slug} 已成功删除。`,
+    description: `应用 ${appRunningInfo.value.slug} 已成功删除。`,
   });
   emit("action-completed");
   if (!props.fromAppList) {
@@ -69,7 +82,7 @@ async function onDelete() {
 }
 
 async function onDebug() {
-  await appAction(app.value.appID, "debug")
+  await appAction(appRunningInfo.value.appID, "debug")
   toast.success("应用开始进入调试", {
     description: `等待应用实例重启完成后，您可以进入实例终端进行调试操作。`,
   });
@@ -78,14 +91,14 @@ async function onDebug() {
 }
 
 async function onAction(action: (appID: string) => Promise<appModel> | Promise<void>) {
-  await action(app.value.appID)
+  await action(appRunningInfo.value.appID)
   emit("action-completed");
 }
 </script>
 
 <template>
   <div class="flex items-center gap-2">
-    <TooltipProvider v-for="action in appActions.slice(0, 2)" :delay-duration="500" :disabled="!fromAppList">
+    <TooltipProvider v-for="action in appActions?.slice(0, 2)" :delay-duration="500" :disabled="!fromAppList">
       <Tooltip>
         <TooltipTrigger as-child>
           <Button :key="action.label" @click="onAction(action.action)" size="sm"
@@ -108,7 +121,7 @@ async function onAction(action: (appID: string) => Promise<appModel> | Promise<v
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem v-for="action in appActions.slice(2)" :key="action.label" @click="onAction(action.action)">
+        <DropdownMenuItem v-for="action in appActions?.slice(2)" :key="action.label" @click="onAction(action.action)">
           <component :is="action.icon" class="mr-2 h-4 w-4" />
           <Dot v-if="action.tip" class="text-blue-500" stroke-width="8" />
           <span>{{ action.label }}</span>

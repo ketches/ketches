@@ -70,13 +70,7 @@ export interface setAppResourceModel {
     limitMemory?: number
 }
 
-export interface appInstanceContainerModel {
-    containerName: string
-    status: string
-}
-
 export interface appInstanceModel {
-    appID: string
     instanceName: string
     status: string
     runningDuration: string
@@ -87,6 +81,22 @@ export interface appInstanceModel {
     nodeName: string
     nodeIP: string
     edition: string
+}
+
+export interface appInstanceContainerModel {
+    containerName: string
+    status: string
+}
+
+export interface appRunningInfoModel {
+    appID: string
+    slug: string
+    replicas: number
+    actualReplicas: number
+    edition: string
+    actualEdition: string
+    status: string
+    instances: appInstanceModel[]
 }
 
 export interface logsRequestModel {

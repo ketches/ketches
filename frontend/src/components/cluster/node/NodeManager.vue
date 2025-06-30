@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { fetchClusterRefs } from "@/api/cluster"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import {
+    SidebarInset,
     useSidebar
 } from "@/components/ui/sidebar"
 import type { clusterRefModel } from "@/types/cluster"
 import { PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
-import Button from '../ui/button/Button.vue'
-import Separator from '../ui/separator/Separator.vue'
-import SidebarInset from '../ui/sidebar/SidebarInset.vue'
 import ClusterManagerBreadcrumb from './breadcrumb/ClusterManagerBreadcrumb.vue'
 import ClusterList from './ClusterList.vue'
 import CreateCluster from "./CreateCluster.vue"

@@ -34,7 +34,7 @@ import (
 )
 
 var (
-	emailRgx = regexp.MustCompile(`^[a-zA-Z0-9._-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$`)
+	// emailRgx = regexp.MustCompile(`^[a-zA-Z0-9._-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$`)
 	phoneRgx = regexp.MustCompile(`^1[3-9]\d{9}$`)
 )
 
@@ -143,7 +143,7 @@ func (s *userService) SignUp(ctx context.Context, req *models.UserSignUpRequest)
 	if err := db.Instance().Create(user).Error; err != nil {
 		log.Printf("failed to sign up user: %v\n", err)
 		if db.IsErrDuplicatedKey(err) {
-			return nil, app.NewError(http.StatusConflict, fmt.Sprintf("username or email already exists"))
+			return nil, app.NewError(http.StatusConflict, "username or email already exists")
 		}
 		return nil, app.ErrDatabaseOperationFailed
 	}
@@ -190,7 +190,7 @@ func (s *userService) SignIn(ctx context.Context, req *models.UserSignInRequest)
 	}
 
 	// Generate access token
-	accessToken, expiresAt, err := app.GenerateToken(app.TokenClaims{
+	accessToken, _, err := app.GenerateToken(app.TokenClaims{
 		UserID:    user.ID,
 		Username:  user.Username,
 		Email:     user.Email,
@@ -550,7 +550,7 @@ func (s *userService) validateSignUpUser(req *models.UserSignUpRequest) app.Erro
 	}
 
 	if req.Username[0] == '-' || req.Username[len(req.Username)-1] == '-' {
-		return app.NewError(http.StatusBadRequest, fmt.Sprintf("user id cannot start or end with '-'"))
+		return app.NewError(http.StatusBadRequest, "user id cannot start or end with '-'")
 	}
 
 	var (

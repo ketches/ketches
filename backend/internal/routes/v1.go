@@ -122,6 +122,7 @@ func registerAppRoute(r *APIV1Route) {
 	projectMember.GET("", handlers.GetApp)
 	projectMember.GET("/ref", handlers.GetAppRef)
 	projectMember.GET("/instances", handlers.ListAppInstances)
+	projectMember.GET("/running/info", handlers.GetAppRunningInfo, middlewares.RequestIDMiddleware())
 	projectMember.GET("/envVars", handlers.ListAppEnvVars)
 	projectMember.GET("/volumes", handlers.ListAppVolumes)
 

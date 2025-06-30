@@ -316,6 +316,28 @@ func ListAppInstances(c *gin.Context) {
 	api.Success(c, instances)
 }
 
+// @Summary Get App Running Info
+// @Description Get the running information app, including status and instances
+// @Tags App
+// @Accept json
+// @Produce json
+// @Param appID path string true "App ID"
+// @Param request query models.ViewAppContainerLogsRequest false "Get app running info request"
+// @Success 200 {object} api.Response{}
+// @Router /api/v1/apps/{appID}/running/info [get]
+func GetAppRunningInfo(c *gin.Context) {
+	s := services.NewAppService()
+	err := s.GetAppRunningInfo(c, &models.GetAppRunningInfoRequest{
+		AppID:          c.Param("appID"),
+		Request:        c.Request,
+		ResponseWriter: c.Writer,
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+}
+
 // @Summary Terminate App Instance
 // @Description Terminate a specific instance of an app
 // @Tags App

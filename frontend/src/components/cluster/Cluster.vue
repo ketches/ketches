@@ -8,7 +8,7 @@ import {
 import { PanelLeftClose, PanelLeftOpen } from "lucide-vue-next";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-import ClusterBreadcrumb from "./ClusterBreadcrumb.vue";
+import ClusterBreadcrumb from "./breadcrumb/ClusterBreadcrumb.vue";
 
 const { toggleSidebar, open } = useSidebar();
 

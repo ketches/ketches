@@ -29,6 +29,10 @@ const emit = defineEmits([
 ]);
 
 const props = defineProps({
+    appID: {
+        type: String,
+        required: true,
+    },
     appInstance: {
         type: Object as () => appInstanceModel,
         required: true,
@@ -39,7 +43,7 @@ const showTerminateInstanceDialog = ref(false);
 
 async function onTerminate() {
     await terminateAppInstance(
-        props.appInstance.appID,
+        props.appID,
         props.appInstance.instanceName
     ).then(() => {
         toast.info("已发送终止请求", {
@@ -114,11 +118,11 @@ const openContainerTerminalDrawer = ref(false);
             </DropdownMenuContent>
         </DropdownMenu>
     </div>
-    <ContainerLogsDrawer v-model="openContainerLogsDrawer" :appID="props.appInstance.appID"
+    <ContainerLogsDrawer v-model="openContainerLogsDrawer" :appID="props.appID"
         :instanceName="props.appInstance.instanceName"
         :containers="(appInstance.containers || []).map(c => c.containerName)"
         :initContainers="(appInstance.initContainers || []).map(c => c.containerName)" :showOptions="true" />
-    <ContainerTerminalDrawer v-model="openContainerTerminalDrawer" :appID="props.appInstance.appID"
+    <ContainerTerminalDrawer v-model="openContainerTerminalDrawer" :appID="props.appID"
         :instanceName="props.appInstance.instanceName"
         :containers="(appInstance.containers || []).map(c => c.containerName)"
         :initContainers="(appInstance.initContainers || []).map(c => c.containerName)" />

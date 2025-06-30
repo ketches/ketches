@@ -1,8 +1,15 @@
 package kube
 
 import (
+	"context"
+	"fmt"
+	"log"
+	"sort"
 	"sync"
 
+	"github.com/ketches/ketches/internal/models"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -95,7 +102,9 @@ func (s *store) PersistentVolumeClaimLister() listerscorev1.PersistentVolumeClai
 // }
 
 func loadStore(clientset kubernetes.Interface) storeInterface {
-	kubeInformerFactory := informers.NewSharedInformerFactory(clientset, 0)
+	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, 0, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
+		options.LabelSelector = "ketches/owned=true"
+	}))
 
 	deployment := kubeInformerFactory.Apps().V1().Deployments()
 	deploymentInformer := deployment.Informer()
@@ -105,6 +114,11 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 	statefulSetInformer := statefulSet.Informer()
 	pod := kubeInformerFactory.Core().V1().Pods()
 	podInformer := pod.Informer()
+	podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    handlePodAdd,
+		UpdateFunc: handlePodUpdate,
+		DeleteFunc: handlePodDelete,
+	})
 	service := kubeInformerFactory.Core().V1().Services()
 	serviceInformer := service.Informer()
 	persistentVolumeClaim := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
@@ -174,4 +188,193 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 		// configMapLister:               configMapLister,
 		// secretLister:                  secretLister,
 	}
+}
+
+func handlePodAdd(obj interface{}) {
+	pod := obj.(*corev1.Pod)
+	processPod(pod)
+}
+
+func handlePodUpdate(_, newObj interface{}) {
+	pod := newObj.(*corev1.Pod)
+	processPod(pod)
+}
+
+func handlePodDelete(obj interface{}) {
+	var pod *corev1.Pod
+	switch t := obj.(type) {
+	case *corev1.Pod:
+		pod = t
+	case cache.DeletedFinalStateUnknown:
+		pod = t.Obj.(*corev1.Pod)
+	default:
+		return
+	}
+
+	slug := pod.Labels["ketches/app"]
+	if slug == "" {
+		return
+	}
+
+	key := cacheKey(pod.Namespace, slug)
+	deletePodCache(key, pod.Name)
+	broadcastPodList(key)
+}
+
+func processPod(pod *corev1.Pod) {
+	slug := pod.Labels["ketches/app"]
+	if slug == "" {
+		return
+	}
+
+	mainContainer := MainContainer(slug, pod)
+	containers := make([]*models.AppInstanceContainerModel, 0, len(pod.Spec.Containers))
+	initContainers := make([]*models.AppInstanceContainerModel, 0, len(pod.Spec.InitContainers))
+	for _, container := range pod.Status.ContainerStatuses {
+		containers = append(containers, &models.AppInstanceContainerModel{
+			ContainerName: container.Name,
+			Image:         container.Image,
+			Status:        GetContainerStatus(&container),
+		})
+	}
+	// let mainContainer always be the first in the list
+	sort.Slice(containers, func(i, j int) bool {
+		return containers[i].ContainerName == mainContainer.Name
+	})
+	for _, container := range pod.Status.InitContainerStatuses {
+		initContainers = append(initContainers, &models.AppInstanceContainerModel{
+			ContainerName: container.Name,
+			Image:         container.Image,
+			Status:        GetContainerStatus(&container),
+		})
+	}
+	instance := &models.AppInstanceModel{
+		InstanceName:   pod.Name,
+		Status:         GetPodStatus(pod),
+		CreatedAt:      pod.CreationTimestamp.Time,
+		InstanceIP:     pod.Status.PodIP,
+		Containers:     containers,
+		InitContainers: initContainers,
+		NodeName:       pod.Spec.NodeName,
+		NodeIP:         pod.Status.HostIP,
+		ContainerCount: len(pod.Status.ContainerStatuses),
+		RequestCPU:     mainContainer.Resources.Requests.Cpu().String(),
+		RequestMemory:  mainContainer.Resources.Requests.Memory().String(),
+		LimitCPU:       mainContainer.Resources.Limits.Cpu().String(),
+		LimitMemory:    mainContainer.Resources.Limits.Memory().String(),
+		Edition:        pod.Labels["ketches/edition"],
+	}
+
+	key := cacheKey(pod.Namespace, slug)
+	updatePodCache(key, instance)
+	broadcastPodList(key)
+}
+
+func broadcastPodList(key string) {
+	instances := GetPodList(key)
+	AppInstanceSSEClients.RLock()
+	defer AppInstanceSSEClients.RUnlock()
+
+	for client := range AppInstanceSSEClients.List {
+		if client.Key != key {
+			continue
+		}
+		select {
+		case client.MsgChan <- instances:
+		default:
+			log.Printf("AppInstanceSSEClient channel for key %s is full, skipping broadcast", key)
+		}
+	}
+}
+
+func GetPodList(key string) []*models.AppInstanceModel {
+	AppInstanceCache.RLock()
+	group, exists := AppInstanceCache.Data[key]
+	AppInstanceCache.RUnlock()
+
+	if !exists {
+		return nil
+	}
+
+	group.RLock()
+	defer group.RUnlock()
+
+	instances := make([]*models.AppInstanceModel, len(group.Instances))
+	copy(instances, group.Instances)
+	return instances
+}
+
+func cacheKey(namespace, slug string) string {
+	return fmt.Sprintf("%s/%s", namespace, slug)
+}
+
+var AppInstanceCache = struct {
+	sync.RWMutex
+	Data map[string]*AppInstanceGroup
+}{Data: map[string]*AppInstanceGroup{}}
+
+type AppInstanceGroup struct {
+	sync.RWMutex
+	Instances []*models.AppInstanceModel
+}
+
+type AppInstanceSSEClient struct {
+	Key string
+	Ctx context.Context
+	// Writer  http.ResponseWriter
+	// Flusher http.Flusher
+	MsgChan chan []*models.AppInstanceModel
+}
+
+var AppInstanceSSEClients = struct {
+	sync.RWMutex
+	List map[*AppInstanceSSEClient]struct{}
+}{List: map[*AppInstanceSSEClient]struct{}{}}
+
+func updatePodCache(key string, pod *models.AppInstanceModel) {
+	AppInstanceCache.Lock()
+	group, exists := AppInstanceCache.Data[key]
+	if !exists {
+		group = &AppInstanceGroup{}
+		AppInstanceCache.Data[key] = group
+	}
+	AppInstanceCache.Unlock()
+
+	group.Lock()
+	defer group.Unlock()
+
+	// 查找是否存在
+	found := false
+	for i, p := range group.Instances {
+		if p.InstanceName == pod.InstanceName {
+			group.Instances[i] = pod
+			found = true
+			break
+		}
+	}
+	if !found {
+		group.Instances = append(group.Instances, pod)
+	}
+}
+
+func deletePodCache(key, podName string) {
+	AppInstanceCache.RLock()
+	group, exists := AppInstanceCache.Data[key]
+	AppInstanceCache.RUnlock()
+
+	if !exists {
+		return
+	}
+
+	group.Lock()
+	defer group.Unlock()
+
+	pods := group.Instances
+	updated := []*models.AppInstanceModel{}
+	for _, p := range pods {
+		if p.InstanceName != podName {
+			updated = append(updated, p)
+		}
+	}
+	group.Instances = updated
 }

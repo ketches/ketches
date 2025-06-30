@@ -48,6 +48,11 @@ export async function listAppInstances(appID: string): Promise<{ edition: string
     return response.data as { edition: string, instances: appInstanceModel[] }
 }
 
+export function getAppRunningInfoUrl(appID: string) {
+    const apibaseURL = getApiBaseUrl();
+    return `${apibaseURL}/apps/${appID}/running/info`;
+}
+
 export async function terminateAppInstance(appID: string, instanceName: string): Promise<void> {
     await api.delete(`/apps/${appID}/instances`, { data: { instanceName } })
     return
@@ -121,10 +126,9 @@ export async function deleteAppEnvVars(appID: string, envVarIDs: string[]): Prom
     return
 }
 
-
 export async function listAppVolumes(appID: string): Promise<appVolumeModel[]> {
     const response = await api.get(`/apps/${appID}/volumes`)
-    return response.data as appVolumeModel[]
+    return response.data as appVolumeModel[] || []
 }
 
 

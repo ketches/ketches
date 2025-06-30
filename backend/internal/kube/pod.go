@@ -42,6 +42,45 @@ func DeletePod(ctx context.Context, clusterID, namespace, podName string) app.Er
 	return nil
 }
 
+type PodStatus string
+
+const (
+	PodStatusRunning     PodStatus = "running"
+	PodStatusSucceeded   PodStatus = "succeeded"
+	PodStatusPending     PodStatus = "pending"
+	PodStatusTerminating PodStatus = "terminating"
+	PodStatusAbnormal    PodStatus = "abnormal"
+	PodStatusDebugging   PodStatus = "debugging"
+	PodStatusUnknown     PodStatus = "unknown"
+)
+
+func GetPodStatus(pod *corev1.Pod) string {
+	if pod == nil {
+		return string(PodStatusUnknown)
+	}
+
+	if pod.Labels["ketches/debugging"] == "true" {
+		return string(PodStatusDebugging)
+	}
+
+	if IsAbnormalPod(pod) {
+		return string(PodStatusAbnormal)
+	}
+
+	switch pod.Status.Phase {
+	case corev1.PodRunning:
+		return string(PodStatusRunning)
+	case corev1.PodSucceeded:
+		return string(PodStatusSucceeded)
+	case corev1.PodPending:
+		return string(PodStatusPending)
+	case corev1.PodFailed:
+		return string(PodStatusAbnormal)
+	default:
+		return string(PodStatusPending)
+	}
+}
+
 func GetContainerStatus(cs *corev1.ContainerStatus) string {
 	if cs == nil {
 		return "Unknown"
@@ -59,7 +98,7 @@ func GetContainerStatus(cs *corev1.ContainerStatus) string {
 	return "Unknown"
 }
 
-func IsPodAbnormal(pod *corev1.Pod) bool {
+func IsAbnormalPod(pod *corev1.Pod) bool {
 	if pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodUnknown {
 		return true
 	}
@@ -105,4 +144,13 @@ func IsPodAbnormal(pod *corev1.Pod) bool {
 	}
 
 	return false
+}
+
+func MainContainer(appSlug string, pod *corev1.Pod) *corev1.Container {
+	for _, container := range pod.Spec.Containers {
+		if container.Name == appSlug {
+			return &container
+		}
+	}
+	return nil
 }

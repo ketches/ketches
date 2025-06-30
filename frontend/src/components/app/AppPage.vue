@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getApp } from "@/api/app";
+import { getApp, getAppRunningInfoUrl } from "@/api/app";
 import Badge from "@/components/ui/badge/Badge.vue";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -9,11 +9,12 @@ import {
 } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserStore } from "@/stores/userStore";
-import type { appModel } from "@/types/app";
+import type { appModel, appRunningInfoModel } from "@/types/app";
 import { Archive, Boxes, History, Monitor, PanelLeftClose, PanelLeftOpen, Settings2, SquarePen } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { toast } from "vue-sonner";
 import AppActions from "./AppActions.vue";
 import Breadcrumb from "./breadcrumb/AppManagerBreadcrumb.vue";
 import { appStatusDisplay } from "./data/appStatus";
@@ -39,13 +40,49 @@ async function fetchAppInfo(appID?: string) {
   }
 }
 
+const appRunningInfo = ref<appRunningInfoModel | null>(null);
+
+let es: EventSource | null = null;
+function fetchAppRunningInfo(appID?: string) {
+  if (appID) {
+    appRunningInfo.value = null; // Clear previous logs
+
+    const appRunningInfoUrl = getAppRunningInfoUrl(appID);
+
+    if (es) {
+      es.close();
+      es = null;
+    }
+
+    es = new EventSource(appRunningInfoUrl, { withCredentials: true });
+    es.onmessage = (event) => {
+      if (!event.data) {
+        return;
+      }
+      appRunningInfo.value = JSON.parse(event.data);
+    };
+    es.onerror = (error) => {
+      if (es) {
+        es.close();
+        es = null;
+      }
+      toast.dismiss();
+      toast.error("应用组件运行信息获取失败", {
+        description: "请检查网络连接或稍后重试。",
+      });
+    };
+  }
+}
+
 onMounted(async () => {
   await fetchAppInfo(appID);
+  fetchAppRunningInfo(appID);
 });
 
 watch(activeAppRef, async (newAppRef) => {
   if (newAppRef && newAppRef.appID !== app.value?.appID) {
     await fetchAppInfo(newAppRef.appID);
+    fetchAppRunningInfo(newAppRef.appID);
   }
 });
 
@@ -57,7 +94,7 @@ const settingDialogOpen = ref(false);
 const openUpdateAppInfoDialog = ref(false);
 
 const appStatus = computed(() => {
-  return appStatusDisplay(app.value?.status || 'unknown')
+  return appStatusDisplay(appRunningInfo.value?.status || 'unknown');
 });
 </script>
 
@@ -88,9 +125,14 @@ const appStatus = computed(() => {
                   @click="openUpdateAppInfoDialog = true" />
                 <Separator orientation="vertical" class="h-4" />
                 <Badge variant="secondary" class="font-mono text-muted-foreground">
-                  应用类型：{{ app?.workloadType || '未知' }}</Badge>
+                  类型：{{ app?.workloadType || '未知' }}</Badge>
                 <Separator orientation="vertical" class="h-4" />
-                <Badge variant="secondary" class="font-mono text-muted-foreground">部署版本：{{ app?.edition ||
+                <Badge
+                  v-if="appRunningInfo?.edition && appRunningInfo?.actualEdition && appRunningInfo.edition != appRunningInfo.actualEdition"
+                  variant="secondary" class="font-mono text-blue-500">版本：{{ appRunningInfo.actualEdition
+                  }} -> {{ appRunningInfo?.edition }}</Badge>
+                <Badge v-else variant="secondary" class="font-mono text-muted-foreground">版本：{{ appRunningInfo?.edition
+                  ||
                   '未知'
                   }}</Badge>
               </div>
@@ -107,7 +149,8 @@ const appStatus = computed(() => {
                 {{ app?.description || "写一句话描述该应用吧。" }}
               </p>
               <div class="flex items-center gap-4 text-sm text-muted-foreground">
-                <AppActions v-if="app" :app="app" @action-completed="fetchAppInfo(appID)" />
+                <AppActions v-if="appRunningInfo" :appRunningInfo="appRunningInfo" :appEdition="app?.edition"
+                  @action-completed="fetchAppInfo(appID)" />
               </div>
             </div>
           </div>
@@ -138,14 +181,14 @@ const appStatus = computed(() => {
               设置
             </TabsTrigger>
           </TabsList>
-          <Button variant="default" class=" flex ml-4" @click="settingDialogOpen = true">
+          <Button variant="ghost" size="sm" class=" flex ml-4" @click="settingDialogOpen = true">
             <Settings2 class="w-4 h-4 mr-2" />
             设置
           </Button>
         </div>
         <Separator class="h-4" />
         <TabsContent value="overview">
-          <InstanceList />
+          <InstanceList :appID="appID" :instances="appRunningInfo?.instances || []" />
         </TabsContent>
         <TabsContent value="monitor">
           <div class="mt-4 text-muted-foreground">监控功能开发中...</div>

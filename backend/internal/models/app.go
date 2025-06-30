@@ -127,9 +127,9 @@ type AppInstanceContainerModel struct {
 }
 
 type AppInstanceModel struct {
-	AppID           string                       `json:"appID"`
 	InstanceName    string                       `json:"instanceName"`
 	Status          string                       `json:"status"`
+	CreatedAt       time.Time                    `json:"-"`                         // ISO 8601 format
 	RunningDuration string                       `json:"runningDuration,omitempty"` // e.g., "5m", "2h30m"
 	InstanceIP      string                       `json:"instanceIP"`
 	Containers      []*AppInstanceContainerModel `json:"containers"`
@@ -149,12 +149,31 @@ type ListAppInstancesRequest struct {
 }
 
 type ListAppInstancesResponse struct {
+	AppID     string              `json:"appID"`
+	Slug      string              `json:"slug"`
 	Edition   string              `json:"revision,omitempty"`
 	Instances []*AppInstanceModel `json:"instances"`
 }
 
+type GetAppRunningInfoRequest struct {
+	AppID          string              `json:"-" uri:"appID"`
+	Request        *http.Request       `json:"-" form:"-"`
+	ResponseWriter http.ResponseWriter `json:"-" form:"-"`
+}
+
+type GetAppRunningInfoResponse struct {
+	AppID          string              `json:"appID"`
+	Slug           string              `json:"slug"`
+	Replicas       int32               `json:"replicas"`       // Desired number of replicas
+	ActualReplicas int32               `json:"actualReplicas"` // Number of currently running replicas
+	Edition        string              `json:"edition"`
+	ActualEdition  string              `json:"actualEdition"` // Edition of the currently running app
+	Status         string              `json:"status"`        // e.g., "running", "stopped", "starting", "stopping"
+	Instances      []*AppInstanceModel `json:"instances"`
+}
+
 type TerminateAppInstanceRequest struct {
-	AppID        string `uri:"-" uri:"appID"`
+	AppID        string `json:"-" uri:"appID"`
 	InstanceName string `json:"instanceName" binding:"required"`
 }
 

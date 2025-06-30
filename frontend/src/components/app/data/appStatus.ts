@@ -1,6 +1,6 @@
 import { appAction } from "@/api/app";
 import type { appModel } from "@/types/app";
-import { ArrowUpDown, Bug, BugOff, BugPlay, CircleQuestionMark, CloudCog, CloudUpload, Package, PackageCheck, PackageMinus, Play, Power, Rocket } from "lucide-vue-next";
+import { ArrowUpDown, Bug, BugOff, CircleAlert, CircleQuestionMark, CloudCog, CloudUpload, Package, PackageCheck, PackageMinus, Play, Power, Rocket } from "lucide-vue-next";
 import type { Component } from "vue";
 import { toast } from "vue-sonner";
 
@@ -39,7 +39,7 @@ export function appStatusDisplay(status: string): appStatusDisplay {
         case appStatusEnum.UPDATING:
             return { label: "更新中", status: appStatusEnum.UPDATING, fgColor: "text-amber-600", icon: Package };
         case appStatusEnum.ABNORMAL:
-            return { label: "异常", status: appStatusEnum.ABNORMAL, fgColor: "text-red-600", icon: BugPlay };
+            return { label: "异常", status: appStatusEnum.ABNORMAL, fgColor: "text-red-600", icon: CircleAlert };
         case appStatusEnum.COMPLETED:
             return { label: "已完成", status: appStatusEnum.COMPLETED, fgColor: "text-green-600", icon: PackageCheck };
         case appStatusEnum.DEBUGGING:
@@ -70,15 +70,15 @@ export function appStatusActions(appStatus: string, desiredEdition?: string, act
         case appStatusEnum.STARTING:
         case appStatusEnum.UPDATING:
         case appStatusEnum.ABNORMAL: {
-            actions.push(
-                { label: "关闭", icon: Power, action: onStop },
-                { label: "重新部署", icon: CloudUpload, action: onRedeploy },
-            );
             let updateAction: appStatusAction = { label: "更新", icon: ArrowUpDown, action: onUpdate };
             if (desiredEdition && actualEdition && desiredEdition !== actualEdition) {
                 updateAction.tip = true
             }
             actions.push(updateAction);
+            actions.push(
+                { label: "关闭", icon: Power, action: onStop },
+                { label: "重新部署", icon: CloudUpload, action: onRedeploy },
+            );
             break;
         }
         case appStatusEnum.RUNNING: {
