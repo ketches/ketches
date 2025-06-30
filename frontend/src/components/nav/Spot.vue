@@ -89,7 +89,7 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
               No results
             </ComboboxEmpty>
             <ScrollArea class="w-full h-full flex-1 min-h-0 flex flex-col">
-              <ComboboxGroup v-if="userResources.apps.length > 0" class="px-4">
+              <ComboboxGroup v-if="userResources.apps.length > 0" class="px-4 pb-2">
                 <ComboboxLabel
                   class="inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
                   <Box class="h-4 w-4" />
@@ -105,7 +105,7 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
                 </ComboboxItem>
                 <!-- </RouterLink> -->
               </ComboboxGroup>
-              <ComboboxGroup v-if="userResources.envs.length > 0" class="px-4">
+              <ComboboxGroup v-if="userResources.envs.length > 0" class="px-4 pb-2">
                 <ComboboxLabel
                   class="inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
                   <Grid2X2 class="h-4 w-4" />
@@ -121,7 +121,7 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
                 </ComboboxItem>
                 <!-- </RouterLink> -->
               </ComboboxGroup>
-              <ComboboxGroup v-if="userResources.projects.length > 0" class="px-4">
+              <ComboboxGroup v-if="userResources.projects.length > 0" class="px-4 pb-2">
                 <ComboboxLabel
                   class="inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
                   <GalleryHorizontalEnd class="h-4 w-4" />
