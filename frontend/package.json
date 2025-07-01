@@ -16,6 +16,7 @@
     "axios": "^1.9.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "js-cookie": "^3.0.5",
     "lucide-vue-next": "0.523.0",
     "pinia": "^3.0.3",
     "reka-ui": "^2.3.1",
@@ -38,6 +39,7 @@
     "@types/node": "^22.15.29",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vue/tsconfig": "^0.7.0",
+    "depcheck": "^1.4.7",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
     "vue-tsc": "^2.2.8"

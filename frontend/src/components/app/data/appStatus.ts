@@ -1,6 +1,6 @@
 import { appAction } from "@/api/app";
 import type { appModel } from "@/types/app";
-import { ArrowUpDown, Bug, BugOff, CircleAlert, CircleQuestionMark, CloudCog, CloudUpload, Package, PackageCheck, PackageMinus, Play, Power, Rocket } from "lucide-vue-next";
+import { ArrowBigUpDash, Bug, BugOff, CircleAlert, CircleQuestionMark, CloudCog, Package, PackageCheck, PackageMinus, Play, Power, RefreshCcwDot, Replace, Rocket } from "lucide-vue-next";
 import type { Component } from "vue";
 import { toast } from "vue-sonner";
 
@@ -70,33 +70,33 @@ export function appStatusActions(appStatus: string, desiredEdition?: string, act
         case appStatusEnum.STARTING:
         case appStatusEnum.UPDATING:
         case appStatusEnum.ABNORMAL: {
-            let updateAction: appStatusAction = { label: "更新", icon: ArrowUpDown, action: onUpdate };
+            let updateAction: appStatusAction = { label: "更新", icon: ArrowBigUpDash, action: onUpdate };
             if (desiredEdition && actualEdition && desiredEdition !== actualEdition) {
                 updateAction.tip = true
             }
             actions.push(updateAction);
             actions.push(
                 { label: "关闭", icon: Power, action: onStop },
-                { label: "重新部署", icon: CloudUpload, action: onRedeploy },
+                { label: "重新部署", icon: Replace, action: onRedeploy },
             );
             break;
         }
         case appStatusEnum.RUNNING: {
-            let updateAction: appStatusAction = { label: "更新", icon: ArrowUpDown, action: onUpdate };
+            let updateAction: appStatusAction = { label: "更新", icon: ArrowBigUpDash, action: onUpdate };
             if (desiredEdition && actualEdition && desiredEdition !== actualEdition) {
                 updateAction.tip = true
             }
             actions.push(updateAction);
             actions.push(
                 { label: "关闭", icon: Power, action: onStop },
-                { label: "重新部署", icon: CloudUpload, action: onRedeploy },
+                { label: "重新部署", icon: RefreshCcwDot, action: onRedeploy },
             );
             break;
         }
         case appStatusEnum.COMPLETED:
             actions.push(
                 { label: "关闭", icon: Power, action: onStop },
-                { label: "重新部署", icon: CloudUpload, action: onRedeploy }
+                { label: "重新部署", icon: Replace, action: onRedeploy }
             );
             break;
         case appStatusEnum.DEBUGGING:

@@ -35,7 +35,7 @@ const props = defineProps({
   },
   appRunningInfo: {
     type: Object as () => appRunningInfoModel,
-    required: true,
+    required: false,
   },
   fromAppList: {
     type: Boolean,

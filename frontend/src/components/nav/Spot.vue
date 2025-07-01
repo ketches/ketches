@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useUserStore } from "@/stores/userStore.ts";
 import { useMagicKeys, whenever } from "@vueuse/core";
-import { Box, GalleryHorizontalEnd, Grid2X2, Search } from "lucide-vue-next";
+import { GalleryHorizontalEnd, Grid2X2, Package, Search } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import {
   ComboboxContent,
@@ -92,7 +92,7 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
               <ComboboxGroup v-if="userResources.apps.length > 0" class="px-4 pb-2">
                 <ComboboxLabel
                   class="inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
-                  <Box class="h-4 w-4" />
+                  <Package class="h-4 w-4" />
                   应用
                 </ComboboxLabel>
                 <!-- <RouterLink v-for="item in userResources.apps" :key="item.appID"

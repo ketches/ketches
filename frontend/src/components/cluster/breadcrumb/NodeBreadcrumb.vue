@@ -11,7 +11,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useUserStore } from '@/stores/userStore'
-import { Box, Check, ChevronDown } from 'lucide-vue-next'
+import { Check, ChevronDown, Package } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
@@ -42,7 +42,7 @@ async function onSwitchApp(appID: string) {
         <DropdownMenu>
             <DropdownMenuTrigger class="flex items-center gap-1">
                 <Button variant="ghost" size="sm">
-                    <Box />
+                    <Package />
                     <span>{{ activeAppRef?.displayName }}</span>
                     <ChevronDown v-if="appHover" />
                 </Button>

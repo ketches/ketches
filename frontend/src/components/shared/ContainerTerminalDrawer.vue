@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { getExecAppInstanceTerminalUrl } from "@/api/app";
 import { Select, SelectItem } from "@/components/ui/select";
-import { Box, Plug, SquareDashed, Undo2 } from 'lucide-vue-next';
+import { Container, Plug, SquareDashed, Undo2 } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { Terminal } from "xterm";
@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
                                     <SelectGroup>
                                         <SelectLabel v-if="initContainers.length > 0">应用容器</SelectLabel>
                                         <SelectItem v-for="container in containers" :key="container" :value="container">
-                                            <Box />
+                                            <Container />
                                             {{ container }}
                                         </SelectItem>
                                     </SelectGroup>

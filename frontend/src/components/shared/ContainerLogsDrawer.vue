@@ -2,7 +2,7 @@
 import { getViewAppInstanceLogsUrl } from '@/api/app';
 import { Select, SelectItem } from "@/components/ui/select";
 import type { logsRequestModel } from "@/types/app";
-import { Box, SquareDashed, Undo2 } from 'lucide-vue-next';
+import { Container, SquareDashed, Undo2 } from 'lucide-vue-next';
 import { computed, nextTick, ref, toRefs, watch } from "vue";
 import { toast } from 'vue-sonner';
 import Button from '../ui/button/Button.vue';
@@ -188,7 +188,7 @@ watch(open, (isOpen) => {
                                     <SelectGroup>
                                         <SelectLabel v-if="initContainers.length > 0">应用容器</SelectLabel>
                                         <SelectItem v-for="container in containers" :key="container" :value="container">
-                                            <Box />
+                                            <Container />
                                             {{ container }}
                                         </SelectItem>
                                     </SelectGroup>

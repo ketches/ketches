@@ -12,7 +12,7 @@ export const commandMenuItems = [
             { id: 'app-08', name: 'Docker' },
             { id: 'app-09', name: 'Kubernetes' },
         ],
-        icon: 'lucide:file-plus',
+        icon: 'lucide:package',
     },
     {
         group: '环境',
@@ -21,7 +21,7 @@ export const commandMenuItems = [
             { id: 'env-02', name: '测试环境' },
             { id: 'env-03', name: '生产环境' },
         ],
-        icon: 'lucide:settings',
+        icon: 'lucide:grid-2x2',
     },
     {
         group: '项目',

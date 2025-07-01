@@ -1,4 +1,4 @@
-import { Box, Grid2X2, Telescope, UsersRound } from "lucide-vue-next";
+import { Grid2X2, Package, Telescope, UsersRound } from "lucide-vue-next";
 
 export const userNavContents = [
     {
@@ -14,7 +14,7 @@ export const userNavContents = [
     },
     {
         title: "应用",
-        icon: Box,
+        icon: Package,
         route: { name: "app" },
     },
     {

@@ -15,7 +15,6 @@ const props = withDefaults(defineProps<SidebarProps>(), {
   collapsible: "icon",
 });
 
-
 </script>
 
 <template>

@@ -223,13 +223,13 @@ const subPath = ref(false);
                             </TooltipProvider>
                         </FormLabel>
                         <FormControl>
-                            <Select v-bind="componentField" :default-value="'persistentVolumeClaim'">
+                            <Select v-bind="componentField" :default-value="'pvc'">
                                 <SelectTrigger class="w-full">
                                     <SelectValue placeholder="选择存储卷类型" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectItem value="persistentVolumeClaim">
+                                        <SelectItem value="pvc">
                                             <HardDrive />
                                             持久化存储(默认)
                                         </SelectItem>
