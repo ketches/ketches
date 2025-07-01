@@ -126,6 +126,7 @@ func registerAppRoute(r *APIV1Route) {
 	projectMember.GET("/envVars", handlers.ListAppEnvVars)
 	projectMember.GET("/volumes", handlers.ListAppVolumes)
 	projectMember.GET("/gateways", handlers.NewAppGatewayHandler().ListAppGateways)
+	projectMember.GET("/probes", handlers.NewAppProbeHandler().ListAppProbes)
 
 	// Routes that require developer or owner role (read-write)
 	projectDeveloper := apps.Group("", middlewares.ProjectDeveloperOrAbove())
@@ -151,6 +152,11 @@ func registerAppRoute(r *APIV1Route) {
 	projectDeveloper.POST("/gateways", appGatewayHandler.CreateAppGateway)
 	projectDeveloper.PUT("/gateways/:gatewayID", appGatewayHandler.UpdateAppGateway)
 	projectDeveloper.DELETE("/gateways", appGatewayHandler.DeleteAppGateways)
+
+	appProbeHandler := handlers.NewAppProbeHandler()
+	projectDeveloper.POST("/probes", appProbeHandler.CreateAppProbe)
+	projectDeveloper.PUT("/probes/:probeID", appProbeHandler.UpdateAppProbe)
+	projectDeveloper.DELETE("/probes/:probeID", appProbeHandler.DeleteAppProbe)
 }
 
 func registerAppEnvVarRoute(r *APIV1Route) {

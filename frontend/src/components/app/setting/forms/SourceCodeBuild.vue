@@ -103,7 +103,8 @@ const onSubmit = handleSubmit(async (values) => {
             </FormField>
         </div>
 
-        <Label class="font-normal text-amber-500 bg-amber-50 dark:bg-amber-950 p-2 rounded-lg mb-4">
+        <Label
+            class="font-normal text-amber-600 dark:text-amber-500 bg-amber-100 dark:bg-amber-950 p-2 rounded-lg mb-4 px-4">
             <Info class="inline mr-1 h4 w-4" />
             私有 Git 仓库需要提供以下信息：
         </Label>

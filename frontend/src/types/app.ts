@@ -184,3 +184,81 @@ export interface updateAppGatewayModel {
     gatewayPort: number
     exposed: boolean
 }
+
+// export interface healthCheckModel {
+//     initialDelaySeconds: number
+//     periodSeconds: number
+//     timeoutSeconds: number
+//     successThreshold: number
+//     failureThreshold: number
+//     httpGet?: {
+//         path: string
+//         port: number
+//         host?: string
+//         scheme?: 'HTTP' | 'HTTPS'
+//         headers?: Record<string, string>
+//     }
+//     tcpSocket?: {
+//         port: number
+//         host?: string
+//     }
+//     exec?: {
+//         command: string[]
+//     }
+// }
+
+export interface appProbeModel {
+    probeID: string
+    type: 'liveness' | 'readiness' | 'startup'
+    probeMode: 'httpGet' | 'tcpSocket' | 'exec'
+    httpGetPort?: number
+    httpGetPath?: string
+    tcpSocketPort?: number
+    execCommand?: string
+    initialDelaySeconds: number
+    periodSeconds: number
+    timeoutSeconds: number
+    successThreshold: number
+    failureThreshold: number
+    enabled: boolean
+    appID: string
+}
+
+export interface createAppProbeModel {
+    type: 'liveness' | 'readiness' | 'startup'
+    probeMode: 'httpGet' | 'tcpSocket' | 'exec'
+    httpGetPort?: number
+    httpGetPath?: string
+    tcpSocketPort?: number
+    execCommand?: string
+    initialDelaySeconds: number
+    periodSeconds: number
+    timeoutSeconds: number
+    successThreshold: number
+    failureThreshold: number
+    enabled: boolean
+}
+
+export interface updateAppProbeModel {
+    probeID: string
+    type: 'liveness' | 'readiness' | 'startup'
+    probeMode: 'httpGet' | 'tcpSocket' | 'exec'
+    httpGetPort?: number
+    httpGetPath?: string
+    tcpSocketPort?: number
+    execCommand?: string
+    initialDelaySeconds: number
+    periodSeconds: number
+    timeoutSeconds: number
+    successThreshold: number
+    failureThreshold: number
+    enabled: boolean
+}
+
+// export interface appHealthCheckModel {
+//     healthCheckID: string
+//     livenessProbe?: healthCheckModel
+//     readinessProbe?: healthCheckModel
+//     startupProbe?: healthCheckModel
+//     appID: string
+// }

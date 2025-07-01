@@ -1,5 +1,5 @@
 import api from '@/api/axios'
-import type { appEnvVarModel, appGatewayModel, appInstanceModel, appModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppGatewayModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, setAppResourceModel, updateAppEnvVarModel, updateAppGatewayModel, updateAppImageModel, updateAppInfoModel, updateAppVolumeModel } from '@/types/app'
+import type { appEnvVarModel, appGatewayModel, appInstanceModel, appModel, appProbeModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppGatewayModel, createAppProbeModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, setAppResourceModel, updateAppEnvVarModel, updateAppGatewayModel, updateAppImageModel, updateAppInfoModel, updateAppProbeModel, updateAppVolumeModel } from '@/types/app'
 import { getApiBaseUrl } from '@/utils/env'
 import { toast } from 'vue-sonner'
 
@@ -155,17 +155,17 @@ export async function deleteAppVolumes(appID: string, volumeIDs: string[]): Prom
     return
 }
 
-export async function listAppGateways(appID: string) {
+export async function listAppGateways(appID: string): Promise<appGatewayModel[]> {
     const response = await api.get(`/apps/${appID}/gateways`);
     return response.data as appGatewayModel[];
 }
 
-export async function createAppGateway(appID: string, model: createAppGatewayModel) {
+export async function createAppGateway(appID: string, model: createAppGatewayModel): Promise<appGatewayModel> {
     const response = await api.post(`/apps/${appID}/gateways`, model);
     return response.data as appGatewayModel;
 }
 
-export async function updateAppGateway(appID: string, gatewayID: string, model: updateAppGatewayModel) {
+export async function updateAppGateway(appID: string, gatewayID: string, model: updateAppGatewayModel): Promise<appGatewayModel> {
     const response = await api.put(`/apps/${appID}/gateways/${gatewayID}`, model);
     return response.data as appGatewayModel;
 }
@@ -177,6 +177,27 @@ export async function deleteAppGateway(appID: string, gatewayIDs: string[]) {
         }
     });
 }
+
+export async function listAppProbes(appID: string): Promise<appProbeModel[]> {
+    const response = await api.get(`/apps/${appID}/probes`);
+    return response.data as appProbeModel[];
+}
+
+export async function createAppProbe(appID: string, model: createAppProbeModel): Promise<appProbeModel> {
+    const response = await api.post(`/apps/${appID}/probes`, model);
+    return response.data as appProbeModel;
+}
+
+export async function updateAppProbe(appID: string, probeID: string, model: updateAppProbeModel): Promise<appProbeModel> {
+    const response = await api.put(`/apps/${appID}/probes/${probeID}`, model);
+    return response.data as appProbeModel;
+}
+
+export async function deleteAppProbe(appID: string, probeID: string): Promise<void> {
+    await api.delete(`/apps/${appID}/probes/${probeID}`);
+    return;
+}
+
 
 export async function exportApps(appIDs: string[]) {
     toast.info("Unimplemented!")

@@ -80,6 +80,9 @@ func (s *appVolumeService) CreateAppVolume(ctx context.Context, req *models.Crea
 	}
 	if err := db.Instance().Create(entity).Error; err != nil {
 		log.Println("failed to create app volume:", err)
+		if db.IsErrDuplicatedKey(err) {
+			return nil, app.NewError(http.StatusBadRequest, "volume slug or mount path already exists")
+		}
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
@@ -119,6 +122,9 @@ func (s *appVolumeService) UpdateAppVolume(ctx context.Context, req *models.Upda
 		},
 	}).Error; err != nil {
 		log.Printf("failed to update app volume %s: %v", req.VolumeID, err)
+		if db.IsErrDuplicatedKey(err) {
+			return nil, app.NewError(http.StatusBadRequest, "volume mount path already exists")
+		}
 		return nil, app.ErrDatabaseOperationFailed
 	}
 

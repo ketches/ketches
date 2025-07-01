@@ -3,14 +3,21 @@ import { getApp, getAppRunningInfoUrl } from "@/api/app";
 import Badge from "@/components/ui/badge/Badge.vue";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  useSidebar
-} from "@/components/ui/sidebar";
+import { SidebarInset, useSidebar } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserStore } from "@/stores/userStore";
 import type { appModel, appRunningInfoModel } from "@/types/app";
-import { Archive, Boxes, Dot, History, Monitor, PanelLeftClose, PanelLeftOpen, Settings2, SquarePen } from "lucide-vue-next";
+import {
+  Archive,
+  Boxes,
+  Dot,
+  History,
+  Monitor,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings2,
+  SquarePen,
+} from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -36,7 +43,7 @@ const app = ref<appModel | null>(null);
 
 async function fetchAppInfo(appID?: string) {
   if (appID) {
-    app.value = await getApp(appID)
+    app.value = await getApp(appID);
   }
 }
 
@@ -94,16 +101,21 @@ const settingDialogOpen = ref(false);
 const openUpdateAppInfoDialog = ref(false);
 
 const appStatus = computed(() => {
-  return appStatusDisplay(appRunningInfo.value?.status || 'unknown');
+  return appStatusDisplay(appRunningInfo.value?.status || "unknown");
 });
 </script>
 
 <template>
   <SidebarInset>
     <header
-      class="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+      class="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12"
+    >
       <div class="flex items-center gap-2 px-4">
-        <Button variant="ghost" @click="toggleSidebar" class="h-8 w-8 text-muted-foreground hover:text-primary">
+        <Button
+          variant="ghost"
+          @click="toggleSidebar"
+          class="h-8 w-8 text-muted-foreground hover:text-primary"
+        >
           <PanelLeftOpen v-if="!open" />
           <PanelLeftClose v-else />
         </Button>
@@ -114,31 +126,52 @@ const appStatus = computed(() => {
     <div class="flex flex-col gap-4 mx-4 border-t pt-4">
       <div class="flex items-center justify-between">
         <div class="flex justify-between space-x-4 w-full items-center">
-          <component :is="appStatus.icon" :class="`w-16 h-16 p-1 rounded-lg ${appStatus.class}`" stroke-width="1.2" />
+          <component
+            :is="appStatus.icon"
+            :class="`w-16 h-16 p-1 rounded-lg ${appStatus.class}`"
+            stroke-width="1.2"
+          />
           <div class="space-y-2 flex-1 gap-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <h1 class="text-xl font-semibold">
                   {{ app?.displayName || "应用名称" }}
                 </h1>
-                <SquarePen class="w-4 h-4 text-muted-foreground hover:text-primary"
-                  @click="openUpdateAppInfoDialog = true" />
-                <Separator orientation="vertical" class="h-4" />
-                <Badge variant="secondary" class="font-mono text-muted-foreground">
-                  类型：{{ app?.workloadType || '未知' }}</Badge>
+                <SquarePen
+                  class="w-4 h-4 text-muted-foreground hover:text-primary"
+                  @click="openUpdateAppInfoDialog = true"
+                />
                 <Separator orientation="vertical" class="h-4" />
                 <Badge
-                  v-if="appRunningInfo?.edition && appRunningInfo?.actualEdition && appRunningInfo.edition != appRunningInfo.actualEdition"
-                  variant="secondary" class="font-mono text-blue-500 hover:text-blue-500 bg-blue-50 dark:bg-blue-950">
-                  <Dot class="text-blue-500" stroke-width="8" />版本(有更新）：{{ appRunningInfo.actualEdition }}
+                  variant="secondary"
+                  class="font-mono text-muted-foreground"
+                >
+                  类型：{{ app?.workloadType || "未知" }}</Badge
+                >
+                <Separator orientation="vertical" class="h-4" />
+                <Badge
+                  v-if="
+                    app?.edition &&
+                    appRunningInfo?.actualEdition &&
+                    app.edition != appRunningInfo.actualEdition
+                  "
+                  variant="secondary"
+                  class="font-mono text-blue-500 hover:text-blue-500 bg-blue-50 dark:bg-blue-950"
+                >
+                  <Dot
+                    class="text-blue-500"
+                    stroke-width="8"
+                  />版本(有更新）：{{ appRunningInfo.actualEdition }}
                 </Badge>
-                <Badge v-else variant="secondary" class="font-mono text-muted-foreground">版本：{{ appRunningInfo?.edition
-                  ||
-                  '未知'
-                  }}</Badge>
+                <Badge
+                  v-else
+                  variant="secondary"
+                  class="font-mono text-muted-foreground"
+                  >版本：{{ appRunningInfo?.edition || "未知" }}</Badge
+                >
               </div>
 
-              <div style="margin-left:auto;">
+              <div style="margin-left: auto">
                 <Button variant="secondary" size="sm" :class="appStatus.class">
                   <component :is="appStatus.icon" class="w-5 h-5 mr-1" />
                   <span>{{ appStatus.label }}</span>
@@ -149,9 +182,15 @@ const appStatus = computed(() => {
               <p class="text-sm text-muted-foreground">
                 {{ app?.description || "写一句话描述该应用吧。" }}
               </p>
-              <div class="flex items-center gap-4 text-sm text-muted-foreground">
-                <AppActions v-if="appRunningInfo" :appRunningInfo="appRunningInfo" :appEdition="app?.edition"
-                  @action-completed="fetchAppInfo(appID)" />
+              <div
+                class="flex items-center gap-4 text-sm text-muted-foreground"
+              >
+                <AppActions
+                  v-if="appRunningInfo"
+                  :appRunningInfo="appRunningInfo"
+                  :appEdition="app?.edition"
+                  @action-completed="fetchAppInfo(appID)"
+                />
               </div>
             </div>
           </div>
@@ -182,14 +221,22 @@ const appStatus = computed(() => {
               设置
             </TabsTrigger>
           </TabsList>
-          <Button variant="ghost" size="sm" class=" flex ml-4" @click="settingDialogOpen = true">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="flex ml-4"
+            @click="settingDialogOpen = true"
+          >
             <Settings2 class="w-4 h-4 mr-2" />
             设置
           </Button>
         </div>
         <Separator class="h-4" />
         <TabsContent value="overview">
-          <InstanceList :appID="appID" :instances="appRunningInfo?.instances || []" />
+          <InstanceList
+            :appID="appID"
+            :instances="appRunningInfo?.instances || []"
+          />
         </TabsContent>
         <TabsContent value="monitor">
           <div class="mt-4 text-muted-foreground">监控功能开发中...</div>
@@ -206,6 +253,10 @@ const appStatus = computed(() => {
       </Tabs>
     </div>
     <SettingDialog v-model="settingDialogOpen" />
-    <UpdateApp v-model="openUpdateAppInfoDialog" :app="app" @app-updated="fetchAppInfo(app.appID)" />
+    <UpdateApp
+      v-model="openUpdateAppInfoDialog"
+      :app="app"
+      @app-updated="fetchAppInfo(app.appID)"
+    />
   </SidebarInset>
 </template>

@@ -34,29 +34,48 @@ type AppEnvVar struct {
 	AuditBase
 }
 
-type AppGateway struct {
+type AppVolume struct {
 	UUIDBase
-	AppID       string `json:"appID" gorm:"not null;index;size:36"`
-	Port        int32  `json:"port" gorm:"not null"`
-	Protocol    string `json:"protocol" gorm:"not null;size:16"`
-	Domain      string `json:"domain" gorm:"not null;size:255"`
-	Path        string `json:"path" gorm:"not null;size:255"`
-	CertID      string `json:"certID" gorm:"size:36"`
-	GatewayPort int32  `json:"gatewayPort" gorm:"not null"`
-	Exposed     bool   `json:"exposed" gorm:"not null;default:false"`
+	AppID        string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_slug,idx_appID_mountPath_subPath;size:36"` // App UUID this volume belongs to
+	Slug         string `json:"slug" gorm:"not null;uniqueIndex:idx_appID_slug;size:64"`                              // Volume slug
+	MountPath    string `json:"mountPath" gorm:"not null;uniqueIndex:idx_appID_mountPath_subPath;size:255"`           // Mount path in container
+	SubPath      string `json:"subPath" gorm:"uniqueIndex:idx_appID_mountPath_subPath;size:255"`                      // Optional subPath for the volume
+	VolumeMode   string `json:"volumeMode" gorm:"not null;size:16;default:Filesystem"`                                // Volume mode (e.g. Filesystem, Block)
+	Capacity     int    `json:"capacity" gorm:"not null"`                                                             // Capacity, in MiB
+	VolumeType   string `json:"volumeType" gorm:"not null;size:32"`                                                   // Type (e.g. emptyDir, pvc, hostPath)
+	AccessModes  string `json:"accessModes" gorm:"not null;size:255"`                                                 // Access modes, semicolon separated (e.g. "ReadWriteOnce;ReadOnlyMany")
+	StorageClass string `json:"storageClass" gorm:"size:64"`                                                          // StorageClass for PVC
 	AuditBase
 }
 
-type AppVolume struct {
+type AppGateway struct {
 	UUIDBase
-	AppID        string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_slug;size:36"` // App UUID this volume belongs to
-	Slug         string `json:"slug" gorm:"not null;uniqueIndex:idx_appID_slug;size:64"`  // Volume slug
-	MountPath    string `json:"mountPath" gorm:"not null;size:255"`                       // Mount path in container
-	SubPath      string `json:"subPath" gorm:"size:255"`                                  // Optional subPath for the volume
-	VolumeMode   string `json:"volumeMode" gorm:"not null;size:16;default:Filesystem"`    // Volume mode (e.g. Filesystem, Block)
-	Capacity     int    `json:"capacity" gorm:"not null"`                                 // Capacity, in MiB
-	VolumeType   string `json:"volumeType" gorm:"not null;size:32"`                       // Type (e.g. emptyDir, pvc, hostPath)
-	AccessModes  string `json:"accessModes" gorm:"not null;size:255"`                     // Access modes, semicolon separated (e.g. "ReadWriteOnce;ReadOnlyMany")
-	StorageClass string `json:"storageClass" gorm:"size:64"`                              // StorageClass for PVC
+	AppID       string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_domain_path;index;size:36"`
+	Port        int32  `json:"port" gorm:"not null"`
+	Protocol    string `json:"protocol" gorm:"not null;size:16"`
+	Domain      string `json:"domain" gorm:"not null;uniqueIndex:idx_appID_domain_path;size:255"`
+	Path        string `json:"path" gorm:"not null;uniqueIndex:idx_appID_domain_path;size:255"`
+	CertID      string `json:"certID" gorm:"size:36"`
+	GatewayPort int32  `json:"gatewayPort" gorm:"not null;uniqueIndex:idx_envID_gatewayPort;default:80"` // Port on the gateway to expose this app
+	Exposed     bool   `json:"exposed" gorm:"not null;default:false"`
+	EnvID       string `json:"envID" gorm:"not null;uniqueIndex:idx_envID_gatewayPort;index;size:36"` // Env UUID this gateway belongs to
+	AuditBase
+}
+
+type AppProbe struct {
+	UUIDBase
+	AppID               string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_type;index;size:36"`
+	Type                string `json:"type" gorm:"not null;uniqueIndex:idx_appID_type;size:20"` // liveness, readiness, startup
+	Enabled             bool   `json:"enabled" gorm:"not null;default:true"`
+	InitialDelaySeconds int64  `json:"initialDelaySeconds" gorm:"not null;default:30"`
+	PeriodSeconds       int64  `json:"periodSeconds" gorm:"not null;default:10"`
+	TimeoutSeconds      int64  `json:"timeoutSeconds" gorm:"not null;default:5"`
+	SuccessThreshold    int64  `json:"successThreshold" gorm:"not null;default:1"`
+	FailureThreshold    int64  `json:"failureThreshold" gorm:"not null;default:3"`
+	ProbeMode           string `json:"probeMode" gorm:"not null;size:16"` // httpGet, tcpSocket, exec
+	HTTPGetPath         string `json:"httpGetPath" gorm:"size:255"`
+	HTTPGetPort         int    `json:"httpGetPort" gorm:"default:0"`
+	TCPSocketPort       int    `json:"tcpSocketPort" gorm:"default:0"`
+	ExecCommand         string `json:"execCommand" gorm:"type:text"`
 	AuditBase
 }

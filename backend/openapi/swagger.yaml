@@ -203,6 +203,43 @@ definitions:
         - $ref: '#/definitions/app.WorkloadType'
         description: e.g., "deployment", "statefulset", "daemonset"
     type: object
+  models.AppProbeModel:
+    properties:
+      appID:
+        type: string
+      enabled:
+        type: boolean
+      exec:
+        type: string
+      failureThreshold:
+        type: integer
+      httpGetPath:
+        type: string
+      httpGetPort:
+        type: integer
+      initialDelaySeconds:
+        type: integer
+      periodSeconds:
+        type: integer
+      probeID:
+        type: string
+      probeMode:
+        enum:
+        - httpGet
+        - tcpSocket
+        - exec
+        type: string
+      successThreshold:
+        type: integer
+      tcpSocketPort:
+        type: integer
+      timeoutSeconds:
+        type: integer
+      type:
+        type: string
+    required:
+    - probeMode
+    type: object
   models.AppRef:
     properties:
       appID:
@@ -292,6 +329,44 @@ definitions:
     required:
     - port
     - protocol
+    type: object
+  models.CreateAppProbeRequest:
+    properties:
+      enabled:
+        type: boolean
+      exec:
+        type: string
+      failureThreshold:
+        type: integer
+      httpGetPath:
+        type: string
+      httpGetPort:
+        type: integer
+      initialDelaySeconds:
+        type: integer
+      periodSeconds:
+        type: integer
+      probeMode:
+        enum:
+        - httpGet
+        - tcpSocket
+        - exec
+        type: string
+      successThreshold:
+        type: integer
+      tcpSocketPort:
+        type: integer
+      timeoutSeconds:
+        type: integer
+      type:
+        enum:
+        - liveness
+        - readiness
+        - startup
+        type: string
+    required:
+    - probeMode
+    - type
     type: object
   models.CreateAppRequest:
     properties:
@@ -680,6 +755,37 @@ definitions:
         type: string
     required:
     - containerImage
+    type: object
+  models.UpdateAppProbeRequest:
+    properties:
+      enabled:
+        type: boolean
+      exec:
+        type: string
+      failureThreshold:
+        type: integer
+      httpGetPath:
+        type: string
+      httpGetPort:
+        type: integer
+      initialDelaySeconds:
+        type: integer
+      periodSeconds:
+        type: integer
+      probeMode:
+        enum:
+        - httpGet
+        - tcpSocket
+        - exec
+        type: string
+      successThreshold:
+        type: integer
+      tcpSocketPort:
+        type: integer
+      timeoutSeconds:
+        type: integer
+    required:
+    - probeMode
     type: object
   models.UpdateAppRequest:
     properties:
@@ -1367,6 +1473,127 @@ paths:
       summary: Terminate App Instance
       tags:
       - App
+  /api/v1/apps/{appID}/probes:
+    get:
+      consumes:
+      - application/json
+      description: List probes for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.AppProbeModel'
+                  type: array
+              type: object
+      summary: List App Probes
+      tags:
+      - AppProbe
+    post:
+      consumes:
+      - application/json
+      description: Create a new probe for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Probe
+        in: body
+        name: probe
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAppProbeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppProbeModel'
+              type: object
+      summary: Create App Probe
+      tags:
+      - AppProbe
+  /api/v1/apps/{appID}/probes/{probeID}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a probe for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Probe ID
+        in: path
+        name: probeID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Delete App Probe
+      tags:
+      - AppProbe
+    put:
+      consumes:
+      - application/json
+      description: Update a probe for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Probe ID
+        in: path
+        name: probeID
+        required: true
+        type: string
+      - description: Probe
+        in: body
+        name: probe
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateAppProbeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppProbeModel'
+              type: object
+      summary: Update App Probe
+      tags:
+      - AppProbe
   /api/v1/apps/{appID}/ref:
     get:
       consumes:

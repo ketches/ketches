@@ -112,7 +112,6 @@ const onSubmit = handleSubmit(async (values) => {
     emit('gateway-updated');
     open.value = false;
 })
-
 </script>
 
 <template>

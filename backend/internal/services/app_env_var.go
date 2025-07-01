@@ -62,6 +62,9 @@ func (s *appEnvVarService) CreateAppEnvVar(ctx context.Context, req *models.Crea
 	}
 	if err := db.Instance().Create(entity).Error; err != nil {
 		log.Printf("failed to create app env var for app %s: %v", req.AppID, err)
+		if db.IsErrDuplicatedKey(err) {
+			return nil, app.NewError(http.StatusBadRequest, "env var key already exists")
+		}
 		return nil, app.ErrDatabaseOperationFailed
 	}
 

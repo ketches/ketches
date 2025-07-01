@@ -954,6 +954,201 @@
                 }
             }
         },
+        "/api/v1/apps/{appID}/probes": {
+            "get": {
+                "description": "List probes for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppProbe"
+                ],
+                "summary": "List App Probes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.AppProbeModel"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new probe for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppProbe"
+                ],
+                "summary": "Create App Probe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Probe",
+                        "name": "probe",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateAppProbeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppProbeModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/apps/{appID}/probes/{probeID}": {
+            "put": {
+                "description": "Update a probe for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppProbe"
+                ],
+                "summary": "Update App Probe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Probe ID",
+                        "name": "probeID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Probe",
+                        "name": "probe",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateAppProbeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppProbeModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a probe for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppProbe"
+                ],
+                "summary": "Delete App Probe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Probe ID",
+                        "name": "probeID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/apps/{appID}/ref": {
             "get": {
                 "description": "Get app ref by app ID",
@@ -3665,6 +3860,61 @@
                 }
             }
         },
+        "models.AppProbeModel": {
+            "type": "object",
+            "required": [
+                "probeMode"
+            ],
+            "properties": {
+                "appID": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "exec": {
+                    "type": "string"
+                },
+                "failureThreshold": {
+                    "type": "integer"
+                },
+                "httpGetPath": {
+                    "type": "string"
+                },
+                "httpGetPort": {
+                    "type": "integer"
+                },
+                "initialDelaySeconds": {
+                    "type": "integer"
+                },
+                "periodSeconds": {
+                    "type": "integer"
+                },
+                "probeID": {
+                    "type": "string"
+                },
+                "probeMode": {
+                    "type": "string",
+                    "enum": [
+                        "httpGet",
+                        "tcpSocket",
+                        "exec"
+                    ]
+                },
+                "successThreshold": {
+                    "type": "integer"
+                },
+                "tcpSocketPort": {
+                    "type": "integer"
+                },
+                "timeoutSeconds": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "models.AppRef": {
             "type": "object",
             "properties": {
@@ -3795,6 +4045,61 @@
                         "https",
                         "tcp",
                         "udp"
+                    ]
+                }
+            }
+        },
+        "models.CreateAppProbeRequest": {
+            "type": "object",
+            "required": [
+                "probeMode",
+                "type"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "exec": {
+                    "type": "string"
+                },
+                "failureThreshold": {
+                    "type": "integer"
+                },
+                "httpGetPath": {
+                    "type": "string"
+                },
+                "httpGetPort": {
+                    "type": "integer"
+                },
+                "initialDelaySeconds": {
+                    "type": "integer"
+                },
+                "periodSeconds": {
+                    "type": "integer"
+                },
+                "probeMode": {
+                    "type": "string",
+                    "enum": [
+                        "httpGet",
+                        "tcpSocket",
+                        "exec"
+                    ]
+                },
+                "successThreshold": {
+                    "type": "integer"
+                },
+                "tcpSocketPort": {
+                    "type": "integer"
+                },
+                "timeoutSeconds": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "liveness",
+                        "readiness",
+                        "startup"
                     ]
                 }
             }
@@ -4372,6 +4677,52 @@
                 },
                 "registryUsername": {
                     "type": "string"
+                }
+            }
+        },
+        "models.UpdateAppProbeRequest": {
+            "type": "object",
+            "required": [
+                "probeMode"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "exec": {
+                    "type": "string"
+                },
+                "failureThreshold": {
+                    "type": "integer"
+                },
+                "httpGetPath": {
+                    "type": "string"
+                },
+                "httpGetPort": {
+                    "type": "integer"
+                },
+                "initialDelaySeconds": {
+                    "type": "integer"
+                },
+                "periodSeconds": {
+                    "type": "integer"
+                },
+                "probeMode": {
+                    "type": "string",
+                    "enum": [
+                        "httpGet",
+                        "tcpSocket",
+                        "exec"
+                    ]
+                },
+                "successThreshold": {
+                    "type": "integer"
+                },
+                "tcpSocketPort": {
+                    "type": "integer"
+                },
+                "timeoutSeconds": {
+                    "type": "integer"
                 }
             }
         },
