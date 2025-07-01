@@ -101,10 +101,17 @@ async function onAction(action: (appID: string) => Promise<appModel> | Promise<v
     <TooltipProvider v-for="action in appActions?.slice(0, 2)" :delay-duration="500" :disabled="!fromAppList">
       <Tooltip>
         <TooltipTrigger as-child>
-          <Button :key="action.label" @click="onAction(action.action)" size="sm"
-            :variant="fromAppList ? 'ghost' : 'outline'" class="data-[state=open]:bg-muted font-normal">
-            <component :is="action.icon" :class="`${action.tip ? 'text-blue-500' : ''} h-4 w-4`" />
-            <Dot v-if="action.tip" class="text-blue-500" stroke-width="8" />
+
+          <Button v-if="action.tip" @click="onAction(action.action)" size="sm"
+            :variant="fromAppList ? 'secondary' : 'outline'"
+            class="text-blue-500 border-blue-200 dark:border-blue-800 hover:text-blue-500 hover:bg-blue-100 bg-blue-50 dark:bg-blue-950 dark:hover:bg-blue-900 data-[state=open]:bg-muted font-normal">
+            <component :is="action.icon" class="text-blue-500 h-4 w-4" />
+            <span v-if="!fromAppList">{{ action.label }}</span>
+          </Button>
+          <Button v-else @click="onAction(action.action)" size="sm" :variant="fromAppList ? 'secondary' : 'outline'"
+            class="data-[state=open]:bg-muted font-normal">
+            <component :is="action.icon" class="h-4 w-4" />
+
             <span v-if="!fromAppList">{{ action.label }}</span>
           </Button>
         </TooltipTrigger>
@@ -115,7 +122,7 @@ async function onAction(action: (appID: string) => Promise<appModel> | Promise<v
     </TooltipProvider>
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <Button :variant="fromAppList ? 'ghost' : 'outline'" class="flex h-8 w-8 p-0 data-[state=open]:bg-muted">
+        <Button :variant="fromAppList ? 'secondary' : 'outline'" class="flex h-8 w-8 p-0 data-[state=open]:bg-muted">
           <MoreVertical class="h-4 w-4" />
           <span class="sr-only">Open menu</span>
         </Button>

@@ -103,7 +103,7 @@ const columns: ColumnDef<appInstanceModel>[] = [
                     Badge,
                     {
                         variant: "secondary",
-                        class: `capitalize flex justify-center text-center ${instanceStatusDisplay.fgColor}`,
+                        class: `capitalize flex justify-center text-center ${instanceStatusDisplay.class}`,
                     },
                     () => [h(instanceStatusDisplay.icon, {}, instanceStatusDisplay.label), h("span", {}, instanceStatusDisplay.label)],
                 ),
@@ -236,7 +236,7 @@ const table = useVueTable({
 
                     <TableRow v-else>
                         <TableCell :colspan="columns.length" class="h-24 text-center">
-                            No results.
+                            <span class="text-muted-foreground">No results.</span>
                         </TableCell>
                     </TableRow>
                 </TableBody>

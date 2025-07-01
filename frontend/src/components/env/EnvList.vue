@@ -249,7 +249,7 @@ const openEnvForm = ref(false)
 
                     <TableRow v-else>
                         <TableCell :colspan="columns.length" class="h-24 text-center">
-                            No results.
+                            <span class="text-muted-foreground">No results.</span>
                         </TableCell>
                     </TableRow>
                 </TableBody>

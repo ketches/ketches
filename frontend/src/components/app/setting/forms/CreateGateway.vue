@@ -80,21 +80,10 @@ const formSchema = toTypedSchema(z.object({
         .optional(),
 }));
 
-const { isFieldDirty, handleSubmit, resetForm, values, setFieldValue } = useForm({
+const { isFieldDirty, handleSubmit, resetForm, values: formValues } = useForm({
     validationSchema: formSchema,
 })
 
-/**
- * 保证开启网关访问时 protocol 字段有值，且切换协议不会丢失
- */
-watch(
-    [() => values.exposed, () => values.protocol],
-    ([exposed, protocol]) => {
-        if (exposed && (!protocol || protocol === "")) {
-            setFieldValue('protocol', 'http');
-        }
-    }
-);
 
 watch(open, (isOpen) => {
     if (isOpen) {
@@ -169,7 +158,7 @@ const onSubmit = handleSubmit(async (values) => {
                                 </TooltipProvider>
                             </FormLabel>
                             <FormControl>
-                                <Select :model-value="value" @update:model-value="handleChange">
+                                <Select :model-value="value ?? 'http'" @update:model-value="handleChange">
                                     <SelectTrigger class="w-full">
                                         <SelectValue placeholder="选择协议" />
                                     </SelectTrigger>
@@ -201,8 +190,8 @@ const onSubmit = handleSubmit(async (values) => {
                         </div>
                     </FormItem>
                 </FormField>
-                <div v-if="values.exposed">
-                    <div v-if="values.protocol === 'http' || values.protocol === 'https'"
+                <div v-show="formValues.exposed" class="space-y-6">
+                    <div v-show="formValues.protocol === 'http' || formValues.protocol === 'https'"
                         class="grid grid-cols-3 gap-4">
                         <FormField v-slot="{ componentField }" name="domain">
                             <FormItem class="col-span-2">
@@ -223,56 +212,58 @@ const onSubmit = handleSubmit(async (values) => {
                             </FormItem>
                         </FormField>
                     </div>
-                    <FormField v-if="values.protocol === 'https'" v-slot="{ componentField }" name="protocol"
-                        :validate-on-blur="!isFieldDirty">
-                        <FormItem class="pt-6">
-                            <FormLabel>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger>证书</TooltipTrigger>
-                                        <TooltipContent side="right">
-                                            <p>选择证书用于 HTTPS 连接</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </FormLabel>
-                            <FormControl>
-                                <Select v-bind="componentField">
-                                    <SelectTrigger class="w-full">
-                                        <SelectValue placeholder="选择证书" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            <SelectItem value="a">证书 A</SelectItem>
-                                            <SelectItem value="b">证书 B</SelectItem>
-                                            <SelectItem value="c">证书 C</SelectItem>
-                                            <SelectItem value="d">证书 D</SelectItem>
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    </FormField>
-                    <FormField v-if="values.protocol === 'tcp' || values.protocol === 'udp'" v-slot="{ componentField }"
-                        name="gatewayPort">
-                        <FormItem>
-                            <FormLabel>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger>网关端口</TooltipTrigger>
-                                        <TooltipContent side="right">
-                                            <p>对外网关端口，允许用户通过该端口访问应用。</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </FormLabel>
-                            <FormControl>
-                                <Input v-bind="componentField" type="number" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    </FormField>
+                    <div v-show="formValues.protocol === 'https'">
+                        <FormField v-slot="{ componentField }" name="protocol" :validate-on-blur="!isFieldDirty">
+                            <FormItem>
+                                <FormLabel>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>证书</TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                <p>选择证书用于 HTTPS 连接</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </FormLabel>
+                                <FormControl>
+                                    <Select v-bind="componentField">
+                                        <SelectTrigger class="w-full">
+                                            <SelectValue placeholder="选择证书" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectItem value="a">证书 A</SelectItem>
+                                                <SelectItem value="b">证书 B</SelectItem>
+                                                <SelectItem value="c">证书 C</SelectItem>
+                                                <SelectItem value="d">证书 D</SelectItem>
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        </FormField>
+                    </div>
+                    <div v-show="formValues.protocol === 'tcp' || formValues.protocol === 'udp'">
+                        <FormField v-slot="{ componentField }" name="gatewayPort">
+                            <FormItem>
+                                <FormLabel>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>网关端口</TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                <p>对外网关端口，允许用户通过该端口访问应用。</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </FormLabel>
+                                <FormControl>
+                                    <Input v-bind="componentField" type="number" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        </FormField>
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button type="submit" class="w-full">

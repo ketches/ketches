@@ -10,7 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserStore } from "@/stores/userStore";
 import type { appModel, appRunningInfoModel } from "@/types/app";
-import { Archive, Boxes, History, Monitor, PanelLeftClose, PanelLeftOpen, Settings2, SquarePen } from "lucide-vue-next";
+import { Archive, Boxes, Dot, History, Monitor, PanelLeftClose, PanelLeftOpen, Settings2, SquarePen } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -114,7 +114,7 @@ const appStatus = computed(() => {
     <div class="flex flex-col gap-4 mx-4 border-t pt-4">
       <div class="flex items-center justify-between">
         <div class="flex justify-between space-x-4 w-full items-center">
-          <component :is="appStatus.icon" :class="`w-16 h-16 ${appStatus.fgColor} rounded-sm`" stroke-width="1.2" />
+          <component :is="appStatus.icon" :class="`w-16 h-16 p-1 rounded-lg ${appStatus.class}`" stroke-width="1.2" />
           <div class="space-y-2 flex-1 gap-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
@@ -129,8 +129,9 @@ const appStatus = computed(() => {
                 <Separator orientation="vertical" class="h-4" />
                 <Badge
                   v-if="appRunningInfo?.edition && appRunningInfo?.actualEdition && appRunningInfo.edition != appRunningInfo.actualEdition"
-                  variant="secondary" class="font-mono text-blue-500">版本：{{ appRunningInfo.actualEdition
-                  }} -> {{ appRunningInfo?.edition }}</Badge>
+                  variant="secondary" class="font-mono text-blue-500 hover:text-blue-500 bg-blue-50 dark:bg-blue-950">
+                  <Dot class="text-blue-500" stroke-width="8" />版本(有更新）：{{ appRunningInfo.actualEdition }}
+                </Badge>
                 <Badge v-else variant="secondary" class="font-mono text-muted-foreground">版本：{{ appRunningInfo?.edition
                   ||
                   '未知'
@@ -138,7 +139,7 @@ const appStatus = computed(() => {
               </div>
 
               <div style="margin-left:auto;">
-                <Button variant="secondary" size="sm" :class="`${appStatus.fgColor}`">
+                <Button variant="secondary" size="sm" :class="appStatus.class">
                   <component :is="appStatus.icon" class="w-5 h-5 mr-1" />
                   <span>{{ appStatus.label }}</span>
                 </Button>

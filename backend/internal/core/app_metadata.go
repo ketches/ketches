@@ -16,7 +16,8 @@ import (
 )
 
 type AppMetadata struct {
-	Slug             string                   `json:"slug"`
+	AppID            string                   `json:"appId"`
+	AppSlug          string                   `json:"appSlug"`
 	DisplayName      string                   `json:"displayName"`
 	Description      string                   `json:"description"`
 	WorkloadType     string                   `json:"workloadType"`
@@ -33,7 +34,11 @@ type AppMetadata struct {
 	Volumes          []AppMetadataVolume      `json:"volumes,omitempty"`
 	Ports            []AppMetadataPort        `json:"ports,omitempty"`
 	HealthChecks     []AppMetadataHealthCheck `json:"healthChecks,omitempty"`
-	Edition          string                   `json:"edition,omitempty"` // Deployment version or edition
+	Edition          string                   `json:"edition,omitempty"`
+	EnvID            string                   `json:"envId,omitempty"`
+	EnvSlug          string                   `json:"envSlug,omitempty"`
+	ProjectID        string                   `json:"projectId,omitempty"`
+	ProjectSlug      string                   `json:"projectSlug,omitempty"`
 	ClusterNamespace string                   `json:"clusterNamespace"`
 }
 
@@ -116,8 +121,13 @@ func (a *AppMetadata) GetApplyManifests() ([]client.Object, app.Error) {
 
 func (a *AppMetadata) standardSelectorLabels() map[string]string {
 	return map[string]string{
-		"ketches/owned": "true",
-		"ketches/app":   a.Slug,
+		"ketches/owned":     "true",
+		"ketches/app":       a.AppSlug,
+		"ketches/env":       a.EnvSlug,
+		"ketches/project":   a.ProjectSlug,
+		"ketches/appID":     a.AppID,
+		"ketches/envID":     a.EnvID,
+		"ketches/projectID": a.ProjectID,
 	}
 }
 
@@ -178,7 +188,7 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 
 	result = append(result, &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      a.Slug,
+			Name:      a.AppSlug,
 			Namespace: a.ClusterNamespace,
 			Labels:    labels,
 		},
@@ -194,7 +204,7 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:            a.Slug,
+							Name:            a.AppSlug,
 							Image:           a.ContainerImage,
 							ImagePullPolicy: corev1.PullAlways,
 							Command:         command,
@@ -272,13 +282,13 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 
 	result = append(result, &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      a.Slug,
+			Name:      a.AppSlug,
 			Namespace: a.ClusterNamespace,
 			Labels:    labels,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			VolumeClaimTemplates: volumeClaims,
-			ServiceName:          a.Slug,
+			ServiceName:          a.AppSlug,
 			Replicas:             &a.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
@@ -290,7 +300,7 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:            a.Slug,
+							Name:            a.AppSlug,
 							Image:           a.ContainerImage,
 							ImagePullPolicy: corev1.PullAlways,
 							Command:         command,
@@ -372,7 +382,7 @@ func (a *AppMetadata) serviceManifest() *corev1.Service {
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      a.Slug,
+			Name:      a.AppSlug,
 			Namespace: a.ClusterNamespace,
 			Labels:    labels,
 		},

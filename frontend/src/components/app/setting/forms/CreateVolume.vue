@@ -90,7 +90,7 @@ const formSchema = toTypedSchema(
     })
 );
 
-const { isFieldDirty, handleSubmit, resetForm, values } = useForm({
+const { isFieldDirty, handleSubmit, resetForm, values: formValues, setFieldValue } = useForm({
     validationSchema: formSchema,
 });
 
@@ -123,6 +123,7 @@ const onSubmit = handleSubmit(async (values) => {
         volumeMode: values.volumeMode,
     });
     toast.success("存储卷创建成功！");
+    emit("volume-created");
     open.value = false;
 });
 </script>
@@ -179,7 +180,7 @@ const onSubmit = handleSubmit(async (values) => {
                                                         value as keyof typeof volumeTypeRefs
                                                     ]?.icon" class="h-4 w-4 mr-2" />
                                                     <span>{{ volumeTypeRefs[value as keyof typeof volumeTypeRefs]?.label
-                                                    }}</span>
+                                                        }}</span>
                                                 </div>
                                                 <span v-else>选择存储卷类型</span>
                                             </SelectValue>
@@ -194,10 +195,10 @@ const onSubmit = handleSubmit(async (values) => {
                                                     <div class="flex flex-col">
                                                         <SelectItemText>{{
                                                             volumeType.label
-                                                        }}</SelectItemText>
+                                                            }}</SelectItemText>
                                                         <span class="text-xs text-muted-foreground">{{
                                                             volumeType.desc
-                                                        }}</span>
+                                                            }}</span>
                                                     </div>
                                                 </div>
                                             </SelectItem>
@@ -247,154 +248,155 @@ const onSubmit = handleSubmit(async (values) => {
                         </FormItem>
                     </FormField>
                 </div>
-                <FormField v-if="values.volumeType === 'pvc'" v-slot="{ componentField }" name="storageClass"
-                    :validate-on-blur="!isFieldDirty">
-                    <FormItem>
-                        <FormLabel>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>存储类</TooltipTrigger>
-                                    <TooltipContent side="right">
-                                        <p>指定存储卷的存储类，默认为空。</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </FormLabel>
-                        <FormControl>
-                            <Input v-bind="componentField" class="w-full" placeholder="例如：standard" />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                </FormField>
-                <FormField v-if="values.volumeType === 'pvc'" v-slot="{ componentField }" name="capacity"
-                    :validate-on-blur="!isFieldDirty">
-                    <FormItem>
-                        <FormLabel>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>存储容量</TooltipTrigger>
-                                    <TooltipContent side="right">
-                                        <p>指定存储卷的容量，单位为 GiB，默认为 1 GiB。</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </FormLabel>
-                        <FormControl>
-                            <Input v-bind="componentField" type="number" class="w-full" default-value="1" />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                </FormField>
-                <div v-if="values.volumeType === 'pvc'" class="grid grid-cols-2 gap-4">
-                    <FormField v-slot="{ componentField }" name="accessModes" :validate-on-blur="!isFieldDirty">
-                        <FormItem class="col-span-1">
+                <div v-show="formValues.volumeType === 'pvc'" class="space-y-6">
+                    <FormField v-slot="{ componentField }" name="storageClass" :validate-on-blur="!isFieldDirty">
+                        <FormItem>
                             <FormLabel>
                                 <TooltipProvider>
                                     <Tooltip>
-                                        <TooltipTrigger>访问模式</TooltipTrigger>
+                                        <TooltipTrigger>存储类</TooltipTrigger>
                                         <TooltipContent side="right">
-                                            <p>选择存储卷的访问模式，至少选择一个。</p>
+                                            <p>指定存储卷的存储类，默认为空。</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                             </FormLabel>
                             <FormControl>
-                                <Select v-bind="componentField" multiple :default-value="['ReadWriteOnce']">
-                                    <FormControl>
-                                        <SelectTrigger class="w-full">
-                                            <SelectValue>
-                                                <div v-if="componentField.modelValue" class="flex items-center">
-                                                    <component :is="accessModeRefs[
-                                                        componentField.modelValue as keyof typeof accessModeRefs
-                                                    ]?.icon" class="h-4 w-4 mr-2" />
-                                                    <span>{{
-                                                        accessModeRefs[
+                                <Input v-bind="componentField" class="w-full" placeholder="例如：standard" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    </FormField>
+                    <FormField v-slot="{ componentField }" name="capacity" :validate-on-blur="!isFieldDirty">
+                        <FormItem>
+                            <FormLabel>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>存储容量</TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            <p>指定存储卷的容量，单位为 GiB，默认为 1 GiB。</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                                <Input v-bind="componentField" type="number" class="w-full" default-value="1" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    </FormField>
+                    <div class="grid grid-cols-2 gap-4">
+                        <FormField v-slot="{ componentField }" name="accessModes" :validate-on-blur="!isFieldDirty">
+                            <FormItem class="col-span-1">
+                                <FormLabel>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>访问模式</TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                <p>选择存储卷的访问模式，至少选择一个。</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </FormLabel>
+                                <FormControl>
+                                    <Select v-bind="componentField" multiple :default-value="['ReadWriteOnce']">
+                                        <FormControl>
+                                            <SelectTrigger class="w-full">
+                                                <SelectValue>
+                                                    <div v-if="componentField.modelValue" class="flex items-center">
+                                                        <component :is="accessModeRefs[
                                                             componentField.modelValue as keyof typeof accessModeRefs
-                                                        ]?.label
-                                                    }}</span>
-                                                </div>
-                                                <span v-else>选择访问模式</span>
-                                            </SelectValue>
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            <SelectItem v-for="(accessMode, key) in accessModeRefs" :key="key"
-                                                :value="key">
-                                                <div class="flex items-center gap-3">
-                                                    <component :is="accessMode.icon" class="h-4 w-4" />
-                                                    <div class="flex flex-col">
-                                                        <SelectItemText>{{
-                                                            accessMode.label
-                                                        }}</SelectItemText>
-                                                        <span class="text-xs text-muted-foreground">{{
-                                                            accessMode.desc
+                                                        ]?.icon" class="h-4 w-4 mr-2" />
+                                                        <span>{{
+                                                            accessModeRefs[
+                                                                componentField.modelValue as keyof typeof accessModeRefs
+                                                            ]?.label
                                                         }}</span>
                                                     </div>
-                                                </div>
-                                            </SelectItem>
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    </FormField>
-                    <FormField v-slot="{ componentField }" name="volumeMode" :validate-on-blur="!isFieldDirty">
-                        <FormItem class="col-span-1">
-                            <FormLabel>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger>存储模式</TooltipTrigger>
-                                        <TooltipContent side="right">
-                                            <p>选择存储卷的模式，默认为 Filesystem。</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </FormLabel>
-                            <FormControl>
-                                <Select v-bind="componentField" :default-value="'Filesystem'">
-                                    <FormControl>
-                                        <SelectTrigger class="w-full">
-                                            <SelectValue>
-                                                <div v-if="componentField.modelValue" class="flex items-center">
-                                                    <component :is="volumeModeRefs[
-                                                        componentField.modelValue as keyof typeof volumeModeRefs
-                                                    ]?.icon
-                                                        " class="h-4 w-4 mr-2" />
-                                                    <span>{{
-                                                        volumeModeRefs[
-                                                            componentField.modelValue as keyof typeof volumeModeRefs
-                                                        ]?.label
-                                                    }}</span>
-                                                </div>
-                                                <span v-else>选择访问模式</span>
-                                            </SelectValue>
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            <SelectItem v-for="(volumeMode, key) in volumeModeRefs" :key="key"
-                                                :value="key">
-                                                <div class="flex items-center gap-3">
-                                                    <component :is="volumeMode.icon" class="h-4 w-4" />
-                                                    <div class="flex flex-col">
-                                                        <SelectItemText>{{
-                                                            volumeMode.label
-                                                        }}</SelectItemText>
-                                                        <span class="text-xs text-muted-foreground">
-                                                            {{ volumeMode.desc }}
-                                                        </span>
+                                                    <span v-else>选择访问模式</span>
+                                                </SelectValue>
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectItem v-for="(accessMode, key) in accessModeRefs" :key="key"
+                                                    :value="key">
+                                                    <div class="flex items-center gap-3">
+                                                        <component :is="accessMode.icon" class="h-4 w-4" />
+                                                        <div class="flex flex-col">
+                                                            <SelectItemText>{{
+                                                                accessMode.label
+                                                            }}</SelectItemText>
+                                                            <span class="text-xs text-muted-foreground">{{
+                                                                accessMode.desc
+                                                            }}</span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </SelectItem>
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    </FormField>
+                                                </SelectItem>
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        </FormField>
+                        <FormField v-slot="{ value, handleChange }" name="volumeMode" :validate-on-blur="!isFieldDirty">
+                            <FormItem class="col-span-1">
+                                <FormLabel>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>存储模式</TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                <p>选择存储卷的模式，默认为 Filesystem。</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </FormLabel>
+                                <FormControl>
+                                    <Select :model-value="value" @update:model-value="handleChange"
+                                        :default-value="'Filesystem'">
+                                        <FormControl>
+                                            <SelectTrigger class="w-full">
+                                                <SelectValue>
+                                                    <div v-if="value" class="flex items-center">
+                                                        <component :is="volumeModeRefs[
+                                                            value as keyof typeof volumeModeRefs
+                                                        ]?.icon
+                                                            " class="h-4 w-4 mr-2" />
+                                                        <span>{{
+                                                            volumeModeRefs[
+                                                                value as keyof typeof volumeModeRefs
+                                                            ]?.label
+                                                        }}</span>
+                                                    </div>
+                                                    <span v-else>选择访问模式</span>
+                                                </SelectValue>
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectItem v-for="(volumeMode, key) in volumeModeRefs" :key="key"
+                                                    :value="key">
+                                                    <div class="flex items-center gap-3">
+                                                        <component :is="volumeMode.icon" class="h-4 w-4" />
+                                                        <div class="flex flex-col">
+                                                            <SelectItemText>{{
+                                                                volumeMode.label
+                                                            }}</SelectItemText>
+                                                            <span class="text-xs text-muted-foreground">
+                                                                {{ volumeMode.desc }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </SelectItem>
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        </FormField>
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button type="submit" class="w-full">

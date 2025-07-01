@@ -192,7 +192,7 @@ const columns: ColumnDef<appModel>[] = [
                     Badge,
                     {
                         variant: "secondary",
-                        class: `${statusDisplay.fgColor}`,
+                        class: statusDisplay.class,
                     },
                     () => [
                         h(statusDisplay.icon, {
@@ -477,7 +477,7 @@ async function doDeleteSelectedApps(appIDs: string[]) {
 
                     <TableRow v-else>
                         <TableCell :colspan="columns.length" class="h-24 text-center">
-                            No results.
+                            <span class="text-muted-foreground">No results.</span>
                         </TableCell>
                     </TableRow>
                 </TableBody>

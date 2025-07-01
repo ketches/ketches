@@ -54,7 +54,8 @@ func (b *appMetadataBuilder) Build() (*AppMetadata, app.Error) {
 	}
 
 	result := &AppMetadata{
-		Slug:             b.appEntity.Slug,
+		AppID:            b.appEntity.ID,
+		AppSlug:          b.appEntity.Slug,
 		DisplayName:      b.appEntity.DisplayName,
 		Description:      b.appEntity.Description,
 		WorkloadType:     b.appEntity.WorkloadType,
@@ -68,6 +69,10 @@ func (b *appMetadataBuilder) Build() (*AppMetadata, app.Error) {
 		RegistryPassword: b.appEntity.RegistryPassword,
 		ContainerCommand: b.appEntity.ContainerCommand,
 		Edition:          b.appEntity.Edition,
+		EnvID:            b.appEntity.EnvID,
+		EnvSlug:          b.appEntity.EnvSlug,
+		ProjectID:        b.appEntity.ProjectID,
+		ProjectSlug:      b.appEntity.ProjectSlug,
 		ClusterNamespace: b.appEntity.ClusterNamespace,
 	}
 

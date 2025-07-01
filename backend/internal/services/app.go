@@ -532,19 +532,12 @@ func (s *appService) GetAppRunningInfo(ctx context.Context, req *models.GetAppRu
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	client := &kube.AppInstanceSSEClient{
-		Key:     fmt.Sprintf("%s/%s", appEntity.ClusterNamespace, appEntity.Slug),
-		Ctx:     ctx,
-		MsgChan: make(chan []*models.AppInstanceModel, 1),
-	}
-
 	// Register the client
-	kube.AppInstanceSSEClients.Lock()
-	kube.AppInstanceSSEClients.List[client] = struct{}{}
-	kube.AppInstanceSSEClients.Unlock()
+	sseClients := kube.GetAppInstanceSSEClients()
+	client := sseClients.Register(ctx, appEntity.ID)
 
 	// Initialize the channel with the current instances
-	instances := kube.GetPodList(client.Key)
+	instances := sseClients.GetAppInstances(appEntity.ID)
 	client.MsgChan <- instances
 
 	go func() {
@@ -553,9 +546,7 @@ func (s *appService) GetAppRunningInfo(ctx context.Context, req *models.GetAppRu
 			case instances, ok := <-client.MsgChan:
 				if !ok {
 					// Channel closed, clean up
-					kube.AppInstanceSSEClients.Lock()
-					delete(kube.AppInstanceSSEClients.List, client)
-					kube.AppInstanceSSEClients.Unlock()
+					sseClients.Remove(client)
 					return
 				}
 
@@ -583,9 +574,7 @@ func (s *appService) GetAppRunningInfo(ctx context.Context, req *models.GetAppRu
 				flusher.Flush()
 			case <-ctx.Done():
 				// Context cancelled, clean up
-				kube.AppInstanceSSEClients.Lock()
-				delete(kube.AppInstanceSSEClients.List, client)
-				kube.AppInstanceSSEClients.Unlock()
+				sseClients.Remove(client)
 				return
 			}
 		}
@@ -593,9 +582,8 @@ func (s *appService) GetAppRunningInfo(ctx context.Context, req *models.GetAppRu
 
 	<-ctx.Done()
 
-	kube.AppInstanceSSEClients.Lock()
-	delete(kube.AppInstanceSSEClients.List, client)
-	kube.AppInstanceSSEClients.Unlock()
+	// Context cancelled, clean up
+	sseClients.Remove(client)
 
 	return nil
 }

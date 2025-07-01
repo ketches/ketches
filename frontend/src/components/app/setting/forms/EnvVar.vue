@@ -137,9 +137,8 @@ const columns: ColumnDef<appEnvVarModel>[] = [
                                     value: editValue.value,
                                 })
                                 listData.value.push(resp)
+                                app.value.edition = "new" // Just update eidition to trigger UI update
                                 toast.success('添加环境变量成功')
-                                // editingRowId.value = null
-                                // await fetchListData(app.value.appID)
                             } else {
                                 const resp = await updateAppEnvVar(row.original.appID, row.original.envVarID, {
                                     value: editValue.value,
@@ -150,9 +149,8 @@ const columns: ColumnDef<appEnvVarModel>[] = [
                                     }
                                     return item
                                 })
-                                // resetEnvVarRow()
+                                app.value.edition = "new" // Just update eidition to trigger UI update
                                 toast.success('环境变量已更新')
-                                // await fetchListData(app.value.appID)
                             }
                             resetEnvVarRow()
                         }
@@ -181,8 +179,8 @@ const columns: ColumnDef<appEnvVarModel>[] = [
                     onClick: async () => {
                         await deleteAppEnvVar(row.original.appID, row.original.envVarID)
                         listData.value = listData.value.filter(item => item.envVarID !== row.original.envVarID)
+                        app.value.edition = "new" // Just update eidition to trigger UI update
                         toast.success('环境变量已删除')
-                        // await fetchListData(app.value.appID)
                     }
                 }, () => [h(Delete)])
             ])
@@ -295,7 +293,7 @@ const table = useVueTable({
 
                     <TableRow v-else>
                         <TableCell :colspan="columns.length" class="h-24 text-center">
-                            No results.
+                            <span class="text-muted-foreground">No results.</span>
                         </TableCell>
                     </TableRow>
                 </TableBody>

@@ -1,6 +1,6 @@
 import { appAction } from "@/api/app";
 import type { appModel } from "@/types/app";
-import { ArrowBigUpDash, Bug, BugOff, CircleAlert, CircleQuestionMark, CloudCog, Package, PackageCheck, PackageMinus, Play, Power, RefreshCcwDot, Replace, Rocket } from "lucide-vue-next";
+import { ArrowBigUpDash, Bug, BugOff, CircleQuestionMark, CloudCog, Package, PackageCheck, PackageMinus, PackageX, Play, Power, RefreshCcwDot, Replace, Rocket } from "lucide-vue-next";
 import type { Component } from "vue";
 import { toast } from "vue-sonner";
 
@@ -20,34 +20,34 @@ export const appStatusEnum = {
 export interface appStatusDisplay {
     label: string;
     status: string;
-    fgColor: string;
+    class: string;
     icon: Component;
 }
 
 export function appStatusDisplay(status: string): appStatusDisplay {
     switch (status) {
         case appStatusEnum.UNDEPLOYED:
-            return { label: "未部署", status: appStatusEnum.UNDEPLOYED, fgColor: "text-gray-600", icon: PackageMinus };
+            return { label: "未部署", status: appStatusEnum.UNDEPLOYED, class: "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-950 hover:bg-gray-100 dark:hover:bg-gray-950", icon: PackageMinus };
         case appStatusEnum.STARTING:
-            return { label: "启动中", status: appStatusEnum.STARTING, fgColor: "text-amber-600", icon: Rocket };
+            return { label: "启动中", status: appStatusEnum.STARTING, class: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-950", icon: Rocket };
         case appStatusEnum.RUNNING:
-            return { label: "运行中", status: appStatusEnum.RUNNING, fgColor: "text-green-600", icon: PackageCheck };
+            return { label: "运行中", status: appStatusEnum.RUNNING, class: "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-950", icon: PackageCheck };
         case appStatusEnum.STOPPING:
-            return { label: "关闭中", status: appStatusEnum.STOPPING, fgColor: "text-amber-600", icon: PackageMinus };
+            return { label: "关闭中", status: appStatusEnum.STOPPING, class: "text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-950", icon: PackageMinus };
         case appStatusEnum.STOPPED:
-            return { label: "已关闭", status: appStatusEnum.STOPPED, fgColor: "text-gray-600", icon: PackageMinus };
+            return { label: "已关闭", status: appStatusEnum.STOPPED, class: "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-950 hover:bg-gray-100 dark:hover:bg-gray-950", icon: PackageMinus };
         case appStatusEnum.UPDATING:
-            return { label: "更新中", status: appStatusEnum.UPDATING, fgColor: "text-amber-600", icon: Package };
+            return { label: "更新中", status: appStatusEnum.UPDATING, class: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-950", icon: Package };
         case appStatusEnum.ABNORMAL:
-            return { label: "异常", status: appStatusEnum.ABNORMAL, fgColor: "text-red-600", icon: CircleAlert };
+            return { label: "异常", status: appStatusEnum.ABNORMAL, class: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-950", icon: PackageX };
         case appStatusEnum.COMPLETED:
-            return { label: "已完成", status: appStatusEnum.COMPLETED, fgColor: "text-green-600", icon: PackageCheck };
+            return { label: "已完成", status: appStatusEnum.COMPLETED, class: "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-950", icon: PackageCheck };
         case appStatusEnum.DEBUGGING:
-            return { label: "调试中", status: appStatusEnum.DEBUGGING, fgColor: "text-orange-600", icon: Bug };
+            return { label: "调试中", status: appStatusEnum.DEBUGGING, class: "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-950 hover:bg-orange-100 dark:hover:bg-orange-950", icon: Bug };
         case appStatusEnum.UNKNOWN:
-            return { label: "未知", status: appStatusEnum.UNKNOWN, fgColor: "text-gray-600", icon: CircleQuestionMark };
+            return { label: "未知", status: appStatusEnum.UNKNOWN, class: "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-950 hover:bg-gray-100 dark:hover:bg-gray-950", icon: CircleQuestionMark };
         default:
-            return { label: status, status, fgColor: "text-gray-600", icon: CircleQuestionMark };
+            return { label: status, status, class: "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-950 hover:bg-gray-100 dark:hover:bg-gray-950", icon: CircleQuestionMark };
     }
 }
 
