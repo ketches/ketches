@@ -35,7 +35,7 @@ type GetProjectRequest struct {
 }
 
 type CreateProjectRequest struct {
-	Slug        string `json:"slug" binding:"required"`
+	Slug        string `json:"slug" binding:"required,slug"`
 	DisplayName string `json:"displayName" binding:"required"`
 	Description string `json:"description,omitempty"`
 	Operator    string `json:"-"`

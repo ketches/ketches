@@ -38,7 +38,7 @@ import { toast } from 'vue-sonner';
 import * as z from 'zod';
 import Button from '../ui/button/Button.vue';
 import DialogFooter from '../ui/dialog/DialogFooter.vue';
-import { projectRoleRef } from './data/projectRole';
+import { projectRoleRefs } from './data/projectRole';
 
 const props = defineProps({
     modelValue: {
@@ -112,7 +112,7 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         成员
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
@@ -145,7 +145,7 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         角色
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
@@ -172,11 +172,11 @@ const onSubmit = handleSubmit(async (values) => {
                                     <SelectValue>
                                         <div v-if="componentField.modelValue" class="flex items-center">
                                             <component
-                                                :is="projectRoleRef[componentField.modelValue as keyof typeof projectRoleRef]?.icon"
+                                                :is="projectRoleRefs[componentField.modelValue as keyof typeof projectRoleRefs]?.icon"
                                                 class="h-4 w-4 mr-2" />
                                             <span>{{
-                                                projectRoleRef[componentField.modelValue as keyof typeof
-                                                    projectRoleRef]?.label
+                                                projectRoleRefs[componentField.modelValue as keyof typeof
+                                                    projectRoleRefs]?.label
                                             }}</span>
                                         </div>
                                         <span v-else>选择角色</span>
@@ -185,7 +185,7 @@ const onSubmit = handleSubmit(async (values) => {
                             </FormControl>
                             <SelectContent>
                                 <SelectGroup>
-                                    <SelectItem v-for="(role, key) in projectRoleRef" :key="key" :value="key">
+                                    <SelectItem v-for="(role, key) in projectRoleRefs" :key="key" :value="key">
                                         <div class="flex items-center">
                                             <component :is="role.icon" class="h-4 w-4 mr-2" />
                                             <span>{{ role.label }}</span>

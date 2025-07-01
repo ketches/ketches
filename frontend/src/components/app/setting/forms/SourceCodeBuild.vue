@@ -83,45 +83,48 @@ const onSubmit = handleSubmit(async (values) => {
     </div>
     <Separator />
     <form class="space-y-8" @submit="onSubmit">
-        <FormField v-slot="{ componentField }" name="gitRepository">
-            <FormItem>
-                <FormLabel>Git 仓库地址</FormLabel>
-                <FormControl>
-                    <Input type="text" placeholder="" v-bind="componentField" />
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-        </FormField>
-        <FormField v-slot="{ componentField }" name="gitBranch">
-            <FormItem>
-                <FormLabel>Git 分支或标签</FormLabel>
-                <FormControl>
-                    <Input type="text" placeholder="" v-bind="componentField" />
-                </FormControl>
-            </FormItem>
-        </FormField>
+        <div class="grid grid-cols-3 gap-4">
+            <FormField v-slot="{ componentField }" name="gitRepository">
+                <FormItem class="col-span-2">
+                    <FormLabel>Git 仓库地址</FormLabel>
+                    <FormControl>
+                        <Input type="text" placeholder="" v-bind="componentField" />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            </FormField>
+            <FormField v-slot="{ componentField }" name="gitBranch">
+                <FormItem class="col-span-1">
+                    <FormLabel>分支或标签</FormLabel>
+                    <FormControl>
+                        <Input type="text" placeholder="" v-bind="componentField" />
+                    </FormControl>
+                </FormItem>
+            </FormField>
+        </div>
 
-        <Label class="text-amber-500">
-            <Info class="inline mr-1 h6 w-6" />
+        <Label class="font-normal text-amber-500 bg-amber-50 dark:bg-amber-950 p-2 rounded-lg mb-4">
+            <Info class="inline mr-1 h4 w-4" />
             私有 Git 仓库需要提供以下信息：
         </Label>
-        <FormField v-slot="{ componentField }" name="gitUsername">
-            <FormItem>
-                <FormLabel>仓库授权账号</FormLabel>
-                <FormControl>
-                    <Input type="text" placeholder="" v-bind="componentField" autocomplete="off" />
-                </FormControl>
-            </FormItem>
-        </FormField>
-
-        <FormField v-slot="{ componentField }" name="gitPassword">
-            <FormItem>
-                <FormLabel>仓库授权密码</FormLabel>
-                <FormControl>
-                    <Input type="password" placeholder="" v-bind="componentField" autocomplete="no-auto-complete" />
-                </FormControl>
-            </FormItem>
-        </FormField>
+        <div class="grid grid-cols-2 gap-4">
+            <FormField v-slot="{ componentField }" name="gitUsername">
+                <FormItem class="col-span-1">
+                    <FormLabel>仓库授权账号</FormLabel>
+                    <FormControl>
+                        <Input type="text" placeholder="" v-bind="componentField" autocomplete="off" />
+                    </FormControl>
+                </FormItem>
+            </FormField>
+            <FormField v-slot="{ componentField }" name="gitPassword">
+                <FormItem class="col-span-1">
+                    <FormLabel>密码</FormLabel>
+                    <FormControl>
+                        <Input type="password" placeholder="" v-bind="componentField" autocomplete="no-auto-complete" />
+                    </FormControl>
+                </FormItem>
+            </FormField>
+        </div>
 
         <div class="flex gap-2 justify-start">
             <Button type="submit">

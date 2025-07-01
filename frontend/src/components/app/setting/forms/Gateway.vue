@@ -119,8 +119,6 @@ const columns: ColumnDef<appGatewayModel>[] = [
         cell: ({ row }) => h(Switch, {
             checked: row.original.exposed,
             onChange: async (checked: boolean) => {
-                // row.original.exposed = checked
-
                 toast.success('网关对外访问状态更新成功' + checked,)
             },
         })

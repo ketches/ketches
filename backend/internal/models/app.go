@@ -69,7 +69,7 @@ type GetAppRequest struct {
 
 type CreateAppRequest struct {
 	EnvID            string `uri:"envID"`
-	Slug             string `json:"slug" binding:"required"`
+	Slug             string `json:"slug" binding:"required,slug"`
 	DisplayName      string `json:"displayName" binding:"required"`
 	Description      string `json:"description,omitempty"`
 	WorkloadType     string `json:"workloadType" binding:"required,oneof=Deployment StatefulSet"`

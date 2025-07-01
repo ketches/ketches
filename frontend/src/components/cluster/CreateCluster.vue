@@ -53,20 +53,23 @@ const formSchema = toTypedSchema(z.object({
         .string({
             required_error: '集群标识必填',
         })
-        .min(2)
-        .max(32),
+        .min(3, '长度不能小于 3')
+        .max(32, '长度不能大于 32')
+        .regex(/^[a-z]/, '必须以小写字母开头')
+        .regex(/[a-z0-9]$/, '不能以短横线结尾')
+        .regex(/^[a-z0-9-]+$/, '只能包含小写字母、数字和短横线'),
     displayName: z
         .string({
             required_error: '集群名称必填',
         })
-        .min(2)
+        .min(2, '集群名称最少需要 2 个字符')
         .max(50, {
-            message: '集群名称最长不能超过 50'
+            message: '集群名称最长不能超过 50 个字符'
         }),
     kubeConfig: z
         .string({
-            message: 'KubeConfig 必填'
-        }),
+            required_error: 'KubeConfig 必填'
+        }).min(1, 'KubeConfig 必填'),
     description: z
         .string()
         .optional(),
@@ -128,14 +131,14 @@ function handleFileChange(e: Event) {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         集群标识
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
                                         <p>集群标识用于唯一标识集群，不能重复。</p>
                                         <li>只能包含小写字母、数字和短横线</li>
-                                        <li>必须以字母开头</li>
-                                        <li>不能以短横线结尾。</li>
+                                        <li>必须以字母开头，不能以短横线结尾</li>
+                                        <li>长度为 3 到 32 个字符</li>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -151,11 +154,12 @@ function handleFileChange(e: Event) {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         集群名称
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
                                         <p>集群名称用于展示，便于识别。</p>
+                                        <li>长度为 2 到 50 个字符</li>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>

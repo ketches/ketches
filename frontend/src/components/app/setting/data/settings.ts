@@ -1,4 +1,4 @@
-import { Braces, CircleCheckBig, Code, Cpu, Disc3, HardDrive, Network, Radar, Rocket } from "lucide-vue-next"
+import { Braces, CircleCheckBig, Code, Cpu, Disc3, FolderTree, HardDrive, Network, Radar, Rocket, SquareDashed, SquaresExclude, SquaresIntersect, SquaresSubtract, Vault } from "lucide-vue-next"
 import { defineAsyncComponent, type Component } from "vue"
 
 interface Item {
@@ -89,4 +89,61 @@ export const appResourceSelectOptions = {
         { label: '32 GiB', value: 32768 },
         { label: '64 GiB', value: 65536 },
     ],
+}
+
+export const volumeTypeRefs = {
+    'pvc': {
+        label: '持久化存储',
+        value: 'pvc',
+        icon: HardDrive,
+        desc: '数据将被持久化，实例重启或漂移后数据不丢失。',
+    },
+    'emptyDir': {
+        label: '临时存储',
+        value: 'emptyDir',
+        icon: SquaresIntersect,
+        desc: '多容器共享的临时缓存，实例重启后数据丢失。',
+    },
+    'hostPath': {
+        label: '本地存储',
+        value: 'hostPath',
+        icon: SquaresSubtract,
+        desc: '节点本地存储，实例漂移后数据可能丢失。',
+    }
+}
+
+export const accessModeRefs = {
+    'ReadWriteOnce': {
+        label: '单节点读写',
+        value: 'ReadWriteOnce',
+        icon: SquareDashed,
+        desc: '存储卷只能被单个节点挂载为读写模式。',
+    },
+    'ReadWriteMany': {
+        label: '多节点读写',
+        value: 'ReadWriteMany',
+        icon: SquaresExclude,
+        desc: '存储卷可以被多个节点同时挂载为读写模式。',
+    },
+    'ReadOnlyMany': {
+        label: '多节点只读',
+        value: 'ReadOnlyMany',
+        icon: SquaresIntersect,
+        desc: '存储卷可以被多个节点挂载为只读模式。',
+    }
+}
+
+export const volumeModeRefs = {
+    'Filesystem': {
+        label: '文件系统',
+        value: 'Filesystem',
+        icon: FolderTree,
+        desc: '存储卷以文件系统方式挂载。',
+    },
+    'Block': {
+        label: '块存储',
+        value: 'Block',
+        icon: Vault,
+        desc: '存储卷以块设备方式挂载。',
+    }
 }

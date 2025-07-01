@@ -73,21 +73,24 @@ watch(open, async (isOpen) => {
 const formSchema = toTypedSchema(z.object({
     slug: z
         .string({
-            required_error: 'Slug is required.',
+            required_error: '环境标识必填',
         })
-        .min(2)
-        .max(32),
+        .min(3, '长度不能小于 3')
+        .max(32, '长度不能大于 32')
+        .regex(/^[a-z]/, '必须以小写字母开头')
+        .regex(/[a-z0-9]$/, '不能以短横线结尾')
+        .regex(/^[a-z0-9-]+$/, '只能包含小写字母、数字和短横线'),
     displayName: z
         .string({
-            required_error: 'Display name is required.',
+            required_error: '环境名称必填',
         })
-        .min(2)
-        .max(100, {
-            message: 'Display name must be at most 100 characters long.',
+        .min(2, '环境名称最少需要 2 个字符')
+        .max(50, {
+            message: '环境名称最长不能超过 50 个字符',
         }),
     clusterID: z
         .string({
-            required_error: 'Cluster is required.',
+            required_error: '集群必填',
         }),
     description: z
         .string()
@@ -133,14 +136,14 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         环境标识
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
                                         <p>环境标识用于唯一标识环境，不能重复。</p>
                                         <li>只能包含小写字母、数字和短横线</li>
-                                        <li>必须以字母开头</li>
-                                        <li>不能以短横线结尾。</li>
+                                        <li>必须以字母开头，不能以短横线结尾</li>
+                                        <li>长度为 3 到 32 个字符</li>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -156,11 +159,12 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         环境名称
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
                                         <p>环境名称用于展示，便于识别。</p>
+                                        <li>长度为 2 到 50 个字符</li>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -176,7 +180,7 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         集群
                                     </TooltipTrigger>
                                     <TooltipContent side="right">

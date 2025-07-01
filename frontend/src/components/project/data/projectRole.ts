@@ -1,6 +1,6 @@
 import { UserRoundCog, UserRoundPen, UserRoundSearch } from "lucide-vue-next";
 
-export const projectRoleRef =
+export const projectRoleRefs =
 {
     'owner': {
         label: '所有者',

@@ -61,17 +61,15 @@ const { activeEnvRef } = storeToRefs(userStore)
 const formSchema = toTypedSchema(z.object({
     slug: z
         .string({
-            required_error: '应用标识是必填项。',
-        })
-        .min(2)
-        .max(32),
+            required_error: '应用标识必填',
+        }),
     displayName: z
         .string({
-            required_error: '应用名称是必填项。',
+            required_error: '应用名称必填',
         })
-        .min(2)
-        .max(100, {
-            message: '应用名称必须最多 100 个字符。',
+        .min(2, '应用名称最少需要 2 个字符')
+        .max(50, {
+            message: '应用名称最长不能超过 50 个字符',
         }),
     description: z
         .string()
@@ -126,14 +124,11 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         应用标识
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
-                                        <p>应用标识用于唯一标识应用，不能重复。</p>
-                                        <li>只能包含小写字母、数字和短横线</li>
-                                        <li>必须以字母开头</li>
-                                        <li>不能以短横线结尾。</li>
+                                        <p>应用标识用于唯一标识应用。</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -149,11 +144,12 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         应用名称
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
                                         <p>应用名称用于展示，便于识别。</p>
+                                        <li>长度为 2 到 50 个字符</li>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>

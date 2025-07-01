@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toTypedSchema } from '@vee-validate/zod';
 import { Plus } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
@@ -56,24 +57,51 @@ const open = computed({
 });
 
 const formSchema = toTypedSchema(z.object({
-    port: z.number().min(1).max(65535),
-    protocol: z.string(),
+    port: z
+        .number({
+            required_error: "端口必填",
+            invalid_type_error: "端口必须为数字",
+        })
+        .min(1, "端口范围为 1-65535")
+        .max(65535, "端口范围为 1-65535"),
+    protocol: z
+        .string({
+            required_error: "协议必填",
+        }),
     exposed: z.boolean(),
     domain: z.string().optional(),
     path: z.string().optional(),
-    gatewayPort: z.number().min(1).max(65535).optional(),
+    gatewayPort: z
+        .number({
+            invalid_type_error: "网关端口必须为数字",
+        })
+        .min(1, "网关端口范围为 1-65535")
+        .max(65535, "网关端口范围为 1-65535")
+        .optional(),
 }));
 
-const { isFieldDirty, handleSubmit, resetForm, values: formValues } = useForm({
+const { isFieldDirty, handleSubmit, resetForm, values, setFieldValue } = useForm({
     validationSchema: formSchema,
 })
+
+/**
+ * 保证开启网关访问时 protocol 字段有值，且切换协议不会丢失
+ */
+watch(
+    [() => values.exposed, () => values.protocol],
+    ([exposed, protocol]) => {
+        if (exposed && (!protocol || protocol === "")) {
+            setFieldValue('protocol', 'http');
+        }
+    }
+);
 
 watch(open, (isOpen) => {
     if (isOpen) {
         resetForm({
             values: {
                 port: 80,
-                protocol: 'HTTP',
+                protocol: 'http',
                 exposed: false,
                 domain: '',
                 path: '/',
@@ -100,7 +128,7 @@ const onSubmit = handleSubmit(async (values) => {
 
 <template>
     <Dialog :open="open" @update:open="open = $event">
-        <DialogContent class="sm:max-w-[600px]">
+        <DialogContent class="sm:max-w-[700px]">
             <DialogHeader>
                 <DialogTitle>创建应用网关</DialogTitle>
                 <DialogDescription>
@@ -111,18 +139,37 @@ const onSubmit = handleSubmit(async (values) => {
                 <div class="grid grid-cols-3 gap-4">
                     <FormField v-slot="{ componentField }" name="port" :validate-on-blur="!isFieldDirty">
                         <FormItem class="col-span-2">
-                            <FormLabel>端口</FormLabel>
+                            <FormLabel>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>端口</TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            <p>应用容器监听的端口。</p>
+                                            <li>范围为 1-65535</li>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </FormLabel>
                             <FormControl>
                                 <Input v-bind="componentField" type="number" class="w-full" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
                     </FormField>
-                    <FormField v-slot="{ componentField }" name="protocol" :validate-on-blur="!isFieldDirty">
+                    <FormField v-slot="{ value, handleChange }" name="protocol" :validate-on-blur="!isFieldDirty">
                         <FormItem class="col-span-1">
-                            <FormLabel>协议</FormLabel>
+                            <FormLabel>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>协议</TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            <p>端口协议：HTTP、HTTPS、TCP、UDP</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </FormLabel>
                             <FormControl>
-                                <Select v-bind="componentField">
+                                <Select :model-value="value" @update:model-value="handleChange">
                                     <SelectTrigger class="w-full">
                                         <SelectValue placeholder="选择协议" />
                                     </SelectTrigger>
@@ -154,8 +201,8 @@ const onSubmit = handleSubmit(async (values) => {
                         </div>
                     </FormItem>
                 </FormField>
-                <div v-if="formValues.exposed">
-                    <div v-if="formValues.protocol === 'http' || formValues.protocol === 'https'"
+                <div v-if="values.exposed">
+                    <div v-if="values.protocol === 'http' || values.protocol === 'https'"
                         class="grid grid-cols-3 gap-4">
                         <FormField v-slot="{ componentField }" name="domain">
                             <FormItem class="col-span-2">
@@ -176,10 +223,50 @@ const onSubmit = handleSubmit(async (values) => {
                             </FormItem>
                         </FormField>
                     </div>
-                    <FormField v-if="formValues.protocol === 'tcp' || formValues.protocol === 'udp'"
-                        v-slot="{ componentField }" name="gatewayPort">
+                    <FormField v-if="values.protocol === 'https'" v-slot="{ componentField }" name="protocol"
+                        :validate-on-blur="!isFieldDirty">
+                        <FormItem class="pt-6">
+                            <FormLabel>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>证书</TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            <p>选择证书用于 HTTPS 连接</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                                <Select v-bind="componentField">
+                                    <SelectTrigger class="w-full">
+                                        <SelectValue placeholder="选择证书" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectItem value="a">证书 A</SelectItem>
+                                            <SelectItem value="b">证书 B</SelectItem>
+                                            <SelectItem value="c">证书 C</SelectItem>
+                                            <SelectItem value="d">证书 D</SelectItem>
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    </FormField>
+                    <FormField v-if="values.protocol === 'tcp' || values.protocol === 'udp'" v-slot="{ componentField }"
+                        name="gatewayPort">
                         <FormItem>
-                            <FormLabel>网关端口</FormLabel>
+                            <FormLabel>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>网关端口</TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            <p>对外网关端口，允许用户通过该端口访问应用。</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </FormLabel>
                             <FormControl>
                                 <Input v-bind="componentField" type="number" />
                             </FormControl>

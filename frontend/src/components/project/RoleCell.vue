@@ -13,7 +13,7 @@ import { type projectMemberModel } from '@/types/project'
 import { Check, SquarePen, X } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { projectRoleRef } from './data/projectRole'
+import { projectRoleRefs } from './data/projectRole'
 
 const props = defineProps<{
     member: projectMemberModel
@@ -45,15 +45,15 @@ function handleEditClick() {
             <SelectTrigger class="w-fit text-xs">
                 <SelectValue>
                     <div class="flex items-center">
-                        <component :is="projectRoleRef[selectedRole as keyof typeof projectRoleRef]?.icon"
+                        <component :is="projectRoleRefs[selectedRole as keyof typeof projectRoleRefs]?.icon"
                             class="h-4 w-4 mr-2" />
-                        <span>{{ projectRoleRef[selectedRole as keyof typeof projectRoleRef]?.label || '选择角色'
-                            }}</span>
+                        <span>{{ projectRoleRefs[selectedRole as keyof typeof projectRoleRefs]?.label || '选择角色'
+                        }}</span>
                     </div>
                 </SelectValue>
             </SelectTrigger>
             <SelectContent>
-                <SelectItem v-for="(role, key) in projectRoleRef" :key="key" :value="key">
+                <SelectItem v-for="(role, key) in projectRoleRefs" :key="key" :value="key">
                     <div class="flex items-center">
                         <component :is="role.icon" class="h-4 w-4 mr-2" />
                         <span>{{ role.label }}</span>
@@ -70,11 +70,11 @@ function handleEditClick() {
     </div>
     <div v-else class="flex items-center justify-center">
         <Badge variant="secondary"
-            :class="['capitalize flex justify-center text-center', projectRoleRef[member.projectRole as keyof typeof projectRoleRef]?.style || 'text-gray-500']">
-            <component :is="projectRoleRef[member.projectRole as keyof typeof projectRoleRef]?.icon"
+            :class="['capitalize flex justify-center text-center', projectRoleRefs[member.projectRole as keyof typeof projectRoleRefs]?.style || 'text-gray-500']">
+            <component :is="projectRoleRefs[member.projectRole as keyof typeof projectRoleRefs]?.icon"
                 class="h-4 w-4 mr-1" />
-            <span>{{ projectRoleRef[member.projectRole as keyof typeof projectRoleRef]?.label || member.projectRole
-                }}</span>
+            <span>{{ projectRoleRefs[member.projectRole as keyof typeof projectRoleRefs]?.label || member.projectRole
+            }}</span>
         </Badge>
         <SquarePen class="ml-2 h-4 w-4 text-xs text-muted-foreground hover:text-primary cursor-pointer" title="编辑角色"
             @click="handleEditClick" />

@@ -44,7 +44,7 @@ type GetEnvRequest struct {
 type CreateEnvRequest struct {
 	ProjectID   string `uri:"projectID"`
 	ClusterID   string `json:"clusterID" binding:"required"`
-	Slug        string `json:"slug" binding:"required"`
+	Slug        string `json:"slug" binding:"required,slug"`
 	DisplayName string `json:"displayName" binding:"required"`
 	Description string `json:"description,omitempty"`
 }

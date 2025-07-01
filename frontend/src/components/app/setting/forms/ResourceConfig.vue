@@ -144,104 +144,110 @@ const onSubmit = handleSubmit(async (values) => {
                 <FormMessage />
             </FormItem>
         </FormField>
-        <Label class="text-blue-500">
-            <Info class="inline mr-1 h6 w-6" />
+        <Label class="font-normal text-blue-500 bg-blue-50 dark:bg-blue-950 p-2 rounded-lg mb-4">
+            <Info class="inline mr-1 h4 w-4" />
             最小资源：运行应用程序运行所需最小资源
         </Label>
-        <FormField v-slot="{ componentField }" name="requestCPU">
-            <FormItem>
-                <FormLabel>
-                    最小 CPU 配额
-                </FormLabel>
-                <FormControl>
-                    <Select v-bind="componentField">
-                        <SelectTrigger class="w-full">
-                            <SelectValue placeholder="选择最大内存配额" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                <SelectItem v-for="k of appResourceSelectOptions.cpu" :key="k.value" :value="k.value">
-                                    {{ k.label }}
-                                </SelectItem>
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-        </FormField>
-        <FormField v-slot="{ componentField }" name="requestMemory">
-            <FormItem>
-                <FormLabel>
-                    最小内存配额
-                </FormLabel>
-                <FormControl>
-                    <Select v-bind="componentField">
-                        <SelectTrigger class="w-full">
-                            <SelectValue placeholder="选择最小内存配额" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                <SelectItem v-for="k of appResourceSelectOptions.memory" :key="k.value"
-                                    :value="k.value">
-                                    {{ k.label }}
-                                </SelectItem>
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-        </FormField>
-        <Label class="text-blue-500">
-            <Info class="inline mr-1 h6 w-6" />
+        <div class="grid grid-cols-2 gap-4">
+            <FormField v-slot="{ componentField }" name="requestCPU">
+                <FormItem class="col-span-1">
+                    <FormLabel>
+                        最小 CPU 配额
+                    </FormLabel>
+                    <FormControl>
+                        <Select v-bind="componentField">
+                            <SelectTrigger class="w-full">
+                                <SelectValue placeholder="选择最大内存配额" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem v-for="k of appResourceSelectOptions.cpu" :key="k.value"
+                                        :value="k.value">
+                                        {{ k.label }}
+                                    </SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            </FormField>
+            <FormField v-slot="{ componentField }" name="requestMemory">
+                <FormItem class="col-span-1">
+                    <FormLabel>
+                        最小内存配额
+                    </FormLabel>
+                    <FormControl>
+                        <Select v-bind="componentField">
+                            <SelectTrigger class="w-full">
+                                <SelectValue placeholder="选择最小内存配额" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem v-for="k of appResourceSelectOptions.memory" :key="k.value"
+                                        :value="k.value">
+                                        {{ k.label }}
+                                    </SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            </FormField>
+        </div>
+        <Label class="font-normal text-blue-500 bg-blue-50 dark:bg-blue-950 p-2 rounded-lg mb-4">
+            <Info class="inline mr-1 h4 w-4" />
             最大资源：应用程序可以使用的最大资源
         </Label>
-        <FormField v-slot="{ componentField }" name="limitCPU">
-            <FormItem>
-                <FormLabel>
-                    最大 CPU 配额
-                </FormLabel>
-                <FormControl>
-                    <Select v-bind="componentField">
-                        <SelectTrigger class="w-full">
-                            <SelectValue placeholder="选择最大内存配额" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                <SelectItem v-for="k of appResourceSelectOptions.cpu" :key="k.value" :value="k.value">
-                                    {{ k.label }}
-                                </SelectItem>
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-        </FormField>
-        <FormField v-slot="{ componentField }" name="limitMemory">
-            <FormItem>
-                <FormLabel>
-                    最大内存配额
-                </FormLabel>
-                <FormControl>
-                    <Select v-bind="componentField">
-                        <SelectTrigger class="w-full">
-                            <SelectValue placeholder="选择最大内存配额" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                <SelectItem v-for="k of appResourceSelectOptions.memory" :key="k.value"
-                                    :value="k.value">
-                                    {{ k.label }}
-                                </SelectItem>
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-        </FormField>
+        <div class="grid grid-cols-2 gap-4">
+            <FormField v-slot="{ componentField }" name="limitCPU">
+                <FormItem class="col-span-1">
+                    <FormLabel>
+                        最大 CPU 配额
+                    </FormLabel>
+                    <FormControl>
+                        <Select v-bind="componentField">
+                            <SelectTrigger class="w-full">
+                                <SelectValue placeholder="选择最大内存配额" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem v-for="k of appResourceSelectOptions.cpu" :key="k.value"
+                                        :value="k.value">
+                                        {{ k.label }}
+                                    </SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            </FormField>
+            <FormField v-slot="{ componentField }" name="limitMemory">
+                <FormItem class="col-span-1">
+                    <FormLabel>
+                        最大内存配额
+                    </FormLabel>
+                    <FormControl>
+                        <Select v-bind="componentField">
+                            <SelectTrigger class="w-full">
+                                <SelectValue placeholder="选择最大内存配额" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem v-for="k of appResourceSelectOptions.memory" :key="k.value"
+                                        :value="k.value">
+                                        {{ k.label }}
+                                    </SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            </FormField>
+        </div>
         <div class="flex gap-2 justify-start">
             <Button type="submit">
                 <Save />

@@ -60,17 +60,15 @@ const open = computed({
 const formSchema = toTypedSchema(z.object({
     slug: z
         .string({
-            required_error: 'Slug is required.',
-        })
-        .min(2)
-        .max(32),
+            required_error: '环境标识必填',
+        }),
     displayName: z
         .string({
-            required_error: 'Display name is required.',
+            required_error: '环境名称必填',
         })
-        .min(2)
-        .max(100, {
-            message: 'Display name must be at most 100 characters long.',
+        .min(2, '环境名称最少需要 2 个字符')
+        .max(50, {
+            message: '环境名称最长不能超过 50 个字符',
         }),
     description: z
         .string()
@@ -131,14 +129,11 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         环境标识
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
-                                        <p>环境标识用于唯一标识环境，不能重复。</p>
-                                        <li>只能包含小写字母、数字和短横线</li>
-                                        <li>必须以字母开头</li>
-                                        <li>不能以短横线结尾。</li>
+                                        <p>环境标识用于唯一标识环境。</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -154,11 +149,12 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         环境名称
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
                                         <p>环境名称用于展示，便于识别。</p>
+                                        <li>长度为 2 到 50 个字符</li>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>

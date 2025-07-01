@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { appGatewayModel } from '@/types/app';
 import { toTypedSchema } from '@vee-validate/zod';
 import { Save } from 'lucide-vue-next';
@@ -57,12 +58,24 @@ const open = computed({
 });
 
 const formSchema = toTypedSchema(z.object({
-    port: z.number().min(1).max(65535),
-    protocol: z.string(),
+    port: z
+        .number({
+            required_error: "端口必填",
+        }),
+    protocol: z
+        .string({
+            required_error: "协议必填",
+        }),
     exposed: z.boolean(),
     domain: z.string().optional(),
     path: z.string().optional(),
-    gatewayPort: z.number().min(0).max(65535).optional(),
+    gatewayPort: z
+        .number({
+            invalid_type_error: "网关端口必须为数字",
+        })
+        .min(1, "网关端口范围为 1-65535")
+        .max(65535, "网关端口范围为 1-65535")
+        .optional(),
 }));
 
 const { handleSubmit, resetForm, values: formValues } = useForm({
@@ -104,7 +117,7 @@ const onSubmit = handleSubmit(async (values) => {
 
 <template>
     <Dialog :open="open" @update:open="open = $event">
-        <DialogContent class="sm:max-w-[600px]">
+        <DialogContent class="sm:max-w-[700px]">
             <DialogHeader>
                 <DialogTitle>更新应用网关</DialogTitle>
                 <DialogDescription>
@@ -115,7 +128,16 @@ const onSubmit = handleSubmit(async (values) => {
                 <div class="grid grid-cols-3 gap-4">
                     <FormField v-slot="{ componentField }" name="port">
                         <FormItem class="col-span-2">
-                            <FormLabel>端口</FormLabel>
+                            <FormLabel>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>端口</TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            <p>应用容器监听的端口。</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </FormLabel>
                             <FormControl>
                                 <Input v-bind="componentField" type="number" class="w-full" disabled />
                             </FormControl>
@@ -124,7 +146,16 @@ const onSubmit = handleSubmit(async (values) => {
                     </FormField>
                     <FormField v-slot="{ componentField }" name="protocol">
                         <FormItem class="col-span-1">
-                            <FormLabel>协议</FormLabel>
+                            <FormLabel>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>协议</TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            <p>端口协议：HTTP、HTTPS、TCP、UDP</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </FormLabel>
                             <FormControl>
                                 <Select v-bind="componentField">
                                     <SelectTrigger class="w-full">
@@ -183,7 +214,16 @@ const onSubmit = handleSubmit(async (values) => {
                     <div v-show="formValues.protocol === 'tcp' || formValues.protocol === 'udp'">
                         <FormField v-slot="{ componentField }" name="gatewayPort">
                             <FormItem>
-                                <FormLabel>网关端口</FormLabel>
+                                <FormLabel>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>网关端口</TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                <p>对外网关端口，允许用户通过该端口访问应用。</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </FormLabel>
                                 <FormControl>
                                     <Input v-bind="componentField" type="number" />
                                 </FormControl>

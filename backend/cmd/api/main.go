@@ -28,6 +28,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
+	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/middlewares"
 	"github.com/ketches/ketches/internal/routes"
@@ -73,6 +76,9 @@ func main() {
 func newHttpHandler() http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		v.RegisterValidation("slug", api.ValidateSlug)
+	}
 	r.Use(middlewares.Cors())
 
 	routes.NewRoute(r).Register()

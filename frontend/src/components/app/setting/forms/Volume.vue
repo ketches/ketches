@@ -34,6 +34,7 @@ import {
 import { ChevronsLeft, ChevronsRight, Delete, Plus, SquarePen } from 'lucide-vue-next';
 import { h, onMounted, ref, toRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
+import { accessModeRefs, volumeModeRefs } from '../data/settings';
 import CreateVolume from './CreateVolume.vue';
 import UpdateVolume from './UpdateVolume.vue';
 
@@ -91,8 +92,13 @@ const columns: ColumnDef<appVolumeModel>[] = [
     },
     {
         accessorKey: 'slug',
-        header: "存储卷标识",
+        header: "存储卷",
         cell: ({ row }) => h('div', { class: 'font-mono' }, row.original.slug),
+    },
+    {
+        accessorKey: 'volumeType',
+        header: () => centeredHeader('存储类型'),
+        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.volumeType),
     },
     {
         accessorKey: 'mountPath',
@@ -117,19 +123,9 @@ const columns: ColumnDef<appVolumeModel>[] = [
         ]),
     },
     {
-        accessorKey: 'volumeMode',
-        header: () => centeredHeader('存储模式'),
-        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.volumeMode || '默认'),
-    },
-    {
-        accessorKey: 'accessModes',
-        header: () => centeredHeader('访问模式'),
-        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.accessModes.map(mode => h(Badge, { variant: "secondary" }, mode))),
-    },
-    {
         accessorKey: 'storageClass',
         header: () => centeredHeader('存储类'),
-        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.storageClass || '默认'),
+        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.storageClass || '-'),
     },
     {
         accessorKey: 'capacity',
@@ -137,9 +133,14 @@ const columns: ColumnDef<appVolumeModel>[] = [
         cell: ({ row }) => h('div', { class: 'text-center' }, row.original.capacity + 'Gi'),
     },
     {
-        accessorKey: 'volumeType',
-        header: () => centeredHeader('存储类型'),
-        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.volumeType),
+        accessorKey: 'accessModes',
+        header: () => centeredHeader('访问模式'),
+        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.accessModes.map(mode => h(Badge, { variant: "secondary" }, accessModeRefs[mode].label || mode))),
+    },
+    {
+        accessorKey: 'volumeMode',
+        header: () => centeredHeader('存储模式'),
+        cell: ({ row }) => h('div', { class: 'text-center' }, volumeModeRefs[row.original.volumeMode || 'Filesystem']?.label),
     },
     {
         id: 'actions',

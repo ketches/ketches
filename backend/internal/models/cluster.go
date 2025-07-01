@@ -35,7 +35,7 @@ type GetClusterRequest struct {
 }
 
 type CreateClusterRequest struct {
-	Slug        string `json:"slug" binding:"required"`
+	Slug        string `json:"slug" binding:"required,slug"`
 	DisplayName string `json:"displayName" binding:"required"`
 	KubeConfig  string `json:"kubeConfig" binding:"required"`
 	Description string `json:"description,omitempty"`

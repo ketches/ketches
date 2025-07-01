@@ -59,21 +59,19 @@ const formSchema = toTypedSchema(z.object({
     slug: z
         .string({
             required_error: '集群标识必填',
-        })
-        .min(2)
-        .max(32),
+        }),
     displayName: z
         .string({
             required_error: '集群名称必填',
         })
-        .min(2)
+        .min(2, '集群名称最少需要 2 个字符')
         .max(50, {
-            message: '集群名称最长不能超过 50'
+            message: '集群名称最长不能超过 50 个字符'
         }),
     kubeConfig: z
         .string({
-            message: 'KubeConfig 必填'
-        }),
+            required_error: 'KubeConfig 必填'
+        }).min(1, 'KubeConfig 必填'),
     description: z
         .string()
         .optional(),
@@ -149,14 +147,11 @@ function handleFileChange(e: Event) {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         集群标识
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
-                                        <p>集群标识用于唯一标识集群，不能重复。</p>
-                                        <li>只能包含小写字母、数字和短横线</li>
-                                        <li>必须以字母开头</li>
-                                        <li>不能以短横线结尾。</li>
+                                        <p>集群标识用于唯一标识集群。</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -172,11 +167,12 @@ function handleFileChange(e: Event) {
                         <FormLabel>
                             <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger class="hover:bg-secondary">
+                                    <TooltipTrigger>
                                         集群名称
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
                                         <p>集群名称用于展示，便于识别。</p>
+                                        <li>长度为 2 到 50 个字符</li>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
