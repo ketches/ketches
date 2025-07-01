@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import Label from '@/components/ui/label/Label.vue';
 import { Separator } from '@/components/ui/separator';
 import type { appModel, updateAppImageModel } from '@/types/app';
-import { Info } from 'lucide-vue-next';
+import { Info, Save } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 
 const props = defineProps({
@@ -125,11 +125,8 @@ const onSubmit = handleSubmit(async (values) => {
 
         <div class="flex gap-2 justify-start">
             <Button type="submit">
+                <Save />
                 保存
-            </Button>
-
-            <Button type="button" variant="outline" @click="resetForm">
-                重置
             </Button>
         </div>
     </form>

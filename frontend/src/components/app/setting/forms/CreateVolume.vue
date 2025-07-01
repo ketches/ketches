@@ -34,7 +34,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toTypedSchema } from '@vee-validate/zod';
-import { HardDrive, SquareDashed, SquareDot, SquaresIntersect, SquaresSubtract } from 'lucide-vue-next';
+import { HardDrive, Plus, SquareDashed, SquareDot, SquaresIntersect, SquaresSubtract } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -362,6 +362,7 @@ const subPath = ref(false);
                 </FormField>
                 <DialogFooter>
                     <Button type="submit" class="w-full">
+                        <Plus />
                         创建
                     </Button>
                 </DialogFooter>

@@ -32,7 +32,7 @@ import {
 import { useUserStore } from '@/stores/userStore';
 import type { createAppModel } from '@/types/app';
 import { toTypedSchema } from '@vee-validate/zod';
-import { SquareDashed, SquareDot, SquaresUnite } from 'lucide-vue-next';
+import { Plus, SquareDashed, SquareDot, SquaresUnite } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
 import { computed, watch } from 'vue';
@@ -290,6 +290,7 @@ const onSubmit = handleSubmit(async (values) => {
                 </FormField>
                 <DialogFooter>
                     <Button type="submit" class="w-full">
+                        <Plus />
                         创建
                     </Button>
                 </DialogFooter>

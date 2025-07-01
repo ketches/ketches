@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/tooltip';
 import type { clusterModel, updateClusterModel } from '@/types/cluster';
 import { toTypedSchema } from '@vee-validate/zod';
-import { CloudUpload, Link } from 'lucide-vue-next';
+import { CloudUpload, Link, Save } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -231,7 +231,8 @@ function handleFileChange(e: Event) {
                         连通性测试
                     </Button>
                     <Button type="submit" class="ml-auto min-w-[100px]">
-                        更新
+                        <Save />
+                        保存
                     </Button>
                 </DialogFooter>
             </form>

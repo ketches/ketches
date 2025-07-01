@@ -29,6 +29,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toTypedSchema } from '@vee-validate/zod';
+import { Plus } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
 import { computed, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -188,6 +189,7 @@ const onSubmit = handleSubmit(async (values) => {
                 </div>
                 <DialogFooter>
                     <Button type="submit" class="w-full">
+                        <Plus />
                         创建
                     </Button>
                 </DialogFooter>

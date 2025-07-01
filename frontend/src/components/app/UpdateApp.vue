@@ -24,6 +24,7 @@ import { updateAppInfo } from '@/api/app';
 import { useUserStore } from '@/stores/userStore';
 import type { appModel, updateAppInfoModel } from '@/types/app';
 import { toTypedSchema } from '@vee-validate/zod';
+import { Save } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
 import { computed, watch } from 'vue';
@@ -174,7 +175,8 @@ const onSubmit = handleSubmit(async (values) => {
                 </FormField>
                 <DialogFooter>
                     <Button type="submit" class="w-full">
-                        更新
+                        <Save />
+                        保存
                     </Button>
                 </DialogFooter>
             </form>

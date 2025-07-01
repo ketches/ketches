@@ -30,6 +30,7 @@ import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import type { appGatewayModel } from '@/types/app';
 import { toTypedSchema } from '@vee-validate/zod';
+import { Save } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
 import { computed, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -193,7 +194,8 @@ const onSubmit = handleSubmit(async (values) => {
                 </div>
                 <DialogFooter>
                     <Button type="submit" class="w-full">
-                        更新
+                        <Save />
+                        保存
                     </Button>
                 </DialogFooter>
             </form>

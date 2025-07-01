@@ -32,6 +32,7 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useUserStore } from '@/stores/userStore';
 import type { envCreateModel } from '@/types/env';
 import { toTypedSchema } from '@vee-validate/zod';
+import { Plus } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
 import { computed, watch } from 'vue';
@@ -213,6 +214,7 @@ const onSubmit = handleSubmit(async (values) => {
                 </FormField>
                 <DialogFooter>
                     <Button type="submit" class="w-full">
+                        <Plus />
                         创建
                     </Button>
                 </DialogFooter>

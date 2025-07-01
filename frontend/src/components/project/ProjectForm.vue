@@ -26,6 +26,7 @@ import {
 import { useUserStore } from '@/stores/userStore';
 import type { createProjectModel } from '@/types/project';
 import { toTypedSchema } from '@vee-validate/zod';
+import { Plus } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
 import { computed } from 'vue';
 import { toast } from 'vue-sonner';
@@ -160,6 +161,7 @@ const onSubmit = handleSubmit(async (values) => {
                 </FormField>
                 <DialogFooter>
                     <Button type="submit" class="w-full">
+                        <Plus />
                         创建
                     </Button>
                 </DialogFooter>

@@ -9,6 +9,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { CircleCheck, CircleSlash } from 'lucide-vue-next';
 
 defineProps({
     title: {
@@ -35,9 +36,11 @@ const emits = defineEmits(['confirm', 'cancel'])
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel @click="emits('cancel')">
+                    <CircleSlash />
                     取消
                 </AlertDialogCancel>
                 <AlertDialogAction @click="emits('confirm')">
+                    <CircleCheck />
                     确定
                 </AlertDialogAction>
             </AlertDialogFooter>

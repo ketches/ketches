@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import type { appModel } from '@/types/app';
-import { Info } from 'lucide-vue-next';
+import { Info, Save } from 'lucide-vue-next';
 import { toRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -89,6 +89,7 @@ const onSubmit = handleSubmit(async (values) => {
         </FormField>
         <div class="flex gap-2 justify-start">
             <Button type="submit">
+                <Save />
                 保存
             </Button>
         </div>

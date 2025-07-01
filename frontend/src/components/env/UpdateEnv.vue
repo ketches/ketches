@@ -23,6 +23,7 @@ import {
 import { useUserStore } from '@/stores/userStore';
 import type { envModel, updateEnvModel } from '@/types/env';
 import { toTypedSchema } from '@vee-validate/zod';
+import { Save } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -179,7 +180,8 @@ const onSubmit = handleSubmit(async (values) => {
                 </FormField>
                 <DialogFooter>
                     <Button type="submit" class="w-full">
-                        更新
+                        <Save />
+                        保存
                     </Button>
                 </DialogFooter>
             </form>
