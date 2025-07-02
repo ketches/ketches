@@ -85,7 +85,7 @@ func (s *appService) ListApps(ctx context.Context, req *models.ListAppsRequest) 
 			AppID:            app.ID,
 			Slug:             app.Slug,
 			DisplayName:      app.DisplayName,
-			WorkloadType:     app.WorkloadType,
+			AppType:          app.AppType,
 			Replicas:         app.Replicas,
 			ContainerImage:   app.ContainerImage,
 			Edition:          app.Edition,
@@ -125,7 +125,7 @@ func (s *appService) CreateApp(ctx context.Context, req *models.CreateAppRequest
 		DisplayName:      req.DisplayName,
 		Description:      req.Description,
 		ContainerImage:   req.ContainerImage,
-		WorkloadType:     req.WorkloadType,
+		AppType:          req.AppType,
 		Replicas:         req.Replicas,
 		RegistryUsername: req.RegistryUsername,
 		RegistryPassword: req.RegistryPassword,
@@ -161,7 +161,7 @@ func (s *appService) CreateApp(ctx context.Context, req *models.CreateAppRequest
 		Slug:             appEntity.Slug,
 		DisplayName:      appEntity.DisplayName,
 		Description:      appEntity.Description,
-		WorkloadType:     appEntity.WorkloadType,
+		AppType:          appEntity.AppType,
 		Replicas:         appEntity.Replicas,
 		ContainerImage:   appEntity.ContainerImage,
 		RegistryUsername: appEntity.RegistryUsername,
@@ -200,7 +200,7 @@ func (s *appService) GetApp(ctx context.Context, req *models.GetAppRequest) (*mo
 		Slug:             appEntity.Slug,
 		DisplayName:      appEntity.DisplayName,
 		Description:      appEntity.Description,
-		WorkloadType:     appEntity.WorkloadType,
+		AppType:          appEntity.AppType,
 		Replicas:         appEntity.Replicas,
 		RequestCPU:       appEntity.RequestCPU,
 		RequestMemory:    appEntity.RequestMemory,
@@ -422,7 +422,14 @@ func (s *appService) AppAction(ctx context.Context, req *models.AppActionRequest
 	}
 
 	switch req.Action {
-	case app.AppActionDeploy, app.AppActionStart, app.AppActionUpdate, app.AppActionDebugOff:
+	case app.AppActionDeploy, app.AppActionStart, app.AppActionDebugOff:
+		err = s.deployApp(ctx, appEntity, nil)
+	case app.AppActionUpdate:
+		newEdition, e := orm.UpdateAppEdition(ctx, appEntity.ID)
+		if e != nil {
+			return nil, e
+		}
+		appEntity.Edition = newEdition
 		err = s.deployApp(ctx, appEntity, nil)
 	case app.AppActionStop:
 		err = s.deployApp(ctx, appEntity, &core.AppDeployOption{

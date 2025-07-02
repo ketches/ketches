@@ -21,7 +21,7 @@ func ListPods(ctx context.Context, clusterID, namespace, appSlug string) ([]*cor
 		"ketches/app": appSlug,
 	}))
 	if err != nil {
-		log.Printf("Failed to list pods in cluster %s, namespace %s, app %s: %v", clusterID, namespace, appSlug, err)
+		log.Printf("failed to list pods in cluster %s, namespace %s, app %s: %v\n", clusterID, namespace, appSlug, err)
 		return nil, app.ErrClusterOperationFailed
 	}
 
@@ -35,7 +35,7 @@ func DeletePod(ctx context.Context, clusterID, namespace, podName string) app.Er
 	}
 
 	if err := clientset.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{}); err != nil {
-		log.Printf("Failed to delete pod %s in namespace %s of cluster %s: %v", podName, namespace, clusterID, err)
+		log.Printf("failed to delete pod %s in namespace %s of cluster %s: %v\n", podName, namespace, clusterID, err)
 		return app.ErrClusterOperationFailed
 	}
 

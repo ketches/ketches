@@ -48,3 +48,8 @@ export async function disableCluster(clusterID: string): Promise<clusterModel> {
     const response = await api.post(`/clusters/${clusterID}/disable`);
     return response.data as clusterModel;
 }
+
+export async function pingClusterKubeConfig(kubeConfig: string): Promise<boolean> {
+    const response = await api.post('/clusters/ping', { kubeConfig });
+    return response.data as boolean;
+}

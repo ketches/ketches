@@ -35,7 +35,7 @@ func (h *AppProbeHandler) ListAppProbes(c *gin.Context) {
 		return
 	}
 
-	probes, err := h.svc.ListAppProbes(c.Request.Context(), &req)
+	probes, err := h.svc.ListAppProbes(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -59,7 +59,7 @@ func (h *AppProbeHandler) CreateAppProbe(c *gin.Context) {
 		return
 	}
 	req.AppID = c.Param("appID")
-	probe, err := h.svc.CreateAppProbe(c.Request.Context(), &req)
+	probe, err := h.svc.CreateAppProbe(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -85,7 +85,34 @@ func (h *AppProbeHandler) UpdateAppProbe(c *gin.Context) {
 	}
 	req.AppID = c.Param("appID")
 	req.ProbeID = c.Param("probeID")
-	probe, err := h.svc.UpdateAppProbe(c.Request.Context(), &req)
+	probe, err := h.svc.UpdateAppProbe(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+	api.Success(c, probe)
+}
+
+// @Summary Toggle App Probe
+// @Description Enable or disable a probe for an app
+// @Tags AppProbe
+// @Accept json
+// @Produce json
+// @Param appID path string true "App ID"
+// @Param probeID path string true "Probe ID"
+// @Param enabled body models.ToggleAppProbeRequest true "Enabled"
+// @Success 200 {object} api.Response{data=models.AppProbeModel}
+// @Router /api/v1/apps/{appID}/probes/{probeID}/toggle [put]
+func (h *AppProbeHandler) ToggleAppProbe(c *gin.Context) {
+	var req models.ToggleAppProbeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.AppID = c.Param("appID")
+	req.ProbeID = c.Param("probeID")
+
+	probe, err := h.svc.ToggleAppProbe(c, &req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -108,7 +135,7 @@ func (h *AppProbeHandler) DeleteAppProbe(c *gin.Context) {
 		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
 		return
 	}
-	if err := h.svc.DeleteAppProbe(c.Request.Context(), &req); err != nil {
+	if err := h.svc.DeleteAppProbe(c, &req); err != nil {
 		api.Error(c, err)
 		return
 	}

@@ -252,3 +252,51 @@ func DisableCluster(c *gin.Context) {
 
 	api.Success(c, nil)
 }
+
+// @Summary Ping Cluster KubeConfig
+// @Description Ping a cluster's KubeConfig to check if it is connectable
+// @Tags Cluster
+// @Accept json
+// @Produce json
+// @Param request body models.PingClusterKubeConfigRequest true "KubeConfig to ping"
+// @Success 200 {object} api.Response{data=bool}
+// @Router /api/v1/clusters/ping [post]
+func PingClusterKubeConfig(c *gin.Context) {
+	var req models.PingClusterKubeConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+
+	s := services.NewClusterService()
+	result := s.PingClusterKubeConfig(c, &req)
+	api.Success(c, result)
+}
+
+// @Summary List Cluster Extensions
+// @Description List extensions available in a cluster
+// @Tags Cluster
+// @Accept json
+// @Produce json
+// @Param clusterID path string true "Cluster ID"
+// @Success 200 {object} api.Response{data=models.ListClusterExtensionsResponse}
+// @Router /api/v1/clusters/{clusterID}/extensions [get]
+func ListClusterExtensions(c *gin.Context) {
+	clusterID := c.Param("clusterID")
+	if clusterID == "" {
+		api.Error(c, app.NewError(http.StatusBadRequest, "Cluster ID is required"))
+		return
+	}
+
+	var req models.ListClusterExtensionsRequest
+	req.ClusterID = clusterID
+
+	s := services.NewClusterService()
+	resp, err := s.ListClusterExtensions(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, resp)
+}

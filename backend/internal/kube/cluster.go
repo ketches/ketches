@@ -8,11 +8,16 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	apiextscheme "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 var (
@@ -88,7 +93,7 @@ func RestConfig(ctx context.Context, clusterID string) (*rest.Config, app.Error)
 
 	cluster := &entities.Cluster{}
 	if err := db.Instance().First(&cluster, "id = ?", clusterID).Error; err != nil {
-		log.Printf("Failed to get cluster %s: %v", clusterID, err)
+		log.Printf("failed to get cluster %s: %v\n", clusterID, err)
 		if db.IsErrRecordNotFound(err) {
 			return nil, app.NewError(http.StatusNotFound, "Cluster not found")
 		}
@@ -112,29 +117,80 @@ func RestConfig(ctx context.Context, clusterID string) (*rest.Config, app.Error)
 func clientsetFromRestConfig(restConfig *rest.Config) (kubernetes.Interface, app.Error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
-		log.Printf("Failed to create Kubernetes clientset: %v", err)
+		log.Printf("failed to create Kubernetes clientset: %v\n", err)
 		return nil, app.NewError(http.StatusInternalServerError, "Failed to create Kubernetes clientset")
 	}
 
 	return clientset, nil
 }
 
+var runtimeScheme = scheme.Scheme
+
 func runtimeClientFromRestConfig(restConfig *rest.Config) (client.Client, app.Error) {
+	utilruntime.Must(scheme.AddToScheme(runtimeScheme))
+	// Add required schemes
+	utilruntime.Must(apiextscheme.AddToScheme(runtimeScheme))
+	utilruntime.Must(gatewayapisv1.Install(runtimeScheme))
 	kubeRuntimeClient, err := client.New(restConfig, client.Options{
-		Scheme: scheme.Scheme,
+		Scheme: runtimeScheme,
 	})
 	if err != nil {
-		log.Printf("Failed to create Kubernetes runtime client: %v", err)
+		log.Printf("failed to create Kubernetes runtime client: %v\n", err)
 		return nil, app.NewError(http.StatusInternalServerError, "Failed to create Kubernetes runtime client")
 	}
 
 	return kubeRuntimeClient, nil
 }
 
+func DynamicClientFromKubeConfigBytes(kubeConfigBytes []byte) (*dynamic.DynamicClient, app.Error) {
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig(kubeConfigBytes)
+	if err != nil {
+		log.Printf("failed to parse kubeconfig: %v\n", err)
+		return nil, app.NewError(http.StatusInternalServerError, "Failed to parse kubeconfig")
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		log.Printf("failed to create dynamic client: %v\n", err)
+		return nil, app.NewError(http.StatusInternalServerError, "Failed to create dynamic client")
+	}
+
+	return dynamicClient, nil
+}
+
+func CheckKubeConfigBytes(kubeConfigBytes []byte) bool {
+	if len(kubeConfigBytes) == 0 {
+		return false
+	}
+
+	restConfig, err := restConfigFromKubeConfigBytes(kubeConfigBytes)
+	if err != nil {
+		return false
+	}
+
+	discoveryClient, e := discovery.NewDiscoveryClientForConfig(restConfig)
+	if e != nil {
+		log.Printf("failed to create discovery client: %v\n", e)
+		return false
+	}
+
+	serverVersion, e := discoveryClient.ServerVersion()
+	if e != nil {
+		log.Printf("failed to get server version: %v\n", e)
+		return false
+	}
+
+	if serverVersion != nil && serverVersion.Major != "" {
+		return true
+	}
+
+	return false
+}
+
 func restConfigFromKubeConfigBytes(kubeConfigBytes []byte) (*rest.Config, app.Error) {
 	restConfig, err := clientcmd.RESTConfigFromKubeConfig(kubeConfigBytes)
 	if err != nil {
-		log.Printf("Failed to parse kubeconfig: %v", err)
+		log.Printf("failed to parse kubeconfig: %v\n", err)
 		return nil, app.NewError(http.StatusInternalServerError, "Failed to parse kubeconfig")
 	}
 	return restConfig, nil

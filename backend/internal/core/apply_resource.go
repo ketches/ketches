@@ -30,7 +30,6 @@ func newEmptyObjectFrom(obj client.Object) client.Object {
 }
 
 func applyResource(ctx context.Context, cli client.Client, obj client.Object) app.Error {
-	log.Printf("Applying resource: %s/%s (%T)", obj.GetNamespace(), obj.GetName(), obj)
 	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		got := newEmptyObjectFrom(obj)
 		err := cli.Get(ctx, client.ObjectKey{Name: obj.GetName(), Namespace: obj.GetNamespace()}, got)
@@ -39,6 +38,7 @@ func applyResource(ctx context.Context, cli client.Client, obj client.Object) ap
 				obj.SetResourceVersion("")
 				return cli.Create(ctx, obj)
 			}
+			log.Println("failed to get resource:", err)
 			return err
 		}
 		obj.SetResourceVersion(got.GetResourceVersion())
@@ -59,7 +59,7 @@ func applyPVC(ctx context.Context, cli client.Client, obj *corev1.PersistentVolu
 			// PVC does not exist, create it
 			createErr := cli.Create(ctx, obj)
 			if createErr != nil {
-				log.Println("Failed to create PVC:", createErr)
+				log.Println("failed to create PVC:", createErr)
 				return app.ErrClusterOperationFailed
 			}
 			return nil
@@ -77,7 +77,7 @@ func applyPVC(ctx context.Context, cli client.Client, obj *corev1.PersistentVolu
 		obj.ResourceVersion = got.ResourceVersion
 		updateErr := cli.Update(ctx, got)
 		if updateErr != nil {
-			log.Println("Failed to update PVC:", updateErr)
+			log.Println("failed to update PVC:", updateErr)
 			gotNewer := &corev1.PersistentVolumeClaim{}
 			gotErr := cli.Get(ctx, client.ObjectKey{Name: obj.Name, Namespace: obj.Namespace}, gotNewer)
 			if gotErr != nil {
@@ -92,6 +92,5 @@ func applyPVC(ctx context.Context, cli client.Client, obj *corev1.PersistentVolu
 		return app.ErrClusterOperationFailed
 	}
 
-	log.Printf("Successfully applied PVC: %s/%s", obj.Namespace, obj.Name)
 	return nil
 }

@@ -5,7 +5,7 @@ type App struct {
 	Slug             string `json:"slug" gorm:"not null;uniqueIndex:idx_envID_slug;size:36"`        // Unique identifier for the app, typically a URL-friendly name
 	DisplayName      string `json:"displayName" gorm:"not null;size:255"`                           // Human-readable name for the app
 	Description      string `json:"description" gorm:"size:255"`                                    // Optional description of the app
-	WorkloadType     string `json:"workloadType" gorm:"not null;size:16"`                           // Type of workload (e.g., 'deployment', 'statefulset')
+	AppType          string `json:"appType" gorm:"not null;size:16"`                                // Type of app (e.g., 'Deployment', 'StatefulSet')
 	Replicas         int32  `json:"replicas" gorm:"not null;default:1"`                             // Number of replicas for the app
 	ContainerImage   string `json:"containerImage" gorm:"size:255"`                                 // Business image URL or path
 	RegistryUsername string `json:"registryUsername" gorm:"size:64"`                                // Docker username for the app
@@ -67,11 +67,11 @@ type AppProbe struct {
 	AppID               string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_type;index;size:36"`
 	Type                string `json:"type" gorm:"not null;uniqueIndex:idx_appID_type;size:20"` // liveness, readiness, startup
 	Enabled             bool   `json:"enabled" gorm:"not null;default:true"`
-	InitialDelaySeconds int64  `json:"initialDelaySeconds" gorm:"not null;default:30"`
-	PeriodSeconds       int64  `json:"periodSeconds" gorm:"not null;default:10"`
-	TimeoutSeconds      int64  `json:"timeoutSeconds" gorm:"not null;default:5"`
-	SuccessThreshold    int64  `json:"successThreshold" gorm:"not null;default:1"`
-	FailureThreshold    int64  `json:"failureThreshold" gorm:"not null;default:3"`
+	InitialDelaySeconds int32  `json:"initialDelaySeconds" gorm:"not null;default:30"`
+	PeriodSeconds       int32  `json:"periodSeconds" gorm:"not null;default:10"`
+	TimeoutSeconds      int32  `json:"timeoutSeconds" gorm:"not null;default:5"`
+	SuccessThreshold    int32  `json:"successThreshold" gorm:"not null;default:1"`
+	FailureThreshold    int32  `json:"failureThreshold" gorm:"not null;default:3"`
 	ProbeMode           string `json:"probeMode" gorm:"not null;size:16"` // httpGet, tcpSocket, exec
 	HTTPGetPath         string `json:"httpGetPath" gorm:"size:255"`
 	HTTPGetPort         int    `json:"httpGetPort" gorm:"default:0"`

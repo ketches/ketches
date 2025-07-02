@@ -336,10 +336,6 @@ func (s *userService) Rename(ctx context.Context, req *models.UserRenameRequest)
 }
 
 func (s *userService) ChangeRole(ctx context.Context, req *models.UserChangeRoleRequest) (*models.UserModel, app.Error) {
-	if !api.IsAdmin(ctx) {
-		return nil, app.ErrPermissionDenied
-	}
-
 	user := new(entities.User)
 	if err := db.Instance().First(user, "id = ?", req.UserID).Error; err != nil {
 		log.Printf("failed to get user %s: %v\n", req.UserID, err)

@@ -18,6 +18,7 @@ type AppProbeService interface {
 	ListAppProbes(ctx context.Context, req *models.ListAppProbesRequest) ([]*models.AppProbeModel, app.Error)
 	CreateAppProbe(ctx context.Context, req *models.CreateAppProbeRequest) (*models.AppProbeModel, app.Error)
 	UpdateAppProbe(ctx context.Context, req *models.UpdateAppProbeRequest) (*models.AppProbeModel, app.Error)
+	ToggleAppProbe(ctx context.Context, req *models.ToggleAppProbeRequest) (*models.AppProbeModel, app.Error)
 	DeleteAppProbe(ctx context.Context, req *models.DeleteAppProbeRequest) app.Error
 }
 
@@ -79,7 +80,7 @@ func (s *appProbeService) CreateAppProbe(ctx context.Context, req *models.Create
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	if err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
 		log.Printf("failed to update app edition after creating probe for app %s: %v", req.AppID, err)
 	}
 
@@ -103,13 +104,9 @@ func (s *appProbeService) UpdateAppProbe(ctx context.Context, req *models.Update
 	}
 
 	entity.Enabled = req.Enabled
-	entity.InitialDelaySeconds = req.Probe.InitialDelaySeconds
-	entity.TimeoutSeconds = req.Probe.TimeoutSeconds
-	entity.PeriodSeconds = req.Probe.PeriodSeconds
-	entity.SuccessThreshold = req.Probe.SuccessThreshold
-	entity.FailureThreshold = req.Probe.FailureThreshold
-
-	switch req.Probe.ProbeMode {
+	entity.Type = req.Type
+	entity.ProbeMode = req.Probe.ProbeMode
+	switch entity.ProbeMode {
 	case app.AppProbeModeHTTPGet:
 		entity.HTTPGetPath = req.Probe.HTTPGetPath
 		entity.HTTPGetPort = req.Probe.HTTPGetPort
@@ -135,17 +132,22 @@ func (s *appProbeService) UpdateAppProbe(ctx context.Context, req *models.Update
 		return nil, app.NewError(http.StatusBadRequest, "invalid probe mode: "+entity.ProbeMode)
 	}
 
-	entity.ProbeMode = req.Probe.ProbeMode
+	entity.InitialDelaySeconds = req.Probe.InitialDelaySeconds
+	entity.TimeoutSeconds = req.Probe.TimeoutSeconds
+	entity.PeriodSeconds = req.Probe.PeriodSeconds
+	entity.SuccessThreshold = req.Probe.SuccessThreshold
+	entity.FailureThreshold = req.Probe.FailureThreshold
+
 	entity.AuditBase.UpdatedBy = api.UserID(ctx)
 
-	if err := db.Instance().Model(&entity).Select("Enabled", "InitialDelaySeconds", "TimeoutSeconds", "PeriodSeconds",
-		"SuccessThreshold", "FailureThreshold", "HTTPGetPath", "HTTPGetPort", "TCPSocketPort", "ExecCommand", "UpdatedBy").
+	if err := db.Instance().Model(&entity).Select("Enabled", "Type", "ProbeMode", "HTTPGetPath", "HTTPGetPort", "TCPSocketPort", "ExecCommand", "InitialDelaySeconds", "TimeoutSeconds", "PeriodSeconds",
+		"SuccessThreshold", "FailureThreshold", "UpdatedBy").
 		Updates(&entity).Error; err != nil {
 		log.Printf("failed to update probe var %s: %v", req.ProbeID, err)
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	if err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
 		log.Printf("failed to update app edition after updating probe var for app %s: %v", req.AppID, err)
 	}
 
@@ -158,13 +160,44 @@ func (s *appProbeService) UpdateAppProbe(ctx context.Context, req *models.Update
 	}, nil
 }
 
+func (s *appProbeService) ToggleAppProbe(ctx context.Context, req *models.ToggleAppProbeRequest) (*models.AppProbeModel, app.Error) {
+	var entity entities.AppProbe
+	if err := db.Instance().First(&entity, "id = ?", req.ProbeID).Error; err != nil {
+		log.Printf("failed to find app probe %s: %v", req.ProbeID, err)
+		if db.IsErrRecordNotFound(err) {
+			return nil, app.NewError(http.StatusNotFound, "probe not found")
+		}
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	entity.Enabled = req.Enabled
+	entity.AuditBase.UpdatedBy = api.UserID(ctx)
+
+	if err := db.Instance().Model(&entity).Select("Enabled", "UpdatedBy").
+		Updates(&entity).Error; err != nil {
+		log.Printf("failed to update probe var %s: %v", req.ProbeID, err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+		log.Printf("failed to update app edition after updating probe var for app %s: %v", req.AppID, err)
+	}
+
+	return &models.AppProbeModel{
+		ProbeID: entity.ID,
+		AppID:   entity.AppID,
+		Type:    entity.Type,
+		Enabled: entity.Enabled,
+	}, nil
+}
+
 func (s *appProbeService) DeleteAppProbe(ctx context.Context, req *models.DeleteAppProbeRequest) app.Error {
 	if err := db.Instance().Delete(&entities.AppProbe{}, "id = ?", req.ProbeID).Error; err != nil {
 		log.Printf("failed to delete app probe for app %s: %v", req.AppID, err)
 		return app.ErrDatabaseOperationFailed
 	}
 
-	if err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
 		log.Printf("failed to update app edition after creating env var for app %s: %v", req.AppID, err)
 	}
 

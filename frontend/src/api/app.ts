@@ -193,6 +193,11 @@ export async function updateAppProbe(appID: string, probeID: string, model: upda
     return response.data as appProbeModel;
 }
 
+export async function toggleAppProbe(appID: string, probeID: string, enabled: boolean): Promise<appProbeModel> {
+    const response = await api.put(`/apps/${appID}/probes/${probeID}/toggle`, { enabled });
+    return response.data as appProbeModel;
+}
+
 export async function deleteAppProbe(appID: string, probeID: string): Promise<void> {
     await api.delete(`/apps/${appID}/probes/${probeID}`);
     return;

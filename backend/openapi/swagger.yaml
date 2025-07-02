@@ -27,14 +27,14 @@ definitions:
     - AppActionDebug
     - AppActionDebugOff
     - AppActionDelete
-  app.WorkloadType:
+  app.AppType:
     enum:
     - Deployment
     - StatefulSet
     type: string
     x-enum-varnames:
-    - WorkloadTypeDeployment
-    - WorkloadTypeStatefulSet
+    - AppTypeDeployment
+    - AppTypeStatefulSet
   models.AddProjectMembersRequest:
     properties:
       projectMembers:
@@ -147,6 +147,10 @@ definitions:
         type: integer
       appID:
         type: string
+      appType:
+        allOf:
+        - $ref: '#/definitions/app.AppType'
+        description: e.g., "deployment", "statefulset", "daemonset"
       clusterID:
         type: string
       clusterNamespace:
@@ -198,10 +202,6 @@ definitions:
       status:
         description: e.g., "undeployed", "starting", "running", "stopped", "stopping"
         type: string
-      workloadType:
-        allOf:
-        - $ref: '#/definitions/app.WorkloadType'
-        description: e.g., "deployment", "statefulset", "daemonset"
     type: object
   models.AppProbeModel:
     properties:
@@ -209,7 +209,7 @@ definitions:
         type: string
       enabled:
         type: boolean
-      exec:
+      execCommand:
         type: string
       failureThreshold:
         type: integer
@@ -279,6 +279,25 @@ definitions:
       volumeType:
         type: string
     type: object
+  models.ClusterExtensionModel:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      displayName:
+        type: string
+      enabled:
+        type: boolean
+      extensionID:
+        type: string
+      slug:
+        type: string
+      updatedAt:
+        type: string
+      version:
+        type: string
+    type: object
   models.ClusterModel:
     properties:
       clusterID:
@@ -334,7 +353,7 @@ definitions:
     properties:
       enabled:
         type: boolean
-      exec:
+      execCommand:
         type: string
       failureThreshold:
         type: integer
@@ -370,6 +389,11 @@ definitions:
     type: object
   models.CreateAppRequest:
     properties:
+      appType:
+        enum:
+        - Deployment
+        - StatefulSet
+        type: string
       containerImage:
         type: string
       deploy:
@@ -403,17 +427,12 @@ definitions:
         type: integer
       slug:
         type: string
-      workloadType:
-        enum:
-        - Deployment
-        - StatefulSet
-        type: string
     required:
+    - appType
     - containerImage
     - displayName
     - replicas
     - slug
-    - workloadType
     type: object
   models.CreateAppVolumeRequest:
     properties:
@@ -587,6 +606,10 @@ definitions:
       total:
         type: integer
     type: object
+  models.ListClusterExtensionsResponse:
+    additionalProperties:
+      $ref: '#/definitions/models.ClusterExtensionModel'
+    type: object
   models.ListClustersResponse:
     properties:
       records:
@@ -631,6 +654,13 @@ definitions:
         type: array
       total:
         type: integer
+    type: object
+  models.PingClusterKubeConfigRequest:
+    properties:
+      kubeConfig:
+        type: string
+    required:
+    - kubeConfig
     type: object
   models.ProjectMemberModel:
     properties:
@@ -718,6 +748,11 @@ definitions:
     required:
     - instanceName
     type: object
+  models.ToggleAppProbeRequest:
+    properties:
+      enabled:
+        type: boolean
+    type: object
   models.UpdateAppGatewayRequest:
     properties:
       certID:
@@ -760,7 +795,7 @@ definitions:
     properties:
       enabled:
         type: boolean
-      exec:
+      execCommand:
         type: string
       failureThreshold:
         type: integer
@@ -784,8 +819,15 @@ definitions:
         type: integer
       timeoutSeconds:
         type: integer
+      type:
+        enum:
+        - liveness
+        - readiness
+        - startup
+        type: string
     required:
     - probeMode
+    - type
     type: object
   models.UpdateAppRequest:
     properties:
@@ -1594,6 +1636,43 @@ paths:
       summary: Update App Probe
       tags:
       - AppProbe
+  /api/v1/apps/{appID}/probes/{probeID}/toggle:
+    put:
+      consumes:
+      - application/json
+      description: Enable or disable a probe for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Probe ID
+        in: path
+        name: probeID
+        required: true
+        type: string
+      - description: Enabled
+        in: body
+        name: enabled
+        required: true
+        schema:
+          $ref: '#/definitions/models.ToggleAppProbeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppProbeModel'
+              type: object
+      summary: Toggle App Probe
+      tags:
+      - AppProbe
   /api/v1/apps/{appID}/ref:
     get:
       consumes:
@@ -2057,6 +2136,32 @@ paths:
       summary: Enable Cluster
       tags:
       - Cluster
+  /api/v1/clusters/{clusterID}/extensions:
+    get:
+      consumes:
+      - application/json
+      description: List extensions available in a cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ListClusterExtensionsResponse'
+              type: object
+      summary: List Cluster Extensions
+      tags:
+      - Cluster
   /api/v1/clusters/{clusterID}/ref:
     get:
       consumes:
@@ -2081,6 +2186,33 @@ paths:
                   $ref: '#/definitions/models.ClusterRef'
               type: object
       summary: Get Cluster Ref
+      tags:
+      - Cluster
+  /api/v1/clusters/ping:
+    post:
+      consumes:
+      - application/json
+      description: Ping a cluster's KubeConfig to check if it is connectable
+      parameters:
+      - description: KubeConfig to ping
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.PingClusterKubeConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+      summary: Ping Cluster KubeConfig
       tags:
       - Cluster
   /api/v1/clusters/refs:

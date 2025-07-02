@@ -8,4 +8,8 @@ build:
 	docker buildx create --use --name mybuilder 2>/dev/null || docker buildx use mybuilder
 	docker buildx build --platform $(PLATFORMS) -t $(IMAGE_NAME):$(IMAGE_TAG) --push . -f Dockerfile
 
+run:
+	yarn install
+	yarn dev
+
 all: build

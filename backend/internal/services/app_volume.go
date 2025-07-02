@@ -86,7 +86,7 @@ func (s *appVolumeService) CreateAppVolume(ctx context.Context, req *models.Crea
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	if err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
 		log.Printf("failed to update app edition after creating volume for app %s: %v", req.AppID, err)
 	}
 
@@ -128,7 +128,7 @@ func (s *appVolumeService) UpdateAppVolume(ctx context.Context, req *models.Upda
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	if err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
 		log.Printf("failed to update app edition after updating volume for app %s: %v", req.AppID, err)
 	}
 
@@ -155,7 +155,7 @@ func (s *appVolumeService) DeleteAppVolumes(ctx context.Context, req *models.Del
 		return app.ErrDatabaseOperationFailed
 	}
 
-	if err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
 		log.Printf("failed to update app edition after deleting volume for app %s: %v", req.AppID, err)
 	}
 

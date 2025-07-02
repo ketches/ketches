@@ -17,7 +17,6 @@ func newEmptyObjectFrom(obj client.Object) client.Object {
 }
 
 func ApplyResource(ctx context.Context, cli client.Client, obj client.Object) app.Error {
-	log.Printf("Applying resource: %s/%s (%T)", obj.GetNamespace(), obj.GetName(), obj)
 	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		got := newEmptyObjectFrom(obj)
 		err := cli.Get(ctx, client.ObjectKey{Name: obj.GetName(), Namespace: obj.GetNamespace()}, got)

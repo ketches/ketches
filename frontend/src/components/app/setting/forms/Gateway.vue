@@ -123,12 +123,11 @@ const columns: ColumnDef<appGatewayModel>[] = [
         row.original.protocol === "https"
       ) {
         return h(
-          "div",
-          { class: row.original.exposed ? "" : "text-muted-foreground" },
-          `${
-            row.original.domain
-              ? row.original.domain + row.original?.path || ""
-              : "-"
+          "a",
+          { class: row.original.exposed ? "" : "text-muted-foreground", href: row.original.protocol + "://" + (row.original.domain ? row.original.domain + row.original?.path || "" : undefined), target: "_blank" },
+          `${row.original.domain
+            ? row.original.protocol + "://" + row.original.domain + row.original?.path || ""
+            : "-"
           }`,
         );
       } else if (
@@ -136,7 +135,7 @@ const columns: ColumnDef<appGatewayModel>[] = [
         row.original.protocol === "udp"
       ) {
         return h(
-          "div",
+          "a",
           { class: row.original.exposed ? "" : "text-muted-foreground" },
           `0.0.0.0:${row.original.gatewayPort}`,
         );
@@ -246,22 +245,11 @@ const selectedGateway = ref<appGatewayModel | null>(null);
   <Separator />
   <div class="flex flex-col flex-grow">
     <div class="flex gap-2 items-center pb-4 w-full">
-      <Input
-        class="max-w-sm"
-        placeholder="搜索网关"
-        :model-value="
-          table.getColumn('accessAddress')?.getFilterValue() as string
-        "
-        @update:model-value="
+      <Input class="max-w-sm" placeholder="搜索网关" :model-value="table.getColumn('accessAddress')?.getFilterValue() as string
+        " @update:model-value="
           table.getColumn('accessAddress')?.setFilterValue($event)
-        "
-      />
-      <Button
-        variant="outline"
-        size="sm"
-        class="ml-auto"
-        @click="openAddGatewayDialog = true"
-      >
+          " />
+      <Button variant="outline" size="sm" class="ml-auto" @click="openAddGatewayDialog = true">
         <Plus />
         新增
       </Button>
@@ -269,48 +257,27 @@ const selectedGateway = ref<appGatewayModel | null>(null);
     <div class="rounded-md border">
       <Table>
         <TableHeader>
-          <TableRow
-            v-for="headerGroup in table.getHeaderGroups()"
-            :key="headerGroup.id"
-            class="group"
-          >
-            <TableHead
-              v-for="header in headerGroup.headers"
-              :key="header.id"
-              :class="{
-                'w-px whitespace-nowrap':
-                  header.column.id === 'actions' ||
-                  header.column.id === 'select',
-              }"
-            >
-              <FlexRender
-                v-if="!header.isPlaceholder"
-                :render="header.column.columnDef.header"
-                :props="header.getContext()"
-              />
+          <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id" class="group">
+            <TableHead v-for="header in headerGroup.headers" :key="header.id" :class="{
+              'w-px whitespace-nowrap':
+                header.column.id === 'actions' ||
+                header.column.id === 'select',
+            }">
+              <FlexRender v-if="!header.isPlaceholder" :render="header.column.columnDef.header"
+                :props="header.getContext()" />
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <template v-if="table.getRowModel().rows?.length">
             <template v-for="row in table.getRowModel().rows" :key="row.id">
-              <TableRow
-                :data-state="row.getIsSelected() && 'selected'"
-                class="group"
-              >
-                <TableCell
-                  v-for="cell in row.getVisibleCells()"
-                  :key="cell.id"
-                  :class="{
-                    'w-px whitespace-nowrap':
-                      cell.column.id === 'actions' ||
-                      cell.column.id === 'select',
-                  }"
-                >
-                  <FlexRender
-                    :render="cell.column.columnDef.cell"
-                    :props="cell.getContext()"
-                  />
+              <TableRow :data-state="row.getIsSelected() && 'selected'" class="group">
+                <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id" :class="{
+                  'w-px whitespace-nowrap':
+                    cell.column.id === 'actions' ||
+                    cell.column.id === 'select',
+                }">
+                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                 </TableCell>
               </TableRow>
               <TableRow v-if="row.getIsExpanded()">
@@ -331,38 +298,19 @@ const selectedGateway = ref<appGatewayModel | null>(null);
     </div>
     <div class="flex items-center justify-end space-x-2 py-4">
       <div class="space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          :disabled="!table.getCanPreviousPage()"
-          v-if="table.getCanPreviousPage()"
-          @click="table.previousPage()"
-        >
+        <Button variant="outline" size="sm" :disabled="!table.getCanPreviousPage()" v-if="table.getCanPreviousPage()"
+          @click="table.previousPage()">
           <ChevronsLeft class="h-4 w-4" />
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          :disabled="!table.getCanNextPage()"
-          v-if="table.getCanNextPage()"
-          @click="table.nextPage()"
-        >
+        <Button variant="outline" size="sm" :disabled="!table.getCanNextPage()" v-if="table.getCanNextPage()"
+          @click="table.nextPage()">
           <ChevronsRight class="h-4 w-4" />
         </Button>
       </div>
     </div>
   </div>
-  <CreateGateway
-    v-model="openAddGatewayDialog"
-    :appID="app.appID"
-    @close="openAddGatewayDialog = false"
-    @gateway-created="fetchListData(app.appID)"
-  />
-  <UpdateGateway
-    v-model="openUpdateGatewayDialog"
-    v-if="selectedGateway"
-    :gateway="selectedGateway"
-    @close="openUpdateGatewayDialog = false"
-    @gateway-updated="fetchListData(app.appID)"
-  />
+  <CreateGateway v-model="openAddGatewayDialog" :appID="app.appID" @close="openAddGatewayDialog = false"
+    @gateway-created="fetchListData(app.appID)" />
+  <UpdateGateway v-model="openUpdateGatewayDialog" v-if="selectedGateway" :gateway="selectedGateway"
+    @close="openUpdateGatewayDialog = false" @gateway-updated="fetchListData(app.appID)" />
 </template>

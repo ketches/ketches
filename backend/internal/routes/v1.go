@@ -48,6 +48,8 @@ func registerClusterRoute(r *APIV1Route) {
 	adminOnly.DELETE("/:clusterID", handlers.DeleteCluster)
 	adminOnly.PUT("/:clusterID/enable", handlers.EnableCluster)
 	adminOnly.PUT("/:clusterID/disable", handlers.DisableCluster)
+	adminOnly.POST("/ping", handlers.PingClusterKubeConfig)
+	adminOnly.GET("/:clusterID/extensions", handlers.ListClusterExtensions)
 }
 
 func registerUserRoute(r *APIV1Route) {
@@ -156,6 +158,7 @@ func registerAppRoute(r *APIV1Route) {
 	appProbeHandler := handlers.NewAppProbeHandler()
 	projectDeveloper.POST("/probes", appProbeHandler.CreateAppProbe)
 	projectDeveloper.PUT("/probes/:probeID", appProbeHandler.UpdateAppProbe)
+	projectDeveloper.PUT("/probes/:probeID/toggle", appProbeHandler.ToggleAppProbe)
 	projectDeveloper.DELETE("/probes/:probeID", appProbeHandler.DeleteAppProbe)
 }
 

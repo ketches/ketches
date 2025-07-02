@@ -3,7 +3,7 @@ export interface appModel {
     slug: string
     displayName: string
     description: string
-    workloadType: string
+    appType: string
     replicas: number
     containerImage: string
     containerCommand: string
@@ -36,7 +36,7 @@ export interface createAppModel {
     slug: string
     displayName: string
     description?: string
-    workloadType: string
+    appType: string
     replicas: number
     containerImage: string
     registryUsername?: string
@@ -254,11 +254,3 @@ export interface updateAppProbeModel {
     failureThreshold: number
     enabled: boolean
 }
-
-// export interface appHealthCheckModel {
-//     healthCheckID: string
-//     livenessProbe?: healthCheckModel
-//     readinessProbe?: healthCheckModel
-//     startupProbe?: healthCheckModel
-//     appID: string
-// }

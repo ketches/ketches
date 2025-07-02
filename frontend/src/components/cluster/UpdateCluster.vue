@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getCluster, updateCluster } from '@/api/cluster';
+import { getCluster, pingClusterKubeConfig, updateCluster } from '@/api/cluster';
 import {
     Dialog,
     DialogContent,
@@ -77,7 +77,7 @@ const formSchema = toTypedSchema(z.object({
         .optional(),
 }));
 
-const { isFieldDirty, handleSubmit, resetForm, setFieldValue } = useForm({
+const { isFieldDirty, values, handleSubmit, resetForm, setFieldValue } = useForm({
     validationSchema: formSchema,
 })
 
@@ -128,6 +128,21 @@ function handleFileChange(e: Event) {
             setFieldValue('kubeConfig', event.target?.result as string || '');
         };
         reader.readAsText(file);
+    }
+}
+
+async function onPingKubeConfig() {
+    console.log('Testing KubeConfig connectivity...');
+
+    if (!values.kubeConfig) {
+        toast.error('请先填写 KubeConfig');
+        return;
+    }
+    const connectable = await pingClusterKubeConfig(values.kubeConfig);
+    if (connectable) {
+        toast.success('连通性测试成功！');
+    } else {
+        toast.error('连通性测试失败，请检查配置。');
     }
 }
 </script>
@@ -221,7 +236,7 @@ function handleFileChange(e: Event) {
                     </FormItem>
                 </FormField>
                 <DialogFooter class="flex w-full px-0">
-                    <Button v-if="cluster?.kubeConfig" variant="outline" type="button" @click="open = false"
+                    <Button v-if="cluster?.kubeConfig" variant="outline" type="button" @click="onPingKubeConfig"
                         class="mr-auto">
                         <Link />
                         连通性测试

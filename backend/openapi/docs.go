@@ -1157,6 +1157,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/apps/{appID}/probes/{probeID}/toggle": {
+            "put": {
+                "description": "Enable or disable a probe for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppProbe"
+                ],
+                "summary": "Toggle App Probe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Probe ID",
+                        "name": "probeID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Enabled",
+                        "name": "enabled",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ToggleAppProbeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppProbeModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/apps/{appID}/ref": {
             "get": {
                 "description": "Get app ref by app ID",
@@ -1601,6 +1661,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/clusters/ping": {
+            "post": {
+                "description": "Ping a cluster's KubeConfig to check if it is connectable",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Ping Cluster KubeConfig",
+                "parameters": [
+                    {
+                        "description": "KubeConfig to ping",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.PingClusterKubeConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/clusters/refs": {
             "get": {
                 "description": "Get all clusters for refs",
@@ -1820,6 +1926,50 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/clusters/{clusterID}/extensions": {
+            "get": {
+                "description": "List extensions available in a cluster",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "List Cluster Extensions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster ID",
+                        "name": "clusterID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ListClusterExtensionsResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -3608,15 +3758,15 @@ const docTemplate = `{
                 "AppActionDelete"
             ]
         },
-        "app.WorkloadType": {
+        "app.AppType": {
             "type": "string",
             "enum": [
                 "Deployment",
                 "StatefulSet"
             ],
             "x-enum-varnames": [
-                "WorkloadTypeDeployment",
-                "WorkloadTypeStatefulSet"
+                "AppTypeDeployment",
+                "AppTypeStatefulSet"
             ]
         },
         "models.AddProjectMembersRequest": {
@@ -3785,6 +3935,14 @@ const docTemplate = `{
                 "appID": {
                     "type": "string"
                 },
+                "appType": {
+                    "description": "e.g., \"deployment\", \"statefulset\", \"daemonset\"",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/app.AppType"
+                        }
+                    ]
+                },
                 "clusterID": {
                     "type": "string"
                 },
@@ -3857,14 +4015,6 @@ const docTemplate = `{
                 "status": {
                     "description": "e.g., \"undeployed\", \"starting\", \"running\", \"stopped\", \"stopping\"",
                     "type": "string"
-                },
-                "workloadType": {
-                    "description": "e.g., \"deployment\", \"statefulset\", \"daemonset\"",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/app.WorkloadType"
-                        }
-                    ]
                 }
             }
         },
@@ -3880,7 +4030,7 @@ const docTemplate = `{
                 "enabled": {
                     "type": "boolean"
                 },
-                "exec": {
+                "execCommand": {
                     "type": "string"
                 },
                 "failureThreshold": {
@@ -3982,6 +4132,35 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ClusterExtensionModel": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "extensionID": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "models.ClusterModel": {
             "type": "object",
             "properties": {
@@ -4067,7 +4246,7 @@ const docTemplate = `{
                 "enabled": {
                     "type": "boolean"
                 },
-                "exec": {
+                "execCommand": {
                     "type": "string"
                 },
                 "failureThreshold": {
@@ -4115,13 +4294,20 @@ const docTemplate = `{
         "models.CreateAppRequest": {
             "type": "object",
             "required": [
+                "appType",
                 "containerImage",
                 "displayName",
                 "replicas",
-                "slug",
-                "workloadType"
+                "slug"
             ],
             "properties": {
+                "appType": {
+                    "type": "string",
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ]
+                },
                 "containerImage": {
                     "type": "string"
                 },
@@ -4167,13 +4353,6 @@ const docTemplate = `{
                 },
                 "slug": {
                     "type": "string"
-                },
-                "workloadType": {
-                    "type": "string",
-                    "enum": [
-                        "Deployment",
-                        "StatefulSet"
-                    ]
                 }
             }
         },
@@ -4435,6 +4614,12 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ListClusterExtensionsResponse": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/models.ClusterExtensionModel"
+            }
+        },
         "models.ListClustersResponse": {
             "type": "object",
             "properties": {
@@ -4502,6 +4687,17 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.PingClusterKubeConfigRequest": {
+            "type": "object",
+            "required": [
+                "kubeConfig"
+            ],
+            "properties": {
+                "kubeConfig": {
+                    "type": "string"
                 }
             }
         },
@@ -4633,6 +4829,14 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ToggleAppProbeRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "models.UpdateAppGatewayRequest": {
             "type": "object",
             "required": [
@@ -4691,13 +4895,14 @@ const docTemplate = `{
         "models.UpdateAppProbeRequest": {
             "type": "object",
             "required": [
-                "probeMode"
+                "probeMode",
+                "type"
             ],
             "properties": {
                 "enabled": {
                     "type": "boolean"
                 },
-                "exec": {
+                "execCommand": {
                     "type": "string"
                 },
                 "failureThreshold": {
@@ -4731,6 +4936,14 @@ const docTemplate = `{
                 },
                 "timeoutSeconds": {
                     "type": "integer"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "liveness",
+                        "readiness",
+                        "startup"
+                    ]
                 }
             }
         },

@@ -1,16 +1,16 @@
 package models
 
 type Probe struct {
-	InitialDelaySeconds int64  `json:"initialDelaySeconds"`
-	PeriodSeconds       int64  `json:"periodSeconds"`
-	TimeoutSeconds      int64  `json:"timeoutSeconds"`
-	SuccessThreshold    int64  `json:"successThreshold"`
-	FailureThreshold    int64  `json:"failureThreshold"`
-	ProbeMode           string `json:"probeMode" validate:"required,oneof=httpGet tcpSocket exec"`
+	ProbeMode           string `json:"probeMode,omitempty" validate:"required,oneof=httpGet tcpSocket exec"`
 	HTTPGetPath         string `json:"httpGetPath,omitempty"`
 	HTTPGetPort         int    `json:"httpGetPort,omitempty"`
 	TCPSocketPort       int    `json:"tcpSocketPort,omitempty"`
-	ExecCommand         string `json:"exec,omitempty"`
+	ExecCommand         string `json:"execCommand,omitempty"`
+	InitialDelaySeconds int32  `json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       int32  `json:"periodSeconds,omitempty"`
+	TimeoutSeconds      int32  `json:"timeoutSeconds,omitempty"`
+	SuccessThreshold    int32  `json:"successThreshold,omitempty"`
+	FailureThreshold    int32  `json:"failureThreshold,omitempty"`
 }
 
 type HTTPGetAction struct {
@@ -39,17 +39,24 @@ type ListAppProbesRequest struct {
 }
 
 type CreateAppProbeRequest struct {
-	AppID   string `json:"-" uri:"appID"`
-	Type    string `json:"type" validate:"required,oneof=liveness readiness startup"`
-	Enabled bool   `json:"enabled"`
+	AppID string `json:"-" uri:"appID"`
+	Type  string `json:"type" validate:"required,oneof=liveness readiness startup"`
 	Probe
+	Enabled bool `json:"enabled"`
 }
 
 type UpdateAppProbeRequest struct {
 	AppID   string `json:"-" uri:"appID"`
 	ProbeID string `json:"-" uri:"probeID"`
-	Enabled bool   `json:"enabled"`
+	Type    string `json:"type" validate:"required,oneof=liveness readiness startup"`
 	Probe
+	Enabled bool `json:"enabled"`
+}
+
+type ToggleAppProbeRequest struct {
+	AppID   string `json:"-" uri:"appID"`
+	ProbeID string `json:"-" uri:"probeID"`
+	Enabled bool   `json:"enabled"`
 }
 
 type DeleteAppProbeRequest struct {

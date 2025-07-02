@@ -32,3 +32,15 @@ func GetClusterSlugByID(ctx context.Context, clusterID string) (string, app.Erro
 
 	return cluster.Slug, nil
 }
+
+func GetClusterGatewayIPByID(ctx context.Context, clusterID string) (string, app.Error) {
+	cluster := &entities.Cluster{}
+	if err := db.Instance().Select("gateway_ip").First(cluster, "id = ?", clusterID).Error; err != nil {
+		if db.IsErrRecordNotFound(err) {
+			return "", app.NewError(http.StatusNotFound, "Cluster not found")
+		}
+		return "", app.ErrDatabaseOperationFailed
+	}
+
+	return cluster.GatewayIP, nil
+}

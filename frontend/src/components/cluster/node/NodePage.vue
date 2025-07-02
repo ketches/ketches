@@ -86,12 +86,12 @@ const appStatus = computed(() => {
                                 </h1>
                                 <Separator orientation="vertical" class="h-4" />
                                 <Badge variant="secondary" class="font-mono text-muted-foreground">
-                                    应用类型：{{ app?.workloadType || '未知' }}</Badge>
+                                    应用类型：{{ app?.appType || '未知' }}</Badge>
                                 <Separator orientation="vertical" class="h-4" />
                                 <Badge variant="secondary" class="font-mono text-muted-foreground">部署版本：{{ app?.edition
                                     ||
                                     '未知'
-                                    }}</Badge>
+                                }}</Badge>
                             </div>
 
                             <div style="margin-left:auto;">

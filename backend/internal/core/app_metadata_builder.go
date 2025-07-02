@@ -48,7 +48,12 @@ func (b *appMetadataBuilder) Build() (*AppMetadata, app.Error) {
 		return nil, err
 	}
 
-	appPorts, err := orm.AllAppGateways(b.appEntity.ID)
+	appGateways, err := orm.AllAppGateways(b.appEntity.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	appProbes, err := orm.AllAppProbes(b.appEntity.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +63,7 @@ func (b *appMetadataBuilder) Build() (*AppMetadata, app.Error) {
 		AppSlug:          b.appEntity.Slug,
 		DisplayName:      b.appEntity.DisplayName,
 		Description:      b.appEntity.Description,
-		WorkloadType:     b.appEntity.WorkloadType,
+		AppType:          b.appEntity.AppType,
 		RequestCPU:       b.appEntity.RequestCPU,
 		RequestMemory:    b.appEntity.RequestMemory,
 		LimitCPU:         b.appEntity.LimitCPU,
@@ -96,12 +101,33 @@ func (b *appMetadataBuilder) Build() (*AppMetadata, app.Error) {
 		})
 	}
 
-	for _, port := range appPorts {
-		result.Ports = append(result.Ports, AppMetadataPort{
-			Port:     port.Port,
-			Protocol: port.Protocol,
+	for _, gateway := range appGateways {
+		result.Gateways = append(result.Gateways, AppMetadataGateway{
+			Port:        gateway.Port,
+			Protocol:    gateway.Protocol,
+			Exposed:     gateway.Exposed,
+			Domain:      gateway.Domain,
+			Path:        gateway.Path,
+			GatewayPort: gateway.GatewayPort,
 		})
 	}
+
+	for _, probe := range appProbes {
+		result.Probes = append(result.Probes, AppMetadataProbe{
+			Type:                probe.Type,
+			InitialDelaySeconds: probe.InitialDelaySeconds,
+			PeriodSeconds:       probe.PeriodSeconds,
+			TimeoutSeconds:      probe.TimeoutSeconds,
+			SuccessThreshold:    probe.SuccessThreshold,
+			FailureThreshold:    probe.FailureThreshold,
+			ProbeMode:           probe.ProbeMode,
+			HTTPGetPath:         probe.HTTPGetPath,
+			HTTPGetPort:         probe.HTTPGetPort,
+			TCPSocketPort:       probe.TCPSocketPort,
+			ExecCommand:         probe.ExecCommand,
+		})
+	}
+
 	return result, nil
 }
 

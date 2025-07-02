@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { createCluster } from '@/api/cluster';
+import { createCluster, pingClusterKubeConfig } from '@/api/cluster';
 import {
     Dialog,
     DialogContent,
@@ -114,6 +114,21 @@ function handleFileChange(e: Event) {
         reader.readAsText(file);
     }
 }
+
+async function onPingKubeConfig() {
+    console.log('Testing KubeConfig connectivity...');
+
+    if (!values.kubeConfig) {
+        toast.error('请先填写 KubeConfig');
+        return;
+    }
+    const connectable = await pingClusterKubeConfig(values.kubeConfig);
+    if (connectable) {
+        toast.success('连通性测试成功！');
+    } else {
+        toast.error('连通性测试失败，请检查配置。');
+    }
+}
 </script>
 
 <template>
@@ -208,7 +223,7 @@ function handleFileChange(e: Event) {
                     </FormItem>
                 </FormField>
                 <DialogFooter class="flex w-full px-0">
-                    <Button v-if="values.kubeConfig" variant="outline" type="button" @click="open = false"
+                    <Button v-if="values.kubeConfig" variant="outline" type="button" @click="onPingKubeConfig"
                         class="mr-auto">
                         <Link />
                         连通性测试

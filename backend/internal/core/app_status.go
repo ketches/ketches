@@ -11,77 +11,62 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type AppWorkloadStatus = string
-
-const (
-	AppWorkloadStatusUndeployed AppWorkloadStatus = "undeployed"
-	AppWorkloadStatusStarting   AppWorkloadStatus = "starting"
-	AppWorkloadStatusRunning    AppWorkloadStatus = "running"
-	AppWorkloadStatusStopped    AppWorkloadStatus = "stopped"
-	AppWorkloadStatusStopping   AppWorkloadStatus = "stopping"
-	AppWorkloadStatusUpdating   AppWorkloadStatus = "updating"
-	AppWorkloadStatusAbnormal   AppWorkloadStatus = "abnormal"
-	AppWorkloadStatusCompleted  AppWorkloadStatus = "completed"
-	AppWorkloadStatusDebugging  AppWorkloadStatus = "debugging"
-	AppWorkloadStatusUnknown    AppWorkloadStatus = "unknown"
-)
-
-type AppStatus struct {
-	DesiredReplicas int32             `json:"desiredReplicas"`
-	DesiredEdition  string            `json:"desiredEdition"`
-	ActualReplicas  int32             `json:"actualReplicas"`
-	ActualEdition   string            `json:"actualEdition"`
-	Status          AppWorkloadStatus `json:"status"`
+type AppStatusDescription struct {
+	DesiredReplicas int32         `json:"desiredReplicas"`
+	DesiredEdition  string        `json:"desiredEdition"`
+	ActualReplicas  int32         `json:"actualReplicas"`
+	ActualEdition   string        `json:"actualEdition"`
+	Status          app.AppStatus `json:"status"`
 }
 
-func GetAppStatus(ctx context.Context, appEntity *entities.App) AppStatus {
-	result := AppStatus{
+func GetAppStatus(ctx context.Context, appEntity *entities.App) AppStatusDescription {
+	result := AppStatusDescription{
 		DesiredReplicas: appEntity.Replicas,
 		DesiredEdition:  appEntity.Edition,
 	}
-	switch appEntity.WorkloadType {
-	case app.WorkloadTypeDeployment:
+	switch appEntity.AppType {
+	case app.AppTypeDeployment:
 		deployment, err := kube.GetDeployment(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
 		if err != nil {
 			result.ActualReplicas = 0
 			result.ActualEdition = ""
 			if err.Code() == http.StatusNotFound {
-				result.Status = AppWorkloadStatusUndeployed
+				result.Status = app.AppStatusUndeployed
 				return result
 			}
-			result.Status = AppWorkloadStatusUnknown
+			result.Status = app.AppStatusUnknown
 			return result
 		}
 		result.ActualEdition = deployment.Labels["ketches/edition"]
 		if deployment.Labels["ketches/debugging"] == "true" {
-			result.Status = AppWorkloadStatusDebugging
+			result.Status = app.AppStatusDebugging
 			return result
 		}
-	case app.WorkloadTypeStatefulSet:
+	case app.AppTypeStatefulSet:
 		statefulSet, err := kube.GetStatefulSet(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
 		if err != nil {
 			if err.Code() == http.StatusNotFound {
-				result.Status = AppWorkloadStatusUndeployed
+				result.Status = app.AppStatusUndeployed
 				return result
 			}
-			result.Status = AppWorkloadStatusUnknown
+			result.Status = app.AppStatusUnknown
 			return result
 		}
 		result.ActualEdition = statefulSet.Labels["ketches/edition"]
 		if statefulSet.Labels["ketches/debugging"] == "true" {
-			result.Status = AppWorkloadStatusDebugging
+			result.Status = app.AppStatusDebugging
 			return result
 		}
 	}
 
 	pods, err := kube.ListPods(ctx, appEntity.ClusterID, appEntity.ClusterNamespace, appEntity.Slug)
 	if err != nil {
-		result.Status = AppWorkloadStatusUnknown
+		result.Status = app.AppStatusUnknown
 		return result
 	}
 
 	if len(pods) == 0 {
-		result.Status = AppWorkloadStatusStopped
+		result.Status = app.AppStatusStopped
 		return result
 	}
 
@@ -119,43 +104,43 @@ func GetAppStatus(ctx context.Context, appEntity *entities.App) AppStatus {
 	}
 
 	if abnormalPodCount > 0 {
-		result.Status = AppWorkloadStatusAbnormal
+		result.Status = app.AppStatusAbnormal
 		return result
 	}
 
 	if updating {
-		result.Status = AppWorkloadStatusUpdating
+		result.Status = app.AppStatusUpdating
 		return result
 	}
 
 	if terminatingPodCount > 0 {
 		if runningPodCount == 0 && pendingPodCount == 0 {
-			result.Status = AppWorkloadStatusStopped
+			result.Status = app.AppStatusStopped
 			return result
 		} else {
-			result.Status = AppWorkloadStatusStopping
+			result.Status = app.AppStatusStopping
 			return result
 		}
 	}
 
 	if pendingPodCount > 0 {
-		result.Status = AppWorkloadStatusStarting
+		result.Status = app.AppStatusStarting
 		return result
 	}
 
 	if runningPodCount == result.ActualReplicas {
-		result.Status = AppWorkloadStatusRunning
+		result.Status = app.AppStatusRunning
 		return result
 	}
 
-	result.Status = AppWorkloadStatusUnknown
+	result.Status = app.AppStatusUnknown
 	return result
 }
 
 type AppRunningStatus struct {
-	ActualReplicas int32             `json:"actualReplicas"`
-	ActualEdition  string            `json:"actualEdition"`
-	Status         AppWorkloadStatus `json:"status"`
+	ActualReplicas int32         `json:"actualReplicas"`
+	ActualEdition  string        `json:"actualEdition"`
+	Status         app.AppStatus `json:"status"`
 }
 
 func GetAppStatusFromInstances(ctx context.Context, instances []*models.AppInstanceModel) *AppRunningStatus {
@@ -163,7 +148,7 @@ func GetAppStatusFromInstances(ctx context.Context, instances []*models.AppInsta
 		ActualReplicas: int32(len(instances)),
 	}
 	if len(instances) == 0 {
-		result.Status = AppWorkloadStatusStopped
+		result.Status = app.AppStatusStopped
 		return result
 	}
 
@@ -194,7 +179,7 @@ func GetAppStatusFromInstances(ctx context.Context, instances []*models.AppInsta
 		case string(kube.PodStatusTerminating):
 			terminatingPodCount++
 		case string(kube.PodStatusDebugging):
-			result.Status = AppWorkloadStatusDebugging
+			result.Status = app.AppStatusDebugging
 		}
 	}
 
@@ -205,40 +190,40 @@ func GetAppStatusFromInstances(ctx context.Context, instances []*models.AppInsta
 	}
 
 	if abnormalPodCount > 0 {
-		result.Status = AppWorkloadStatusAbnormal
+		result.Status = app.AppStatusAbnormal
 		return result
 	}
 
 	if updating {
-		result.Status = AppWorkloadStatusUpdating
+		result.Status = app.AppStatusUpdating
 		return result
 	}
 
 	if terminatingPodCount > 0 {
 		if runningPodCount == 0 && succeedPodCount == 0 && pendingPodCount == 0 {
-			result.Status = AppWorkloadStatusStopped
+			result.Status = app.AppStatusStopped
 			return result
 		} else {
-			result.Status = AppWorkloadStatusStopping
+			result.Status = app.AppStatusStopping
 			return result
 		}
 	}
 
 	if pendingPodCount > 0 {
-		result.Status = AppWorkloadStatusStarting
+		result.Status = app.AppStatusStarting
 		return result
 	}
 
 	if runningPodCount == result.ActualReplicas {
-		result.Status = AppWorkloadStatusRunning
+		result.Status = app.AppStatusRunning
 		return result
 	}
 
 	if succeedPodCount == result.ActualReplicas {
-		result.Status = AppWorkloadStatusCompleted
+		result.Status = app.AppStatusCompleted
 		return result
 	}
 
-	result.Status = AppWorkloadStatusUnknown
+	result.Status = app.AppStatusUnknown
 	return result
 }

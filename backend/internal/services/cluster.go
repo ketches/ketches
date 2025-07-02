@@ -7,9 +7,12 @@ import (
 
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
+	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/pkg/utils"
 )
 
 type ClusterService interface {
@@ -22,6 +25,8 @@ type ClusterService interface {
 	DeleteCluster(ctx context.Context, req *models.DeleteClusterRequest) app.Error
 	EnableCluster(ctx context.Context, req *models.EnabledClusterRequest) app.Error
 	DisableCluster(ctx context.Context, req *models.DisableClusterRequest) app.Error
+	PingClusterKubeConfig(ctx context.Context, req *models.PingClusterKubeConfigRequest) bool
+	ListClusterExtensions(ctx context.Context, req *models.ListClusterExtensionsRequest) (*models.ListClusterExtensionsResponse, app.Error)
 }
 
 type clusterService struct {
@@ -35,10 +40,6 @@ func NewClusterService() ClusterService {
 }
 
 func (s *clusterService) ListClusters(ctx context.Context, req *models.ListClustersRequest) (*models.ListClustersResponse, app.Error) {
-	if !api.IsAdmin(ctx) {
-		return nil, app.ErrPermissionDenied
-	}
-
 	query := db.Instance().Model(&entities.Cluster{})
 	if len(req.Query) > 0 {
 		query = db.CaseInsensitiveLike(query, req.Query, "slug", "display_name")
@@ -89,10 +90,6 @@ func (s *clusterService) AllClusterRefs(ctx context.Context) ([]*models.ClusterR
 }
 
 func (s *clusterService) GetCluster(ctx context.Context, req *models.GetClusterRequest) (*models.ClusterModel, app.Error) {
-	if !api.IsAdmin(ctx) {
-		return nil, app.ErrPermissionDenied
-	}
-
 	cluster := &entities.Cluster{}
 	if err := db.Instance().Where("id = ?", req.ClusterID).First(cluster).Error; err != nil {
 		log.Printf("failed to get cluster %s for user %s: %v", req.ClusterID, api.UserID(ctx), err)
@@ -129,10 +126,6 @@ func (s *clusterService) GetClusterRef(ctx context.Context, req *models.GetClust
 }
 
 func (s *clusterService) CreateCluster(ctx context.Context, req *models.CreateClusterRequest) (*models.ClusterModel, app.Error) {
-	if !api.IsAdmin(ctx) {
-		return nil, app.ErrPermissionDenied
-	}
-
 	cluster := &entities.Cluster{
 		Slug:        req.Slug,
 		DisplayName: req.DisplayName,
@@ -164,10 +157,6 @@ func (s *clusterService) CreateCluster(ctx context.Context, req *models.CreateCl
 }
 
 func (s *clusterService) UpdateCluster(ctx context.Context, req *models.UpdateClusterRequest) (*models.ClusterModel, app.Error) {
-	if !api.IsAdmin(ctx) {
-		return nil, app.ErrPermissionDenied
-	}
-
 	cluster := &entities.Cluster{}
 	if err := db.Instance().Where("id = ?", req.ClusterID).First(cluster).Error; err != nil {
 		log.Printf("failed to get cluster %s for user %s: %v", req.ClusterID, api.UserID(ctx), err)
@@ -205,10 +194,6 @@ func (s *clusterService) UpdateCluster(ctx context.Context, req *models.UpdateCl
 }
 
 func (s *clusterService) DeleteCluster(ctx context.Context, req *models.DeleteClusterRequest) app.Error {
-	if !api.IsAdmin(ctx) {
-		return app.ErrPermissionDenied
-	}
-
 	var envCount int64
 	if err := db.Instance().Model(&entities.Env{}).Where("cluster_id = ?", req.ClusterID).Count(&envCount).Error; err != nil {
 		log.Printf("failed to count environments for cluster %s for user %s: %v", req.ClusterID, api.UserID(ctx), err)
@@ -228,10 +213,6 @@ func (s *clusterService) DeleteCluster(ctx context.Context, req *models.DeleteCl
 }
 
 func (s *clusterService) EnableCluster(ctx context.Context, req *models.EnabledClusterRequest) app.Error {
-	if !api.IsAdmin(ctx) {
-		return app.ErrPermissionDenied
-	}
-
 	if err := db.Instance().Updates(&entities.Cluster{
 		UUIDBase: entities.UUIDBase{
 			ID: req.ClusterID},
@@ -248,10 +229,6 @@ func (s *clusterService) EnableCluster(ctx context.Context, req *models.EnabledC
 }
 
 func (s *clusterService) DisableCluster(ctx context.Context, req *models.DisableClusterRequest) app.Error {
-	if !api.IsAdmin(ctx) {
-		return app.ErrPermissionDenied
-	}
-
 	if err := db.Instance().Updates(&entities.Cluster{
 		UUIDBase: entities.UUIDBase{
 			ID: req.ClusterID,
@@ -266,4 +243,30 @@ func (s *clusterService) DisableCluster(ctx context.Context, req *models.Disable
 	}
 
 	return nil
+}
+
+func (s *clusterService) PingClusterKubeConfig(ctx context.Context, req *models.PingClusterKubeConfigRequest) bool {
+	return kube.CheckKubeConfigBytes([]byte(req.KubeConfig))
+}
+
+func (s *clusterService) ListClusterExtensions(ctx context.Context, req *models.ListClusterExtensionsRequest) (*models.ListClusterExtensionsResponse, app.Error) {
+	cli, err := kube.ClusterRuntimeClient(ctx, req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	nativeExtensions := core.CheckNativeExtensions(ctx, cli)
+	result := make(models.ListClusterExtensionsResponse, len(nativeExtensions))
+	for _, ext := range nativeExtensions {
+		result[ext.Slug] = &models.ClusterExtensionModel{
+			Slug:        ext.Slug,
+			DisplayName: ext.DisplayName,
+			Description: ext.Description,
+			Installed:   ext.Installed,
+			Version:     ext.Version,
+			CreatedAt:   utils.HumanizeTime(ext.CreatedAt),
+		}
+	}
+
+	return &result, nil
 }

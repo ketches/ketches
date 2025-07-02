@@ -9,32 +9,32 @@ import (
 )
 
 type AppModel struct {
-	AppID            string           `json:"appID"`
-	Slug             string           `json:"slug"`
-	DisplayName      string           `json:"displayName,omitempty"`
-	Description      string           `json:"description,omitempty"`
-	WorkloadType     app.WorkloadType `json:"workloadType,omitempty"` // e.g., "deployment", "statefulset", "daemonset"
-	Replicas         int32            `json:"replicas,omitempty"`     // Number of replicas for the app
-	ContainerImage   string           `json:"containerImage,omitempty"`
-	RegistryUsername string           `json:"registryUsername,omitempty"`
-	RegistryPassword string           `json:"registryPassword,omitempty"`
-	ContainerCommand string           `json:"containerCommand,omitempty"`
-	RequestCPU       int32            `json:"requestCPU,omitempty"`    // in milliCPU (e.g., 500 for 0.5 CPU, 1000 for 1 CPU)
-	RequestMemory    int32            `json:"requestMemory,omitempty"` // in MiB
-	LimitCPU         int32            `json:"limitCPU,omitempty"`      // in milliCPU (e.g., 1000 for 1 CPU, 2000 for 2 CPUs)
-	LimitMemory      int32            `json:"limitMemory,omitempty"`   // in MiB
-	Edition          string           `json:"edition,omitempty"`
-	EnvID            string           `json:"envID,omitempty"`
-	EnvSlug          string           `json:"envSlug,omitempty"`
-	ProjectID        string           `json:"projectID,omitempty"`
-	ProjectSlug      string           `json:"projectSlug,omitempty"`
-	ClusterID        string           `json:"clusterID,omitempty"`
-	ClusterSlug      string           `json:"clusterSlug,omitempty"`
-	ClusterNamespace string           `json:"clusterNamespace,omitempty"`
-	ActualReplicas   int32            `json:"actualReplicas,omitempty"` // Number of currently running replicas
-	ActualEdition    string           `json:"actualEdition,omitempty"`  // Edition of the currently running app
-	Status           string           `json:"status,omitempty"`         // e.g., "undeployed", "starting", "running", "stopped", "stopping"
-	CreatedAt        string           `json:"createdAt,omitempty"`      // ISO 8601 format
+	AppID            string      `json:"appID"`
+	Slug             string      `json:"slug"`
+	DisplayName      string      `json:"displayName,omitempty"`
+	Description      string      `json:"description,omitempty"`
+	AppType          app.AppType `json:"appType,omitempty"`  // e.g., "deployment", "statefulset", "daemonset"
+	Replicas         int32       `json:"replicas,omitempty"` // Number of replicas for the app
+	ContainerImage   string      `json:"containerImage,omitempty"`
+	RegistryUsername string      `json:"registryUsername,omitempty"`
+	RegistryPassword string      `json:"registryPassword,omitempty"`
+	ContainerCommand string      `json:"containerCommand,omitempty"`
+	RequestCPU       int32       `json:"requestCPU,omitempty"`    // in milliCPU (e.g., 500 for 0.5 CPU, 1000 for 1 CPU)
+	RequestMemory    int32       `json:"requestMemory,omitempty"` // in MiB
+	LimitCPU         int32       `json:"limitCPU,omitempty"`      // in milliCPU (e.g., 1000 for 1 CPU, 2000 for 2 CPUs)
+	LimitMemory      int32       `json:"limitMemory,omitempty"`   // in MiB
+	Edition          string      `json:"edition,omitempty"`
+	EnvID            string      `json:"envID,omitempty"`
+	EnvSlug          string      `json:"envSlug,omitempty"`
+	ProjectID        string      `json:"projectID,omitempty"`
+	ProjectSlug      string      `json:"projectSlug,omitempty"`
+	ClusterID        string      `json:"clusterID,omitempty"`
+	ClusterSlug      string      `json:"clusterSlug,omitempty"`
+	ClusterNamespace string      `json:"clusterNamespace,omitempty"`
+	ActualReplicas   int32       `json:"actualReplicas,omitempty"` // Number of currently running replicas
+	ActualEdition    string      `json:"actualEdition,omitempty"`  // Edition of the currently running app
+	Status           string      `json:"status,omitempty"`         // e.g., "undeployed", "starting", "running", "stopped", "stopping"
+	CreatedAt        string      `json:"createdAt,omitempty"`      // ISO 8601 format
 }
 
 type ListAppsRequest struct {
@@ -72,7 +72,7 @@ type CreateAppRequest struct {
 	Slug             string `json:"slug" binding:"required,slug"`
 	DisplayName      string `json:"displayName" binding:"required"`
 	Description      string `json:"description,omitempty"`
-	WorkloadType     string `json:"workloadType" binding:"required,oneof=Deployment StatefulSet"`
+	AppType          string `json:"appType" binding:"required,oneof=Deployment StatefulSet"`
 	RequestCPU       int32  `json:"requestCPU,omitempty"`                                // in milliCPU (e.g., 500 for 0.5 CPU, 1000 for 1 CPU)
 	RequestMemory    int32  `json:"requestMemory,omitempty"`                             // in MiB
 	LimitCPU         int32  `json:"limitCPU,omitempty"`                                  // in milliCPU (e.g., 1000 for 1 CPU, 2000 for 2 CPUs)

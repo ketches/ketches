@@ -81,7 +81,7 @@ const formSchema = toTypedSchema(z.object({
         .max(50, {
             message: '应用名称最长不能超过 50 个字符',
         }),
-    workloadType: z
+    appType: z
         .string({
             required_error: '工作负载类型必填',
         }).default('Deployment'),
@@ -110,7 +110,7 @@ watch(open, (isOpen) => {
                 slug: 'my-app',
                 displayName: 'my-app',
                 deploy: true,
-                workloadType: 'Deployment',
+                appType: 'Deployment',
                 replicas: 1,
             }
         });
@@ -192,7 +192,7 @@ const onSubmit = handleSubmit(async (values) => {
                         <FormMessage />
                     </FormItem>
                 </FormField>
-                <FormField v-slot="{ componentField }" name="workloadType" :validate-on-blur="!isFieldDirty">
+                <FormField v-slot="{ componentField }" name="appType" :validate-on-blur="!isFieldDirty">
                     <FormItem>
                         <FormLabel>
                             <TooltipProvider>

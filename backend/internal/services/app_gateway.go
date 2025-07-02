@@ -57,6 +57,11 @@ func (s *appGatewayService) ListAppGateways(ctx context.Context, req *models.Lis
 }
 
 func (s *appGatewayService) CreateAppGateway(ctx context.Context, req *models.CreateAppGatewayRequest) (*models.AppGatewayModel, app.Error) {
+	appEntity, err := orm.GetAppByID(ctx, req.AppID)
+	if err != nil {
+		return nil, err
+	}
+
 	gateway := &entities.AppGateway{
 		AppID:       req.AppID,
 		Port:        req.Port,
@@ -66,6 +71,7 @@ func (s *appGatewayService) CreateAppGateway(ctx context.Context, req *models.Cr
 		CertID:      req.CertID,
 		GatewayPort: req.GatewayPort,
 		Exposed:     req.Exposed,
+		EnvID:       appEntity.EnvID,
 		AuditBase: entities.AuditBase{
 			CreatedBy: api.UserID(ctx),
 			UpdatedBy: api.UserID(ctx),

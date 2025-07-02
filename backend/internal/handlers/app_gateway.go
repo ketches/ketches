@@ -29,7 +29,7 @@ func NewAppGatewayHandler() *AppGatewayHandler {
 // @Success 200 {object} api.Response{data=[]models.AppGatewayModel}
 // @Router /api/v1/apps/{appID}/gateways [get]
 func (h *AppGatewayHandler) ListAppGateways(c *gin.Context) {
-	resp, err := h.service.ListAppGateways(c.Request.Context(), &models.ListAppGatewaysRequest{
+	resp, err := h.service.ListAppGateways(c, &models.ListAppGatewaysRequest{
 		AppID: c.Param("appID"),
 	})
 	if err != nil {
@@ -55,7 +55,7 @@ func (h *AppGatewayHandler) CreateAppGateway(c *gin.Context) {
 		return
 	}
 	req.AppID = c.Param("appID")
-	resp, err := h.service.CreateAppGateway(c.Request.Context(), req)
+	resp, err := h.service.CreateAppGateway(c, req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -81,7 +81,7 @@ func (h *AppGatewayHandler) UpdateAppGateway(c *gin.Context) {
 	}
 	req.AppID = c.Param("appID")
 	req.GatewayID = c.Param("gatewayID")
-	resp, err := h.service.UpdateAppGateway(c.Request.Context(), req)
+	resp, err := h.service.UpdateAppGateway(c, req)
 	if err != nil {
 		api.Error(c, err)
 		return
@@ -105,7 +105,7 @@ func (h *AppGatewayHandler) DeleteAppGateways(c *gin.Context) {
 		return
 	}
 	req.AppID = c.Param("appID")
-	if err := h.service.DeleteAppGateways(c.Request.Context(), req); err != nil {
+	if err := h.service.DeleteAppGateways(c, req); err != nil {
 		api.Error(c, err)
 		return
 	}

@@ -61,21 +61,24 @@ func GetProjectRoleByAppID(ctx context.Context, appID string) (string, app.Error
 	return entity.ProjectRole, nil
 }
 
-func UpdateAppEdition(ctx context.Context, appID string) app.Error {
+// UpdateAppEdition updates the edition of the app identified by appID.
+// Returns new edition as a string or an error if the operation fails.
+func UpdateAppEdition(ctx context.Context, appID string) (string, app.Error) {
+	newEdition := cast.ToString(time.Now().UnixMilli())
 	if err := db.Instance().Updates(&entities.App{
 		UUIDBase: entities.UUIDBase{
 			ID: appID,
 		},
-		Edition: cast.ToString(time.Now().UnixMilli()),
+		Edition: newEdition,
 		AuditBase: entities.AuditBase{
 			UpdatedBy: api.UserID(ctx),
 		},
 	}).Error; err != nil {
 		log.Printf("failed to update app edition: %v", err)
-		return app.ErrDatabaseOperationFailed
+		return "", app.ErrDatabaseOperationFailed
 	}
 
-	return nil
+	return newEdition, nil
 }
 
 func AllAppEnvVars(appID string) ([]*entities.AppEnvVar, app.Error) {
@@ -98,6 +101,15 @@ func AllAppVolumes(appID string) ([]*entities.AppVolume, app.Error) {
 
 func AllAppGateways(appID string) ([]*entities.AppGateway, app.Error) {
 	var result []*entities.AppGateway
+	if err := db.Instance().Find(&result, "app_id = ?", appID).Error; err != nil {
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return result, nil
+}
+
+func AllAppProbes(appID string) ([]*entities.AppProbe, app.Error) {
+	var result []*entities.AppProbe
 	if err := db.Instance().Find(&result, "app_id = ?", appID).Error; err != nil {
 		return nil, app.ErrDatabaseOperationFailed
 	}

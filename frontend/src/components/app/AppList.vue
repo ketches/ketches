@@ -205,13 +205,13 @@ const columns: ColumnDef<appModel>[] = [
         },
     },
     {
-        accessorKey: "workloadType",
-        header: () => centeredHeader("工作负载类型"),
+        accessorKey: "appType",
+        header: () => centeredHeader("应用类型"),
         cell: ({ row }) =>
             h(
                 "div",
                 { class: "capitalize text-center" },
-                row.getValue("workloadType")
+                row.getValue("appType")
             ),
     },
     {

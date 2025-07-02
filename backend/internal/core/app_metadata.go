@@ -13,33 +13,35 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayapisv1beta1 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 type AppMetadata struct {
-	AppID            string                   `json:"appId"`
-	AppSlug          string                   `json:"appSlug"`
-	DisplayName      string                   `json:"displayName"`
-	Description      string                   `json:"description"`
-	WorkloadType     string                   `json:"workloadType"`
-	RequestCPU       int32                    `json:"requestCPU"`
-	RequestMemory    int32                    `json:"requestMemory"`
-	LimitCPU         int32                    `json:"limitCPU"`
-	LimitMemory      int32                    `json:"limitMemory"`
-	Replicas         int32                    `json:"replicas"`
-	ContainerImage   string                   `json:"containerImage"`
-	RegistryUsername string                   `json:"registryUsername"`
-	RegistryPassword string                   `json:"registryPassword"`
-	ContainerCommand string                   `json:"containerCommand"`
-	EnvVars          []AppMetadataEnvVar      `json:"envVars,omitempty"`
-	Volumes          []AppMetadataVolume      `json:"volumes,omitempty"`
-	Ports            []AppMetadataPort        `json:"ports,omitempty"`
-	HealthChecks     []AppMetadataHealthCheck `json:"healthChecks,omitempty"`
-	Edition          string                   `json:"edition,omitempty"`
-	EnvID            string                   `json:"envId,omitempty"`
-	EnvSlug          string                   `json:"envSlug,omitempty"`
-	ProjectID        string                   `json:"projectId,omitempty"`
-	ProjectSlug      string                   `json:"projectSlug,omitempty"`
-	ClusterNamespace string                   `json:"clusterNamespace"`
+	AppID            string               `json:"appId"`
+	AppSlug          string               `json:"appSlug"`
+	DisplayName      string               `json:"displayName"`
+	Description      string               `json:"description"`
+	AppType          string               `json:"appType"`
+	RequestCPU       int32                `json:"requestCPU"`
+	RequestMemory    int32                `json:"requestMemory"`
+	LimitCPU         int32                `json:"limitCPU"`
+	LimitMemory      int32                `json:"limitMemory"`
+	Replicas         int32                `json:"replicas"`
+	ContainerImage   string               `json:"containerImage"`
+	RegistryUsername string               `json:"registryUsername"`
+	RegistryPassword string               `json:"registryPassword"`
+	ContainerCommand string               `json:"containerCommand"`
+	EnvVars          []AppMetadataEnvVar  `json:"envVars,omitempty"`
+	Volumes          []AppMetadataVolume  `json:"volumes,omitempty"`
+	Gateways         []AppMetadataGateway `json:"gateways,omitempty"`
+	Probes           []AppMetadataProbe   `json:"probes,omitempty"`
+	Edition          string               `json:"edition,omitempty"`
+	EnvID            string               `json:"envId,omitempty"`
+	EnvSlug          string               `json:"envSlug,omitempty"`
+	ProjectID        string               `json:"projectId,omitempty"`
+	ProjectSlug      string               `json:"projectSlug,omitempty"`
+	ClusterNamespace string               `json:"clusterNamespace"`
 }
 
 type AppMetadataEnvVar struct {
@@ -47,9 +49,28 @@ type AppMetadataEnvVar struct {
 	Value string `json:"value"`
 }
 
-type AppMetadataPort struct {
-	Port     int32  `json:"port"`
-	Protocol string `json:"protocol"`
+type AppMetadataGateway struct {
+	Port        int32  `json:"port"`
+	Protocol    string `json:"protocol"`
+	Exposed     bool   `json:"exposed"`
+	Domain      string `json:"domain,omitempty"`
+	Path        string `json:"path,omitempty"`
+	GatewayIP   string `json:"gatewayIP,omitempty"`
+	GatewayPort int32  `json:"gatewayPort,omitempty"`
+}
+
+type AppMetadataProbe struct {
+	Type                string `json:"type"`
+	ProbeMode           string `json:"probeMode"`
+	HTTPGetPath         string `json:"httpGetPath,omitempty"`
+	HTTPGetPort         int    `json:"httpGetPort,omitempty"`
+	TCPSocketPort       int    `json:"tcpSocketPort,omitempty"`
+	ExecCommand         string `json:"execCommand,omitempty"`
+	InitialDelaySeconds int32  `json:"initialDelaySeconds"`
+	PeriodSeconds       int32  `json:"periodSeconds"`
+	TimeoutSeconds      int32  `json:"timeoutSeconds"`
+	SuccessThreshold    int32  `json:"successThreshold"`
+	FailureThreshold    int32  `json:"failureThreshold"`
 }
 
 type AppMetadataVolume struct {
@@ -61,9 +82,6 @@ type AppMetadataVolume struct {
 	VolumeType   string   `json:"volumeType"`
 	Capacity     int      `json:"capacity"`
 	VolumeMode   string   `json:"volumeMode"`
-}
-
-type AppMetadataHealthCheck struct {
 }
 
 type AppDeployOption struct {
@@ -109,13 +127,13 @@ func (a *AppMetadata) Undeploy(ctx context.Context, cli client.Client) app.Error
 }
 
 func (a *AppMetadata) GetApplyManifests() ([]client.Object, app.Error) {
-	switch a.WorkloadType {
-	case app.WorkloadTypeDeployment:
+	switch a.AppType {
+	case app.AppTypeDeployment:
 		return a.deploymentManifests()
-	case app.WorkloadTypeStatefulSet:
+	case app.AppTypeStatefulSet:
 		return a.statefulSetManifests()
 	default:
-		return nil, app.NewError(http.StatusBadRequest, "Not supported workload type: "+a.WorkloadType)
+		return nil, app.NewError(http.StatusBadRequest, "Not supported app type: "+a.AppType)
 	}
 }
 
@@ -154,6 +172,7 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 	for _, pvc := range a.persistentVolumeClaimManifests() {
 		result = append(result, &pvc)
 	}
+
 	volumeMounts := make([]corev1.VolumeMount, 0, len(a.Volumes))
 	volumes := make([]corev1.Volume, 0, len(a.Volumes))
 	for _, volume := range a.Volumes {
@@ -172,8 +191,9 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 		})
 	}
 
-	if len(a.Ports) > 0 {
+	if len(a.Gateways) > 0 {
 		result = append(result, a.serviceManifest())
+		result = append(result, a.gatewayManifests()...)
 	}
 
 	var (
@@ -184,6 +204,48 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 		labels["ketches/debugging"] = "true" // Mark as debugging if command is set
 		command = []string{"sh"}
 		args = []string{"-c", a.ContainerCommand}
+	}
+
+	var livenessProbe, readinessProbe, startupProbe *corev1.Probe
+	for _, probe := range a.Probes {
+		p := &corev1.Probe{
+			InitialDelaySeconds: probe.InitialDelaySeconds,
+			TimeoutSeconds:      probe.TimeoutSeconds,
+			PeriodSeconds:       probe.PeriodSeconds,
+			SuccessThreshold:    probe.SuccessThreshold,
+			FailureThreshold:    probe.FailureThreshold,
+		}
+		var probeHandler corev1.ProbeHandler
+		switch probe.ProbeMode {
+		case app.AppProbeModeHTTPGet:
+			probeHandler = corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: probe.HTTPGetPath,
+					Port: intstr.FromInt(probe.HTTPGetPort),
+				},
+			}
+		case app.AppProbeModeTCPSocket:
+			probeHandler = corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(probe.TCPSocketPort),
+				},
+			}
+		case app.AppProbeModeExec:
+			probeHandler = corev1.ProbeHandler{
+				Exec: &corev1.ExecAction{
+					Command: []string{"/bin/sh", "-c", probe.ExecCommand},
+				},
+			}
+		}
+		p.ProbeHandler = probeHandler
+		switch probe.Type {
+		case app.AppProbeTypeLiveness:
+			livenessProbe = p
+		case app.AppProbeTypeReadiness:
+			readinessProbe = p
+		case app.AppProbeTypeStartup:
+			startupProbe = p
+		}
 	}
 
 	result = append(result, &appsv1.Deployment{
@@ -220,7 +282,10 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 									corev1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", a.LimitMemory)),
 								},
 							},
-							VolumeMounts: volumeMounts,
+							LivenessProbe:  livenessProbe,
+							ReadinessProbe: readinessProbe,
+							StartupProbe:   startupProbe,
+							VolumeMounts:   volumeMounts,
 						},
 					},
 					Volumes: volumes,
@@ -267,8 +332,9 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 		})
 	}
 
-	if len(a.Ports) > 0 {
+	if len(a.Gateways) > 0 {
 		result = append(result, a.serviceManifest())
+		result = append(result, a.gatewayManifests()...)
 	}
 
 	var (
@@ -336,6 +402,10 @@ func (a *AppMetadata) persistentVolumeClaimManifests() []corev1.PersistentVolume
 
 	for _, volume := range a.Volumes {
 		result = append(result, corev1.PersistentVolumeClaim{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "PersistentVolumeClaim", // Specify the kind explicitly, used in apply logic
+				APIVersion: "v1",
+			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      volume.Slug,
 				Namespace: a.ClusterNamespace,
@@ -363,16 +433,10 @@ func (a *AppMetadata) persistentVolumeClaimManifests() []corev1.PersistentVolume
 func (a *AppMetadata) serviceManifest() *corev1.Service {
 	labels := a.standardLabels()
 
-	ports := make([]corev1.ServicePort, 0, len(a.Ports))
-	for _, p := range a.Ports {
-		if p.Protocol == "" {
-			p.Protocol = string(corev1.ProtocolTCP)
-		}
-		if p.Port <= 0 {
-			p.Port = 80 // Default port if not specified
-		}
+	ports := make([]corev1.ServicePort, 0, len(a.Gateways))
+	for _, p := range a.Gateways {
 		ports = append(ports, corev1.ServicePort{
-			Protocol: corev1.Protocol(p.Protocol),
+			Protocol: corev1.ProtocolTCP,
 			Port:     p.Port,
 			TargetPort: intstr.IntOrString{
 				IntVal: p.Port,
@@ -392,6 +456,172 @@ func (a *AppMetadata) serviceManifest() *corev1.Service {
 			Ports:    ports,
 		},
 	}
+}
+
+func (a *AppMetadata) gatewayManifests() []client.Object {
+	var result []client.Object
+	for _, gateway := range a.Gateways {
+		if !gateway.Exposed {
+			continue // Skip gateways that are not exposed
+		}
+
+		switch gateway.Protocol {
+		case app.AppGatewayProtocolHTTP, app.AppGatewayProtocolHTTPS:
+			if gateway.Domain == "" {
+				continue // Skip if domain is not set for HTTP/HTTPS gateways
+			}
+			if gateway.Path == "" {
+				gateway.Path = "/" // Default path for HTTP/HTTPS gateways
+			}
+
+			gatewayName := a.ClusterNamespace // Gateway auto generated for each env, so use namespace as class name
+
+			// Gateway
+			// result = append(result, &gatewayapisv1.Gateway{
+			// 	ObjectMeta: metav1.ObjectMeta{
+			// 		Name:      gatewayName,
+			// 		Namespace: a.ClusterNamespace,
+			// 		Labels:    a.standardLabels(),
+			// 	},
+			// 	Spec: gatewayapisv1.GatewaySpec{
+			// 		GatewayClassName: gatewayapisv1.ObjectName(a.ClusterNamespace),
+			// 		Listeners: []gatewayapisv1.Listener{
+			// 			{
+			// 				Name:     "http",
+			// 				Protocol: gatewayapisv1.HTTPProtocolType,
+			// 				Port:     gatewayapisv1.PortNumber(80),
+			// 				AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+			// 					Namespaces: &gatewayapisv1.RouteNamespaces{
+			// 						From: utils.Ptr(gatewayapisv1.NamespacesFromSame),
+			// 					},
+			// 					Kinds: []gatewayapisv1.RouteGroupKind{
+			// 						{
+			// 							Kind: "HTTPRoute",
+			// 						},
+			// 					},
+			// 				},
+			// 			},
+			// 		},
+			// 	},
+			// })
+
+			// HTTPRoute
+			result = append(result, &gatewayapisv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      gatewayName,
+					Namespace: a.ClusterNamespace,
+					Labels:    a.standardLabels(),
+				},
+				Spec: gatewayapisv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayapisv1.CommonRouteSpec{
+						ParentRefs: []gatewayapisv1.ParentReference{
+							{
+								Name: gatewayapisv1.ObjectName(gatewayName),
+							},
+						},
+					},
+					Hostnames: []gatewayapisv1.Hostname{
+						gatewayapisv1.Hostname(gateway.Domain),
+					},
+					Rules: []gatewayapisv1.HTTPRouteRule{
+						{
+							Matches: []gatewayapisv1.HTTPRouteMatch{
+								{
+									Path: &gatewayapisv1.HTTPPathMatch{
+										Type:  utils.Ptr(gatewayapisv1.PathMatchPathPrefix),
+										Value: utils.Ptr(gateway.Path),
+									},
+								},
+							},
+							BackendRefs: []gatewayapisv1.HTTPBackendRef{
+								{
+									BackendRef: gatewayapisv1.BackendRef{
+										BackendObjectReference: gatewayapisv1.BackendObjectReference{
+											Name: gatewayapisv1.ObjectName(a.AppSlug),
+											Port: utils.Ptr(gatewayapisv1.PortNumber(gateway.Port)),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			})
+		case app.AppGatewayProtocolTCP, app.AppGatewayProtocolUDP:
+			if gateway.GatewayPort == 0 {
+				continue // Skip if GatewayPort is not set
+			}
+
+			gatewayName := fmt.Sprintf("%s-%s-%d", a.AppSlug, gateway.Protocol, gateway.Port)
+
+			// Gateway
+			result = append(result, &gatewayapisv1.Gateway{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      gatewayName,
+					Namespace: a.ClusterNamespace,
+					Labels:    a.standardLabels(),
+				},
+				Spec: gatewayapisv1.GatewaySpec{
+					GatewayClassName: gatewayapisv1.ObjectName("nginx"),
+					Listeners: []gatewayapisv1.Listener{
+						{
+							Name:     "tcp",
+							Protocol: gatewayapisv1.TCPProtocolType,
+							Port:     gatewayapisv1.PortNumber(gateway.GatewayPort),
+							AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+								Namespaces: &gatewayapisv1.RouteNamespaces{
+									From: utils.Ptr(gatewayapisv1.NamespacesFromSame),
+								},
+								Kinds: []gatewayapisv1.RouteGroupKind{
+									{
+										Kind: "TCPRoute",
+									},
+								},
+							},
+						},
+					},
+				},
+			})
+
+			// TCPRoute
+			result = append(result, &gatewayapisv1beta1.TCPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      gatewayName,
+					Namespace: a.ClusterNamespace,
+					Labels:    a.standardLabels(),
+				},
+				Spec: gatewayapisv1beta1.TCPRouteSpec{
+					CommonRouteSpec: gatewayapisv1beta1.CommonRouteSpec{
+						ParentRefs: []gatewayapisv1beta1.ParentReference{
+							{
+								Name:        gatewayapisv1beta1.ObjectName(gatewayName),
+								SectionName: utils.Ptr(gatewayapisv1.SectionName("tcp")),
+							},
+						},
+					},
+					Rules: []gatewayapisv1beta1.TCPRouteRule{
+						{
+							BackendRefs: []gatewayapisv1beta1.BackendRef{
+								{
+									BackendObjectReference: gatewayapisv1beta1.BackendObjectReference{
+										Name: gatewayapisv1beta1.ObjectName(a.AppSlug),
+										Port: utils.Ptr(gatewayapisv1beta1.PortNumber(gateway.Port)),
+									},
+								},
+							},
+						},
+					},
+				},
+			})
+		}
+
+		var httpPath = gateway.Path
+		if len(httpPath) == 0 {
+			httpPath = "/"
+		}
+
+	}
+	return result
 }
 
 func pvcAccessModes(accessModes []string) []corev1.PersistentVolumeAccessMode {

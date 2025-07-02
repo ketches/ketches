@@ -3,6 +3,7 @@ import {
     createAppProbe,
     deleteAppProbe,
     listAppProbes,
+    toggleAppProbe,
     updateAppProbe,
 } from "@/api/app";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import type { appModel, appProbeModel } from "@/types/app";
 import { toTypedSchema } from "@vee-validate/zod";
-import { CircleSlash, Edit, Save, Trash2 } from "lucide-vue-next";
+import { CircleSlash, Edit, HeartPulse, Save, SquareActivity, Trash2 } from "lucide-vue-next";
 import { useForm } from "vee-validate";
 import { computed, onMounted, ref, toRef, watch } from "vue";
 import { toast } from "vue-sonner";
@@ -82,17 +82,20 @@ const probeRefs = {
     startup: startupProbe,
 };
 
+const probeEnabled = (type: "liveness" | "readiness" | "startup") =>
+    computed(() => probeRefs[type].value?.enabled);
+
 const formSchema = z.object({
     probeMode: z.enum(["httpGet", "tcpSocket", "exec"]),
-    httpGetPort: z.coerce.number().min(1).max(65535).optional(),
+    httpGetPort: z.number().min(1).max(65535).optional(),
     httpGetPath: z.string().startsWith("/").optional(),
-    tcpSocketPort: z.coerce.number().min(1).max(65535).optional(),
+    tcpSocketPort: z.number().min(1).max(65535).optional(),
     execCommand: z.string().optional(),
-    initialDelaySeconds: z.coerce.number().min(0),
-    periodSeconds: z.coerce.number().min(1),
-    timeoutSeconds: z.coerce.number().min(1),
-    successThreshold: z.coerce.number().min(1),
-    failureThreshold: z.coerce.number().min(1),
+    initialDelaySeconds: z.number().min(0),
+    periodSeconds: z.number().min(1),
+    timeoutSeconds: z.number().min(1),
+    successThreshold: z.number().min(1),
+    failureThreshold: z.number().min(1),
 });
 
 const probeFormSchema = toTypedSchema(formSchema);
@@ -118,7 +121,6 @@ const { resetForm, values, setValues } = useForm<ProbeForm>({
 
 function enterEditMode(type: "liveness" | "readiness" | "startup") {
     const probe = probeRefs[type].value;
-    console.log("Entering edit mode for", type, "probe:", probe);
 
     let defaultInitialDelaySeconds = 5;
     if (type === "startup") {
@@ -146,67 +148,62 @@ function cancelEditMode(type: "liveness" | "readiness" | "startup") {
 }
 
 const onProbeSubmit = async (type: "liveness" | "readiness" | "startup") => {
-    try {
-        const existingProbe = probeRefs[type].value;
-        if (existingProbe) {
-            await updateAppProbe(app.value.appID, existingProbe.probeID, {
-                probeID: existingProbe.probeID,
-                type: type,
-                probeMode: values.probeMode,
-                httpGetPath: values.httpGetPath,
-                httpGetPort: values.httpGetPort,
-                tcpSocketPort: values.tcpSocketPort,
-                execCommand: values.execCommand,
-                initialDelaySeconds: values.initialDelaySeconds,
-                periodSeconds: values.periodSeconds,
-                timeoutSeconds: values.timeoutSeconds,
-                successThreshold: values.successThreshold,
-                failureThreshold: values.failureThreshold,
-                enabled: existingProbe.enabled,
-            });
-
-            toast.success("探针更新成功");
-        } else {
-            console.log("Creating new probe with values:", values);
-            await createAppProbe(app.value.appID, {
-                type: type,
-                probeMode: values.probeMode,
-                httpGetPath: values.httpGetPath,
-                httpGetPort: values.httpGetPort,
-                tcpSocketPort: values.tcpSocketPort,
-                execCommand: values.execCommand,
-                initialDelaySeconds: values.initialDelaySeconds,
-                periodSeconds: values.periodSeconds,
-                timeoutSeconds: values.timeoutSeconds,
-                successThreshold: values.successThreshold,
-                failureThreshold: values.failureThreshold,
-                enabled: true,
-            });
-
-            toast.success("探针创建成功");
-        }
-        await fetchProbes();
-        isEditMode.value[type] = false;
-    } catch (e) {
-        console.error("Error in probe submission:", e);
-        toast.error("提交探针信息时发生错误");
+    const existingProbe = probeRefs[type].value;
+    // Build payload, only include execCommand if probeMode is exec and value is not empty
+    const payload: any = {
+        probeID: existingProbe?.probeID,
+        type: type,
+        probeMode: values.probeMode,
+        httpGetPath: values.httpGetPath,
+        httpGetPort: values.httpGetPort,
+        tcpSocketPort: values.tcpSocketPort,
+        execCommand: values.execCommand,
+        initialDelaySeconds: values.initialDelaySeconds,
+        periodSeconds: values.periodSeconds,
+        timeoutSeconds: values.timeoutSeconds,
+        successThreshold: values.successThreshold,
+        failureThreshold: values.failureThreshold,
+        enabled: existingProbe ? existingProbe.enabled : true,
+    };
+    if (values.probeMode === "httpGet") {
+        payload.httpGetPath = values.httpGetPath ?? "";
+        payload.httpGetPort = values.httpGetPort ?? 0;
+    } else {
+        delete payload.httpGetPath;
+        delete payload.httpGetPort;
     }
+    if (values.probeMode === "tcpSocket") {
+        payload.tcpSocketPort = values.tcpSocketPort ?? 0;
+    } else {
+        delete payload.tcpSocketPort;
+    }
+    if (values.probeMode === "exec") {
+        payload.execCommand = values.execCommand ?? "";
+    } else {
+        delete payload.execCommand;
+    }
+
+    if (existingProbe) {
+        await updateAppProbe(app.value.appID, existingProbe.probeID, payload);
+        toast.success(`${probeDetails[type].title}更新成功`);
+    } else {
+        await createAppProbe(app.value.appID, payload);
+        toast.success(`${probeDetails[type].title}创建成功`);
+    }
+    await fetchProbes();
+    isEditMode.value[type] = false;
 }
 
-
 async function toggleProbeEnabled(probe: appProbeModel) {
-    await updateAppProbe(app.value.appID, probe.probeID, {
-        ...probe,
-        enabled: !probe.enabled,
-    });
-    toast.success(`探针已${!probe.enabled ? "启用" : "停用"}`);
+    await toggleAppProbe(app.value.appID, probe.probeID, !probe.enabled);
+    toast.success(`${probeDetails[probe.type].title}已${!probe.enabled ? "启用" : "停用"}`);
     await fetchProbes();
 }
 
 async function handleDeleteProbe(probe: appProbeModel) {
     if (!confirm(`确定要删除 ${probeDetails[probe.type].title} 吗？`)) return;
     await deleteAppProbe(app.value.appID, probe.probeID);
-    toast.success("探针删除成功");
+    toast.success(`${probeDetails[probe.type].title}删除成功`);
     await fetchProbes();
     isEditMode.value[probe.type] = false;
 }
@@ -221,15 +218,16 @@ async function handleDeleteProbe(probe: appProbeModel) {
     </div>
     <Separator />
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card v-for="type in probeTypes" :key="type" :class="cn('w-full h-fit', $attrs.class ?? '')">
+        <Card v-for="type in probeTypes" :key="type"
+            :class="probeRefs[type].value ? 'bg-green-50/50 border-green-300 dark:bg-green-950/50 dark:border-green-700 w-full h-fit' : 'bg-secondary/20 w-full h-fit'">
             <CardHeader>
                 <CardTitle class="flex items-center">
                     <span>{{ probeDetails[type].title }}</span>
-                    <div class="ml-auto flex items-center gap-2">
-                        <Switch v-if="probeRefs[type].value" :checked="probeRefs[type].value?.enabled"
+                    <div class="ml-auto flex items-center gap-2 h-9">
+                        <Switch v-if="probeRefs[type].value !== undefined"
+                            :default-value="probeRefs[type].value?.enabled"
+                            @update:model-value="toggleProbeEnabled(probeRefs[type].value!)"
                             @update:checked="toggleProbeEnabled(probeRefs[type].value!)" />
-
-
                         <Button v-if="!isEditMode[type]" variant="ghost" size="icon" @click="enterEditMode(type)">
                             <Edit class="h-4 w-4" />
                         </Button>
@@ -367,44 +365,65 @@ async function handleDeleteProbe(probe: appProbeModel) {
                 </form>
 
                 <!-- Read-only Mode -->
-                <div v-else-if="probeRefs[type].value" class="space-y-2 text-sm text-muted-foreground">
-                    <div v-if="probeRefs[type].value.probeMode === 'httpGet'">
-                        <h4 class="text-big font-medium">
-                            HTTP 探针
+                <div v-else-if="probeRefs[type].value" class="space-y-4 text-sm text-muted-foreground">
+                    <div class="space-y-2" v-if="probeRefs[type].value.probeMode === 'httpGet'">
+                        <h4 class="flex text-big font-medium ">
+                            <SquareActivity class="inline h-5 w-5 mr-1" /> HTTP 探测
                         </h4>
-                        <p class="text-sm text-muted-foreground">
-                            HTTP 请求：<span class="font-mono">http://localhost:{{ probeRefs[type].value.httpGetPort
-                            }}{{ probeRefs[type].value.httpGetPath }}</span>
+                        <p class="pl-6">
+                            GET：<span class="font-mono">localhost:{{ probeRefs[type].value.httpGetPort
+                                }}{{ probeRefs[type].value.httpGetPath }}</span>
                         </p>
                     </div>
-                    <div v-else-if="probeRefs[type].value.probeMode === 'tcpSocket'">
-                        <h4 class="text-big font-medium">TCP 探针</h4>
-                        <p class="text-sm text-muted-foreground">
+                    <div class="space-y-2" v-else-if="probeRefs[type].value.probeMode === 'tcpSocket'">
+                        <h4 class="flex text-big font-medium">
+                            <SquareActivity class="inline h-5 w-5 mr-1" />TCP 探测
+                        </h4>
+                        <p class="pl-6">
                             TCP 端口：<span class="font-mono">{{ probeRefs[type].value.tcpSocketPort }}</span>
                         </p>
                     </div>
-                    <div v-else-if="probeRefs[type].value.probeMode === 'exec'">
-                        <h4 class="text-big font-medium">执行命令探针</h4>
-                        <p class="text-sm text-muted-foreground">
+                    <div class="space-y-2" v-else-if="probeRefs[type].value.probeMode === 'exec'">
+                        <h4 class="flex text-big font-medium">
+                            <SquareActivity class="inline h-5 w-5 mr-1" />执行命令探测
+                        </h4>
+                        <p class="pl-6">
                             执行命令：<span class="font-mono">{{ probeRefs[type].value.execCommand }}</span>
                         </p>
                     </div>
-                    <p v-if="type === 'liveness'">
-                        在容器启动 {{ probeRefs[type].value?.initialDelaySeconds }} 秒后，每隔
-                        {{ probeRefs[type].value?.periodSeconds }} 秒检测一次容器运行状态，
-                        如果连续 {{ probeRefs[type].value?.failureThreshold }} 次检测失败，将重启容器。
-                    </p>
-                    <p v-if="type === 'readiness'">
-                        在容器启动 {{ probeRefs[type].value?.initialDelaySeconds }} 秒后，每隔
-                        {{ probeRefs[type].value?.periodSeconds }} 秒检测一次容器运行状态，
-                        如果连续 {{ probeRefs[type].value?.failureThreshold }} 次检测失败，将无法接收流量。
-                    </p>
-                    <p v-if="type === 'startup'">
-                        在容器启动 {{ probeRefs[type].value?.initialDelaySeconds }} 秒后，每隔
-                        {{ probeRefs[type].value?.periodSeconds }} 秒检测一次容器运行状态，
-                        如果连续 {{ probeRefs[type].value?.failureThreshold }} 次检测失败，将重启容器。
-                        检测成功前，将不会启用其他探针。
-                    </p>
+                    <div class="space-y-2">
+                        <h4 class="flex text-big font-medium">
+                            <HeartPulse class="inline h-5 w-5 mr-1" /> 探测规则
+                        </h4>
+                        <p class="pl-6" v-if="type === 'liveness'">
+                            在容器启动 <span class="text-amber-700 font-mono">{{ probeRefs[type].value?.initialDelaySeconds
+                                }}</span> 秒后，每隔
+                            <span class="text-amber-700 font-mono">{{ probeRefs[type].value?.periodSeconds }}</span>
+                            秒检测一次容器运行状态，
+                            如果连续 <span class="text-amber-700 font-mono">{{ probeRefs[type].value?.failureThreshold
+                                }}</span>
+                            次检测失败，将自动重启容器。
+                        </p>
+                        <p class="pl-6" v-if="type === 'readiness'">
+                            在容器启动 <span class="text-amber-700 font-mono">{{
+                                probeRefs[type].value?.initialDelaySeconds
+                                }}</span> 秒后，每隔
+                            <span class="text-amber-700 font-mono">{{ probeRefs[type].value?.periodSeconds }}</span>
+                            秒检测一次容器运行状态，
+                            如果连续 <span class="text-amber-700 font-mono">{{ probeRefs[type].value?.failureThreshold
+                                }}</span>
+                            次检测失败，将无法接收流量。
+                        </p>
+                        <p class="pl-6" v-if="type === 'startup'">
+                            在容器启动 <span class="text-amber-700 font-mono">{{ probeRefs[type].value?.initialDelaySeconds
+                                }}</span> 秒后，每隔
+                            <span class="text-amber-700 font-mono">{{ probeRefs[type].value?.periodSeconds }}</span>
+                            秒检测一次容器运行状态，
+                            如果连续 <span class="text-amber-700 font-mono">{{ probeRefs[type].value?.failureThreshold
+                            }}</span>
+                            次检测失败，将自动重启容器。
+                        </p>
+                    </div>
                 </div>
                 <div v-else>
                     <p class="text-sm text-muted-foreground">未配置此探针。</p>

@@ -59,3 +59,24 @@ type EnabledClusterRequest struct {
 type DisableClusterRequest struct {
 	ClusterID string `uri:"clusterID" binding:"required"`
 }
+
+type PingClusterKubeConfigRequest struct {
+	KubeConfig string `json:"kubeConfig" binding:"required"`
+}
+
+type ClusterExtensionModel struct {
+	ExtensionID string `json:"extensionID"`
+	Slug        string `json:"slug"`
+	DisplayName string `json:"displayName"`
+	Description string `json:"description,omitempty"`
+	Installed   bool   `json:"enabled"`
+	Version     string `json:"version,omitempty"`
+	CreatedAt   string `json:"createdAt"`
+	UpdatedAt   string `json:"updatedAt"`
+}
+
+type ListClusterExtensionsRequest struct {
+	ClusterID string `uri:"clusterID" binding:"required"`
+}
+
+type ListClusterExtensionsResponse = map[string]*ClusterExtensionModel

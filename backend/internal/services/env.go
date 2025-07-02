@@ -8,6 +8,7 @@ import (
 
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
+	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/db/orm"
@@ -16,6 +17,7 @@ import (
 	"github.com/ketches/ketches/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type EnvService interface {
@@ -100,6 +102,11 @@ func (s *envService) CreateEnv(ctx context.Context, req *models.CreateEnvRequest
 		return nil, err
 	}
 
+	clusterGatewayIP, err := orm.GetClusterGatewayIPByID(ctx, req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
 	env := &entities.Env{
 		Slug:             req.Slug,
 		DisplayName:      req.DisplayName,
@@ -122,6 +129,55 @@ func (s *envService) CreateEnv(ctx context.Context, req *models.CreateEnvRequest
 			return nil, app.NewError(http.StatusConflict, "Env with this slug already exists in the project")
 		}
 		return nil, app.NewError(http.StatusInternalServerError, "Failed to create env")
+	}
+
+	kcli, err := kube.ClusterRuntimeClient(ctx, env.ClusterID)
+	if err != nil {
+		log.Printf("failed to get cluster runtime client for env %s: %v", env.ID, err)
+		return nil, app.NewError(http.StatusInternalServerError, "Failed to get cluster runtime client")
+	}
+
+	if installed, _ := core.CheckGatewayAPIInstalled(ctx, kcli); installed {
+		core.ApplyResource(ctx, kcli, &gatewayapisv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      env.ClusterNamespace,
+				Namespace: env.ClusterNamespace,
+				Labels: map[string]string{
+					"ketches/owned":     "true",
+					"ketches/env":       env.Slug,
+					"ketches/envID":     env.ID,
+					"ketches/project":   env.ProjectSlug,
+					"ketches/projectID": env.ProjectID,
+				},
+			},
+			Spec: gatewayapisv1.GatewaySpec{
+				GatewayClassName: gatewayapisv1.ObjectName("ketches"),
+				Addresses: []gatewayapisv1.GatewaySpecAddress{
+					{
+						Type:  utils.Ptr(gatewayapisv1.IPAddressType),
+						Value: clusterGatewayIP,
+					},
+				},
+				Listeners: []gatewayapisv1.Listener{
+					{
+						AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+							Kinds: []gatewayapisv1.RouteGroupKind{
+								{
+									Group: utils.Ptr(gatewayapisv1.Group(gatewayapisv1.GroupName)),
+									Kind:  "HTTPRoute",
+								},
+							},
+							Namespaces: &gatewayapisv1.RouteNamespaces{
+								From: utils.Ptr(gatewayapisv1.NamespacesFromSame),
+							},
+						},
+						Name:     gatewayapisv1.SectionName("http"),
+						Port:     80,
+						Protocol: gatewayapisv1.HTTPProtocolType,
+					},
+				},
+			},
+		})
 	}
 
 	return &models.EnvModel{

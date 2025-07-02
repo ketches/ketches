@@ -68,7 +68,7 @@ func (s *appEnvVarService) CreateAppEnvVar(ctx context.Context, req *models.Crea
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	if err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
 		log.Printf("failed to update app edition after creating env var for app %s: %v", req.AppID, err)
 	}
 
@@ -101,7 +101,7 @@ func (s *appEnvVarService) UpdateAppEnvVar(ctx context.Context, req *models.Upda
 		return nil, app.ErrDatabaseOperationFailed
 	}
 
-	if err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
 		log.Printf("failed to update app edition after updating env var for app %s: %v", req.AppID, err)
 	}
 
@@ -123,7 +123,7 @@ func (s *appEnvVarService) DeleteAppEnvVars(ctx context.Context, req *models.Del
 		return app.ErrDatabaseOperationFailed
 	}
 
-	if err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
+	if _, err := orm.UpdateAppEdition(ctx, req.AppID); err != nil {
 		log.Printf("failed to update app edition after deleting env var for app %s: %v", req.AppID, err)
 	}
 
