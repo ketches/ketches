@@ -38,7 +38,8 @@ type CreateClusterRequest struct {
 	Slug        string `json:"slug" binding:"required,slug"`
 	DisplayName string `json:"displayName" binding:"required"`
 	KubeConfig  string `json:"kubeConfig" binding:"required"`
-	Description string `json:"description,omitempty"`
+	GatewayIP   string `json:"gatewayIP"`
+	Description string `json:"description"`
 }
 
 type UpdateClusterRequest struct {

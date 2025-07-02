@@ -14,10 +14,11 @@ export interface clusterRefModel {
 }
 
 export interface createClusterModel {
-    slug: string,
-    displayName: string,
+    slug: string
+    displayName: string
     kubeConfig: string
-    description?: string,
+    gatewayIP?: string
+    description?: string
 }
 
 export interface updateClusterModel {

@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import type { createClusterModel } from '@/types/cluster';
 import { toTypedSchema } from '@vee-validate/zod';
+import yaml from 'js-yaml';
 import { CloudUpload, Link, Plus } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
 import { computed, ref, watch } from 'vue';
@@ -70,6 +71,9 @@ const formSchema = toTypedSchema(z.object({
         .string({
             required_error: 'KubeConfig 必填'
         }).min(1, 'KubeConfig 必填'),
+    gatewayIP: z
+        .string()
+        .optional(),
     description: z
         .string()
         .optional(),
@@ -78,6 +82,24 @@ const formSchema = toTypedSchema(z.object({
 const { isFieldDirty, handleSubmit, values, setFieldValue } = useForm({
     validationSchema: formSchema,
 })
+
+// 使用 URL 解析 server 字段，提取主机/IP
+function extractServerHost(kubeconfigStr: string): string {
+    try {
+        const config = yaml.load(kubeconfigStr) as any;
+        const serverUrl = config?.clusters?.[0]?.cluster?.server;
+        if (!serverUrl) return '';
+        return new URL(serverUrl).hostname;
+    } catch {
+        return '';
+    }
+}
+
+// 监听 kubeConfig 字段变化，自动填充 gatewayIP
+watch(() => values.kubeConfig, (newKubeConfig) => {
+    const host = extractServerHost(newKubeConfig || '');
+    setFieldValue('gatewayIP', host);
+});
 
 watch(() => values.slug, (newSlug, oldSlug) => {
     if (values.displayName === oldSlug || !values.displayName) {
@@ -116,8 +138,6 @@ function handleFileChange(e: Event) {
 }
 
 async function onPingKubeConfig() {
-    console.log('Testing KubeConfig connectivity...');
-
     if (!values.kubeConfig) {
         toast.error('请先填写 KubeConfig');
         return;
@@ -209,6 +229,16 @@ async function onPingKubeConfig() {
                         <FormControl>
                             <Textarea v-bind="componentField" class="w-full bg-accent font-mono text-xs max-h-32"
                                 placeholder="" />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                </FormField>
+                <!-- 新增 gatewayIP 字段，位于 KubeConfig 后 -->
+                <FormField v-slot="{ componentField }" name="gatewayIP" :validate-on-blur="!isFieldDirty">
+                    <FormItem>
+                        <FormLabel>网关 IP（自动提取自 KubeConfig，可手动修改）</FormLabel>
+                        <FormControl>
+                            <Input v-bind="componentField" class="w-full" placeholder="自动填充或手动输入" />
                         </FormControl>
                         <FormMessage />
                     </FormItem>

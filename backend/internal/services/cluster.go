@@ -130,6 +130,7 @@ func (s *clusterService) CreateCluster(ctx context.Context, req *models.CreateCl
 		Slug:        req.Slug,
 		DisplayName: req.DisplayName,
 		KubeConfig:  req.KubeConfig,
+		GatewayIP:   req.GatewayIP,
 		Description: req.Description,
 		Enabled:     true,
 		AuditBase: entities.AuditBase{
