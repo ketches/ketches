@@ -4,6 +4,10 @@ export interface clusterModel {
     displayName: string;
     description?: string;
     kubeConfig?: string;
+    readyNodeCount?: number;
+    nodeCount?: number;
+    serverVersion?: string;
+    connectable?: boolean;
     enabled: boolean;
 }
 

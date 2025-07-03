@@ -3,12 +3,17 @@ package models
 import "github.com/ketches/ketches/internal/api"
 
 type ClusterModel struct {
-	ClusterID   string `json:"clusterID"`
-	Slug        string `json:"slug"`
-	DisplayName string `json:"displayName,omitempty"`
-	KubeConfig  string `json:"kubeConfig,omitempty"`
-	Description string `json:"description,omitempty"`
-	Enabled     bool   `json:"enabled"`
+	ClusterID      string `json:"clusterID"`
+	Slug           string `json:"slug"`
+	DisplayName    string `json:"displayName,omitempty"`
+	KubeConfig     string `json:"kubeConfig,omitempty"`
+	Description    string `json:"description,omitempty"`
+	GatewayIP      string `json:"gatewayIP,omitempty"`
+	ReadyNodeCount int    `json:"readyNodeCount,omitempty"`
+	NodeCount      int    `json:"nodeCount,omitempty"`
+	ServerVersion  string `json:"serverVersion,omitempty"`
+	Connectable    bool   `json:"connectable"`
+	Enabled        bool   `json:"enabled"`
 }
 
 type ListClustersRequest struct {

@@ -4237,6 +4237,9 @@ const docTemplate = `{
                 "clusterID": {
                     "type": "string"
                 },
+                "connectable": {
+                    "type": "boolean"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -4246,7 +4249,19 @@ const docTemplate = `{
                 "enabled": {
                     "type": "boolean"
                 },
+                "gatewayIP": {
+                    "type": "string"
+                },
                 "kubeConfig": {
+                    "type": "string"
+                },
+                "nodeCount": {
+                    "type": "integer"
+                },
+                "readyNodeCount": {
+                    "type": "integer"
+                },
+                "serverVersion": {
                     "type": "string"
                 },
                 "slug": {

@@ -13,17 +13,16 @@ import (
 )
 
 type storeInterface interface {
+	// Platform generated resource listers
 	DeploymentLister() appsv1.DeploymentLister
 	ReplicaSetLister() appsv1.ReplicaSetLister
 	StatefulSetLister() appsv1.StatefulSetLister
 	PodLister() listerscorev1.PodLister
 	ServiceLister() listerscorev1.ServiceLister
 	PersistentVolumeClaimLister() listerscorev1.PersistentVolumeClaimLister
-	// IngressLister() networkingv1.IngressLister
-	// IngressClassLister() networkingv1.IngressClassLister
-	// HorizontalPodAutoscalerLister() autoscalingv1.HorizontalPodAutoscalerLister
-	// ConfigMapLister() listerscorev1.ConfigMapLister
-	// SecretLister() listerscorev1.SecretLister
+
+	// Kubernetes resource listers
+	NodeLister() listerscorev1.NodeLister
 }
 
 type store struct {
@@ -33,14 +32,8 @@ type store struct {
 	podLister                   listerscorev1.PodLister
 	serviceLister               listerscorev1.ServiceLister
 	persistentVolumeClaimLister listerscorev1.PersistentVolumeClaimLister
-	// ingressLister                 networkingv1.IngressLister
-	// ingressClassLister networkingv1.IngressClassLister
-	// horizontalPodAutoscalerLister autoscalingv1.HorizontalPodAutoscalerLister
-	// configMapLister               listerscorev1.ConfigMapLister
-	// secretLister                  listerscorev1.SecretLister
 
-	// namespaceLister      dynamiclister.GenericLister
-	// virtualMachineLister dynamiclister.GenericLister
+	nodeLister listerscorev1.NodeLister
 }
 
 func (s *store) DeploymentLister() appsv1.DeploymentLister {
@@ -67,63 +60,35 @@ func (s *store) PersistentVolumeClaimLister() listerscorev1.PersistentVolumeClai
 	return s.persistentVolumeClaimLister
 }
 
-// func (s *store) IngressLister() networkingv1.IngressLister {
-// 	return s.ingressLister
-// }
-
-// func (s *store) IngressClassLister() networkingv1.IngressClassLister {
-// 	return s.ingressClassLister
-// }
-
-// func (s *store) HorizontalPodAutoscalerLister() autoscalingv1.HorizontalPodAutoscalerLister {
-// 	return s.horizontalPodAutoscalerLister
-// }
-
-// func (s *store) ConfigMapLister() listerscorev1.ConfigMapLister {
-// 	return s.configMapLister
-// }
-
-// func (s *store) SecretLister() listerscorev1.SecretLister {
-// 	return s.secretLister
-// }
-
-// func (s *store) NamespaceLister() dynamiclister.GenericLister {
-// 	return s.namespaceLister
-// }
-
-// func (s *store) VirtualMachineLister() dynamiclister.GenericLister {
-// 	return s.virtualMachineLister
-// }
+func (s *store) NodeLister() listerscorev1.NodeLister {
+	return s.nodeLister
+}
 
 func loadStore(clientset kubernetes.Interface) storeInterface {
-	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, 0, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
+	ketchesOwnedResourceInformerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, 0, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
 		options.LabelSelector = "ketches/owned=true"
 	}))
 
-	deployment := kubeInformerFactory.Apps().V1().Deployments()
-	deploymentInformer := deployment.Informer()
-	replicaSet := kubeInformerFactory.Apps().V1().ReplicaSets()
-	replicaSetInformer := replicaSet.Informer()
-	statefulSet := kubeInformerFactory.Apps().V1().StatefulSets()
-	statefulSetInformer := statefulSet.Informer()
-	pod := kubeInformerFactory.Core().V1().Pods()
-	podInformer := pod.Informer()
-	podInformer.AddEventHandler(handleAppRunningInfoSSE()) // Register a pod event handler for app running info SSE
-	service := kubeInformerFactory.Core().V1().Services()
-	serviceInformer := service.Informer()
-	persistentVolumeClaim := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	persistentVolumeClaimInformer := persistentVolumeClaim.Informer()
-	// ingress := kubeInformerFactory.Networking().V1().Ingresses()
-	// ingressInformer := ingress.Informer()
-	// ingressClasses := kubeInformerFactory.Networking().V1().IngressClasses()
-	// ingressClassesInformer := ingressClasses.Informer()
-	// horizontalPodAutoscaler := kubeInformerFactory.Autoscaling().V1().HorizontalPodAutoscalers()
-	// horizontalPodAutoscalerInformer := horizontalPodAutoscaler.Informer()
-	// configMap := kubeInformerFactory.Core().V1().ConfigMaps()
-	// configMapInformer := configMap.Informer()
-	// secret := kubeInformerFactory.Core().V1().Secrets()
-	// secretInformer := secret.Informer()
+	kubeInformerFactory := informers.NewSharedInformerFactory(clientset, 0)
 
+	deployment := ketchesOwnedResourceInformerFactory.Apps().V1().Deployments()
+	deploymentInformer := deployment.Informer()
+	replicaSet := ketchesOwnedResourceInformerFactory.Apps().V1().ReplicaSets()
+	replicaSetInformer := replicaSet.Informer()
+	statefulSet := ketchesOwnedResourceInformerFactory.Apps().V1().StatefulSets()
+	statefulSetInformer := statefulSet.Informer()
+	pod := ketchesOwnedResourceInformerFactory.Core().V1().Pods()
+	podInformer := pod.Informer()
+	podInformer.AddEventHandler(handleAppRunningInfoSSE())
+	service := ketchesOwnedResourceInformerFactory.Core().V1().Services()
+	serviceInformer := service.Informer()
+	persistentVolumeClaim := ketchesOwnedResourceInformerFactory.Core().V1().PersistentVolumeClaims()
+	persistentVolumeClaimInformer := persistentVolumeClaim.Informer()
+
+	node := kubeInformerFactory.Core().V1().Nodes()
+	nodeInformer := node.Informer()
+
+	ketchesOwnedResourceInformerFactory.Start(wait.NeverStop)
 	kubeInformerFactory.Start(wait.NeverStop)
 
 	sharedInformers := []cache.SharedInformer{
@@ -133,11 +98,8 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 		podInformer,
 		serviceInformer,
 		persistentVolumeClaimInformer,
-		// ingressInformer,
-		// ingressClassesInformer,
-		// horizontalPodAutoscalerInformer,
-		// configMapInformer,
-		// secretInformer,
+
+		nodeInformer,
 	}
 	var wg sync.WaitGroup
 	wg.Add(len(sharedInformers))
@@ -151,6 +113,7 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 	}
 	wg.Wait()
 
+	ketchesOwnedResourceInformerFactory.WaitForCacheSync(wait.NeverStop)
 	kubeInformerFactory.WaitForCacheSync(wait.NeverStop)
 
 	deploymentLister := deployment.Lister()
@@ -159,11 +122,8 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 	podLister := pod.Lister()
 	serviceLister := service.Lister()
 	persistentVolumeClaimLister := persistentVolumeClaim.Lister()
-	// ingressLister := ingress.Lister()
-	// ingressClassLister := ingressClasses.Lister()
-	// horizontalpodautoscalerLister := horizontalPodAutoscaler.Lister()
-	// configMapLister := configMap.Lister()
-	// secretLister := secret.Lister()
+
+	nodeLister := node.Lister()
 
 	return &store{
 		deploymentLister:            deploymentLister,
@@ -172,10 +132,7 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 		podLister:                   podLister,
 		serviceLister:               serviceLister,
 		persistentVolumeClaimLister: persistentVolumeClaimLister,
-		// ingressLister:                 ingressLister,
-		// ingressClassLister: ingressClassLister,
-		// horizontalPodAutoscalerLister: horizontalpodautoscalerLister,
-		// configMapLister:               configMapLister,
-		// secretLister:                  secretLister,
+
+		nodeLister: nodeLister,
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
@@ -13,6 +14,7 @@ import (
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/utils"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 type ClusterService interface {
@@ -61,6 +63,8 @@ func (s *clusterService) ListClusters(ctx context.Context, req *models.ListClust
 		Total:   total,
 		Records: make([]*models.ClusterModel, 0, len(clusters)),
 	}
+
+	var wg sync.WaitGroup
 	for _, cluster := range clusters {
 		item := &models.ClusterModel{
 			ClusterID:   cluster.ID,
@@ -73,8 +77,38 @@ func (s *clusterService) ListClusters(ctx context.Context, req *models.ListClust
 			item.KubeConfig = cluster.KubeConfig
 		}
 
+		wg.Add(1)
+		go func(item *models.ClusterModel) {
+			defer wg.Done()
+			kstore, err := kube.ClusterStore(ctx, item.ClusterID)
+			if err != nil {
+				log.Printf("failed to get cluster store for %s: %v", item.ClusterID, err)
+				return
+			}
+			nodes, e := kstore.NodeLister().List(labels.Everything())
+			if e != nil {
+				log.Printf("failed to list nodes for cluster %s: %v", item.ClusterID, e)
+				return
+			}
+			if len(nodes) == 0 {
+				return
+			}
+
+			item.NodeCount = len(nodes)
+			item.Connectable = true
+			item.ServerVersion = nodes[0].Status.NodeInfo.KubeletVersion
+			for _, node := range nodes {
+				for _, condition := range node.Status.Conditions {
+					if condition.Type == "Ready" && condition.Status == "True" {
+						item.ReadyNodeCount++
+					}
+				}
+			}
+		}(item)
+
 		result.Records = append(result.Records, item)
 	}
+	wg.Wait()
 
 	return result, nil
 }

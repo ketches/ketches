@@ -50,6 +50,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Pl
 import { storeToRefs } from 'pinia'
 import { h, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
+import Badge from '../ui/badge/Badge.vue'
 import ClusterActions from './ClusterActions.vue'
 import CreateCluster from './CreateCluster.vue'
 
@@ -126,9 +127,21 @@ const columns: ColumnDef<clusterModel>[] = [
         ]),
     },
     {
-        accessorKey: 'createdAt',
-        header: '创建时间',
-        cell: ({ row }) => h('div', { class: '' }, row.getValue('createdAt')),
+        accessorKey: 'nodeCount',
+        header: () => centeredHeader("节点总数"),
+        cell: ({ row }) => h('div', { class: 'font-mono text-center' }, (row.getValue('readyNodeCount') || 0) + "/" + (row.getValue('nodeCount') || 0)),
+    },
+    {
+        accessorKey: 'serverVersion',
+        header: () => centeredHeader("Kubernetes 版本"),
+        cell: ({ row }) => h('div', { class: 'text-center font-mono' }, row.getValue('serverVersion') || '未知'),
+    },
+    {
+        accessorKey: 'connectable',
+        header: () => centeredHeader("连接状态"),
+        cell: ({ row }) => h('div', { class: 'text-center' }, [
+            h(Badge, { class: row.getValue('connectable') ? 'text-green-500 bg-green-500/20' : 'text-red-500 bg-red-500/20' }, row.getValue('connectable') ? '可连接' : '不可连接'),
+        ]),
     },
     {
         id: 'actions',
