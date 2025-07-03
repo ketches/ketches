@@ -201,9 +201,6 @@ func GetAppStatusFromInstances(ctx context.Context, instances []*models.AppInsta
 
 	if terminatingPodCount > 0 {
 		if runningPodCount == 0 && succeedPodCount == 0 && pendingPodCount == 0 {
-			result.Status = app.AppStatusStopped
-			return result
-		} else {
 			result.Status = app.AppStatusStopping
 			return result
 		}

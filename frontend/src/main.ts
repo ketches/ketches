@@ -34,7 +34,7 @@ const routes: RouteRecordRaw[] = [
         children: [
             { name: 'adminOverview', path: "overview", component: () => import('@/components/admin/Overview.vue') },
             { name: 'cluster', path: "cluster", component: () => import('@/components/cluster/ClusterManager.vue') },
-            { name: "clusterPage", path: "cluster/:id", component: () => import('@/components/cluster/Cluster.vue') },
+            { name: "clusterPage", path: "cluster/:id", component: () => import('@/components/cluster/ClusterPage.vue') },
             { name: "node", path: "cluster/:id/node", component: () => import('@/components/cluster/node/NodeManager.vue') },
             { name: "nodePage", path: "cluster/:id/node/:nodeId", component: () => import('@/components/cluster/node/NodePage.vue') },
         ]

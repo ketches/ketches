@@ -18,9 +18,7 @@ defineProps({
     <Breadcrumb>
         <BreadcrumbList>
             <EnvBreadcrumb v-if="envID" :envID="envID" />
-            <BreadcrumbItem v-else>
-                环境
-            </BreadcrumbItem>
+            <BreadcrumbItem v-else class="font-semibold"> 环境 </BreadcrumbItem>
         </BreadcrumbList>
     </Breadcrumb>
 </template>

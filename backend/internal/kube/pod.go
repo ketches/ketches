@@ -67,6 +67,10 @@ func GetPodStatus(pod *corev1.Pod) string {
 		return string(PodStatusAbnormal)
 	}
 
+	if pod.DeletionTimestamp != nil {
+		return string(PodStatusTerminating)
+	}
+
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		return string(PodStatusRunning)

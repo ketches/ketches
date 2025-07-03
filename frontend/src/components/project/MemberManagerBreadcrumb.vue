@@ -10,7 +10,7 @@ import {
 <template>
     <Breadcrumb>
         <BreadcrumbList>
-            <BreadcrumbItem>
+            <BreadcrumbItem class="font-semibold">
                 成员
             </BreadcrumbItem>
         </BreadcrumbList>

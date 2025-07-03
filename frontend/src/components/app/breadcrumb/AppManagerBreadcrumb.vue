@@ -22,7 +22,7 @@ const userStore = useUserStore();
     <BreadcrumbList>
       <EnvBreadcrumb v-if="userStore.getCurrentEnvRefs.length > 0" />
       <!-- <BreadcrumbList v-else> -->
-      <BreadcrumbItem v-else>应用</BreadcrumbItem>
+      <BreadcrumbItem v-else class="font-semibold">应用</BreadcrumbItem>
       <!-- </BreadcrumbList> -->
       <AppBreadcrumb v-if="appID" :appID="appID" />
     </BreadcrumbList>

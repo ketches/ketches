@@ -7,7 +7,8 @@ import {
 import type { clusterRefModel } from '@/types/cluster';
 import ClusterBreadcrumb from './ClusterBreadcrumb.vue';
 import NodeBreadcrumb from './NodeBreadcrumb.vue';
-defineProps({
+
+const props = defineProps({
   clusterRefs: {
     type: Array as () => clusterRefModel[],
     default: () => [],
@@ -22,14 +23,16 @@ defineProps({
   },
 });
 
+console.log(props.clusterRefs);
+
 </script>
 
 <template>
   <Breadcrumb>
     <BreadcrumbList>
-      <ClusterBreadcrumb v-if="clusterID" :clusterID="clusterID" :clusterRefs="clusterRefs" />
+      <BreadcrumbItem class="font-semibold">集群</BreadcrumbItem>
+      <ClusterBreadcrumb v-if="clusterID" :clusterID="clusterID" :clusterRefs="props.clusterRefs" />
       <!-- <BreadcrumbList v-else> -->
-      <BreadcrumbItem v-else class="font-semibold">集群</BreadcrumbItem>
       <!-- </BreadcrumbList> -->
       <NodeBreadcrumb v-if="nodeName" :nodeName="nodeName" />
     </BreadcrumbList>

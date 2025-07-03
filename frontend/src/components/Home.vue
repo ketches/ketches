@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SidebarProvider from '@/components/ui/sidebar/SidebarProvider.vue';
+import { useClusterStore } from '@/stores/clusterStore';
 import { useUserStore } from '@/stores/userStore';
 import Cookies from 'js-cookie';
 import { storeToRefs } from 'pinia';
@@ -17,6 +18,9 @@ const router = useRouter();
 const userStore = useUserStore();
 const { user, userResources, activeProjectRef } = storeToRefs(userStore);
 
+const clusterStore = useClusterStore();
+const { activeClusterRef } = storeToRefs(clusterStore);
+
 watch(
   () => route.name,
   async (routeName) => {
@@ -28,7 +32,12 @@ watch(
       await userStore.initUser();
     }
 
-    await userStore.fetchUserResourceRefs();
+    if (user.value.role === 'admin') {
+      await clusterStore.loadClusterRefs();
+    } else {
+      await userStore.fetchUserResourceRefs();
+    }
+
     await router.isReady();
 
     if (user.value) {
@@ -74,6 +83,24 @@ watch(activeProjectRef, (newActiveProjectRef, oldActiveProjectRef) => {
     }
   }
 });
+
+watch(
+  activeClusterRef,
+  (newActiveClusterRef, oldActiveClusterRef) => {
+    if (oldActiveClusterRef && newActiveClusterRef?.clusterID !== oldActiveClusterRef.clusterID) {
+      const currentPath = router.currentRoute.value.path;
+      const clusterRoutes = router.getRoutes().find(r => r.name === 'cluster')?.children || [];
+
+      const targetRoute = clusterRoutes.find(route => currentPath.startsWith(`/${route.path}`));
+
+      if (targetRoute && targetRoute.name) {
+        router.push({ name: targetRoute.name });
+      } else {
+        router.push({ name: 'home' });
+      }
+    }
+  }
+);
 </script>
 
 <template>

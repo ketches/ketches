@@ -8,7 +8,7 @@ import {
 import { PanelLeftClose, PanelLeftOpen } from "lucide-vue-next";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-import ClusterBreadcrumb from "./breadcrumb/ClusterBreadcrumb.vue";
+import ClusterBreadcrumb from "./breadcrumb/ClusterManagerBreadcrumb.vue";
 
 const { toggleSidebar, open } = useSidebar();
 
@@ -23,7 +23,7 @@ const id = computed(() => {
   <SidebarInset>
     <header
       class="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-      <div class="flex items-center gap-2 px-4">
+      <div class="flex items-center px-4">
         <Button variant="ghost" @click="toggleSidebar" class="h-8 w-8 text-muted-foreground hover:text-primary">
           <PanelLeftOpen v-if="!open" />
           <PanelLeftClose v-else />

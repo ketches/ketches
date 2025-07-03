@@ -4,7 +4,6 @@ import Badge from "@/components/ui/badge/Badge.vue";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, useSidebar } from "@/components/ui/sidebar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserStore } from "@/stores/userStore";
 import type { appModel, appRunningInfoModel } from "@/types/app";
 import {
@@ -97,6 +96,33 @@ const monitorExtensionInstalled = ref(false);
 const logsExtensionInstalled = ref(false);
 const deployedInSourceCode = ref(false);
 
+const tabList = [
+  {
+    key: "overview",
+    label: "实例",
+    icon: Boxes,
+    disabled: () => false,
+  },
+  {
+    key: "monitor",
+    label: "监控",
+    icon: Monitor,
+    disabled: () => monitorExtensionInstalled.value,
+  },
+  {
+    key: "logs",
+    label: "归档日志",
+    icon: Archive,
+    disabled: () => logsExtensionInstalled.value,
+  },
+  {
+    key: "builds",
+    label: "构建历史",
+    icon: History,
+    disabled: () => deployedInSourceCode.value,
+  },
+];
+
 const settingDialogOpen = ref(false);
 const openUpdateAppInfoDialog = ref(false);
 
@@ -109,7 +135,7 @@ const appStatus = computed(() => {
   <SidebarInset>
     <header
       class="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-      <div class="flex items-center gap-2 px-4">
+      <div class="flex items-center px-4">
         <Button variant="ghost" @click="toggleSidebar" class="h-8 w-8 text-muted-foreground hover:text-primary">
           <PanelLeftOpen v-if="!open" />
           <PanelLeftClose v-else />
@@ -162,52 +188,63 @@ const appStatus = computed(() => {
         </div>
       </div>
 
-      <Tabs v-model="currentTab" class="">
-        <div class="flex items-center justify-between">
-          <TabsList class="grid grid-cols-5 !bg-transparent">
-            <TabsTrigger value="overview">
-              <Boxes />
-              实例
-            </TabsTrigger>
-            <TabsTrigger value="monitor" :disabled="monitorExtensionInstalled">
-              <Monitor />
-              监控
-            </TabsTrigger>
-            <TabsTrigger value="logs" :disabled="logsExtensionInstalled">
-              <Archive />
-              归档日志
-            </TabsTrigger>
-            <TabsTrigger value="builds" :disabled="deployedInSourceCode">
-              <History />
-              构建历史
-            </TabsTrigger>
-            <TabsTrigger value="settings" :disabled="deployedInSourceCode">
-              <Settings2 />
+      <!-- Custom Tab Bar -->
+      <div>
+        <div class="flex items-center">
+          <!-- Tabs Left (first 4) -->
+          <div class="flex flex-1 gap-6">
+            <template v-for="tab in tabList" :key="tab.key">
+              <Button variant="ghost"
+                class="flex items-center px-4 py-2 text-sm rounded-b-none border-b-2 hover:bg-transparent dark:hover:bg-transparent"
+                :class="[
+                  currentTab === tab.key
+                    ? 'font-semibold border-primary text-primary border-b-primary/50 border-b-2'
+                    : 'text-muted-foreground border-b-2 border-transparent',
+                  tab.disabled() ? 'opacity-50 cursor-not-allowed' : '',
+                  'bg-transparent focus:outline-none'
+                ]" @click="!tab.disabled() && (currentTab = tab.key)" :disabled="tab.disabled()" style="min-width: 0">
+                <component :is="tab.icon" class="w-4 h-4" />
+                {{ tab.label }}
+              </Button>
+            </template>
+            <!-- 最右侧设置tab -->
+            <Button variant="ghost"
+              class="flex items-center px-4 py-4 text-sm rounded-b-none border-b-2 hover:bg-transparent dark:hover:bg-transparent ml-auto"
+              :class="[
+                currentTab === 'settings'
+                  ? 'font-semibold border-primary text-primary border-b-primary/50 border-b-2'
+                  : 'text-muted-foreground border-b-2 border-transparent',
+                deployedInSourceCode ? 'opacity-50 cursor-not-allowed' : '',
+                'bg-transparent focus:outline-none'
+              ]" @click="!deployedInSourceCode && (currentTab = 'settings')" :disabled="deployedInSourceCode"
+              style="min-width: 0">
+              <Settings2 class="w-4 h-4" />
               设置
-            </TabsTrigger>
-          </TabsList>
-          <Button variant="ghost" size="sm" class="flex ml-4" @click="settingDialogOpen = true">
+            </Button>
+          </div>
+          <!-- 右侧设置按钮 -->
+          <!-- <Button variant="ghost" size="sm" class="flex ml-4" @click="settingDialogOpen = true">
             <Settings2 class="w-4 h-4 mr-2" />
             设置
-          </Button>
+          </Button> -->
         </div>
         <Separator class="h-4" />
-        <TabsContent value="overview">
+        <div v-if="currentTab === 'overview'">
           <InstanceList :appID="appID" :instances="appRunningInfo?.instances || []" />
-        </TabsContent>
-        <TabsContent value="monitor">
+        </div>
+        <div v-else-if="currentTab === 'monitor'">
           <div class="mt-4 text-muted-foreground">监控功能开发中...</div>
-        </TabsContent>
-        <TabsContent value="logs">
+        </div>
+        <div v-else-if="currentTab === 'logs'">
           <div class="mt-4 text-muted-foreground">日志功能开发中...</div>
-        </TabsContent>
-        <TabsContent value="builds">
+        </div>
+        <div v-else-if="currentTab === 'builds'">
           <div class="mt-4 text-muted-foreground">构建历史功能开发中...</div>
-        </TabsContent>
-        <TabsContent value="settings">
+        </div>
+        <div v-else-if="currentTab === 'settings'">
           <Settings v-if="app" :app="app" />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
     <SettingDialog v-model="settingDialogOpen" />
     <UpdateApp v-model="openUpdateAppInfoDialog" :app="app" @app-updated="fetchAppInfo(app.appID)" />
