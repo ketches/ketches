@@ -63,7 +63,7 @@ Here you go! You can now access the Ketches application at `http://localhost:517
 ## Backend Congiguration
 
 T
-Moe details about backend configurations, see [docs/backend-env-en.md](./docs/backend-env-en.md).
+Moe details about backend configurations, see [Ketches Backend Environment Variables](./docs/backend-env.md).
 
 ## Features
 
@@ -96,8 +96,8 @@ User panel
   - [x] App environment variables management
   - [x] App volume management
   - [ ] App mutli-container management(Plugins)
-  - [ ] App gateway management
-  - [ ] App health check management
+  - [x] App gateway management
+  - [x] App health check management
   - [ ] App scaling management
   - [ ] App schedule management
   - [x] App instance container logs
