@@ -33,7 +33,7 @@ func handleAppRunningInfoSSE() cache.ResourceEventHandlerFuncs {
 			return
 		}
 
-		appID := pod.Labels["ketches/appID"]
+		appID := pod.Labels["ketches/id"]
 		if appID == "" {
 			return
 		}
@@ -50,7 +50,7 @@ func handleAppRunningInfoSSE() cache.ResourceEventHandlerFuncs {
 }
 
 func processPodForAppRunningInfoSSE(pod *corev1.Pod) {
-	appID := pod.Labels["ketches/appID"]
+	appID := pod.Labels["ketches/id"]
 	if appID == "" {
 		return
 	}

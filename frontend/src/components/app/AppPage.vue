@@ -134,14 +134,11 @@ const appStatus = computed(() => {
                 <Badge variant="secondary" class="font-mono text-muted-foreground">
                   类型：{{ app?.appType || "未知" }}</Badge>
                 <Separator orientation="vertical" class="h-4" />
-                <Badge v-if="
-                  app?.edition &&
-                  appRunningInfo?.actualEdition &&
-                  app.edition != appRunningInfo.actualEdition
-                " variant="secondary" class="font-mono text-blue-500 hover:text-blue-500 bg-blue-50 dark:bg-blue-950">
-                  <Dot class="text-blue-500" stroke-width="8" />版本(有更新）：{{ appRunningInfo.actualEdition }}
+                <Badge v-if="app?.updated" variant="secondary"
+                  class="font-mono text-blue-500 hover:text-blue-500 bg-blue-50 dark:bg-blue-950">
+                  <Dot class="text-blue-500" stroke-width="8" />版本(有更新）：{{ app.edition }}
                 </Badge>
-                <Badge v-else variant="secondary" class="font-mono text-muted-foreground">版本：{{ appRunningInfo?.edition
+                <Badge v-else variant="secondary" class="font-mono text-muted-foreground">版本：{{ app?.edition
                   || "未知" }}</Badge>
               </div>
 
@@ -157,7 +154,7 @@ const appStatus = computed(() => {
                 {{ app?.description || "写一句话描述该应用吧。" }}
               </p>
               <div class="flex items-center gap-4 text-sm text-muted-foreground">
-                <AppActions v-if="appRunningInfo" :appRunningInfo="appRunningInfo" :appEdition="app?.edition"
+                <AppActions v-if="appRunningInfo" :appRunningInfo="appRunningInfo" :app="app"
                   @action-completed="fetchAppInfo(appID)" />
               </div>
             </div>
@@ -167,7 +164,7 @@ const appStatus = computed(() => {
 
       <Tabs v-model="currentTab" class="">
         <div class="flex items-center justify-between">
-          <TabsList class="grid grid-cols-5">
+          <TabsList class="grid grid-cols-5 !bg-transparent">
             <TabsTrigger value="overview">
               <Boxes />
               实例

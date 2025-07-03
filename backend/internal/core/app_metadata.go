@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/pkg/utils"
@@ -100,6 +102,8 @@ func (a *AppMetadata) Deploy(ctx context.Context, cli client.Client, options *Ap
 	}
 
 	manifests, err := a.GetApplyManifests()
+	j, _ := json.Marshal(manifests) // Marshal manifests to JSON for logging or debugging
+	fmt.Printf("j: %v\n", string(j))
 	if err != nil {
 		return err
 	}
@@ -137,22 +141,26 @@ func (a *AppMetadata) GetApplyManifests() ([]client.Object, app.Error) {
 	}
 }
 
-func (a *AppMetadata) standardSelectorLabels() map[string]string {
+func (a *AppMetadata) standardLabels() map[string]string {
 	return map[string]string{
-		"ketches/owned":     "true",
-		"ketches/app":       a.AppSlug,
-		"ketches/env":       a.EnvSlug,
-		"ketches/project":   a.ProjectSlug,
-		"ketches/appID":     a.AppID,
-		"ketches/envID":     a.EnvID,
-		"ketches/projectID": a.ProjectID,
+		"ketches/owned":   "true",
+		"ketches/app":     a.AppSlug,
+		"ketches/id":      a.AppID,
+		"ketches/edition": a.Edition,
 	}
 }
 
-func (a *AppMetadata) standardLabels() map[string]string {
-	labels := a.standardSelectorLabels()
-	labels["ketches/edition"] = a.Edition
-	return labels
+func (a *AppMetadata) standardSelectorLabels() map[string]string {
+	return map[string]string{
+		"ketches/owned": "true",
+		"ketches/app":   a.AppSlug,
+	}
+}
+
+func (a *AppMetadata) standardAnnotations() map[string]string {
+	return map[string]string{
+		"ketches/deployed-at": time.Now().Format(time.RFC3339),
+	}
 }
 
 func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
@@ -167,6 +175,7 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 	}
 
 	labels := a.standardLabels()
+	annotations := a.standardAnnotations()
 	selectorLabels := a.standardSelectorLabels()
 
 	for _, pvc := range a.persistentVolumeClaimManifests() {
@@ -192,7 +201,7 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 	}
 
 	if len(a.Gateways) > 0 {
-		result = append(result, a.serviceManifest())
+		result = append(result, a.serviceManifest()...)
 		result = append(result, a.gatewayManifests()...)
 	}
 
@@ -250,9 +259,10 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 
 	result = append(result, &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      a.AppSlug,
-			Namespace: a.ClusterNamespace,
-			Labels:    labels,
+			Name:        a.AppSlug,
+			Namespace:   a.ClusterNamespace,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &a.Replicas,
@@ -309,6 +319,8 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 	}
 
 	labels := a.standardLabels()
+	selectorLabels := a.standardSelectorLabels()
+	annotations := a.standardAnnotations()
 
 	var (
 		volumeClaims = a.persistentVolumeClaimManifests()
@@ -333,7 +345,7 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 	}
 
 	if len(a.Gateways) > 0 {
-		result = append(result, a.serviceManifest())
+		result = append(result, a.serviceManifest()...)
 		result = append(result, a.gatewayManifests()...)
 	}
 
@@ -357,11 +369,12 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 			ServiceName:          a.AppSlug,
 			Replicas:             &a.Replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: selectorLabels,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels:      labels,
+					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -430,21 +443,54 @@ func (a *AppMetadata) persistentVolumeClaimManifests() []corev1.PersistentVolume
 	return result
 }
 
-func (a *AppMetadata) serviceManifest() *corev1.Service {
+func (a *AppMetadata) serviceManifest() []client.Object {
+	gateways := make(map[string]AppMetadataGateway)
+	for _, gateway := range a.Gateways {
+		key := fmt.Sprintf("%s-%s-%d", a.AppSlug, gateway.Protocol, gateway.Port)
+		if _, ok := gateways[key]; !ok {
+			gateways[key] = gateway
+		}
+	}
+
+	result := make([]client.Object, 0, len(gateways)+1)
+
 	labels := a.standardLabels()
+	selectorLabels := a.standardSelectorLabels()
 
 	ports := make([]corev1.ServicePort, 0, len(a.Gateways))
-	for _, p := range a.Gateways {
+	for _, g := range gateways {
+		// All ports in one service
 		ports = append(ports, corev1.ServicePort{
 			Protocol: corev1.ProtocolTCP,
-			Port:     p.Port,
+			Port:     g.Port,
 			TargetPort: intstr.IntOrString{
-				IntVal: p.Port,
+				IntVal: g.Port,
+			},
+		})
+
+		// Create a service for each gateway
+		result = append(result, &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-%s-%d", a.AppSlug, g.Protocol, g.Port),
+				Namespace: a.ClusterNamespace,
+				Labels:    labels,
+			},
+			Spec: corev1.ServiceSpec{
+				Selector: selectorLabels,
+				Ports: []corev1.ServicePort{
+					{
+						Protocol: corev1.ProtocolTCP,
+						Port:     g.Port,
+						TargetPort: intstr.IntOrString{
+							IntVal: g.Port,
+						},
+					},
+				},
 			},
 		})
 	}
 
-	return &corev1.Service{
+	result = append(result, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      a.AppSlug,
 			Namespace: a.ClusterNamespace,
@@ -452,10 +498,11 @@ func (a *AppMetadata) serviceManifest() *corev1.Service {
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: labels,
-			Type:     corev1.ServiceTypeClusterIP,
 			Ports:    ports,
 		},
-	}
+	})
+
+	return result
 }
 
 func (a *AppMetadata) gatewayManifests() []client.Object {

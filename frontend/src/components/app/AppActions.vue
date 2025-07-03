@@ -25,13 +25,9 @@ import { appStatusActions, type appStatusAction } from "./data/appStatus";
 const router = useRouter();
 
 const props = defineProps({
-  appEdition: {
-    type: String,
-    default: "",
-  },
   app: {
     type: Object as () => appModel,
-    required: false,
+    required: true,
   },
   appRunningInfo: {
     type: Object as () => appRunningInfoModel,
@@ -44,16 +40,13 @@ const props = defineProps({
 });
 
 const appRunningInfo = toRef(props, 'appRunningInfo');
-const appEdition = toRef(props, 'appEdition');
 const app = toRef(props, 'app');
 
 const emit = defineEmits(["action-completed"]);
 
 const appActions = computed<appStatusAction[]>(() => {
-  if (props.fromAppList) {
-    return appStatusActions(app.value.status, appEdition.value || "", app.value.actualEdition) || [];
-  }
-  return appStatusActions(appRunningInfo.value.status, appEdition.value || "", appRunningInfo.value.actualEdition) || [];
+  const appStatus = props.fromAppList ? app.value.status : appRunningInfo.value.status;
+  return appStatusActions(appStatus, app.value.updated) || [];
 });
 
 const debugActionAvailable = computed(() => {
@@ -91,6 +84,7 @@ async function onDebug() {
 }
 
 async function onAction(action: (appID: string) => Promise<appModel> | Promise<void>) {
+  app.value.updated = false;
   await action(appRunningInfo.value.appID)
   emit("action-completed");
 }

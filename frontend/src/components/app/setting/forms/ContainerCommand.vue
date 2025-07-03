@@ -56,7 +56,7 @@ const onSubmit = handleSubmit(async (values) => {
     }
     const resp = await setAppCommand(app.value.appID, { containerCommand: values.containerCommand ?? '' })
     app.value.containerCommand = resp.containerCommand ?? ''
-    app.value.edition = resp.edition ?? ''
+    app.value.updated = true
     toast.success('启动命令已更新。')
 })
 </script>

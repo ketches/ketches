@@ -58,7 +58,7 @@ export interface appStatusAction {
     tip?: boolean;
 }
 
-export function appStatusActions(appStatus: string, desiredEdition?: string, actualEdition?: string): appStatusAction[] {
+export function appStatusActions(appStatus: string, appUpdated: boolean): appStatusAction[] {
     const actions: appStatusAction[] = [];
     switch (appStatus) {
         case appStatusEnum.UNDEPLOYED:
@@ -70,11 +70,6 @@ export function appStatusActions(appStatus: string, desiredEdition?: string, act
         case appStatusEnum.STARTING:
         case appStatusEnum.UPDATING:
         case appStatusEnum.ABNORMAL: {
-            let updateAction: appStatusAction = { label: "更新", icon: ArrowBigUpDash, action: onUpdate };
-            if (desiredEdition && actualEdition && desiredEdition !== actualEdition) {
-                updateAction.tip = true
-            }
-            actions.push(updateAction);
             actions.push(
                 { label: "关闭", icon: Power, action: onStop },
                 { label: "重新部署", icon: RefreshCcwDot, action: onRedeploy },
@@ -83,7 +78,7 @@ export function appStatusActions(appStatus: string, desiredEdition?: string, act
         }
         case appStatusEnum.RUNNING: {
             let updateAction: appStatusAction = { label: "更新", icon: ArrowBigUpDash, action: onUpdate };
-            if (desiredEdition && actualEdition && desiredEdition !== actualEdition) {
+            if (appUpdated) {
                 updateAction.tip = true
             }
             actions.push(updateAction);

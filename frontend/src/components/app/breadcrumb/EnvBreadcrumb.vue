@@ -23,7 +23,7 @@ const userStore = useUserStore()
 const { activeEnvRef, activeAppRef } = storeToRefs(userStore)
 
 async function onSwitchEnv(envID: string) {
-    await userStore.activateEnv(envID!)
+    userStore.activateEnv(envID!)
     router.push({ name: 'app' });
 }
 </script>

@@ -52,7 +52,7 @@ watch(activeEnvRef, async (newEnvRef) => {
       </div>
     </header>
     <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
-      环境：{{ envID }}
+      环境：{{ env.envID }}
     </div>
   </SidebarInset>
 </template>

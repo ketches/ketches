@@ -164,11 +164,9 @@ type GetAppRunningInfoRequest struct {
 type GetAppRunningInfoResponse struct {
 	AppID          string              `json:"appID"`
 	Slug           string              `json:"slug"`
-	Replicas       int32               `json:"replicas"`       // Desired number of replicas
 	ActualReplicas int32               `json:"actualReplicas"` // Number of currently running replicas
-	Edition        string              `json:"edition"`
-	ActualEdition  string              `json:"actualEdition"` // Edition of the currently running app
-	Status         string              `json:"status"`        // e.g., "running", "stopped", "starting", "stopping"
+	ActualEdition  string              `json:"actualEdition"`  // Edition of the currently running app
+	Status         string              `json:"status"`         // e.g., "running", "stopped", "starting", "stopping"
 	Instances      []*AppInstanceModel `json:"instances"`
 }
 

@@ -14,6 +14,9 @@ import { useUserStore } from '@/stores/userStore'
 import { Check, ChevronDown, ChevronRight, Grid2X2 } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const envHover = ref(false)
 
@@ -23,6 +26,7 @@ const { activeEnvRef, activeAppRef } = storeToRefs(userStore)
 
 function onSwitchEnv(envID: string) {
     userStore.activateEnv(envID)
+    router.push({ name: 'envPage', params: { id: envID } })
 }
 </script>
 

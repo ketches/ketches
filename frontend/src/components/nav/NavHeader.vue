@@ -37,9 +37,9 @@ const openProjectForm = ref(false);
 <template>
     <SidebarMenu>
         <SidebarMenuItem v-if="user?.role === 'admin'">
-            <SidebarMenuButton size="lg" as-child>
+            <SidebarMenuButton size="lg" as-child class="bg-sky-500/10 hover:bg-sky-500/10">
                 <a href="#">
-                    <img src="/ketches.svg" alt="Ketches Logo" style="height: 100%" />
+                    <img src="/ketches.svg" alt="Ketches Logo" style="height: 100%" class="bg-sky-500/70 rounded-xs" />
                     <div class="flex flex-col gap-0.5 leading-none">
                         <span class="font-semibold">Ketches 平台</span>
                         <span class="text-muted-foreground">v1.0.0</span>

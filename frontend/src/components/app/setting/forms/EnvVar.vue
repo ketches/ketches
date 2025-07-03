@@ -137,7 +137,7 @@ const columns: ColumnDef<appEnvVarModel>[] = [
                                     value: editValue.value,
                                 })
                                 listData.value.push(resp)
-                                app.value.edition = "new" // Just update eidition to trigger UI update
+                                app.value.updated = true
                                 toast.success('添加环境变量成功')
                             } else {
                                 const resp = await updateAppEnvVar(row.original.appID, row.original.envVarID, {
@@ -149,7 +149,7 @@ const columns: ColumnDef<appEnvVarModel>[] = [
                                     }
                                     return item
                                 })
-                                app.value.edition = "new" // Just update eidition to trigger UI update
+                                app.value.updated = true
                                 toast.success('环境变量已更新')
                             }
                             resetEnvVarRow()
@@ -179,7 +179,7 @@ const columns: ColumnDef<appEnvVarModel>[] = [
                     onClick: async () => {
                         await deleteAppEnvVar(row.original.appID, row.original.envVarID)
                         listData.value = listData.value.filter(item => item.envVarID !== row.original.envVarID)
-                        app.value.edition = "new" // Just update eidition to trigger UI update
+                        app.value.updated = true
                         toast.success('环境变量已删除')
                     }
                 }, () => [h(Delete)])

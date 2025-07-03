@@ -422,14 +422,7 @@ func (s *appService) AppAction(ctx context.Context, req *models.AppActionRequest
 	}
 
 	switch req.Action {
-	case app.AppActionDeploy, app.AppActionStart, app.AppActionDebugOff:
-		err = s.deployApp(ctx, appEntity, nil)
-	case app.AppActionUpdate:
-		newEdition, e := orm.UpdateAppEdition(ctx, appEntity.ID)
-		if e != nil {
-			return nil, e
-		}
-		appEntity.Edition = newEdition
+	case app.AppActionDeploy, app.AppActionStart, app.AppActionUpdate, app.AppActionDebugOff:
 		err = s.deployApp(ctx, appEntity, nil)
 	case app.AppActionStop:
 		err = s.deployApp(ctx, appEntity, &core.AppDeployOption{
@@ -454,8 +447,9 @@ func (s *appService) AppAction(ctx context.Context, req *models.AppActionRequest
 	}
 
 	result := &models.AppModel{
-		AppID: appEntity.ID,
-		Slug:  appEntity.Slug,
+		AppID:   appEntity.ID,
+		Slug:    appEntity.Slug,
+		Edition: appEntity.Edition,
 	}
 
 	return result, nil
@@ -565,8 +559,6 @@ func (s *appService) GetAppRunningInfo(ctx context.Context, req *models.GetAppRu
 				runningInfo := &models.GetAppRunningInfoResponse{
 					AppID:          appEntity.ID,
 					Slug:           appEntity.Slug,
-					Replicas:       appEntity.Replicas,
-					Edition:        appEntity.Edition,
 					Status:         runningStatus.Status,
 					ActualReplicas: runningStatus.ActualReplicas,
 					ActualEdition:  runningStatus.ActualEdition,

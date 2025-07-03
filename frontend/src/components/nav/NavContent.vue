@@ -57,7 +57,7 @@ const userNavContents = computed(() =>
                     <RouterLink :to="{ name: 'cluster' }" class="w-full">
                         <SidebarMenuButton>
                             <Boxes class="h-4 w-4" />
-                            集群管理
+                            集群
                         </SidebarMenuButton>
                         <DropdownMenu>
                             <DropdownMenuTrigger as-child>

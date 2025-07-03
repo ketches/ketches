@@ -118,7 +118,7 @@ const onSubmit = handleSubmit(async (values) => {
   app.value.requestMemory = resp.requestMemory;
   app.value.limitCPU = resp.limitCPU;
   app.value.limitMemory = resp.limitMemory;
-  app.value.edition = resp.edition;
+  app.value.updated = true
   toast.success("资源配置已更新。");
 });
 </script>
@@ -144,9 +144,7 @@ const onSubmit = handleSubmit(async (values) => {
 
     <div class="grid grid-cols-[1fr_auto_1fr] gap-x-6">
       <div class="flex flex-col gap-y-6">
-        <Label
-          class="font-normal text-blue-500 bg-blue-50 dark:bg-blue-950 p-2 rounded-lg px-4"
-        >
+        <Label class="font-normal text-blue-500 bg-blue-50 dark:bg-blue-950 p-2 rounded-lg px-4">
           <Info class="inline mr-1 h4 w-4" />
           最小资源：运行应用程序运行所需最小资源
         </Label>
@@ -160,11 +158,7 @@ const onSubmit = handleSubmit(async (values) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem
-                      v-for="k of appResourceSelectOptions.cpu"
-                      :key="k.value"
-                      :value="k.value"
-                    >
+                    <SelectItem v-for="k of appResourceSelectOptions.cpu" :key="k.value" :value="k.value">
                       {{ k.label }}
                     </SelectItem>
                   </SelectGroup>
@@ -184,11 +178,7 @@ const onSubmit = handleSubmit(async (values) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem
-                      v-for="k of appResourceSelectOptions.memory"
-                      :key="k.value"
-                      :value="k.value"
-                    >
+                    <SelectItem v-for="k of appResourceSelectOptions.memory" :key="k.value" :value="k.value">
                       {{ k.label }}
                     </SelectItem>
                   </SelectGroup>
@@ -203,9 +193,7 @@ const onSubmit = handleSubmit(async (values) => {
       <Separator orientation="vertical" />
 
       <div class="flex flex-col gap-y-6">
-        <Label
-          class="font-normal text-blue-500 bg-blue-50 dark:bg-blue-950 p-2 rounded-lg px-4"
-        >
+        <Label class="font-normal text-blue-500 bg-blue-50 dark:bg-blue-950 p-2 rounded-lg px-4">
           <Info class="inline mr-1 h4 w-4" />
           最大资源：应用程序可以使用的最大资源
         </Label>
@@ -219,11 +207,7 @@ const onSubmit = handleSubmit(async (values) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem
-                      v-for="k of appResourceSelectOptions.cpu"
-                      :key="k.value"
-                      :value="k.value"
-                    >
+                    <SelectItem v-for="k of appResourceSelectOptions.cpu" :key="k.value" :value="k.value">
                       {{ k.label }}
                     </SelectItem>
                   </SelectGroup>
@@ -243,11 +227,7 @@ const onSubmit = handleSubmit(async (values) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem
-                      v-for="k of appResourceSelectOptions.memory"
-                      :key="k.value"
-                      :value="k.value"
-                    >
+                    <SelectItem v-for="k of appResourceSelectOptions.memory" :key="k.value" :value="k.value">
                       {{ k.label }}
                     </SelectItem>
                   </SelectGroup>

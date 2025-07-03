@@ -11,7 +11,7 @@ import {
     <Breadcrumb>
         <BreadcrumbList>
             <BreadcrumbItem>
-                成员管理
+                成员
             </BreadcrumbItem>
         </BreadcrumbList>
     </Breadcrumb>

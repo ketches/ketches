@@ -98,7 +98,7 @@ watch(activeProjectRef, async (newProjectRef) => {
             </div>
         </header>
         <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
-            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4 space-y-4 py-4">
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4 py-4">
                 <Card v-for="stat in fetchedStatistics" :key="stat.label">
                     <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle class="text-sm font-medium">

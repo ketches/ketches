@@ -22,6 +22,7 @@ export interface appModel {
     actualEdition: string
     status: string
     createdAt: string
+    updated: boolean
 }
 
 export interface appRefModel {
@@ -91,9 +92,7 @@ export interface appInstanceContainerModel {
 export interface appRunningInfoModel {
     appID: string
     slug: string
-    replicas: number
     actualReplicas: number
-    edition: string
     actualEdition: string
     status: string
     instances: appInstanceModel[]

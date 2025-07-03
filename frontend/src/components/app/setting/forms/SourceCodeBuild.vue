@@ -67,7 +67,7 @@ const onSubmit = handleSubmit(async (values) => {
     app.value.containerImage = resp.containerImage ?? ''
     app.value.registryUsername = resp.registryUsername ?? ''
     app.value.registryPassword = resp.registryPassword ?? ''
-    app.value.edition = resp.edition ?? ''
+    app.value.updated = true
     toast.success("源码构建已更新。")
 })
 </script>

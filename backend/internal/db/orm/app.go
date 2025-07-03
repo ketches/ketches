@@ -39,6 +39,19 @@ func GetProjectIDByAppID(ctx context.Context, appID string) (string, app.Error) 
 	return entity.ProjectID, nil
 }
 
+func GetEditionByAppID(ctx context.Context, appID string) (string, app.Error) {
+	entity := &entities.App{}
+	if err := db.Instance().Select("edition").First(entity, "id = ?", appID).Error; err != nil {
+		log.Printf("failed to get edition for app %s: %v", appID, err)
+		if db.IsErrRecordNotFound(err) {
+			return "", app.NewError(http.StatusNotFound, "App not found")
+		}
+		return "", app.ErrDatabaseOperationFailed
+	}
+
+	return entity.Edition, nil
+}
+
 func GetProjectRoleByAppID(ctx context.Context, appID string) (string, app.Error) {
 	userID := api.UserID(ctx)
 	if userID == "" {
