@@ -38,7 +38,6 @@ export async function signOut() {
     const userStore = useUserStore()
     const user = userStore.getUser
     if (!user) {
-        console.warn('No user found in localStorage, skipping sign-out')
         return { success: true }
     }
     await api.post('/users/sign-out', {

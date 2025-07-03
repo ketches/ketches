@@ -113,7 +113,6 @@ function fetchAppInstanceLogs() {
         scrollToBottom();
     };
     es.onerror = (error) => {
-        console.error("Error fetching logs:", error);
         if (es) {
             es.close();
             es = null;

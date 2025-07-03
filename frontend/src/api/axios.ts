@@ -3,7 +3,6 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 // import router from '@/router'; // Assuming your router is configured and exported
 import { useUserStore } from '@/stores/userStore'; // Adjust the import path as necessary
 import { getApiBaseUrl } from '@/utils/env';
-import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 
@@ -53,8 +52,14 @@ instance.interceptors.response.use(
                 if (originalRequest.url === '/users/refresh-token') {
                     // 401 but already on /users/refresh-token
                     userStore.clearUser();
-                    const routerInstance = useRouter();
-                    routerInstance.push('/sign-in?redirectUrl=' + encodeURIComponent(routerInstance.currentRoute.value.fullPath));
+                    // console.log(window.location.pathname + window.location.search + window.location.hash);
+
+                    let signInUrl = '/sign-in';
+                    const redirectUrl = window.location.search + window.location.hash
+                    if (redirectUrl !== "" && redirectUrl !== "/") {
+                        signInUrl += '?redirectUrl=' + encodeURIComponent(redirectUrl);
+                    }
+                    window.location.href = signInUrl
                     return Promise.reject(error);
                 }
 
@@ -65,8 +70,12 @@ instance.interceptors.response.use(
                     return instance(originalRequest);
                 } else {
                     userStore.clearUser();
-                    const routerInstance = useRouter();
-                    routerInstance.push('/sign-in?redirectUrl=' + encodeURIComponent(routerInstance.currentRoute.value.fullPath));
+                    let signInUrl = '/sign-in';
+                    const redirectUrl = window.location.search + window.location.hash
+                    if (redirectUrl !== "" && redirectUrl !== "/") {
+                        signInUrl += '?redirectUrl=' + encodeURIComponent(redirectUrl);
+                    }
+                    window.location.href = signInUrl
                     return Promise.reject(error);
                 }
             } else {

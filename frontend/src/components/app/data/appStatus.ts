@@ -1,6 +1,6 @@
 import { appAction } from "@/api/app";
 import type { appModel } from "@/types/app";
-import { ArrowBigUpDash, Bug, BugOff, CircleQuestionMark, CloudCog, Package, PackageCheck, PackageMinus, PackageX, Play, Power, RefreshCcwDot, Replace, Rocket } from "lucide-vue-next";
+import { ArrowBigUpDash, Bug, BugOff, CircleQuestionMark, CloudCog, Package, PackageCheck, PackageMinus, PackageX, Play, Power, RefreshCcwDot, Rocket } from "lucide-vue-next";
 import type { Component } from "vue";
 import { toast } from "vue-sonner";
 
@@ -77,7 +77,7 @@ export function appStatusActions(appStatus: string, desiredEdition?: string, act
             actions.push(updateAction);
             actions.push(
                 { label: "关闭", icon: Power, action: onStop },
-                { label: "重新部署", icon: Replace, action: onRedeploy },
+                { label: "重新部署", icon: RefreshCcwDot, action: onRedeploy },
             );
             break;
         }
@@ -96,7 +96,7 @@ export function appStatusActions(appStatus: string, desiredEdition?: string, act
         case appStatusEnum.COMPLETED:
             actions.push(
                 { label: "关闭", icon: Power, action: onStop },
-                { label: "重新部署", icon: Replace, action: onRedeploy }
+                { label: "重新部署", icon: RefreshCcwDot, action: onRedeploy }
             );
             break;
         case appStatusEnum.DEBUGGING:

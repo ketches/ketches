@@ -140,11 +140,11 @@ func UserRefreshToken(c *gin.Context) {
 	s := services.NewUserService()
 	refreshToken, e := c.Cookie("refresh_token")
 	if e != nil {
-		api.Error(c, app.NewError(http.StatusBadRequest, e.Error()))
+		api.Error(c, app.NewError(http.StatusUnauthorized, e.Error()))
 		return
 	}
 	if refreshToken == "" {
-		api.Error(c, app.NewError(http.StatusBadRequest, "Refresh token is required"))
+		api.Error(c, app.NewError(http.StatusUnauthorized, "Refresh token is required"))
 		return
 	}
 

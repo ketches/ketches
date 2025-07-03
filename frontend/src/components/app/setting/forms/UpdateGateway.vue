@@ -98,7 +98,6 @@ watch(open, (isOpen) => {
 }, { immediate: true });
 
 const onSubmit = handleSubmit(async (values) => {
-    console.log('submit', values)
     await updateAppGateway(props.gateway.appID, props.gateway.gatewayID, {
         port: values.port,
         protocol: values.protocol,

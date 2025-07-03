@@ -18,6 +18,7 @@ import (
 type ProjectService interface {
 	ListProjects(ctx context.Context, req *models.ListProjectsRequest) (*models.ListProjectResponse, app.Error)
 	AllProjectRefs(ctx context.Context) ([]*models.ProjectRef, app.Error)
+	GetStatistics(ctx context.Context, req *models.GetProjectStatisticsRequest) (*models.ProjectStatisticsModel, app.Error)
 	GetProject(ctx context.Context, req *models.GetProjectRequest) (*models.ProjectModel, app.Error)
 	GetProjectRef(ctx context.Context, req *models.GetProjectRefRequest) (*models.ProjectRef, app.Error)
 	CreateProject(ctx context.Context, req *models.CreateProjectRequest) (*models.ProjectModel, app.Error)
@@ -89,6 +90,36 @@ func (s *projectService) AllProjectRefs(ctx context.Context) ([]*models.ProjectR
 	}
 
 	return refs, nil
+}
+
+func (s *projectService) GetStatistics(ctx context.Context, req *models.GetProjectStatisticsRequest) (*models.ProjectStatisticsModel, app.Error) {
+	stats := &models.ProjectStatisticsModel{}
+
+	// Get total environments
+	if err := db.Instance().Model(&entities.Env{}).Where("project_id = ?", req.ProjectID).Count(&stats.TotalEnvs).Error; err != nil {
+		log.Printf("failed to count environments: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	// Get total apps
+	if err := db.Instance().Model(&entities.App{}).Where("project_id = ?", req.ProjectID).Count(&stats.TotalApps).Error; err != nil {
+		log.Printf("failed to count apps: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	// Get total app gateways
+	if err := db.Instance().Model(&entities.AppGateway{}).Where("project_id = ?", req.ProjectID).Count(&stats.TotalAppGateways).Error; err != nil {
+		log.Printf("failed to count app gateways: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	// Get total members
+	if err := db.Instance().Model(&entities.ProjectMember{}).Where("project_id = ?", req.ProjectID).Count(&stats.TotalMembers).Error; err != nil {
+		log.Printf("failed to count project members: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return stats, nil
 }
 
 func (s *projectService) GetProject(ctx context.Context, req *models.GetProjectRequest) (*models.ProjectModel, app.Error) {

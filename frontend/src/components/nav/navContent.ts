@@ -4,7 +4,7 @@ export const userNavContents = [
     {
         title: "总览",
         icon: Telescope,
-        route: { name: "overview" },
+        route: { name: "userOverview" },
         isActive: true,
     },
     {

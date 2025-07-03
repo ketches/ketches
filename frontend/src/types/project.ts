@@ -31,3 +31,11 @@ export interface projectMemberModel {
     createdAt: Date
 }
 
+
+export interface projectStatisticsModel {
+    totalEnvs: number
+    totalApps: number
+    totalAppGateways: number
+    totalMembers: number
+}
+

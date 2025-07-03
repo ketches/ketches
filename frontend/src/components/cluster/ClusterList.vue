@@ -113,7 +113,7 @@ const columns: ColumnDef<clusterModel>[] = [
             h(
                 RouterLink,
                 {
-                    to: `/console/cluster/${row.original.clusterID}`,
+                    to: { name: 'clusterPage', params: { id: row.original.clusterID } },
                     class: "font-medium text-blue-500",
                 },
                 () => row.original.displayName || row.getValue("slug")

@@ -1,7 +1,7 @@
 import api from '@/api/axios';
 import type { QueryAndPagedRequest } from '@/types/common';
 import type { envCreateModel, envModel, envRefModel } from '@/types/env';
-import type { createProjectModel, projectMemberModel, projectModel, projectRefModel } from '@/types/project';
+import type { createProjectModel, projectMemberModel, projectModel, projectRefModel, projectStatisticsModel } from '@/types/project';
 import type { userRefModel } from '@/types/user';
 
 export async function listProjects(filter: QueryAndPagedRequest): Promise<projectModel[]> {
@@ -94,4 +94,9 @@ export async function fetchEnvRefs(projectID: string): Promise<envRefModel[]> {
 export async function createEnv(projectID: string, model: envCreateModel): Promise<envModel> {
     const response = await api.post(`/projects/${projectID}/envs`, model)
     return response.data as envModel
+}
+
+export async function fetchProjectStatistics(projectID: string): Promise<projectStatisticsModel> {
+    const response = await api.get(`/projects/${projectID}/statistics`)
+    return response.data as projectStatisticsModel
 }

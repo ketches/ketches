@@ -52,7 +52,7 @@ function onSwitchEnv(envID: string) {
                 <DropdownMenuItem
                     v-for="envRef in userStore.getCurrentEnvRefs.filter(env => env.envID !== activeEnvRef?.envID)"
                     @click="onSwitchEnv(envRef.envID)" :key="envRef.envID">
-                    <RouterLink :to="`/console/env/${envRef.envID}`" v-slot="{ navigate, href }"
+                    <RouterLink :to="{ name: 'envPage', params: { id: envRef.envID } }" v-slot="{ navigate, href }"
                         class="flex items-center gap-2 w-full">
                         <div class="h-4 w-4" />
                         <span :href="href" @click="navigate">{{ envRef.displayName }}</span>

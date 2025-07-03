@@ -54,6 +54,26 @@ func AllProjectRefs(c *gin.Context) {
 	api.Success(c, refs)
 }
 
+// @Summary Get Project Statistics
+// @Description Get project statistics including total environments, apps, and members.
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Success 200 {object} api.Response{data=models.ProjectStatisticsModel}
+// @Router /api/v1/projects/{projectID}/statistics [get]
+func GetProjectStatistics(c *gin.Context) {
+	s := services.NewProjectService()
+	resp, err := s.GetStatistics(c, &models.GetProjectStatisticsRequest{
+		ProjectID: c.Param("projectID"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, resp)
+}
+
 // @Summary Get Project
 // @Description Get project by project ID
 // @Tags Project

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { fetchPlatformStatistics } from '@/api/platform';
+import { fetchProjectStatistics } from '@/api/project';
 import {
     Card,
     CardContent,
@@ -7,8 +7,10 @@ import {
     CardTitle
 } from '@/components/ui/card';
 import { SidebarInset, useSidebar } from '@/components/ui/sidebar';
-import { Boxes, GalleryHorizontalEnd, Grid2X2, Network, Package, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-vue-next';
-import { onMounted, ref, type Component } from 'vue';
+import { useUserStore } from '@/stores/userStore';
+import { Grid2X2, Network, Package, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-vue-next';
+import { storeToRefs } from 'pinia';
+import { onMounted, ref, watch, type Component } from 'vue';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList } from '../ui/breadcrumb';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
@@ -22,53 +24,60 @@ interface statisticsItme {
     description: string;
 }
 
+const userStore = useUserStore()
+const { activeProjectRef } = storeToRefs(userStore)
+
 const fetchedStatistics = ref<statisticsItme[]>([]);
 
-onMounted(async () => {
-    // Simulate fetching statistics from an API
-    const resp = await fetchPlatformStatistics();
+async function fetchStatistics(projectID: string) {
+    const resp = await fetchProjectStatistics(projectID);
     if (resp) {
-        fetchedStatistics.value = [{
-            label: '集群',
-            icon: Boxes,
-            total: resp.totalClusters,
-            description: '集群总数'
-        },
-        {
-            label: '项目',
-            icon: GalleryHorizontalEnd,
-            total: resp.totalProjects,
-            description: '项目总数'
-        },
-        {
-            label: '用户',
-            icon: Users,
-            total: resp.totalUsers,
-            description: '用户总数'
-        },
-        {
-            label: '环境',
-            icon: Grid2X2,
-            total: resp.totalEnvs,
-            description: '环境总数'
-        },
-        {
-            label: '应用',
-            icon: Package,
-            total: resp.totalApps,
-            description: '应用总数'
-        },
-        {
-            label: '网关',
-            icon: Network,
-            total: resp.totalAppGateways,
-            description: '网关总数'
-        }
+        fetchedStatistics.value = [
+            {
+                label: '环境',
+                icon: Grid2X2,
+                total: resp.totalEnvs,
+                description: '环境总数'
+            },
+            {
+                label: '应用',
+                icon: Package,
+                total: resp.totalApps,
+                description: '应用总数'
+            },
+            {
+                label: '网关',
+                icon: Network,
+                total: resp.totalAppGateways,
+                description: '网关总数'
+            },
+            {
+                label: '成员',
+                icon: Users,
+                total: resp.totalMembers,
+                description: '成员总数'
+            },
         ];
     } else {
         fetchedStatistics.value = [];
     }
+}
+
+onMounted(async () => {
+    if (activeProjectRef.value) {
+        await fetchStatistics(activeProjectRef.value.projectID);
+    } else {
+        fetchedStatistics.value = [];
+    }
 });
+
+watch(activeProjectRef, async (newProjectRef) => {
+    if (newProjectRef) {
+        await fetchStatistics(newProjectRef.projectID);
+    } else {
+        fetchedStatistics.value = [];
+    }
+}, { immediate: true });
 
 </script>
 <template>
@@ -89,7 +98,7 @@ onMounted(async () => {
             </div>
         </header>
         <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
-            <div class="grid gap-4 md:grid-cols-3 lg:grid-cols-6 space-y-4 py-4">
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4 space-y-4 py-4">
                 <Card v-for="stat in fetchedStatistics" :key="stat.label">
                     <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle class="text-sm font-medium">

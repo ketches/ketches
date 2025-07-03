@@ -26,12 +26,19 @@ func NewAPIV1Route(e *gin.Engine) *APIV1Route {
 }
 
 func (r *APIV1Route) Register() {
+	registerPlatformRoute(r)
 	registerClusterRoute(r)
 	registerUserRoute(r)
 	registerProjectRoute(r)
 	registerEnvRoute(r)
 	registerAppRoute(r)
 	registerAppEnvVarRoute(r)
+}
+
+func registerPlatformRoute(r *APIV1Route) {
+	// Routes that require admin permissions
+	adminOnly := r.Group("", middlewares.AdminOnly())
+	adminOnly.GET("/statistics", handlers.GetPlatformStatistics)
 }
 
 func registerClusterRoute(r *APIV1Route) {
@@ -76,6 +83,7 @@ func registerProjectRoute(r *APIV1Route) {
 
 	// Routes that require project membership
 	projectMember := projects.Group("/:projectID", middlewares.ProjectMember())
+	projectMember.GET("/statistics", handlers.GetProjectStatistics)
 	projectMember.GET("", handlers.GetProject)
 	projectMember.GET("/ref", handlers.GetProjectRef)
 	projectMember.GET("/members", handlers.ListProjectMembers)

@@ -45,36 +45,36 @@ const userNavContents = computed(() =>
                 <Spot />
             </SidebarMenuItem>
             <SidebarMenuItem>
-                <SidebarMenuButton>
-                    <Telescope />
-                    <RouterLink :to="{ name: 'admin-overview' }" class="flex w-full">
+                <RouterLink :to="{ name: 'adminOverview' }" class="flex w-full">
+                    <SidebarMenuButton>
+                        <Telescope />
                         <span>总览</span>
-                    </RouterLink>
-                </SidebarMenuButton>
+                    </SidebarMenuButton>
+                </RouterLink>
             </SidebarMenuItem>
             <Collapsible as-child class="group/collapsible">
                 <SidebarMenuItem>
-                    <SidebarMenuButton>
-                        <Boxes class="h-4 w-4" />
-                        <RouterLink :to="{ name: 'cluster' }" class="w-full">
+                    <RouterLink :to="{ name: 'cluster' }" class="w-full">
+                        <SidebarMenuButton>
+                            <Boxes class="h-4 w-4" />
                             集群管理
-                        </RouterLink>
-                    </SidebarMenuButton>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger as-child>
-                            <SidebarMenuAction show-on-hover>
-                                <EllipsisVertical />
-                            </SidebarMenuAction>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent class="w-48 rounded-lg" :side="isMobile ? 'bottom' : 'right'"
-                            :align="isMobile ? 'end' : 'start'">
-                            <DropdownMenuItem @click="openClusterForm = true" @select.prevent>
-                                <Plus class="text-muted-foreground" />
-                                <span>创建集群</span>
-                            </DropdownMenuItem>
-                            <CreateCluster v-model:open="openClusterForm" />
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                        </SidebarMenuButton>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <SidebarMenuAction show-on-hover>
+                                    <EllipsisVertical />
+                                </SidebarMenuAction>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent class="w-48 rounded-lg" :side="isMobile ? 'bottom' : 'right'"
+                                :align="isMobile ? 'end' : 'start'">
+                                <DropdownMenuItem @click="openClusterForm = true" @select.prevent>
+                                    <Plus class="text-muted-foreground" />
+                                    <span>创建集群</span>
+                                </DropdownMenuItem>
+                                <CreateCluster v-model:open="openClusterForm" />
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </RouterLink>
                 </SidebarMenuItem>
             </Collapsible>
         </SidebarMenu>

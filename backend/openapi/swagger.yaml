@@ -471,6 +471,8 @@ definitions:
         type: string
       displayName:
         type: string
+      gatewayIP:
+        type: string
       kubeConfig:
         type: string
       slug:
@@ -662,6 +664,21 @@ definitions:
     required:
     - kubeConfig
     type: object
+  models.PlatformStatisticsModel:
+    properties:
+      totalAppGateways:
+        type: integer
+      totalApps:
+        type: integer
+      totalClusters:
+        type: integer
+      totalEnvs:
+        type: integer
+      totalProjects:
+        type: integer
+      totalUsers:
+        type: integer
+    type: object
   models.ProjectMemberModel:
     properties:
       createdAt:
@@ -713,6 +730,17 @@ definitions:
         type: string
       slug:
         type: string
+    type: object
+  models.ProjectStatisticsModel:
+    properties:
+      totalAppGateways:
+        type: integer
+      totalApps:
+        type: integer
+      totalEnvs:
+        type: integer
+      totalMembers:
+        type: integer
     type: object
   models.SetAppCommandRequest:
     properties:
@@ -2876,6 +2904,27 @@ paths:
       summary: Get Project Ref
       tags:
       - Project
+  /api/v1/projects/{projectID}/statistics:
+    get:
+      consumes:
+      - application/json
+      description: Get project statistics including total environments, apps, and
+        members.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProjectStatisticsModel'
+              type: object
+      summary: Get Project Statistics
+      tags:
+      - Project
   /api/v1/projects/refs:
     get:
       consumes:
@@ -2898,6 +2947,27 @@ paths:
       summary: All Project Refs
       tags:
       - Project
+  /api/v1/statistics:
+    get:
+      consumes:
+      - application/json
+      description: Get platform statistics including total clusters, projects, users,
+        environments, apps, and
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PlatformStatisticsModel'
+              type: object
+      summary: Get Platform Statistics
+      tags:
+      - Platform
   /api/v1/users:
     get:
       consumes:

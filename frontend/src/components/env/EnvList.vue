@@ -135,7 +135,7 @@ const columns: ColumnDef<envModel>[] = [
         accessorKey: 'slug',
         header: "环境",
         cell: ({ row }) => h('div', { class: 'space-y-1' }, [
-            h(RouterLink, { to: `/console/env/${row.original.envID}`, class: 'font-medium text-blue-500' }, () => row.original.displayName || row.getValue('slug')),
+            h(RouterLink, { to: { name: 'envPage', params: { id: row.original.envID } }, class: 'font-medium text-blue-500' }, () => row.original.displayName || row.getValue('slug')),
             h('div', { class: 'text-sm text-muted-foreground font-mono' }, row.getValue('slug'))
         ]),
     },

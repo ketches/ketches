@@ -46,7 +46,7 @@ async function handleSubmit(event: Event) {
       description: `${result.data.fullname || result.data.username}，现在可以登录了！`
     })
     // 注册成功后跳转到登录页面
-    router.push('/sign-in')
+    router.push({ name: "sign-in" })
   }
 }
 
@@ -100,7 +100,7 @@ async function handleSubmit(event: Event) {
             <div v-if="errorMsg" class="text-red-500 text-center text-sm">{{ errorMsg }}</div>
             <div class="text-center text-sm">
               <span>已经有账户？</span>
-              <RouterLink to="/sign-in" class="underline underline-offset-4">
+              <RouterLink :to="{ name: 'sign-in' }" class="underline underline-offset-4">
                 <span>立即登录</span>
               </RouterLink>
             </div>

@@ -22,18 +22,10 @@ const router = useRouter()
 const userStore = useUserStore()
 const { activeAppRef } = storeToRefs(userStore)
 
-// const selectedAppID = ref(activeAppRef.value?.appID)
-
 async function onSwitchApp(appID: string) {
     await userStore.activateApp(appID)
-    // selectedAppID.value = appID
-    router.push(`/console/app/${appID}`)
+    router.push({ name: 'app', params: { id: appID } })
 }
-
-// watch(selectedAppID, async (newAppID) => {
-//     await resourceRefStore.switchApp(newAppID!)
-//     router.push(`/console/app/${newAppID}`)
-// })
 
 </script>
 

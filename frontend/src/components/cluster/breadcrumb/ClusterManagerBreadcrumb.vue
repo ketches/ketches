@@ -16,6 +16,10 @@ defineProps({
     type: String,
     default: '',
   },
+  nodeName: {
+    type: String,
+    default: '',
+  },
 });
 
 </script>
@@ -23,11 +27,11 @@ defineProps({
 <template>
   <Breadcrumb>
     <BreadcrumbList>
-      <ClusterBreadcrumb v-if="clusterRefs.length > 0" :clusterRefs="clusterRefs" />
+      <ClusterBreadcrumb v-if="clusterID" :clusterID="clusterID" :clusterRefs="clusterRefs" />
       <!-- <BreadcrumbList v-else> -->
       <BreadcrumbItem v-else class="font-semibold">集群</BreadcrumbItem>
       <!-- </BreadcrumbList> -->
-      <NodeBreadcrumb v-if="clusterID" :clusterID="clusterID" />
+      <NodeBreadcrumb v-if="nodeName" :nodeName="nodeName" />
     </BreadcrumbList>
   </Breadcrumb>
 </template>

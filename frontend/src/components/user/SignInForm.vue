@@ -29,12 +29,12 @@ async function handleSubmit(event: Event) {
   const result = await signIn(username, password)
   if (result.success) {
     if (result.data) {
+      userStore.setUser(result.data)
+      router.push(props.redirectUrl || { name: 'home' })
       toast.dismiss()
       toast.info('登录成功！', {
         description: `${result.data.fullname || result.data.username}，欢迎回来！`,
       })
-      userStore.setUser(result.data)
-      router.push(props.redirectUrl || { name: 'console' })
     }
   }
 }

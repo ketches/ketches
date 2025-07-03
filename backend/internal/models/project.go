@@ -20,6 +20,17 @@ type ListProjectResponse struct {
 	Records []*ProjectModel `json:"records"`
 }
 
+type ProjectStatisticsModel struct {
+	TotalEnvs        int64 `json:"totalEnvs"`
+	TotalApps        int64 `json:"totalApps"`
+	TotalAppGateways int64 `json:"totalAppGateways"`
+	TotalMembers     int64 `json:"totalMembers"`
+}
+
+type GetProjectStatisticsRequest struct {
+	ProjectID string `uri:"projectID" binding:"required"`
+}
+
 type GetProjectRefRequest struct {
 	ProjectID string `uri:"projectID" binding:"required"`
 }

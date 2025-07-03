@@ -3116,6 +3116,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/projects/{projectID}/statistics": {
+            "get": {
+                "description": "Get project statistics including total environments, apps, and members.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Get Project Statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ProjectStatisticsModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statistics": {
+            "get": {
+                "description": "Get platform statistics including total clusters, projects, users, environments, apps, and",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Platform"
+                ],
+                "summary": "Get Platform Statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.PlatformStatisticsModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users": {
             "get": {
                 "security": [
@@ -4414,6 +4484,9 @@ const docTemplate = `{
                 "displayName": {
                     "type": "string"
                 },
+                "gatewayIP": {
+                    "type": "string"
+                },
                 "kubeConfig": {
                     "type": "string"
                 },
@@ -4701,6 +4774,29 @@ const docTemplate = `{
                 }
             }
         },
+        "models.PlatformStatisticsModel": {
+            "type": "object",
+            "properties": {
+                "totalAppGateways": {
+                    "type": "integer"
+                },
+                "totalApps": {
+                    "type": "integer"
+                },
+                "totalClusters": {
+                    "type": "integer"
+                },
+                "totalEnvs": {
+                    "type": "integer"
+                },
+                "totalProjects": {
+                    "type": "integer"
+                },
+                "totalUsers": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.ProjectMemberModel": {
             "type": "object",
             "properties": {
@@ -4777,6 +4873,23 @@ const docTemplate = `{
                 },
                 "slug": {
                     "type": "string"
+                }
+            }
+        },
+        "models.ProjectStatisticsModel": {
+            "type": "object",
+            "properties": {
+                "totalAppGateways": {
+                    "type": "integer"
+                },
+                "totalApps": {
+                    "type": "integer"
+                },
+                "totalEnvs": {
+                    "type": "integer"
+                },
+                "totalMembers": {
+                    "type": "integer"
                 }
             }
         },

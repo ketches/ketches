@@ -72,6 +72,7 @@ func (s *appGatewayService) CreateAppGateway(ctx context.Context, req *models.Cr
 		GatewayPort: req.GatewayPort,
 		Exposed:     req.Exposed,
 		EnvID:       appEntity.EnvID,
+		ProjectID:   appEntity.ProjectID,
 		AuditBase: entities.AuditBase{
 			CreatedBy: api.UserID(ctx),
 			UpdatedBy: api.UserID(ctx),

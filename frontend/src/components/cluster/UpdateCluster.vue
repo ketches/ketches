@@ -132,8 +132,6 @@ function handleFileChange(e: Event) {
 }
 
 async function onPingKubeConfig() {
-    console.log('Testing KubeConfig connectivity...');
-
     if (!values.kubeConfig) {
         toast.error('请先填写 KubeConfig');
         return;
