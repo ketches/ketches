@@ -41,28 +41,43 @@ watch(
     await router.isReady();
 
     if (user.value) {
-      switch (routeName) {
-        case "appPage":
-          const appID = route.params.id as string;
-          userStore.activateApp(appID);
-          break;
-        case "envPage":
-          const envID = route.params.id as string;
-          userStore.activateEnv(envID);
-          break;
-        case "home":
-          if (user.value.role === "admin") {
+      if (user.value.role === 'admin') {
+        switch (routeName) {
+          case "home":
             router.push({ name: 'admin' });
-          } else {
-            console.log("Ensuring active project for user");
-
-            userStore.ensureActiveProject();
+            break;
+          case "appPage":
+            const appID = route.params.id as string;
+            userStore.activateApp(appID);
+            break;
+          case "envPage":
+            const envID = route.params.id as string;
+            userStore.activateEnv(envID);
+            break;
+          case "clusterPage":
+            const clusterID = route.params.id as string;
+            clusterStore.activateCluster(clusterID);
+            break;
+        }
+      } else {
+        switch (routeName) {
+          case "home":
             router.push({ name: 'user' });
-          }
-          break;
-        default:
-          userStore.ensureActiveProject();
-          break;
+            break;
+          case "appPage":
+            const appID = route.params.id as string;
+            userStore.activateApp(appID);
+            break;
+          case "envPage":
+            const envID = route.params.id as string;
+            userStore.activateEnv(envID);
+            break;
+          default:
+            if (user.value.role === "user") {
+              userStore.ensureActiveProject();
+            }
+            break;
+        }
       }
     }
   },

@@ -129,7 +129,7 @@ const columns: ColumnDef<clusterModel>[] = [
     {
         accessorKey: 'nodeCount',
         header: () => centeredHeader("节点总数"),
-        cell: ({ row }) => h('div', { class: 'font-mono text-center' }, (row.getValue('readyNodeCount') || 0) + "/" + (row.getValue('nodeCount') || 0)),
+        cell: ({ row }) => h('div', { class: 'font-mono text-center' }, (row.original.readyNodeCount || 0) + "/" + (row.getValue('nodeCount') || 0)),
     },
     {
         accessorKey: 'serverVersion',

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useClusterStore } from "@/stores/clusterStore";
 import { useUserStore } from "@/stores/userStore.ts";
 import { useMagicKeys, whenever } from "@vueuse/core";
 import { GalleryHorizontalEnd, Grid2X2, Package, Search } from "lucide-vue-next";
@@ -29,7 +30,10 @@ const router = useRouter();
 
 const open = ref(false);
 const userStore = useUserStore();
-const { userResources } = storeToRefs(userStore);
+const { userResources, user } = storeToRefs(userStore);
+
+const clusterStore = useClusterStore();
+const { clusterRefs } = storeToRefs(clusterStore);
 
 const { meta_k, ctrl_k } = useMagicKeys();
 const anyKPressed = computed(() => meta_k.value || ctrl_k.value);
@@ -42,15 +46,36 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
   open.value = false;
 
   // eslint-disable-next-line no-console
-  if (resourceType === "project") {
-    await userStore.activateProject(resourceID);
-  } else if (resourceType === "env") {
-    await userStore.activateEnv(resourceID);
-    router.push({ name: 'envPage', params: { id: resourceID } });
-  } else if (resourceType === "app") {
-    await userStore.activateApp(resourceID);
-    router.push({ name: 'appPage', params: { id: resourceID } });
+  switch (resourceType) {
+    case "cluster":
+      await clusterStore.activateCluster(resourceID);
+      router.push({ name: 'clusterPage', params: { id: resourceID } });
+      break;
+    case "project":
+      await userStore.activateProject(resourceID);
+      break;
+    case "env":
+      await userStore.activateEnv(resourceID);
+      router.push({ name: 'envPage', params: { id: resourceID } });
+      break;
+    case "app":
+      await userStore.activateApp(resourceID);
+      router.push({ name: 'appPage', params: { id: resourceID } });
+      break;
+    default:
+      console.warn(`Unknown resource type: ${resourceType}`);
   }
+  // if (resourceType === "project") {
+  //   await userStore.activateProject(resourceID);
+  // }else if (resourceType === "project") {
+  //   await userStore.activateProject(resourceID);
+  // } else if (resourceType === "env") {
+  //   await userStore.activateEnv(resourceID);
+  //   router.push({ name: 'envPage', params: { id: resourceID } });
+  // } else if (resourceType === "app") {
+  //   await userStore.activateApp(resourceID);
+  //   router.push({ name: 'appPage', params: { id: resourceID } });
+  // }
 }
 </script>
 
@@ -82,13 +107,38 @@ async function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: 
         <ComboboxRoot :open="true">
           <ComboboxInput placeholder="搜索我的资源 ..."
             class="bg-transparent w-full px-4 py-3 outline-none placeholder-muted-foreground" @keydown.enter.prevent />
-
-          <ComboboxContent class="border-t border-muted-foreground/30 max-h-[20rem] overflow-y-auto"
-            @escape-key-down="open = false">
+          <ComboboxContent v-if="user.role === 'admin'"
+            class="border-t border-muted-foreground/30 max-h-[20rem] overflow-y-auto" @escape-key-down="open = false">
             <ComboboxEmpty class="text-center text-muted-foreground p-4">
               No results
             </ComboboxEmpty>
             <ScrollArea class="w-full h-full flex-1 min-h-0 flex flex-col">
+
+              <ComboboxGroup v-if="clusterRefs.length > 0" class="px-4 pb-2">
+                <ComboboxLabel
+                  class="inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">
+                  <Package class="h-4 w-4" />
+                  集群
+                </ComboboxLabel>
+                <!-- <RouterLink v-for="item in userResources.apps" :key="item.appID"
+                  :to="{ name: 'appPage', params: { id: item.appID } }"> -->
+                <ComboboxItem v-for="item in clusterRefs" :key="item.clusterID" :value="item"
+                  class="cursor-default pl-8 py-2 rounded-md data-[highlighted]:bg-muted inline-flex w-full items-center gap-4"
+                  @select="handleSelect($event, 'cluster', item.clusterID)">
+                  <span>{{ item.displayName }}</span>
+                  <span class="text-xs text-muted-foreground font-mono">{{ item.slug }}</span>
+                </ComboboxItem>
+                <!-- </RouterLink> -->
+              </ComboboxGroup>
+            </ScrollArea>
+          </ComboboxContent>
+          <ComboboxContent v-else-if="userResources"
+            class="border-t border-muted-foreground/30 max-h-[20rem] overflow-y-auto" @escape-key-down="open = false">
+            <ComboboxEmpty class="text-center text-muted-foreground p-4">
+              No results
+            </ComboboxEmpty>
+            <ScrollArea class="w-full h-full flex-1 min-h-0 flex flex-col">
+
               <ComboboxGroup v-if="userResources.apps.length > 0" class="px-4 pb-2">
                 <ComboboxLabel
                   class="inline-flex w-full items-center gap-4 text-muted-foreground/70 font-semibold mt-3">

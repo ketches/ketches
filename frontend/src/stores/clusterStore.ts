@@ -22,8 +22,8 @@ export const useClusterStore = defineStore('clusterStore', {
         removeClusterRef(clusterID: string) {
             this.clusterRefs = this.clusterRefs.filter(cluster => cluster.clusterID !== clusterID);
         },
-        setActiveClusterRef(clusterRef: clusterRefModel) {
-            this.activeClusterRef = clusterRef;
-        },
+        activateCluster(clusterID: string) {
+            this.activeClusterRef = this.clusterRefs.find(cluster => cluster.clusterID === clusterID) || null;
+        }
     },
 });
