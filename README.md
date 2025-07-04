@@ -60,7 +60,7 @@ This will start the frontend server on port 5173.
 
 Here you go! You can now access the Ketches application at `http://localhost:5173`.
 
-## Backend Congiguration
+## Backend Configuration
 
 T
 Moe details about backend configurations, see [Ketches Backend Environment Variables](./docs/backend-env.md).
