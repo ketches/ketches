@@ -39,12 +39,14 @@ func registerPlatformRoute(r *APIV1Route) {
 	// Routes that require admin permissions
 	adminOnly := r.Group("", middlewares.AdminOnly())
 	adminOnly.GET("/statistics", handlers.GetPlatformStatistics)
+	adminOnly.GET("/admin/resources", handlers.GetAdminResources)
 }
 
 func registerClusterRoute(r *APIV1Route) {
 	clusters := r.Group("/clusters")
 	clusters.GET("/refs", handlers.AllClusterRefs)
 	clusters.GET("/:clusterID/ref", handlers.GetClusterRef)
+	clusters.GET("/:clusterID/nodes/refs", handlers.ListClusterNodeRefs)
 
 	// Routes that require admin permissions
 	adminOnly := clusters.Group("", middlewares.AdminOnly())
@@ -56,6 +58,8 @@ func registerClusterRoute(r *APIV1Route) {
 	adminOnly.PUT("/:clusterID/enable", handlers.EnableCluster)
 	adminOnly.PUT("/:clusterID/disable", handlers.DisableCluster)
 	adminOnly.POST("/ping", handlers.PingClusterKubeConfig)
+	adminOnly.GET("/:clusterID/nodes", handlers.ListClusterNodes)
+	adminOnly.GET("/:clusterID/nodes/:nodeName", handlers.GetClusterNode)
 	adminOnly.GET("/:clusterID/extensions", handlers.ListClusterExtensions)
 }
 
@@ -69,9 +73,7 @@ func registerUserRoute(r *APIV1Route) {
 	users.PUT("/:userID/reset-password", handlers.UserResetPassword)
 	users.PUT("/:userID/rename", handlers.UserRename)
 	users.DELETE("/:userID", handlers.DeleteUser)
-
-	// 用户资源聚合接口
-	r.GET("/users/resources", handlers.GetUserResources)
+	users.GET("/resources", handlers.GetUserResources)
 }
 
 func registerProjectRoute(r *APIV1Route) {

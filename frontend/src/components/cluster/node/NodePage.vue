@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getApp } from "@/api/app";
+import { getClusterNode } from "@/api/cluster";
 import Badge from "@/components/ui/badge/Badge.vue";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -7,45 +7,44 @@ import {
     SidebarInset,
     useSidebar
 } from "@/components/ui/sidebar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { appModel } from "@/types/app";
-import { Archive, Boxes, History, Monitor, PanelLeftClose, PanelLeftOpen, Settings2 } from "lucide-vue-next";
-import { storeToRefs } from "pinia";
-import { computed, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
-import NodeActions from "./NodeActions.vue";
-import Breadcrumb from "./breadcrumb/AppManagerBreadcrumb.vue";
-// import { appStatusDisplay } from "./data/appStatus";
 import { useUserStore } from "@/stores/userStore";
-import InstanceList from "./instance/InstanceList.vue";
-import SettingDialog from "./setting/SettingDialog.vue";
-import Settings from "./setting/Settings.vue";
+import type { clusterNodeModel } from "@/types/cluster";
+import { CircleCheck, CircleDashed, PanelLeftClose, PanelLeftOpen, Server } from "lucide-vue-next";
+import { storeToRefs } from "pinia";
+import { onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import Breadcrumb from "../breadcrumb/ClusterManagerBreadcrumb.vue";
+import NodeActions from "./NodeActions.vue";
 
 const { toggleSidebar, open } = useSidebar();
 
+const router = useRouter();
+
 const route = useRoute();
-const appID = route.params.id as string;
+const clusterID = route.params.id as string;
+const nodeName = route.params.nodeName as string;
 
 const userStore = useUserStore()
-const { activeAppRef } = storeToRefs(userStore);
+const { activeClusterNodeRef } = storeToRefs(userStore);
+
 
 const currentTab = ref("overview");
 
-const app = ref<appModel | null>(null);
+const node = ref<clusterNodeModel | null>(null);
 
-async function fetchNodeInfo(appID?: string) {
-    if (appID) {
-        app.value = await getApp(appID)
+async function fetchNodeInfo(clusterID?: string, nodeName?: string) {
+    if (clusterID && nodeName) {
+        node.value = await getClusterNode(clusterID, nodeName)
     }
 }
 
 onMounted(async () => {
-    await fetchNodeInfo(appID);
+    await fetchNodeInfo(clusterID, nodeName);
 });
 
-watch(activeAppRef, async (newAppRef) => {
-    if (newAppRef && newAppRef.appID !== app.value?.appID) {
-        await fetchNodeInfo(newAppRef.appID);
+watch(activeClusterNodeRef, async (newClusterNode) => {
+    if (newClusterNode && newClusterNode.nodeName !== node.value?.nodeName) {
+        await fetchNodeInfo(clusterID, newClusterNode.nodeName);
     }
 });
 
@@ -54,10 +53,6 @@ const logsExtensionInstalled = ref(false);
 const deployedInSourceCode = ref(false);
 
 const settingDialogOpen = ref(false);
-
-const appStatus = computed(() => {
-    // return appStatusDisplay(app.value?.status || 'unknown')
-});
 </script>
 
 <template>
@@ -70,96 +65,54 @@ const appStatus = computed(() => {
                     <PanelLeftClose v-else />
                 </Button>
                 <Separator orientation="vertical" class="mr-2 h-4" />
-                <Breadcrumb :appID="app?.appID" />
+                <Breadcrumb :clusterID="clusterID" :nodeName="nodeName" />
             </div>
         </header>
         <div class="flex flex-col gap-4 mx-4 border-t pt-4">
             <div class="flex items-center justify-between">
                 <div class="flex justify-between space-x-4 w-full items-center">
-                    <component :is="appStatus.icon" :class="`w-12 h-12 ${appStatus.fgColor} rounded-sm`"
+                    <Server
+                        :class="`${node?.ready ? 'w-16 h-16 p-1 rounded-lg text-green-500 bg-green-50' : 'text-gray-500'} rounded-sm`"
                         stroke-width="1" />
                     <div class="space-y-2 flex-1 gap-4">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <h1 class="text-xl font-semibold">
-                                    {{ app?.displayName || "应用名称" }}
+                                    {{ node?.nodeName || "节点名称" }}
                                 </h1>
                                 <Separator orientation="vertical" class="h-4" />
                                 <Badge variant="secondary" class="font-mono text-muted-foreground">
-                                    应用类型：{{ app?.appType || '未知' }}</Badge>
+                                    内网 IP：{{ node?.internalIP || '未知' }}</Badge>
                                 <Separator orientation="vertical" class="h-4" />
-                                <Badge variant="secondary" class="font-mono text-muted-foreground">部署版本：{{ app?.edition
+                                <Badge variant="secondary" class="font-mono text-muted-foreground">版本：{{
+                                    node?.kubeletVersion
                                     ||
                                     '未知'
-                                    }}</Badge>
+                                }}</Badge>
                             </div>
 
                             <div style="margin-left:auto;">
-                                <Button variant="secondary" size="sm" :class="`${appStatus.fgColor}`">
-                                    <component :is="appStatus.icon" class="w-5 h-5 mr-1" />
-                                    <span>{{ appStatus.label }}</span>
+                                <Button variant="secondary" size="sm"
+                                    :class="`${node?.ready ? 'text-green-500 bg-green-500/10 hover:bg-green-500/10' : 'text-gray-500 bg-gray-500/10 hover:bg-gray-500/10'}`">
+                                    <component :is="node?.ready ? CircleCheck : CircleDashed" class="w-4 h-4 mr-1" />
+                                    <span>{{ node?.ready ? "就绪" : "未就绪" }}</span>
                                 </Button>
                             </div>
                         </div>
                         <div class="flex items-center justify-between">
                             <p class="text-sm text-muted-foreground">
-                                {{ app?.description || "写一句话描述该应用吧。" }}
+                                {{ node?.internalIP }}
                             </p>
                             <div class="flex items-center gap-4 text-sm text-muted-foreground">
-                                <NodeActions v-if="app" :app="app" @action-completed="fetchNodeInfo(appID)" />
+                                <NodeActions v-if="node" :app="node"
+                                    @action-completed="fetchNodeInfo(clusterID, node.nodeName)" />
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <Tabs v-model="currentTab" class="">
-                <div class="flex items-center justify-between">
-                    <TabsList class="grid grid-cols-5">
-                        <TabsTrigger value="overview">
-                            <Boxes />
-                            实例
-                        </TabsTrigger>
-                        <TabsTrigger value="monitor" :disabled="monitorExtensionInstalled">
-                            <Monitor />
-                            监控
-                        </TabsTrigger>
-                        <TabsTrigger value="logs" :disabled="logsExtensionInstalled">
-                            <Archive />
-                            归档日志
-                        </TabsTrigger>
-                        <TabsTrigger value="builds" :disabled="deployedInSourceCode">
-                            <History />
-                            构建历史
-                        </TabsTrigger>
-                        <TabsTrigger value="settings" :disabled="deployedInSourceCode">
-                            <Settings2 />
-                            设置
-                        </TabsTrigger>
-                    </TabsList>
-                    <Button variant="default" class=" flex ml-4" @click="settingDialogOpen = true">
-                        <Settings2 class="w-4 h-4 mr-2" />
-                        设置
-                    </Button>
-                </div>
-                <Separator class="h-4" />
-                <TabsContent value="overview">
-                    <InstanceList />
-                </TabsContent>
-                <TabsContent value="monitor">
-                    <div class="mt-4 text-muted-foreground">监控功能开发中...</div>
-                </TabsContent>
-                <TabsContent value="logs">
-                    <div class="mt-4 text-muted-foreground">日志功能开发中...</div>
-                </TabsContent>
-                <TabsContent value="builds">
-                    <div class="mt-4 text-muted-foreground">构建历史功能开发中...</div>
-                </TabsContent>
-                <TabsContent value="settings">
-                    <Settings v-if="app" :app="app" />
-                </TabsContent>
-            </Tabs>
+            <div class="mt-4 text-muted-foreground">正在路上...</div>
         </div>
-        <SettingDialog v-model="settingDialogOpen" />
     </SidebarInset>
 </template>

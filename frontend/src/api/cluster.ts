@@ -1,5 +1,5 @@
 import api from '@/api/axios';
-import type { clusterModel, clusterRefModel, createClusterModel, updateClusterModel } from '@/types/cluster';
+import type { clusterModel, clusterNodeModel, clusterNodeRefModel, clusterRefModel, createClusterModel, updateClusterModel } from '@/types/cluster';
 import type { QueryAndPagedRequest } from '@/types/common.ts';
 
 export async function listClusters(filter: QueryAndPagedRequest): Promise<{ total: number, records: clusterModel[] }> {
@@ -52,4 +52,19 @@ export async function disableCluster(clusterID: string): Promise<clusterModel> {
 export async function pingClusterKubeConfig(kubeConfig: string): Promise<boolean> {
     const response = await api.post('/clusters/ping', { kubeConfig });
     return response.data as boolean;
+}
+
+export async function listClusterNodes(clusterID: string): Promise<clusterNodeModel[]> {
+    const response = await api.get(`/clusters/${clusterID}/nodes`);
+    return response.data as clusterNodeModel[];
+}
+
+export async function listClusterNodeRefs(clusterID: string): Promise<clusterNodeRefModel[]> {
+    const response = await api.get(`/clusters/${clusterID}/nodes/refs`);
+    return response.data as clusterNodeRefModel[];
+}
+
+export async function getClusterNode(clusterID: string, nodeName: string): Promise<clusterNodeModel> {
+    const response = await api.get(`/clusters/${clusterID}/nodes/${nodeName}`);
+    return response.data as clusterNodeModel;
 }

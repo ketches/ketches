@@ -10,54 +10,50 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { clusterRefModel } from '@/types/cluster'
-import { Check, ChevronDown, ChevronRight, Grid2X2 } from 'lucide-vue-next'
+import { useUserStore } from '@/stores/userStore'
+import { Boxes, Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const nodeID = router.currentRoute.value.params.nodeID as string
-
-const props = defineProps({
-    clusterRefs: {
-        type: Array as () => clusterRefModel[],
-        default: () => []
-    }
-})
-
 const clusterHover = ref(false)
 
-const selectedClusterRef = ref<clusterRefModel | null>(props.clusterRefs.length > 0 ? props.clusterRefs[0] : null)
+const userStore = useUserStore()
+const { adminResources, activeClusterRef, activeClusterNodeRef } = storeToRefs(userStore)
 
-async function onSwitchCluster(clusterID: string) {
-    // TODO: Implement cluster switching logic
+function onSwitchCluster(clusterID: string) {
+    userStore.activateCluster(clusterID)
+    router.push({ name: 'clusterPage', params: { id: clusterID } })
 }
 </script>
 
 <template>
-    <BreadcrumbItem v-if="clusterRefs.length > 0" @mouseenter="clusterHover = true" @mouseleave="clusterHover = false">
+    <BreadcrumbItem v-if="adminResources?.clusters.length > 0" @mouseenter="clusterHover = true"
+        @mouseleave="clusterHover = false">
         <DropdownMenu>
             <DropdownMenuTrigger class="flex items-center gap-1">
                 <Button variant="ghost" size="sm">
-                    <Grid2X2 />
-                    <span>{{ selectedClusterRef?.displayName || '选择集群' }}</span>
+                    <Boxes />
+                    <span>{{ activeClusterRef?.displayName || '选择集群' }}</span>
                     <ChevronDown v-if="clusterHover" />
-                    <ChevronRight v-else-if="selectedClusterRef" />
+                    <ChevronRight v-else-if="activeClusterRef" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-                <DropdownMenuItem v-if="selectedClusterRef" :key="selectedClusterRef.clusterID" :disabled="!nodeID">
+                <DropdownMenuItem v-if="activeClusterRef" :key="activeClusterRef.clusterID"
+                    :disabled="!activeClusterNodeRef">
                     <RouterLink :to="{ name: 'app' }" v-slot="{ navigate, href }"
                         class="flex items-center gap-2 w-full">
                         <Check class="text-green-500 font-medium" />
-                        <span :href="href" @click="navigate">{{ selectedClusterRef.displayName }}</span>
+                        <span :href="href" @click="navigate">{{ activeClusterRef.displayName }}</span>
                         <Badge variant="secondary" class="text-xs text-muted-foreground font-mono ml-auto right-0">{{
-                            selectedClusterRef.slug }}
+                            activeClusterRef.slug }}
                         </Badge>
                     </RouterLink>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                    v-for="clusterRef in clusterRefs.filter(clusterRef => clusterRef.clusterID !== selectedClusterRef?.clusterID)"
+                    v-for="clusterRef in adminResources?.clusters.filter(clusterRef => clusterRef.clusterID !== activeClusterRef?.clusterID)"
                     @click="onSwitchCluster(clusterRef.clusterID)" :key="clusterRef.clusterID">
                     <div class="h-4 w-4" />
                     <span>{{ clusterRef.displayName }}</span>

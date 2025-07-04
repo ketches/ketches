@@ -273,6 +273,64 @@ func PingClusterKubeConfig(c *gin.Context) {
 	api.Success(c, result)
 }
 
+// @Summary List nodes of a cluster
+// @Description Get all nodes of the specified cluster
+// @Tags Cluster
+// @Param clusterID path string true "Cluster ID"
+// @Success 200 {object} api.Response{data=[]models.ClusterNodeModel}
+// @Router /api/v1/clusters/{clusterID}/nodes [get]
+func ListClusterNodes(c *gin.Context) {
+	svc := services.NewClusterService()
+	nodes, err := svc.ListClusterNodes(c.Request.Context(), &models.ListClusterNodesRequest{
+		ClusterID: c.Param("clusterID"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+	api.Success(c, nodes)
+}
+
+// @Summary List references of cluster nodes
+// @Description Get all node references of the specified cluster
+// @Tags Cluster
+// @Param clusterID path string true "Cluster ID"
+// @Success 200 {object} api.Response{data=[]models.ClusterNodeRef}
+// @Router /api/v1/clusters/{clusterID}/nodes/refs [get]
+func ListClusterNodeRefs(c *gin.Context) {
+	svc := services.NewClusterService()
+	refs, err := svc.ListClusterNodeRefs(c.Request.Context(), &models.ListClusterNodeRefsRequest{
+		ClusterID: c.Param("clusterID"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+	api.Success(c, refs)
+}
+
+// @Summary Get Cluster Node
+// @Description Get details of a specific node in the cluster
+// @Tags Cluster
+// @Accept json
+// @Produce json
+// @Param clusterID path string true "Cluster ID"
+// @Param nodeName path string true "Node Name"
+// @Success 200 {object} api.Response{data=models.ClusterNodeModel}
+// @Router /api/v1/clusters/{clusterID}/nodes/{nodeName} [get]
+func GetClusterNode(c *gin.Context) {
+	svc := services.NewClusterService()
+	node, err := svc.GetClusterNode(c.Request.Context(), &models.GetClusterNodeRequest{
+		ClusterID: c.Param("clusterID"),
+		NodeName:  c.Param("nodeName"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+	api.Success(c, node)
+}
+
 // @Summary List Cluster Extensions
 // @Description List extensions available in a cluster
 // @Tags Cluster

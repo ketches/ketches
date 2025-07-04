@@ -34,7 +34,6 @@ import (
 // @Param query query models.ListUsersRequest false "Query parameters for filtering and pagination"
 // @Success 200 {object} api.Response{data=models.ListUsersResponse}
 // @Router /api/v1/users [get]
-// @Security BearerAuth
 func ListUsers(c *gin.Context) {
 	var req models.ListUsersRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -364,6 +363,21 @@ func DeleteUser(c *gin.Context) {
 	api.NoContent(c)
 }
 
+// @Summary Get all clusters and cluster nodes for admin
+// @Description Get all clusters and cluster nodes for admin
+// @Tags admin
+// @Success 200 {object} api.Response{data=models.GetAdminResourcesResponse}
+// @Router /api/v1/admin/resources [get]
+func GetAdminResources(c *gin.Context) {
+	svc := services.NewUserService()
+	result, err := svc.GetAdminResources(c)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+	api.Success(c, result)
+}
+
 // @Summary Get all resources user can access
 // @Description Get all ProjectRef, EnvRef, AppRef user has permission to query
 // @Tags User
@@ -371,12 +385,11 @@ func DeleteUser(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} api.Response{data=models.GetUserResourcesResponse}
 // @Router /api/v1/users/resources [get]
-// @Security BearerAuth
 func GetUserResources(c *gin.Context) {
 	svc := services.NewUserService()
 	result, err := svc.GetUserResources(c)
 	if err != nil {
-		api.Error(c, app.NewError(http.StatusInternalServerError, err.Error()))
+		api.Error(c, err)
 		return
 	}
 	api.Success(c, result)

@@ -52,7 +52,6 @@ instance.interceptors.response.use(
                 if (originalRequest.url === '/users/refresh-token') {
                     // 401 but already on /users/refresh-token
                     userStore.clearUser();
-                    // console.log(window.location.pathname + window.location.search + window.location.hash);
 
                     let signInUrl = '/sign-in';
                     const redirectUrl = window.location.search + window.location.hash

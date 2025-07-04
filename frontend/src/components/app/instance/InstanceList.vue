@@ -28,7 +28,6 @@ import {
     getSortedRowModel,
     useVueTable,
 } from "@tanstack/vue-table";
-import { storeToRefs } from "pinia";
 import { h, ref, toRef, type PropType } from "vue";
 import { appInstanceStatusDisplay } from "../data/appInstanceStatus";
 import InstanceActions from "./InstanceActions.vue";
@@ -48,30 +47,6 @@ const appID = toRef(props, 'appID');
 const instances = toRef(props, 'instances');
 
 const userStore = useUserStore();
-const { activeAppRef } = storeToRefs(userStore);
-
-// const listData = ref<appInstanceModel[]>([]);
-const totalCount = ref(0);
-
-// async function fetchListData(appID?: string) {
-//     if (appID) {
-//         const { instances } = (await listAppInstances(appID)) || {
-//             edition: 0,
-//             instances: [],
-//         };
-//         listData.value = instances;
-//         totalCount.value = instances.length;
-//     }
-// }
-
-// watch(activeAppRef, async (newAppRef) => {
-//     if (newAppRef && newAppRef.appID) {
-//         await fetchListData(newAppRef.appID);
-//     } else {
-//         listData.value = [];
-//         totalCount.value = 0;
-//     }
-// }, { immediate: true });
 
 const centeredHeader = (text: string) => h("div", { class: "text-center" }, text);
 

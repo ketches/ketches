@@ -1,9 +1,10 @@
-import { fetchUserResourceRefs, getUserInfo } from "@/api/user";
+import { listClusterNodeRefs } from "@/api/cluster";
+import { fetchAdminResourceRefs, fetchUserResourceRefs, getUserInfo } from "@/api/user";
 import type { appRefModel } from "@/types/app";
-import type { clusterRefModel } from "@/types/cluster";
+import type { clusterNodeRefModel, clusterRefModel } from "@/types/cluster";
 import type { envRefModel } from "@/types/env";
 import type { projectRefModel } from "@/types/project";
-import type { userModel, userResourcesModel } from "@/types/user";
+import type { adminResourcesModel, userModel, userResourcesModel } from "@/types/user";
 import { defineStore } from "pinia";
 
 export const useUserStore = defineStore('userStore', {
@@ -11,7 +12,9 @@ export const useUserStore = defineStore('userStore', {
         user: null as userModel | null,
 
         // Admin resource references
-        clusterRefs: [] as clusterRefModel[],
+        adminResources: null as adminResourcesModel | null,
+        activeClusterRef: null as clusterRefModel | null,
+        activeClusterNodeRef: null as clusterNodeRefModel | null,
 
         // User resource references
         userResources: null as userResourcesModel | null,
@@ -36,6 +39,43 @@ export const useUserStore = defineStore('userStore', {
         clearUser() {
             this.user = null;
             localStorage.removeItem('userID');
+        },
+        async fetchAdminResourceRefs() {
+            if (!this.user) {
+                await this.initUser();
+                if (!this.user || this.user.role !== 'admin') {
+                    return null;
+                }
+            }
+            this.adminResources = await fetchAdminResourceRefs();
+
+            return this.adminResources;
+        },
+        activateCluster(clusterID: string) {
+            this.activeClusterRef = this.adminResources.clusters.find(cluster => cluster.clusterID === clusterID) || null;
+        },
+        activateClusterNode(clusterID: string, nodeName: string) {
+            this.activateCluster(clusterID);
+
+            if (this.adminResources?.clusterNodes) {
+                this.activeClusterNodeRef = this.adminResources.clusterNodes.find((node: { clusterID: string; nodeName: string; }) => node.clusterID === clusterID && node.nodeName === nodeName) || null;
+            }
+        },
+        async addOrUpdateCluster(cluster: clusterRefModel) {
+            const index = this.adminResources.clusters.findIndex(e => e.clusterID === cluster.clusterID);
+            if (index !== -1) {
+                this.adminResources.clusters[index] = cluster;
+            } else {
+                this.adminResources.clusters.push(cluster);
+                const nodeRefs = await listClusterNodeRefs(cluster.clusterID)
+                this.adminResources.clusterNodes.push(...nodeRefs);
+            }
+        },
+        deleteCluster(clusterID: string) {
+            const index = this.adminResources.clusters.findIndex(e => e.clusterID === clusterID);
+            if (index !== -1) {
+                this.adminResources.clusters.splice(index, 1);
+            }
         },
         async fetchUserResourceRefs() {
             if (!this.user) {
@@ -161,6 +201,13 @@ export const useUserStore = defineStore('userStore', {
     getters: {
         getUser(state): userModel | null {
             return state.user;
+        },
+        getCurrentClusterRefs(state): clusterRefModel[] {
+            return state.adminResources?.clusters ?? [];
+        },
+        getCurrentClusterNodeRefs(state): clusterNodeRefModel[] {
+            if (!state.adminResources || !state.activeClusterRef) return [];
+            return state.adminResources.clusterNodes.filter(node => node.clusterID === state.activeClusterRef.clusterID);
         },
         getCurrentAppRefs(state): appRefModel[] {
             if (!state.userResources || !state.activeEnvRef) return [];

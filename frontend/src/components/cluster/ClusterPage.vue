@@ -7,9 +7,9 @@ import {
     useSidebar
 } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useUserStore } from "@/stores/userStore";
 import type { clusterModel } from "@/types/cluster";
-import { Boxes, Monitor, PanelLeftClose, PanelLeftOpen, Settings2 } from "lucide-vue-next";
+import { Blocks, Boxes, PanelLeftClose, PanelLeftOpen } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -22,9 +22,9 @@ const { toggleSidebar, open } = useSidebar();
 const route = useRoute();
 const clusterID = route.params.id as string;
 
-const clusterStore = useClusterStore()
-const { activeClusterRef, clusterRefs } = storeToRefs(clusterStore);
-const currentTab = ref("overview");
+const userStore = useUserStore()
+const { activeClusterRef, adminResources } = storeToRefs(userStore);
+const currentTab = ref("nodes");
 
 const cluster = ref<clusterModel | null>(null);
 
@@ -45,8 +45,6 @@ watch(activeClusterRef, async (newClusterRef) => {
 });
 
 const monitorExtensionInstalled = ref(false);
-const logsExtensionInstalled = ref(false);
-const deployedInSourceCode = ref(false);
 
 const settingDialogOpen = ref(false);
 
@@ -62,7 +60,7 @@ const settingDialogOpen = ref(false);
                     <PanelLeftClose v-else />
                 </Button>
                 <Separator orientation="vertical" class="mr-2 h-4" />
-                <Breadcrumb :clusterID="cluster?.clusterID" :clusterRefs="clusterRefs" />
+                <Breadcrumb :clusterID="cluster?.clusterID" :clusterRefs="adminResources?.clusters" />
             </div>
         </header>
         <div class="flex flex-col gap-4 mx-4 border-t pt-4">
@@ -93,24 +91,19 @@ const settingDialogOpen = ref(false);
             <Tabs v-model="currentTab" class="">
                 <div class="flex items-center justify-between">
                     <TabsList class="grid grid-cols-2">
-                        <TabsTrigger value="overview">
+                        <TabsTrigger value="nodes">
                             <Boxes />
                             节点
                         </TabsTrigger>
                         <TabsTrigger value="monitor" :disabled="monitorExtensionInstalled">
-                            <Monitor />
-                            监控
+                            <Blocks />
+                            扩展
                         </TabsTrigger>
-
                     </TabsList>
-                    <Button variant="default" class=" flex ml-4" @click="settingDialogOpen = true">
-                        <Settings2 class="w-4 h-4 mr-2" />
-                        设置
-                    </Button>
                 </div>
                 <Separator class="h-4" />
-                <TabsContent value="overview">
-                    <NodeList />
+                <TabsContent value="nodes">
+                    <NodeList v-if="cluster" :cluster="cluster" />
                 </TabsContent>
                 <TabsContent value="monitor">
                     <div class="mt-4 text-muted-foreground">监控功能开发中...</div>

@@ -1,7 +1,7 @@
 import api from '@/api/axios';
 import { useUserStore } from '@/stores/userStore';
 import type { QueryAndPagedRequest } from '@/types/common';
-import type { userModel, userResourcesModel } from '@/types/user';
+import type { adminResourcesModel, userModel, userResourcesModel } from '@/types/user';
 
 export async function signIn(username: string, password: string) {
     const response = await api.post('/users/sign-in', {
@@ -69,4 +69,14 @@ export async function fetchUserResourceRefs(): Promise<userResourcesModel> {
 
     const response = await api.get('/users/resources')
     return response.data as userResourcesModel
+}
+
+export async function fetchAdminResourceRefs(): Promise<adminResourcesModel> {
+    const userStore = useUserStore()
+    if (!userStore.getUser) {
+        await userStore.initUser()
+    }
+
+    const response = await api.get('/admin/resources')
+    return response.data as adminResourcesModel
 }

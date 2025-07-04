@@ -323,6 +323,54 @@ definitions:
       slug:
         type: string
     type: object
+  models.ClusterNodeModel:
+    properties:
+      architecture:
+        type: string
+      clusterID:
+        type: string
+      containerRuntimeVersion:
+        type: string
+      createdAt:
+        type: string
+      externalIP:
+        type: string
+      internalIP:
+        type: string
+      kernelVersion:
+        type: string
+      kubeletVersion:
+        type: string
+      nodeName:
+        type: string
+      operatingSystem:
+        type: string
+      osImage:
+        type: string
+      podCIDR:
+        type: string
+      ready:
+        type: boolean
+      roles:
+        items:
+          type: string
+        type: array
+      version:
+        type: string
+    type: object
+  models.ClusterNodeRef:
+    properties:
+      clusterDisplayName:
+        type: string
+      clusterID:
+        type: string
+      clusterSlug:
+        type: string
+      nodeIP:
+        type: string
+      nodeName:
+        type: string
+    type: object
   models.ClusterRef:
     properties:
       clusterID:
@@ -593,6 +641,17 @@ definitions:
         type: string
       instanceName:
         type: string
+    type: object
+  models.GetAdminResourcesResponse:
+    properties:
+      clusterNodes:
+        items:
+          $ref: '#/definitions/models.ClusterNodeRef'
+        type: array
+      clusters:
+        items:
+          $ref: '#/definitions/models.ClusterRef'
+        type: array
     type: object
   models.GetUserResourcesResponse:
     properties:
@@ -1038,6 +1097,22 @@ info:
   title: Ketches API Server
   version: v1
 paths:
+  /api/v1/admin/resources:
+    get:
+      description: Get all clusters and cluster nodes for admin
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GetAdminResourcesResponse'
+              type: object
+      summary: Get all clusters and cluster nodes for admin
+      tags:
+      - admin
   /api/v1/apps/{appID}:
     delete:
       consumes:
@@ -2200,6 +2275,85 @@ paths:
       summary: List Cluster Extensions
       tags:
       - Cluster
+  /api/v1/clusters/{clusterID}/nodes:
+    get:
+      description: Get all nodes of the specified cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ClusterNodeModel'
+                  type: array
+              type: object
+      summary: List nodes of a cluster
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/nodes/{nodeName}:
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific node in the cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      - description: Node Name
+        in: path
+        name: nodeName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ClusterNodeModel'
+              type: object
+      summary: Get Cluster Node
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/nodes/refs:
+    get:
+      description: Get all node references of the specified cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ClusterNodeRef'
+                  type: array
+              type: object
+      summary: List references of cluster nodes
+      tags:
+      - Cluster
   /api/v1/clusters/{clusterID}/ref:
     get:
       consumes:
@@ -2518,8 +2672,6 @@ paths:
                 data:
                   $ref: '#/definitions/models.ListProjectResponse'
               type: object
-      security:
-      - BearerAuth: []
       summary: List Projects
       tags:
       - Project
@@ -3011,8 +3163,6 @@ paths:
                 data:
                   $ref: '#/definitions/models.ListUsersResponse'
               type: object
-      security:
-      - BearerAuth: []
       summary: List Users
       tags:
       - User
@@ -3269,8 +3419,6 @@ paths:
                 data:
                   $ref: '#/definitions/models.GetUserResourcesResponse'
               type: object
-      security:
-      - BearerAuth: []
       summary: Get all resources user can access
       tags:
       - User

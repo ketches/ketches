@@ -1,4 +1,5 @@
 import type { appRefModel } from "./app"
+import type { clusterNodeRefModel, clusterRefModel } from "./cluster"
 import type { envRefModel } from "./env"
 import type { projectRefModel } from "./project"
 
@@ -24,4 +25,11 @@ export interface userResourcesModel {
     projects: projectRefModel[]
     envs: envRefModel[]
     apps: appRefModel[]
+}
+
+
+
+export interface adminResourcesModel {
+    clusters: clusterRefModel[]
+    clusterNodes: clusterNodeRefModel[]
 }

@@ -28,9 +28,12 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 var (
@@ -50,7 +53,8 @@ type UserService interface {
 	ChangeRole(ctx context.Context, req *models.UserChangeRoleRequest) (*models.UserModel, app.Error)
 	ResetPassword(ctx context.Context, req *models.UserResetPasswordRequest) (*models.UserModel, app.Error)
 	Delete(ctx context.Context, req *models.DeleteUserRequest) app.Error
-	GetUserResources(ctx context.Context) (*models.GetUserResourcesResponse, error)
+	GetAdminResources(ctx context.Context) (*models.GetAdminResourcesResponse, app.Error)
+	GetUserResources(ctx context.Context) (*models.GetUserResourcesResponse, app.Error)
 }
 
 type userService struct {
@@ -489,7 +493,48 @@ func (s *userService) Delete(ctx context.Context, req *models.DeleteUserRequest)
 	return nil
 }
 
-func (s *userService) GetUserResources(ctx context.Context) (*models.GetUserResourcesResponse, error) {
+func (s *userService) GetAdminResources(ctx context.Context) (*models.GetAdminResourcesResponse, app.Error) {
+
+	clusterRefs := []*models.ClusterRef{}
+	if err := db.Instance().Model(&entities.Cluster{}).Find(&clusterRefs).Error; err != nil {
+		log.Printf("failed to list cluster refs: %v", err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	result := &models.GetAdminResourcesResponse{
+		Clusters: clusterRefs,
+	}
+
+	for _, cluster := range clusterRefs {
+		kstore, err := kube.ClusterStore(ctx, cluster.ClusterID)
+		if err != nil {
+			continue
+		}
+		if nodes, e := kstore.NodeLister().List(labels.Everything()); e != nil {
+			continue
+		} else {
+			for _, n := range nodes {
+				var internalIP string
+				for _, addr := range n.Status.Addresses {
+					if addr.Type == corev1.NodeInternalIP {
+						internalIP = addr.Address
+						break
+					}
+				}
+				result.ClusterNodes = append(result.ClusterNodes, &models.ClusterNodeRef{
+					NodeName:           n.Name,
+					NodeIP:             internalIP,
+					ClusterID:          cluster.ClusterID,
+					ClusterSlug:        cluster.Slug,
+					ClusterDisplayName: cluster.DisplayName,
+				})
+			}
+		}
+	}
+	return result, nil
+}
+
+func (s *userService) GetUserResources(ctx context.Context) (*models.GetUserResourcesResponse, app.Error) {
 	userID := api.UserID(ctx)
 	isAdmin := api.IsAdmin(ctx)
 
@@ -505,7 +550,8 @@ func (s *userService) GetUserResources(ctx context.Context) (*models.GetUserReso
 			Where("project_members.user_id = ?", userID).Find(&projects)
 	}
 	if err := projectQuery.Find(&projects).Error; err != nil {
-		return nil, err
+		log.Printf("failed to list projects for user %s: %v", userID, err)
+		return nil, app.ErrDatabaseOperationFailed
 	}
 
 	envQuery := db.Instance().Model(&entities.Env{})
@@ -517,7 +563,8 @@ func (s *userService) GetUserResources(ctx context.Context) (*models.GetUserReso
 			Where("project_members.user_id = ?", userID).Find(&envs)
 	}
 	if err := envQuery.Find(&envs).Error; err != nil {
-		return nil, err
+		log.Printf("failed to list environments for user %s: %v", userID, err)
+		return nil, app.ErrDatabaseOperationFailed
 	}
 
 	appQuery := db.Instance().Model(&entities.App{})
@@ -528,7 +575,8 @@ func (s *userService) GetUserResources(ctx context.Context) (*models.GetUserReso
 			Where("project_members.user_id = ?", userID).Find(&apps)
 	}
 	if err := appQuery.Find(&apps).Error; err != nil {
-		return nil, err
+		log.Printf("failed to list apps for user %s: %v", userID, err)
+		return nil, app.ErrDatabaseOperationFailed
 	}
 
 	return &models.GetUserResourcesResponse{

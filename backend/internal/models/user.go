@@ -102,3 +102,8 @@ type GetUserResourcesResponse struct {
 	Envs     []*EnvRef     `json:"envs"`
 	Apps     []*AppRef     `json:"apps"`
 }
+
+type GetAdminResourcesResponse struct {
+	Clusters     []*ClusterRef     `json:"clusters"`
+	ClusterNodes []*ClusterNodeRef `json:"clusterNodes"`
+}

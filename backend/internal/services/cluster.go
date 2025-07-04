@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/ketches/ketches/internal/api"
@@ -14,6 +15,8 @@ import (
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/utils"
+	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -28,6 +31,9 @@ type ClusterService interface {
 	EnableCluster(ctx context.Context, req *models.EnabledClusterRequest) app.Error
 	DisableCluster(ctx context.Context, req *models.DisableClusterRequest) app.Error
 	PingClusterKubeConfig(ctx context.Context, req *models.PingClusterKubeConfigRequest) bool
+	ListClusterNodes(ctx context.Context, req *models.ListClusterNodesRequest) ([]*models.ClusterNodeModel, app.Error)
+	ListClusterNodeRefs(ctx context.Context, req *models.ListClusterNodeRefsRequest) ([]*models.ClusterNodeRef, app.Error)
+	GetClusterNode(ctx context.Context, req *models.GetClusterNodeRequest) (*models.ClusterNodeModel, app.Error)
 	ListClusterExtensions(ctx context.Context, req *models.ListClusterExtensionsRequest) (*models.ListClusterExtensionsResponse, app.Error)
 }
 
@@ -284,6 +290,67 @@ func (s *clusterService) PingClusterKubeConfig(ctx context.Context, req *models.
 	return kube.CheckKubeConfigBytes([]byte(req.KubeConfig))
 }
 
+func (s *clusterService) ListClusterNodes(ctx context.Context, req *models.ListClusterNodesRequest) ([]*models.ClusterNodeModel, app.Error) {
+	kstore, err := kube.ClusterStore(ctx, req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes, e := kstore.NodeLister().List(labels.Everything())
+	if e != nil {
+		log.Printf("failed to list nodes for cluster %s: %v", req.ClusterID, e)
+		return nil, app.ErrClusterOperationFailed
+	}
+
+	var result []*models.ClusterNodeModel
+	for _, n := range nodes {
+		result = append(result, clusterNodeFrom(req.ClusterID, n))
+	}
+
+	return result, nil
+}
+
+func (s *clusterService) ListClusterNodeRefs(ctx context.Context, req *models.ListClusterNodeRefsRequest) ([]*models.ClusterNodeRef, app.Error) {
+	kstore, err := kube.ClusterStore(ctx, req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes, e := kstore.NodeLister().List(labels.Everything())
+	if e != nil {
+		log.Printf("failed to list nodes for cluster %s: %v", req.ClusterID, e)
+		return nil, app.ErrClusterOperationFailed
+	}
+
+	var result []*models.ClusterNodeRef
+	for _, n := range nodes {
+		result = append(result, &models.ClusterNodeRef{
+			NodeName:  n.Name,
+			ClusterID: req.ClusterID,
+		})
+	}
+
+	return result, nil
+}
+
+func (s *clusterService) GetClusterNode(ctx context.Context, req *models.GetClusterNodeRequest) (*models.ClusterNodeModel, app.Error) {
+	kstore, err := kube.ClusterStore(ctx, req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	node, e := kstore.NodeLister().Get(req.NodeName)
+	if e != nil {
+		log.Printf("failed to get node %s for cluster %s: %v", req.NodeName, req.ClusterID, e)
+		if k8serrors.IsNotFound(e) {
+			return nil, app.NewError(http.StatusNotFound, "node not found")
+		}
+		return nil, app.ErrClusterOperationFailed
+	}
+
+	return clusterNodeFrom(req.ClusterID, node), nil
+}
+
 func (s *clusterService) ListClusterExtensions(ctx context.Context, req *models.ListClusterExtensionsRequest) (*models.ListClusterExtensionsResponse, app.Error) {
 	cli, err := kube.ClusterRuntimeClient(ctx, req.ClusterID)
 	if err != nil {
@@ -304,4 +371,50 @@ func (s *clusterService) ListClusterExtensions(ctx context.Context, req *models.
 	}
 
 	return &result, nil
+}
+
+func clusterNodeFrom(clusterID string, node *corev1.Node) *models.ClusterNodeModel {
+	var (
+		internalIP, externalIP string
+		roles                  []string
+		ready                  bool
+	)
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == corev1.NodeInternalIP {
+			internalIP = addr.Address
+		}
+		if addr.Type == corev1.NodeExternalIP {
+			externalIP = addr.Address
+		}
+	}
+	for k := range node.Labels {
+		if k == "node-role.kubernetes.io/master" || k == "node-role.kubernetes.io/control-plane" {
+			roles = append(roles, "master")
+		} else if strings.HasPrefix(k, "node-role.kubernetes.io/") {
+			roles = append(roles, strings.TrimPrefix(k, "node-role.kubernetes.io/"))
+		}
+	}
+	for _, cond := range node.Status.Conditions {
+		if cond.Type == corev1.NodeReady {
+			ready = cond.Status == corev1.ConditionTrue
+		}
+	}
+
+	return &models.ClusterNodeModel{
+		NodeName:                node.Name,
+		Roles:                   roles,
+		CreatedAt:               utils.HumanizeTime(node.CreationTimestamp.Time),
+		Version:                 node.Status.NodeInfo.KubeletVersion,
+		InternalIP:              internalIP,
+		ExternalIP:              externalIP,
+		OSImage:                 node.Status.NodeInfo.OSImage,
+		KernelVersion:           node.Status.NodeInfo.KernelVersion,
+		OperatingSystem:         node.Status.NodeInfo.OperatingSystem,
+		Architecture:            node.Status.NodeInfo.Architecture,
+		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
+		KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
+		PodCIDR:                 node.Spec.PodCIDR,
+		Ready:                   ready,
+		ClusterID:               clusterID,
+	}
 }

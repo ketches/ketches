@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { fetchClusterRefs } from '@/api/cluster';
 import { createEnv } from '@/api/project';
 import {
     Dialog,
@@ -28,14 +29,14 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useClusterStore } from '@/stores/clusterStore';
 import { useUserStore } from '@/stores/userStore';
+import type { clusterRefModel } from '@/types/cluster';
 import type { envCreateModel } from '@/types/env';
 import { toTypedSchema } from '@vee-validate/zod';
 import { Plus } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { useForm } from 'vee-validate';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import * as z from 'zod';
 import Button from '../ui/button/Button.vue';
@@ -62,11 +63,11 @@ const open = computed({
     }
 });
 
-const clusterStore = useClusterStore();
+const clusterRefs = ref<clusterRefModel[]>([]);
 
 watch(open, async (isOpen) => {
     if (isOpen) {
-        await useClusterStore().loadClusterRefs();
+        clusterRefs.value = await fetchClusterRefs();
     }
 });
 
@@ -197,8 +198,8 @@ const onSubmit = handleSubmit(async (values) => {
                             </FormControl>
                             <SelectContent>
                                 <SelectGroup>
-                                    <SelectItem v-for="clusterRef in clusterStore.clusterRefs"
-                                        :key="clusterRef.clusterID" :value="clusterRef.clusterID">
+                                    <SelectItem v-for="clusterRef in clusterRefs" :key="clusterRef.clusterID"
+                                        :value="clusterRef.clusterID">
                                         {{ clusterRef.displayName }}
                                     </SelectItem>
                                 </SelectGroup>

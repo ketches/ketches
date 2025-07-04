@@ -15,6 +15,35 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/admin/resources": {
+            "get": {
+                "description": "Get all clusters and cluster nodes for admin",
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get all clusters and cluster nodes for admin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.GetAdminResourcesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/apps/envVars": {
             "delete": {
                 "description": "Delete environment variables for an app",
@@ -1975,6 +2004,139 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/clusters/{clusterID}/nodes": {
+            "get": {
+                "description": "Get all nodes of the specified cluster",
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "List nodes of a cluster",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster ID",
+                        "name": "clusterID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ClusterNodeModel"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/clusters/{clusterID}/nodes/refs": {
+            "get": {
+                "description": "Get all node references of the specified cluster",
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "List references of cluster nodes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster ID",
+                        "name": "clusterID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ClusterNodeRef"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/clusters/{clusterID}/nodes/{nodeName}": {
+            "get": {
+                "description": "Get details of a specific node in the cluster",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Get Cluster Node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster ID",
+                        "name": "clusterID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node Name",
+                        "name": "nodeName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ClusterNodeModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/clusters/{clusterID}/ref": {
             "get": {
                 "description": "Get cluster ref by cluster ID",
@@ -2368,11 +2530,6 @@ const docTemplate = `{
         },
         "/api/v1/projects": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "List projects",
                 "consumes": [
                     "application/json"
@@ -3188,11 +3345,6 @@ const docTemplate = `{
         },
         "/api/v1/users": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "List users",
                 "consumes": [
                     "application/json"
@@ -3290,11 +3442,6 @@ const docTemplate = `{
         },
         "/api/v1/users/resources": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Get all ProjectRef, EnvRef, AppRef user has permission to query",
                 "consumes": [
                     "application/json"
@@ -4269,6 +4416,79 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ClusterNodeModel": {
+            "type": "object",
+            "properties": {
+                "architecture": {
+                    "type": "string"
+                },
+                "clusterID": {
+                    "type": "string"
+                },
+                "containerRuntimeVersion": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "externalIP": {
+                    "type": "string"
+                },
+                "internalIP": {
+                    "type": "string"
+                },
+                "kernelVersion": {
+                    "type": "string"
+                },
+                "kubeletVersion": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "operatingSystem": {
+                    "type": "string"
+                },
+                "osImage": {
+                    "type": "string"
+                },
+                "podCIDR": {
+                    "type": "string"
+                },
+                "ready": {
+                    "type": "boolean"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ClusterNodeRef": {
+            "type": "object",
+            "properties": {
+                "clusterDisplayName": {
+                    "type": "string"
+                },
+                "clusterID": {
+                    "type": "string"
+                },
+                "clusterSlug": {
+                    "type": "string"
+                },
+                "nodeIP": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                }
+            }
+        },
         "models.ClusterRef": {
             "type": "object",
             "properties": {
@@ -4662,6 +4882,23 @@ const docTemplate = `{
                 },
                 "instanceName": {
                     "type": "string"
+                }
+            }
+        },
+        "models.GetAdminResourcesResponse": {
+            "type": "object",
+            "properties": {
+                "clusterNodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ClusterNodeRef"
+                    }
+                },
+                "clusters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ClusterRef"
+                    }
                 }
             }
         },

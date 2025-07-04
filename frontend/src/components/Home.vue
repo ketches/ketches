@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import SidebarProvider from '@/components/ui/sidebar/SidebarProvider.vue';
-import { useClusterStore } from '@/stores/clusterStore';
 import { useUserStore } from '@/stores/userStore';
 import Cookies from 'js-cookie';
 import { storeToRefs } from 'pinia';
@@ -16,10 +15,10 @@ const route = useRoute();
 const router = useRouter();
 
 const userStore = useUserStore();
-const { user, userResources, activeProjectRef } = storeToRefs(userStore);
+const { user, userResources, activeProjectRef, activeClusterRef, activeClusterNodeRef } = storeToRefs(userStore);
 
-const clusterStore = useClusterStore();
-const { activeClusterRef } = storeToRefs(clusterStore);
+// const clusterStore = useClusterStore();
+// const { activeClusterRef, activeClusterNodeRef } = storeToRefs(clusterStore);
 
 watch(
   () => route.name,
@@ -33,7 +32,7 @@ watch(
     }
 
     if (user.value.role === 'admin') {
-      await clusterStore.loadClusterRefs();
+      await userStore.fetchAdminResourceRefs();
     } else {
       await userStore.fetchUserResourceRefs();
     }
@@ -55,9 +54,25 @@ watch(
             userStore.activateEnv(envID);
             break;
           case "clusterPage":
-            const clusterID = route.params.id as string;
-            clusterStore.activateCluster(clusterID);
+            {
+              const clusterID = route.params.id as string;
+              userStore.activateCluster(clusterID);
+              if (!activeClusterRef.value) {
+                router.push({ name: 'cluster' });
+              }
+            }
             break;
+          case "clusterNodePage":
+            {
+              const clusterID = route.params.id as string;
+              const nodeName = route.params.nodeName as string;
+              userStore.activateClusterNode(clusterID, nodeName);
+              if (!activeClusterRef.value) {
+                router.push({ name: 'cluster' });
+              } else if (!userStore.activeClusterNodeRef) {
+                router.push({ name: 'clusterPage', params: { id: clusterID } });
+              }
+            }
         }
       } else {
         switch (routeName) {
@@ -98,24 +113,6 @@ watch(activeProjectRef, (newActiveProjectRef, oldActiveProjectRef) => {
     }
   }
 });
-
-watch(
-  activeClusterRef,
-  (newActiveClusterRef, oldActiveClusterRef) => {
-    if (oldActiveClusterRef && newActiveClusterRef?.clusterID !== oldActiveClusterRef.clusterID) {
-      const currentPath = router.currentRoute.value.path;
-      const clusterRoutes = router.getRoutes().find(r => r.name === 'cluster')?.children || [];
-
-      const targetRoute = clusterRoutes.find(route => currentPath.startsWith(`/${route.path}`));
-
-      if (targetRoute && targetRoute.name) {
-        router.push({ name: targetRoute.name });
-      } else {
-        router.push({ name: 'home' });
-      }
-    }
-  }
-);
 </script>
 
 <template>

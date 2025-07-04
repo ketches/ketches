@@ -70,6 +70,46 @@ type PingClusterKubeConfigRequest struct {
 	KubeConfig string `json:"kubeConfig" binding:"required"`
 }
 
+type ListClusterNodesRequest struct {
+	ClusterID string `uri:"clusterID" binding:"required"`
+}
+
+type ListClusterNodeRefsRequest struct {
+	ClusterID string `uri:"clusterID" binding:"required"`
+}
+
+type GetClusterNodeRequest struct {
+	ClusterID string `uri:"clusterID" binding:"required"`
+	NodeName  string `uri:"nodeName" binding:"required"`
+}
+
+// ClusterNodeModel corresponds to frontend clusterNodeModel
+type ClusterNodeModel struct {
+	NodeName                string   `json:"nodeName"`
+	Roles                   []string `json:"roles"`
+	CreatedAt               string   `json:"createdAt"`
+	Version                 string   `json:"version"`
+	InternalIP              string   `json:"internalIP"`
+	ExternalIP              string   `json:"externalIP"`
+	OSImage                 string   `json:"osImage"`
+	KernelVersion           string   `json:"kernelVersion"`
+	OperatingSystem         string   `json:"operatingSystem"`
+	Architecture            string   `json:"architecture"`
+	ContainerRuntimeVersion string   `json:"containerRuntimeVersion"`
+	KubeletVersion          string   `json:"kubeletVersion"`
+	PodCIDR                 string   `json:"podCIDR"`
+	Ready                   bool     `json:"ready"`
+	ClusterID               string   `json:"clusterID"`
+}
+
+type ClusterNodeRef struct {
+	NodeName           string `json:"nodeName"`
+	NodeIP             string `json:"nodeIP"`
+	ClusterID          string `json:"clusterID"`
+	ClusterSlug        string `json:"clusterSlug"`
+	ClusterDisplayName string `json:"clusterDisplayName"`
+}
+
 type ClusterExtensionModel struct {
 	ExtensionID string `json:"extensionID"`
 	Slug        string `json:"slug"`

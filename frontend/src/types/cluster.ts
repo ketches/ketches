@@ -30,3 +30,29 @@ export interface updateClusterModel {
     kubeConfig: string
     description?: string,
 }
+
+export interface clusterNodeModel {
+    nodeName: string;
+    roles: string[];
+    createdAt: string;
+    version: string;
+    internalIP: string;
+    externalIP: string;
+    osImage: string;
+    kernelVersion: string;
+    operatingSystem: string;
+    architecture: string;
+    containerRuntimeVersion: string;
+    kubeletVersion: string;
+    podCIDR: string;
+    ready: boolean;
+    clusterID: string;
+}
+
+export interface clusterNodeRefModel {
+    nodeName: string
+    nodeIP: string
+    clusterID: string
+    clusterSlug: string
+    clusterDisplayName: string
+}

@@ -18,7 +18,6 @@ import (
 // @Param query query models.ListProjectsRequest false "Query parameters for filtering and pagination"
 // @Success 200 {object} api.Response{data=models.ListProjectResponse}
 // @Router /api/v1/projects [get]
-// @Security BearerAuth
 func ListProjects(c *gin.Context) {
 	var req models.ListProjectsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
