@@ -49,8 +49,12 @@ const listData = ref<clusterNodeModel[]>([])
 
 async function fetchListData(clusterID?: string) {
     if (clusterID) {
-        const records = await listClusterNodes(clusterID)
-        listData.value = records
+        try {
+            const records = await listClusterNodes(clusterID)
+            listData.value = records
+        } catch (error) {
+            listData.value = []
+        }
     }
 }
 

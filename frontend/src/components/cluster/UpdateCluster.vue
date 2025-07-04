@@ -20,11 +20,12 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useUserStore } from '@/stores/userStore';
 import type { clusterModel, updateClusterModel } from '@/types/cluster';
 import { toTypedSchema } from '@vee-validate/zod';
-import { CloudUpload, Link, Save } from 'lucide-vue-next';
+import { CircleCheck, CircleX, CloudUpload, Link, Loader2, Save } from 'lucide-vue-next';
 import { useForm } from 'vee-validate';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, type Component } from 'vue';
 import { toast } from 'vue-sonner';
 import * as z from 'zod';
 import Button from '../ui/button/Button.vue';
@@ -43,6 +44,7 @@ const props = defineProps({
     },
 })
 
+const userStore = useUserStore()
 
 const cluster = ref<clusterModel>();
 
@@ -106,6 +108,11 @@ const onSubmit = handleSubmit(async (values) => {
 
     const resp = await updateCluster(clusterID, values as updateClusterModel)
     if (resp) {
+        userStore.addOrUpdateCluster({
+            clusterID: clusterID,
+            slug: values.slug,
+            displayName: values.displayName,
+        });
         toast.success('环境更新成功！');
         emit('cluster-updated');
     }
@@ -131,18 +138,46 @@ function handleFileChange(e: Event) {
     }
 }
 
+let pingIcon = ref<Component>(Link);
+let pingOK = ref(false);
+let pinging = ref(false);
 async function onPingKubeConfig() {
     if (!values.kubeConfig) {
         toast.error('请先填写 KubeConfig');
         return;
     }
-    const connectable = await pingClusterKubeConfig(values.kubeConfig);
-    if (connectable) {
-        toast.success('连通性测试成功！');
-    } else {
+    pinging.value = true;
+    pingIcon.value = Loader2;
+    try {
+        const connectable = await pingClusterKubeConfig(values.kubeConfig);
+        if (connectable) {
+            pingIcon.value = CircleCheck;
+            pingOK.value = true;
+            toast.success('连通性测试成功！');
+        } else {
+            pingIcon.value = CircleX;
+            pingOK.value = false;
+            toast.dismiss();
+            toast.error('连通性测试失败，请检查配置。');
+        }
+    } catch (error) {
+        pingIcon.value = CircleX;
+        pingOK.value = false;
+        toast.dismiss();
         toast.error('连通性测试失败，请检查配置。');
+        pinging.value = false;
+        return;
     }
+
+    pinging.value = false;
 }
+
+// 监听 kubeConfig 字段变化，自动填充 gatewayIP
+watch(() => values.kubeConfig, () => {
+    pingIcon.value = Link; // 重置连通性测试图标
+    pingOK.value = false; // 重置连通性测试状态
+    pinging.value = false; // 重置连通性测试状态
+});
 </script>
 
 <template>
@@ -234,9 +269,12 @@ async function onPingKubeConfig() {
                     </FormItem>
                 </FormField>
                 <DialogFooter class="flex w-full px-0">
-                    <Button v-if="cluster?.kubeConfig" variant="outline" type="button" @click="onPingKubeConfig"
-                        class="mr-auto">
-                        <Link />
+                    <Button v-if="values.kubeConfig" variant="outline" type="button" @click="onPingKubeConfig"
+                        class="mr-auto" :disabled="pinging">
+                        <component :is="pingIcon" :class="[
+                            pingOK ? 'text-green-500' : '',
+                            pinging ? 'animate-spin' : ''
+                        ]" />
                         连通性测试
                     </Button>
                     <Button type="submit" class="ml-auto min-w-[100px]">

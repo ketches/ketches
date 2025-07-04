@@ -4,13 +4,13 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	apiextscheme "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -37,9 +37,25 @@ func ClusterStore(ctx context.Context, clusterID string) (storeInterface, app.Er
 		return nil, err
 	}
 
-	store := loadStore(clientset)
-	clusterStoreset[clusterID] = store
-	return store, nil
+	ch := make(chan struct{}, 1)
+	go func() {
+		_, e := clientset.Discovery().ServerVersion()
+		if e != nil {
+			log.Printf("failed to get server version: %v\n", e)
+			return
+		}
+
+		ch <- struct{}{}
+	}()
+
+	select {
+	case <-ch:
+		store := loadStore(clientset)
+		clusterStoreset[clusterID] = store
+		return store, nil
+	case <-time.After(2 * time.Second):
+		return nil, app.NewError(http.StatusGatewayTimeout, "Timeout waiting for cluster to be ready")
+	}
 }
 
 func ClusterClientset(ctx context.Context, clusterID string, refresh bool) (kubernetes.Interface, app.Error) {
@@ -168,13 +184,13 @@ func CheckKubeConfigBytes(kubeConfigBytes []byte) bool {
 		return false
 	}
 
-	discoveryClient, e := discovery.NewDiscoveryClientForConfig(restConfig)
-	if e != nil {
-		log.Printf("failed to create discovery client: %v\n", e)
+	clientset, err := clientsetFromRestConfig(restConfig)
+	if err != nil {
+		log.Printf("failed to create discovery client: %v\n", err)
 		return false
 	}
 
-	serverVersion, e := discoveryClient.ServerVersion()
+	serverVersion, e := clientset.Discovery().ServerVersion()
 	if e != nil {
 		log.Printf("failed to get server version: %v\n", e)
 		return false

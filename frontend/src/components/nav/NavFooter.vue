@@ -28,14 +28,14 @@ import { useColorMode } from '@vueuse/core'
 import {
   BadgeCheck,
   Bell,
+  Bug,
   Check,
   ChevronsUpDown,
-  CreditCard,
+  Github,
   LogOut,
   MonitorCog,
   Moon,
   Palette,
-  Sparkles,
   Sun
 } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
@@ -97,7 +97,7 @@ function handleSignOut() {
                 <!-- <AvatarImage :src="user.avatar" :alt="user.username" /> -->
                 <AvatarFallback class="rounded-lg">
                   {{ (user && (user.fullname?.charAt(0)?.toUpperCase() || user.username?.charAt(0)?.toUpperCase())) ||
-                  '' }}
+                    '' }}
                 </AvatarFallback>
               </Avatar>
               <div class="grid flex-1 text-left text-sm leading-tight">
@@ -108,9 +108,17 @@ function handleSignOut() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <Sparkles />
-              升级到专业版
+            <DropdownMenuItem as="a" href="https://github.com/ketches/ketches" target="_blank"
+              rel="noopener noreferrer">
+              <Github />
+              Ketcehs 开源
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          <DropdownMenuGroup>
+            <DropdownMenuItem as="a" href="https://github.com/ketches/ketches/issues/new" target="_blank"
+              rel="noopener noreferrer">
+              <Bug />
+              报告问题
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
@@ -118,10 +126,6 @@ function handleSignOut() {
             <DropdownMenuItem>
               <BadgeCheck />
               账号设置
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <CreditCard />
-              账单
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Bell />

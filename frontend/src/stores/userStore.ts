@@ -76,6 +76,12 @@ export const useUserStore = defineStore('userStore', {
             if (index !== -1) {
                 this.adminResources.clusters.splice(index, 1);
             }
+
+            this.adminResources.clusterNodes = this.adminResources.clusterNodes.filter(node => node.clusterID !== clusterID);
+            if (this.activeClusterRef && this.activeClusterRef.clusterID === clusterID) {
+                this.activeClusterRef = null;
+                this.activeClusterNodeRef = null;
+            }
         },
         async fetchUserResourceRefs() {
             if (!this.user) {

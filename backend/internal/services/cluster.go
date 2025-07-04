@@ -211,7 +211,7 @@ func (s *clusterService) UpdateCluster(ctx context.Context, req *models.UpdateCl
 	cluster.KubeConfig = req.KubeConfig
 	cluster.Description = req.Description
 
-	if err := db.Instance().Updates(&entities.Cluster{
+	if err := db.Instance().Select("DisplayName", "KubeConfig", "Description", "UpdatedBy").Updates(&entities.Cluster{
 		UUIDBase:    cluster.UUIDBase,
 		DisplayName: cluster.DisplayName,
 		KubeConfig:  cluster.KubeConfig,

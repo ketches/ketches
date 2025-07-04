@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUserStore } from "@/stores/userStore";
 import type { clusterModel } from "@/types/cluster";
 import { Edit, MoreVertical, Trash } from "lucide-vue-next";
 import { ref } from "vue";
@@ -15,6 +16,8 @@ import { toast } from "vue-sonner";
 import UpdateCluster from "./UpdateCluster.vue";
 
 const emit = defineEmits(["action-completed"]);
+
+const userStore = useUserStore();
 
 const props = defineProps({
   cluster: {
@@ -25,13 +28,22 @@ const props = defineProps({
 
 const showDeleteClusterDialog = ref(false);
 async function onDelete() {
-  await deleteCluster(props.cluster.clusterID).then(() => {
-    toast.success("集群已删除", {
-      description: `集群 ${props.cluster.slug} 已成功删除。`,
+  try {
+    await deleteCluster(props.cluster.clusterID).then(() => {
+      toast.success("集群已删除", {
+        description: `集群 ${props.cluster.slug} 已成功删除。`,
+      });
     });
-  });
+    userStore.deleteCluster(props.cluster.clusterID);
+    emit("action-completed");
+  } catch (error) {
+    console.error("删除集群失败:", error);
+    toast.error("删除集群失败", {
+      description: `无法删除集群 ${props.cluster.slug}。请稍后再试。`,
+    });
+    return;
+  }
 
-  emit("action-completed");
   showDeleteClusterDialog.value = false;
 }
 
