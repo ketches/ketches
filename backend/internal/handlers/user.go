@@ -122,8 +122,8 @@ func UserSignIn(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("access_token", user.AccessToken, int(app.AccessTokenTTL), "/", "", true, true)
-	c.SetCookie("refresh_token", user.RefreshToken, int(app.RefreshTokenTTL), "/", "", true, true)
+	c.SetCookie("access_token", user.AccessToken, int(app.AccessTokenTTL), "/", "", false, true)
+	c.SetCookie("refresh_token", user.RefreshToken, int(app.RefreshTokenTTL), "/", "", false, true)
 
 	api.Success(c, user)
 }
@@ -153,7 +153,7 @@ func UserRefreshToken(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("access_token", user.AccessToken, int(app.AccessTokenTTL), "/", "", true, true)
+	c.SetCookie("access_token", user.AccessToken, int(app.AccessTokenTTL), "/", "", false, true)
 
 	api.Success(c, user)
 }
