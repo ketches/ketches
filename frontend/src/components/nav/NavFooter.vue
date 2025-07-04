@@ -46,16 +46,11 @@ const router = useRouter()
 
 const { isMobile } = useSidebar()
 
-// Pass { disableTransition: false } to enable transitions
 const mode = useColorMode()
 
 const appearance = localStorage.getItem('vueuse-color-scheme') || 'auto'
 
-// const user = ref<userModel>({} as userModel)
 const { user } = storeToRefs(useUserStore())
-// getUserInfo(localStorage.getItem('userID') || '').then((result) => {
-//   user.value = result.data
-// })
 
 function handleSignOut() {
   signOut().then(() => {
@@ -94,7 +89,6 @@ function handleSignOut() {
           <DropdownMenuLabel class="p-0 font-normal">
             <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar class="h-8 w-8 rounded-lg">
-                <!-- <AvatarImage :src="user.avatar" :alt="user.username" /> -->
                 <AvatarFallback class="rounded-lg">
                   {{ (user && (user.fullname?.charAt(0)?.toUpperCase() || user.username?.charAt(0)?.toUpperCase())) ||
                     '' }}
@@ -111,7 +105,7 @@ function handleSignOut() {
             <DropdownMenuItem as="a" href="https://github.com/ketches/ketches" target="_blank"
               rel="noopener noreferrer">
               <Github />
-              Ketcehs 开源
+              Ketches 开源
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuGroup>

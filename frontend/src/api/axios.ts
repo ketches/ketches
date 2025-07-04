@@ -3,7 +3,6 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 // import router from '@/router'; // Assuming your router is configured and exported
 import { useUserStore } from '@/stores/userStore'; // Adjust the import path as necessary
 import { getApiBaseUrl } from '@/utils/env';
-import { toast } from 'vue-sonner';
 
 
 const apibaseURL = getApiBaseUrl();
@@ -20,10 +19,6 @@ instance.interceptors.request.use(
         return config;
     },
     (error: AxiosError) => {
-        // This part usually handles errors in setting up the request, not server responses.
-        toast.error("请求错误", {
-            description: error.message || '请求配置错误，请稍后再试。',
-        });
         return Promise.reject<AxiosError>(error);
     }
 );
@@ -78,25 +73,11 @@ instance.interceptors.response.use(
                     return Promise.reject(error);
                 }
             } else {
-                // For non-401 errors, display the error from response body
-                const errorMessage = (error.response?.data as any)?.error || '请求失败，请稍后再试。';
-                toast.dismiss();
-                toast.error(error.response?.statusText || "请求错误", {
-                    description: errorMessage,
-                });
                 return Promise.reject(error);
             }
         } else if (error.request) {
-            toast.dismiss();
-            toast.error("网络错误", {
-                description: '请求未响应，请检查网络连接或稍后再试。',
-            });
             return Promise.reject(error);
         } else {
-            toast.dismiss();
-            toast.error("请求错误", {
-                description: error.message || '请求配置错误，请稍后再试。',
-            });
             return Promise.reject(error);
         }
     }

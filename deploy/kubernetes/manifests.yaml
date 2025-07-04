@@ -127,50 +127,6 @@ spec:
   selector:
     app: ketches-ui
 ---
-
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ketches-ui-nginx-conf
-  namespace: ketches
-  labels:
-    app: ketches-ui
-data:
-  nginx.conf: |
-    user  nginx;
-    worker_processes  auto;
-    error_log  /var/log/nginx/error.log warn;
-    pid        /var/run/nginx.pid;
-    events {
-        worker_connections  1024;
-    }
-    http {
-        include       /etc/nginx/mime.types;
-        default_type  application/octet-stream;
-        sendfile        on;
-        keepalive_timeout  65;
-        server {
-            listen       80;
-            server_name  localhost;
-            location /api/ {
-                proxy_pass http://ketches-api:8080/api/;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
-            }
-            location / {
-                root   /usr/share/nginx/html;
-                try_files $uri $uri/ /index.html;
-                index  index.html index.htm;
-            }
-            error_page   500 502 503 504  /50x.html;
-            location = /50x.html {
-                root   /usr/share/nginx/html;
-            }
-        }
-    }
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -194,11 +150,7 @@ spec:
             - containerPort: 80
           env:
             - name: VITE_API_BASE_URL
-              value: "/api/v1"
-          volumeMounts:
-            - name: nginx-conf
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
+              value: "http://ketches-api:8080/api/v1"
           resources:
             requests:
               cpu: "50m"
@@ -206,7 +158,3 @@ spec:
             limits:
               cpu: "200m"
               memory: "256Mi"
-      volumes:
-        - name: nginx-conf
-          configMap:
-            name: ketches-ui-nginx-conf

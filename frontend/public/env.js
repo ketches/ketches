@@ -1,1 +1,1 @@
-window.VITE_API_BASE_URL = "VITE_API_BASE_URL_PLACEHOLDER";
+window.VITE_API_BASE_URL = "/api/v1";
