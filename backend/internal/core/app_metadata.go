@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -102,8 +101,6 @@ func (a *AppMetadata) Deploy(ctx context.Context, cli client.Client, options *Ap
 	}
 
 	manifests, err := a.GetApplyManifests()
-	j, _ := json.Marshal(manifests) // Marshal manifests to JSON for logging or debugging
-	fmt.Printf("j: %v\n", string(j))
 	if err != nil {
 		return err
 	}
