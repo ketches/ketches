@@ -42,7 +42,7 @@ const openProjectForm = ref(false);
                     <img src="/ketches.svg" alt="Ketches Logo" style="height: 100%" class="bg-sky-500/70 rounded-xs" />
                     <div class="flex flex-col gap-0.5 leading-none">
                         <span class="font-semibold">Ketches 平台</span>
-                        <span class="text-muted-foreground">v1.0.0</span>
+                        <span class="text-muted-foreground/50 font-mono text-xs">v1.0.0</span>
                     </div>
                 </a>
             </SidebarMenuButton>
