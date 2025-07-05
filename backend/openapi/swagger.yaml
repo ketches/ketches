@@ -845,6 +845,11 @@ definitions:
     required:
     - instanceName
     type: object
+  models.ToggleAppGatewayExposedRequest:
+    properties:
+      exposed:
+        type: boolean
+    type: object
   models.ToggleAppProbeRequest:
     properties:
       enabled:
@@ -1433,6 +1438,38 @@ paths:
                   $ref: '#/definitions/models.AppGatewayModel'
               type: object
       summary: Update App Gateway
+      tags:
+      - AppGateway
+  /api/v1/apps/{appID}/gateways/{gatewayID}/toggle:
+    patch:
+      consumes:
+      - application/json
+      description: Toggle exposed status of a gateway for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Gateway ID
+        in: path
+        name: gatewayID
+        required: true
+        type: string
+      - description: Exposed Status
+        in: body
+        name: exposed
+        required: true
+        schema:
+          $ref: '#/definitions/models.ToggleAppGatewayExposedRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Toggle App Gateway Exposed
       tags:
       - AppGateway
   /api/v1/apps/{appID}/image:

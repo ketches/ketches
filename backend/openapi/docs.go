@@ -691,6 +691,54 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/apps/{appID}/gateways/{gatewayID}/toggle": {
+            "patch": {
+                "description": "Toggle exposed status of a gateway for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppGateway"
+                ],
+                "summary": "Toggle App Gateway Exposed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Gateway ID",
+                        "name": "gatewayID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Exposed Status",
+                        "name": "exposed",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ToggleAppGatewayExposedRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/apps/{appID}/image": {
             "put": {
                 "description": "Update the image of an app",
@@ -5191,6 +5239,14 @@ const docTemplate = `{
             "properties": {
                 "instanceName": {
                     "type": "string"
+                }
+            }
+        },
+        "models.ToggleAppGatewayExposedRequest": {
+            "type": "object",
+            "properties": {
+                "exposed": {
+                    "type": "boolean"
                 }
             }
         },

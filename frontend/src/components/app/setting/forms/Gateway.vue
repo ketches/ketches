@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { h, onMounted, ref, toRef, watch } from "vue";
 
-import { deleteAppGateway, listAppGateways } from "@/api/app";
+import { deleteAppGateway, listAppGateways, toggleAppGatewayExposed } from "@/api/app";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -147,10 +147,15 @@ const columns: ColumnDef<appGatewayModel>[] = [
     header: "对外访问",
     cell: ({ row }) =>
       h(Switch, {
-        checked: row.original.exposed,
-        onChange: async (checked: boolean) => {
-          toast.success("网关对外访问状态更新成功" + checked);
+        // checked: row.original.exposed,
+        defaultValue: row.original.exposed,
+        "onUpdate:modelValue": (checked: boolean) => {
+          // 切换网关对外访问状态
+          onSwitchGatewayExposed(row.original, checked);
         },
+        // onChange: async (checked: boolean) => {
+        //   await onSwitchGatewayExposed(row.original, checked);
+        // },
       }),
   },
   {
@@ -235,6 +240,14 @@ const table = useVueTable({
 const openAddGatewayDialog = ref(false);
 const openUpdateGatewayDialog = ref(false);
 const selectedGateway = ref<appGatewayModel | null>(null);
+
+async function onSwitchGatewayExposed(gateway: appGatewayModel, exposed: boolean) {
+  console.log(`切换网关 ${gateway.gatewayID} 的对外访问状态为 ${exposed}`);
+
+  await toggleAppGatewayExposed(gateway.appID, gateway.gatewayID, exposed);
+  gateway.exposed = exposed;
+  toast.success(`网关对外访问状态更新成功`);
+}
 </script>
 
 <template>

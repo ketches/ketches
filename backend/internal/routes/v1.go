@@ -163,6 +163,7 @@ func registerAppRoute(r *APIV1Route) {
 	appGatewayHandler := handlers.NewAppGatewayHandler()
 	projectDeveloper.POST("/gateways", appGatewayHandler.CreateAppGateway)
 	projectDeveloper.PUT("/gateways/:gatewayID", appGatewayHandler.UpdateAppGateway)
+	projectDeveloper.PUT("/gateways/:gatewayID/toggle", appGatewayHandler.ToggleAppGatewayExposed)
 	projectDeveloper.DELETE("/gateways", appGatewayHandler.DeleteAppGateways)
 
 	appProbeHandler := handlers.NewAppProbeHandler()

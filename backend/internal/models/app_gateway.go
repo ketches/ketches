@@ -39,6 +39,12 @@ type UpdateAppGatewayRequest struct {
 	Exposed     bool   `json:"exposed"`
 }
 
+type ToggleAppGatewayExposedRequest struct {
+	AppID     string `json:"-" uri:"appID"`
+	GatewayID string `json:"-" uri:"gatewayID"`
+	Exposed   bool   `json:"exposed"`
+}
+
 type DeleteAppGatewaysRequest struct {
 	AppID      string   `json:"-" uri:"appID"`
 	GatewayIDs []string `json:"gatewayIDs" binding:"required"`

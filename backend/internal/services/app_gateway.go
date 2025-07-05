@@ -16,6 +16,7 @@ type AppGatewayService interface {
 	ListAppGateways(ctx context.Context, req *models.ListAppGatewaysRequest) ([]*models.AppGatewayModel, app.Error)
 	CreateAppGateway(ctx context.Context, req *models.CreateAppGatewayRequest) (*models.AppGatewayModel, app.Error)
 	UpdateAppGateway(ctx context.Context, req *models.UpdateAppGatewayRequest) (*models.AppGatewayModel, app.Error)
+	ToggleAppGatewayExposed(ctx context.Context, req *models.ToggleAppGatewayExposedRequest) app.Error
 	DeleteAppGateways(ctx context.Context, req *models.DeleteAppGatewaysRequest) app.Error
 }
 
@@ -112,7 +113,7 @@ func (s *appGatewayService) UpdateAppGateway(ctx context.Context, req *models.Up
 	gateway.Exposed = req.Exposed
 	gateway.UpdatedBy = api.UserID(ctx)
 
-	if err := db.Instance().Save(gateway).Error; err != nil {
+	if err := db.Instance().Select("Port", "Protocol", "Domain", "Path", "CertID", "GatewayPort", "Exposed", "UpdatedBy").Updates(gateway).Error; err != nil {
 		log.Printf("failed to update app gateway: %v", err)
 		return nil, app.ErrDatabaseOperationFailed
 	}
@@ -128,6 +129,21 @@ func (s *appGatewayService) UpdateAppGateway(ctx context.Context, req *models.Up
 		Exposed:     gateway.Exposed,
 		AppID:       gateway.AppID,
 	}, nil
+}
+
+func (s *appGatewayService) ToggleAppGatewayExposed(ctx context.Context, req *models.ToggleAppGatewayExposedRequest) app.Error {
+	gateway, err := orm.GetAppGatewayByIDs(ctx, req.GatewayID)
+	if err != nil {
+		return err
+	}
+
+	gateway.Exposed = req.Exposed
+	gateway.UpdatedBy = api.UserID(ctx)
+	if err := db.Instance().Select("Exposed", "UpdatedBy").Updates(gateway).Error; err != nil {
+		log.Printf("failed to toggle app gateway exposed status: %v", err)
+		return app.ErrDatabaseOperationFailed
+	}
+	return nil
 }
 
 func (s *appGatewayService) DeleteAppGateways(ctx context.Context, req *models.DeleteAppGatewaysRequest) app.Error {

@@ -89,6 +89,31 @@ func (h *AppGatewayHandler) UpdateAppGateway(c *gin.Context) {
 	api.Success(c, resp)
 }
 
+// @Summary Toggle App Gateway Exposed
+// @Description Toggle exposed status of a gateway for an app
+// @Tags AppGateway
+// @Accept json
+// @Produce json
+// @Param appID path string true "App ID"
+// @Param gatewayID path string true "Gateway ID"
+// @Param exposed body models.ToggleAppGatewayExposedRequest true "Exposed Status"
+// @Success 204 {object} api.Response{}
+// @Router /api/v1/apps/{appID}/gateways/{gatewayID}/toggle [patch]
+func (h *AppGatewayHandler) ToggleAppGatewayExposed(c *gin.Context) {
+	req := &models.ToggleAppGatewayExposedRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.AppID = c.Param("appID")
+	req.GatewayID = c.Param("gatewayID")
+	if err := h.service.ToggleAppGatewayExposed(c, req); err != nil {
+		api.Error(c, err)
+		return
+	}
+	api.NoContent(c)
+}
+
 // @Summary Delete App Gateway
 // @Description Delete a gateway for an app
 // @Tags AppGateway

@@ -42,8 +42,6 @@ watch(
 
     await router.isReady();
 
-    console.log(user.value);
-
     if (user.value) {
       if (user.value.role === 'admin') {
         switch (routeName) {

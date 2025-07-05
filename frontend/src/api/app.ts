@@ -170,6 +170,11 @@ export async function updateAppGateway(appID: string, gatewayID: string, model: 
     return response.data as appGatewayModel;
 }
 
+export async function toggleAppGatewayExposed(appID: string, gatewayID: string, exposed: boolean): Promise<void> {
+    await api.put(`/apps/${appID}/gateways/${gatewayID}/toggle`, { exposed });
+    return
+}
+
 export async function deleteAppGateway(appID: string, gatewayIDs: string[]) {
     await api.delete(`/apps/${appID}/gateways`, {
         data: {
