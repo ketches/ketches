@@ -56,10 +56,10 @@ type AppGateway struct {
 	Domain      string `json:"domain" gorm:"not null;uniqueIndex:idx_appID_domain_path;size:255"`
 	Path        string `json:"path" gorm:"not null;uniqueIndex:idx_appID_domain_path;size:255"`
 	CertID      string `json:"certID" gorm:"size:36"`
-	GatewayPort int32  `json:"gatewayPort" gorm:"not null;uniqueIndex:idx_envID_gatewayPort;default:80"` // Port on the gateway to expose this app
+	GatewayPort int32  `json:"gatewayPort" gorm:"not null;uniqueIndex;default:80"` // Port on the gateway to expose this app
 	Exposed     bool   `json:"exposed" gorm:"not null;default:false"`
-	EnvID       string `json:"envID" gorm:"not null;uniqueIndex:idx_envID_gatewayPort;index;size:36"` // Env UUID this gateway belongs to
-	ProjectID   string `json:"projectID" gorm:"not null;index;size:36"`                               // Project UUID this gateway belongs to
+	EnvID       string `json:"envID" gorm:"not null;uniqueIndex;index;size:36"` // Env UUID this gateway belongs to
+	ProjectID   string `json:"projectID" gorm:"not null;index;size:36"`         // Project UUID this gateway belongs to
 	AuditBase
 }
 

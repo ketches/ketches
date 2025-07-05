@@ -15,10 +15,8 @@ const route = useRoute();
 const router = useRouter();
 
 const userStore = useUserStore();
-const { user, userResources, activeProjectRef, activeClusterRef, activeClusterNodeRef } = storeToRefs(userStore);
+const { user, activeProjectRef, activeClusterRef } = storeToRefs(userStore);
 
-// const clusterStore = useClusterStore();
-// const { activeClusterRef, activeClusterNodeRef } = storeToRefs(clusterStore);
 
 watch(
   () => route.name,
@@ -29,6 +27,11 @@ watch(
 
     if (!user.value) {
       await userStore.initUser();
+
+      if (!user.value) {
+        router.push({ name: 'sign-in' });
+        return;
+      }
     }
 
     if (user.value.role === 'admin') {
@@ -38,6 +41,8 @@ watch(
     }
 
     await router.isReady();
+
+    console.log(user.value);
 
     if (user.value) {
       if (user.value.role === 'admin') {
