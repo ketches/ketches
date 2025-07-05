@@ -1,11 +1,11 @@
 import {
   Braces,
-  CircleCheckBig,
   Code,
   Cpu,
   Disc3,
   FolderTree,
   HardDrive,
+  HeartPulse,
   Network,
   Radar,
   Rocket,
@@ -13,7 +13,7 @@ import {
   SquaresExclude,
   SquaresIntersect,
   SquaresSubtract,
-  Vault,
+  Vault
 } from "lucide-vue-next";
 import { defineAsyncComponent, type Component } from "vue";
 
@@ -70,7 +70,7 @@ export const appSettingItems: Item[] = [
   {
     title: "容器探针",
     tab: "probe",
-    icon: CircleCheckBig,
+    icon: HeartPulse,
     comp: defineAsyncComponent(() => import("../forms/Probe.vue")),
   },
   {
