@@ -2,13 +2,11 @@
 import { getViewAppInstanceLogsUrl } from '@/api/app';
 import { Select, SelectItem } from "@/components/ui/select";
 import type { logsRequestModel } from "@/types/app";
-import { Container, SquareDashed, Undo2 } from 'lucide-vue-next';
+import { Container, SquareDashed } from 'lucide-vue-next';
 import { computed, nextTick, ref, toRefs, watch } from "vue";
 import { toast } from 'vue-sonner';
-import Button from '../ui/button/Button.vue';
 import Checkbox from '../ui/checkbox/Checkbox.vue';
 import { Dialog } from '../ui/dialog';
-import DialogClose from '../ui/dialog/DialogClose.vue';
 import DialogContent from '../ui/dialog/DialogContent.vue';
 import DialogDescription from '../ui/dialog/DialogDescription.vue';
 import DialogHeader from '../ui/dialog/DialogHeader.vue';
@@ -63,9 +61,10 @@ const logsRequest = ref<logsRequestModel>({
     follow: true,
     tailLines: 100,
     showTimestamps: false,
+    previous: false
 });
 
-const { follow, tailLines, showTimestamps } = toRefs(logsRequest.value);
+const { follow, tailLines, showTimestamps, previous } = toRefs(logsRequest.value);
 
 watch(open, async (isOpen) => {
     if (isOpen) {
@@ -110,6 +109,10 @@ function fetchAppInstanceLogs() {
     es = new EventSource(logsUrl, { withCredentials: true });
     es.onmessage = (event) => {
         logsContent.value += event.data + "\n";
+        if (event.data === "No previous logs found for this container") {
+            es.close();
+            es = null;
+        }
         scrollToBottom();
     };
     es.onerror = (error) => {
@@ -160,13 +163,7 @@ watch(open, (isOpen) => {
             <DialogHeader>
                 <DialogTitle>
                     <div class="flex items-center w-full gap-2 flex-nowrap whitespace-nowrap relative">
-                        <div class="flex items-center gap-2 whitespace-nowrap">
-                            <DialogClose as-child>
-                                <Button variant="link" class="p-2">
-                                    <Undo2 class="w-4 h-4" />
-                                    <span>返回</span>
-                                </Button>
-                            </DialogClose>
+                        <div class="flex items-center gap-2 whitespace-nowrap mx-4 h-8">
                             <span class="text-lg font-semibold text-primary">应用实例日志</span>
                             <span class="text-sm font-light ml-2 font-mono bg-secondary px-2 rounded">
                                 {{ props.instanceName }}
@@ -203,7 +200,7 @@ watch(open, (isOpen) => {
                             </Select>
                         </div>
                         <div v-if="showOptions"
-                            class="absolute right-0 top-1/2 -translate-y-1/2 flex gap-4 items-center font-normal text-sm whitespace-nowrap pr-16">
+                            class="absolute right-0 top-1/2 -translate-y-1/2 flex gap-4 items-center font-normal text-sm whitespace-nowrap pr-12">
                             <div class="flex items-center gap-2">
                                 <label
                                     class="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">初始行</label>
@@ -232,6 +229,13 @@ watch(open, (isOpen) => {
                                 <label
                                     class="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     显示时间戳
+                                </label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <Checkbox v-model="previous" />
+                                <label
+                                    class="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    显示之前的日志
                                 </label>
                             </div>
                         </div>

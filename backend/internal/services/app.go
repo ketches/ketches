@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -632,17 +633,22 @@ func (s *appService) ViewAppContainerLogs(ctx context.Context, req *models.ViewA
 		Follow:     req.Follow,         // follow logs
 		TailLines:  &req.TailLines,     // fetch last N lines
 		Timestamps: req.ShowTimestamps, // show timestamps
+		Previous:   req.Previous,       // fetch previous logs
 		// SinceSeconds: &req.SinceSeconds,
 		// SinceTime: &metav1.Time{
 		// 	Time: req.SinceTime, // fetch logs since a specific time
 		// }, // fetch logs since a specific time
-		// Previous:   req.Previous,         // fetch previous logs
 		// LimitBytes: utils.Ptr(req.Limit), // limit log size
 	})
 
 	stream, e := logsReq.Stream(r.Context())
 	if e != nil {
 		log.Println("Error streaming pod logs:", e)
+		if req.Previous && strings.HasSuffix(e.Error(), "not found") {
+			fmt.Fprintf(w, "data: %s\n\n", "No previous logs found for this container")
+			flusher.Flush()
+			return nil
+		}
 		return app.NewError(http.StatusInternalServerError, "Failed to stream pod logs")
 	}
 	defer stream.Close()

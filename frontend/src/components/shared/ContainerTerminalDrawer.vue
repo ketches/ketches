@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { getExecAppInstanceTerminalUrl } from "@/api/app";
 import { Select, SelectItem } from "@/components/ui/select";
-import { Container, Plug, SquareDashed, Undo2 } from 'lucide-vue-next';
+import { Container, Plug, SquareDashed } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { Terminal } from "xterm";
@@ -9,7 +9,6 @@ import { FitAddon } from "xterm-addon-fit";
 import "xterm/css/xterm.css";
 import Button from '../ui/button/Button.vue';
 import { Dialog } from '../ui/dialog';
-import DialogClose from '../ui/dialog/DialogClose.vue';
 import DialogContent from '../ui/dialog/DialogContent.vue';
 import DialogDescription from '../ui/dialog/DialogDescription.vue';
 import DialogHeader from '../ui/dialog/DialogHeader.vue';
@@ -191,13 +190,7 @@ onBeforeUnmount(() => {
             <DialogHeader>
                 <DialogTitle>
                     <div class="flex items-center w-full gap-2 flex-nowrap whitespace-nowrap relative">
-                        <div class="flex items-center gap-2 whitespace-nowrap">
-                            <DialogClose as-child>
-                                <Button variant="link" class="p-2">
-                                    <Undo2 class="w-4 h-4" />
-                                    <span>返回</span>
-                                </Button>
-                            </DialogClose>
+                        <div class="flex items-center gap-2 whitespace-nowrap mx-4 h-8">
                             <span class="text-lg font-semibold text-primary">应用实例终端</span>
                             <span class="text-sm font-light ml-2 font-mono bg-secondary px-2 rounded">
                                 {{ props.instanceName }}
@@ -234,7 +227,7 @@ onBeforeUnmount(() => {
                             </Select>
                         </div>
                         <div
-                            class="absolute right-0 top-1/2 -translate-y-1/2 flex gap-4 items-center font-normal text-sm whitespace-nowrap pr-16">
+                            class="absolute right-0 top-1/2 -translate-y-1/2 flex gap-4 items-center font-normal text-sm whitespace-nowrap pr-12">
                             <Button variant="outline" size="sm" class="p-2" @click="reconnectTerminal">
                                 <Plug class="w-4 h-4" />
                                 <span>重连</span>
