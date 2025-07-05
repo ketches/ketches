@@ -36,30 +36,30 @@ type AppEnvVar struct {
 
 type AppVolume struct {
 	UUIDBase
-	AppID        string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_slug,idx_appID_mountPath_subPath;size:36"` // App UUID this volume belongs to
-	Slug         string `json:"slug" gorm:"not null;uniqueIndex:idx_appID_slug;size:64"`                              // Volume slug
-	MountPath    string `json:"mountPath" gorm:"not null;uniqueIndex:idx_appID_mountPath_subPath;size:255"`           // Mount path in container
-	SubPath      string `json:"subPath" gorm:"uniqueIndex:idx_appID_mountPath_subPath;size:255"`                      // Optional subPath for the volume
-	VolumeMode   string `json:"volumeMode" gorm:"not null;size:16;default:Filesystem"`                                // Volume mode (e.g. Filesystem, Block)
-	Capacity     int    `json:"capacity" gorm:"not null"`                                                             // Capacity, in MiB
-	VolumeType   string `json:"volumeType" gorm:"not null;size:32"`                                                   // Type (e.g. emptyDir, pvc, hostPath)
-	AccessModes  string `json:"accessModes" gorm:"not null;size:255"`                                                 // Access modes, semicolon separated (e.g. "ReadWriteOnce;ReadOnlyMany")
-	StorageClass string `json:"storageClass" gorm:"size:64"`                                                          // StorageClass for PVC
+	AppID        string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_slug;uniqueIndex:idx_appID_mountPath_subPath;size:36"` // App UUID this volume belongs to
+	Slug         string `json:"slug" gorm:"not null;uniqueIndex:idx_appID_slug;size:64"`                                          // Volume slug
+	MountPath    string `json:"mountPath" gorm:"not null;uniqueIndex:idx_appID_mountPath_subPath;size:255"`                       // Mount path in container
+	SubPath      string `json:"subPath" gorm:"uniqueIndex:idx_appID_mountPath_subPath;size:255"`                                  // Optional subPath for the volume
+	VolumeMode   string `json:"volumeMode" gorm:"not null;size:16;default:Filesystem"`                                            // Volume mode (e.g. Filesystem, Block)
+	Capacity     int    `json:"capacity" gorm:"not null"`                                                                         // Capacity, in MiB
+	VolumeType   string `json:"volumeType" gorm:"not null;size:32"`                                                               // Type (e.g. emptyDir, pvc, hostPath)
+	AccessModes  string `json:"accessModes" gorm:"not null;size:255"`                                                             // Access modes, semicolon separated (e.g. "ReadWriteOnce;ReadOnlyMany")
+	StorageClass string `json:"storageClass" gorm:"size:64"`                                                                      // StorageClass for PVC
 	AuditBase
 }
 
 type AppGateway struct {
 	UUIDBase
-	AppID       string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_domain_path;index;size:36"`
+	AppID       string `json:"appID" gorm:"not null;uniqueIndex:idx_appID_domain_path;uniqueIndex:idx_appID_gatewayPort;index;size:36"`
 	Port        int32  `json:"port" gorm:"not null"`
 	Protocol    string `json:"protocol" gorm:"not null;size:16"`
 	Domain      string `json:"domain" gorm:"not null;uniqueIndex:idx_appID_domain_path;size:255"`
 	Path        string `json:"path" gorm:"not null;uniqueIndex:idx_appID_domain_path;size:255"`
 	CertID      string `json:"certID" gorm:"size:36"`
-	GatewayPort int32  `json:"gatewayPort" gorm:"not null;uniqueIndex;default:80"` // Port on the gateway to expose this app
+	GatewayPort int32  `json:"gatewayPort" gorm:"not null;uniqueIndex:idx_appID_gatewayPort;default:80"` // Port on the gateway to expose this app
 	Exposed     bool   `json:"exposed" gorm:"not null;default:false"`
-	EnvID       string `json:"envID" gorm:"not null;uniqueIndex;index;size:36"` // Env UUID this gateway belongs to
-	ProjectID   string `json:"projectID" gorm:"not null;index;size:36"`         // Project UUID this gateway belongs to
+	EnvID       string `json:"envID" gorm:"not null;index;size:36"`     // Env UUID this gateway belongs to
+	ProjectID   string `json:"projectID" gorm:"not null;index;size:36"` // Project UUID this gateway belongs to
 	AuditBase
 }
 
