@@ -114,6 +114,8 @@ export const useUserStore = defineStore('userStore', {
             if (this.activeProjectRef) {
                 localStorage.setItem('lastActiveProjectID', this.activeProjectRef.projectID);
             }
+            this.activeAppRef = null;
+            localStorage.removeItem('lastActiveAppID');
         },
         ensureActiveProject() {
             if (this.activeProjectRef) {
