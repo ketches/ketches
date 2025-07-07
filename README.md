@@ -99,7 +99,7 @@ User panel
   - [x] App gateway management
   - [x] App health check management
   - [ ] App scaling management
-  - [ ] App schedule management
+  - [x] App schedule management
   - [x] App instance container logs
   - [x] App instance container terminal
   - [ ] App observability(Need cluster extension installed)
