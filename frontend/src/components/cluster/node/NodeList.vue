@@ -79,7 +79,7 @@ const columns: ColumnDef<clusterNodeModel>[] = [
                 h(
                     RouterLink,
                     {
-                        to: { name: 'clusterNodePage', params: { id: row.original.clusterID, nodeName: row.original.nodeName } },
+                        to: { name: 'cluster-node-page', params: { id: row.original.clusterID, nodeName: row.original.nodeName } },
                         class: "font-medium text-blue-500",
                     },
                     () => row.original.nodeName || row.getValue("internalIP")

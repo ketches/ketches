@@ -1,5 +1,5 @@
 import api from '@/api/axios'
-import type { appEnvVarModel, appGatewayModel, appInstanceModel, appModel, appProbeModel, appRefModel, appVolumeModel, createAppEnvVarModel, createAppGatewayModel, createAppProbeModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, setAppResourceModel, updateAppEnvVarModel, updateAppGatewayModel, updateAppImageModel, updateAppInfoModel, updateAppProbeModel, updateAppVolumeModel } from '@/types/app'
+import type { appEnvVarModel, appGatewayModel, appInstanceModel, appModel, appProbeModel, appRefModel, appSchedulingRuleModel, appVolumeModel, createAppEnvVarModel, createAppGatewayModel, createAppProbeModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, setAppResourceModel, setAppSchedulingRuleModel, updateAppEnvVarModel, updateAppGatewayModel, updateAppImageModel, updateAppInfoModel, updateAppProbeModel, updateAppVolumeModel } from '@/types/app'
 import { getApiBaseUrl } from '@/utils/env'
 import { toast } from 'vue-sonner'
 
@@ -41,6 +41,21 @@ export async function setAppCommand(appID: string, model: setAppCommandModel): P
 export async function setAppResource(appID: string, model: setAppResourceModel): Promise<appModel> {
     const response = await api.put(`/apps/${appID}/resource`, model)
     return response.data as appModel
+}
+
+export async function getAppSchedulingRule(appID: string): Promise<appSchedulingRuleModel> {
+    const response = await api.get(`/apps/${appID}/scheduling-rule`)
+    return response.data
+}
+
+export async function setAppSchedulingRule(appID: string, data: setAppSchedulingRuleModel): Promise<appSchedulingRuleModel> {
+    const response = await api.put(`/apps/${appID}/scheduling-rule`, data)
+    return response.data
+}
+
+export async function deleteAppSchedulingRule(appID: string): Promise<void> {
+    await api.delete(`/apps/${appID}/scheduling-rule`)
+    return
 }
 
 export async function listAppInstances(appID: string): Promise<{ edition: string, instances: appInstanceModel[] }> {
@@ -99,17 +114,17 @@ export function getExecAppInstanceTerminalUrl(appID: string, instanceName: strin
 }
 
 export async function listAppEnvVars(appID: string): Promise<appEnvVarModel[]> {
-    const response = await api.get(`/apps/${appID}/envVars`)
+    const response = await api.get(`/apps/${appID}/env-vars`)
     return response.data as appEnvVarModel[]
 }
 
 export async function createAppEnvVar(appID: string, model: createAppEnvVarModel): Promise<appEnvVarModel> {
-    const response = await api.post(`/apps/${appID}/envVars`, model)
+    const response = await api.post(`/apps/${appID}/env-vars`, model)
     return response.data as appEnvVarModel
 }
 
 export async function updateAppEnvVar(appID: string, envVarID: string, model: updateAppEnvVarModel): Promise<appEnvVarModel> {
-    const response = await api.put(`/apps/${appID}/envVars/${envVarID}`, model)
+    const response = await api.put(`/apps/${appID}/env-vars/${envVarID}`, model)
     return response.data as appEnvVarModel
 }
 
@@ -118,7 +133,7 @@ export async function deleteAppEnvVar(appID: string, envVarID: string): Promise<
 }
 
 export async function deleteAppEnvVars(appID: string, envVarIDs: string[]): Promise<void> {
-    await api.delete(`/apps/${appID}/envVars`, {
+    await api.delete(`/apps/${appID}/env-vars`, {
         data: {
             envVarIDs: envVarIDs
         }

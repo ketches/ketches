@@ -129,3 +129,16 @@ func AllAppProbes(appID string) ([]*entities.AppProbe, app.Error) {
 
 	return result, nil
 }
+
+func GetAppSchedulingRule(ctx context.Context, appID string) (*entities.AppSchedulingRule, app.Error) {
+	entity := &entities.AppSchedulingRule{}
+	if err := db.Instance().First(entity, "app_id = ?", appID).Error; err != nil {
+		log.Printf("failed to get app scheduling rule for app %s: %v", appID, err)
+		if db.IsErrRecordNotFound(err) {
+			return nil, nil
+		}
+		return nil, app.ErrDatabaseOperationFailed
+	}
+
+	return entity, nil
+}

@@ -48,15 +48,15 @@ watch(
           case "home":
             router.push({ name: 'admin' });
             break;
-          case "appPage":
+          case "app-page":
             const appID = route.params.id as string;
             userStore.activateApp(appID);
             break;
-          case "envPage":
+          case "env-page":
             const envID = route.params.id as string;
             userStore.activateEnv(envID);
             break;
-          case "clusterPage":
+          case "cluster-page":
             {
               const clusterID = route.params.id as string;
               userStore.activateCluster(clusterID);
@@ -65,7 +65,7 @@ watch(
               }
             }
             break;
-          case "clusterNodePage":
+          case "cluster-node-page":
             {
               const clusterID = route.params.id as string;
               const nodeName = route.params.nodeName as string;
@@ -73,7 +73,7 @@ watch(
               if (!activeClusterRef.value) {
                 router.push({ name: 'cluster' });
               } else if (!userStore.activeClusterNodeRef) {
-                router.push({ name: 'clusterPage', params: { id: clusterID } });
+                router.push({ name: 'cluster-page', params: { id: clusterID } });
               }
             }
         }
@@ -82,11 +82,11 @@ watch(
           case "home":
             router.push({ name: 'user' });
             break;
-          case "appPage":
+          case "app-page":
             const appID = route.params.id as string;
             userStore.activateApp(appID);
             break;
-          case "envPage":
+          case "env-page":
             const envID = route.params.id as string;
             userStore.activateEnv(envID);
             break;

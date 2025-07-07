@@ -3,7 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/ketches/ketches/internal/app"
@@ -19,35 +21,47 @@ import (
 )
 
 type AppMetadata struct {
-	AppID            string               `json:"appId"`
-	AppSlug          string               `json:"appSlug"`
-	DisplayName      string               `json:"displayName"`
-	Description      string               `json:"description"`
-	AppType          string               `json:"appType"`
-	RequestCPU       int32                `json:"requestCPU"`
-	RequestMemory    int32                `json:"requestMemory"`
-	LimitCPU         int32                `json:"limitCPU"`
-	LimitMemory      int32                `json:"limitMemory"`
-	Replicas         int32                `json:"replicas"`
-	ContainerImage   string               `json:"containerImage"`
-	RegistryUsername string               `json:"registryUsername"`
-	RegistryPassword string               `json:"registryPassword"`
-	ContainerCommand string               `json:"containerCommand"`
-	EnvVars          []AppMetadataEnvVar  `json:"envVars,omitempty"`
-	Volumes          []AppMetadataVolume  `json:"volumes,omitempty"`
-	Gateways         []AppMetadataGateway `json:"gateways,omitempty"`
-	Probes           []AppMetadataProbe   `json:"probes,omitempty"`
-	Edition          string               `json:"edition,omitempty"`
-	EnvID            string               `json:"envId,omitempty"`
-	EnvSlug          string               `json:"envSlug,omitempty"`
-	ProjectID        string               `json:"projectId,omitempty"`
-	ProjectSlug      string               `json:"projectSlug,omitempty"`
-	ClusterNamespace string               `json:"clusterNamespace"`
+	AppID            string                     `json:"appId"`
+	AppSlug          string                     `json:"appSlug"`
+	DisplayName      string                     `json:"displayName"`
+	Description      string                     `json:"description"`
+	AppType          string                     `json:"appType"`
+	RequestCPU       int32                      `json:"requestCPU"`
+	RequestMemory    int32                      `json:"requestMemory"`
+	LimitCPU         int32                      `json:"limitCPU"`
+	LimitMemory      int32                      `json:"limitMemory"`
+	Replicas         int32                      `json:"replicas"`
+	ContainerImage   string                     `json:"containerImage"`
+	RegistryUsername string                     `json:"registryUsername"`
+	RegistryPassword string                     `json:"registryPassword"`
+	ContainerCommand string                     `json:"containerCommand"`
+	EnvVars          []AppMetadataEnvVar        `json:"envVars,omitempty"`
+	Volumes          []AppMetadataVolume        `json:"volumes,omitempty"`
+	Gateways         []AppMetadataGateway       `json:"gateways,omitempty"`
+	Probes           []AppMetadataProbe         `json:"probes,omitempty"`
+	SchedulingRule   *AppMetadataSchedulingRule `json:"schedulingRule,omitempty"`
+	Edition          string                     `json:"edition,omitempty"`
+	EnvID            string                     `json:"envId,omitempty"`
+	EnvSlug          string                     `json:"envSlug,omitempty"`
+	ProjectID        string                     `json:"projectId,omitempty"`
+	ProjectSlug      string                     `json:"projectSlug,omitempty"`
+	ClusterNamespace string                     `json:"clusterNamespace"`
 }
 
 type AppMetadataEnvVar struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+type AppMetadataVolume struct {
+	Slug         string   `json:"slug"`
+	MountPath    string   `json:"mountPath"`
+	SubPath      string   `json:"subPath,omitempty"`
+	StorageClass string   `json:"storageClass,omitempty"`
+	AccessModes  []string `json:"accessModes,omitempty"`
+	VolumeType   string   `json:"volumeType"`
+	Capacity     int      `json:"capacity"`
+	VolumeMode   string   `json:"volumeMode"`
 }
 
 type AppMetadataGateway struct {
@@ -74,15 +88,19 @@ type AppMetadataProbe struct {
 	FailureThreshold    int32  `json:"failureThreshold"`
 }
 
-type AppMetadataVolume struct {
-	Slug         string   `json:"slug"`
-	MountPath    string   `json:"mountPath"`
-	SubPath      string   `json:"subPath,omitempty"`
-	StorageClass string   `json:"storageClass,omitempty"`
-	AccessModes  []string `json:"accessModes,omitempty"`
-	VolumeType   string   `json:"volumeType"`
-	Capacity     int      `json:"capacity"`
-	VolumeMode   string   `json:"volumeMode"`
+type Toleration struct {
+	Key      string `json:"key,omitempty"`
+	Value    string `json:"value,omitempty"`
+	Operator string `json:"operator,omitempty"` // e.g., "Equal", "Exists"
+	Effect   string `json:"effect,omitempty"`   // e.g., "NoSchedule", "PreferNoSchedule", "NoExecute"
+}
+
+type AppMetadataSchedulingRule struct {
+	RuleType     string       `json:"ruleType,omitempty"`
+	NodeName     string       `json:"nodeName,omitempty"`
+	NodeSelector []string     `json:"nodeSelector,omitempty"`
+	NodeAffinity []string     `json:"nodeAffinity,omitempty"`
+	Tolerations  []Toleration `json:"tolerations,omitempty"`
 }
 
 type AppDeployOption struct {
@@ -254,6 +272,58 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 		}
 	}
 
+	var (
+		schedulingRuleNodeName     string
+		schedulingRuleNodeSelector map[string]string
+		nodeAffinity               *corev1.NodeAffinity
+		tolerations                []corev1.Toleration
+	)
+	if a.SchedulingRule != nil {
+		switch a.SchedulingRule.RuleType {
+		case app.SchedulingRuleTypeNodeName:
+			schedulingRuleNodeName = a.SchedulingRule.NodeName
+		case app.SchedulingRuleTypeNodeSelector:
+			for _, selector := range a.SchedulingRule.NodeSelector {
+				parts := strings.SplitN(selector, "=", 2)
+				if len(parts) != 2 {
+					log.Printf("invalid node selector format: %s", selector)
+					continue
+				}
+				if schedulingRuleNodeSelector == nil {
+					schedulingRuleNodeSelector = make(map[string]string)
+				}
+				schedulingRuleNodeSelector[parts[0]] = parts[1]
+			}
+		case app.SchedulingRuleTypeNodeAffinity:
+			if len(a.SchedulingRule.NodeAffinity) > 0 {
+				nodeAffinity = &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      "kubernetes.io/hostname",
+										Operator: corev1.NodeSelectorOpIn,
+										Values:   a.SchedulingRule.NodeAffinity,
+									},
+								},
+							},
+						},
+					},
+				}
+			}
+		}
+
+		for _, toleration := range a.SchedulingRule.Tolerations {
+			tolerations = append(tolerations, corev1.Toleration{
+				Key:      toleration.Key,
+				Value:    toleration.Value,
+				Operator: corev1.TolerationOperator(toleration.Operator),
+				Effect:   corev1.TaintEffect(toleration.Effect),
+			})
+		}
+	}
+
 	result = append(result, &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        a.AppSlug,
@@ -271,6 +341,8 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					NodeName:     schedulingRuleNodeName,
+					NodeSelector: schedulingRuleNodeSelector,
 					Containers: []corev1.Container{
 						{
 							Name:            a.AppSlug,
@@ -296,6 +368,10 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 						},
 					},
 					Volumes: volumes,
+					Affinity: &corev1.Affinity{
+						NodeAffinity: nodeAffinity,
+					},
+					Tolerations: tolerations,
 				},
 			},
 		},
@@ -355,6 +431,58 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 		args = []string{"-c", a.ContainerCommand}
 	}
 
+	var (
+		schedulingRuleNodeName     string
+		schedulingRuleNodeSelector map[string]string
+		nodeAffinity               *corev1.NodeAffinity
+		tolerations                []corev1.Toleration
+	)
+	if a.SchedulingRule != nil {
+		switch a.SchedulingRule.RuleType {
+		case app.SchedulingRuleTypeNodeName:
+			schedulingRuleNodeName = a.SchedulingRule.NodeName
+		case app.SchedulingRuleTypeNodeSelector:
+			for _, selector := range a.SchedulingRule.NodeSelector {
+				parts := strings.SplitN(selector, "=", 2)
+				if len(parts) != 2 {
+					log.Printf("invalid node selector format: %s", selector)
+					continue
+				}
+				if schedulingRuleNodeSelector == nil {
+					schedulingRuleNodeSelector = make(map[string]string)
+				}
+				schedulingRuleNodeSelector[parts[0]] = parts[1]
+			}
+		case app.SchedulingRuleTypeNodeAffinity:
+			if len(a.SchedulingRule.NodeAffinity) > 0 {
+				nodeAffinity = &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      "kubernetes.io/hostname",
+										Operator: corev1.NodeSelectorOpIn,
+										Values:   a.SchedulingRule.NodeAffinity,
+									},
+								},
+							},
+						},
+					},
+				}
+			}
+		}
+
+		for _, toleration := range a.SchedulingRule.Tolerations {
+			tolerations = append(tolerations, corev1.Toleration{
+				Key:      toleration.Key,
+				Value:    toleration.Value,
+				Operator: corev1.TolerationOperator(toleration.Operator),
+				Effect:   corev1.TaintEffect(toleration.Effect),
+			})
+		}
+	}
+
 	result = append(result, &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      a.AppSlug,
@@ -374,6 +502,8 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
+					NodeName:     schedulingRuleNodeName,
+					NodeSelector: schedulingRuleNodeSelector,
 					Containers: []corev1.Container{
 						{
 							Name:            a.AppSlug,
@@ -396,6 +526,10 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 						},
 					},
 					Volumes: volumes,
+					Affinity: &corev1.Affinity{
+						NodeAffinity: nodeAffinity,
+					},
+					Tolerations: tolerations,
 				},
 			},
 			PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{

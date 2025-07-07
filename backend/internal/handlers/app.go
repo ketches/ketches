@@ -165,6 +165,7 @@ func SetAppResource(c *gin.Context) {
 	api.Success(c, app)
 }
 
+
 // @Summary Get App Ref
 // @Description Get app ref by app ID
 // @Tags App

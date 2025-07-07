@@ -358,3 +358,39 @@ func ListClusterExtensions(c *gin.Context) {
 
 	api.Success(c, resp)
 }
+
+// @Summary List Cluster Node Labels
+// @Description Get all node labels from the specified cluster
+// @Tags Cluster
+// @Param clusterID path string true "Cluster ID"
+// @Success 200 {object} api.Response{data=[]string}
+// @Router /api/v1/clusters/{clusterID}/nodes/labels [get]
+func ListClusterNodeLabels(c *gin.Context) {
+	svc := services.NewClusterService()
+	labels, err := svc.ListClusterNodeLabels(c.Request.Context(), &models.ListClusterNodeLabelsRequest{
+		ClusterID: c.Param("clusterID"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+	api.Success(c, labels)
+}
+
+// @Summary List Cluster Node Taints
+// @Description Get all node taints from the specified cluster
+// @Tags Cluster
+// @Param clusterID path string true "Cluster ID"
+// @Success 200 {object} api.Response{data=[]models.ClusterNodeTaintModel}
+// @Router /api/v1/clusters/{clusterID}/nodes/taints [get]
+func ListClusterNodeTaints(c *gin.Context) {
+	svc := services.NewClusterService()
+	taints, err := svc.ListClusterNodeTaints(c.Request.Context(), &models.ListClusterNodeTaintsRequest{
+		ClusterID: c.Param("clusterID"),
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+	api.Success(c, taints)
+}

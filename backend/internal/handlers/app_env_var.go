@@ -19,7 +19,7 @@ import (
 // @Produce json
 // @Param appID path string true "App ID"
 // @Success 200 {object} api.Response{data=[]models.AppEnvVarModel}
-// @Router /api/v1/apps/{appID}/envVars [get]
+// @Router /api/v1/apps/{appID}/env-vars [get]
 func ListAppEnvVars(c *gin.Context) {
 	var req models.ListAppEnvVarsRequest
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -44,7 +44,7 @@ func ListAppEnvVars(c *gin.Context) {
 // @Param appID path string true "App ID"
 // @Param envVar body models.AppEnvVarModel true "Env Var"
 // @Success 201 {object} api.Response{data=models.AppEnvVarModel}
-// @Router /api/v1/apps/{appID}/envVars [post]
+// @Router /api/v1/apps/{appID}/env-vars [post]
 func CreateAppEnvVar(c *gin.Context) {
 	var req models.CreateAppEnvVarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -70,7 +70,7 @@ func CreateAppEnvVar(c *gin.Context) {
 // @Param envVarID path string true "Env Var ID"
 // @Param envVar body models.AppEnvVarModel true "Env Var"
 // @Success 200 {object} api.Response{data=models.AppEnvVarModel}
-// @Router /api/v1/apps/envVars/{envVarID} [put]
+// @Router /api/v1/apps/env-vars/{envVarID} [put]
 func UpdateAppEnvVar(c *gin.Context) {
 	var req models.UpdateAppEnvVarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -96,7 +96,7 @@ func UpdateAppEnvVar(c *gin.Context) {
 // @Produce json
 // @Param req body models.DeleteAppEnvVarsRequest true "EnvVar IDs"
 // @Success 204 {object} api.Response{}
-// @Router /api/v1/apps/envVars [delete]
+// @Router /api/v1/apps/env-vars [delete]
 func DeleteAppEnvVars(c *gin.Context) {
 	var req models.DeleteAppEnvVarsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

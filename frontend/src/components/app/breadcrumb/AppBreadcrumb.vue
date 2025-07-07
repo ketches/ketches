@@ -24,7 +24,7 @@ const { activeAppRef } = storeToRefs(userStore)
 
 async function onSwitchApp(appID: string) {
     userStore.activateApp(appID)
-    router.push({ name: 'appPage', params: { id: appID } })
+    router.push({ name: 'app-page', params: { id: appID } })
 }
 
 </script>

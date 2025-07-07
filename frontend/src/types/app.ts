@@ -13,6 +13,8 @@ export interface appModel {
     requestMemory: number
     limitCPU: number
     limitMemory: number
+    // Scheduling rules
+    schedulingRule?: appSchedulingRuleModel
     edition: string
     envID: string
     projectID: string
@@ -252,4 +254,29 @@ export interface updateAppProbeModel {
     successThreshold: number
     failureThreshold: number
     enabled: boolean
+}
+
+export interface appSchedulingRuleTolerationModel {
+    key: string
+    value: string
+    operator: string // e.g., "Equal", "Exists"
+    effect: string // e.g., "NoSchedule", "PreferNoSchedule", "NoExecute"
+}
+
+export interface appSchedulingRuleModel {
+    ruleID: string
+    appID: string
+    ruleType: 'nodeName' | 'nodeSelector' | 'nodeAffinity' | ''
+    nodeName?: string
+    nodeSelector?: string[]
+    nodeAffinity?: string[]
+    tolerations?: appSchedulingRuleTolerationModel[]
+}
+
+export interface setAppSchedulingRuleModel {
+    ruleType: 'nodeName' | 'nodeSelector' | 'nodeAffinity' | ''
+    nodeName?: string
+    nodeSelector?: string[]
+    nodeAffinity?: string[]
+    tolerations?: appSchedulingRuleTolerationModel[]
 }

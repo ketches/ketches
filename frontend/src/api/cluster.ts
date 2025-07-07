@@ -1,5 +1,5 @@
 import api from '@/api/axios';
-import type { clusterModel, clusterNodeModel, clusterNodeRefModel, clusterRefModel, createClusterModel, updateClusterModel } from '@/types/cluster';
+import type { clusterModel, clusterNodeModel, clusterNodeRefModel, clusterNodeTaintsModel, clusterRefModel, createClusterModel, updateClusterModel } from '@/types/cluster';
 import type { QueryAndPagedRequest } from '@/types/common.ts';
 
 export async function listClusters(filter: QueryAndPagedRequest): Promise<{ total: number, records: clusterModel[] }> {
@@ -67,4 +67,14 @@ export async function listClusterNodeRefs(clusterID: string): Promise<clusterNod
 export async function getClusterNode(clusterID: string, nodeName: string): Promise<clusterNodeModel> {
     const response = await api.get(`/clusters/${clusterID}/nodes/${nodeName}`);
     return response.data as clusterNodeModel;
+}
+
+export async function listClusterNodeLabels(clusterID: string): Promise<string[]> {
+    const response = await api.get(`/clusters/${clusterID}/nodes/labels`);
+    return response.data as string[];
+}
+
+export async function listClusterNodeTaints(clusterID: string): Promise<clusterNodeTaintsModel[]> {
+    const response = await api.get(`/clusters/${clusterID}/nodes/taints`);
+    return response.data as clusterNodeTaintsModel[];
 }

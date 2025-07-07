@@ -180,6 +180,13 @@ definitions:
       limitMemory:
         description: in MiB
         type: integer
+      nodeName:
+        description: Scheduling rules
+        type: string
+      nodeSelector:
+        additionalProperties:
+          type: string
+        type: object
       projectID:
         type: string
       projectSlug:
@@ -251,6 +258,40 @@ definitions:
       projectID:
         type: string
       slug:
+        type: string
+    type: object
+  models.AppSchedulingRuleModel:
+    properties:
+      appID:
+        type: string
+      nodeAffinity:
+        items:
+          type: string
+        type: array
+      nodeName:
+        type: string
+      nodeSelector:
+        items:
+          type: string
+        type: array
+      ruleID:
+        type: string
+      ruleType:
+        type: string
+      tolerations:
+        items:
+          $ref: '#/definitions/models.AppSchedulingRuleTolerationModel'
+        type: array
+    type: object
+  models.AppSchedulingRuleTolerationModel:
+    properties:
+      effect:
+        type: string
+      key:
+        type: string
+      operator:
+        type: string
+      value:
         type: string
     type: object
   models.AppVolumeModel:
@@ -371,6 +412,15 @@ definitions:
       nodeName:
         type: string
     type: object
+  models.ClusterNodeTaintModel:
+    properties:
+      key:
+        type: string
+      values:
+        items:
+          type: string
+        type: array
+    type: object
   models.ClusterRef:
     properties:
       clusterID:
@@ -468,6 +518,13 @@ definitions:
       limitMemory:
         description: in MiB
         type: integer
+      nodeName:
+        description: Scheduling rules
+        type: string
+      nodeSelector:
+        additionalProperties:
+          type: string
+        type: object
       registryPassword:
         type: string
       registryUsername:
@@ -837,6 +894,25 @@ definitions:
         type: integer
     required:
     - replicas
+    type: object
+  models.SetAppSchedulingRuleRequest:
+    properties:
+      nodeAffinity:
+        items:
+          type: string
+        type: array
+      nodeName:
+        type: string
+      nodeSelector:
+        items:
+          type: string
+        type: array
+      ruleType:
+        type: string
+      tolerations:
+        items:
+          $ref: '#/definitions/models.AppSchedulingRuleTolerationModel'
+        type: array
     type: object
   models.TerminateAppInstanceRequest:
     properties:
@@ -1259,7 +1335,7 @@ paths:
       summary: Set App Command
       tags:
       - App
-  /api/v1/apps/{appID}/envVars:
+  /api/v1/apps/{appID}/env-vars:
     get:
       consumes:
       - application/json
@@ -1940,6 +2016,83 @@ paths:
       summary: Get App Running Info
       tags:
       - App
+  /api/v1/apps/{appID}/scheduling-rule:
+    delete:
+      consumes:
+      - application/json
+      description: Delete the scheduling rule of an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Delete App Scheduling Rule
+      tags:
+      - App
+    get:
+      consumes:
+      - application/json
+      description: Get the scheduling rule of an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppSchedulingRuleModel'
+              type: object
+      summary: Get App Scheduling Rule
+      tags:
+      - App
+    put:
+      consumes:
+      - application/json
+      description: Set the scheduling rule of an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Set app scheduling rule
+        in: body
+        name: schedulingRule
+        required: true
+        schema:
+          $ref: '#/definitions/models.SetAppSchedulingRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppSchedulingRuleModel'
+              type: object
+      summary: Set App Scheduling Rule
+      tags:
+      - App
   /api/v1/apps/{appID}/volumes:
     get:
       consumes:
@@ -2031,7 +2184,7 @@ paths:
       summary: Update App Volume
       tags:
       - AppVolume
-  /api/v1/apps/envVars:
+  /api/v1/apps/env-vars:
     delete:
       consumes:
       - application/json
@@ -2053,7 +2206,7 @@ paths:
       summary: Delete App Env Vars
       tags:
       - AppEnvVar
-  /api/v1/apps/envVars/{envVarID}:
+  /api/v1/apps/env-vars/{envVarID}:
     put:
       consumes:
       - application/json
@@ -2367,6 +2520,30 @@ paths:
       summary: Get Cluster Node
       tags:
       - Cluster
+  /api/v1/clusters/{clusterID}/nodes/labels:
+    get:
+      description: Get all node labels from the specified cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+      summary: List Cluster Node Labels
+      tags:
+      - Cluster
   /api/v1/clusters/{clusterID}/nodes/refs:
     get:
       description: Get all node references of the specified cluster
@@ -2389,6 +2566,30 @@ paths:
                   type: array
               type: object
       summary: List references of cluster nodes
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/nodes/taints:
+    get:
+      description: Get all node taints from the specified cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ClusterNodeTaintModel'
+                  type: array
+              type: object
+      summary: List Cluster Node Taints
       tags:
       - Cluster
   /api/v1/clusters/{clusterID}/ref:

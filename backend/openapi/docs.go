@@ -44,7 +44,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/apps/envVars": {
+        "/api/v1/apps/env-vars": {
             "delete": {
                 "description": "Delete environment variables for an app",
                 "consumes": [
@@ -78,7 +78,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/apps/envVars/{envVarID}": {
+        "/api/v1/apps/env-vars/{envVarID}": {
             "put": {
                 "description": "Update an environment variable for an app",
                 "consumes": [
@@ -396,7 +396,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/apps/{appID}/envVars": {
+        "/api/v1/apps/{appID}/env-vars": {
             "get": {
                 "description": "List environment variables for an app",
                 "consumes": [
@@ -1481,6 +1481,131 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/apps/{appID}/scheduling-rule": {
+            "get": {
+                "description": "Get the scheduling rule of an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "Get App Scheduling Rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppSchedulingRuleModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Set the scheduling rule of an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "Set App Scheduling Rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Set app scheduling rule",
+                        "name": "schedulingRule",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SetAppSchedulingRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppSchedulingRuleModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete the scheduling rule of an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "App"
+                ],
+                "summary": "Delete App Scheduling Rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/apps/{appID}/volumes": {
             "get": {
                 "description": "List storage volumes for an app",
@@ -2093,6 +2218,47 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/clusters/{clusterID}/nodes/labels": {
+            "get": {
+                "description": "Get all node labels from the specified cluster",
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "List Cluster Node Labels",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster ID",
+                        "name": "clusterID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/clusters/{clusterID}/nodes/refs": {
             "get": {
                 "description": "Get all node references of the specified cluster",
@@ -2124,6 +2290,47 @@ const docTemplate = `{
                                             "type": "array",
                                             "items": {
                                                 "$ref": "#/definitions/models.ClusterNodeRef"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/clusters/{clusterID}/nodes/taints": {
+            "get": {
+                "description": "Get all node taints from the specified cluster",
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "List Cluster Node Taints",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster ID",
+                        "name": "clusterID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ClusterNodeTaintModel"
                                             }
                                         }
                                     }
@@ -4250,6 +4457,16 @@ const docTemplate = `{
                     "description": "in MiB",
                     "type": "integer"
                 },
+                "nodeName": {
+                    "description": "Scheduling rules",
+                    "type": "string"
+                },
+                "nodeSelector": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "projectID": {
                     "type": "string"
                 },
@@ -4354,6 +4571,58 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AppSchedulingRuleModel": {
+            "type": "object",
+            "properties": {
+                "appID": {
+                    "type": "string"
+                },
+                "nodeAffinity": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "nodeSelector": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ruleID": {
+                    "type": "string"
+                },
+                "ruleType": {
+                    "type": "string"
+                },
+                "tolerations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.AppSchedulingRuleTolerationModel"
+                    }
+                }
+            }
+        },
+        "models.AppSchedulingRuleTolerationModel": {
+            "type": "object",
+            "properties": {
+                "effect": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "value": {
                     "type": "string"
                 }
             }
@@ -4537,6 +4806,20 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ClusterNodeTaintModel": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "values": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "models.ClusterRef": {
             "type": "object",
             "properties": {
@@ -4683,6 +4966,16 @@ const docTemplate = `{
                 "limitMemory": {
                     "description": "in MiB",
                     "type": "integer"
+                },
+                "nodeName": {
+                    "description": "Scheduling rules",
+                    "type": "string"
+                },
+                "nodeSelector": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
                 "registryPassword": {
                     "type": "string"
@@ -5228,6 +5521,35 @@ const docTemplate = `{
                 "requestMemory": {
                     "description": "in MiB",
                     "type": "integer"
+                }
+            }
+        },
+        "models.SetAppSchedulingRuleRequest": {
+            "type": "object",
+            "properties": {
+                "nodeAffinity": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "nodeSelector": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ruleType": {
+                    "type": "string"
+                },
+                "tolerations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.AppSchedulingRuleTolerationModel"
+                    }
                 }
             }
         },

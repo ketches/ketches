@@ -71,8 +71,8 @@ export function appStatusActions(appStatus: string, appUpdated: boolean): appSta
         case appStatusEnum.UPDATING:
         case appStatusEnum.ABNORMAL: {
             actions.push(
-                { label: "关闭", icon: Power, action: onStop },
                 { label: "重新部署", icon: RefreshCcwDot, action: onRedeploy },
+                { label: "关闭", icon: Power, action: onStop },
             );
             break;
         }
@@ -83,15 +83,15 @@ export function appStatusActions(appStatus: string, appUpdated: boolean): appSta
             }
             actions.push(updateAction);
             actions.push(
-                { label: "关闭", icon: Power, action: onStop },
                 { label: "重新部署", icon: RefreshCcwDot, action: onRedeploy },
+                { label: "关闭", icon: Power, action: onStop },
             );
             break;
         }
         case appStatusEnum.COMPLETED:
             actions.push(
+                { label: "重新部署", icon: RefreshCcwDot, action: onRedeploy },
                 { label: "关闭", icon: Power, action: onStop },
-                { label: "重新部署", icon: RefreshCcwDot, action: onRedeploy }
             );
             break;
         case appStatusEnum.DEBUGGING:

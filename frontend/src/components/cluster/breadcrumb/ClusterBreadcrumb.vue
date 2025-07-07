@@ -24,7 +24,7 @@ const { adminResources, activeClusterRef, activeClusterNodeRef } = storeToRefs(u
 
 function onSwitchCluster(clusterID: string) {
     userStore.activateCluster(clusterID)
-    router.push({ name: 'clusterPage', params: { id: clusterID } })
+    router.push({ name: 'cluster-page', params: { id: clusterID } })
 }
 </script>
 

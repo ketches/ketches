@@ -60,3 +60,21 @@ const (
 	AppProbeModeTCPSocket AppProbeMode = "tcpSocket"
 	AppProbeModeExec      AppProbeMode = "exec"
 )
+
+const (
+	SchedulingRuleTypeNodeName     = "nodeName"
+	SchedulingRuleTypeNodeSelector = "nodeSelector"
+	SchedulingRuleTypeNodeAffinity = "nodeAffinity"
+)
+
+const (
+	SchedulingRuleTolerationOperatorEqual    = "Equal"
+	SchedulingRuleTolerationOperatorNotEqual = "NotEqual"
+	SchedulingRuleTolerationOperatorExists   = "Exists"
+)
+
+const (
+	SchedulingRuleTolerationEffectNoSchedule       = "NoSchedule"
+	SchedulingRuleTolerationEffectNoExecute        = "NoExecute"
+	SchedulingRuleTolerationEffectPreferNoSchedule = "PreferNoSchedule"
+)

@@ -56,3 +56,8 @@ export interface clusterNodeRefModel {
     clusterSlug: string
     clusterDisplayName: string
 }
+
+export interface clusterNodeTaintsModel {
+    key: string;
+    values: string[];
+}

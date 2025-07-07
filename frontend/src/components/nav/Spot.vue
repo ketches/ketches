@@ -44,23 +44,23 @@ function handleSelect(ev: CustomEvent, resourceType: string, resourceID?: string
   switch (resourceType) {
     case "cluster":
       userStore.activateCluster(resourceID);
-      router.push({ name: 'clusterPage', params: { id: resourceID } });
+      router.push({ name: 'cluster-page', params: { id: resourceID } });
       break;
     case "clusterNode":
       const [clusterID, nodeName] = resourceID.split('/');
       userStore.activateClusterNode(clusterID, nodeName);
-      router.push({ name: 'clusterNodePage', params: { id: clusterID, nodeName } });
+      router.push({ name: 'cluster-node-page', params: { id: clusterID, nodeName } });
       break;
     case "project":
       userStore.activateProject(resourceID);
       break;
     case "env":
       userStore.activateEnv(resourceID);
-      router.push({ name: 'envPage', params: { id: resourceID } });
+      router.push({ name: 'env-page', params: { id: resourceID } });
       break;
     case "app":
       userStore.activateApp(resourceID);
-      router.push({ name: 'appPage', params: { id: resourceID } });
+      router.push({ name: 'app-page', params: { id: resourceID } });
       break;
     default:
       console.warn(`Unknown resource type: ${resourceType}`);

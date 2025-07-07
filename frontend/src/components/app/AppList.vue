@@ -170,7 +170,7 @@ const columns: ColumnDef<appModel>[] = [
                 h(
                     RouterLink,
                     {
-                        to: { name: 'appPage', params: { id: row.original.appID } },
+                        to: { name: 'app-page', params: { id: row.original.appID } },
                         class: "font-medium text-blue-500",
                     },
                     () => row.original.displayName || row.getValue("slug")

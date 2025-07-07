@@ -30,25 +30,25 @@ const routes: RouteRecordRaw[] = [
         name: "admin",
         path: "/admin",
         component: () => import('@/components/Home.vue'),
-        redirect: { name: 'adminOverview' },
+        redirect: { name: 'admin-overview' },
         children: [
-            { name: 'adminOverview', path: "overview", component: () => import('@/components/admin/Overview.vue') },
+            { name: 'admin-overview', path: "overview", component: () => import('@/components/admin/Overview.vue') },
             { name: 'cluster', path: "cluster", component: () => import('@/components/cluster/ClusterManager.vue') },
-            { name: "clusterPage", path: "cluster/:id", component: () => import('@/components/cluster/ClusterPage.vue') },
-            { name: "clusterNodePage", path: "cluster/:id/node/:nodeName", component: () => import('@/components/cluster/node/NodePage.vue') },
+            { name: "cluster-page", path: "cluster/:id", component: () => import('@/components/cluster/ClusterPage.vue') },
+            { name: "cluster-node-page", path: "cluster/:id/node/:nodeName", component: () => import('@/components/cluster/node/NodePage.vue') },
         ]
     },
     {
         name: "user",
         path: "/",
         component: () => import('@/components/Home.vue'),
-        redirect: { name: 'userOverview' },
+        redirect: { name: 'user-overview' },
         children: [
-            { name: 'userOverview', path: "overview", component: () => import('@/components/user/Overview.vue') },
+            { name: 'user-overview', path: "overview", component: () => import('@/components/user/Overview.vue') },
             { name: 'env', path: "env", component: () => import('@/components/env/EnvManager.vue') },
-            { name: "envPage", path: "env/:id", component: () => import('@/components/env/EnvPage.vue') },
+            { name: "env-page", path: "env/:id", component: () => import('@/components/env/EnvPage.vue') },
             { name: 'app', path: "app", component: () => import('@/components/app/AppManager.vue') },
-            { name: "appPage", path: "app/:id", component: () => import('@/components/app/AppPage.vue') },
+            { name: "app-page", path: "app/:id", component: () => import('@/components/app/AppPage.vue') },
             { name: 'member', path: "member", component: () => import('@/components/project/MemberManager.vue') },
         ]
     },
@@ -58,19 +58,5 @@ const router = createRouter({
     history: createWebHistory(),
     routes
 })
-
-
-// router.beforeEach(async (to, _from, next) => {
-//     if (to.path.startsWith('/console')) {
-//         if (!localStorage.getItem('userID')) {
-//             // const redirectPath = '/sign-in?redirectUrl=' + encodeURIComponent(to.fullPath);
-//             // next(redirectPath);
-//         } else {
-//             next();
-//         }
-//     } else {
-//         next();
-//     }
-// })
 
 createApp(App).use(createPinia()).use(router).mount('#app')

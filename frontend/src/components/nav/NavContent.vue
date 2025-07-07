@@ -45,7 +45,7 @@ const userNavContents = computed(() =>
                 <Spot />
             </SidebarMenuItem>
             <SidebarMenuItem>
-                <RouterLink :to="{ name: 'adminOverview' }" class="flex w-full">
+                <RouterLink :to="{ name: 'admin-overview' }" class="flex w-full">
                     <SidebarMenuButton>
                         <Telescope />
                         <span>总览</span>

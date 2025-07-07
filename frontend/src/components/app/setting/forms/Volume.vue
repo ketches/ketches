@@ -160,6 +160,7 @@ const columns: ColumnDef<appVolumeModel>[] = [
                         await deleteAppVolume(row.original.appID, row.original.volumeID)
                         listData.value = listData.value.filter(item => item.volumeID !== row.original.volumeID)
                         toast.success('存储卷已删除')
+                        app.value.updated = true
                     }
                 }, () => [h(Delete)])
             ])
@@ -271,7 +272,7 @@ const selectedVolume = ref<appVolumeModel | null>(null)
         </div>
     </div>
     <CreateVolume v-model="openAddVolumeDialog" :appID="app.appID" @close="openAddVolumeDialog = false"
-        @volume-created="fetchListData(app.appID)" />
+        @volume-created="fetchListData(app.appID); app.updated = true" />
     <UpdateVolume v-model="openUpdateVolumeDialog" v-if="selectedVolume" :volume="selectedVolume"
-        @close="openUpdateVolumeDialog = false" @volume-updated="fetchListData(app.appID)" />
+        @close="openUpdateVolumeDialog = false" @volume-updated="fetchListData(app.appID); app.updated = true" />
 </template>

@@ -9,10 +9,12 @@ import {
   Network,
   Radar,
   Rocket,
+  Server,
   SquareDashed,
   SquaresExclude,
   SquaresIntersect,
   SquaresSubtract,
+  Tag,
   Vault
 } from "lucide-vue-next";
 import { defineAsyncComponent, type Component } from "vue";
@@ -161,5 +163,52 @@ export const volumeModeRefs = {
     value: "Block",
     icon: Vault,
     desc: "存储卷以块设备方式挂载。",
+  },
+};
+
+export const schedulingRuleTypeRefs = {
+  nodeName: {
+    label: "指定节点名称",
+    value: "nodeName",
+    icon: Server,
+    desc: "将应用实例调度到指定节点上运行。",
+  },
+  nodeSelector: {
+    label: "节点标签选择器",
+    value: "nodeSelector",
+    icon: Tag,
+    desc: "将应用实例调度到符合标签选择器的节点上运行。",
+  },
+  nodeAffinity: {
+    label: "节点亲和性",
+    value: "nodeAffinity",
+    icon: Server,
+    desc: "将应用实例调度到亲和节点上运行。",
+  },
+}
+
+export const schedulingRuleTolerationOperatorRefs = {
+  Equal: {
+    label: "等于",
+    value: "Equal",
+  },
+  Exists: {
+    label: "存在",
+    value: "Exists",
+  },
+};
+
+export const schedulingRuleTolerationEffectRefs = {
+  NoSchedule: {
+    label: "不允许调度",
+    value: "NoSchedule",
+  },
+  PreferNoSchedule: {
+    label: "尽量阻止调度",
+    value: "PreferNoSchedule",
+  },
+  NoExecute: {
+    label: "阻止调度并驱逐已调度",
+    value: "NoExecute",
   },
 };

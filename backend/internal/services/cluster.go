@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/db/orm"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/utils"
@@ -35,6 +37,8 @@ type ClusterService interface {
 	ListClusterNodeRefs(ctx context.Context, req *models.ListClusterNodeRefsRequest) ([]*models.ClusterNodeRef, app.Error)
 	GetClusterNode(ctx context.Context, req *models.GetClusterNodeRequest) (*models.ClusterNodeModel, app.Error)
 	ListClusterExtensions(ctx context.Context, req *models.ListClusterExtensionsRequest) (*models.ListClusterExtensionsResponse, app.Error)
+	ListClusterNodeLabels(ctx context.Context, req *models.ListClusterNodeLabelsRequest) ([]string, app.Error)
+	ListClusterNodeTaints(ctx context.Context, req *models.ListClusterNodeTaintsRequest) ([]*models.ClusterNodeTaintModel, app.Error)
 }
 
 type clusterService struct {
@@ -311,6 +315,11 @@ func (s *clusterService) ListClusterNodes(ctx context.Context, req *models.ListC
 }
 
 func (s *clusterService) ListClusterNodeRefs(ctx context.Context, req *models.ListClusterNodeRefsRequest) ([]*models.ClusterNodeRef, app.Error) {
+	cluster, err := orm.GetClusterByID(ctx, req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
 	kstore, err := kube.ClusterStore(ctx, req.ClusterID)
 	if err != nil {
 		return nil, err
@@ -323,10 +332,22 @@ func (s *clusterService) ListClusterNodeRefs(ctx context.Context, req *models.Li
 	}
 
 	var result []*models.ClusterNodeRef
-	for _, n := range nodes {
+	for _, node := range nodes {
+		var (
+			internalIP string
+		)
+		for _, addr := range node.Status.Addresses {
+			if addr.Type == corev1.NodeInternalIP {
+				internalIP = addr.Address
+			}
+		}
+
 		result = append(result, &models.ClusterNodeRef{
-			NodeName:  n.Name,
-			ClusterID: req.ClusterID,
+			NodeName:           node.Name,
+			NodeIP:             internalIP,
+			ClusterID:          cluster.ID,
+			ClusterSlug:        cluster.Slug,
+			ClusterDisplayName: cluster.DisplayName,
 		})
 	}
 
@@ -371,6 +392,79 @@ func (s *clusterService) ListClusterExtensions(ctx context.Context, req *models.
 	}
 
 	return &result, nil
+}
+
+func (s *clusterService) ListClusterNodeLabels(ctx context.Context, req *models.ListClusterNodeLabelsRequest) ([]string, app.Error) {
+	store, err := kube.ClusterStore(ctx, req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes, kubeErr := store.NodeLister().List(labels.Everything())
+	if kubeErr != nil {
+		log.Printf("failed to list nodes: %v", kubeErr)
+		return nil, app.ErrClusterOperationFailed
+	}
+
+	kvM := make(map[string]struct{}, len(nodes[0].Labels))
+	for _, node := range nodes {
+		for key, value := range node.Labels {
+			if value == "" {
+				kvM[key] = struct{}{}
+			} else {
+				kvM[key+"="+value] = struct{}{}
+			}
+		}
+	}
+
+	var result []string
+	for kv := range kvM {
+		result = append(result, kv)
+	}
+
+	slices.Sort(result)
+	return result, nil
+}
+
+func (s *clusterService) ListClusterNodeTaints(ctx context.Context, req *models.ListClusterNodeTaintsRequest) ([]*models.ClusterNodeTaintModel, app.Error) {
+	store, err := kube.ClusterStore(ctx, req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*models.ClusterNodeTaintModel, 0)
+	nodes, kubeErr := store.NodeLister().List(labels.Everything())
+	if kubeErr != nil {
+		log.Printf("failed to list nodes: %v", kubeErr)
+		return nil, app.ErrClusterOperationFailed
+	}
+
+	for _, node := range nodes {
+		for _, taint := range node.Spec.Taints {
+			if taint.Key == "node.kubernetes.io/unschedulable" {
+				continue
+			}
+			found := false
+			for _, item := range result {
+				if item.Key == taint.Key {
+					found = true
+					if !slices.Contains(item.Values, taint.Value) {
+						item.Values = append(item.Values, taint.Value)
+					} else {
+						continue
+					}
+				}
+			}
+			if !found {
+				result = append(result, &models.ClusterNodeTaintModel{
+					Key:    taint.Key,
+					Values: []string{taint.Value},
+				})
+				continue
+			}
+		}
+	}
+	return result, err
 }
 
 func clusterNodeFrom(clusterID string, node *corev1.Node) *models.ClusterNodeModel {

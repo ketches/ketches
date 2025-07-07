@@ -32,7 +32,6 @@ func (r *APIV1Route) Register() {
 	registerProjectRoute(r)
 	registerEnvRoute(r)
 	registerAppRoute(r)
-	registerAppEnvVarRoute(r)
 }
 
 func registerPlatformRoute(r *APIV1Route) {
@@ -47,6 +46,8 @@ func registerClusterRoute(r *APIV1Route) {
 	clusters.GET("/refs", handlers.AllClusterRefs)
 	clusters.GET("/:clusterID/ref", handlers.GetClusterRef)
 	clusters.GET("/:clusterID/nodes/refs", handlers.ListClusterNodeRefs)
+	clusters.GET("/:clusterID/nodes/labels", handlers.ListClusterNodeLabels)
+	clusters.GET("/:clusterID/nodes/taints", handlers.ListClusterNodeTaints)
 
 	// Routes that require admin permissions
 	adminOnly := clusters.Group("", middlewares.AdminOnly())
@@ -135,7 +136,7 @@ func registerAppRoute(r *APIV1Route) {
 	projectMember.GET("/ref", handlers.GetAppRef)
 	projectMember.GET("/instances", handlers.ListAppInstances)
 	projectMember.GET("/running/info", handlers.GetAppRunningInfo, middlewares.RequestIDMiddleware())
-	projectMember.GET("/envVars", handlers.ListAppEnvVars)
+	projectMember.GET("/env-vars", handlers.ListAppEnvVars)
 	projectMember.GET("/volumes", handlers.ListAppVolumes)
 	projectMember.GET("/gateways", handlers.NewAppGatewayHandler().ListAppGateways)
 	projectMember.GET("/probes", handlers.NewAppProbeHandler().ListAppProbes)
@@ -147,14 +148,18 @@ func registerAppRoute(r *APIV1Route) {
 	projectDeveloper.PUT("/image", handlers.UpdateAppImage)
 	projectDeveloper.PUT("/command", handlers.SetAppCommand)
 	projectDeveloper.PUT("/resource", handlers.SetAppResource)
+	projectDeveloper.GET("/scheduling-rule", handlers.GetAppSchedulingRule)
+	projectDeveloper.PUT("/scheduling-rule", handlers.SetAppSchedulingRule)
+	projectDeveloper.DELETE("/scheduling-rule", handlers.DeleteAppSchedulingRule)
+
 	projectDeveloper.POST("/action", handlers.AppAction)
 	projectDeveloper.DELETE("/instances", handlers.TerminateAppInstance)
 	projectDeveloper.GET("/instances/:instanceName/containers/:containerName/logs", handlers.ViewAppContainerLogs)
 	projectDeveloper.GET("/instances/:instanceName/containers/:containerName/exec", handlers.ExecAppContainerTerminal)
 
-	projectDeveloper.POST("/envVars", handlers.CreateAppEnvVar)
-	projectDeveloper.PUT("/envVars/:envVarID", handlers.UpdateAppEnvVar)
-	projectDeveloper.DELETE("/envVars", handlers.DeleteAppEnvVars)
+	projectDeveloper.POST("/env-vars", handlers.CreateAppEnvVar)
+	projectDeveloper.PUT("/env-vars/:envVarID", handlers.UpdateAppEnvVar)
+	projectDeveloper.DELETE("/env-vars", handlers.DeleteAppEnvVars)
 
 	projectDeveloper.POST("/volumes", handlers.CreateAppVolume)
 	projectDeveloper.PUT("/volumes/:volumeID", handlers.UpdateAppVolume)
@@ -171,8 +176,4 @@ func registerAppRoute(r *APIV1Route) {
 	projectDeveloper.PUT("/probes/:probeID", appProbeHandler.UpdateAppProbe)
 	projectDeveloper.PUT("/probes/:probeID/toggle", appProbeHandler.ToggleAppProbe)
 	projectDeveloper.DELETE("/probes/:probeID", appProbeHandler.DeleteAppProbe)
-}
-
-func registerAppEnvVarRoute(r *APIV1Route) {
-	// Routes that require developer or owner role (write)
 }

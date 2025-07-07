@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
+	"github.com/goccy/go-json"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/db/orm"
@@ -126,6 +128,26 @@ func (b *appMetadataBuilder) Build() (*AppMetadata, app.Error) {
 			TCPSocketPort:       probe.TCPSocketPort,
 			ExecCommand:         probe.ExecCommand,
 		})
+	}
+
+	appSchedulingRule, err := orm.GetAppSchedulingRule(b.ctx, b.appEntity.ID)
+	if err != nil {
+		return nil, err
+	}
+	if appSchedulingRule != nil {
+		schedulingRule := &AppMetadataSchedulingRule{
+			RuleType:     appSchedulingRule.RuleType,
+			NodeName:     appSchedulingRule.NodeName,
+			NodeSelector: strings.Split(appSchedulingRule.NodeSelector, ","),
+			NodeAffinity: strings.Split(appSchedulingRule.NodeAffinity, ","),
+			Tolerations:  make([]Toleration, 0, len(appSchedulingRule.Tolerations)),
+		}
+		if appSchedulingRule.Tolerations != "" {
+			if err := json.Unmarshal([]byte(appSchedulingRule.Tolerations), &schedulingRule.Tolerations); err != nil {
+				return nil, app.NewError(http.StatusInternalServerError, "无法解析调度规则容忍设置")
+			}
+		}
+		result.SchedulingRule = schedulingRule
 	}
 
 	return result, nil

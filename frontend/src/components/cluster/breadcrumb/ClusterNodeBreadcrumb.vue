@@ -24,7 +24,7 @@ const { activeClusterNodeRef } = storeToRefs(userStore)
 
 async function onSwitchClusterNode(clusterID: string, nodeName: string) {
     userStore.activateClusterNode(clusterID, nodeName)
-    await router.push({ name: 'clusterNodePage', params: { id: clusterID } })
+    await router.push({ name: 'cluster-node-page', params: { id: clusterID } })
 }
 
 </script>

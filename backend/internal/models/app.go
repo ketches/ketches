@@ -30,11 +30,14 @@ type AppModel struct {
 	ProjectSlug      string      `json:"projectSlug,omitempty"`
 	ClusterID        string      `json:"clusterID,omitempty"`
 	ClusterSlug      string      `json:"clusterSlug,omitempty"`
-	ClusterNamespace string      `json:"clusterNamespace,omitempty"`
-	ActualReplicas   int32       `json:"actualReplicas,omitempty"` // Number of currently running replicas
-	ActualEdition    string      `json:"actualEdition,omitempty"`  // Edition of the currently running app
-	Status           string      `json:"status,omitempty"`         // e.g., "undeployed", "starting", "running", "stopped", "stopping"
-	CreatedAt        string      `json:"createdAt,omitempty"`      // ISO 8601 format
+	ClusterNamespace string            `json:"clusterNamespace,omitempty"`
+	// Scheduling rules
+	NodeName         string            `json:"nodeName,omitempty"`
+	NodeSelector     map[string]string `json:"nodeSelector,omitempty"`
+	ActualReplicas   int32             `json:"actualReplicas,omitempty"` // Number of currently running replicas
+	ActualEdition    string            `json:"actualEdition,omitempty"`  // Edition of the currently running app
+	Status           string            `json:"status,omitempty"`         // e.g., "undeployed", "starting", "running", "stopped", "stopping"
+	CreatedAt        string            `json:"createdAt,omitempty"`      // ISO 8601 format
 }
 
 type ListAppsRequest struct {
@@ -78,10 +81,13 @@ type CreateAppRequest struct {
 	LimitCPU         int32  `json:"limitCPU,omitempty"`                                  // in milliCPU (e.g., 1000 for 1 CPU, 2000 for 2 CPUs)
 	LimitMemory      int32  `json:"limitMemory,omitempty"`                               // in MiB
 	Replicas         int32  `json:"replicas,omitempty" binding:"required,min=1,max=100"` // Number of replicas for the app
-	ContainerImage   string `json:"containerImage" binding:"required"`
-	RegistryUsername string `json:"registryUsername,omitempty"`
-	RegistryPassword string `json:"registryPassword,omitempty"`
-	Deploy           bool   `json:"deploy,omitempty"`
+	ContainerImage   string            `json:"containerImage" binding:"required"`
+	RegistryUsername string            `json:"registryUsername,omitempty"`
+	RegistryPassword string            `json:"registryPassword,omitempty"`
+	// Scheduling rules
+	NodeName         string            `json:"nodeName,omitempty"`
+	NodeSelector     map[string]string `json:"nodeSelector,omitempty"`
+	Deploy           bool              `json:"deploy,omitempty"`
 }
 
 type UpdateAppRequest struct {
@@ -110,6 +116,7 @@ type SetAppResourceRequest struct {
 	LimitCPU      int32  `json:"limitCPU,omitempty"`                                  // in milliCPU
 	LimitMemory   int32  `json:"limitMemory,omitempty"`                               // in MiB
 }
+
 
 type DeleteAppRequest struct {
 	AppID string `uri:"appID" binding:"required"`

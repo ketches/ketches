@@ -126,3 +126,21 @@ type ListClusterExtensionsRequest struct {
 }
 
 type ListClusterExtensionsResponse = map[string]*ClusterExtensionModel
+
+type ListClusterNodeLabelsRequest struct {
+	ClusterID string `uri:"clusterID" binding:"required"`
+}
+
+type ClusterNodeLabelModel struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type ListClusterNodeTaintsRequest struct {
+	ClusterID string `uri:"clusterID" binding:"required"`
+}
+
+type ClusterNodeTaintModel struct {
+	Key    string   `json:"key"`
+	Values []string `json:"values"`
+}
