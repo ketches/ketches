@@ -73,22 +73,6 @@ export async function terminateAppInstance(appID: string, instanceName: string):
     return
 }
 
-export async function viewAppInstanceLogs(appID: string, instanceName: string, containerName: string, model?: logsRequestModel): Promise<string> {
-    // SSE request to view app instance logs
-    if (!model) {
-        model = {
-            follow: true,
-            tailLines: 1000,
-        }
-    }
-    const response = await api.get(`/apps/${appID}/instances/${instanceName}/containers/{${containerName}}/logs`, {
-        params: {
-            ...model
-        }
-    });
-    return response.data as string;
-}
-
 export function getViewAppInstanceLogsUrl(appID: string, instanceName: string, containerName: string, params?: logsRequestModel) {
     if (!params) {
         params = {
@@ -145,7 +129,6 @@ export async function listAppVolumes(appID: string): Promise<appVolumeModel[]> {
     const response = await api.get(`/apps/${appID}/volumes`)
     return response.data as appVolumeModel[] || []
 }
-
 
 export async function createAppVolume(appID: string, model: createAppVolumeModel): Promise<appVolumeModel> {
     const response = await api.post(`/apps/${appID}/volumes`, model)
@@ -222,7 +205,6 @@ export async function deleteAppProbe(appID: string, probeID: string): Promise<vo
     await api.delete(`/apps/${appID}/probes/${probeID}`);
     return;
 }
-
 
 export async function exportApps(appIDs: string[]) {
     toast.info("Unimplemented!")
