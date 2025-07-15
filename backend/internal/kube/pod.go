@@ -18,7 +18,7 @@ func ListPods(ctx context.Context, clusterID, namespace, appSlug string) ([]*cor
 	}
 
 	pods, err := store.PodLister().Pods(namespace).List(labels.SelectorFromSet(labels.Set{
-		"ketches/app": appSlug,
+		"ketches.cn/app": appSlug,
 	}))
 	if err != nil {
 		log.Printf("failed to list pods in cluster %s, namespace %s, app %s: %v\n", clusterID, namespace, appSlug, err)
@@ -59,7 +59,7 @@ func GetPodStatus(pod *corev1.Pod) string {
 		return string(PodStatusUnknown)
 	}
 
-	if pod.Labels["ketches/debugging"] == "true" {
+	if pod.Labels["ketches.cn/debugging"] == "true" {
 		return string(PodStatusDebugging)
 	}
 

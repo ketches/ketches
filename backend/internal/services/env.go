@@ -143,11 +143,11 @@ func (s *envService) CreateEnv(ctx context.Context, req *models.CreateEnvRequest
 				Name:      env.ClusterNamespace,
 				Namespace: env.ClusterNamespace,
 				Labels: map[string]string{
-					"ketches/owned":     "true",
-					"ketches/env":       env.Slug,
-					"ketches/envID":     env.ID,
-					"ketches/project":   env.ProjectSlug,
-					"ketches/projectID": env.ProjectID,
+					"ketches.cn/owned":     "true",
+					"ketches.cn/env":       env.Slug,
+					"ketches.cn/envID":     env.ID,
+					"ketches.cn/project":   env.ProjectSlug,
+					"ketches.cn/projectID": env.ProjectID,
 				},
 			},
 			Spec: gatewayapisv1.GatewaySpec{
@@ -292,9 +292,9 @@ func buildNamespace(env *entities.Env) *corev1.Namespace {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: env.ClusterNamespace,
 			Labels: map[string]string{
-				"ketches/owned":   "true",
-				"ketches/env":     env.Slug,
-				"ketches/project": env.ProjectSlug,
+				"ketches.cn/owned":   "true",
+				"ketches.cn/env":     env.Slug,
+				"ketches.cn/project": env.ProjectSlug,
 			},
 		},
 	}

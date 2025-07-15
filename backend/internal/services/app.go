@@ -509,7 +509,7 @@ func (s *appService) ListAppInstances(ctx context.Context, req *models.ListAppIn
 			RequestMemory:   mainContainer.Resources.Requests.Memory().String(),
 			LimitCPU:        mainContainer.Resources.Limits.Cpu().String(),
 			LimitMemory:     mainContainer.Resources.Limits.Memory().String(),
-			Edition:         pod.Labels["ketches/edition"],
+			Edition:         pod.Labels["ketches.cn/edition"],
 		}
 		result.Instances = append(result.Instances, instance)
 	}

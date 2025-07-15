@@ -31,7 +31,7 @@ import {
     getSortedRowModel,
     useVueTable,
 } from '@tanstack/vue-table';
-import { ChevronsLeft, ChevronsRight, CircleCheck, CircleDashed, RefreshCcw } from 'lucide-vue-next';
+import { ChevronsLeft, ChevronsRight, CircleCheck, CircleDashed, RefreshCcw, Search } from 'lucide-vue-next';
 import { onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import NodeActions from './NodeActions.vue';
@@ -202,9 +202,14 @@ const table = useVueTable({
 <template>
     <div class="flex flex-col flex-grow">
         <div class="flex gap-2 items-center pb-4 w-full">
-            <Input class="max-w-sm" placeholder="搜索节点"
-                :model-value="table.getColumn('nodeName')?.getFilterValue() as string"
-                @update:model-value=" table.getColumn('nodeName')?.setFilterValue($event)" />
+            <div class="relative w-full max-w-sm">
+                <Input :model-value="table.getColumn('nodeName')?.getFilterValue() as string"
+                    @update:model-value=" table.getColumn('nodeName')?.setFilterValue($event)" placeholder="搜索节点..."
+                    class="pl-10" />
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <Search class="h-4 w-4 text-muted-foreground" />
+                </div>
+            </div>
             <Button variant="outline" size="sm" class="ml-auto" @click="fetchListData(cluster?.clusterID)">
                 <RefreshCcw />
                 刷新

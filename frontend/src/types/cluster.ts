@@ -61,3 +61,26 @@ export interface clusterNodeTaintsModel {
     key: string;
     values: string[];
 }
+
+export interface clusterExtensionModel {
+    extensionID: string;
+    slug: string;
+    displayName: string;
+    description?: string;
+    installed: boolean;
+    version?: string;
+    versions?: string[];
+    installMethod?: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface installClusterExtensionModel {
+    extensionName: string;
+    type: string;
+    version?: string;
+    values?: string;
+    namespace?: string;
+    createNamespace?: boolean;
+}

@@ -61,7 +61,12 @@ func registerClusterRoute(r *APIV1Route) {
 	adminOnly.POST("/ping", handlers.PingClusterKubeConfig)
 	adminOnly.GET("/:clusterID/nodes", handlers.ListClusterNodes)
 	adminOnly.GET("/:clusterID/nodes/:nodeName", handlers.GetClusterNode)
+	adminOnly.GET("/:clusterID/extensions/feature-enabled", handlers.CheckClusterExtensionFeatureEnabled)
+	adminOnly.POST("/:clusterID/extensions/enable", handlers.EnableClusterExtension)
 	adminOnly.GET("/:clusterID/extensions", handlers.ListClusterExtensions)
+	adminOnly.POST("/:clusterID/extensions/install", handlers.InstallClusterExtension)
+	adminOnly.DELETE("/:clusterID/extensions/:extensionName", handlers.UninstallClusterExtension)
+	adminOnly.GET("/:clusterID/extensions/:extensionName/values/:version", handlers.GetClusterExtensionValues)
 }
 
 func registerUserRoute(r *APIV1Route) {

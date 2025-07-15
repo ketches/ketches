@@ -158,23 +158,23 @@ func (a *AppMetadata) GetApplyManifests() ([]client.Object, app.Error) {
 
 func (a *AppMetadata) standardLabels() map[string]string {
 	return map[string]string{
-		"ketches/owned":   "true",
-		"ketches/app":     a.AppSlug,
-		"ketches/id":      a.AppID,
-		"ketches/edition": a.Edition,
+		"ketches.cn/owned":   "true",
+		"ketches.cn/app":     a.AppSlug,
+		"ketches.cn/id":      a.AppID,
+		"ketches.cn/edition": a.Edition,
 	}
 }
 
 func (a *AppMetadata) standardSelectorLabels() map[string]string {
 	return map[string]string{
-		"ketches/owned": "true",
-		"ketches/app":   a.AppSlug,
+		"ketches.cn/owned": "true",
+		"ketches.cn/app":   a.AppSlug,
 	}
 }
 
 func (a *AppMetadata) standardAnnotations() map[string]string {
 	return map[string]string{
-		"ketches/deployed-at": time.Now().Format(time.RFC3339),
+		"ketches.cn/deployed-at": time.Now().Format(time.RFC3339),
 	}
 }
 
@@ -225,7 +225,7 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 		args    []string
 	)
 	if a.ContainerCommand != "" {
-		labels["ketches/debugging"] = "true" // Mark as debugging if command is set
+		labels["ketches.cn/debugging"] = "true" // Mark as debugging if command is set
 		command = []string{"sh"}
 		args = []string{"-c", a.ContainerCommand}
 	}

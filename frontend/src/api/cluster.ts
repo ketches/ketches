@@ -1,5 +1,5 @@
 import api from '@/api/axios';
-import type { clusterModel, clusterNodeModel, clusterNodeRefModel, clusterNodeTaintsModel, clusterRefModel, createClusterModel, updateClusterModel } from '@/types/cluster';
+import type { clusterExtensionModel, clusterModel, clusterNodeModel, clusterNodeRefModel, clusterNodeTaintsModel, clusterRefModel, createClusterModel, installClusterExtensionModel, updateClusterModel } from '@/types/cluster';
 import type { QueryAndPagedRequest } from '@/types/common.ts';
 
 export async function listClusters(filter: QueryAndPagedRequest): Promise<{ total: number, records: clusterModel[] }> {
@@ -77,4 +77,33 @@ export async function listClusterNodeLabels(clusterID: string): Promise<string[]
 export async function listClusterNodeTaints(clusterID: string): Promise<clusterNodeTaintsModel[]> {
     const response = await api.get(`/clusters/${clusterID}/nodes/taints`);
     return response.data as clusterNodeTaintsModel[];
+}
+
+export async function checkClusterExtensionFeatureEnabled(clusterID: string): Promise<boolean> {
+    const response = await api.get(`/clusters/${clusterID}/extensions/feature-enabled`);
+    return response.data as boolean;
+}
+
+export async function enableClusterExtension(clusterID: string): Promise<void> {
+    const response = await api.post(`/clusters/${clusterID}/extensions/enable`);
+}
+
+export async function listClusterExtensions(clusterID: string): Promise<Record<string, clusterExtensionModel>> {
+    const response = await api.get(`/clusters/${clusterID}/extensions`);
+    return response.data as Record<string, clusterExtensionModel>;
+}
+
+export async function installClusterExtension(clusterID: string, model: installClusterExtensionModel): Promise<boolean> {
+    await api.post(`/clusters/${clusterID}/extensions/install`, model);
+    return true;
+}
+
+export async function uninstallClusterExtension(clusterID: string, extensionName: string): Promise<boolean> {
+    await api.delete(`/clusters/${clusterID}/extensions/${extensionName}`);
+    return true;
+}
+
+export async function getClusterExtensionValues(clusterID: string, extensionName: string, version: string): Promise<string> {
+    const response = await api.get(`/clusters/${clusterID}/extensions/${extensionName}/values/${version}`);
+    return response.data as string;
 }

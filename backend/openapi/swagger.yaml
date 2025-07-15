@@ -328,16 +328,24 @@ definitions:
         type: string
       displayName:
         type: string
-      enabled:
-        type: boolean
       extensionID:
         type: string
+      installMethod:
+        type: string
+      installed:
+        type: boolean
       slug:
+        type: string
+      status:
         type: string
       updatedAt:
         type: string
       version:
         type: string
+      versions:
+        items:
+          type: string
+        type: array
     type: object
   models.ClusterModel:
     properties:
@@ -724,6 +732,26 @@ definitions:
         items:
           $ref: '#/definitions/models.ProjectRef'
         type: array
+    type: object
+  models.InstallClusterExtensionRequest:
+    properties:
+      createNamespace:
+        type: boolean
+      extensionName:
+        type: string
+      namespace:
+        type: string
+      type:
+        enum:
+        - helm
+        type: string
+      values:
+        type: string
+      version:
+        type: string
+    required:
+    - extensionName
+    - type
     type: object
   models.ListAppsResponse:
     properties:
@@ -2463,6 +2491,155 @@ paths:
                   $ref: '#/definitions/models.ListClusterExtensionsResponse'
               type: object
       summary: List Cluster Extensions
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/extensions/{extensionName}:
+    delete:
+      consumes:
+      - application/json
+      description: Uninstall an extension from the specified cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      - description: Extension Name
+        in: path
+        name: extensionName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Uninstall Cluster Extension
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/extensions/{extensionName}/values/{version}:
+    get:
+      consumes:
+      - application/json
+      description: Get the default values.yaml for a specific cluster extension version
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      - description: Extension Name
+        in: path
+        name: extensionName
+        required: true
+        type: string
+      - description: Extension Version
+        in: path
+        name: version
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Get cluster extension default values
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/extensions/enable:
+    post:
+      consumes:
+      - application/json
+      description: Enable the cluster extension feature for the specified cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Enable Cluster Extension
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/extensions/feature-enabled:
+    get:
+      consumes:
+      - application/json
+      description: Check if the cluster extension feature is enabled for the specified
+        cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+      summary: Check Cluster Extension Feature Enabled
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/extensions/install:
+    post:
+      consumes:
+      - application/json
+      description: Install an extension in the specified cluster
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      - description: Extension installation information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.InstallClusterExtensionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Install Cluster Extension
       tags:
       - Cluster
   /api/v1/clusters/{clusterID}/nodes:

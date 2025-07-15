@@ -15,6 +15,7 @@ import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import Breadcrumb from "./breadcrumb/ClusterManagerBreadcrumb.vue";
 import ClusterActions from "./ClusterActions.vue";
+import ExtensionList from "./ExtensionList.vue";
 import NodeList from "./node/NodeList.vue";
 
 const { toggleSidebar, open } = useSidebar();
@@ -95,7 +96,7 @@ const settingDialogOpen = ref(false);
                             <Boxes />
                             节点
                         </TabsTrigger>
-                        <TabsTrigger value="monitor" :disabled="monitorExtensionInstalled">
+                        <TabsTrigger value="extensions">
                             <Blocks />
                             扩展
                         </TabsTrigger>
@@ -105,8 +106,8 @@ const settingDialogOpen = ref(false);
                 <TabsContent value="nodes">
                     <NodeList v-if="cluster" :cluster="cluster" />
                 </TabsContent>
-                <TabsContent value="monitor">
-                    <div class="mt-4 text-muted-foreground">监控功能开发中...</div>
+                <TabsContent value="extensions" class="h-full">
+                    <ExtensionList :cluster="cluster" />
                 </TabsContent>
             </Tabs>
         </div>

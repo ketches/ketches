@@ -33,7 +33,7 @@ func handleAppRunningInfoSSE() cache.ResourceEventHandlerFuncs {
 			return
 		}
 
-		appID := pod.Labels["ketches/id"]
+		appID := pod.Labels["ketches.cn/id"]
 		if appID == "" {
 			return
 		}
@@ -50,11 +50,11 @@ func handleAppRunningInfoSSE() cache.ResourceEventHandlerFuncs {
 }
 
 func processPodForAppRunningInfoSSE(pod *corev1.Pod) {
-	appID := pod.Labels["ketches/id"]
+	appID := pod.Labels["ketches.cn/id"]
 	if appID == "" {
 		return
 	}
-	appSlug := pod.Labels["ketches/app"]
+	appSlug := pod.Labels["ketches.cn/app"]
 	if appSlug == "" {
 		return
 	}
@@ -95,7 +95,7 @@ func processPodForAppRunningInfoSSE(pod *corev1.Pod) {
 		RequestMemory:  mainContainer.Resources.Requests.Memory().String(),
 		LimitCPU:       mainContainer.Resources.Limits.Cpu().String(),
 		LimitMemory:    mainContainer.Resources.Limits.Memory().String(),
-		Edition:        pod.Labels["ketches/edition"],
+		Edition:        pod.Labels["ketches.cn/edition"],
 	}
 
 	GetAppInstanceSSEClients().saveAppInstance(appID, instance)

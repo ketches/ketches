@@ -111,17 +111,24 @@ type ClusterNodeRef struct {
 }
 
 type ClusterExtensionModel struct {
-	ExtensionID string `json:"extensionID"`
-	Slug        string `json:"slug"`
-	DisplayName string `json:"displayName"`
-	Description string `json:"description,omitempty"`
-	Installed   bool   `json:"enabled"`
-	Version     string `json:"version,omitempty"`
-	CreatedAt   string `json:"createdAt"`
-	UpdatedAt   string `json:"updatedAt"`
+	ExtensionID   string   `json:"extensionID"`
+	Slug          string   `json:"slug"`
+	DisplayName   string   `json:"displayName"`
+	Description   string   `json:"description,omitempty"`
+	Installed     bool     `json:"installed"`
+	Version       string   `json:"version,omitempty"`
+	Versions      []string `json:"versions,omitempty"`
+	InstallMethod string   `json:"installMethod,omitempty"`
+	Status        string   `json:"status"`
+	CreatedAt     string   `json:"createdAt"`
+	UpdatedAt     string   `json:"updatedAt"`
 }
 
 type ListClusterExtensionsRequest struct {
+	ClusterID string `uri:"clusterID" binding:"required"`
+}
+
+type EnableClusterExtensionRequest struct {
 	ClusterID string `uri:"clusterID" binding:"required"`
 }
 
@@ -143,4 +150,29 @@ type ListClusterNodeTaintsRequest struct {
 type ClusterNodeTaintModel struct {
 	Key    string   `json:"key"`
 	Values []string `json:"values"`
+}
+
+type CheckClusterExtensionFeatureEnabledRequest struct {
+	ClusterID string `uri:"clusterID" binding:"required"`
+}
+
+type InstallClusterExtensionRequest struct {
+	ClusterID       string `json:"-" uri:"clusterID"`
+	ExtensionName   string `json:"extensionName" binding:"required"`
+	Type            string `json:"type" binding:"required,oneof=helm"`
+	Version         string `json:"version,omitempty"`
+	Values          string `json:"values,omitempty"`
+	Namespace       string `json:"namespace,omitempty"`
+	CreateNamespace bool   `json:"createNamespace,omitempty"`
+}
+
+type UninstallClusterExtensionRequest struct {
+	ClusterID     string `json:"-" uri:"clusterID"`
+	ExtensionName string `json:"-" uri:"extensionName"`
+}
+
+type GetClusterExtensionValuesRequest struct {
+	ClusterID     string `json:"-" uri:"clusterID"`
+	ExtensionName string `json:"-" uri:"extensionName"`
+	Version       string `json:"-" uri:"version"`
 }

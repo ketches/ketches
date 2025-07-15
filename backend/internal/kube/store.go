@@ -19,6 +19,7 @@ type storeInterface interface {
 	StatefulSetLister() appsv1.StatefulSetLister
 	PodLister() listerscorev1.PodLister
 	ServiceLister() listerscorev1.ServiceLister
+	ConfigMapLister() listerscorev1.ConfigMapLister
 	PersistentVolumeClaimLister() listerscorev1.PersistentVolumeClaimLister
 
 	// Kubernetes resource listers
@@ -31,6 +32,7 @@ type store struct {
 	statefulSetLister           appsv1.StatefulSetLister
 	podLister                   listerscorev1.PodLister
 	serviceLister               listerscorev1.ServiceLister
+	configMapLister             listerscorev1.ConfigMapLister
 	persistentVolumeClaimLister listerscorev1.PersistentVolumeClaimLister
 
 	nodeLister listerscorev1.NodeLister
@@ -56,6 +58,10 @@ func (s *store) ServiceLister() listerscorev1.ServiceLister {
 	return s.serviceLister
 }
 
+func (s *store) ConfigMapLister() listerscorev1.ConfigMapLister {
+	return s.configMapLister
+}
+
 func (s *store) PersistentVolumeClaimLister() listerscorev1.PersistentVolumeClaimLister {
 	return s.persistentVolumeClaimLister
 }
@@ -66,7 +72,7 @@ func (s *store) NodeLister() listerscorev1.NodeLister {
 
 func loadStore(clientset kubernetes.Interface) storeInterface {
 	ketchesOwnedResourceInformerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, 0, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
-		options.LabelSelector = "ketches/owned=true"
+		options.LabelSelector = "ketches.cn/owned=true"
 	}))
 
 	kubeInformerFactory := informers.NewSharedInformerFactory(clientset, 0)
@@ -82,6 +88,8 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 	podInformer.AddEventHandler(handleAppRunningInfoSSE())
 	service := ketchesOwnedResourceInformerFactory.Core().V1().Services()
 	serviceInformer := service.Informer()
+	configMap := ketchesOwnedResourceInformerFactory.Core().V1().ConfigMaps()
+	configMapInformer := configMap.Informer()
 	persistentVolumeClaim := ketchesOwnedResourceInformerFactory.Core().V1().PersistentVolumeClaims()
 	persistentVolumeClaimInformer := persistentVolumeClaim.Informer()
 
@@ -97,6 +105,7 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 		statefulSetInformer,
 		podInformer,
 		serviceInformer,
+		configMapInformer,
 		persistentVolumeClaimInformer,
 
 		nodeInformer,
@@ -121,6 +130,7 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 	statefulSetLister := statefulSet.Lister()
 	podLister := pod.Lister()
 	serviceLister := service.Lister()
+	configMapLister := configMap.Lister()
 	persistentVolumeClaimLister := persistentVolumeClaim.Lister()
 
 	nodeLister := node.Lister()
@@ -131,6 +141,7 @@ func loadStore(clientset kubernetes.Interface) storeInterface {
 		statefulSetLister:           statefulSetLister,
 		podLister:                   podLister,
 		serviceLister:               serviceLister,
+		configMapLister:             configMapLister,
 		persistentVolumeClaimLister: persistentVolumeClaimLister,
 
 		nodeLister: nodeLister,

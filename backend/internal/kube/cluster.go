@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	helmoperatorv1alpha1 "github.com/ketches/helm-operator/api/v1alpha1"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
@@ -147,6 +148,7 @@ func runtimeClientFromRestConfig(restConfig *rest.Config) (client.Client, app.Er
 	// Add required schemes
 	utilruntime.Must(apiextscheme.AddToScheme(runtimeScheme))
 	utilruntime.Must(gatewayapisv1.Install(runtimeScheme))
+	utilruntime.Must(helmoperatorv1alpha1.AddToScheme(runtimeScheme))
 	kubeRuntimeClient, err := client.New(restConfig, client.Options{
 		Scheme: runtimeScheme,
 	})

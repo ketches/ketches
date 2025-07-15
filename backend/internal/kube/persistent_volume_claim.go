@@ -88,7 +88,7 @@ func DeletePersistentVolumeClaimsByApp(ctx context.Context, clusterID, namespace
 	}
 
 	if err := clientset.CoreV1().PersistentVolumeClaims(namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: "ketches/app=" + appName,
+		LabelSelector: "ketches.cn/app=" + appName,
 	}); err != nil {
 		return app.ErrClusterOperationFailed
 	}

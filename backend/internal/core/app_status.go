@@ -37,8 +37,8 @@ func GetAppStatus(ctx context.Context, appEntity *entities.App) AppStatusDescrip
 			result.Status = app.AppStatusUnknown
 			return result
 		}
-		result.ActualEdition = deployment.Labels["ketches/edition"]
-		if deployment.Labels["ketches/debugging"] == "true" {
+		result.ActualEdition = deployment.Labels["ketches.cn/edition"]
+		if deployment.Labels["ketches.cn/debugging"] == "true" {
 			result.Status = app.AppStatusDebugging
 			return result
 		}
@@ -52,8 +52,8 @@ func GetAppStatus(ctx context.Context, appEntity *entities.App) AppStatusDescrip
 			result.Status = app.AppStatusUnknown
 			return result
 		}
-		result.ActualEdition = statefulSet.Labels["ketches/edition"]
-		if statefulSet.Labels["ketches/debugging"] == "true" {
+		result.ActualEdition = statefulSet.Labels["ketches.cn/edition"]
+		if statefulSet.Labels["ketches.cn/debugging"] == "true" {
 			result.Status = app.AppStatusDebugging
 			return result
 		}
@@ -84,7 +84,7 @@ func GetAppStatus(ctx context.Context, appEntity *entities.App) AppStatusDescrip
 			abnormalPodCount++
 		}
 
-		edition := pod.Labels["ketches/edition"]
+		edition := pod.Labels["ketches.cn/edition"]
 		if edition != result.ActualEdition {
 			updating = true
 			continue

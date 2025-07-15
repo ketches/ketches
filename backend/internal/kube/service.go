@@ -58,7 +58,7 @@ func ListServices(ctx context.Context, clusterID, namespace, appName string) ([]
 		return nil, e
 	}
 
-	services, err := store.ServiceLister().Services(namespace).List(labels.SelectorFromSet(labels.Set{"ketches/app": appName}))
+	services, err := store.ServiceLister().Services(namespace).List(labels.SelectorFromSet(labels.Set{"ketches.cn/app": appName}))
 	if err != nil {
 		return nil, app.ErrClusterOperationFailed
 	}
