@@ -142,3 +142,12 @@ func GetAppSchedulingRule(ctx context.Context, appID string) (*entities.AppSched
 
 	return entity, nil
 }
+
+func AllAppConfigFiles(appID string) ([]*entities.AppConfigFile, app.Error) {
+	var result []*entities.AppConfigFile
+	if err := db.Instance().Find(&result, "app_id = ?", appID).Error; err != nil {
+		log.Printf("failed to get app config files for app %s: %v", appID, err)
+		return nil, app.ErrDatabaseOperationFailed
+	}
+	return result, nil
+}

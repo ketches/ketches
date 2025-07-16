@@ -123,12 +123,13 @@ const columns: ColumnDef<appEnvVarModel>[] = [
     },
     {
         id: 'actions',
-        header: () => centeredHeader('操作'),
+        enableHiding: false,
         cell: ({ row }) => {
             if (editingRowId.value === row.id || row.original.envVarID === 'new') {
                 return h('div', { class: "flex justify-end mr-2 gap-2" }, [
                     h(Button, {
                         variant: 'outline',
+                        size: 'sm',
                         class: 'text-green-500',
                         onClick: async () => {
                             if (editingRowId.value === 'new') {
@@ -159,6 +160,7 @@ const columns: ColumnDef<appEnvVarModel>[] = [
                     ]),
                     h(Button, {
                         variant: 'outline',
+                        size: 'sm',
                         onClick: () => resetEnvVarRow()
                     }, [
                         h(X),
@@ -168,6 +170,7 @@ const columns: ColumnDef<appEnvVarModel>[] = [
             return h('div', { class: "flex justify-end mr-2 gap-2" }, [
                 h(Button, {
                     variant: 'outline',
+                    size: 'sm',
                     onClick: () => {
                         editingRowId.value = row.id
                         editKey.value = row.original.key
@@ -176,6 +179,8 @@ const columns: ColumnDef<appEnvVarModel>[] = [
                 }, () => [h(SquarePen)]),
                 h(Button, {
                     variant: 'outline',
+                    size: 'sm',
+                    class: "text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/20",
                     onClick: async () => {
                         await deleteAppEnvVar(row.original.appID, row.original.envVarID)
                         listData.value = listData.value.filter(item => item.envVarID !== row.original.envVarID)

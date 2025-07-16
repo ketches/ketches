@@ -3,6 +3,7 @@ import {
   Code,
   Cpu,
   Disc3,
+  FileCog,
   FolderTree,
   HardDrive,
   HeartPulse,
@@ -62,6 +63,12 @@ export const appSettingItems: Item[] = [
     tab: "volume",
     icon: HardDrive,
     comp: defineAsyncComponent(() => import("../forms/Volume.vue")),
+  },
+  {
+    title: "配置文件",
+    tab: "configFile",
+    icon: FileCog,
+    comp: defineAsyncComponent(() => import("../forms/ConfigFile.vue")),
   },
   {
     title: "端口网关",
@@ -212,3 +219,12 @@ export const schedulingRuleTolerationEffectRefs = {
     value: "NoExecute",
   },
 };
+
+export const configFileModeOptions = [
+  { label: '0644 (rw-r--r--)', value: '0644' },
+  { label: '0755 (rwxr-xr-x)', value: '0755' },
+  { label: '0600 (rw-------)', value: '0600' },
+  { label: '0700 (rwx------)', value: '0700' },
+  { label: '0444 (r--r--r--)', value: '0444' },
+  { label: '0555 (r-xr-xr-x)', value: '0555' },
+];

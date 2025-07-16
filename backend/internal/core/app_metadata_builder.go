@@ -50,6 +50,11 @@ func (b *appMetadataBuilder) Build() (*AppMetadata, app.Error) {
 		return nil, err
 	}
 
+	appConfigFiles, err := orm.AllAppConfigFiles(b.appEntity.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	appGateways, err := orm.AllAppGateways(b.appEntity.ID)
 	if err != nil {
 		return nil, err
@@ -100,6 +105,15 @@ func (b *appMetadataBuilder) Build() (*AppMetadata, app.Error) {
 			VolumeType:   volume.VolumeType,
 			Capacity:     volume.Capacity,
 			VolumeMode:   volume.VolumeMode,
+		})
+	}
+
+	for _, configFile := range appConfigFiles {
+		result.ConfigFiles = append(result.ConfigFiles, AppMetadataConfigFile{
+			Slug:      configFile.Slug,
+			Content:   configFile.Content,
+			MountPath: configFile.MountPath,
+			FileMode:  configFile.FileMode,
 		})
 	}
 

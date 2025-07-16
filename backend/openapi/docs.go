@@ -396,6 +396,203 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/apps/{appID}/config-files": {
+            "get": {
+                "description": "List configuration files for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppConfigFile"
+                ],
+                "summary": "List App Config Files",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.AppConfigFileModel"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new configuration file for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppConfigFile"
+                ],
+                "summary": "Create App Config File",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Config File",
+                        "name": "configFile",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateAppConfigFileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppConfigFileModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete configuration files for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppConfigFile"
+                ],
+                "summary": "Delete App Config Files",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Config File IDs",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DeleteAppConfigFilesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/apps/{appID}/config-files/{configFileID}": {
+            "put": {
+                "description": "Update a configuration file for an app",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppConfigFile"
+                ],
+                "summary": "Update App Config File",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "App ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Config File ID",
+                        "name": "configFileID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Config File",
+                        "name": "configFile",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateAppConfigFileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.AppConfigFileModel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/apps/{appID}/env-vars": {
             "get": {
                 "description": "List environment variables for an app",
@@ -4634,6 +4831,29 @@ const docTemplate = `{
                 }
             }
         },
+        "models.AppConfigFileModel": {
+            "type": "object",
+            "properties": {
+                "appID": {
+                    "type": "string"
+                },
+                "configFileID": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "fileMode": {
+                    "type": "string"
+                },
+                "mountPath": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "models.AppEnvVarModel": {
             "type": "object",
             "properties": {
@@ -5213,6 +5433,31 @@ const docTemplate = `{
                 }
             }
         },
+        "models.CreateAppConfigFileRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "fileMode",
+                "mountPath",
+                "slug"
+            ],
+            "properties": {
+                "content": {
+                    "description": "950KB = 950*1024 bytes",
+                    "type": "string",
+                    "maxLength": 972800
+                },
+                "fileMode": {
+                    "type": "string"
+                },
+                "mountPath": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "models.CreateAppGatewayRequest": {
             "type": "object",
             "required": [
@@ -5490,6 +5735,21 @@ const docTemplate = `{
                 },
                 "slug": {
                     "type": "string"
+                }
+            }
+        },
+        "models.DeleteAppConfigFilesRequest": {
+            "type": "object",
+            "required": [
+                "configFileIDs"
+            ],
+            "properties": {
+                "configFileIDs": {
+                    "description": "List of config file IDs to delete",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -5986,6 +6246,27 @@ const docTemplate = `{
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "models.UpdateAppConfigFileRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "fileMode",
+                "mountPath"
+            ],
+            "properties": {
+                "content": {
+                    "description": "950KB = 950*1024 bytes",
+                    "type": "string",
+                    "maxLength": 972800
+                },
+                "fileMode": {
+                    "type": "string"
+                },
+                "mountPath": {
+                    "type": "string"
                 }
             }
         },

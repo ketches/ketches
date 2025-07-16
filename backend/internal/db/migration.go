@@ -27,6 +27,7 @@ func Migrate(db *gorm.DB) {
 		&entities.AppEnvVar{},
 		&entities.AppGateway{},
 		&entities.AppVolume{},
+		&entities.AppConfigFile{},
 		&entities.AppProbe{},
 		&entities.AppSchedulingRule{},
 	); err != nil {

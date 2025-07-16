@@ -1,5 +1,5 @@
 import api from '@/api/axios'
-import type { appEnvVarModel, appGatewayModel, appInstanceModel, appModel, appProbeModel, appRefModel, appSchedulingRuleModel, appVolumeModel, createAppEnvVarModel, createAppGatewayModel, createAppProbeModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, setAppResourceModel, setAppSchedulingRuleModel, updateAppEnvVarModel, updateAppGatewayModel, updateAppImageModel, updateAppInfoModel, updateAppProbeModel, updateAppVolumeModel } from '@/types/app'
+import type { appConfigFileModel, appEnvVarModel, appGatewayModel, appInstanceModel, appModel, appProbeModel, appRefModel, appSchedulingRuleModel, appVolumeModel, createAppEnvVarModel, createAppGatewayModel, createAppProbeModel, createAppVolumeModel, logsRequestModel, setAppCommandModel, setAppResourceModel, setAppSchedulingRuleModel, updateAppEnvVarModel, updateAppGatewayModel, updateAppImageModel, updateAppInfoModel, updateAppProbeModel, updateAppVolumeModel } from '@/types/app'
 import { getApiBaseUrl } from '@/utils/env'
 import { toast } from 'vue-sonner'
 
@@ -208,4 +208,33 @@ export async function deleteAppProbe(appID: string, probeID: string): Promise<vo
 
 export async function exportApps(appIDs: string[]) {
     toast.info("Unimplemented!")
+}
+
+
+// App Config Files
+export async function listAppConfigFiles(appID: string): Promise<appConfigFileModel[]> {
+    const response = await api.get(`/apps/${appID}/config-files`)
+    return response.data as appConfigFileModel[]
+}
+
+export async function createAppConfigFile(appID: string, configFile: Omit<appConfigFileModel, "configFileID" | "appID">): Promise<appConfigFileModel> {
+    const response = await api.post(`/apps/${appID}/config-files`, configFile)
+    return response.data as appConfigFileModel
+}
+
+export async function updateAppConfigFile(appID: string, configFileID: string, configFile: Omit<appConfigFileModel, "configFileID" | "appID" | "slug">): Promise<appConfigFileModel> {
+    const response = await api.put(`/apps/${appID}/config-files/${configFileID}`, configFile)
+    return response.data as appConfigFileModel
+}
+
+export async function deleteAppConfigFile(appID: string, configFileID: string): Promise<void> {
+    return deleteAppConfigFiles(appID, [configFileID])
+}
+
+export async function deleteAppConfigFiles(appID: string, configFileIDs: string[]): Promise<void> {
+    await api.delete(`/apps/${appID}/config-files`, {
+        data: {
+            configFileIDs: configFileIDs
+        }
+    })
 }

@@ -155,7 +155,7 @@ const columns: ColumnDef<projectMemberModel>[] = [
     },
     {
         id: 'actions',
-        header: () => centeredHeader('操作'),
+        enableHiding: false,
         cell: ({ row }) => h('div', { class: "flex justify-end mr-2" }, h(MemberActions, {
             member: row.original,
             onActionCompleted: () => fetchPagedData(activeProjectRef.value?.projectID)

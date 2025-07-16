@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { deleteAppVolume, listAppVolumes } from '@/api/app';
+import { deleteAppConfigFiles, listAppConfigFiles } from '@/api/app';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
+import Separator from '@/components/ui/separator/Separator.vue';
 import {
     Table,
     TableBody,
@@ -13,7 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import type { appModel, appVolumeModel } from '@/types/app';
+import type { appConfigFileModel, appModel } from '@/types/app';
 import { valueUpdater } from '@/utils/valueUpdater';
 import type {
     ColumnDef,
@@ -32,11 +32,10 @@ import {
     useVueTable,
 } from '@tanstack/vue-table';
 import { ChevronsLeft, ChevronsRight, Delete, Plus, SquarePen } from 'lucide-vue-next';
-import { h, onMounted, ref, toRef, watch } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
-import { accessModeRefs, volumeModeRefs } from '../data/settings';
-import CreateVolume from './CreateVolume.vue';
-import UpdateVolume from './UpdateVolume.vue';
+import CreateConfigFile from './CreateConfigFile.vue';
+import UpdateConfigFile from './UpdateConfigFile.vue';
 
 const props = defineProps({
     app: {
@@ -45,29 +44,15 @@ const props = defineProps({
     },
 });
 
-const app = toRef(props, 'app');
-const listData = ref<appVolumeModel[]>([])
-
-async function fetchListData(appID?: string) {
-    if (appID) {
-        const records = await listAppVolumes(appID)
-        listData.value = records
-    }
-}
-
-onMounted(async () => {
-    await fetchListData(app.value.appID)
-})
-
-watch(app, async (newApp) => {
-    if (newApp.appID) {
-        await fetchListData(newApp.appID)
-    }
-})
+const data = ref<appConfigFileModel[]>([]);
+const sorting = ref<SortingState>([]);
+const columnFilters = ref<ColumnFiltersState>([]);
+const columnVisibility = ref<VisibilityState>({});
+const rowSelection = ref({});
+const expanded = ref<ExpandedState>({});
 
 const centeredHeader = (text: string) => h('div', { class: 'text-center' }, text)
-
-const columns: ColumnDef<appVolumeModel>[] = [
+const columns: ColumnDef<appConfigFileModel>[] = [
     {
         id: 'select',
         header: ({ table }) => h(Checkbox, {
@@ -92,105 +77,54 @@ const columns: ColumnDef<appVolumeModel>[] = [
     },
     {
         accessorKey: 'slug',
-        header: "存储卷",
+        header: "配置文件",
         cell: ({ row }) => h('div', { class: 'font-mono' }, row.original.slug),
     },
     {
-        accessorKey: 'volumeType',
-        header: () => centeredHeader('存储类型'),
-        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.volumeType),
-    },
-    {
         accessorKey: 'mountPath',
-        header: "挂载路径",
-        cell: ({ row }) => h("div", { class: "space-y-1 ml-2" }, row.original.subPath ? [
-            h(
-                "div",
-                { class: "font-mono" },
-                row.original.mountPath
-            ),
-            h(
-                "div",
-                { class: "text-sm text-muted-foreground font-mono" },
-                row.original.subPath
-            ),
-        ] : [
-            h(
-                "div",
-                { class: "font-mono" },
-                row.original.mountPath
-            ),
-        ]),
+        header: '挂载路径',
+        cell: ({ row }) => h('div', { class: 'font-mono text-sm' }, row.getValue('mountPath')),
     },
     {
-        accessorKey: 'storageClass',
-        header: () => centeredHeader('存储类'),
-        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.storageClass || '-'),
-    },
-    {
-        accessorKey: 'capacity',
-        header: () => centeredHeader('容量'),
-        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.capacity + 'Gi'),
-    },
-    {
-        accessorKey: 'accessModes',
-        header: () => centeredHeader('访问模式'),
-        cell: ({ row }) => h('div', { class: 'text-center' }, row.original.accessModes.map(mode => h(Badge, { variant: "secondary" }, accessModeRefs[mode].label || mode))),
-    },
-    {
-        accessorKey: 'volumeMode',
-        header: () => centeredHeader('存储模式'),
-        cell: ({ row }) => h('div', { class: 'text-center' }, volumeModeRefs[row.original.volumeMode || 'Filesystem']?.label),
+        accessorKey: 'fileMode',
+        header: '文件权限',
+        cell: ({ row }) => h(Badge, { variant: 'outline' }, () => row.getValue('fileMode')),
     },
     {
         id: 'actions',
         enableHiding: false,
         cell: ({ row }) => {
-            return h('div', { class: "flex justify-end mr-2 gap-2" }, [
+            const configFile = row.original;
+            return h('div', { class: 'flex items-center gap-2' }, [
                 h(Button, {
                     variant: 'outline',
                     size: 'sm',
-                    onClick: () => {
-                        selectedVolume.value = row.original
-                        openUpdateVolumeDialog.value = true
-                    }
-                }, () => [h(SquarePen)]),
+                    onClick: () => editConfigFile(configFile),
+                }, () => h(SquarePen)),
                 h(Button, {
                     variant: 'outline',
                     size: 'sm',
-                    class: "text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/20 hover:bg-destructive/20",
-                    onClick: async () => {
-                        await deleteAppVolume(row.original.appID, row.original.volumeID)
-                        listData.value = listData.value.filter(item => item.volumeID !== row.original.volumeID)
-                        toast.success('存储卷已删除')
-                        app.value.updated = true
-                    }
-                }, () => [h(Delete)])
-            ])
-        }
+                    class: "text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/20",
+                    onClick: () => deleteConfigFile(configFile.configFileID),
+                }, () => h(Delete)),
+            ]);
+        },
     },
-]
-
-const sorting = ref<SortingState>([])
-const columnFilters = ref<ColumnFiltersState>([])
-const columnVisibility = ref<VisibilityState>({})
-const rowSelection = ref({})
-const expanded = ref<ExpandedState>({})
+];
 
 const table = useVueTable({
-    data: listData,
+    data,
     columns,
-    getRowId: row => row.volumeID,
+    onSortingChange: updaterOrValue => valueUpdater(updaterOrValue, sorting),
+    onColumnFiltersChange: updaterOrValue => valueUpdater(updaterOrValue, columnFilters),
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
-    onSortingChange: updaterOrValue => valueUpdater(updaterOrValue, sorting),
-    onColumnFiltersChange: updaterOrValue => valueUpdater(updaterOrValue, columnFilters),
     onColumnVisibilityChange: updaterOrValue => valueUpdater(updaterOrValue, columnVisibility),
     onRowSelectionChange: updaterOrValue => valueUpdater(updaterOrValue, rowSelection),
     onExpandedChange: updaterOrValue => valueUpdater(updaterOrValue, expanded),
+    getExpandedRowModel: getExpandedRowModel(),
     state: {
         get sorting() { return sorting.value },
         get columnFilters() { return columnFilters.value },
@@ -198,29 +132,94 @@ const table = useVueTable({
         get rowSelection() { return rowSelection.value },
         get expanded() { return expanded.value },
     },
-})
+});
 
-const openAddVolumeDialog = ref(false)
-const openUpdateVolumeDialog = ref(false)
-const selectedVolume = ref<appVolumeModel | null>(null)
+const openAddConfigFileDialog = ref(false);
+const showUpdateDialog = ref(false);
+const editingConfigFile = ref<appConfigFileModel | null>(null);
+
+const selectedConfigFiles = computed(() => {
+    return table.getFilteredSelectedRowModel().rows.map(row => row.original);
+});
+
+async function loadConfigFiles() {
+    try {
+        data.value = await listAppConfigFiles(props.app.appID);
+    } catch (error) {
+        console.error('Failed to load config files:', error);
+        toast.error('加载配置文件失败');
+    }
+}
+
+function addConfigFile() {
+    openAddConfigFileDialog.value = true;
+}
+
+function editConfigFile(configFile: appConfigFileModel) {
+    editingConfigFile.value = configFile;
+    showUpdateDialog.value = true;
+}
+
+async function deleteConfigFile(configFileID: string) {
+    try {
+        await deleteAppConfigFiles(props.app.appID, [configFileID]);
+        toast.success('配置文件删除成功');
+        await loadConfigFiles();
+    } catch (error) {
+        console.error('Failed to delete config file:', error);
+        toast.error('删除配置文件失败');
+    }
+}
+
+async function deleteSelectedConfigFiles() {
+    if (selectedConfigFiles.value.length === 0) {
+        toast.warning('请选择要删除的配置文件');
+        return;
+    }
+
+    try {
+        const configFileIDs = selectedConfigFiles.value.map(cf => cf.configFileID);
+        await deleteAppConfigFiles(props.app.appID, configFileIDs);
+        toast.success(`成功删除 ${configFileIDs.length} 个配置文件`);
+        rowSelection.value = {};
+        await loadConfigFiles();
+    } catch (error) {
+        console.error('Failed to delete config files:', error);
+        toast.error('删除配置文件失败');
+    }
+}
+
+function onConfigFileCreated() {
+    openAddConfigFileDialog.value = false;
+    loadConfigFiles();
+}
+
+function onConfigFileUpdated() {
+    showUpdateDialog.value = false;
+    editingConfigFile.value = null;
+    loadConfigFiles();
+}
+
+onMounted(() => {
+    loadConfigFiles();
+});
 </script>
 
 <template>
     <div>
         <h3 class="text-lg font-medium">
-            存储卷
+            配置文件
         </h3>
         <p class="text-sm text-muted-foreground">
-            配置应用存储卷，例如数据库或文件存储。
+            配置文件会挂载到容器的指定路径下。
         </p>
     </div>
     <Separator />
     <div class="flex flex-col flex-grow">
         <div class="flex gap-2 items-center pb-4 w-full">
-            <Input class="max-w-sm" placeholder="搜索环境变量"
-                :model-value="table.getColumn('slug')?.getFilterValue() as string"
-                @update:model-value=" table.getColumn('slug')?.setFilterValue($event)" />
-            <Button variant="outline" size="sm" class="ml-auto" @click="openAddVolumeDialog = true">
+            <Input placeholder="搜索配置文件..." :model-value="table.getColumn('slug')?.getFilterValue() as string"
+                @update:model-value="table.getColumn('slug')?.setFilterValue($event)" class="max-w-sm" />
+            <Button variant="outline" size="sm" class="ml-auto" @click="addConfigFile">
                 <Plus />
                 新增
             </Button>
@@ -228,7 +227,7 @@ const selectedVolume = ref<appVolumeModel | null>(null)
         <div class="rounded-md border">
             <Table>
                 <TableHeader>
-                    <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id" class="group">
+                    <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
                         <TableHead v-for="header in headerGroup.headers" :key="header.id"
                             :class="{ 'w-px whitespace-nowrap': header.column.id === 'actions' || header.column.id === 'select' }">
                             <FlexRender v-if="!header.isPlaceholder" :render="header.column.columnDef.header"
@@ -239,15 +238,10 @@ const selectedVolume = ref<appVolumeModel | null>(null)
                 <TableBody>
                     <template v-if="table.getRowModel().rows?.length">
                         <template v-for="row in table.getRowModel().rows" :key="row.id">
-                            <TableRow :data-state="row.getIsSelected() && 'selected'" class="group">
+                            <TableRow :data-state="row.getIsSelected() && 'selected'">
                                 <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id"
                                     :class="{ 'w-px whitespace-nowrap': cell.column.id === 'actions' || cell.column.id === 'select' }">
                                     <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                                </TableCell>
-                            </TableRow>
-                            <TableRow v-if="row.getIsExpanded()">
-                                <TableCell :colspan="row.getAllCells().length">
-                                    {{ JSON.stringify(row.original) }}
                                 </TableCell>
                             </TableRow>
                         </template>
@@ -274,8 +268,12 @@ const selectedVolume = ref<appVolumeModel | null>(null)
             </div>
         </div>
     </div>
-    <CreateVolume v-model="openAddVolumeDialog" :appID="app.appID" @close="openAddVolumeDialog = false"
-        @volume-created="fetchListData(app.appID); app.updated = true" />
-    <UpdateVolume v-model="openUpdateVolumeDialog" v-if="selectedVolume" :volume="selectedVolume"
-        @close="openUpdateVolumeDialog = false" @volume-updated="fetchListData(app.appID); app.updated = true" />
+    <!-- Create Dialog -->
+    <CreateConfigFile v-if="openAddConfigFileDialog" :app="app" @created="onConfigFileCreated"
+        @cancel="openAddConfigFileDialog = false" />
+
+    <!-- Update Dialog -->
+    <UpdateConfigFile v-if="showUpdateDialog && editingConfigFile" :app="app" :config-file="editingConfigFile"
+        @updated="onConfigFileUpdated" @cancel="showUpdateDialog = false; editingConfigFile = null" />
+
 </template>

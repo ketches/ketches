@@ -234,7 +234,7 @@ const onSubmit = handleSubmit(async (values) => {
                             <FormLabel>
                                 <TooltipProvider>
                                     <Tooltip>
-                                        <TooltipTrigger>存储到子路径</TooltipTrigger>
+                                        <TooltipTrigger>子路径（可选）</TooltipTrigger>
                                         <TooltipContent side="right">
                                             <p>用于指定容器挂载存储卷的子路径。</p>
                                         </TooltipContent>
@@ -249,42 +249,44 @@ const onSubmit = handleSubmit(async (values) => {
                     </FormField>
                 </div>
                 <div v-show="formValues.volumeType === 'pvc'" class="space-y-6">
-                    <FormField v-slot="{ componentField }" name="storageClass" :validate-on-blur="!isFieldDirty">
-                        <FormItem>
-                            <FormLabel>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger>存储类</TooltipTrigger>
-                                        <TooltipContent side="right">
-                                            <p>指定存储卷的存储类，默认为空。</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </FormLabel>
-                            <FormControl>
-                                <Input v-bind="componentField" class="w-full" placeholder="例如：standard" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    </FormField>
-                    <FormField v-slot="{ componentField }" name="capacity" :validate-on-blur="!isFieldDirty">
-                        <FormItem>
-                            <FormLabel>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger>存储容量</TooltipTrigger>
-                                        <TooltipContent side="right">
-                                            <p>指定存储卷的容量，单位为 GiB，默认为 1 GiB。</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </FormLabel>
-                            <FormControl>
-                                <Input v-bind="componentField" type="number" class="w-full" default-value="1" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    </FormField>
+                    <div class="grid grid-cols-2 gap-4">
+                        <FormField v-slot="{ componentField }" name="storageClass" :validate-on-blur="!isFieldDirty">
+                            <FormItem class="col-span-1">
+                                <FormLabel>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>存储类</TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                <p>指定存储卷的存储类，默认为空。</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </FormLabel>
+                                <FormControl>
+                                    <Input v-bind="componentField" class="w-full" placeholder="例如：standard" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        </FormField>
+                        <FormField v-slot="{ componentField }" name="capacity" :validate-on-blur="!isFieldDirty">
+                            <FormItem class="col-span-1">
+                                <FormLabel>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>存储容量</TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                <p>指定存储卷的容量，单位为 GiB，默认为 1 GiB。</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </FormLabel>
+                                <FormControl>
+                                    <Input v-bind="componentField" type="number" class="w-full" default-value="1" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        </FormField>
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
                         <FormField v-slot="{ componentField }" name="accessModes" :validate-on-blur="!isFieldDirty">
                             <FormItem class="col-span-1">
@@ -326,10 +328,10 @@ const onSubmit = handleSubmit(async (values) => {
                                                         <div class="flex flex-col">
                                                             <SelectItemText>{{
                                                                 accessMode.label
-                                                            }}</SelectItemText>
+                                                                }}</SelectItemText>
                                                             <span class="text-xs text-muted-foreground">{{
                                                                 accessMode.desc
-                                                            }}</span>
+                                                                }}</span>
                                                         </div>
                                                     </div>
                                                 </SelectItem>
@@ -382,7 +384,7 @@ const onSubmit = handleSubmit(async (values) => {
                                                         <div class="flex flex-col">
                                                             <SelectItemText>{{
                                                                 volumeMode.label
-                                                            }}</SelectItemText>
+                                                                }}</SelectItemText>
                                                             <span class="text-xs text-muted-foreground">
                                                                 {{ volumeMode.desc }}
                                                             </span>

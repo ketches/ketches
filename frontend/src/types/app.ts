@@ -138,6 +138,15 @@ export interface appVolumeModel {
     appID: string
 }
 
+export interface appConfigFileModel {
+    configFileID: string
+    appID: string
+    slug: string
+    content: string
+    mountPath: string
+    fileMode: string
+}
+
 export interface createAppVolumeModel {
     slug: string
     mountPath: string
@@ -185,28 +194,6 @@ export interface updateAppGatewayModel {
     gatewayPort: number
     exposed: boolean
 }
-
-// export interface healthCheckModel {
-//     initialDelaySeconds: number
-//     periodSeconds: number
-//     timeoutSeconds: number
-//     successThreshold: number
-//     failureThreshold: number
-//     httpGet?: {
-//         path: string
-//         port: number
-//         host?: string
-//         scheme?: 'HTTP' | 'HTTPS'
-//         headers?: Record<string, string>
-//     }
-//     tcpSocket?: {
-//         port: number
-//         host?: string
-//     }
-//     exec?: {
-//         command: string[]
-//     }
-// }
 
 export interface appProbeModel {
     probeID: string

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/pkg/utils"
+	"github.com/spf13/cast"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -37,10 +38,12 @@ type AppMetadata struct {
 	ContainerCommand string                     `json:"containerCommand"`
 	EnvVars          []AppMetadataEnvVar        `json:"envVars,omitempty"`
 	Volumes          []AppMetadataVolume        `json:"volumes,omitempty"`
+	ConfigFiles      []AppMetadataConfigFile    `json:"configFiles,omitempty"`
 	Gateways         []AppMetadataGateway       `json:"gateways,omitempty"`
 	Probes           []AppMetadataProbe         `json:"probes,omitempty"`
 	SchedulingRule   *AppMetadataSchedulingRule `json:"schedulingRule,omitempty"`
 	Edition          string                     `json:"edition,omitempty"`
+	DebugMode        bool                       `json:"debugMode,omitempty"`
 	EnvID            string                     `json:"envId,omitempty"`
 	EnvSlug          string                     `json:"envSlug,omitempty"`
 	ProjectID        string                     `json:"projectId,omitempty"`
@@ -62,6 +65,13 @@ type AppMetadataVolume struct {
 	VolumeType   string   `json:"volumeType"`
 	Capacity     int      `json:"capacity"`
 	VolumeMode   string   `json:"volumeMode"`
+}
+
+type AppMetadataConfigFile struct {
+	Slug      string `json:"slug"`
+	Content   string `json:"content"`
+	MountPath string `json:"mountPath"`
+	FileMode  string `json:"fileMode"`
 }
 
 type AppMetadataGateway struct {
@@ -113,7 +123,9 @@ func (a *AppMetadata) Deploy(ctx context.Context, cli client.Client, options *Ap
 		if options.ZeroReplicas {
 			a.Replicas = 0 // Set replicas to 0 for initial deployment
 		}
+
 		if options.DebugMode {
+			a.DebugMode = true
 			a.ContainerCommand = "sleep infinity" // Set a debug command to keep the container running
 		}
 	}
@@ -157,12 +169,16 @@ func (a *AppMetadata) GetApplyManifests() ([]client.Object, app.Error) {
 }
 
 func (a *AppMetadata) standardLabels() map[string]string {
-	return map[string]string{
+	result := map[string]string{
 		"ketches.cn/owned":   "true",
 		"ketches.cn/app":     a.AppSlug,
 		"ketches.cn/id":      a.AppID,
 		"ketches.cn/edition": a.Edition,
 	}
+	if a.DebugMode {
+		result["ketches.cn/debugging"] = "true"
+	}
+	return result
 }
 
 func (a *AppMetadata) standardSelectorLabels() map[string]string {
@@ -197,8 +213,14 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 		result = append(result, &pvc)
 	}
 
-	volumeMounts := make([]corev1.VolumeMount, 0, len(a.Volumes))
-	volumes := make([]corev1.Volume, 0, len(a.Volumes))
+	for _, configMap := range a.configMapManifests() {
+		result = append(result, &configMap)
+	}
+
+	volumeMounts := make([]corev1.VolumeMount, 0, len(a.Volumes)+len(a.ConfigFiles))
+	volumes := make([]corev1.Volume, 0, len(a.Volumes)+len(a.ConfigFiles))
+
+	// Add volume mounts for persistent volumes
 	for _, volume := range a.Volumes {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      volume.Slug,
@@ -209,7 +231,27 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 			Name: volume.Slug,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: volume.Slug,
+					ClaimName: appVolumeName(a.AppSlug, volume.Slug),
+				},
+			},
+		})
+	}
+
+	// Add volume mounts for config files
+	for _, configFile := range a.ConfigFiles {
+		volumeName := configFile.Slug
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      volumeName,
+			MountPath: configFile.MountPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: appConfigFileName(a.AppSlug, configFile.Slug),
+					},
+					DefaultMode: utils.Ptr(cast.ToInt32(configFile.FileMode)),
 				},
 			},
 		})
@@ -225,7 +267,6 @@ func (a *AppMetadata) deploymentManifests() ([]client.Object, app.Error) {
 		args    []string
 	)
 	if a.ContainerCommand != "" {
-		labels["ketches.cn/debugging"] = "true" // Mark as debugging if command is set
 		command = []string{"sh"}
 		args = []string{"-c", a.ContainerCommand}
 	}
@@ -397,9 +438,16 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 
 	var (
 		volumeClaims = a.persistentVolumeClaimManifests()
-		volumeMounts = make([]corev1.VolumeMount, 0, len(a.Volumes))
-		volumes      = make([]corev1.Volume, 0, len(a.Volumes))
+		volumeMounts = make([]corev1.VolumeMount, 0, len(a.Volumes)+len(a.ConfigFiles))
+		volumes      = make([]corev1.Volume, 0, len(a.Volumes)+len(a.ConfigFiles))
 	)
+
+	// Add ConfigMaps for config files
+	for _, configMap := range a.configMapManifests() {
+		result = append(result, &configMap)
+	}
+
+	// Add volume mounts for persistent volumes
 	for _, volume := range a.Volumes {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      volume.Slug,
@@ -411,7 +459,27 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 			Name: volume.Slug,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: volume.Slug,
+					ClaimName: appVolumeName(a.AppSlug, volume.Slug),
+				},
+			},
+		})
+	}
+
+	// Add volume mounts for config files
+	for _, configFile := range a.ConfigFiles {
+		volumeName := configFile.Slug
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      volumeName,
+			MountPath: configFile.MountPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: appConfigFileName(a.AppSlug, configFile.Slug),
+					},
+					DefaultMode: utils.Ptr(cast.ToInt32(configFile.FileMode)),
 				},
 			},
 		})
@@ -541,6 +609,48 @@ func (a *AppMetadata) statefulSetManifests() ([]client.Object, app.Error) {
 	return result, nil
 }
 
+func appConfigFileName(appSlug, configSlug string) string {
+	return fmt.Sprintf("%s-config-file-%s", appSlug, configSlug)
+}
+
+func (a *AppMetadata) configMapManifests() []corev1.ConfigMap {
+	var result []corev1.ConfigMap
+
+	for _, configFile := range a.ConfigFiles {
+		// parse filename from configFile mountPath: last element after splitting by "/"
+		fileName := strings.Split(configFile.MountPath, "/")[len(strings.Split(configFile.MountPath, "/"))-1]
+
+		result = append(result, corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ConfigMap",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      appConfigFileName(a.AppSlug, configFile.Slug),
+				Namespace: a.ClusterNamespace,
+				Labels:    a.standardLabels(),
+			},
+			Data: map[string]string{
+				fileName: configFile.Content,
+			},
+		})
+	}
+
+	return result
+}
+
+func pvcAccessModes(accessModes []string) []corev1.PersistentVolumeAccessMode {
+	var kubeAccessModes []corev1.PersistentVolumeAccessMode
+	for _, mode := range accessModes {
+		kubeAccessModes = append(kubeAccessModes, corev1.PersistentVolumeAccessMode(mode))
+	}
+	return kubeAccessModes
+}
+
+func appVolumeName(appSlug, volumeSlug string) string {
+	return fmt.Sprintf("%s-volume-%s", appSlug, volumeSlug)
+}
+
 func (a *AppMetadata) persistentVolumeClaimManifests() []corev1.PersistentVolumeClaim {
 	var result []corev1.PersistentVolumeClaim
 
@@ -551,7 +661,7 @@ func (a *AppMetadata) persistentVolumeClaimManifests() []corev1.PersistentVolume
 				APIVersion: "v1",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      volume.Slug,
+				Name:      appVolumeName(a.AppSlug, volume.Slug),
 				Namespace: a.ClusterNamespace,
 				Labels:    a.standardLabels(),
 			},
@@ -800,12 +910,4 @@ func (a *AppMetadata) gatewayManifests() []client.Object {
 
 	}
 	return result
-}
-
-func pvcAccessModes(accessModes []string) []corev1.PersistentVolumeAccessMode {
-	var kubeAccessModes []corev1.PersistentVolumeAccessMode
-	for _, mode := range accessModes {
-		kubeAccessModes = append(kubeAccessModes, corev1.PersistentVolumeAccessMode(mode))
-	}
-	return kubeAccessModes
 }

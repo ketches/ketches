@@ -145,6 +145,7 @@ func registerAppRoute(r *APIV1Route) {
 	projectMember.GET("/running/info", handlers.GetAppRunningInfo, middlewares.RequestIDMiddleware())
 	projectMember.GET("/env-vars", handlers.ListAppEnvVars)
 	projectMember.GET("/volumes", handlers.ListAppVolumes)
+	projectMember.GET("/config-files", handlers.ListAppConfigFiles)
 	projectMember.GET("/gateways", handlers.NewAppGatewayHandler().ListAppGateways)
 	projectMember.GET("/probes", handlers.NewAppProbeHandler().ListAppProbes)
 
@@ -171,6 +172,10 @@ func registerAppRoute(r *APIV1Route) {
 	projectDeveloper.POST("/volumes", handlers.CreateAppVolume)
 	projectDeveloper.PUT("/volumes/:volumeID", handlers.UpdateAppVolume)
 	projectDeveloper.DELETE("/volumes", handlers.DeleteAppVolumes)
+
+	projectDeveloper.POST("/config-files", handlers.CreateAppConfigFile)
+	projectDeveloper.PUT("/config-files/:configFileID", handlers.UpdateAppConfigFile)
+	projectDeveloper.DELETE("/config-files", handlers.DeleteAppConfigFiles)
 
 	appGatewayHandler := handlers.NewAppGatewayHandler()
 	projectDeveloper.POST("/gateways", appGatewayHandler.CreateAppGateway)

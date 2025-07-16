@@ -52,6 +52,21 @@ definitions:
     required:
     - action
     type: object
+  models.AppConfigFileModel:
+    properties:
+      appID:
+        type: string
+      configFileID:
+        type: string
+      content:
+        type: string
+      fileMode:
+        type: string
+      mountPath:
+        type: string
+      slug:
+        type: string
+    type: object
   models.AppEnvVarModel:
     properties:
       appID:
@@ -438,6 +453,24 @@ definitions:
       slug:
         type: string
     type: object
+  models.CreateAppConfigFileRequest:
+    properties:
+      content:
+        description: 950KB = 950*1024 bytes
+        maxLength: 972800
+        type: string
+      fileMode:
+        type: string
+      mountPath:
+        type: string
+      slug:
+        type: string
+    required:
+    - content
+    - fileMode
+    - mountPath
+    - slug
+    type: object
   models.CreateAppGatewayRequest:
     properties:
       certID:
@@ -633,6 +666,16 @@ definitions:
     required:
     - displayName
     - slug
+    type: object
+  models.DeleteAppConfigFilesRequest:
+    properties:
+      configFileIDs:
+        description: List of config file IDs to delete
+        items:
+          type: string
+        type: array
+    required:
+    - configFileIDs
     type: object
   models.DeleteAppEnvVarsRequest:
     properties:
@@ -958,6 +1001,21 @@ definitions:
     properties:
       enabled:
         type: boolean
+    type: object
+  models.UpdateAppConfigFileRequest:
+    properties:
+      content:
+        description: 950KB = 950*1024 bytes
+        maxLength: 972800
+        type: string
+      fileMode:
+        type: string
+      mountPath:
+        type: string
+    required:
+    - content
+    - fileMode
+    - mountPath
     type: object
   models.UpdateAppGatewayRequest:
     properties:
@@ -1381,6 +1439,128 @@ paths:
       summary: Set App Command
       tags:
       - App
+  /api/v1/apps/{appID}/config-files:
+    delete:
+      consumes:
+      - application/json
+      description: Delete configuration files for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Config File IDs
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeleteAppConfigFilesRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Delete App Config Files
+      tags:
+      - AppConfigFile
+    get:
+      consumes:
+      - application/json
+      description: List configuration files for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.AppConfigFileModel'
+                  type: array
+              type: object
+      summary: List App Config Files
+      tags:
+      - AppConfigFile
+    post:
+      consumes:
+      - application/json
+      description: Create a new configuration file for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Config File
+        in: body
+        name: configFile
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAppConfigFileRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppConfigFileModel'
+              type: object
+      summary: Create App Config File
+      tags:
+      - AppConfigFile
+  /api/v1/apps/{appID}/config-files/{configFileID}:
+    put:
+      consumes:
+      - application/json
+      description: Update a configuration file for an app
+      parameters:
+      - description: App ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: Config File ID
+        in: path
+        name: configFileID
+        required: true
+        type: string
+      - description: Config File
+        in: body
+        name: configFile
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateAppConfigFileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AppConfigFileModel'
+              type: object
+      summary: Update App Config File
+      tags:
+      - AppConfigFile
   /api/v1/apps/{appID}/env-vars:
     get:
       consumes:

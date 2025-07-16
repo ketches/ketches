@@ -160,13 +160,14 @@ const columns: ColumnDef<appGatewayModel>[] = [
   },
   {
     id: "actions",
-    header: () => centeredHeader("操作"),
+    enableHiding: false,
     cell: ({ row }) => {
       return h("div", { class: "flex justify-end mr-2 gap-2" }, [
         h(
           Button,
           {
             variant: "outline",
+            size: 'sm',
             onClick: () => {
               selectedGateway.value = row.original;
               openUpdateGatewayDialog.value = true;
@@ -178,6 +179,8 @@ const columns: ColumnDef<appGatewayModel>[] = [
           Button,
           {
             variant: "outline",
+            size: 'sm',
+            class: "text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/20",
             onClick: async () => {
               await deleteAppGateway(row.original.appID, [
                 row.original.gatewayID,

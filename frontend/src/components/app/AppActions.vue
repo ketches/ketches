@@ -62,9 +62,10 @@ const showDeleteAppDialog = ref(false);
 const showDebugAppDialog = ref(false);
 
 async function onDelete() {
-  await deleteApp(appRunningInfo.value.appID)
+  const targetApp = props.fromAppList ? app.value : appRunningInfo.value;
+  await deleteApp(targetApp.appID)
   toast.success("应用已删除", {
-    description: `应用 ${appRunningInfo.value.slug} 已成功删除。`,
+    description: `应用 ${targetApp.slug} 已成功删除。`,
   });
   emit("action-completed");
   if (!props.fromAppList) {
@@ -75,7 +76,8 @@ async function onDelete() {
 }
 
 async function onDebug() {
-  await appAction(appRunningInfo.value.appID, "debug")
+  const targetApp = props.fromAppList ? app.value : appRunningInfo.value;
+  await appAction(targetApp.appID, "debug")
   toast.success("应用开始进入调试", {
     description: `等待应用实例重启完成后，您可以进入实例终端进行调试操作。`,
   });
@@ -84,8 +86,9 @@ async function onDebug() {
 }
 
 async function onAction(action: (appID: string) => Promise<appModel> | Promise<void>) {
+  const targetApp = props.fromAppList ? app.value : appRunningInfo.value;
   app.value.updated = false;
-  await action(appRunningInfo.value.appID)
+  await action(targetApp.appID)
   emit("action-completed");
 }
 </script>
