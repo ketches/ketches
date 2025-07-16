@@ -1053,6 +1053,24 @@ definitions:
     required:
     - mountPath
     type: object
+  models.UpdateClusterExtensionRequest:
+    properties:
+      extensionName:
+        type: string
+      namespace:
+        type: string
+      type:
+        enum:
+        - helm
+        type: string
+      values:
+        type: string
+      version:
+        type: string
+    required:
+    - extensionName
+    - type
+    type: object
   models.UpdateClusterRequest:
     properties:
       description:
@@ -2517,6 +2535,93 @@ paths:
           schema:
             $ref: '#/definitions/api.Response'
       summary: Uninstall Cluster Extension
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/extensions/{extensionName}/installed-values:
+    get:
+      consumes:
+      - application/json
+      description: Get the current values.yaml for an installed cluster extension
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      - description: Extension Name
+        in: path
+        name: extensionName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Response'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Get installed extension current values
+      tags:
+      - Cluster
+  /api/v1/clusters/{clusterID}/extensions/{extensionName}/update:
+    put:
+      consumes:
+      - application/json
+      description: Update an installed cluster extension
+      parameters:
+      - description: Cluster ID
+        in: path
+        name: clusterID
+        required: true
+        type: string
+      - description: Extension Name
+        in: path
+        name: extensionName
+        required: true
+        type: string
+      - description: Extension update information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateClusterExtensionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: Update cluster extension
       tags:
       - Cluster
   /api/v1/clusters/{clusterID}/extensions/{extensionName}/values/{version}:

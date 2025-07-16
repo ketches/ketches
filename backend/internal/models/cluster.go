@@ -176,3 +176,17 @@ type GetClusterExtensionValuesRequest struct {
 	ExtensionName string `json:"-" uri:"extensionName"`
 	Version       string `json:"-" uri:"version"`
 }
+
+type GetInstalledExtensionValuesRequest struct {
+	ClusterID     string `json:"-" uri:"clusterID"`
+	ExtensionName string `json:"-" uri:"extensionName"`
+}
+
+type UpdateClusterExtensionRequest struct {
+	ClusterID     string `json:"-" uri:"clusterID"`
+	ExtensionName string `json:"extensionName" binding:"required"`
+	Type          string `json:"type" binding:"required,oneof=helm"`
+	Version       string `json:"version,omitempty"`
+	Values        string `json:"values,omitempty"`
+	Namespace     string `json:"namespace,omitempty"`
+}

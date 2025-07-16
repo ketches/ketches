@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { checkClusterExtensionFeatureEnabled, enableClusterExtension, getClusterExtensionValues, installClusterExtension, listClusterExtensions, uninstallClusterExtension } from "@/api/cluster";
+import { checkClusterExtensionFeatureEnabled, enableClusterExtension, getClusterExtensionValues, getInstalledExtensionValues, installClusterExtension, listClusterExtensions, uninstallClusterExtension, updateClusterExtension } from "@/api/cluster";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import type { clusterExtensionModel, clusterModel, installClusterExtensionModel } from "@/types/cluster";
-import { Blocks, Download, Package, Plus, RefreshCcw, Search, Trash2 } from "lucide-vue-next";
+import type { clusterExtensionModel, clusterModel, installClusterExtensionModel, updateClusterExtensionModel } from "@/types/cluster";
+import { Blocks, Check, Download, Package, Plus, RefreshCcw, Search, Settings, Trash2 } from "lucide-vue-next";
 import { computed, onMounted, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import ConfirmDialog from "../shared/ConfirmDialog.vue";
@@ -23,7 +23,11 @@ const loading = ref(false);
 const featureEnabled = ref(false);
 const extensions = ref<Record<string, clusterExtensionModel>>({});
 const installDialogOpen = ref(false);
+const updateDialogOpen = ref(false);
 const selectedExtension = ref<clusterExtensionModel | null>(null);
+const isUpdateMode = ref(false);
+const currentInstalledVersion = ref('');
+const currentInstalledValues = ref('');
 const installForm = ref<installClusterExtensionModel>({
     extensionName: '',
     type: 'helm',
@@ -31,6 +35,13 @@ const installForm = ref<installClusterExtensionModel>({
     namespace: 'ketches',
     createNamespace: true,
     values: ''
+});
+const updateForm = ref<updateClusterExtensionModel>({
+    extensionName: '',
+    type: 'helm',
+    version: '',
+    values: '',
+    namespace: 'ketches'
 });
 const searchQuery = ref('');
 
@@ -99,6 +110,7 @@ async function fetchExtensions() {
 
 function openInstallDialog(extension: clusterExtensionModel) {
     selectedExtension.value = extension;
+    isUpdateMode.value = false;
     const latestVersion = extension.versions && extension.versions.length > 0 ? extension.versions[0] : '';
     installForm.value = {
         extensionName: extension.slug,
@@ -116,18 +128,50 @@ function openInstallDialog(extension: clusterExtensionModel) {
     }
 }
 
+async function openUpdateDialog(extension: clusterExtensionModel) {
+    selectedExtension.value = extension;
+    isUpdateMode.value = true;
+    currentInstalledVersion.value = extension.version || '';
+
+    updateForm.value = {
+        extensionName: extension.slug,
+        type: 'helm',
+        version: extension.version || '',
+        values: '',
+        namespace: 'ketches'
+    };
+
+    // Load current installed values
+    if (props.cluster?.clusterID) {
+        try {
+            currentInstalledValues.value = await getInstalledExtensionValues(props.cluster.clusterID, extension.slug);
+            updateForm.value.values = currentInstalledValues.value;
+        } catch (error) {
+            console.error('获取当前配置失败:', error);
+            toast.error('获取当前配置失败');
+        }
+    }
+
+    installDialogOpen.value = true;
+}
+
 async function handleInstall() {
     if (!props.cluster?.clusterID || !selectedExtension.value) return;
 
     try {
         loading.value = true;
-        await installClusterExtension(props.cluster.clusterID, installForm.value);
-        toast.success('扩展安装成功');
+        if (isUpdateMode.value) {
+            await updateClusterExtension(props.cluster.clusterID, selectedExtension.value.slug, updateForm.value);
+            toast.success('扩展更新成功');
+        } else {
+            await installClusterExtension(props.cluster.clusterID, installForm.value);
+            toast.success('扩展安装成功');
+        }
         installDialogOpen.value = false;
         await fetchExtensions();
     } catch (error) {
-        console.error('安装扩展失败:', error);
-        toast.error('安装扩展失败');
+        console.error(isUpdateMode.value ? '更新扩展失败:' : '安装扩展失败:', error);
+        toast.error(isUpdateMode.value ? '更新扩展失败' : '安装扩展失败');
     } finally {
         loading.value = false;
     }
@@ -157,9 +201,19 @@ async function loadDefaultValues(extensionName: string, version: string) {
     if (!props.cluster?.clusterID || !version) return;
 
     try {
-        const values = await getClusterExtensionValues(props.cluster.clusterID, extensionName, version);
-        if (values) {
-            installForm.value.values = values;
+        if (isUpdateMode.value && version === currentInstalledVersion.value) {
+            // If switching back to current installed version, use current installed values
+            updateForm.value.values = currentInstalledValues.value;
+        } else {
+            // Load default values for the selected version
+            const values = await getClusterExtensionValues(props.cluster.clusterID, extensionName, version);
+            if (values) {
+                if (isUpdateMode.value) {
+                    updateForm.value.values = values;
+                } else {
+                    installForm.value.values = values;
+                }
+            }
         }
     } catch (error) {
         console.error('获取默认配置失败:', error);
@@ -169,7 +223,14 @@ async function loadDefaultValues(extensionName: string, version: string) {
 
 // Watch for version changes to load corresponding default values
 watch(() => installForm.value.version, (newVersion) => {
-    if (newVersion && selectedExtension.value && props.cluster?.clusterID) {
+    if (newVersion && selectedExtension.value && props.cluster?.clusterID && !isUpdateMode.value) {
+        loadDefaultValues(selectedExtension.value.slug, newVersion);
+    }
+});
+
+// Watch for version changes in update mode
+watch(() => updateForm.value.version, (newVersion) => {
+    if (newVersion && selectedExtension.value && props.cluster?.clusterID && isUpdateMode.value) {
         loadDefaultValues(selectedExtension.value.slug, newVersion);
     }
 });
@@ -274,6 +335,11 @@ const showEnableClusterExtensionDialog = ref(false);
                                 安装
                             </Button>
                             <template v-else>
+                                <Button @click="openUpdateDialog(extension)" size="sm" variant="outline"
+                                    :disabled="loading" class="mr-2">
+                                    <Settings class="h-4 w-4 mr-2" />
+                                    更新
+                                </Button>
                                 <Button @click="handleUninstall(extension.slug)" size="sm" variant="destructive"
                                     :disabled="loading">
                                     <Trash2 class="h-4 w-4 mr-2" />
@@ -286,13 +352,13 @@ const showEnableClusterExtensionDialog = ref(false);
             </div>
         </div>
 
-        <!-- Install dialog -->
+        <!-- Install/Update dialog -->
         <Dialog v-model:open="installDialogOpen">
             <DialogContent class="sm:max-w-[800px]">
                 <DialogHeader>
-                    <DialogTitle>安装扩展</DialogTitle>
+                    <DialogTitle>{{ isUpdateMode ? '更新扩展' : '安装扩展' }}</DialogTitle>
                     <DialogDescription>
-                        为 {{ selectedExtension?.displayName }} 配置安装参数
+                        为 {{ selectedExtension?.displayName }} 配置{{ isUpdateMode ? '更新' : '安装' }}参数
                     </DialogDescription>
                 </DialogHeader>
                 <div class="grid gap-4 py-4">
@@ -300,20 +366,25 @@ const showEnableClusterExtensionDialog = ref(false);
                         <Label for="extension-name" class="text-right">
                             扩展名称
                         </Label>
-                        <Input id="extension-name" v-model="installForm.extensionName" class="col-span-7" readonly />
+                        <Input id="extension-name"
+                            :model-value="isUpdateMode ? updateForm.extensionName : installForm.extensionName" disabled
+                            class="col-span-7" />
                     </div>
                     <div class="grid grid-cols-8 items-center gap-4">
                         <Label for="version" class="text-right">
                             版本
                         </Label>
-                        <Select v-model="installForm.version">
+                        <Select :model-value="isUpdateMode ? updateForm.version : installForm.version"
+                            @update:model-value="isUpdateMode ? (updateForm.version = String($event)) : (installForm.version = String($event))">
                             <SelectTrigger class="col-span-7">
                                 <SelectValue placeholder="选择版本" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem v-for="version in selectedExtension?.versions" :key="version"
-                                    :value="version">
-                                    {{ version }}
+                                    :value="version" class="flex items-center justify-between">
+                                    <span>{{ version }}</span>
+                                    <Check v-if="isUpdateMode && version === currentInstalledVersion"
+                                        class="h-4 w-4 text-green-600" />
                                 </SelectItem>
                             </SelectContent>
                         </Select>
@@ -322,14 +393,16 @@ const showEnableClusterExtensionDialog = ref(false);
                         <Label for="namespace" class="text-right">
                             命名空间
                         </Label>
-                        <Input id="namespace" v-model="installForm.namespace" class="col-span-7" readonly />
+                        <Input id="namespace" :model-value="isUpdateMode ? updateForm.namespace : installForm.namespace"
+                            disabled class="col-span-7" />
                     </div>
                     <div class="grid grid-cols-8 items-center gap-4">
                         <Label for="values" class="text-right pt-0">
-                            Values
+                            Values配置
                         </Label>
-                        <Textarea id="values" v-model="installForm.values" placeholder="YAML 格式的 Helm values (可选)"
-                            class="col-span-7 min-h-32 max-h-64 font-mono" />
+                        <Textarea id="values" :model-value="isUpdateMode ? updateForm.values : installForm.values"
+                            @update:model-value="isUpdateMode ? (updateForm.values = String($event)) : (installForm.values = String($event))"
+                            placeholder="YAML 格式的 Helm values (可选)" class="col-span-7 min-h-32 max-h-64 font-mono" />
                     </div>
                 </div>
                 <DialogFooter>
@@ -337,7 +410,7 @@ const showEnableClusterExtensionDialog = ref(false);
                         取消
                     </Button>
                     <Button @click="handleInstall" :disabled="loading">
-                        {{ loading ? '安装中...' : '安装' }}
+                        {{ loading ? (isUpdateMode ? '更新中...' : '安装中...') : (isUpdateMode ? '更新' : '安装') }}
                     </Button>
                 </DialogFooter>
             </DialogContent>

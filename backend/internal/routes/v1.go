@@ -67,6 +67,8 @@ func registerClusterRoute(r *APIV1Route) {
 	adminOnly.POST("/:clusterID/extensions/install", handlers.InstallClusterExtension)
 	adminOnly.DELETE("/:clusterID/extensions/:extensionName", handlers.UninstallClusterExtension)
 	adminOnly.GET("/:clusterID/extensions/:extensionName/values/:version", handlers.GetClusterExtensionValues)
+	adminOnly.GET("/:clusterID/extensions/:extensionName/installed-values", handlers.GetInstalledExtensionValues)
+	adminOnly.PUT("/:clusterID/extensions/:extensionName/update", handlers.UpdateClusterExtension)
 }
 
 func registerUserRoute(r *APIV1Route) {

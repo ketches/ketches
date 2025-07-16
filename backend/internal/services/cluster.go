@@ -49,6 +49,8 @@ type ClusterService interface {
 	InstallClusterExtension(ctx context.Context, req *models.InstallClusterExtensionRequest) app.Error
 	UninstallClusterExtension(ctx context.Context, req *models.UninstallClusterExtensionRequest) app.Error
 	GetClusterExtensionValues(ctx context.Context, req *models.GetClusterExtensionValuesRequest) (string, app.Error)
+	GetInstalledExtensionValues(ctx context.Context, req *models.GetInstalledExtensionValuesRequest) (string, app.Error)
+	UpdateClusterExtension(ctx context.Context, req *models.UpdateClusterExtensionRequest) app.Error
 }
 
 type clusterService struct {
@@ -705,6 +707,68 @@ func (s *clusterService) GetClusterExtensionValues(ctx context.Context, req *mod
 	}
 
 	return "", nil
+}
+
+func (s *clusterService) GetInstalledExtensionValues(ctx context.Context, req *models.GetInstalledExtensionValuesRequest) (string, app.Error) {
+	kclient, err := kube.ClusterRuntimeClient(ctx, req.ClusterID)
+	if err != nil {
+		return "", err
+	}
+
+	// Find the HelmRelease for this extension
+	var helmreleases helmoperatorv1alpha1.HelmReleaseList
+	if err := kclient.List(ctx, &helmreleases, client.MatchingLabels{
+		"ketches.cn/owned":          "ketches",
+		"extension.ketches.cn/name": req.ExtensionName,
+	}); err != nil {
+		log.Printf("failed to list helm releases for extension %s in cluster %s: %v", req.ExtensionName, req.ClusterID, err)
+		return "", app.ErrClusterOperationFailed
+	}
+
+	if len(helmreleases.Items) == 0 {
+		return "", app.NewError(http.StatusNotFound, "extension not found or not installed")
+	}
+
+	// Return the current values from the HelmRelease
+	release := &helmreleases.Items[0]
+	return release.Spec.Values, nil
+}
+
+func (s *clusterService) UpdateClusterExtension(ctx context.Context, req *models.UpdateClusterExtensionRequest) app.Error {
+	kclient, err := kube.ClusterRuntimeClient(ctx, req.ClusterID)
+	if err != nil {
+		return err
+	}
+
+	// Find the existing HelmRelease
+	var helmreleases helmoperatorv1alpha1.HelmReleaseList
+	if err := kclient.List(ctx, &helmreleases, client.MatchingLabels{
+		"ketches.cn/owned":          "ketches",
+		"extension.ketches.cn/name": req.ExtensionName,
+	}); err != nil {
+		log.Printf("failed to list helm releases for extension %s in cluster %s: %v", req.ExtensionName, req.ClusterID, err)
+		return app.ErrClusterOperationFailed
+	}
+
+	if len(helmreleases.Items) == 0 {
+		return app.NewError(http.StatusNotFound, "extension not found or not installed")
+	}
+
+	// Update the HelmRelease
+	release := &helmreleases.Items[0]
+	if req.Version != "" {
+		release.Spec.Chart.Version = req.Version
+	}
+	if req.Values != "" {
+		release.Spec.Values = req.Values
+	}
+
+	if err := kclient.Update(ctx, release); err != nil {
+		log.Printf("failed to update helm release %s for cluster %s: %v", req.ExtensionName, req.ClusterID, err)
+		return app.ErrClusterOperationFailed
+	}
+
+	return nil
 }
 
 // generateConfigMapName generates the ConfigMap name using the same logic as helm-operator

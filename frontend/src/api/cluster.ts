@@ -1,5 +1,5 @@
 import api from '@/api/axios';
-import type { clusterExtensionModel, clusterModel, clusterNodeModel, clusterNodeRefModel, clusterNodeTaintsModel, clusterRefModel, createClusterModel, installClusterExtensionModel, updateClusterModel } from '@/types/cluster';
+import type { clusterExtensionModel, clusterModel, clusterNodeModel, clusterNodeRefModel, clusterNodeTaintsModel, clusterRefModel, createClusterModel, installClusterExtensionModel, updateClusterExtensionModel, updateClusterModel } from '@/types/cluster';
 import type { QueryAndPagedRequest } from '@/types/common.ts';
 
 export async function listClusters(filter: QueryAndPagedRequest): Promise<{ total: number, records: clusterModel[] }> {
@@ -106,4 +106,14 @@ export async function uninstallClusterExtension(clusterID: string, extensionName
 export async function getClusterExtensionValues(clusterID: string, extensionName: string, version: string): Promise<string> {
     const response = await api.get(`/clusters/${clusterID}/extensions/${extensionName}/values/${version}`);
     return response.data as string;
+}
+
+export async function getInstalledExtensionValues(clusterID: string, extensionName: string): Promise<string> {
+    const response = await api.get(`/clusters/${clusterID}/extensions/${extensionName}/installed-values`);
+    return response.data as string;
+}
+
+export async function updateClusterExtension(clusterID: string, extensionName: string, model: updateClusterExtensionModel): Promise<boolean> {
+    await api.put(`/clusters/${clusterID}/extensions/${extensionName}/update`, model);
+    return true;
 }

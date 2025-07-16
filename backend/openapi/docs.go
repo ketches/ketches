@@ -2333,6 +2333,141 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/clusters/{clusterID}/extensions/{extensionName}/installed-values": {
+            "get": {
+                "description": "Get the current values.yaml for an installed cluster extension",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Get installed extension current values",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster ID",
+                        "name": "clusterID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Extension Name",
+                        "name": "extensionName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/clusters/{clusterID}/extensions/{extensionName}/update": {
+            "put": {
+                "description": "Update an installed cluster extension",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Update cluster extension",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster ID",
+                        "name": "clusterID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Extension Name",
+                        "name": "extensionName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Extension update information",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateClusterExtensionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/clusters/{clusterID}/extensions/{extensionName}/values/{version}": {
             "get": {
                 "description": "Get the default values.yaml for a specific cluster extension version",
@@ -5988,6 +6123,33 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "subPath": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateClusterExtensionRequest": {
+            "type": "object",
+            "required": [
+                "extensionName",
+                "type"
+            ],
+            "properties": {
+                "extensionName": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "helm"
+                    ]
+                },
+                "values": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }

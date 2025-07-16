@@ -84,3 +84,11 @@ export interface installClusterExtensionModel {
     namespace?: string;
     createNamespace?: boolean;
 }
+
+export interface updateClusterExtensionModel {
+    extensionName: string;
+    type: string;
+    version?: string;
+    values?: string;
+    namespace?: string;
+}

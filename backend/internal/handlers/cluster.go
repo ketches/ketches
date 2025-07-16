@@ -536,3 +536,79 @@ func GetClusterExtensionValues(c *gin.Context) {
 
 	api.Success(c, values)
 }
+
+// GetInstalledExtensionValues godoc
+// @Summary Get installed extension current values
+// @Description Get the current values.yaml for an installed cluster extension
+// @Tags Cluster
+// @Accept json
+// @Produce json
+// @Param clusterID path string true "Cluster ID"
+// @Param extensionName path string true "Extension Name"
+// @Success 200 {object} api.Response{data=string}
+// @Failure 400 {object} api.Response
+// @Failure 404 {object} api.Response
+// @Failure 500 {object} api.Response
+// @Router /api/v1/clusters/{clusterID}/extensions/{extensionName}/installed-values [get]
+func GetInstalledExtensionValues(c *gin.Context) {
+	clusterID := c.Param("clusterID")
+	extensionName := c.Param("extensionName")
+	
+	if clusterID == "" || extensionName == "" {
+		api.Error(c, app.NewError(http.StatusBadRequest, "Cluster ID and Extension Name are required"))
+		return
+	}
+
+	s := services.NewClusterService()
+	values, err := s.GetInstalledExtensionValues(c, &models.GetInstalledExtensionValuesRequest{
+		ClusterID:     clusterID,
+		ExtensionName: extensionName,
+	})
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, values)
+}
+
+// UpdateClusterExtension godoc
+// @Summary Update cluster extension
+// @Description Update an installed cluster extension
+// @Tags Cluster
+// @Accept json
+// @Produce json
+// @Param clusterID path string true "Cluster ID"
+// @Param extensionName path string true "Extension Name"
+// @Param request body models.UpdateClusterExtensionRequest true "Extension update information"
+// @Success 200 {object} api.Response{}
+// @Failure 400 {object} api.Response
+// @Failure 404 {object} api.Response
+// @Failure 500 {object} api.Response
+// @Router /api/v1/clusters/{clusterID}/extensions/{extensionName}/update [put]
+func UpdateClusterExtension(c *gin.Context) {
+	clusterID := c.Param("clusterID")
+	extensionName := c.Param("extensionName")
+	
+	if clusterID == "" || extensionName == "" {
+		api.Error(c, app.NewError(http.StatusBadRequest, "Cluster ID and Extension Name are required"))
+		return
+	}
+
+	var req models.UpdateClusterExtensionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, app.NewError(http.StatusBadRequest, err.Error()))
+		return
+	}
+	req.ClusterID = clusterID
+	req.ExtensionName = extensionName
+
+	s := services.NewClusterService()
+	err := s.UpdateClusterExtension(c, &req)
+	if err != nil {
+		api.Error(c, err)
+		return
+	}
+
+	api.Success(c, nil)
+}
