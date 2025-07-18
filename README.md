@@ -113,5 +113,6 @@ User panel
 
 ![alt text](docs/images/spot.png)
 ![alt text](docs/images/app-page.png)
+![alt text](docs/images/app-configurations.png)
 ![alt text](docs/images/app-instance-logs.png)
 ![alt text](docs/images/app-instance-terminal.png)
