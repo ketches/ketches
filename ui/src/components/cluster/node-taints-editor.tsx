@@ -146,7 +146,6 @@ export function NodeTaintsEditor({
           <Button
             variant="outline"
             onClick={handleAdd}
-            className="border-dashed"
           >
             <Plus />
             Add Taint

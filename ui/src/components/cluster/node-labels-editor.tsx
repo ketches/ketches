@@ -120,7 +120,6 @@ export function NodeLabelsEditor({
           <Button
             variant="outline"
             onClick={handleAdd}
-            className="border-dashed"
           >
             <Plus />
             Add Label
@@ -135,6 +134,6 @@ export function NodeLabelsEditor({
           </div>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }

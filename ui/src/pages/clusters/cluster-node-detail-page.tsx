@@ -5,7 +5,6 @@ import {
   ChevronsUpDown,
   CircleSlash,
   Cpu,
-  Edit2,
   HardDrive,
   Info,
   Layers,
@@ -16,7 +15,8 @@ import {
   ShipWheel,
   Tag,
   Telescope,
-  Terminal as TerminalIcon
+  Terminal as TerminalIcon,
+  Wrench
 } from "lucide-react"
 import * as React from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
@@ -30,6 +30,7 @@ import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { ClusterNodeResourceMetrics } from "@/components/monitoring/cluster-node-resource-metrics"
 import { ColorBadge } from "@/components/shared/color-badge"
+import { EmptyState } from "@/components/shared/empty-state"
 import { StatCard } from "@/components/shared/stat-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -355,46 +356,68 @@ export function ClusterNodeDetailPage() {
 
         <TabsContent value="labels" className="space-y-4 mt-2">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row justify-between pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Tag className="h-4 w-4" />Labels</CardTitle>
               <Button variant="outline" onClick={() => setLabelsOpen(true)}>
-                <Edit2 />
+                <Wrench />
                 Manage Labels
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(node.metadata.labels).map(([key, value]) => (
-                  <div key={key} className="bg-muted px-2 py-1 rounded border text-[10px] flex items-center gap-2 max-w-full">
-                    <span className="text-muted-foreground shrink-0">{key}:</span>
-                    <span className="font-medium truncate">{value}</span>
-                  </div>
-                ))}
-              </div>
+              {Object.entries(node.metadata.labels).length === 0 ? (
+                <EmptyState
+                  title="No labels applied to this node."
+                  description="Labels are used to add metadata to a node."
+                  icon={Tag}
+                  actionIcon={Wrench}
+                  actionText="Manage Labels"
+                  onAction={() => setLabelsOpen(true)}
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(node.metadata.labels).map(([key, value]) => (
+                    <div key={key} className="bg-muted px-2 py-1 rounded border text-xs flex items-center gap-2 max-w-full">
+                      <span className="text-muted-foreground shrink-0">{key}:</span>
+                      <span className="font-medium truncate">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="annotations" className="space-y-4 mt-2">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium  flex items-center gap-2">
+            <CardHeader className="flex flex-row justify-between pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Bookmark className="h-4 w-4" />Annotations</CardTitle>
               <Button variant="outline" onClick={() => setAnnotationsOpen(true)}>
-                <Edit2 />
+                <Wrench />
                 Manage Annotations
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(node.metadata.annotations).map(([key, value]) => (
-                  <div key={key} className="bg-muted px-2 py-1 rounded border text-[10px] flex items-center gap-2 max-w-full">
-                    <span className="text-muted-foreground shrink-0">{key}:</span>
-                    <span className="font-medium truncate">{value}</span>
-                  </div>
-                ))}
-              </div>
+              {Object.entries(node.metadata.annotations).length === 0 ? (
+                <EmptyState
+                  title="No annotations applied to this node."
+                  description="Annotations are used to add metadata to a node."
+                  icon={Bookmark}
+                  actionIcon={Wrench}
+                  actionText="Manage Annotations"
+                  onAction={() => setAnnotationsOpen(true)}
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(node.metadata.annotations).map(([key, value]) => (
+                    <div key={key} className="bg-muted px-2 py-1 rounded border text-xs flex items-center gap-2 max-w-full">
+                      <span className="text-muted-foreground shrink-0">{key}:</span>
+                      <span className="font-medium truncate">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -402,18 +425,25 @@ export function ClusterNodeDetailPage() {
         <TabsContent value="taints" className="space-y-4 mt-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium  flex items-center gap-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <PaintBucket className="h-4 w-4" />Taints</CardTitle>
-              <Button variant="outline" onClick={() => setTaintsOpen(true)}>
-                <Edit2 />
-                Manage Taints
-              </Button>
+              {node.spec.taints && node.spec.taints.length > 0 && (
+                <Button variant="outline" onClick={() => setTaintsOpen(true)}>
+                  <Wrench />
+                  Manage Taints
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {!node.spec.taints || node.spec.taints.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  No taints applied to this node.
-                </div>
+                <EmptyState
+                  title="No taints applied to this node."
+                  description="Taints are used to mark nodes as unschedulable or to restrict the scheduling of pods to certain nodes."
+                  icon={PaintBucket}
+                  actionText="Manage Taints"
+                  actionIcon={Wrench}
+                  onAction={() => setTaintsOpen(true)}
+                />
               ) : (
                 <div className="space-y-2">
                   {node.spec.taints.map((taint, i) => (

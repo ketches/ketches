@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/ketches/ketches/internal/app"
@@ -13,6 +14,7 @@ import (
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -423,9 +425,19 @@ func StreamAppLogs(ctx context.Context, application *entities.App, instanceName,
 		return nil, err
 	}
 
-	req := client.CoreV1().Pods(application.Env.ClusterNamespace).GetLogs(instanceName, nil)
-	_ = req
-	return nil, nil
+	podLogOptions := &corev1.PodLogOptions{
+		Container:  containerName,
+		Follow:     true,
+		TailLines:  &tailLines,
+		Timestamps: timestamps,
+	}
+
+	req := client.CoreV1().Pods(application.Env.ClusterNamespace).GetLogs(instanceName, podLogOptions)
+	stream, err := req.Stream(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open log stream: %w", err)
+	}
+	return stream, nil
 }
 
 func ExecAppContainer(application *entities.App, instanceName, containerName string, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
