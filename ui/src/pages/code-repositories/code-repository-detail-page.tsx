@@ -1,0 +1,848 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  ChevronsUpDown,
+  ExternalLink,
+  FileClock,
+  FileText,
+  FolderGit2,
+  Hammer,
+  History,
+  Info,
+  Loader2,
+  Pencil,
+  Play,
+  Plus,
+  Rocket,
+  RotateCcw,
+  Share2,
+  Telescope,
+  Trash2
+} from "lucide-react"
+import * as React from "react"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
+
+import {
+  codeRepositoriesApi,
+  type CodeRepositoryBuildConfig,
+} from "@/api/code-repositories"
+import { envsApi } from "@/api/envs"
+import { BuildLogViewer } from "@/components/builds/build-log-viewer"
+import { BuildStatusBadge } from "@/components/builds/build-status-badge"
+import { CreateBuildConfigDialog } from "@/components/code-repositories/create-build-config-dialog"
+import { EditBuildConfigDialog } from "@/components/code-repositories/edit-build-config-dialog"
+import { EditCodeRepositoryDialog } from "@/components/code-repositories/edit-code-repository-dialog"
+import { RepoTopologyView } from "@/components/code-repositories/repo-topology-view"
+import { UnifiedBuildDeployDialog } from "@/components/code-repositories/unified-build-deploy-dialog"
+import { NotFoundPage } from "@/components/layout/not-found-page"
+import { PageHeader } from "@/components/layout/page-header"
+import { EmptyState } from "@/components/shared/empty-state"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+export function CodeRepositoryDetailPage() {
+  const { repoId } = useParams<{ repoId: string }>()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+
+  const currentTab = searchParams.get("tab") || "overview"
+  const [triggerBuildDialogOpen, setTriggerBuildDialogOpen] = React.useState(false)
+  const [selectedBuildConfigId, setSelectedBuildConfigId] = React.useState<string | undefined>(undefined)
+  const [selectedBuildId, setSelectedBuildId] = React.useState<string | undefined>(undefined)
+  const [logBuildId, setLogBuildId] = React.useState<string | null>(null)
+  const [addConfigOpen, setAddConfigOpen] = React.useState(false)
+  const [editConfigOpen, setEditConfigOpen] = React.useState(false)
+  const [editingConfig, setEditingConfig] = React.useState<CodeRepositoryBuildConfig | null>(null)
+  const [deleteConfigDialogOpen, setDeleteConfigDialogOpen] = React.useState(false)
+  const [deletingConfig, setDeletingConfig] = React.useState<CodeRepositoryBuildConfig | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+
+  // Pagination and filtering state
+  const [buildConfigsPage, setBuildConfigsPage] = React.useState(1)
+  const [buildsPage, setBuildsPage] = React.useState(1)
+  const [deploymentsPage, setDeploymentsPage] = React.useState(1)
+  const [deploymentEnvFilter, setDeploymentEnvFilter] = React.useState<string>("")
+  const [deploymentAppFilter, setDeploymentAppFilter] = React.useState<string>("")
+  const itemsPerPage = 10
+
+  const { data: repo, isLoading } = useQuery({
+    queryKey: ["code-repository", repoId],
+    queryFn: () => codeRepositoriesApi.get(repoId!),
+    enabled: !!repoId,
+  })
+
+  const { data: repos = [] } = useQuery({
+    queryKey: ["code-repositories", repo?.project_id],
+    queryFn: () => codeRepositoriesApi.list(repo!.project_id),
+    enabled: !!repo?.project_id,
+  })
+
+  const safeRepos = Array.isArray(repos) ? repos : []
+
+  const { data: buildConfigs = [] } = useQuery({
+    queryKey: ["code-repository-build-configs", repoId],
+    queryFn: () => codeRepositoriesApi.listBuildConfigs(repoId!),
+    enabled: !!repoId,
+  })
+
+  const { data: builds = [] } = useQuery({
+    queryKey: ["code-repository-builds", repoId],
+    queryFn: () => codeRepositoriesApi.listBuilds(repoId!),
+    enabled: !!repoId,
+    refetchInterval: 5000,
+  })
+
+  const { data: deployments = [] } = useQuery({
+    queryKey: ["code-repository-deployments", repoId],
+    queryFn: () => codeRepositoriesApi.listDeployments(repoId!),
+    enabled: !!repoId,
+    refetchInterval: 5000,
+  })
+
+  const { data: envs = [] } = useQuery({
+    queryKey: ["envs", repo?.project_id],
+    queryFn: () => envsApi.list(repo!.project_id),
+    enabled: !!repo?.project_id,
+  })
+
+  const retryBuildMutation = useMutation({
+    mutationFn: (b: any) => {
+      return codeRepositoriesApi.triggerBuild(repoId!, {
+        build_config_id: b.code_repository_build_config_id,
+        build_env_id: b.build_env_id,
+        git_ref: b.git_ref,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["code-repository-builds", repoId] })
+      toast.success("Build retry triggered")
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error || "Failed to retry build")
+    },
+  })
+
+  const filteredDeployments = React.useMemo(() => {
+    let result = (deployments as any[]) || []
+    if (deploymentEnvFilter) {
+      result = result.filter((d) => d.app?.env_id === deploymentEnvFilter)
+    }
+    if (deploymentAppFilter) {
+      result = result.filter((d) => d.app_id === deploymentAppFilter)
+    }
+    return result
+  }, [deployments, deploymentEnvFilter, deploymentAppFilter])
+
+  const paginatedDeployments = React.useMemo(() => {
+    return filteredDeployments.slice(
+      (deploymentsPage - 1) * itemsPerPage,
+      deploymentsPage * itemsPerPage
+    )
+  }, [filteredDeployments, deploymentsPage, itemsPerPage])
+
+  React.useEffect(() => {
+    if (!triggerBuildDialogOpen) {
+      setSelectedBuildConfigId(undefined)
+      setSelectedBuildId(undefined)
+    }
+  }, [triggerBuildDialogOpen])
+
+  const deleteConfigMutation = useMutation({
+    mutationFn: (configId: string) => codeRepositoriesApi.deleteBuildConfig(repoId!, configId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["code-repository-build-configs", repoId] })
+      toast.success("Build config removed")
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+          : null
+      toast.error(msg || "Failed to remove build config")
+    },
+  })
+
+  const formatDuration = (s: number) =>
+    s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
+  const configNameById = (id: string) =>
+    buildConfigs.find((c) => c.id === id)?.name ?? id
+
+  if (!repoId) {
+    return (
+      <NotFoundPage
+        resourceType="Code Repository"
+        backHref="/code-repositories"
+        backLabel="Back to Code Repositories"
+      />
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col flex-1 gap-6 animate-pulse">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-32" />
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-14 w-14 rounded-lg" />
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full max-w-50" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!repo) {
+    return (
+      <NotFoundPage
+        resourceType="Code Repository"
+        backHref="/code-repositories"
+        backLabel="Back to Code Repositories"
+      />
+    )
+  }
+
+  const breadcrumbs = [
+    {
+      label: "Code Repositories",
+      href: "/code-repositories",
+      icon: FolderGit2,
+    },
+    {
+      label: repo.name,
+      icon: FolderGit2,
+      dropdown:
+        safeRepos.length > 1 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="icon-sm">
+                  <ChevronsUpDown />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuGroup>
+                {safeRepos.map((r) => (
+                  <DropdownMenuItem
+                    key={r.id}
+                    onClick={() => navigate(`/code-repositories/${r.id}`)}
+                  >
+                    <FolderGit2 className="mr-2 h-4 w-4" />
+                    {r.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : undefined,
+    },
+  ]
+
+  return (
+    <div className="flex flex-col flex-1 gap-6">
+      <PageHeader items={breadcrumbs} />
+
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-primary/10 rounded-lg text-primary shrink-0">
+              <FolderGit2 className="h-8 w-8" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight truncate">
+                  {repo.name}
+                </h1>
+
+                {repo.webhook_enabled && (
+                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted border">
+                    Webhook enabled
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="font-mono">{repo.slug}</span>
+                {repo.description && (
+                  <>
+                    <span>•</span>
+                    <span>{repo.description}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+              <Pencil />
+              Edit
+            </Button>
+            {buildConfigs.length > 0 && (
+              <Button onClick={() => {
+                setSelectedBuildConfigId(undefined)
+                setSelectedBuildId(undefined)
+                setTriggerBuildDialogOpen(true)
+              }}>
+                <Hammer />
+                Build
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Tabs value={currentTab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
+        <TabsList>
+          <TabsTrigger value="overview"><Telescope />Overview</TabsTrigger>
+          <TabsTrigger value="topology"><Share2 />Topology</TabsTrigger>
+          <TabsTrigger value="build"><Hammer />Build</TabsTrigger>
+          <TabsTrigger value="deploy"><Rocket />Deploy</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4 mt-2">
+          <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent data-[active=true]:bg-transparent">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Repository Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Git URL</p>
+                  <p className="text-sm font-mono break-all">{repo.git_repo_url}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Webhook</p>
+                  <p className="text-sm">{repo.webhook_enabled ? "Enabled" : "Disabled"}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="topology" className="space-y-4 mt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Share2 className="h-4 w-4" />
+                Topology
+              </CardTitle>
+              <CardDescription>
+                Visualization of the delivery pipeline from code to deployment.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RepoTopologyView repoId={repo.id} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="build" className="space-y-4 mt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Hammer className="h-4 w-4" />
+                Build Configs
+              </CardTitle>
+              <CardDescription>
+                One repo can have multiple build configs (e.g. frontend, backend). Configure Dockerfile, context, image, and registry per config.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {buildConfigs.length > 0 ? (<div className="flex items-center justify-end">
+                <Button onClick={() => setAddConfigOpen(true)}>
+                  <Plus />
+                  Create
+                </Button>
+              </div>) : null}
+              {buildConfigs.length === 0 ? (
+                <EmptyState
+                  title="No build configurations"
+                  description="Add a build configuration to start building images from this repository."
+                  icon={Hammer}
+                  actionText="Create build config"
+                  onAction={() => setAddConfigOpen(true)}
+                  actionIcon={Plus}
+                />
+              ) : (
+                <>
+                  <div className="border-y border-x-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent border-b">
+                          <TableHead>Name</TableHead>
+                          <TableHead>Ref</TableHead>
+                          <TableHead>Dockerfile</TableHead>
+                          <TableHead>Context</TableHead>
+                          <TableHead>Image</TableHead>
+                          <TableHead>Registry</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(buildConfigs || [])
+                          .slice((buildConfigsPage - 1) * itemsPerPage, buildConfigsPage * itemsPerPage)
+                          .map((cfg) => (
+                            <TableRow key={cfg.id}>
+                              <TableCell className="font-medium">{cfg.name}</TableCell>
+                              <TableCell>{cfg.git_ref || "main"}</TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {cfg.dockerfile_path}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {cfg.build_context}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {cfg.image_name}
+                              </TableCell>
+                              <TableCell>
+                                {cfg.registry?.name ?? cfg.registry_id}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() => {
+                                      setEditingConfig(cfg)
+                                      setEditConfigOpen(true)
+                                    }}
+                                  >
+                                    <Pencil />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedBuildConfigId(cfg.id)
+                                      setSelectedBuildId(undefined)
+                                      setTriggerBuildDialogOpen(true)
+                                    }}
+                                  >
+                                    <Play />
+                                    Build
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => {
+                                      setDeletingConfig(cfg)
+                                      setDeleteConfigDialogOpen(true)
+                                    }}
+                                  >
+                                    <Trash2 />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {buildConfigs.length > itemsPerPage && (
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => setBuildConfigsPage(Math.max(1, buildConfigsPage - 1))}
+                            className={buildConfigsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        {Array.from({ length: Math.ceil(buildConfigs.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setBuildConfigsPage(page)}
+                              isActive={buildConfigsPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => setBuildConfigsPage(Math.min(Math.ceil(buildConfigs.length / itemsPerPage), buildConfigsPage + 1))}
+                            className={buildConfigsPage >= Math.ceil(buildConfigs.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileClock className="h-4 w-4" />
+                Build History
+              </CardTitle>
+              <CardDescription>
+                All builds for this repository. Deploy succeeded builds to an environment.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {builds.length === 0 ? (
+                <EmptyState
+                  title="No builds yet"
+                  description="Trigger a build from a configuration above to see the history here."
+                  icon={FileClock}
+                />
+              ) : (
+                <>
+                  <div className="border-y border-x-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent border-b">
+                          <TableHead>#</TableHead>
+                          <TableHead>Config</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Ref</TableHead>
+                          <TableHead>Image</TableHead>
+                          <TableHead>Duration</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(builds || [])
+                          .slice((buildsPage - 1) * itemsPerPage, buildsPage * itemsPerPage)
+                          .map((b) => (
+                            <TableRow key={b.id}>
+                              <TableCell>{b.build_number}</TableCell>
+                              <TableCell className="text-muted-foreground text-xs">
+                                {b.code_repository_build_config_id
+                                  ? configNameById(b.code_repository_build_config_id)
+                                  : "-"}
+                              </TableCell>
+                              <TableCell>
+                                <BuildStatusBadge status={b.status} />
+                              </TableCell>
+                              <TableCell>{b.git_ref}</TableCell>
+                              <TableCell className="font-mono text-xs max-w-50 truncate">
+                                {b.image_full_name}
+                              </TableCell>
+                              <TableCell>
+                                {b.duration ? formatDuration(b.duration) : "-"}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-xs">
+                                {new Date(b.created_at).toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() => setLogBuildId(b.id)}
+                                    title="View Logs"
+                                  >
+                                    <FileText />
+                                  </Button>
+                                  {(b.status === "failed" || b.status === "cancelled") && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => retryBuildMutation.mutate(b)}
+                                      disabled={retryBuildMutation.isPending}
+                                      title="Retry Build"
+                                    >
+                                      {retryBuildMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <RotateCcw />
+                                      )}
+                                      Retry
+                                    </Button>
+                                  )}
+                                  {b.status === "succeeded" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedBuildId(b.id)
+                                        setSelectedBuildConfigId(b.code_repository_build_config_id || undefined)
+                                        setTriggerBuildDialogOpen(true)
+                                      }}
+                                      title="Deploy Build"
+                                    >
+                                      <Rocket />
+                                      Deploy
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {builds.length > itemsPerPage && (
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => setBuildsPage(Math.max(1, buildsPage - 1))}
+                            className={buildsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        {Array.from({ length: Math.ceil(builds.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setBuildsPage(page)}
+                              isActive={buildsPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => setBuildsPage(Math.min(Math.ceil(builds.length / itemsPerPage), buildsPage + 1))}
+                            className={buildsPage >= Math.ceil(builds.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="deploy" className="space-y-4 mt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Rocket className="h-4 w-4" />
+                Deployment History
+              </CardTitle>
+              <CardDescription>
+                Track when and where builds from this repository were deployed.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {deployments.length === 0 ? (
+                <EmptyState
+                  title="No deployment history"
+                  description="Deploy a successful build to an environment to see it here."
+                  icon={History}
+                />
+              ) : (
+                <>
+                  <div className="border-y border-x-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent border-b">
+                          <TableHead>Build #</TableHead>
+                          <TableHead>Environment</TableHead>
+                          <TableHead>Application</TableHead>
+                          <TableHead>Image</TableHead>
+                          <TableHead>Ref</TableHead>
+                          <TableHead>Deployed At</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedDeployments.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
+                              No deployments match the selected filters.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedDeployments.map((d) => (
+                            <TableRow key={d.id}>
+                              <TableCell className="font-medium">{d.build_number}</TableCell>
+                              <TableCell>{d.app?.env?.name ?? "-"}</TableCell>
+                              <TableCell>
+                                {d.app ? (
+                                  <Button
+                                    variant="link"
+                                    className="p-0 h-auto text-xs"
+                                    onClick={() => navigate(`/applications/${d.app?.id}`)}
+                                  >
+                                    <ExternalLink />
+                                    {d.app.name}
+                                  </Button>
+                                ) : (
+                                  "-"
+                                )}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs max-w-40 truncate" title={d.image_full_name}>
+                                {d.image_full_name}
+                              </TableCell>
+                              <TableCell className="text-xs">{d.git_ref}</TableCell>
+                              <TableCell className="text-muted-foreground text-xs">
+                                {new Date(d.created_at).toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {filteredDeployments.length > itemsPerPage && (
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => setDeploymentsPage(Math.max(1, deploymentsPage - 1))}
+                            className={deploymentsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        {Array.from({ length: Math.ceil(filteredDeployments.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setDeploymentsPage(page)}
+                              isActive={deploymentsPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => setDeploymentsPage(Math.min(Math.ceil(filteredDeployments.length / itemsPerPage), deploymentsPage + 1))}
+                            className={deploymentsPage >= Math.ceil(filteredDeployments.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <UnifiedBuildDeployDialog
+        open={triggerBuildDialogOpen}
+        onOpenChange={setTriggerBuildDialogOpen}
+        repoId={repoId}
+        projectId={repo.project_id}
+        preSelectedConfigId={selectedBuildConfigId}
+        preSelectedBuildId={selectedBuildId}
+      />
+
+      <EditCodeRepositoryDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        repo={repo}
+        onSuccess={() =>
+          queryClient.invalidateQueries({ queryKey: ["code-repository", repoId] })
+        }
+      />
+
+      <EditBuildConfigDialog
+        open={editConfigOpen}
+        onOpenChange={setEditConfigOpen}
+        repoId={repoId}
+        config={editingConfig}
+        onSuccess={() => {
+          setEditingConfig(null)
+          queryClient.invalidateQueries({
+            queryKey: ["code-repository-build-configs", repoId],
+          })
+        }
+        }
+      />
+
+      <CreateBuildConfigDialog
+        open={addConfigOpen}
+        onOpenChange={setAddConfigOpen}
+        repoId={repoId}
+        onSuccess={() =>
+          queryClient.invalidateQueries({
+            queryKey: ["code-repository-build-configs", repoId],
+          })
+        }
+      />
+
+      {
+        logBuildId && repoId && (
+          <Dialog
+            open={!!logBuildId}
+            onOpenChange={() => setLogBuildId(null)}
+          >
+            <DialogContent className="sm:max-w-[90vw] w-full sm:max-h-[90vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle>Build logs</DialogTitle>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <BuildLogViewer buildId={logBuildId} repoId={repoId} />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )
+      }
+      <AlertDialog open={deleteConfigDialogOpen} onOpenChange={setDeleteConfigDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Build Config</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deletingConfig
+                ? `Remove build config "${deletingConfig.name}"? This action cannot be undone.`
+                : "Are you sure you want to remove this build config?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingConfig) {
+                  deleteConfigMutation.mutate(deletingConfig.id)
+                }
+                setDeleteConfigDialogOpen(false)
+                setDeletingConfig(null)
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div >
+  )
+}
+

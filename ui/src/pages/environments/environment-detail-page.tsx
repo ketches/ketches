@@ -1,0 +1,374 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  Box,
+  ChartLine,
+  ChevronsUpDown,
+  Hammer,
+  Info,
+  Loader2,
+  Orbit,
+  Pencil,
+  RefreshCw,
+  ShipWheel,
+  Telescope,
+  Trash2,
+  Wrench
+} from "lucide-react"
+import * as React from "react"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
+
+import { appsApi } from "@/api/apps"
+import { clustersApi } from "@/api/clusters"
+import { envsApi } from "@/api/envs"
+import { ApplicationList } from "@/components/applications/application-list"
+import { EditEnvironmentDialog } from "@/components/environment/edit-environment-dialog"
+import { NotFoundPage } from "@/components/layout/not-found-page"
+import { PageHeader } from "@/components/layout/page-header"
+import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-resource-metrics"
+import { ColorBadge } from "@/components/shared/color-badge"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useProjectStore } from "@/stores/project"
+
+export function EnvironmentDetailPage() {
+  const { envId } = useParams<{ envId: string }>()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+  const activeTab = searchParams.get("tab") || "overview"
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const { activeProjectId } = useProjectStore()
+
+  const { data: envs = [] } = useQuery({
+    queryKey: ['envs', activeProjectId],
+    queryFn: () => envsApi.list(activeProjectId!),
+    enabled: !!activeProjectId,
+  })
+
+  const { data: env, isLoading: envLoading, error: envError } = useQuery({
+    queryKey: ["env", envId],
+    queryFn: () => envsApi.get(envId!),
+    enabled: !!envId,
+    retry: false,
+  })
+
+  const { data: apps = [] } = useQuery({
+    queryKey: ["apps", envId],
+    queryFn: () => appsApi.list(envId!),
+    enabled: !!envId,
+  })
+
+  const { data: cluster } = useQuery({
+    queryKey: ["cluster", env?.cluster_id],
+    queryFn: () => clustersApi.getPublic(env!.cluster_id),
+    enabled: !!env?.cluster_id,
+  })
+
+  const safeApps = Array.isArray(apps) ? apps : []
+
+  const deleteMutation = useMutation({
+    mutationFn: () => envsApi.delete(envId!),
+    onSuccess: () => {
+      toast.success("Environment deleted", {
+        description: "The environment has been successfully deleted",
+      })
+      queryClient.invalidateQueries({ queryKey: ["envs"] })
+      navigate("/environments")
+    },
+    onError: (error: any) => {
+      toast.error("Failed to delete environment", {
+        description: error.response?.data?.error || "An unknown error occurred",
+      })
+    },
+  })
+
+  if (envLoading) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center gap-2">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Loading environment...</p>
+      </div>
+    )
+  }
+
+  if (envError || !env) {
+    return (
+      <NotFoundPage
+        resourceType="Environment"
+        backHref="/environments"
+        backLabel="Back to Environments"
+      />
+    )
+  }
+
+  const safeEnvs = Array.isArray(envs) ? envs : []
+
+  const breadcrumbs = [
+    { label: "Environments", icon: Orbit, href: "/environments" },
+    {
+      label: env.name,
+      icon: Orbit,
+      dropdown: safeEnvs.length > 1 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuGroup>
+              {safeEnvs.map(e => (
+                <DropdownMenuItem
+                  key={e.id}
+                  onClick={() => navigate(`/environments/${e.id}`)}
+                >
+                  <Orbit className="mr-2 h-4 w-4" />
+                  {e.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : undefined
+    },
+  ]
+
+  return (
+    <div className="flex flex-col flex-1 gap-6">
+      <PageHeader items={breadcrumbs} />
+
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-primary/10 rounded-lg text-primary">
+              <Orbit className="h-8 w-8" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight">{env.name}</h1>
+                <ColorBadge color="green">
+                  {env.status || "Active"}
+                </ColorBadge>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="font-mono">{env.slug}</span>
+                {env.description && (
+                  <>
+                    <span>•</span>
+                    <span>{env.description}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["env", envId] })}
+            >
+              <RefreshCw />
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 />
+              Delete
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
+        <TabsList>
+          <TabsTrigger value="overview">
+            <Telescope />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="applications">
+            <Box />
+            Applications
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4 mt-2">
+          <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent data-[active=true]:bg-transparent">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Environment Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Slug</p>
+                  <p className="text-sm font-mono">{env.slug}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Namespace</p>
+                  <p className="text-sm font-mono">{env.cluster_namespace}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Created At</p>
+                  <p className="text-sm">
+                    {env.created_at
+                      ? new Date(env.created_at).toLocaleString()
+                      : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Build Environment</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {env.is_build_env ? (
+                      <>
+                        <Badge variant="default" className="gap-1"><Hammer className="h-3 w-3" />Build Env</Badge>
+                        <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => {
+                          envsApi.unsetBuildEnv(env.id).then(() => {
+                            queryClient.invalidateQueries({ queryKey: ['env', env.id] })
+                            toast.success('Build environment unset')
+                          }).catch(() => toast.error('Failed to unset build environment'))
+                        }}>Unset</Button>
+                      </>
+                    ) : (
+                      <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => {
+                        envsApi.setBuildEnv(env.id).then(() => {
+                          queryClient.invalidateQueries({ queryKey: ['env', env.id] })
+                          toast.success('Set as build environment')
+                        }).catch(() => toast.error('Failed to set build environment'))
+                      }}>
+                        <Hammer />
+                        Set as Build Env
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Applications</CardTitle>
+                <Box className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{safeApps.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {safeApps.filter(a => a.status === "running").length} running, {safeApps.filter(a => a.status === "undeployed").length} undeployed
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Builds</CardTitle>
+                <Wrench className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  404
+                </div>
+                <p className="text-xs text-muted-foreground">across repos</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Cluster</CardTitle>
+                <ShipWheel className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{cluster?.name || "Loading..."}</div>
+                <p className="text-xs text-muted-foreground">
+                  {cluster?.connection_status === "connected" ? (
+                    <span className="text-green-600">Connected</span>
+                  ) : (
+                    <span className="text-red-600">Disconnected</span>
+                  )}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium  flex items-center gap-2">
+                <ChartLine className="h-4 w-4" />Resource Usage</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EnvironmentResourceMetrics
+                clusterId={env.cluster_id}
+                namespace={env.cluster_namespace}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="applications" className="space-y-4 mt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Box className="h-4 w-4" />Applications in this Environment</CardTitle>
+              <CardDescription>
+                Manage and monitor applications deployed to this environment
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ApplicationList envId={envId!} envName={env.name} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <EditEnvironmentDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        env={env}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["env", envId] })
+        }}
+      />
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the environment "{env.name}" from the platform.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+export default EnvironmentDetailPage

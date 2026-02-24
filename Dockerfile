@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1
+
+# ─── Stage 1: Build ───────────────────────────────────────────────────────────
+FROM golang:1.25-alpine AS builder
+
+# CGO is required for the SQLite driver
+RUN apk add --no-cache gcc musl-dev
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+ARG VERSION=dev
+ARG BUILD_TIME
+
+RUN CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -o ketches \
+    ./cmd/api
+
+# ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
+FROM alpine:3.21
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+COPY --from=builder /app/ketches .
+
+EXPOSE 8080
+
+ENTRYPOINT ["./ketches"]

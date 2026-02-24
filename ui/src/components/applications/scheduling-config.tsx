@@ -1,0 +1,299 @@
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { Plus, Save, Scale, Trash2 } from "lucide-react"
+import { Controller, useFieldArray, useForm } from "react-hook-form"
+import { toast } from "sonner"
+import * as z from "zod"
+
+import type { App } from "@/api/apps"
+import { appsApi } from "@/api/apps"
+import { KeyValueInput } from "@/components/shared/key-value-input"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Field, FieldContent, FieldDescription, FieldError, FieldLabel, FieldTitle } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+
+const schedulingSchema = z.object({
+  rule_type: z.string(),
+  node_name: z.string().optional(),
+  node_selectors: z.array(z.object({
+    key: z.string().min(1),
+    value: z.string()
+  })),
+  node_affinity: z.string().optional(),
+  tolerations: z.array(z.object({
+    key: z.string().optional(),
+    operator: z.string(),
+    value: z.string().optional(),
+    effect: z.string(),
+    toleration_seconds: z.coerce.number().optional()
+  })),
+})
+
+interface SchedulingConfigProps {
+  app: App
+}
+
+export function SchedulingConfig({ app }: SchedulingConfigProps) {
+  const queryClient = useQueryClient()
+
+  let initialNodeSelectors: any[] = []
+  try {
+    const parsed = JSON.parse(app.scheduling_rule?.node_selector || "{}")
+    initialNodeSelectors = Object.entries(parsed).map(([key, value]) => ({ key, value }))
+  } catch (e) { }
+
+  let initialTolerations: any[] = []
+  try {
+    initialTolerations = JSON.parse(app.scheduling_rule?.tolerations || "[]")
+  } catch (e) { }
+
+  const { control, register, handleSubmit, watch, formState: { errors } } = useForm<z.infer<typeof schedulingSchema>>({
+    resolver: zodResolver(schedulingSchema),
+    defaultValues: {
+      rule_type: app.scheduling_rule?.rule_type || "nodeSelector",
+      node_name: app.scheduling_rule?.node_name || "",
+      node_selectors: initialNodeSelectors,
+      node_affinity: app.scheduling_rule?.node_affinity || "",
+      tolerations: initialTolerations.map((t: any) => ({
+        key: t.key || "",
+        operator: t.operator || "Equal",
+        value: t.value || "",
+        effect: t.effect || "NoSchedule",
+        toleration_seconds: t.tolerationSeconds || undefined
+      })),
+    },
+  })
+
+  const { fields: tolerationFields, append: appendToleration, remove: removeToleration } = useFieldArray({
+    control,
+    name: "tolerations",
+  })
+
+  const ruleType = watch("rule_type")
+
+  const updateMutation = useMutation({
+    mutationFn: (values: z.infer<typeof schedulingSchema>) => {
+      const nodeSelectorObj = values.node_selectors.reduce((acc: any, curr) => {
+        acc[curr.key] = curr.value
+        return acc
+      }, {})
+
+      const data: Partial<App> = {
+        ...app,
+        scheduling_rule: {
+          rule_type: values.rule_type,
+          node_name: values.node_name,
+          node_selector: JSON.stringify(nodeSelectorObj),
+          node_affinity: values.node_affinity,
+          tolerations: JSON.stringify(values.tolerations.map(t => ({
+            key: t.key,
+            operator: t.operator,
+            value: t.value,
+            effect: t.effect,
+            tolerationSeconds: t.toleration_seconds
+          }))),
+        }
+      }
+      return appsApi.update(app.id, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['app', app.id] })
+      toast.success("Scheduling configuration updated")
+    },
+    onError: (err: any) => {
+      toast.error("Failed to update scheduling", {
+        description: err.response?.data?.error || "Unknown error"
+      })
+    }
+  })
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Scale className="h-4 w-4" /> Scheduling Rules
+        </CardTitle>
+        <CardDescription>Control where your application pods are placed on the cluster nodes</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-4">
+          <div className="grid grid-cols-2 items-start gap-2">
+            <Field>
+              <FieldLabel className="text-muted-foreground">Placement Rule</FieldLabel>
+              <FieldContent>
+                <Controller
+                  control={control}
+                  name="rule_type"
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      items={[
+                        { value: "nodeName", label: "Specific Node Name" },
+                        { value: "nodeSelector", label: "Node Selector (Labels)" },
+                        { value: "nodeAffinity", label: "Node Affinity (Advanced)" },
+                      ]}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select placement rule" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nodeName">Specific Node Name</SelectItem>
+                        <SelectItem value="nodeSelector">Node Selector (Labels)</SelectItem>
+                        <SelectItem value="nodeAffinity">Node Affinity (Advanced)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FieldContent>
+              {ruleType === "nodeName" && <FieldDescription><i>Strictly schedule on this specific node.</i></FieldDescription>}
+              {ruleType === "nodeSelector" && <FieldDescription><i>Schedule on nodes matching these label key-value pairs.</i></FieldDescription>}
+              {ruleType === "nodeAffinity" && <FieldDescription><i>Advanced affinity rules in Kubernetes format.</i></FieldDescription>}
+              {errors.rule_type && <FieldError>{errors.rule_type.message}</FieldError>}
+            </Field>
+
+
+            {ruleType === "nodeName" && (
+              <Field>
+                <FieldLabel className="text-muted-foreground">Node Name</FieldLabel>
+                <FieldContent>
+                  <Input placeholder="e.g. gke-cluster-node-1234" {...register("node_name")} />
+                </FieldContent>
+                {errors.node_name && <FieldError>{errors.node_name.message}</FieldError>}
+              </Field>
+            )}
+
+            {ruleType === "nodeSelector" && (
+              <div className="grid grid-cols-1 gap-2">
+                <FieldLabel className="text-muted-foreground">Node Selector Labels</FieldLabel>
+                <Controller
+                  control={control}
+                  name="node_selectors"
+                  render={({ field }) => (
+                    <KeyValueInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      keyPlaceholder="label-key"
+                      valuePlaceholder="label-value"
+                    />
+                  )}
+                />
+              </div>
+            )}
+
+            {ruleType === "nodeAffinity" && (
+              <Field>
+                <FieldLabel className="text-muted-foreground">Node Affinity (JSON)</FieldLabel>
+                <FieldContent>
+                  <Textarea
+                    placeholder='{ "requiredDuringSchedulingIgnoredDuringExecution": { ... } }'
+                    className="font-mono min-h-32 text-xs"
+                    {...register("node_affinity")}
+                  />
+                </FieldContent>
+                {errors.node_affinity && <FieldError>{errors.node_affinity.message}</FieldError>}
+              </Field>
+            )}
+
+          </div>
+
+          <div className="pt-6 border-t space-y-4">
+            <div className="flex items-center justify-between">
+              <FieldTitle className="text-base">Tolerations</FieldTitle>
+              <Button type="button" variant="outline" onClick={() => appendToleration({ key: "", operator: "Equal", value: "", effect: "NoSchedule" })}>
+                <Plus /> Add Toleration
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Allow pods to be scheduled on nodes with matching taints</p>
+
+            <div className="space-y-4">
+              {tolerationFields.map((field, index) => (
+                <div key={field.id} className="p-4 border rounded-lg grid grid-cols-2 md:grid-cols-5 gap-2 relative bg-muted/20">
+                  <Field>
+                    <FieldLabel className="text-[10px] uppercase text-muted-foreground">Key</FieldLabel>
+                    <FieldContent><Input {...register(`tolerations.${index}.key`)} /></FieldContent>
+                  </Field>
+                  <Field>
+                    <FieldLabel className="text-[10px] uppercase text-muted-foreground">Operator</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={control}
+                        name={`tolerations.${index}.operator`}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Equal">Equal</SelectItem>
+                              <SelectItem value="Exists">Exists</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </FieldContent>
+                  </Field>
+                  <Field>
+                    <FieldLabel className="text-[10px] uppercase text-muted-foreground">Value</FieldLabel>
+                    <FieldContent><Input {...register(`tolerations.${index}.value`)} disabled={watch(`tolerations.${index}.operator`) === "Exists"} /></FieldContent>
+                  </Field>
+                  <Field>
+                    <FieldLabel className="text-[10px] uppercase text-muted-foreground">Effect</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={control}
+                        name={`tolerations.${index}.effect`}
+                        render={({ field }) => (
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            items={[
+                              { value: "NoSchedule", label: "NoSchedule" },
+                              { value: "PreferNoSchedule", label: "PreferNoSchedule" },
+                              { value: "NoExecute", label: "NoExecute" },
+                              { value: "", label: "Any" },
+                            ]}
+                          >
+                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NoSchedule">NoSchedule</SelectItem>
+                              <SelectItem value="PreferNoSchedule">PreferNoSchedule</SelectItem>
+                              <SelectItem value="NoExecute">NoExecute</SelectItem>
+                              <SelectItem value="">Any</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </FieldContent>
+                  </Field>
+                  <div className="flex items-end gap-2">
+                    <Field>
+                      <FieldLabel className="text-[10px] uppercase text-muted-foreground">Sec.</FieldLabel>
+                      <FieldContent><Input type="number" {...register(`tolerations.${index}.toleration_seconds`)} /></FieldContent>
+                    </Field>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => removeToleration(index)}>
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={updateMutation.isPending}>
+              <Save />
+              {updateMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card >
+  )
+}
+

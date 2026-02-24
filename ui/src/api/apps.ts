@@ -1,0 +1,211 @@
+import client from './client'
+
+export interface AutoScalingSpec {
+  min_replicas: number
+  max_replicas: number
+  target_cpu_utilization?: number
+  target_memory_utilization?: number
+}
+
+export interface SchedulingSpec {
+  rule_type: string
+  node_name?: string
+  node_selector?: string
+  node_affinity?: string
+  tolerations?: string
+}
+
+export interface ProbeSpec {
+  type: 'liveness' | 'readiness' | 'startup'
+  probe_mode: 'httpGet' | 'tcpSocket' | 'exec'
+  enabled: boolean
+  http_get_path?: string
+  http_get_port?: number
+  tcp_socket_port?: number
+  exec_command?: string
+  initial_delay_seconds: number
+  period_seconds: number
+  timeout_seconds: number
+  success_threshold: number
+  failure_threshold: number
+}
+
+export interface GatewaySpec {
+  id?: string
+  port: number
+  protocol: string
+  domain: string
+  path: string
+  gateway_port?: number
+  exposed: boolean
+  cert_id?: string
+}
+
+export interface App {
+  id: string
+  slug: string
+  name: string
+  description: string
+  env_id: string
+  app_type: string
+  code_repository_id?: string
+  container_image: string
+  container_command?: string
+  registry_username?: string
+  registry_password?: string
+  replicas: number
+  request_cpu: number
+  request_memory: number
+  limit_cpu: number
+  limit_memory: number
+  status: string
+  auto_scaling?: AutoScalingSpec
+  scheduling_rule?: SchedulingSpec
+  probes?: ProbeSpec[]
+  gateways?: GatewaySpec[]
+  created_at: string
+  env?: {
+    id: string
+    name: string
+    project_id: string
+  }
+}
+
+export interface AppInstance {
+  instanceName: string
+  status: string
+  ip: string
+  initContainerCount: number
+  initContainers: string[]
+  containerCount: number
+  containers: string[]
+  nodeName: string
+  nodeIP: string
+  eventCount: number
+  restartCount: number
+  runningDuration: string
+  createdAt: string
+}
+
+export interface AppEvent {
+  type: string
+  reason: string
+  message: string
+  from: string
+  count: number
+  createdAt: string
+}
+
+export interface ActionMetadata {
+  action: string
+  label: string
+  icon: string
+  category: 'primary' | 'secondary'
+  variant: 'default' | 'destructive' | 'outline'
+}
+
+export interface AvailableActionsResponse {
+  actions: ActionMetadata[]
+}
+
+export const appsApi = {
+  list: async (envId: string, search?: string) => {
+    return client.get(`/v1/envs/${envId}/apps`, {
+      params: { search }
+    }) as Promise<App[]>
+  },
+  create: async (envId: string, data: any) => {
+    return client.post(`/v1/envs/${envId}/apps`, data) as Promise<App>
+  },
+  get: async (id: string) => {
+    return client.get(`/v1/apps/${id}`) as Promise<App>
+  },
+  update: async (id: string, data: Partial<App>) => {
+    return client.put(`/v1/apps/${id}`, data) as Promise<App>
+  },
+  updateBasic: async (id: string, data: Partial<App>) => {
+    return client.patch(`/v1/apps/${id}/basic`, data) as Promise<App>
+  },
+  getAvailableActions: async (id: string) => {
+    return client.get(`/v1/apps/${id}/available-actions`) as Promise<AvailableActionsResponse>
+  },
+  executeAction: async (id: string, action: string) => {
+    return client.post(`/v1/apps/${id}/action`, { action })
+  },
+  listInstances: async (id: string) => {
+    return client.get(`/v1/apps/${id}/instances`) as Promise<AppInstance[]>
+  },
+  deleteInstance: async (appId: string, instanceName: string) => {
+    return client.delete(`/v1/apps/${appId}/instances/${instanceName}`)
+  },
+  listInstanceEvents: async (appId: string, instanceName: string) => {
+    return client.get(`/v1/apps/${appId}/instances/${instanceName}/events`) as Promise<AppEvent[]>
+  },
+  listVolumes: async (id: string) => {
+    return client.get(`/v1/apps/${id}/volumes`) as Promise<any[]>
+  },
+  addVolume: async (id: string, data: any) => {
+    return client.post(`/v1/apps/${id}/volumes`, data)
+  },
+  updateVolume: async (volumeId: string, data: any) => {
+    return client.put(`/v1/volumes/${volumeId}`, data)
+  },
+  deleteVolume: async (volumeId: string) => {
+    return client.delete(`/v1/volumes/${volumeId}`)
+  },
+  listEnvVars: async (id: string) => {
+    return client.get(`/v1/apps/${id}/env-vars`) as Promise<any[]>
+  },
+  addEnvVar: async (id: string, data: any) => {
+    return client.post(`/v1/apps/${id}/env-vars`, data)
+  },
+  updateEnvVar: async (varId: string, data: any) => {
+    return client.put(`/v1/env-vars/${varId}`, data)
+  },
+  deleteEnvVar: async (varId: string) => {
+    return client.delete(`/v1/env-vars/${varId}`)
+  },
+  listConfigFiles: async (id: string) => {
+    return client.get(`/v1/apps/${id}/config-files`) as Promise<any[]>
+  },
+  addConfigFile: async (id: string, data: any) => {
+    return client.post(`/v1/apps/${id}/config-files`, data)
+  },
+  updateConfigFile: async (id: string, data: any) => {
+    return client.put(`/v1/config-files/${id}`, data)
+  },
+  deleteConfigFile: async (id: string) => {
+    return client.delete(`/v1/config-files/${id}`)
+  },
+  listGateways: async (id: string) => {
+    return client.get(`/v1/apps/${id}/gateways`) as Promise<any[]>
+  },
+  addGateway: async (id: string, data: GatewaySpec) => {
+    return client.post(`/v1/apps/${id}/gateways`, data)
+  },
+  updateGateway: async (gatewayId: string, data: GatewaySpec) => {
+    return client.put(`/v1/gateways/${gatewayId}`, data)
+  },
+  deleteGateway: async (gatewayId: string) => {
+    return client.delete(`/v1/gateways/${gatewayId}`)
+  },
+  getTopology: async (id: string) => {
+    return client.get(`/v1/apps/${id}/topology`) as Promise<{
+      nodes: {
+        id: string
+        type: string
+        name: string
+        status?: string
+        metadata?: Record<string, string>
+      }[]
+      edges: {
+        source: string
+        target: string
+        type?: string
+      }[]
+    }>
+  },
+  getTopologyResourceYaml: async (appId: string, nodeId: string) => {
+    return client.get(`/v1/apps/${appId}/topology/nodes/${nodeId}/resource-yaml`) as Promise<{ yaml: string }>
+  },
+}
