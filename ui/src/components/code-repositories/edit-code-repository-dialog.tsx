@@ -128,7 +128,7 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
                 <FieldContent>
                   <Input
                     type="password"
-                    placeholder={hasPassword ? "••••••••" : "Enter password/token"}
+                    autoComplete="new-password"
                     value={form.git_password ?? ''}
                     onChange={(e) => setForm({ ...form, git_password: e.target.value })}
                   />

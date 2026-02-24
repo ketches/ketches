@@ -16,14 +16,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { AddUserDialog } from "@/components/users/add-user-dialog"
 import { EditPasswordDialog } from "@/components/users/edit-password-dialog"
+import { ImportUsersDialog } from "@/components/users/import-users-dialog"
 
 const USER_ROLES = ["admin", "user"] as const
-type UserRole = typeof USER_ROLES[number]
+type UserRole = (typeof USER_ROLES)[number]
 
 const UserRoleLabels: Record<UserRole, string> = {
   admin: "Admin",
   user: "User",
+}
+
+const UserRoleDescriptions: Record<UserRole, string> = {
+  admin: "Full system access",
+  user: "Regular user access",
+}
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return "-"
+  const date = new Date(dateString)
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
 }
 
 export function UsersPage() {
@@ -142,17 +159,33 @@ export function UsersPage() {
             onValueChange={(val) => val && updateRoleMutation.mutate({ userId: user.id, role: val })}
             disabled={updateRoleMutation.isPending}
           >
-            <SelectTrigger className="h-8 w-32">
+            <SelectTrigger className="h-8 w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {USER_ROLES.map((r) => (
                 <SelectItem key={r} value={r}>
-                  {UserRoleLabels[r as UserRole]}
+                  <div className="flex flex-col">
+                    <span>{UserRoleLabels[r as UserRole]}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {UserRoleDescriptions[r as UserRole]}
+                    </span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        )
+      },
+    },
+    {
+      accessorKey: "created_at",
+      header: "Registered At",
+      cell: ({ row }) => {
+        return (
+          <span className="text-muted-foreground">
+            {formatDate(row.original.created_at)}
+          </span>
         )
       },
     },
@@ -228,6 +261,8 @@ export function UsersPage() {
                   Delete Selected ({selectedRows.length})
                 </Button>
               )}
+              <AddUserDialog onSuccess={() => refetch()} />
+              <ImportUsersDialog onSuccess={() => refetch()} />
             </div>
           )
         }}

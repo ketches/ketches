@@ -242,6 +242,7 @@ export function CreateAppDialog({
                     placeholder="Registry Username"
                     value={formData.registry_username}
                     onChange={(e) => setFormData((prev) => ({ ...prev, registry_username: e.target.value }))}
+                    autoComplete="off"
                   />
                 </FieldContent>
               </Field>
@@ -250,6 +251,7 @@ export function CreateAppDialog({
                 <FieldContent>
                   <Input
                     type="password"
+                    autoComplete="new-password"
                     placeholder="Registry Password"
                     value={formData.registry_password}
                     onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))}

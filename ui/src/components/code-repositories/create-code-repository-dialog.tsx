@@ -158,6 +158,7 @@ export function CreateCodeRepositoryDialog({ open, onOpenChange, projectId, onSu
                 <FieldContent>
                   <Input
                     type="password"
+                    autoComplete="new-password"
                     placeholder=""
                     value={form.git_password ?? ''}
                     onChange={(e) => setForm({ ...form, git_password: e.target.value })}

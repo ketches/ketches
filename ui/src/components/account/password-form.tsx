@@ -57,6 +57,7 @@ export function PasswordForm({ onSave }: PasswordFormProps) {
             <Input
               id="currentPassword"
               type="password"
+              autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
@@ -69,6 +70,7 @@ export function PasswordForm({ onSave }: PasswordFormProps) {
             <Input
               id="newPassword"
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
@@ -81,6 +83,7 @@ export function PasswordForm({ onSave }: PasswordFormProps) {
             <Input
               id="confirmPassword"
               type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required

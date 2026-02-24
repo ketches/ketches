@@ -118,7 +118,7 @@ export function EnvironmentsPage() {
       accessorKey: "cluster_namespace",
       header: "Namespace",
       cell: ({ row }) => (
-        <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
+        <span className="font-mono text-xs text-muted-foreground px-1.5 py-0.5 rounded">
           {row.original.cluster_namespace}
         </span>
       ),

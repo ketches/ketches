@@ -65,10 +65,10 @@ export function EditPasswordDialog({ username, onSubmit, isPending }: EditPasswo
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter new password (min 6 characters)"
-                  autoComplete="new-password"
                 />
               </FieldContent>
             </Field>
@@ -81,7 +81,6 @@ export function EditPasswordDialog({ username, onSubmit, isPending }: EditPasswo
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
-                  autoComplete="new-password"
                 />
               </FieldContent>
               {password && confirmPassword && password !== confirmPassword && (

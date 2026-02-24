@@ -457,7 +457,7 @@ export function UnifiedBuildDeployDialog({
                       )}
 
                       {isCreatingApp && (
-                        <div className="grid gap-4 border border-green-500/50 border-dashed rounded-md p-4">
+                        <div className="grid gap-4 border border-primary/20 border-dashed rounded-md p-4">
                           <div className="flex items-center justify-between">
                             <FieldLabel>Create New Application</FieldLabel>
                             {existingRepoApps.length > 0 && (

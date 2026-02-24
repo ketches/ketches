@@ -108,6 +108,7 @@ export function LoginForm({
             <Input
               id="password"
               type="password"
+              autoComplete="current-password"
               {...register("password")}
             />
           </FieldContent>

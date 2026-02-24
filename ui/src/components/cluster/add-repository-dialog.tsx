@@ -189,6 +189,7 @@ export function AddRepositoryDialog({
                   <Input
                     id="repo-password"
                     type="password"
+                    autoComplete="new-password"
                     placeholder="Password or token"
                     value={form.password}
                     onChange={(e) =>

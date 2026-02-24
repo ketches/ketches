@@ -117,6 +117,7 @@ export function EditImageDialog({
                 <FieldContent>
                   <Input
                     type="password"
+                    autoComplete="new-password"
                     placeholder="Registry password"
                     value={formData.registry_password}
                     onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))}

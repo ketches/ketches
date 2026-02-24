@@ -247,6 +247,7 @@ export function EditPluginDialog({ plugin, open, onOpenChange }: EditPluginDialo
                   <Input
                     id="edit-registry_password"
                     type="password"
+                    autoComplete="new-password"
                     placeholder="(leave blank to keep existing)"
                     value={formData.registry_password}
                     onChange={(e) => setFormData({ ...formData, registry_password: e.target.value })}

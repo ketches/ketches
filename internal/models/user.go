@@ -1,5 +1,9 @@
 package models
 
+import (
+	"time"
+)
+
 type SignUpRequest struct {
 	Username string `json:"username" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
@@ -28,9 +32,33 @@ type SignInResponse struct {
 }
 
 type UserResponse struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Fullname string `json:"fullname"`
-	Role     string `json:"role"`
+	ID        string    `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Fullname  string    `json:"fullname"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// BatchImportRequest represents a batch of users to import
+type BatchImportRequest struct {
+	Users []CreateUserRequest `json:"users" binding:"required,dive"`
+}
+
+// BatchImportResponse represents the result of a batch import operation
+type BatchImportResponse struct {
+	Succeeded int              `json:"succeeded"`
+	Failed    int              `json:"failed"`
+	Errors    []ImportError    `json:"errors"`
+	Users     []UserResponse   `json:"users"`
+}
+
+type ImportError struct {
+	Index   int    `json:"index"`
+	Message string `json:"message"`
+}
+
+// ChangeUserRoleRequest represents the request body for changing a user's role
+type ChangeUserRoleRequest struct {
+	Role string `json:"role" binding:"required,oneof=user admin"`
 }

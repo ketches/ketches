@@ -194,6 +194,7 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
               <FieldContent>
                 <Input
                   type="password"
+                  autoComplete="new-password"
                   placeholder="Password or personal access token"
                   value={form.git_password}
                   onChange={(e) => setForm({ ...form, git_password: e.target.value })}

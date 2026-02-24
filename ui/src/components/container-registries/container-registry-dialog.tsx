@@ -252,6 +252,7 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
               <FieldContent>
                 <Input
                   type="password"
+                  autoComplete="new-password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                 />

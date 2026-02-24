@@ -26,9 +26,11 @@ func SetupV1Routes(r *gin.Engine) {
 			{
 				users.GET("", handlers.ListUsers)
 				users.POST("", middlewares.AdminOnly(), handlers.CreateUser)
+				users.POST("/import", middlewares.AdminOnly(), handlers.ImportUsers)
 				users.PUT("/:userID", handlers.UpdateUser)
 				users.DELETE("/:userID", handlers.DeleteUser)
 				users.PUT("/:userID/change-role", middlewares.AdminOnly(), handlers.ChangeUserRole)
+				users.PATCH("/:userID/role", middlewares.AdminOnly(), handlers.ChangeUserRole)
 			}
 
 			projects := authorized.Group("/projects")

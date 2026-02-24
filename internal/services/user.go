@@ -12,6 +12,11 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	ErrDeleteLastAdmin = errors.New("cannot delete the last admin user")
+	ErrDemoteLastAdmin = errors.New("cannot demote the last admin user")
+)
+
 func createDefaultProject(tx *gorm.DB, user *entities.User) error {
 	displayName := user.Fullname
 	if displayName == "" {
@@ -114,11 +119,52 @@ func UpdateUser(userID string, fullname, email, phone string) (*entities.User, e
 	return user, nil
 }
 
+// countAdmins returns the number of admin users in the system.
+func countAdmins() (int64, error) {
+	var count int64
+	if err := db.DB.Model(&entities.User{}).Where("role = ?", "admin").Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func DeleteUser(userID string) error {
+	user, err := GetUser(userID)
+	if err != nil {
+		return err
+	}
+
+	// Prevent deleting the last admin user.
+	if user.Role == "admin" {
+		adminCount, err := countAdmins()
+		if err != nil {
+			return err
+		}
+		if adminCount <= 1 {
+			return ErrDeleteLastAdmin
+		}
+	}
+
 	return db.DB.Delete(&entities.User{}, "id = ?", userID).Error
 }
 
 func ChangeUserRole(userID string, role string) error {
+	user, err := GetUser(userID)
+	if err != nil {
+		return err
+	}
+
+	// Prevent demoting the last admin user to a non-admin role.
+	if user.Role == "admin" && role != "admin" {
+		adminCount, err := countAdmins()
+		if err != nil {
+			return err
+		}
+		if adminCount <= 1 {
+			return ErrDemoteLastAdmin
+		}
+	}
+
 	return db.DB.Model(&entities.User{}).Where("id = ?", userID).Update("role", role).Error
 }
 
@@ -151,4 +197,43 @@ func CreateUser(req *models.CreateUserRequest) (*entities.User, error) {
 	}
 
 	return user, nil
+}
+
+// BatchImportUsers imports multiple users at once
+func BatchImportUsers(requests []models.CreateUserRequest) (*models.BatchImportResponse, error) {
+	response := &models.BatchImportResponse{
+		Succeeded: 0,
+		Failed:    0,
+		Errors:    []models.ImportError{},
+		Users:     []models.UserResponse{},
+	}
+
+	for i, req := range requests {
+		// Validate role
+		if req.Role != "admin" && req.Role != "user" {
+			req.Role = "user"
+		}
+
+		user, err := CreateUser(&req)
+		if err != nil {
+			response.Failed++
+			response.Errors = append(response.Errors, models.ImportError{
+				Index:   i,
+				Message: fmt.Sprintf("failed to create user %s: %v", req.Username, err),
+			})
+			continue
+		}
+
+		response.Succeeded++
+		response.Users = append(response.Users, models.UserResponse{
+			ID:        user.ID,
+			Username:  user.Username,
+			Email:     user.Email,
+			Fullname:  user.Fullname,
+			Role:      user.Role,
+			CreatedAt: user.CreatedAt,
+		})
+	}
+
+	return response, nil
 }

@@ -129,6 +129,7 @@ export function SignupForm({
             <Input
               id="password"
               type="password"
+              autoComplete="new-password"
               {...register("password")}
             />
           </FieldContent>

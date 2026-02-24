@@ -441,6 +441,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                           value={formData.password}
                           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                           type="password"
+                          autoComplete="new-password"
                           placeholder={editingIntegration ? "Leave blank to keep current" : ""}
                         />
                       </FieldContent>
