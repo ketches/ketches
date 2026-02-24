@@ -11,6 +11,7 @@ export interface CodeRepository {
   description?: string
   git_repo_url: string
   git_username: string
+  git_password: string
   has_git_password: boolean
   webhook_secret: string
   webhook_enabled: boolean
@@ -34,7 +35,6 @@ export interface CreateCodeRepositoryRequest {
 
 export interface UpdateCodeRepositoryRequest {
   name?: string
-  slug?: string
   git_repo_url?: string
   git_username?: string
   git_password?: string

@@ -184,7 +184,7 @@ export function UsersPage() {
       cell: ({ row }) => {
         return (
           <span className="text-muted-foreground">
-            {formatDate(row.original.created_at)}
+            {formatDate(row.original.created_at ?? '')}
           </span>
         )
       },

@@ -120,29 +120,14 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 		return nil, err
 	}
 
-	if req.Slug != "" {
-		newSlug := RepoSlugFromName(req.Slug)
-		if newSlug != repo.Slug {
-			var existing entities.CodeRepository
-			if err := db.DB.Where("project_id = ? AND slug = ? AND id != ?", repo.ProjectID, newSlug, id).First(&existing).Error; err == nil {
-				return nil, fmt.Errorf("code repository with slug %s already exists in the project", newSlug)
-			}
-		}
-		repo.Slug = newSlug
-	}
-
 	if req.Name != "" {
 		repo.Name = sanitizeRepoName(req.Name)
 	}
 	if req.GitRepoURL != "" {
 		repo.GitRepoURL = req.GitRepoURL
 	}
-	if req.GitUsername != "" {
-		repo.GitUsername = req.GitUsername
-	}
-	if req.GitPassword != "" {
-		repo.GitPassword = req.GitPassword
-	}
+	repo.GitUsername = req.GitUsername
+	repo.GitPassword = req.GitPassword
 	if req.WebhookEnabled != nil {
 		repo.WebhookEnabled = *req.WebhookEnabled
 	}
@@ -178,7 +163,7 @@ func ToCodeRepositoryResponse(r *entities.CodeRepository, baseURL string) models
 		Slug:           r.Slug,
 		GitRepoURL:     r.GitRepoURL,
 		GitUsername:    r.GitUsername,
-		HasGitPassword: r.GitPassword != "",
+		GitPassword:    r.GitPassword,
 		WebhookSecret:  r.WebhookSecret,
 		WebhookEnabled: r.WebhookEnabled,
 		CreatedAt:      r.CreatedAt,

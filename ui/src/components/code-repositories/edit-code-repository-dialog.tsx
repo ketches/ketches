@@ -20,24 +20,22 @@ interface EditCodeRepositoryDialogProps {
 export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }: EditCodeRepositoryDialogProps) {
   const queryClient = useQueryClient()
   const [form, setForm] = React.useState<UpdateCodeRepositoryRequest>({})
-  const [hasPassword, setHasPassword] = React.useState(false)
 
   React.useEffect(() => {
     if (repo && open) {
       setForm({
         name: repo.name,
-        slug: repo.slug,
         git_repo_url: repo.git_repo_url,
         git_username: repo.git_username ?? '',
+        git_password: repo.git_password ?? '',
         webhook_enabled: repo.webhook_enabled,
       })
-      setHasPassword(repo.has_git_password ?? false)
     }
   }, [repo, open])
 
   const updateMutation = useMutation({
     mutationFn: () => {
-      const { slug: _slug, ...updateData } = form
+      const { ...updateData } = form
       return codeRepositoriesApi.update(repo!.id, updateData)
     },
     onSuccess: () => {
@@ -59,10 +57,6 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
     e.preventDefault()
     if (!form.name?.trim() || !form.git_repo_url?.trim()) {
       toast.error('Name and Git URL are required')
-      return
-    }
-    if (form.slug !== undefined && !form.slug?.trim()) {
-      toast.error('Slug is required')
       return
     }
     updateMutation.mutate()
@@ -96,7 +90,7 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
                 <FieldLabel>Slug *</FieldLabel>
                 <FieldContent>
                   <Input
-                    value={form.slug ?? ''}
+                    value={repo.slug ?? ''}
                     disabled
                     className="bg-muted font-mono"
                   />
@@ -129,6 +123,7 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
                   <Input
                     type="password"
                     autoComplete="new-password"
+                    placeholder="Enter password/token"
                     value={form.git_password ?? ''}
                     onChange={(e) => setForm({ ...form, git_password: e.target.value })}
                   />

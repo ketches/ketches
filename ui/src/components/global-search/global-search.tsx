@@ -119,6 +119,7 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
                           key={item.id}
                           value={`${item.name} ${item.description || ""}`}
                           onSelect={() => handleSelect(item)}
+                          className="gap-0"
                         >
                           <Box className="mr-2 h-4 w-4" />
                           <span>{item.name}</span>
@@ -143,6 +144,7 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
                         key={item.id}
                         value={`${item.name} ${item.description || ""}`}
                         onSelect={() => handleSelect(item)}
+                        className="gap-0"
                       >
                         <Orbit className="mr-2 h-4 w-4" />
                         <span>{item.name}</span>
