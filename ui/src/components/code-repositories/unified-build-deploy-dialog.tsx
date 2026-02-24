@@ -99,6 +99,20 @@ export function UnifiedBuildDeployDialog({
 
   const isCreatingApp = !isLoadingApps && (showCreateApp || (!!deployEnvId && existingRepoApps.length === 0)) && !preSelectedDeployAppId
 
+  const resetForm = React.useCallback(() => {
+    if (!preSelectedConfigId) setSelectedConfigId("")
+    setGitRef("")
+    setBuildEnvId("")
+    if (!isDeployMode && !preSelectedDeployEnvId) {
+      setAutoDeploy(false)
+      setDeployEnvId("")
+    }
+    if (!preSelectedDeployAppId) setDeployAppId("")
+    setShowCreateApp(false)
+    setNewAppName("")
+    setNewAppSlug("")
+  }, [preSelectedConfigId, isDeployMode, preSelectedDeployEnvId, preSelectedDeployAppId])
+
   React.useEffect(() => {
     if (open) {
       if (preSelectedConfigId) {
@@ -122,7 +136,7 @@ export function UnifiedBuildDeployDialog({
     } else {
       resetForm()
     }
-  }, [open, preSelectedConfigId, preSelectedBuildId, preSelectedDeployEnvId, preSelectedDeployAppId, buildConfigs])
+  }, [open, preSelectedConfigId, preSelectedBuildId, preSelectedDeployEnvId, preSelectedDeployAppId, buildConfigs, resetForm])
 
   React.useEffect(() => {
     if (selectedConfig && !gitRef) {
@@ -230,20 +244,6 @@ export function UnifiedBuildDeployDialog({
       toast.error(err?.response?.data?.error || "Failed to deploy")
     },
   })
-
-  const resetForm = () => {
-    if (!preSelectedConfigId) setSelectedConfigId("")
-    setGitRef("")
-    setBuildEnvId("")
-    if (!isDeployMode && !preSelectedDeployEnvId) {
-      setAutoDeploy(false)
-      setDeployEnvId("")
-    }
-    if (!preSelectedDeployAppId) setDeployAppId("")
-    setShowCreateApp(false)
-    setNewAppName("")
-    setNewAppSlug("")
-  }
 
   const handleSubmit = () => {
     const finalDeployEnvId = deployEnvId || preSelectedDeployEnvId
