@@ -97,13 +97,17 @@ export function PluginsPage() {
       accessorKey: "install_count",
       header: "Installs",
       cell: ({ row }) => (
-        <Button
-          variant="link"
-          className="p-0 h-auto font-normal"
-          onClick={() => setSelectedPlugin(row.original)}
-        >
-          {row.original.install_count}
-        </Button>
+        row.original.install_count > 0 ? (
+          <Button
+            variant="link"
+            className="p-0 h-auto font-normal"
+            onClick={() => setSelectedPlugin(row.original)}
+          >
+            {row.original.install_count}
+          </Button>
+        ) : (
+          <span className="text-muted-foreground">0</span>
+        )
       ),
     },
     {

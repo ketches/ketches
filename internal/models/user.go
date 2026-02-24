@@ -47,10 +47,10 @@ type BatchImportRequest struct {
 
 // BatchImportResponse represents the result of a batch import operation
 type BatchImportResponse struct {
-	Succeeded int              `json:"succeeded"`
-	Failed    int              `json:"failed"`
-	Errors    []ImportError    `json:"errors"`
-	Users     []UserResponse   `json:"users"`
+	Succeeded int            `json:"succeeded"`
+	Failed    int            `json:"failed"`
+	Errors    []ImportError  `json:"errors"`
+	Users     []UserResponse `json:"users"`
 }
 
 type ImportError struct {
@@ -61,4 +61,12 @@ type ImportError struct {
 // ChangeUserRoleRequest represents the request body for changing a user's role
 type ChangeUserRoleRequest struct {
 	Role string `json:"role" binding:"required,oneof=user admin"`
+}
+
+// ListUsersResponse represents the paginated list of users
+type ListUsersResponse struct {
+	Total    int64          `json:"total"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"page_size"`
+	Users    []UserResponse `json:"users"`
 }

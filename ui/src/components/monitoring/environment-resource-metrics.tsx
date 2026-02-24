@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { AlertCircle, ArrowDown, ArrowUp, CircleSlash, Cpu, ExternalLink, Loader2, MemoryStick, Network } from "lucide-react"
+import { AlertCircle, ArrowDown, ArrowUp, CircleQuestionMark, Cpu, ExternalLink, Loader2, MemoryStick, Network } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty"
+import { EmptyState } from "../shared/empty-state"
 
 const cpuChartConfig: ChartConfig = {
   cpu: { label: "CPU (mCores)", color: "var(--chart-1)" },
@@ -121,18 +122,23 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
 
   if (!metrics || metrics.chartData.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center text-center bg-muted/20 rounded-md border border-dashed">
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <CircleSlash />
-            </EmptyMedia>
-            <EmptyDescription>
-              No metrics data found.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      </div>
+      // <div className="flex flex-col items-center justify-center text-center bg-muted/20 rounded-md border border-dashed">
+      //   <Empty>
+      //     <EmptyHeader>
+      //       <EmptyMedia variant="icon">
+      //         <CircleQuestionMark className="text-muted-foreground" />
+      //       </EmptyMedia>
+      //       <EmptyDescription>
+      //         No metrics data found.
+      //       </EmptyDescription>
+      //     </EmptyHeader>
+      //   </Empty>
+      // </div>
+      <EmptyState
+        title="No Metrics Data"
+        description="We couldn't find any resource metrics for this environment. This could be due to a connection issue with Prometheus or simply because there hasn't been any activity in the environment recently."
+        icon={CircleQuestionMark}
+      />
     )
   }
 

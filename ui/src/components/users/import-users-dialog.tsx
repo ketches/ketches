@@ -26,6 +26,7 @@ import { Input } from "../ui/input"
 const FILE_TYPES = [
   { value: "json", label: "JSON", description: "Array of user objects" },
   { value: "csv", label: "CSV", description: "Comma-separated values" },
+  { value: "excel", label: "Excel", description: "Microsoft Excel (.xlsx)" },
 ] as const
 
 interface ImportUsersDialogProps {
@@ -36,7 +37,7 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
   const [open, setOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [fileType, setFileType] = useState<"json" | "csv">("json")
+  const [fileType, setFileType] = useState<"json" | "csv" | "excel">("json")
   const [error, setError] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -52,6 +53,8 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
         setFileType("csv")
       } else if (ext === "json") {
         setFileType("json")
+      } else if (ext === "xlsx" || ext === "xls") {
+        setFileType("excel")
       }
     }
   }
@@ -110,7 +113,7 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
           <DialogHeader>
             <DialogTitle>Import Users</DialogTitle>
             <DialogDescription>
-              Import users from a JSON or CSV file. Each user will have a default project created.
+              Import users from a JSON, CSV, or Excel file. Each user will have a default project created.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -119,7 +122,7 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
               <FieldContent>
                 <Select
                   value={fileType}
-                  onValueChange={(value) => value && setFileType(value as "json" | "csv")}
+                  onValueChange={(value) => value && setFileType(value as "json" | "csv" | "excel")}
                 >
                   <SelectTrigger id="fileType" className="w-full">
                     <SelectValue />
@@ -143,7 +146,7 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
             <Field>
               <FieldLabel>File *</FieldLabel>
               <FieldContent>
-                <Input id="file" type="file" accept=".json,.csv" onChange={handleFileChange} />
+                <Input id="file" type="file" accept=".json,.csv,.xlsx,.xls" onChange={handleFileChange} />
               </FieldContent>
               {selectedFile && (
                 <p className="text-sm text-muted-foreground mt-1">
@@ -168,11 +171,17 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
   }
 ]`}
                 </pre>
-              ) : (
+              ) : fileType === "csv" ? (
                 <pre className="text-xs text-muted-foreground">
                   {`username,email,password,fullname,role
 john,john@example.com,password123,John Doe,user
 jane,jane@example.com,password456,Jane Doe,admin`}
+                </pre>
+              ) : (
+                <pre className="text-xs text-muted-foreground">
+                  {`username | email | password | fullname | role
+john    | john@example.com | password123 | John Doe | user
+jane    | jane@example.com | password456 | Jane Doe | admin`}
                 </pre>
               )}
             </div>

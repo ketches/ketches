@@ -38,7 +38,7 @@ export function InstalledAppsDialog({ plugin, open, onOpenChange }: InstalledApp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Applications Using This Plugin</DialogTitle>
           <DialogDescription>
@@ -74,7 +74,6 @@ export function InstalledAppsDialog({ plugin, open, onOpenChange }: InstalledApp
                 <Button
                   variant="ghost"
                   onClick={() => handleNavigateToApp(app.id)}
-                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <ExternalLink />
                   View

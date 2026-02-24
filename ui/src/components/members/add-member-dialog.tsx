@@ -3,7 +3,7 @@ import { Plus } from "lucide-react"
 import * as React from "react"
 
 import { PROJECT_ROLES, ProjectRole, ProjectRoleLabels } from "@/api/projects"
-import { usersApi, type User } from "@/api/users"
+import { usersApi } from "@/api/users"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -32,11 +32,13 @@ export function AddMemberDialog({ onAdd }: { onAdd: (data: { userId: string, rol
   const [userId, setUserId] = React.useState("")
   const [role, setRole] = React.useState<string>(ProjectRole.DEVELOPER)
 
-  const { data: users = [] } = useQuery<User[]>({
+  const { data } = useQuery({
     queryKey: ['users'],
-    queryFn: usersApi.list,
+    queryFn: () => usersApi.list({}),
     enabled: open,
   })
+
+  const users = data?.users ?? []
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

@@ -95,12 +95,31 @@ func GetUser(userID string) (*entities.User, error) {
 	return &user, nil
 }
 
-func ListUsers() ([]entities.User, error) {
+func ListUsers(page, pageSize int, search string) (int64, []entities.User, error) {
 	var users []entities.User
-	if err := db.DB.Find(&users).Error; err != nil {
-		return nil, err
+	var total int64
+
+	query := db.DB.Model(&entities.User{})
+
+	// Apply search filter if provided
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Where("username LIKE ? OR fullname LIKE ? OR email LIKE ?",
+			searchPattern, searchPattern, searchPattern)
 	}
-	return users, nil
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	// Apply pagination
+	offset := (page - 1) * pageSize
+	if err := query.Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+		return 0, nil, err
+	}
+
+	return total, users, nil
 }
 
 func UpdateUser(userID string, fullname, email, phone string) (*entities.User, error) {

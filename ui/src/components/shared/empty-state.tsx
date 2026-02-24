@@ -37,7 +37,7 @@ export function EmptyState({
       <EmptyHeader>
         {Icon && (
           <EmptyMedia variant="icon">
-            <Icon />
+            <Icon className="text-muted-foreground" />
           </EmptyMedia>
         )}
         <EmptyTitle>{title}</EmptyTitle>

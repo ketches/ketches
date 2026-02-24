@@ -250,11 +250,6 @@ func UpdateAppBasic(appID string, req *models.UpdateBasicInfoRequest) (*entities
 
 	application.Name = req.Name
 	application.Description = req.Description
-	if req.ContainerImage != "" {
-		application.ContainerImage = req.ContainerImage
-	}
-	application.RegistryUsername = req.RegistryUsername
-	application.RegistryPassword = req.RegistryPassword
 
 	if err := db.DB.Save(application).Error; err != nil {
 		return nil, err

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -78,7 +79,23 @@ func SignIn(c *gin.Context) {
 }
 
 func ListUsers(c *gin.Context) {
-	users, err := services.ListUsers()
+	// Parse query parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	search := c.Query("search")
+
+	// Validate pagination parameters
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	total, users, err := services.ListUsers(page, pageSize, search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -95,7 +112,13 @@ func ListUsers(c *gin.Context) {
 			CreatedAt: u.CreatedAt,
 		})
 	}
-	api.Success(c, res)
+
+	api.Success(c, models.ListUsersResponse{
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+		Users:    res,
+	})
 }
 
 func UpdateUser(c *gin.Context) {
