@@ -196,44 +196,42 @@ export function UsersPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader items={[{ label: "Users", icon: User }]} />
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Users</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage system users and their roles.
-            </p>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Users</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage system users and their roles.
+          </p>
         </div>
-
-        <DataTable
-          columns={columns}
-          data={users}
-          onRefresh={refetch}
-          searchKey="username"
-          searchPlaceholder="Search users..."
-          toolbarActions={(table) => {
-            const selectedRows = table.getFilteredSelectedRowModel().rows
-            return (
-              <div className="flex items-center gap-2">
-                {selectedRows.length > 0 && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      const ids = selectedRows.map((r) => r.original.id)
-                      ids.forEach(id => deleteUserMutation.mutate(id))
-                      table.resetRowSelection()
-                    }}
-                  >
-                    <Trash2 />
-                    Delete Selected ({selectedRows.length})
-                  </Button>
-                )}
-              </div>
-            )
-          }}
-        />
       </div>
+
+      <DataTable
+        columns={columns}
+        data={users}
+        onRefresh={refetch}
+        searchKey="username"
+        searchPlaceholder="Search users..."
+        toolbarActions={(table) => {
+          const selectedRows = table.getFilteredSelectedRowModel().rows
+          return (
+            <div className="flex items-center gap-2">
+              {selectedRows.length > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    const ids = selectedRows.map((r) => r.original.id)
+                    ids.forEach(id => deleteUserMutation.mutate(id))
+                    table.resetRowSelection()
+                  }}
+                >
+                  <Trash2 />
+                  Delete Selected ({selectedRows.length})
+                </Button>
+              )}
+            </div>
+          )
+        }}
+      />
     </div>
   )
 }
