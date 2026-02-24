@@ -50,7 +50,7 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
           try {
             const res = await clustersApi.prometheusQueryRange(clusterId, query, oneHourAgo.toString(), now.toString(), step) as any
             return { key, values: res?.result?.[0]?.values || [] }
-          } catch (e) {
+          } catch {
             return { key, values: [] }
           }
         })

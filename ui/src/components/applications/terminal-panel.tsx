@@ -198,7 +198,7 @@ function TerminalInstance({
       try {
         const { state } = JSON.parse(authData)
         token = state.accessToken || ''
-      } catch (e) { }
+      } catch { }
     }
 
     if (!token) {

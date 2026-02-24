@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
+import type { AxiosError } from "axios"
 
 const commandSchema = z.object({
   container_command: z.string().optional(),
@@ -41,7 +42,7 @@ export function CommandConfig({ app }: CommandConfigProps) {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
       toast.success("Command configuration updated")
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to update command", {
         description: err.response?.data?.error || "Unknown error"
       })

@@ -12,6 +12,7 @@ import { Field, FieldContent, FieldLabel, FieldTitle } from "@/components/ui/fie
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import type { AxiosError } from "axios"
 
 interface BuildConfigPanelProps {
   appId: string
@@ -71,7 +72,7 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
       queryClient.invalidateQueries({ queryKey: ['build-config', appId] })
       toast.success('Build configuration saved')
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to save build configuration')
     },
   })
@@ -87,7 +88,7 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
       })
       toast.success('Build configuration deleted')
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to delete build configuration')
     },
   })
@@ -106,7 +107,7 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
         toast.error(result.message)
       }
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Git connection test failed')
     },
   })

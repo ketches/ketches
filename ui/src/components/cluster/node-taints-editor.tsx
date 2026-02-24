@@ -77,7 +77,7 @@ export function NodeTaintsEditor({
 
   const handleChange = (index: number, field: string, value: string) => {
     const newList = [...editingTaints]
-    // @ts-ignore
+    // @ts-expect-error dynamic field assignment on a typed object
     newList[index][field] = value
     setEditingTaints(newList)
   }

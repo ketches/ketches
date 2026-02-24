@@ -133,14 +133,10 @@ export function AppActionIcons({ appId, actions }: AppActionIconsProps) {
 
         {moreActions.length > 0 && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical />
-              </Button>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()} />}
+            >
+              <MoreVertical />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               {moreActions.map((action) => {

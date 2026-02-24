@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils"
 interface GitRefSelectProps {
   repoId: string
   value: string
-  onValueChange: (value: string) => void
+  onValueChange: (value: string | null) => void
   placeholder?: string
   className?: string
   disabled?: boolean

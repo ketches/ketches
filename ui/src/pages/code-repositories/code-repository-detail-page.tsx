@@ -64,6 +64,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { AxiosError } from "axios"
 
 export function CodeRepositoryDetailPage() {
   const { repoId } = useParams<{ repoId: string }>()
@@ -87,8 +88,8 @@ export function CodeRepositoryDetailPage() {
   const [buildConfigsPage, setBuildConfigsPage] = React.useState(1)
   const [buildsPage, setBuildsPage] = React.useState(1)
   const [deploymentsPage, setDeploymentsPage] = React.useState(1)
-  const [deploymentEnvFilter, setDeploymentEnvFilter] = React.useState<string>("")
-  const [deploymentAppFilter, setDeploymentAppFilter] = React.useState<string>("")
+  const [deploymentEnvFilter, _setDeploymentEnvFilter] = React.useState<string>("")
+  const [deploymentAppFilter, _setDeploymentAppFilter] = React.useState<string>("")
   const itemsPerPage = 10
 
   const { data: repo, isLoading } = useQuery({
@@ -125,7 +126,7 @@ export function CodeRepositoryDetailPage() {
     refetchInterval: 5000,
   })
 
-  const { data: envs = [] } = useQuery({
+  const { data: _envs = [] } = useQuery({
     queryKey: ["envs", repo?.project_id],
     queryFn: () => envsApi.list(repo!.project_id),
     enabled: !!repo?.project_id,
@@ -143,7 +144,7 @@ export function CodeRepositoryDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["code-repository-builds", repoId] })
       toast.success("Build retry triggered")
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || "Failed to retry build")
     },
   })

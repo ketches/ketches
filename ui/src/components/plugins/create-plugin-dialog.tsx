@@ -18,6 +18,7 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import type { AxiosError } from "axios"
 
 interface CreatePluginDialogProps {
   open: boolean
@@ -62,7 +63,7 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
       onOpenChange(false)
       resetForm()
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to create plugin", {
         description: err.response?.data?.error || "An unknown error occurred"
       })

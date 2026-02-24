@@ -18,7 +18,7 @@ client.interceptors.request.use((config) => {
       if (state.accessToken) {
         config.headers.Authorization = `Bearer ${state.accessToken}`
       }
-    } catch (e) {
+    } catch {
     }
   }
   return config

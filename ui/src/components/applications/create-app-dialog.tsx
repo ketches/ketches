@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
+import type { AxiosError } from "axios"
 
 interface CreateAppDialogProps {
   open?: boolean
@@ -83,7 +84,7 @@ export function CreateAppDialog({
       setFormData({ name: "", slug: "", app_type: "Deployment", container_image: "", description: "", deploy: true, registry_username: "", registry_password: "" })
       setErrors({})
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       const errMsg = err.response?.data?.error || "Failed to create application"
       setErrors({ global: errMsg })
       sonnerToast.error("Error", { description: errMsg })

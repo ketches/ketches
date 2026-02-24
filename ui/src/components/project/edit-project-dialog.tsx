@@ -15,6 +15,7 @@ import {
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import type { AxiosError } from "axios"
 
 interface EditProjectDialogProps {
   open?: boolean
@@ -67,7 +68,7 @@ export function EditProjectDialog({
       setOpen(false)
       setErrors({})
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       const errMsg = err.response?.data?.error || "Failed to update project"
       setErrors({ global: errMsg })
       toast.error("Error", { description: errMsg })

@@ -161,7 +161,7 @@ export function CreateTemplateDialog({
               <FieldContent>
                 <Select
                   value={form.type || "application"}
-                  onValueChange={(v) => setForm({ ...form, type: v })}
+                  onValueChange={(v) => setForm({ ...form, type: v ?? undefined })}
                   items={[
                     { value: "application", label: "Application" },
                     { value: "service", label: "Service" },
@@ -186,7 +186,7 @@ export function CreateTemplateDialog({
               <FieldContent>
                 <Select
                   value={form.status || "draft"}
-                  onValueChange={(v) => setForm({ ...form, status: v })}
+                  onValueChange={(v) => setForm({ ...form, status: v ?? undefined })}
                   items={[
                     { value: "draft", label: "Draft" },
                     { value: "reviewing", label: "Reviewing" },

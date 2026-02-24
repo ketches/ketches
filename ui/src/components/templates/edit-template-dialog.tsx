@@ -61,7 +61,7 @@ export function EditTemplateDialog({
 
   const updateMutation = useMutation({
     mutationFn: () => {
-      const { slug, ...updateData } = form
+      const { slug: _slug, ...updateData } = form
       return templatesApi.update(template!.id, updateData)
     },
     onSuccess: () => {
@@ -147,7 +147,7 @@ export function EditTemplateDialog({
               <FieldContent>
                 <Select
                   value={form.type || "application"}
-                  onValueChange={(v) => setForm({ ...form, type: v })}
+                  onValueChange={(v) => setForm({ ...form, type: v ?? undefined })}
                   items={[
                     { value: "application", label: "Application" },
                     { value: "service", label: "Service" },
@@ -172,7 +172,7 @@ export function EditTemplateDialog({
               <FieldContent>
                 <Select
                   value={form.status || "draft"}
-                  onValueChange={(v) => setForm({ ...form, status: v })}
+                  onValueChange={(v) => setForm({ ...form, status: v ?? undefined })}
                   items={[
                     { value: "draft", label: "Draft" },
                     { value: "reviewing", label: "Reviewing" },

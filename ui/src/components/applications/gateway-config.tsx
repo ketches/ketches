@@ -326,7 +326,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
             <AlertDialogAction
               onClick={() => {
                 if (deletingGateway) {
-                  deleteMutation.mutate(deletingGateway.id)
+                  deleteMutation.mutate(deletingGateway.id!)
                 }
                 setDeleteDialogOpen(false)
                 setDeletingGateway(null)

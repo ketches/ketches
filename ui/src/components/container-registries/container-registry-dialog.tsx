@@ -17,6 +17,7 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import type { AxiosError } from "axios"
 
 interface ContainerRegistryDialogProps {
   open: boolean
@@ -92,7 +93,7 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
       onOpenChange(false)
       toast.success('Registry created')
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to create registry')
     },
   })
@@ -106,7 +107,7 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
       onOpenChange(false)
       toast.success('Registry updated')
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to update registry')
     },
   })
@@ -129,7 +130,7 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
         toast.error(result.message)
       }
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Connection test failed')
     },
   })

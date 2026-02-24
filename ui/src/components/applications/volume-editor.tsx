@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { AxiosError } from "axios"
 
 interface VolumeEditorProps {
   appId: string
@@ -39,7 +40,7 @@ export function VolumeEditor({ appId }: VolumeEditorProps) {
       toast.success("Volume added")
       setFormData({ slug: "", mountPath: "", volumeType: "pvc", capacity: 1 })
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to add volume", {
         description: err.response?.data?.error || "Unknown error"
       })

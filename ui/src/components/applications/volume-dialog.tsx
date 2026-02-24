@@ -224,7 +224,7 @@ export function VolumeDialog({
                 <Select
                   value={formData.volume_type}
                   onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, volume_type: value }))
+                    setFormData((prev) => ({ ...prev, volume_type: value ?? "" }))
                   }
                 >
                   <SelectTrigger id="volume-type" className="w-full">
@@ -327,7 +327,7 @@ export function VolumeDialog({
                     <Select
                       value={formData.access_modes}
                       onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, access_modes: value }))
+                        setFormData((prev) => ({ ...prev, access_modes: value ?? undefined }))
                       }
                     >
                       <SelectTrigger id="access-modes" className="w-full">
@@ -350,7 +350,7 @@ export function VolumeDialog({
                     <Select
                       value={formData.volume_mode}
                       onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, volume_mode: value }))
+                        setFormData((prev) => ({ ...prev, volume_mode: value ?? undefined }))
                       }
                     >
                       <SelectTrigger id="volume-mode" className="w-full">

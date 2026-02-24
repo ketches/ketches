@@ -165,35 +165,16 @@ export function ContainerRegistriesPage() {
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-2">
           <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => {
-                  setEditingRegistry(row.original)
-                  setEditDialogOpen(true)
-                }}
-              >
-                <Pencil />
-              </Button>
+            <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={() => { setEditingRegistry(row.original); setEditDialogOpen(true) }} />}>
+              <Pencil />
             </TooltipTrigger>
             <TooltipContent>
               <p>Edit</p>
             </TooltipContent>
           </Tooltip>
           <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => {
-                  setDeletingRegistry(row.original)
-                  setDeleteDialogOpen(true)
-                }}
-              >
-                <Trash2 />
-              </Button>
+            <TooltipTrigger render={<Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { setDeletingRegistry(row.original); setDeleteDialogOpen(true) }} />}>
+              <Trash2 />
             </TooltipTrigger>
             <TooltipContent>
               <p>Delete</p>

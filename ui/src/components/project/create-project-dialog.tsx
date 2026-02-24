@@ -15,6 +15,7 @@ import {
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import type { AxiosError } from "axios"
 
 interface CreateProjectFormProps {
   open?: boolean
@@ -57,7 +58,7 @@ export function CreateProjectDialog({
       setFormData({ name: "", slug: "", description: "" })
       setErrors({})
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       const errMsg = err.response?.data?.error || "Failed to create project"
       setErrors({ global: errMsg })
       toast.error("Error", { description: errMsg })

@@ -367,7 +367,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                   <FieldContent>
                     <Select
                       value={formData.namespace || ""}
-                      onValueChange={(v) => setFormData({ ...formData, namespace: v, service_name: "" })}
+                      onValueChange={(v) => setFormData({ ...formData, namespace: v ?? "", service_name: "" })}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select namespace" />
@@ -388,7 +388,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                     <FieldContent>
                       <Select
                         value={formData.service_name || ""}
-                        onValueChange={(v) => setFormData({ ...formData, service_name: v })}
+                        onValueChange={(v) => setFormData({ ...formData, service_name: v ?? "" })}
                         disabled={!formData.namespace}
                       >
                         <SelectTrigger className="w-full">

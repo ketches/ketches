@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { AxiosError } from "axios"
 
 interface EditBuildConfigDialogProps {
   open: boolean
@@ -56,7 +57,7 @@ export function EditBuildConfigDialog({ open, onOpenChange, repoId, config, onSu
       onOpenChange(false)
       onSuccess?.()
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to update build config')
     },
   })
@@ -97,7 +98,7 @@ export function EditBuildConfigDialog({ open, onOpenChange, repoId, config, onSu
               <GitRefSelect
                 repoId={repoId}
                 value={form.git_ref || ''}
-                onValueChange={(v) => setForm({ ...form, git_ref: v })}
+                onValueChange={(v) => setForm({ ...form, git_ref: v ?? undefined })}
                 className="w-full"
               />
             </FieldContent>
@@ -137,7 +138,7 @@ export function EditBuildConfigDialog({ open, onOpenChange, repoId, config, onSu
             <FieldContent>
               <Select
                 value={form.registry_id || ''}
-                onValueChange={(v) => setForm({ ...form, registry_id: v })}
+                onValueChange={(v) => setForm({ ...form, registry_id: v ?? undefined })}
                 items={
                   registries?.map((r) => ({
                     value: r.id,

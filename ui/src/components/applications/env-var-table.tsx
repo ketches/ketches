@@ -295,7 +295,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
             <AlertDialogAction
               onClick={() => {
                 if (deletingEnvVar) {
-                  deleteMutation.mutate(deletingEnvVar.id)
+                  deleteMutation.mutate(deletingEnvVar.id!)
                 }
                 setDeleteDialogOpen(false)
                 setDeletingEnvVar(null)

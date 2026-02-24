@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus, Save, Scale, Trash2 } from "lucide-react"
-import { Controller, useFieldArray, useForm } from "react-hook-form"
+import { Controller, useFieldArray, useForm, type Resolver } from "react-hook-form"
 import { toast } from "sonner"
 import * as z from "zod"
 
@@ -14,6 +14,7 @@ import { Field, FieldContent, FieldDescription, FieldError, FieldLabel, FieldTit
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import type { AxiosError } from "axios"
 
 const schedulingSchema = z.object({
   rule_type: z.string(),
@@ -32,6 +33,20 @@ const schedulingSchema = z.object({
   })),
 })
 
+type SchedulingFormValues = {
+  rule_type: string
+  node_name?: string
+  node_selectors: { key: string; value: string }[]
+  node_affinity?: string
+  tolerations: {
+    key?: string
+    operator: string
+    value?: string
+    effect: string
+    toleration_seconds?: number
+  }[]
+}
+
 interface SchedulingConfigProps {
   app: App
 }
@@ -43,15 +58,15 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
   try {
     const parsed = JSON.parse(app.scheduling_rule?.node_selector || "{}")
     initialNodeSelectors = Object.entries(parsed).map(([key, value]) => ({ key, value }))
-  } catch (e) { }
+  } catch { }
 
   let initialTolerations: any[] = []
   try {
     initialTolerations = JSON.parse(app.scheduling_rule?.tolerations || "[]")
-  } catch (e) { }
+  } catch { }
 
-  const { control, register, handleSubmit, watch, formState: { errors } } = useForm<z.infer<typeof schedulingSchema>>({
-    resolver: zodResolver(schedulingSchema),
+  const { control, register, handleSubmit, watch, formState: { errors } } = useForm<SchedulingFormValues>({
+    resolver: zodResolver(schedulingSchema) as Resolver<SchedulingFormValues>,
     defaultValues: {
       rule_type: app.scheduling_rule?.rule_type || "nodeSelector",
       node_name: app.scheduling_rule?.node_name || "",
@@ -103,7 +118,7 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
       toast.success("Scheduling configuration updated")
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to update scheduling", {
         description: err.response?.data?.error || "Unknown error"
       })

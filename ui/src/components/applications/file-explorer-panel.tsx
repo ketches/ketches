@@ -66,6 +66,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import type { AxiosError } from "axios"
 
 // Copy text to clipboard with toast feedback
 function copyToClipboard(text: string) {
@@ -296,7 +297,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       }
       queryClient.invalidateQueries({ queryKey: filesQueryKey })
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to save file", {
         description: err.response?.data?.error || err.message,
       })
@@ -312,7 +313,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       setNewFolderName("")
       queryClient.invalidateQueries({ queryKey: filesQueryKey })
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to create directory", {
         description: err.response?.data?.error || err.message,
       })
@@ -327,7 +328,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       setSelectedFile(null)
       queryClient.invalidateQueries({ queryKey: filesQueryKey })
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to delete", {
         description: err.response?.data?.error || err.message,
       })
@@ -345,7 +346,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       setMoveTarget(null)
       queryClient.invalidateQueries({ queryKey: filesQueryKey })
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to move/rename", {
         description: err.response?.data?.error || err.message,
       })
@@ -361,7 +362,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       setCopyTarget(null)
       queryClient.invalidateQueries({ queryKey: filesQueryKey })
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to copy", {
         description: err.response?.data?.error || err.message,
       })
@@ -375,7 +376,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       toast.success("File uploaded successfully")
       queryClient.invalidateQueries({ queryKey: filesQueryKey })
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to upload file", {
         description: err.response?.data?.error || err.message,
       })
@@ -391,7 +392,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       setSelectedFiles(new Set())
       queryClient.invalidateQueries({ queryKey: filesQueryKey })
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to compress files", {
         description: err.response?.data?.error || err.message,
       })
@@ -1108,7 +1109,7 @@ function FileEditorView({
 }) {
   const hasChanges = editingFile.content !== editingFile.originalContent
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
-  const [isFileLoading, setIsFileLoading] = React.useState(false)
+  const [isFileLoading] = React.useState(false)
   const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = React.useState(false)
 
   // Handle Ctrl+S / Cmd+S keyboard shortcut
@@ -1498,7 +1499,7 @@ function GridFileView({
             {file.type === "dir" ? (
               <Folder className="h-8 w-8 text-blue-400" />
             ) : (
-              React.cloneElement(getFileIcon(file.name, file.type) as React.ReactElement, {
+              React.cloneElement(getFileIcon(file.name, file.type) as React.ReactElement<{ className?: string }>, {
                 className: "h-8 w-8",
               })
             )}

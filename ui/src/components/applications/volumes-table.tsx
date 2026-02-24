@@ -321,7 +321,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
             <AlertDialogAction
               onClick={() => {
                 if (deletingVolume) {
-                  deleteMutation.mutate(deletingVolume.id)
+                  deleteMutation.mutate(deletingVolume.id!)
                 }
                 setDeleteDialogOpen(false)
                 setDeletingVolume(null)

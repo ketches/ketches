@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { AxiosError } from "axios"
 
 interface CreateBuildConfigDialogProps {
   open: boolean
@@ -64,7 +65,7 @@ export function CreateBuildConfigDialog({ open, onOpenChange, repoId, onSuccess 
       setForm(defaultForm)
       onSuccess?.()
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to add build config')
     },
   })
@@ -103,7 +104,7 @@ export function CreateBuildConfigDialog({ open, onOpenChange, repoId, onSuccess 
               <GitRefSelect
                 repoId={repoId}
                 value={form.git_ref ?? 'main'}
-                onValueChange={(v) => setForm({ ...form, git_ref: v })}
+                onValueChange={(v) => setForm({ ...form, git_ref: v ?? undefined })}
               />
             </FieldContent>
           </Field>
@@ -142,7 +143,7 @@ export function CreateBuildConfigDialog({ open, onOpenChange, repoId, onSuccess 
             <FieldContent>
               <Select
                 value={form.registry_id}
-                onValueChange={(v) => setForm({ ...form, registry_id: v })}
+                onValueChange={(v) => setForm({ ...form, registry_id: v ?? "" })}
                 items={
                   registries?.map((r) => ({
                     value: r.id,

@@ -32,6 +32,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useProjectStore } from "@/stores/project"
+import type { AxiosError } from "axios"
 
 function ProjectItem({
   project,
@@ -118,7 +119,7 @@ export function ProjectSwitcher() {
       setDeleteDialogOpen(false)
       setSelectedProject(null)
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       const errMsg = err.response?.data?.error || "Failed to delete project"
       toast.error("Error", { description: errMsg })
     }

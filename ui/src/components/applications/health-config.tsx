@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { HeartPulse, Plus, Save, Trash2 } from "lucide-react"
-import { Controller, useFieldArray, useForm } from "react-hook-form"
+import { Controller, useFieldArray, useForm, type Resolver } from "react-hook-form"
 import { toast } from "sonner"
 import * as z from "zod"
 
@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { AxiosError } from "axios"
 
 const probeSchema = z.object({
   probes: z.array(z.object({
@@ -31,14 +32,31 @@ const probeSchema = z.object({
   }))
 })
 
+type ProbeFormValues = {
+  probes: {
+    type: 'liveness' | 'readiness' | 'startup'
+    probe_mode: 'httpGet' | 'tcpSocket' | 'exec'
+    enabled: boolean
+    http_get_path?: string
+    http_get_port?: number
+    tcp_socket_port?: number
+    exec_command?: string
+    initial_delay_seconds: number
+    period_seconds: number
+    timeout_seconds: number
+    success_threshold: number
+    failure_threshold: number
+  }[]
+}
+
 interface ProbeConfigProps {
   app: App
 }
 
 export function HealthConfig({ app }: ProbeConfigProps) {
   const queryClient = useQueryClient()
-  const { control, register, handleSubmit, watch } = useForm<z.infer<typeof probeSchema>>({
-    resolver: zodResolver(probeSchema),
+  const { control, register, handleSubmit, watch } = useForm<ProbeFormValues>({
+    resolver: zodResolver(probeSchema) as Resolver<ProbeFormValues>,
     defaultValues: {
       probes: app.probes?.length ? app.probes : [
         { type: 'readiness', probe_mode: 'httpGet', enabled: false, http_get_path: '/', http_get_port: 80, initial_delay_seconds: 0, period_seconds: 10, timeout_seconds: 1, success_threshold: 1, failure_threshold: 3 },
@@ -65,7 +83,7 @@ export function HealthConfig({ app }: ProbeConfigProps) {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
       toast.success("Probe configuration updated")
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to update probes", {
         description: err.response?.data?.error || "Unknown error"
       })

@@ -46,24 +46,24 @@ export function RecycleBinPage() {
   const [restoringItemId, setRestoringItemId] = React.useState<string | null>(null)
   const [deletingItemId, setDeletingItemId] = React.useState<string | null>(null)
 
-  const { data: apps = [], isLoading: appsLoading, refetch: refetchApps } = useQuery<RecycleBinApp[]>({
+  const { data: apps = [], isLoading: _appsLoading, refetch: refetchApps } = useQuery<RecycleBinApp[]>({
     queryKey: ['recycle-bin-apps', activeProjectId, debouncedSearch],
-    queryFn: () => recycleBinApi.listApps(activeProjectId, debouncedSearch),
+    queryFn: () => recycleBinApi.listApps(activeProjectId ?? undefined, debouncedSearch),
     enabled: !!activeProjectId,
   })
 
-  const { data: envs = [], isLoading: envsLoading, refetch: refetchEnvs } = useQuery<RecycleBinEnv[]>({
+  const { data: envs = [], isLoading: _envsLoading, refetch: refetchEnvs } = useQuery<RecycleBinEnv[]>({
     queryKey: ['recycle-bin-envs', activeProjectId, debouncedSearch],
-    queryFn: () => recycleBinApi.listEnvs(activeProjectId, debouncedSearch),
+    queryFn: () => recycleBinApi.listEnvs(activeProjectId ?? undefined, debouncedSearch),
     enabled: !!activeProjectId,
   })
 
   const selectedAppIds = React.useMemo(() => {
-    return Object.keys(selectedAppRows).filter(key => selectedAppRows[key]).map(index => apps[parseInt(index)]?.id).filter(Boolean)
+    return Object.keys(selectedAppRows).filter(key => (selectedAppRows as Record<string, boolean>)[key]).map(index => apps[parseInt(index)]?.id).filter(Boolean)
   }, [selectedAppRows, apps])
 
   const selectedEnvIds = React.useMemo(() => {
-    return Object.keys(selectedEnvRows).filter(key => selectedEnvRows[key]).map(index => envs[parseInt(index)]?.id).filter(Boolean)
+    return Object.keys(selectedEnvRows).filter(key => (selectedEnvRows as Record<string, boolean>)[key]).map(index => envs[parseInt(index)]?.id).filter(Boolean)
   }, [selectedEnvRows, envs])
 
   const restoreAppsMutation = useMutation({

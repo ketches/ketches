@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import type { AxiosError } from "axios"
 import { EmptyState } from "../shared/empty-state"
 
 interface ContainerRegistryListProps {
@@ -39,7 +40,7 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
       queryClient.invalidateQueries({ queryKey: ['registries', scope, scopeId] })
       toast.success('Container registry deleted')
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to delete registry')
     },
   })

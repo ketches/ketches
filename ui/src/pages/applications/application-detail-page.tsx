@@ -191,7 +191,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
           try {
             const res = await clustersApi.prometheusQueryRange(clusterId, query, oneHourAgo.toString(), now.toString(), step) as any
             return { key, results: res?.result || [] }
-          } catch (e) {
+          } catch {
             return { key, results: [] }
           }
         })
@@ -474,7 +474,7 @@ export function ApplicationDetailPage() {
     refetchInterval: 5000,
   })
 
-  const { data: availableActions = [] } = useQuery({
+  const { data: availableActions } = useQuery({
     queryKey: ['app-actions', appId],
     queryFn: () => appsApi.getAvailableActions(appId!),
     enabled: !!appId,
@@ -1369,11 +1369,9 @@ export function ApplicationDetailPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex items-center gap-2">
-                <Button variant="outline" asChild>
-                  <Link to={`/code-repositories/${app.code_repository_id}`} className="flex items-center whitespace-nowrap">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View in Code Repository
-                  </Link>
+                <Button variant="outline" render={<Link to={`/code-repositories/${app.code_repository_id}`} className="flex items-center whitespace-nowrap" />}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View in Code Repository
                 </Button>
                 <Button onClick={() => setIsUnifiedBuildDialogOpen(true)} className="flex items-center">
                   <Hammer className="h-4 w-4 mr-2" />

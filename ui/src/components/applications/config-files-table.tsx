@@ -293,7 +293,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
             <AlertDialogAction
               onClick={() => {
                 if (deletingConfigFile) {
-                  deleteMutation.mutate(deletingConfigFile.id)
+                  deleteMutation.mutate(deletingConfigFile.id!)
                 }
                 setDeleteDialogOpen(false)
                 setDeletingConfigFile(null)

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatDate } from "@/lib/utils"
+import type { AxiosError } from "axios"
 import * as React from "react"
 
 interface DeploymentHistoryListProps {
@@ -42,7 +43,7 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
       setShowRollbackDialog(false)
       setSelectedHistory(null)
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || "Failed to rollback")
     },
   })

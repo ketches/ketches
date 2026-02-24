@@ -25,6 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useProjectStore } from "@/stores/project"
+import type { AxiosError } from "axios"
 import { InfoIcon } from "lucide-react"
 
 interface CreateEnvironmentFormProps {
@@ -71,7 +72,7 @@ export function CreateEnvironmentDialog({
     mutationFn: (data: any) => envsApi.create(activeProjectId!, {
       name: data.name,
       slug: data.slug,
-      project_id: activeProjectId,
+      project_id: activeProjectId!,
       cluster_id: data.cluster_id,
       description: data.description,
       cluster_namespace: data.slug,
@@ -85,7 +86,7 @@ export function CreateEnvironmentDialog({
       setFormData({ name: "", slug: "", cluster_id: "", description: "" })
       setErrors({})
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       const errMsg = err.response?.data?.error || "Failed to create environment"
       setErrors({ global: errMsg })
       toast.error("Error", { description: errMsg })

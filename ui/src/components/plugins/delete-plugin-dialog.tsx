@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import type { AxiosError } from "axios"
 
 interface DeletePluginDialogProps {
   plugin: any
@@ -29,7 +30,7 @@ export function DeletePluginDialog({ plugin, open, onOpenChange }: DeletePluginD
       toast.success("Plugin deleted successfully")
       onOpenChange(false)
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to delete plugin", {
         description: err.response?.data?.error || "An unknown error occurred"
       })

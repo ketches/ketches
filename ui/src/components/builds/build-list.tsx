@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/pagination"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import type { AxiosError } from "axios"
 
 interface BuildListProps {
   appId: string
@@ -59,7 +60,7 @@ export function BuildList({ appId }: BuildListProps) {
       queryClient.invalidateQueries({ queryKey: ['builds', appId] })
       toast.success('Build cancelled')
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to cancel build')
     },
   })

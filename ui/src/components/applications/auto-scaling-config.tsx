@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { AxiosError } from "axios"
 
 const autoScalingSchema = z.object({
   enabled: z.boolean(),
@@ -64,7 +65,7 @@ export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
       toast.success("AutoScaling configuration updated")
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to update AutoScaling configuration", {
         description: err.response?.data?.error || "Unknown error"
       })

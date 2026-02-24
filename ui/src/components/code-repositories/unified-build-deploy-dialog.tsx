@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { AxiosError } from "axios"
 
 interface UnifiedBuildDeployDialogProps {
   open: boolean
@@ -62,7 +63,7 @@ export function UnifiedBuildDeployDialog({
     enabled: !!repoId && open,
   })
 
-  const { data: builds = [] } = useQuery({
+  const { data: _builds = [] } = useQuery({
     queryKey: ["code-repository-builds", repoId],
     queryFn: () => codeRepositoriesApi.listBuilds(repoId),
     enabled: !!repoId && !!preSelectedBuildId && open,
@@ -77,6 +78,8 @@ export function UnifiedBuildDeployDialog({
   const buildEnvs = (envs as Env[]).filter((e) => e.is_build_env)
   const deployEnvs = envs as Env[]
 
+  const isDeployMode = !!preSelectedBuildId
+
   const { data: appsInDeployEnv = [], isLoading: isLoadingApps } = useQuery({
     queryKey: ["apps", deployEnvId],
     queryFn: () => appsApi.list(deployEnvId),
@@ -88,12 +91,9 @@ export function UnifiedBuildDeployDialog({
   )
 
   const selectedConfig = (buildConfigs as CodeRepositoryBuildConfig[]).find((c) => c.id === selectedConfigId)
-  const selectedBuild = preSelectedBuildId ? (builds as any[]).find((b) => b.id === preSelectedBuildId) : null
   const selectedBuildEnv = (envs as Env[]).find((e) => e.id === buildEnvId)
   const selectedDeployEnv = (envs as Env[]).find((e) => e.id === deployEnvId)
   const selectedApp = (existingRepoApps as any[]).find((a) => a.id === deployAppId)
-
-  const isDeployMode = !!preSelectedBuildId
   const isBuildConfigMode = !!preSelectedConfigId && !preSelectedBuildId
   const isCodeRepoMode = !preSelectedConfigId && !preSelectedBuildId
 
@@ -108,7 +108,6 @@ export function UnifiedBuildDeployDialog({
       }
 
       if (preSelectedBuildId) {
-        setSelectedBuildId(preSelectedBuildId)
         setAutoDeploy(true)
       }
 
@@ -197,7 +196,7 @@ export function UnifiedBuildDeployDialog({
       resetForm()
       toast.success(autoDeploy ? "Build triggered with auto-deploy" : "Build triggered")
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || "Failed to trigger build")
     },
   })
@@ -227,7 +226,7 @@ export function UnifiedBuildDeployDialog({
       resetForm()
       toast.success("Deployed successfully")
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || "Failed to deploy")
     },
   })
@@ -321,7 +320,7 @@ export function UnifiedBuildDeployDialog({
                 <Field>
                   <FieldLabel>Build Config *</FieldLabel>
                   <FieldContent>
-                    <Select value={selectedConfigId} onValueChange={setSelectedConfigId}>
+                    <Select value={selectedConfigId} onValueChange={(v) => v !== null && setSelectedConfigId(v)}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select build config">
                           {selectedConfig?.name}
@@ -347,7 +346,7 @@ export function UnifiedBuildDeployDialog({
                       <GitRefSelect
                         repoId={repoId}
                         value={gitRef}
-                        onChange={setGitRef}
+                        onValueChange={(v) => v !== null && setGitRef(v)}
                         placeholder={selectedConfig?.git_ref || "Select branch or tag"}
                       />
                     </FieldContent>
@@ -356,7 +355,7 @@ export function UnifiedBuildDeployDialog({
                   <Field>
                     <FieldLabel>Build Environment *</FieldLabel>
                     <FieldContent>
-                      <Select value={buildEnvId} onValueChange={setBuildEnvId}>
+                      <Select value={buildEnvId} onValueChange={(v) => v !== null && setBuildEnvId(v)}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select build environment">
                             {selectedBuildEnv ? `${selectedBuildEnv.name}${selectedBuildEnv.is_build_env ? ' (Build Env)' : ''}` : undefined}
@@ -396,7 +395,7 @@ export function UnifiedBuildDeployDialog({
                 <Field>
                   <FieldLabel>Deploy Environment *</FieldLabel>
                   <FieldContent>
-                    <Select value={deployEnvId} onValueChange={setDeployEnvId}>
+                    <Select value={deployEnvId} onValueChange={(v) => v !== null && setDeployEnvId(v)}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select deploy environment">
                           {selectedDeployEnv?.name}
@@ -427,7 +426,7 @@ export function UnifiedBuildDeployDialog({
                           <FieldLabel>Deploy to Application *</FieldLabel>
                           <FieldContent>
                             <div className="flex gap-2">
-                              <Select value={deployAppId} onValueChange={setDeployAppId}>
+                              <Select value={deployAppId} onValueChange={(v) => v !== null && setDeployAppId(v)}>
                                 <SelectTrigger className="flex-1">
                                   <SelectValue placeholder="Select application">
                                     {selectedApp?.name}

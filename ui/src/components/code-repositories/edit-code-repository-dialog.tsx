@@ -37,7 +37,7 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
 
   const updateMutation = useMutation({
     mutationFn: () => {
-      const { slug, ...updateData } = form
+      const { slug: _slug, ...updateData } = form
       return codeRepositoriesApi.update(repo!.id, updateData)
     },
     onSuccess: () => {

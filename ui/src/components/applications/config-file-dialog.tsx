@@ -218,7 +218,7 @@ export function ConfigFileDialog({
                   <Select
                     value={formData.file_mode}
                     onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, file_mode: value }))
+                      setFormData((prev) => ({ ...prev, file_mode: value ?? "" }))
                     }
                   >
                     <SelectTrigger id="file-mode" className="w-full">

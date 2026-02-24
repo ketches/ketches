@@ -18,6 +18,7 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import type { AxiosError } from "axios"
 
 interface EditPluginDialogProps {
   plugin: any
@@ -77,7 +78,7 @@ export function EditPluginDialog({ plugin, open, onOpenChange }: EditPluginDialo
       toast.success("Plugin updated successfully")
       onOpenChange(false)
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to update plugin", {
         description: err.response?.data?.error || "An unknown error occurred"
       })

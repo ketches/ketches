@@ -123,8 +123,8 @@ export function AddRepositoryDialog({
               <FieldContent>
                 <Select
                   value={form.type}
-                  onValueChange={(value: "helm" | "oci") =>
-                    setForm({ ...form, type: value, url: "" })
+                  onValueChange={(value: "helm" | "oci" | null) =>
+                    value && setForm({ ...form, type: value, url: "" })
                   }
                 >
                   <SelectTrigger id="repo-type">

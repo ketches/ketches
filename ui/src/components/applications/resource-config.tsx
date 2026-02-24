@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import type { AxiosError } from "axios"
 
 const resourceSchema = z.object({
   request_cpu: z.number().min(0),
@@ -50,7 +51,7 @@ export function ResourceConfig({ app }: ResourceConfigProps) {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
       toast.success("Resource configuration updated")
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ error: string }>) => {
       toast.error("Failed to update resources", {
         description: err.response?.data?.error || "Unknown error"
       })
