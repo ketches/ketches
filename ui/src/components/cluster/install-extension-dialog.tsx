@@ -6,8 +6,8 @@ import { toast } from "sonner"
 
 import {
   clustersApi,
-  type HelmChartInfo,
-  type HelmChartVersionInfo,
+  type ExtensionCatalogItem,
+  type ExtensionVersionInfo,
   type InstallExtensionRequest,
 } from "@/api/clusters"
 import { useTheme } from "@/components/theme-provider/theme-provider"
@@ -34,16 +34,14 @@ interface InstallExtensionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   clusterId: string
-  chart?: HelmChartInfo | null
-  repositoryName?: string
+  catalogItem?: ExtensionCatalogItem | null
 }
 
 export function InstallExtensionDialog({
   open,
   onOpenChange,
   clusterId,
-  chart,
-  repositoryName,
+  catalogItem,
 }: InstallExtensionDialogProps) {
   const queryClient = useQueryClient()
   const { theme } = useTheme()
@@ -53,7 +51,7 @@ export function InstallExtensionDialog({
   const [selectedVersion, setSelectedVersion] = React.useState("")
   const [values, setValues] = React.useState("")
 
-  // Resolved theme for Monaco: match platform theme (ThemeProvider sets "light"/"dark" on document)
+  // Resolved theme for Monaco
   const [monacoTheme, setMonacoTheme] = React.useState<"vs" | "vs-dark">("vs")
   React.useEffect(() => {
     const resolve = () => {
@@ -71,88 +69,93 @@ export function InstallExtensionDialog({
     return () => media.removeEventListener("change", handler)
   }, [theme])
 
-  // Reset form when chart changes
+  // Reset form when catalog item changes
   React.useEffect(() => {
-    if (chart) {
-      setReleaseName(chart.name)
+    if (catalogItem) {
+      setReleaseName(catalogItem.name)
       setReleaseNamespace("default")
-      setSelectedVersion(chart.versions?.[0]?.version || "")
+      setSelectedVersion("")
       setValues("")
     }
-  }, [chart])
+  }, [catalogItem])
 
-  // Fetch chart default values when version (and repo + chart) are set
-  const {
-    data: chartValuesData,
-    isLoading: chartValuesLoading,
-    isFetching: chartValuesFetching,
-    error: chartValuesError,
-    isSuccess: chartValuesSuccess,
-  } = useQuery({
-    queryKey: [
-      "chart-values",
-      clusterId,
-      repositoryName ?? "",
-      chart?.name ?? "",
-      selectedVersion,
-    ],
-    queryFn: async () => {
-      const res = await clustersApi.getChartValues(
-        clusterId,
-        repositoryName!,
-        chart!.name,
-        selectedVersion
-      )
-      return res
-    },
-    enabled:
-      Boolean(open && repositoryName && chart?.name && selectedVersion) &&
-      Boolean(chart?.versions?.some((v) => v.version === selectedVersion)),
+  // Fetch available versions for this catalog item
+  const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
+    queryKey: ["extension-versions", catalogItem?.id],
+    queryFn: () => clustersApi.getExtensionVersions(catalogItem!.id),
+    enabled: open && Boolean(catalogItem?.id),
     staleTime: 5 * 60 * 1000,
   })
 
-  // Populate values when chart values response arrives (API returns { values: string })
+  const versions: ExtensionVersionInfo[] = Array.isArray(versionsData)
+    ? versionsData
+    : []
+
+  // Default to first version when versions load
   React.useEffect(() => {
-    if (!chartValuesSuccess || chartValuesData == null) return
-    const raw = chartValuesData as { values?: string }
+    if (versions.length > 0 && !selectedVersion) {
+      setSelectedVersion(versions[0].version)
+    }
+  }, [versions, selectedVersion])
+
+  // Fetch default values for the selected version
+  const {
+    data: valuesData,
+    isLoading: valuesLoading,
+    isFetching: valuesFetching,
+    error: valuesError,
+    isSuccess: valuesSuccess,
+  } = useQuery({
+    queryKey: ["extension-values", catalogItem?.id, selectedVersion],
+    queryFn: () =>
+      clustersApi.getExtensionValues(catalogItem!.id, selectedVersion),
+    enabled: open && Boolean(catalogItem?.id && selectedVersion),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Populate editor when values arrive
+  React.useEffect(() => {
+    if (!valuesSuccess || valuesData == null) return
+    const raw = valuesData as { values?: string }
     if (typeof raw.values === "string") {
       setValues(raw.values)
     }
-  }, [chartValuesSuccess, chartValuesData])
+  }, [valuesSuccess, valuesData])
 
   const installMutation = useMutation({
     mutationFn: (data: InstallExtensionRequest) =>
       clustersApi.installExtension(clusterId, data),
     onSuccess: () => {
       toast.success("Extension installed", {
-        description: `${chart?.name} is being installed to the cluster.`,
+        description: `${catalogItem?.display_name || catalogItem?.name} is being installed to the cluster.`,
       })
-      queryClient.invalidateQueries({
-        queryKey: ["extensions", clusterId],
-      })
+      queryClient.invalidateQueries({ queryKey: ["extensions", clusterId] })
       onOpenChange(false)
     },
     onError: (error: unknown) => {
       const msg =
         error && typeof error === "object" && "response" in error
-          ? (error as { response?: { data?: { error?: string }; message?: string } })
-              .response?.data?.error
+          ? (
+              error as {
+                response?: { data?: { error?: string } }
+              }
+            ).response?.data?.error
           : null
       toast.error("Failed to install extension", {
-        description: msg ?? (error instanceof Error ? error.message : String(error)),
+        description:
+          msg ?? (error instanceof Error ? error.message : String(error)),
       })
     },
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!chart) return
+    if (!catalogItem) return
 
     const data: InstallExtensionRequest = {
       name: releaseName,
-      chart_name: chart.name,
-      chart_version: selectedVersion,
-      repository: repositoryName,
+      catalog_item_id: catalogItem.id,
+      chart_version: selectedVersion || undefined,
       release_namespace: releaseNamespace,
       create_namespace: true,
     }
@@ -161,8 +164,6 @@ export function InstallExtensionDialog({
     }
     installMutation.mutate(data)
   }
-
-  const versions: HelmChartVersionInfo[] = chart?.versions || []
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,13 +175,16 @@ export function InstallExtensionDialog({
           <DialogHeader className="shrink-0 px-6 pt-6">
             <DialogTitle>Install Extension</DialogTitle>
             <DialogDescription>
-              Install <span className="font-medium">{chart?.name}</span> to your
-              cluster.
+              Install{" "}
+              <span className="font-medium">
+                {catalogItem?.display_name || catalogItem?.name}
+              </span>{" "}
+              to your cluster.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden px-6 py-4 lg:grid-cols-[minmax(0,280px)_1fr]">
-            {/* Left: form fields, narrow width */}
+            {/* Left: form fields */}
             <div className="flex flex-col gap-4 overflow-auto">
               <Field>
                 <FieldLabel htmlFor="release-name">Release Name *</FieldLabel>
@@ -197,20 +201,22 @@ export function InstallExtensionDialog({
               <Field>
                 <FieldLabel htmlFor="release-version">Version *</FieldLabel>
                 <FieldContent>
-                    <Select
-                      value={selectedVersion}
-                      onValueChange={(v) => setSelectedVersion(v ?? "")}
-                    >
+                  <Select
+                    value={selectedVersion}
+                    onValueChange={(v) => setSelectedVersion(v ?? "")}
+                    disabled={versionsLoading}
+                  >
                     <SelectTrigger id="release-version" className="w-full">
-                      <SelectValue placeholder="Latest" />
+                      <SelectValue
+                        placeholder={
+                          versionsLoading ? "Loading versions..." : "Select version"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {versions.map((v) => (
                         <SelectItem key={v.version} value={v.version}>
                           {v.version}
-                          {v.app_version
-                            ? ` (app: ${v.app_version})`
-                            : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -224,29 +230,27 @@ export function InstallExtensionDialog({
                   <Input
                     id="release-namespace"
                     value={releaseNamespace}
-                    onChange={(e) =>
-                      setReleaseNamespace(e.target.value)
-                    }
+                    onChange={(e) => setReleaseNamespace(e.target.value)}
                     required
                   />
                 </FieldContent>
               </Field>
             </div>
 
-            {/* Right: Values (YAML) editor, takes remaining width and full height */}
+            {/* Right: Values YAML editor */}
             <Field className="flex min-h-0 flex-1 flex-col">
               <FieldLabel htmlFor="values" className="shrink-0">
                 Values (YAML){" "}
                 <span className="font-normal text-muted-foreground">
                   (optional)
                 </span>
-                {chartValuesFetching && (
+                {valuesFetching && (
                   <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Loading defaults...
                   </span>
                 )}
-                {chartValuesError && (
+                {valuesError && (
                   <span className="ml-2 text-destructive">
                     Failed to load defaults
                   </span>
@@ -261,7 +265,7 @@ export function InstallExtensionDialog({
                     theme={monacoTheme}
                     value={values}
                     onChange={(v) => setValues(v ?? "")}
-                    loading={chartValuesLoading ? "Loading..." : undefined}
+                    loading={valuesLoading ? "Loading..." : undefined}
                     options={{
                       minimap: { enabled: false },
                       scrollBeyondLastLine: false,
@@ -287,9 +291,7 @@ export function InstallExtensionDialog({
             <Button
               type="submit"
               disabled={
-                installMutation.isPending ||
-                chartValuesLoading ||
-                chartValuesFetching
+                installMutation.isPending || valuesLoading || valuesFetching
               }
             >
               {installMutation.isPending ? (

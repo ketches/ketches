@@ -9,7 +9,7 @@ import (
 
 func ListClusterIntegrations(clusterID string) ([]entities.ClusterIntegration, error) {
 	var integrations []entities.ClusterIntegration
-	if err := db.DB.Where("cluster_id = ?", clusterID).Order("created_at asc").Find(&integrations).Error; err != nil {
+	if err := db.DB.Where("cluster_id = ?", clusterID).Order("created_at").Find(&integrations).Error; err != nil {
 		return nil, err
 	}
 	return integrations, nil

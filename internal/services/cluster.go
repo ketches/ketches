@@ -29,7 +29,7 @@ func ListClusters(page, pageSize int, search string) (int64, []entities.Cluster,
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
-	if err := query.Order("created_at asc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&clusters).Error; err != nil {
+	if err := query.Order("created_at").Offset((page - 1) * pageSize).Limit(pageSize).Find(&clusters).Error; err != nil {
 		return 0, nil, err
 	}
 	log.Printf("Service ListClusters: found %d clusters out of %d total", len(clusters), total)
@@ -38,7 +38,7 @@ func ListClusters(page, pageSize int, search string) (int64, []entities.Cluster,
 
 func ListClustersSimple() ([]entities.Cluster, error) {
 	var clusters []entities.Cluster
-	if err := db.DB.Select("id, slug, name, description").Order("name").Find(&clusters).Error; err != nil {
+	if err := db.DB.Select("id, slug, name, description").Order("created_at").Find(&clusters).Error; err != nil {
 		return nil, err
 	}
 	return clusters, nil

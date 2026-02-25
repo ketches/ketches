@@ -7,7 +7,6 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayclient "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
@@ -89,15 +88,4 @@ func CreateClientFromKubeConfig(kubeConfig string) (*kubernetes.Clientset, error
 	}
 
 	return client, nil
-}
-
-// CreateControllerRuntimeClientFromKubeConfig creates a controller-runtime client from a kubeconfig string.
-// This is used by the helm-operator installer which requires a controller-runtime client.
-func CreateControllerRuntimeClientFromKubeConfig(kubeConfig string) (crclient.Client, error) {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeConfig))
-	if err != nil {
-		return nil, err
-	}
-
-	return crclient.New(config, crclient.Options{})
 }

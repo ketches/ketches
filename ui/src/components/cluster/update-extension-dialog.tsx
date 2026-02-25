@@ -7,9 +7,8 @@ import { toast } from "sonner"
 
 import {
   clustersApi,
-  type Extension,
-  type HelmChartVersionInfo,
-  type HelmRepository,
+  type ExtensionVersionInfo,
+  type InstalledExtension,
   type UpdateExtensionRequest,
 } from "@/api/clusters"
 import { useTheme } from "@/components/theme-provider/theme-provider"
@@ -35,7 +34,7 @@ interface UpdateExtensionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   clusterId: string
-  extension: Extension | null
+  extension: InstalledExtension | null
 }
 
 export function UpdateExtensionDialog({
@@ -50,31 +49,6 @@ export function UpdateExtensionDialog({
   const [selectedVersion, setSelectedVersion] = React.useState("")
   const [modifiedValues, setModifiedValues] = React.useState("")
   const [showDiff, setShowDiff] = React.useState(false)
-
-  const chartName = extension?.chart_name ?? ""
-  const repositoryName = extension?.repository ?? ""
-
-  // Fetch full extension when dialog opens to get current values (list may omit them)
-  const { data: extensionDetails } = useQuery({
-    queryKey: ["extensions", clusterId, extension?.name],
-    queryFn: () => clustersApi.getExtension(clusterId, extension!.name),
-    enabled: open && Boolean(extension?.name),
-  })
-  // Load repos to get chart versions for this extension's chart
-  const { data: repos = [] } = useQuery({
-    queryKey: ["helm-repositories", clusterId],
-    queryFn: () => clustersApi.listHelmRepositories(clusterId),
-    enabled: open && Boolean(extension?.repository && extension?.chart_name),
-  })
-
-  const chartVersions: HelmChartVersionInfo[] = React.useMemo(() => {
-    if (!repositoryName || !chartName) return []
-    const repo = (repos as HelmRepository[]).find(
-      (r) => r.name === repositoryName
-    )
-    const chart = repo?.charts?.find((c) => c.name === chartName)
-    return chart?.versions ?? []
-  }, [repos, repositoryName, chartName])
 
   // Resolved theme for Monaco
   const [monacoTheme, setMonacoTheme] = React.useState<"vs" | "vs-dark">("vs")
@@ -94,16 +68,22 @@ export function UpdateExtensionDialog({
     return () => media.removeEventListener("change", handler)
   }, [theme])
 
+  // Sync state when extension changes
   const initialSyncedRef = React.useRef(false)
   React.useEffect(() => {
     if (!extension) return
     setSelectedVersion(extension.chart_version || "")
-    setModifiedValues(
-      extension.values ?? extension.original_values ?? ""
-    )
+    setModifiedValues(extension.values ?? "")
     setShowDiff(false)
     initialSyncedRef.current = false
   }, [extension])
+
+  // Fetch full extension details to get current values
+  const { data: extensionDetails } = useQuery({
+    queryKey: ["extensions", clusterId, extension?.name],
+    queryFn: () => clustersApi.getExtension(clusterId, extension!.name),
+    enabled: open && Boolean(extension?.name),
+  })
 
   React.useEffect(() => {
     if (
@@ -113,35 +93,48 @@ export function UpdateExtensionDialog({
       initialSyncedRef.current
     )
       return
-    setModifiedValues(
-      extensionDetails.values ?? extensionDetails.original_values ?? ""
-    )
+    setModifiedValues(extensionDetails.values ?? "")
     initialSyncedRef.current = true
   }, [extension, extensionDetails])
 
-  // Fetch chart default values only when diff view is shown
+  // Fetch versions for this extension's catalog item
+  const { data: versionsData = [] } = useQuery({
+    queryKey: ["extension-versions", extension?.catalog_item_id],
+    queryFn: () =>
+      clustersApi.getExtensionVersions(extension!.catalog_item_id!),
+    enabled: open && Boolean(extension?.catalog_item_id),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const rawVersions: ExtensionVersionInfo[] = Array.isArray(versionsData)
+    ? versionsData
+    : []
+
+  // Ensure current version is always in the list
+  const versions: ExtensionVersionInfo[] =
+    rawVersions.length > 0
+      ? rawVersions
+      : extension?.chart_version
+        ? [{ version: extension.chart_version }]
+        : []
+
+  // Fetch default values for selected version (only in diff mode)
   const { data: chartValuesData, isFetching: chartValuesFetching } = useQuery({
     queryKey: [
-      "chart-values",
-      clusterId,
-      repositoryName,
-      chartName,
+      "extension-values",
+      extension?.catalog_item_id,
       selectedVersion,
     ],
     queryFn: () =>
-      clustersApi.getChartValues(
-        clusterId,
-        repositoryName,
-        chartName,
+      clustersApi.getExtensionValues(
+        extension!.catalog_item_id!,
         selectedVersion
       ),
     enabled: Boolean(
       showDiff &&
-      open &&
-      repositoryName &&
-      chartName &&
-      selectedVersion &&
-      extension
+        open &&
+        extension?.catalog_item_id &&
+        selectedVersion
     ),
     staleTime: 5 * 60 * 1000,
   })
@@ -162,16 +155,17 @@ export function UpdateExtensionDialog({
     onError: (error: unknown) => {
       const msg =
         error &&
-          typeof error === "object" &&
-          "response" in error
+        typeof error === "object" &&
+        "response" in error
           ? (
-            error as {
-              response?: { data?: { error?: string }; message?: string }
-            }
-          ).response?.data?.error
+              error as {
+                response?: { data?: { error?: string } }
+              }
+            ).response?.data?.error
           : null
       toast.error("Failed to update extension", {
-        description: msg ?? (error instanceof Error ? error.message : String(error)),
+        description:
+          msg ?? (error instanceof Error ? error.message : String(error)),
       })
     },
   })
@@ -185,14 +179,6 @@ export function UpdateExtensionDialog({
     }
     updateMutation.mutate(data)
   }
-
-  // Ensure current version is in the list (e.g. when repo not loaded or OCI)
-  const versions: HelmChartVersionInfo[] =
-    chartVersions.length > 0
-      ? chartVersions
-      : extension?.chart_version
-        ? [{ version: extension.chart_version }]
-        : []
 
   const handleDiffMount = React.useCallback(
     (diffEditor: editor.IStandaloneDiffEditor) => {
@@ -221,9 +207,10 @@ export function UpdateExtensionDialog({
               <div>
                 <DialogTitle>Update Extension</DialogTitle>
                 <DialogDescription>
-                  Update <span className="font-medium">{extension.name}</span> — chart{" "}
-                  <span className="font-mono">{extension.chart_name}</span>. Edit
-                  values below and save to apply.
+                  Update <span className="font-medium">{extension.name}</span>{" "}
+                  —{" "}
+                  <span className="font-mono text-xs">{extension.oci_url}</span>
+                  . Edit values below and save to apply.
                 </DialogDescription>
               </div>
               <Button
@@ -232,12 +219,10 @@ export function UpdateExtensionDialog({
                 size="sm"
                 className="shrink-0"
                 onClick={() => setShowDiff((v) => !v)}
-                disabled={!selectedVersion}
+                disabled={!selectedVersion || !extension.catalog_item_id}
               >
                 <GitCompare className="h-3.5 w-3.5" />
-                {showDiff
-                  ? "Hide diff"
-                  : "Compare with default Values"}
+                {showDiff ? "Hide diff" : "Compare with default Values"}
               </Button>
             </div>
           </DialogHeader>
@@ -258,7 +243,6 @@ export function UpdateExtensionDialog({
                       {versions.map((v) => (
                         <SelectItem key={v.version} value={v.version}>
                           {v.version}
-                          {v.app_version ? ` (app: ${v.app_version})` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>

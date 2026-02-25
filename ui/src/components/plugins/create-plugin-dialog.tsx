@@ -56,9 +56,9 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
   const [envVars, setEnvVars] = useState<KeyValuePair[]>([])
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => pluginsApi.createPlugin(data),
+    mutationFn: (data: any) => pluginsApi.createPlugin(projectId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      queryClient.invalidateQueries({ queryKey: ['plugins', projectId] })
       toast.success("Plugin created successfully")
       onOpenChange(false)
       resetForm()

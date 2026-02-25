@@ -25,7 +25,7 @@ import (
 func ListApps(envID string, page, pageSize int, search string) (int64, []entities.App, error) {
 	var apps []entities.App
 	var total int64
-	query := db.DB.Model(&entities.App{}).Where("env_id = ?", envID)
+	query := db.DB.Model(&entities.App{}).Where("env_id = ?", envID).Order("created_at DESC")
 	if search != "" {
 		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
@@ -40,7 +40,7 @@ func ListApps(envID string, page, pageSize int, search string) (int64, []entitie
 
 func ListAppsSimple(envID string) ([]entities.App, error) {
 	var apps []entities.App
-	if err := db.DB.Select("id, slug, name, description, code_repository_id").Where("env_id = ?", envID).Order("name").Find(&apps).Error; err != nil {
+	if err := db.DB.Select("id, slug, name, description, code_repository_id").Where("env_id = ?", envID).Order("created_at DESC").Find(&apps).Error; err != nil {
 		return nil, err
 	}
 	return apps, nil

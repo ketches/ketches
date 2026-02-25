@@ -1,34 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Blocks,
-  BookOpen,
   CheckCircle2,
   Clock,
-  Download,
-  FolderSync,
-  Globe,
-  Info,
   Library,
   Loader2,
-  PauseCircle,
-  Pencil,
-  PlugZap,
   Plus,
-  RefreshCcw,
-  ShieldAlert,
   Trash2,
-  XCircle
+  XCircle,
 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import {
   clustersApi,
-  type Extension,
-  type HelmChartInfo,
-  type HelmRepository,
+  type ExtensionCatalogItem,
+  type InstalledExtension,
 } from "@/api/clusters"
-import { AddRepositoryDialog } from "@/components/cluster/add-repository-dialog"
+import { AddExtensionCatalogDialog } from "@/components/cluster/add-extension-catalog-dialog"
 import { InstallExtensionDialog } from "@/components/cluster/install-extension-dialog"
 import { UpdateExtensionDialog } from "@/components/cluster/update-extension-dialog"
 import {
@@ -46,7 +35,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -65,180 +53,231 @@ interface ClusterExtensionsProps {
 }
 
 export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
+  return <ExtensionManager clusterId={clusterId} />
+}
+
+// ========================
+// Extension Manager
+// ========================
+
+function ExtensionManager({ clusterId }: { clusterId: string }) {
+  const [activeTab, setActiveTab] = React.useState("catalog")
+
+  return (
+    <div className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="catalog">
+            <Library />
+            Catalog
+          </TabsTrigger>
+          <TabsTrigger value="installed">
+            <Blocks />
+            Installed
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="catalog" className="mt-2">
+          <ExtensionCatalog clusterId={clusterId} />
+        </TabsContent>
+
+        <TabsContent value="installed" className="mt-2">
+          <InstalledExtensions clusterId={clusterId} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
+
+// ========================
+// Extension Catalog Tab
+// ========================
+
+function ExtensionCatalog({ clusterId }: { clusterId: string }) {
   const queryClient = useQueryClient()
+  const [addOpen, setAddOpen] = React.useState(false)
+  const [installTarget, setInstallTarget] =
+    React.useState<ExtensionCatalogItem | null>(null)
+  const [installOpen, setInstallOpen] = React.useState(false)
+  const [deleteTarget, setDeleteTarget] =
+    React.useState<ExtensionCatalogItem | null>(null)
 
-  // Helm Operator status check
-  const {
-    data: operatorStatus,
-    isLoading: operatorLoading,
-    error: operatorError,
-  } = useQuery({
-    queryKey: ["helm-operator-status", clusterId],
-    queryFn: () => clustersApi.getHelmOperatorStatus(clusterId),
-    retry: 1,
+  const { data: catalog = [], isLoading } = useQuery({
+    queryKey: ["extension-catalog"],
+    queryFn: () => clustersApi.listExtensionCatalog(),
   })
 
-  const installOperatorMutation = useMutation({
-    mutationFn: () => clustersApi.installHelmOperator(clusterId),
+  const deleteMutation = useMutation({
+    mutationFn: (itemId: string) =>
+      clustersApi.deleteExtensionCatalogItem(itemId),
     onSuccess: () => {
-      toast.success("Helm Operator installed successfully", {
-        description: "The cluster is now ready for extension management.",
-      })
-      queryClient.invalidateQueries({
-        queryKey: ["helm-operator-status", clusterId],
-      })
+      toast.success("Extension removed from catalog")
+      queryClient.invalidateQueries({ queryKey: ["extension-catalog"] })
+      setDeleteTarget(null)
     },
-    onError: (error: any) => {
-      toast.error("Failed to install Helm Operator", {
-        description: error.response?.data?.error || error.message,
+    onError: (error: unknown) => {
+      const msg =
+        error && typeof error === "object" && "response" in error
+          ? (
+              error as {
+                response?: { data?: { error?: string } }
+              }
+            ).response?.data?.error
+          : null
+      toast.error("Failed to remove extension", {
+        description:
+          msg ?? (error instanceof Error ? error.message : String(error)),
       })
     },
   })
 
-  // Loading state
-  if (operatorLoading) {
+  const safeItems: ExtensionCatalogItem[] = Array.isArray(catalog)
+    ? catalog
+    : []
+
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="py-12">
           <div className="flex flex-col items-center justify-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Detecting Helm Operator...
-            </p>
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Loading catalog...</p>
           </div>
         </CardContent>
       </Card>
     )
   }
 
-  // Error state
-  if (operatorError) {
-    return (
-      <Card>
-        <CardContent className="py-8">
-          <Empty className="border-0 flex-1">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <ShieldAlert />
-              </EmptyMedia>
-              <EmptyTitle>Unable to Check Helm Operator</EmptyTitle>
-              <EmptyDescription>
-                Failed to detect Helm Operator status. Please check the cluster
-                connectivity and try again.
-              </EmptyDescription>
-              <EmptyContent>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    queryClient.invalidateQueries({
-                      queryKey: ["helm-operator-status", clusterId],
-                    })
-                  }
-                >
-                  <RefreshCcw />
-                  Retry
-                </Button>
-              </EmptyContent>
-            </EmptyHeader>
-          </Empty>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Not installed - show install guide
-  if (!operatorStatus?.installed) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PlugZap className="h-4 w-4" />
-            Cluster Extensions
-          </CardTitle>
-          <CardDescription>
-            Install and manage cluster extensions like monitoring, logging, and
-            service mesh
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Empty className="border-0 flex-1">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Info className="h-6 w-6" />
-              </EmptyMedia>
-              <EmptyTitle>Helm Operator Required</EmptyTitle>
-              <EmptyDescription>
-                The Helm Operator is required to manage cluster extensions. It
-                enables installing and managing Helm charts as extensions in your
-                cluster.
-              </EmptyDescription>
-              <EmptyContent>
-                <Button
-                  onClick={() => installOperatorMutation.mutate()}
-                  disabled={installOperatorMutation.isPending}
-                >
-                  {installOperatorMutation.isPending ? (
-                    <>
-                      <Loader2 className="animate-spin" />
-                      Installing...
-                    </>
-                  ) : (
-                    <>
-                      <Download />
-                      Install Helm Operator
-                    </>
-                  )}
-                </Button>
-              </EmptyContent>
-            </EmptyHeader>
-          </Empty>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Installed - show the full extension management UI
-  return <ExtensionManager clusterId={clusterId} />
-}
-
-// ========================
-// Extension Manager (shown after helm-operator is installed)
-// ========================
-
-function ExtensionManager({ clusterId }: { clusterId: string }) {
-  const [activeTab, setActiveTab] = React.useState("installed")
-
   return (
-    <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="installed">
-            <Blocks />
-            Installed
-          </TabsTrigger>
-          <TabsTrigger value="catalog">
-            <Library />
-            Catalog
-          </TabsTrigger>
-          <TabsTrigger value="repositories">
-            <FolderSync />
-            Repositories
-          </TabsTrigger>
-        </TabsList>
+    <>
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus />
+            Add Extension
+          </Button>
+        </div>
 
-        <TabsContent value="installed" className="mt-2">
-          <InstalledExtensions clusterId={clusterId} />
-        </TabsContent>
+        {safeItems.length === 0 ? (
+          <Card>
+            <CardContent className="py-8">
+              <Empty className="border-0 flex-1">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Library className="h-6 w-6" />
+                  </EmptyMedia>
+                  <EmptyTitle>No Extensions in Catalog</EmptyTitle>
+                  <EmptyDescription>
+                    Add OCI-based Helm chart extensions to make them available
+                    for installation.
+                  </EmptyDescription>
+                  <EmptyContent>
+                    <Button onClick={() => setAddOpen(true)}>
+                      <Plus />
+                      Add Extension
+                    </Button>
+                  </EmptyContent>
+                </EmptyHeader>
+              </Empty>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {safeItems.map((item) => (
+              <Card key={item.id} className="flex flex-col">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600 shrink-0">
+                        <Blocks className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <CardTitle className="text-sm truncate">
+                          {item.display_name || item.name}
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground font-mono truncate">
+                          {item.oci_url}
+                        </p>
+                      </div>
+                    </div>
+                    {item.builtin && (
+                      <Badge variant="secondary" className="text-[10px] shrink-0">
+                        Built-in
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 pb-3">
+                  {item.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {item.description}
+                    </p>
+                  )}
+                </CardContent>
+                <div className="flex gap-2 px-6 pb-4 pt-0">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      setInstallTarget(item)
+                      setInstallOpen(true)
+                    }}
+                  >
+                    Install
+                  </Button>
+                  {!item.builtin && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setDeleteTarget(item)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
-        <TabsContent value="catalog" className="mt-2">
-          <ExtensionCatalog clusterId={clusterId} />
-        </TabsContent>
+      <AddExtensionCatalogDialog open={addOpen} onOpenChange={setAddOpen} />
 
-        <TabsContent value="repositories" className="mt-2">
-          <RepositoryList clusterId={clusterId} />
-        </TabsContent>
-      </Tabs>
-    </div>
+      <InstallExtensionDialog
+        open={installOpen}
+        onOpenChange={setInstallOpen}
+        clusterId={clusterId}
+        catalogItem={installTarget}
+      />
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={() => setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Extension from Catalog</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove "
+              {deleteTarget?.display_name || deleteTarget?.name}" from the
+              catalog? Installed extensions will not be affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                deleteTarget && deleteMutation.mutate(deleteTarget.id)
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Removing..." : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -256,7 +295,8 @@ function InstalledExtensions({ clusterId }: { clusterId: string }) {
   })
 
   const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null)
-  const [updateTarget, setUpdateTarget] = React.useState<Extension | null>(null)
+  const [updateTarget, setUpdateTarget] =
+    React.useState<InstalledExtension | null>(null)
 
   const uninstallMutation = useMutation({
     mutationFn: (name: string) =>
@@ -266,14 +306,25 @@ function InstalledExtensions({ clusterId }: { clusterId: string }) {
       queryClient.invalidateQueries({ queryKey: ["extensions", clusterId] })
       setDeleteTarget(null)
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const msg =
+        error && typeof error === "object" && "response" in error
+          ? (
+              error as {
+                response?: { data?: { error?: string } }
+              }
+            ).response?.data?.error
+          : null
       toast.error("Failed to uninstall extension", {
-        description: error.response?.data?.error || error.message,
+        description:
+          msg ?? (error instanceof Error ? error.message : String(error)),
       })
     },
   })
 
-  const safeExtensions: Extension[] = Array.isArray(extensions) ? extensions : []
+  const safeExtensions: InstalledExtension[] = Array.isArray(extensions)
+    ? extensions
+    : []
 
   if (isLoading) {
     return (
@@ -281,7 +332,9 @@ function InstalledExtensions({ clusterId }: { clusterId: string }) {
         <CardContent className="py-12">
           <div className="flex flex-col items-center justify-center gap-4">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Loading extensions...</p>
+            <p className="text-sm text-muted-foreground">
+              Loading extensions...
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -313,7 +366,7 @@ function InstalledExtensions({ clusterId }: { clusterId: string }) {
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {safeExtensions.map((ext) => (
-          <ExtensionCard
+          <InstalledExtensionCard
             key={ext.name}
             extension={ext}
             onUpdate={() => setUpdateTarget(ext)}
@@ -345,7 +398,9 @@ function InstalledExtensions({ clusterId }: { clusterId: string }) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteTarget && uninstallMutation.mutate(deleteTarget)}
+              onClick={() =>
+                deleteTarget && uninstallMutation.mutate(deleteTarget)
+              }
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {uninstallMutation.isPending ? "Uninstalling..." : "Uninstall"}
@@ -357,29 +412,21 @@ function InstalledExtensions({ clusterId }: { clusterId: string }) {
   )
 }
 
-function ExtensionCard({
+function InstalledExtensionCard({
   extension,
   onUpdate,
   onUninstall,
 }: {
-  extension: Extension
+  extension: InstalledExtension
   onUpdate: () => void
   onUninstall: () => void
 }) {
   const getStatusBadge = () => {
-    if (extension.ready) {
+    if (extension.status === "deployed") {
       return (
         <Badge variant="outline" className="text-green-600 gap-1">
           <CheckCircle2 className="h-3 w-3" />
-          Ready
-        </Badge>
-      )
-    }
-    if (extension.suspended) {
-      return (
-        <Badge variant="outline" className="text-yellow-600 gap-1">
-          <PauseCircle className="h-3 w-3" />
-          Suspended
+          Deployed
         </Badge>
       )
     }
@@ -394,7 +441,7 @@ function ExtensionCard({
     return (
       <Badge variant="outline" className="text-blue-600 gap-1">
         <Clock className="h-3 w-3" />
-        {extension.status || "Reconciling"}
+        {extension.status || "Pending"}
       </Badge>
     )
   }
@@ -410,7 +457,7 @@ function ExtensionCard({
             <div className="min-w-0">
               <CardTitle className="text-sm truncate">{extension.name}</CardTitle>
               <p className="text-xs text-muted-foreground font-mono truncate">
-                {extension.chart_name}
+                {extension.oci_url}
                 {extension.chart_version ? `:${extension.chart_version}` : ""}
               </p>
             </div>
@@ -434,18 +481,7 @@ function ExtensionCard({
               <p className="font-mono">{extension.app_version}</p>
             </div>
           )}
-          {extension.repository && (
-            <div>
-              <p className="text-muted-foreground">Repository</p>
-              <p className="truncate">{extension.repository}</p>
-            </div>
-          )}
         </div>
-        {extension.message && !extension.ready && (
-          <p className="text-xs text-muted-foreground mt-2 line-clamp-2 bg-muted/50 rounded px-2 py-1">
-            {extension.message}
-          </p>
-        )}
       </CardContent>
       <div className="flex gap-2 px-6 pb-4 pt-0">
         <Button
@@ -454,7 +490,6 @@ function ExtensionCard({
           className="flex-1"
           onClick={onUpdate}
         >
-          <Pencil className="h-3.5 w-3.5" />
           Update
         </Button>
         <Button
@@ -468,337 +503,5 @@ function ExtensionCard({
         </Button>
       </div>
     </Card>
-  )
-}
-
-// ========================
-// Extension Catalog Tab
-// ========================
-
-function ExtensionCatalog({ clusterId }: { clusterId: string }) {
-  const { data: repos = [], isLoading } = useQuery({
-    queryKey: ["helm-repositories", clusterId],
-    queryFn: () => clustersApi.listHelmRepositories(clusterId),
-  })
-
-  const [selectedChart, setSelectedChart] = React.useState<HelmChartInfo | null>(null)
-  const [selectedRepoName, setSelectedRepoName] = React.useState<string>("")
-  const [installOpen, setInstallOpen] = React.useState(false)
-
-  const safeRepos: HelmRepository[] = Array.isArray(repos) ? repos : []
-
-  // Collect all charts from all ready repos
-  const allCharts: Array<{ chart: HelmChartInfo; repoName: string; repoURL: string }> = []
-  for (const repo of safeRepos) {
-    if (repo.ready && repo.charts) {
-      for (const chart of repo.charts) {
-        allCharts.push({ chart, repoName: repo.name, repoURL: repo.url })
-      }
-    }
-  }
-
-  const handleInstall = (chart: HelmChartInfo, repoName: string) => {
-    setSelectedChart(chart)
-    setSelectedRepoName(repoName)
-    setInstallOpen(true)
-  }
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center gap-4">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Loading catalog...</p>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (allCharts.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-8">
-          <Empty className="border-0 flex-1">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <BookOpen className="h-6 w-6" />
-              </EmptyMedia>
-              <EmptyTitle>No Charts Available</EmptyTitle>
-              <EmptyDescription>
-                {safeRepos.length === 0
-                  ? "Add a Helm repository first to browse available charts."
-                  : "Repositories are syncing. Charts will appear once sync completes."}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {allCharts.map(({ chart, repoName }) => (
-          <Card key={`${repoName}-${chart.name}`} className="flex flex-col">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600 shrink-0">
-                  <Blocks className="h-4 w-4" />
-                </div>
-                <div className="min-w-0">
-                  <CardTitle className="text-sm truncate">
-                    {chart.name}
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground truncate">
-                    from {repoName}
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1 pb-3">
-              {chart.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                  {chart.description}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-1">
-                {chart.versions?.slice(0, 3).map((v) => (
-                  <Badge
-                    key={v.version}
-                    variant="secondary"
-                    className="text-[10px]"
-                  >
-                    {v.version}
-                  </Badge>
-                ))}
-                {(chart.versions?.length || 0) > 3 && (
-                  <Badge variant="outline" className="text-[10px]">
-                    +{(chart.versions?.length || 0) - 3} more
-                  </Badge>
-                )}
-              </div>
-            </CardContent>
-            <div className="px-6 pb-4 pt-0">
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={() => handleInstall(chart, repoName)}
-              >
-                <Download className="h-3.5 w-3.5" />
-                Install
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <InstallExtensionDialog
-        open={installOpen}
-        onOpenChange={setInstallOpen}
-        clusterId={clusterId}
-        chart={selectedChart}
-        repositoryName={selectedRepoName}
-      />
-    </>
-  )
-}
-
-// ========================
-// Repository List Tab
-// ========================
-
-function RepositoryList({ clusterId }: { clusterId: string }) {
-  const queryClient = useQueryClient()
-  const [addOpen, setAddOpen] = React.useState(false)
-  const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null)
-
-  const { data: repos = [], isLoading } = useQuery({
-    queryKey: ["helm-repositories", clusterId],
-    queryFn: () => clustersApi.listHelmRepositories(clusterId),
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (name: string) =>
-      clustersApi.deleteHelmRepository(clusterId, name),
-    onSuccess: () => {
-      toast.success("Repository deleted")
-      queryClient.invalidateQueries({
-        queryKey: ["helm-repositories", clusterId],
-      })
-      setDeleteTarget(null)
-    },
-    onError: (error: any) => {
-      toast.error("Failed to delete repository", {
-        description: error.response?.data?.error || error.message,
-      })
-    },
-  })
-
-  const safeRepos: HelmRepository[] = Array.isArray(repos) ? repos : []
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center gap-4">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Loading repositories...
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <>
-      <div className="space-y-4">
-        <div className="flex justify-end">
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus />
-            Add Repository
-          </Button>
-        </div>
-
-        {safeRepos.length === 0 ? (
-          <Card>
-            <CardContent className="py-8">
-              <Empty className="border-0 flex-1">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <FolderSync className="h-6 w-6" />
-                  </EmptyMedia>
-                  <EmptyTitle>No Repositories</EmptyTitle>
-                  <EmptyDescription>
-                    Add a Helm repository to start browsing and installing
-                    extensions.
-                  </EmptyDescription>
-                  <EmptyContent>
-                    <Button onClick={() => setAddOpen(true)}>
-                      <Plus />
-                      Add Repository
-                    </Button>
-                  </EmptyContent>
-                </EmptyHeader>
-              </Empty>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {safeRepos.map((repo) => (
-              <Card key={repo.name}>
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="p-2 bg-muted rounded-md shrink-0">
-                        {repo.type === "oci" ? (
-                          <Blocks className="h-4 w-4" />
-                        ) : (
-                          <Globe className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium truncate">
-                            {repo.name}
-                          </p>
-                          {repo.system && (
-                            <Badge variant="secondary" className="text-[10px] shrink-0">
-                              System
-                            </Badge>
-                          )}
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] uppercase shrink-0"
-                          >
-                            {repo.type}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground font-mono truncate">
-                          {repo.url}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 shrink-0 ml-4">
-                      <div className="text-right text-xs">
-                        {repo.ready ? (
-                          <span className="flex items-center gap-1 text-green-600">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Ready
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-yellow-600">
-                            <Clock className="h-3 w-3" />
-                            Syncing
-                          </span>
-                        )}
-                        {repo.total_charts > 0 && (
-                          <p className="text-muted-foreground">
-                            {repo.total_charts} charts
-                          </p>
-                        )}
-                      </div>
-
-                      {!repo.system && (
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeleteTarget(repo.name)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  {repo.message && !repo.ready && (
-                    <p className="text-xs text-muted-foreground mt-2 bg-muted/50 rounded px-2 py-1">
-                      {repo.message}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <AddRepositoryDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        clusterId={clusterId}
-      />
-
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={() => setDeleteTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Repository</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the repository "{deleteTarget}"?
-              Installed extensions from this repository will not be affected.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                deleteTarget && deleteMutation.mutate(deleteTarget)
-              }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
   )
 }

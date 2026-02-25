@@ -14,7 +14,7 @@ import (
 func ListEnvs(projectID string, page, pageSize int, search string) (int64, []entities.Env, error) {
 	var envs []entities.Env
 	var total int64
-	query := db.DB.Model(&entities.Env{}).Where("project_id = ?", projectID)
+	query := db.DB.Model(&entities.Env{}).Where("project_id = ?", projectID).Order("created_at")
 	if search != "" {
 		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
@@ -29,7 +29,7 @@ func ListEnvs(projectID string, page, pageSize int, search string) (int64, []ent
 
 func ListEnvsSimple(projectID string) ([]entities.Env, error) {
 	var envs []entities.Env
-	if err := db.DB.Select("id, slug, name, description, cluster_id, cluster_namespace, is_build_env").Where("project_id = ?", projectID).Order("name").Find(&envs).Error; err != nil {
+	if err := db.DB.Select("id, slug, name, description, cluster_id, cluster_namespace, is_build_env").Where("project_id = ?", projectID).Order("created_at").Find(&envs).Error; err != nil {
 		return nil, err
 	}
 	return envs, nil
@@ -71,6 +71,12 @@ func CreateEnv(projectID string, req *models.CreateEnvRequest) (*entities.Env, e
 
 	if err := db.DB.Create(env).Error; err != nil {
 		return nil, err
+	}
+
+	// If the cluster has Gateway API CRDs, create the env-level Gateway resource.
+	// Failure is non-fatal — the env is created either way.
+	if gwErr := tryEnsureEnvGateway(context.Background(), env); gwErr != nil {
+		_ = gwErr // best-effort
 	}
 
 	return env, nil
@@ -224,4 +230,12 @@ func ToEnvResponse(e *entities.Env) models.EnvResponse {
 		IsBuildEnv:       e.IsBuildEnv,
 		CreatedAt:        e.CreatedAt,
 	}
+}
+
+// tryEnsureEnvGateway loads the env's certificates and calls core.EnsureEnvGateway.
+// It is best-effort: errors are returned but must not block env lifecycle operations.
+func tryEnsureEnvGateway(ctx context.Context, env *entities.Env) error {
+	var certs []entities.Certificate
+	db.DB.Where("env_id = ? AND scope = ?", env.ID, "env").Find(&certs)
+	return core.EnsureEnvGateway(ctx, env, certs)
 }

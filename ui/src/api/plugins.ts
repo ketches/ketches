@@ -1,6 +1,6 @@
 import type { App } from './apps'
 import client from './client'
-import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
+import { type PaginationParams, type PaginationResponse } from './pagination'
 
 export interface Plugin {
   id: string
@@ -15,6 +15,15 @@ export interface Plugin {
   install_count: number
   created_at: string
   updated_at: string
+}
+
+export interface SimplePlugin {
+  id: string
+  slug: string
+  name: string
+  description: string
+  plugin_type: "init" | "sidecar"
+  env_vars: { key: string, value: string }[]
 }
 
 export interface AppPlugin {
@@ -52,33 +61,35 @@ export interface UpdatePluginRequest {
   plugin_type?: "init" | "sidecar"
 }
 
-export const pluginsApi = {
-  // Global Plugin Management (Admin)
-  listPlugins: async (params?: PaginationParams) => {
-    return client.get('/v1/plugins', {
+  export const pluginsApi = {
+  listPlugins: async (projectId: string, params?: PaginationParams) => {
+    return client.get(`/v1/projects/${projectId}/plugins`, {
       params
     }) as Promise<{ items: Plugin[], pagination: PaginationResponse }>
   },
 
-  listPluginsSimple: async (projectId?: string) => {
-    const url = projectId ? `/v1/projects/${projectId}/plugins/simple` : '/v1/plugins/simple'
-    return client.get(url) as Promise<SimpleResponse[]>
+  listPluginsSimple: async (projectId: string) => {
+    return client.get(`/v1/projects/${projectId}/plugins/simple`) as Promise<SimplePlugin[]>
   },
 
-  getPlugin: async (pluginID: string) => {
-    return client.get(`/v1/plugins/${pluginID}`) as Promise<Plugin>
+  getPlugin: async (projectId: string, pluginID: string) => {
+    return client.get(`/v1/projects/${projectId}/plugins/${pluginID}`) as Promise<Plugin>
   },
 
-  createPlugin: async (data: CreatePluginRequest) => {
-    return client.post('/v1/plugins', data) as Promise<Plugin>
+  createPlugin: async (projectId: string, data: CreatePluginRequest) => {
+    return client.post(`/v1/projects/${projectId}/plugins`, data) as Promise<Plugin>
   },
 
-  updatePlugin: async (pluginID: string, data: UpdatePluginRequest) => {
-    return client.put(`/v1/plugins/${pluginID}`, data) as Promise<Plugin>
+  updatePlugin: async (projectId: string, pluginID: string, data: UpdatePluginRequest) => {
+    return client.put(`/v1/projects/${projectId}/plugins/${pluginID}`, data) as Promise<Plugin>
   },
 
-  deletePlugin: async (pluginID: string) => {
-    return client.delete(`/v1/plugins/${pluginID}`)
+  deletePlugin: async (projectId: string, pluginID: string) => {
+    return client.delete(`/v1/projects/${projectId}/plugins/${pluginID}`)
+  },
+
+  getPluginInstalledApps: async (projectId: string, pluginID: string) => {
+    return client.get(`/v1/projects/${projectId}/plugins/${pluginID}/installed-apps`) as Promise<App[]>
   },
 
   // App Plugin Installation (Developer+)
@@ -110,8 +121,4 @@ export const pluginsApi = {
   }) => {
     return client.patch(`/v1/apps/${appID}/plugins/${pluginID}/resources`, resources)
   },
-
-  getPluginInstalledApps: async (pluginID: string) => {
-    return client.get(`/v1/plugins/${pluginID}/installed-apps`) as Promise<App[]>
-  }
 }

@@ -3,274 +3,171 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
-	"github.com/ketches/ketches/internal/kube"
+	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/ketches/ketches/internal/models"
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/release"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/discovery"
+	 memorycache "k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	helmOperatorGroup     = "helm-operator.ketches.cn"
-	helmOperatorVersion   = "v1alpha1"
-	helmOperatorNamespace = "ketches"
-
-	defaultSystemRepoName = "ketches-extensions"
-	defaultSystemRepoURL  = "https://ketches.github.io/ketches-extension-charts"
-)
-
-var helmRepoGVR = schema.GroupVersionResource{
-	Group:    helmOperatorGroup,
-	Version:  helmOperatorVersion,
-	Resource: "helmrepositories",
-}
-
-var helmReleaseGVR = schema.GroupVersionResource{
-	Group:    helmOperatorGroup,
-	Version:  helmOperatorVersion,
-	Resource: "helmreleases",
-}
-
-// ========================
-// HelmRepository Operations
-// ========================
-
-func ListHelmRepositories(clusterID string) ([]models.HelmRepositoryResponse, error) {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
+// ListExtensionVersions lists OCI tags for a catalog item, sorted newest first.
+func ListExtensionVersions(itemID string) ([]models.ExtensionVersionInfo, error) {
+	item, err := GetExtensionCatalogItemEntity(itemID)
 	if err != nil {
 		return nil, err
 	}
 
-	list, err := dynClient.Resource(helmRepoGVR).Namespace(helmOperatorNamespace).List(context.Background(), metav1.ListOptions{})
+	// crane expects the repo without the "oci://" prefix.
+	repo := strings.TrimPrefix(item.OCIUrl, "oci://")
+	tags, err := crane.ListTags(repo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list helm repositories: %v", err)
+		return nil, fmt.Errorf("failed to list versions for %q: %w", item.OCIUrl, err)
 	}
 
-	repos := make([]models.HelmRepositoryResponse, 0, len(list.Items))
-	for _, item := range list.Items {
-		repos = append(repos, toHelmRepositoryResponse(&item))
+	// Sort descending (newest first) using simple string sort; semver sorting
+	// can be added later without API change.
+	sort.Sort(sort.Reverse(sort.StringSlice(tags)))
+
+	result := make([]models.ExtensionVersionInfo, 0, len(tags))
+	for _, tag := range tags {
+		result = append(result, models.ExtensionVersionInfo{Version: tag})
 	}
-	return repos, nil
+	return result, nil
 }
 
-func GetHelmRepository(clusterID, name string) (*models.HelmRepositoryResponse, error) {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	obj, err := dynClient.Resource(helmRepoGVR).Namespace(helmOperatorNamespace).Get(context.Background(), name, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get helm repository: %v", err)
-	}
-
-	resp := toHelmRepositoryResponse(obj)
-	return &resp, nil
-}
-
-// GetChartValues returns the default values.yaml for a chart version from a Helm repository.
-func GetChartValues(clusterID, repoName, chartName, version string) (string, error) {
-	repoResp, err := GetHelmRepository(clusterID, repoName)
+// GetExtensionValues pulls the OCI helm chart and returns its default values.yaml content.
+func GetExtensionValues(itemID, version string) (string, error) {
+	item, err := GetExtensionCatalogItemEntity(itemID)
 	if err != nil {
 		return "", err
 	}
-	if repoResp.Type != "helm" {
-		return "", fmt.Errorf("chart values are only supported for helm repositories, got type %q", repoResp.Type)
-	}
 
-	getters := getter.All(cli.New())
-	// Resolve chart URL from repo index (no local repo file needed)
-	chartURL, err := repo.FindChartInRepoURL(repoResp.URL, chartName, version, "", "", "", getters)
-	if err != nil {
-		return "", fmt.Errorf("failed to find chart in repository: %w", err)
-	}
-
-	dir, err := os.MkdirTemp("", "ketches-helm-values-*")
+	// Pull the chart to a temp directory and load it.
+	dir, err := os.MkdirTemp("", "ketches-ext-values-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
 	defer os.RemoveAll(dir)
 
-	// Download from resolved URL (version param ignored when ref is URL)
-	dl := downloader.ChartDownloader{
-		Out:     os.Stderr,
-		Verify:  downloader.VerifyNever,
-		Getters: getters,
-	}
-	savedPath, _, err := dl.DownloadTo(chartURL, "", dir)
+	regClient, err := registry.NewClient()
 	if err != nil {
-		return "", fmt.Errorf("failed to download chart: %w", err)
+		return "", fmt.Errorf("failed to create registry client: %w", err)
 	}
 
-	chrt, err := loader.Load(savedPath)
+	p := action.NewPullWithOpts(action.WithConfig(&action.Configuration{
+		RegistryClient: regClient,
+	}))
+	p.Settings = cli.New()
+	p.DestDir = dir
+	p.Untar = true
+	p.UntarDir = dir
+	p.Version = version
+
+	// Pull the OCI chart.
+	if _, err := p.Run(item.OCIUrl); err != nil {
+		return "", fmt.Errorf("failed to pull chart %q version %q: %w", item.OCIUrl, version, err)
+	}
+
+	// The chart is extracted to dir/<chart-name>/
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read extracted chart dir: %w", err)
+	}
+	var chartDir string
+	for _, e := range entries {
+		if e.IsDir() {
+			chartDir = dir + "/" + e.Name()
+			break
+		}
+	}
+	if chartDir == "" {
+		return "", fmt.Errorf("no chart directory found after pull")
+	}
+
+	chrt, err := loader.Load(chartDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to load chart: %w", err)
 	}
 
-	values, err := chartutil.CoalesceValues(chrt, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to coalesce values: %w", err)
-	}
-	out, err := yaml.Marshal(values)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal values: %w", err)
-	}
-	return string(out), nil
-}
-
-func CreateHelmRepository(clusterID string, req *models.CreateHelmRepositoryRequest) (*models.HelmRepositoryResponse, error) {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	repoType := req.Type
-	if repoType == "" {
-		repoType = "helm"
-	}
-
-	spec := map[string]any{
-		"url":  req.URL,
-		"type": repoType,
-	}
-
-	// Add basic auth if provided
-	if req.Username != "" || req.Password != "" {
-		auth := map[string]any{
-			"basic": map[string]any{},
+	// Return the raw values.yaml from the chart files.
+	for _, f := range chrt.Raw {
+		if f.Name == "values.yaml" {
+			return string(f.Data), nil
 		}
-		basic := auth["basic"].(map[string]any)
-		if req.Username != "" {
-			basic["username"] = req.Username
+	}
+
+	// Fallback: marshal the default values map.
+	if len(chrt.Values) > 0 {
+		out, err := yaml.Marshal(chrt.Values)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal values: %w", err)
 		}
-		if req.Password != "" {
-			basic["password"] = req.Password
+		return string(out), nil
+	}
+	return "", nil
+}
+
+// ListExtensions lists all helm releases installed in a cluster.
+func ListExtensions(clusterID string) ([]models.InstalledExtension, error) {
+	actionConfig, cleanup, err := newHelmActionConfig(clusterID, "")
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	l := action.NewList(actionConfig)
+	l.AllNamespaces = true
+	l.SetStateMask()
+
+	releases, err := l.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list extensions: %w", err)
+	}
+
+	result := make([]models.InstalledExtension, 0, len(releases))
+	for _, r := range releases {
+		result = append(result, toInstalledExtension(r))
+	}
+	return result, nil
+}
+
+// GetExtension returns a single installed helm release by name.
+func GetExtension(clusterID, name string) (*models.InstalledExtension, error) {
+	// Get the release status.
+	releases, err := ListExtensions(clusterID)
+	if err != nil {
+		return nil, err
+	}
+	for _, ext := range releases {
+		if ext.Name == name {
+			return &ext, nil
 		}
-		spec["auth"] = auth
 	}
-
-	obj := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": helmOperatorGroup + "/" + helmOperatorVersion,
-			"kind":       "HelmRepository",
-			"metadata": map[string]any{
-				"name":      req.Name,
-				"namespace": helmOperatorNamespace,
-			},
-			"spec": spec,
-		},
-	}
-
-	created, err := dynClient.Resource(helmRepoGVR).Namespace(helmOperatorNamespace).Create(context.Background(), obj, metav1.CreateOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create helm repository: %v", err)
-	}
-
-	resp := toHelmRepositoryResponse(created)
-	return &resp, nil
+	return nil, fmt.Errorf("extension %q not found", name)
 }
 
-func DeleteHelmRepository(clusterID, name string) error {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
+// InstallExtension installs an OCI helm chart into the specified cluster.
+func InstallExtension(clusterID string, req *models.InstallExtensionRequest) (*models.InstalledExtension, error) {
+	// Resolve catalog item to get OCI URL.
+	item, err := GetExtensionCatalogItemEntity(req.CatalogItemID)
 	if err != nil {
-		return err
-	}
-
-	return dynClient.Resource(helmRepoGVR).Namespace(helmOperatorNamespace).Delete(context.Background(), name, metav1.DeleteOptions{})
-}
-
-// EnsureDefaultHelmRepository creates the default system helm repository if it doesn't exist.
-func EnsureDefaultHelmRepository(clusterID string) error {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
-	if err != nil {
-		return err
-	}
-
-	// Check if the default repo already exists
-	_, err = dynClient.Resource(helmRepoGVR).Namespace(helmOperatorNamespace).Get(context.Background(), defaultSystemRepoName, metav1.GetOptions{})
-	if err == nil {
-		// Already exists
-		return nil
-	}
-
-	obj := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": helmOperatorGroup + "/" + helmOperatorVersion,
-			"kind":       "HelmRepository",
-			"metadata": map[string]any{
-				"name":      defaultSystemRepoName,
-				"namespace": helmOperatorNamespace,
-				"labels": map[string]any{
-					"app.kubernetes.io/managed-by": "ketches",
-					"ketches.cn/system":            "true",
-				},
-			},
-			"spec": map[string]any{
-				"url":  defaultSystemRepoURL,
-				"type": "helm",
-			},
-		},
-	}
-
-	_, err = dynClient.Resource(helmRepoGVR).Namespace(helmOperatorNamespace).Create(context.Background(), obj, metav1.CreateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to create default helm repository: %v", err)
-	}
-
-	return nil
-}
-
-// ========================
-// HelmRelease (Extension) Operations
-// ========================
-
-func ListExtensions(clusterID string) ([]models.ExtensionResponse, error) {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	list, err := dynClient.Resource(helmReleaseGVR).Namespace(helmOperatorNamespace).List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list extensions: %v", err)
-	}
-
-	extensions := make([]models.ExtensionResponse, 0, len(list.Items))
-	for _, item := range list.Items {
-		extensions = append(extensions, toExtensionResponse(&item))
-	}
-	return extensions, nil
-}
-
-func GetExtension(clusterID, name string) (*models.ExtensionResponse, error) {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	obj, err := dynClient.Resource(helmReleaseGVR).Namespace(helmOperatorNamespace).Get(context.Background(), name, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get extension: %v", err)
-	}
-
-	resp := toExtensionResponse(obj)
-	return &resp, nil
-}
-
-func InstallExtension(clusterID string, req *models.InstallExtensionRequest) (*models.ExtensionResponse, error) {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("catalog item not found: %w", err)
 	}
 
 	releaseNamespace := req.ReleaseNamespace
@@ -278,278 +175,312 @@ func InstallExtension(clusterID string, req *models.InstallExtensionRequest) (*m
 		releaseNamespace = "default"
 	}
 
-	// Build chart spec
-	chart := map[string]any{
-		"name": req.ChartName,
-	}
-	if req.ChartVersion != "" {
-		chart["version"] = req.ChartVersion
-	}
-	if req.Repository != "" {
-		chart["repository"] = map[string]any{
-			"name":      req.Repository,
-			"namespace": helmOperatorNamespace,
-		}
-	}
-	if req.RepositoryURL != "" {
-		chart["repositoryURL"] = req.RepositoryURL
-	}
-	if req.OCIRepository != "" {
-		chart["ociRepository"] = req.OCIRepository
-	}
-
-	spec := map[string]any{
-		"chart": chart,
-		"release": map[string]any{
-			"name":            req.Name,
-			"namespace":       releaseNamespace,
-			"createNamespace": req.CreateNamespace,
-		},
-	}
-
-	if req.Values != "" {
-		spec["values"] = req.Values
-	}
-
-	obj := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": helmOperatorGroup + "/" + helmOperatorVersion,
-			"kind":       "HelmRelease",
-			"metadata": map[string]any{
-				"name":      req.Name,
-				"namespace": helmOperatorNamespace,
-				"labels": map[string]any{
-					"app.kubernetes.io/managed-by": "ketches",
-				},
-			},
-			"spec": spec,
-		},
-	}
-
-	created, err := dynClient.Resource(helmReleaseGVR).Namespace(helmOperatorNamespace).Create(context.Background(), obj, metav1.CreateOptions{})
+	actionConfig, cleanup, err := newHelmActionConfig(clusterID, releaseNamespace)
 	if err != nil {
-		return nil, fmt.Errorf("failed to install extension: %v", err)
+		return nil, err
 	}
+	defer cleanup()
 
-	resp := toExtensionResponse(created)
-	return &resp, nil
-}
-
-func UpdateExtension(clusterID, name string, req *models.UpdateExtensionRequest) (*models.ExtensionResponse, error) {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
+	// Pull the chart.
+	chrt, err := pullChart(item.OCIUrl, req.ChartVersion, actionConfig.RegistryClient)
 	if err != nil {
 		return nil, err
 	}
 
-	obj, err := dynClient.Resource(helmReleaseGVR).Namespace(helmOperatorNamespace).Get(context.Background(), name, metav1.GetOptions{})
+	installer := action.NewInstall(actionConfig)
+	installer.ReleaseName = req.Name
+	installer.Namespace = releaseNamespace
+	installer.CreateNamespace = req.CreateNamespace
+
+	vals, err := parseValues(req.Values)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get extension: %v", err)
+		return nil, fmt.Errorf("failed to parse values: %w", err)
 	}
 
-	spec, _, _ := unstructured.NestedMap(obj.Object, "spec")
-	if spec == nil {
-		return nil, fmt.Errorf("extension spec not found")
-	}
-
-	if req.ChartVersion != "" {
-		if err := unstructured.SetNestedField(obj.Object, req.ChartVersion, "spec", "chart", "version"); err != nil {
-			return nil, err
-		}
-	}
-
-	if req.Values != "" {
-		if err := unstructured.SetNestedField(obj.Object, req.Values, "spec", "values"); err != nil {
-			return nil, err
-		}
-	}
-
-	if req.Suspended != nil {
-		if err := unstructured.SetNestedField(obj.Object, *req.Suspended, "spec", "suspend"); err != nil {
-			return nil, err
-		}
-	}
-
-	updated, err := dynClient.Resource(helmReleaseGVR).Namespace(helmOperatorNamespace).Update(context.Background(), obj, metav1.UpdateOptions{})
+	rel, err := installer.RunWithContext(context.Background(), chrt, vals)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update extension: %v", err)
+		return nil, fmt.Errorf("failed to install extension %q: %w", req.Name, err)
 	}
 
-	resp := toExtensionResponse(updated)
-	return &resp, nil
+	ext := toInstalledExtension(rel)
+	ext.CatalogItemID = req.CatalogItemID
+	return &ext, nil
 }
 
+// UpdateExtension upgrades an installed helm release with optional new version / values.
+func UpdateExtension(clusterID, name string, req *models.UpdateExtensionRequest) (*models.InstalledExtension, error) {
+	// Look up the current release to obtain the OCI URL and namespace.
+	releases, err := ListExtensions(clusterID)
+	if err != nil {
+		return nil, err
+	}
+	var current *models.InstalledExtension
+	for i := range releases {
+		if releases[i].Name == name {
+			current = &releases[i]
+			break
+		}
+	}
+	if current == nil {
+		return nil, fmt.Errorf("extension %q not found", name)
+	}
+
+	actionConfig, cleanup, err := newHelmActionConfig(clusterID, current.ReleaseNamespace)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	targetVersion := req.ChartVersion
+	if targetVersion == "" {
+		targetVersion = current.ChartVersion
+	}
+
+	chrt, err := pullChart(current.OCIUrl, targetVersion, actionConfig.RegistryClient)
+	if err != nil {
+		return nil, err
+	}
+
+	upgrader := action.NewUpgrade(actionConfig)
+	upgrader.Namespace = current.ReleaseNamespace
+
+	vals, err := parseValues(req.Values)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse values: %w", err)
+	}
+
+	rel, err := upgrader.RunWithContext(context.Background(), name, chrt, vals)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update extension %q: %w", name, err)
+	}
+
+	ext := toInstalledExtension(rel)
+	ext.CatalogItemID = current.CatalogItemID
+	return &ext, nil
+}
+
+// UninstallExtension removes an installed helm release from a cluster.
 func UninstallExtension(clusterID, name string) error {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(clusterID)
+	// Find the release to get its namespace.
+	releases, err := ListExtensions(clusterID)
 	if err != nil {
 		return err
 	}
-
-	return dynClient.Resource(helmReleaseGVR).Namespace(helmOperatorNamespace).Delete(context.Background(), name, metav1.DeleteOptions{})
-}
-
-// ========================
-// Response Converters
-// ========================
-
-func toHelmRepositoryResponse(obj *unstructured.Unstructured) models.HelmRepositoryResponse {
-	url, _, _ := unstructured.NestedString(obj.Object, "spec", "url")
-	repoType, _, _ := unstructured.NestedString(obj.Object, "spec", "type")
-	if repoType == "" {
-		repoType = "helm"
-	}
-
-	// Check system label
-	labels, _, _ := unstructured.NestedStringMap(obj.Object, "metadata", "labels")
-	system := labels["ketches.cn/system"] == "true"
-
-	// Parse status conditions
-	ready := false
-	message := ""
-	conditions, _, _ := unstructured.NestedSlice(obj.Object, "status", "conditions")
-	for _, c := range conditions {
-		cond, ok := c.(map[string]any)
-		if !ok {
-			continue
+	var releaseNamespace string
+	for _, ext := range releases {
+		if ext.Name == name {
+			releaseNamespace = ext.ReleaseNamespace
+			break
 		}
-		if condType, _ := cond["type"].(string); condType == "Ready" {
-			ready = cond["status"] == "True"
-			message, _ = cond["message"].(string)
-		}
-	}
-
-	// Parse charts from status
-	charts := make([]models.HelmChartInfo, 0)
-	chartsRaw, _, _ := unstructured.NestedSlice(obj.Object, "status", "charts")
-	for _, ch := range chartsRaw {
-		chartMap, ok := ch.(map[string]any)
-		if !ok {
-			continue
-		}
-		chartInfo := models.HelmChartInfo{
-			Name:        getStringField(chartMap, "name"),
-			Description: getStringField(chartMap, "description"),
-		}
-
-		versionsRaw, ok := chartMap["versions"].([]any)
-		if ok {
-			for _, v := range versionsRaw {
-				vMap, ok := v.(map[string]any)
-				if !ok {
-					continue
-				}
-				vInfo := models.HelmChartVersionInfo{
-					Version:    getStringField(vMap, "version"),
-					AppVersion: getStringField(vMap, "appVersion"),
-				}
-				if createdStr := getStringField(vMap, "created"); createdStr != "" {
-					if t, err := time.Parse(time.RFC3339, createdStr); err == nil {
-						vInfo.Created = &t
-					}
-				}
-				chartInfo.Versions = append(chartInfo.Versions, vInfo)
-			}
-		}
-		charts = append(charts, chartInfo)
-	}
-
-	// Parse stats
-	totalCharts, _, _ := unstructured.NestedFieldNoCopy(obj.Object, "status", "stats", "totalCharts")
-	totalChartsInt := 0
-	if tc, ok := totalCharts.(int64); ok {
-		totalChartsInt = int(tc)
-	}
-
-	// Parse last sync time
-	var lastSyncTime *time.Time
-	if syncTimeStr, ok, _ := unstructured.NestedString(obj.Object, "status", "lastSyncTime"); ok && syncTimeStr != "" {
-		if t, err := time.Parse(time.RFC3339, syncTimeStr); err == nil {
-			lastSyncTime = &t
-		}
-	}
-
-	// Parse creation time
-	createdAt := obj.GetCreationTimestamp().Time
-
-	return models.HelmRepositoryResponse{
-		Name:         obj.GetName(),
-		URL:          url,
-		Type:         repoType,
-		Ready:        ready,
-		Message:      message,
-		Charts:       charts,
-		TotalCharts:  totalChartsInt,
-		LastSyncTime: lastSyncTime,
-		CreatedAt:    createdAt,
-		System:       system,
-	}
-}
-
-func toExtensionResponse(obj *unstructured.Unstructured) models.ExtensionResponse {
-	chartName, _, _ := unstructured.NestedString(obj.Object, "spec", "chart", "name")
-	chartVersion, _, _ := unstructured.NestedString(obj.Object, "spec", "chart", "version")
-	repoName, _, _ := unstructured.NestedString(obj.Object, "spec", "chart", "repository", "name")
-	ociRepo, _, _ := unstructured.NestedString(obj.Object, "spec", "chart", "ociRepository")
-	releaseName, _, _ := unstructured.NestedString(obj.Object, "spec", "release", "name")
-	releaseNamespace, _, _ := unstructured.NestedString(obj.Object, "spec", "release", "namespace")
-	values, _, _ := unstructured.NestedString(obj.Object, "spec", "values")
-	suspended, _, _ := unstructured.NestedBool(obj.Object, "spec", "suspend")
-
-	if releaseName == "" {
-		releaseName = obj.GetName()
 	}
 	if releaseNamespace == "" {
 		releaseNamespace = "default"
 	}
 
-	// Parse status
-	ready := false
-	message := ""
-	conditions, _, _ := unstructured.NestedSlice(obj.Object, "status", "conditions")
-	for _, c := range conditions {
-		cond, ok := c.(map[string]any)
-		if !ok {
-			continue
+	actionConfig, cleanup, err := newHelmActionConfig(clusterID, releaseNamespace)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	uninstaller := action.NewUninstall(actionConfig)
+	if _, err := uninstaller.Run(name); err != nil {
+		return fmt.Errorf("failed to uninstall extension %q: %w", name, err)
+	}
+	return nil
+}
+
+// ========================
+// Internal helpers
+// ========================
+
+// newHelmActionConfig creates a helm action.Configuration backed by the cluster kubeconfig.
+// The caller must call the returned cleanup function to remove the temp kubeconfig file.
+func newHelmActionConfig(clusterID, namespace string) (*action.Configuration, func(), error) {
+	cluster, err := GetCluster(clusterID)
+	if err != nil {
+		return nil, func() {}, err
+	}
+
+	// Write kubeconfig to a temp file since ConfigFlags expects a path.
+	f, err := os.CreateTemp("", "ketches-kubeconfig-*")
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("failed to create temp kubeconfig file: %w", err)
+	}
+	cleanup := func() {
+		_ = os.Remove(f.Name())
+	}
+	if _, err := f.WriteString(cluster.KubeConfig); err != nil {
+		cleanup()
+		return nil, func() {}, fmt.Errorf("failed to write kubeconfig: %w", err)
+	}
+	_ = f.Close()
+
+	// Validate the kubeconfig is parseable.
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
+	if err != nil {
+		cleanup()
+		return nil, func() {}, fmt.Errorf("invalid kubeconfig for cluster %q: %w", clusterID, err)
+	}
+	_ = restConfig
+
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	kubeConfigPath := f.Name()
+	cfgFlags := newConfigFlagsFromPath(kubeConfigPath, namespace)
+
+	actionConfig := new(action.Configuration)
+	if err := actionConfig.Init(cfgFlags, namespace, "secrets", func(format string, v ...any) {
+		log.Printf("[helm] "+format, v...)
+	}); err != nil {
+		cleanup()
+		return nil, func() {}, fmt.Errorf("failed to init helm action config: %w", err)
+	}
+
+	// Attach a registry client for OCI pulls.
+	regClient, err := registry.NewClient()
+	if err != nil {
+		cleanup()
+		return nil, func() {}, fmt.Errorf("failed to create registry client: %w", err)
+	}
+	actionConfig.RegistryClient = regClient
+
+	return actionConfig, cleanup, nil
+}
+
+// pullChart downloads an OCI helm chart and returns the loaded chart object.
+func pullChart(ociUrl, version string, regClient *registry.Client) (*chart.Chart, error) {
+	dir, err := os.MkdirTemp("", "ketches-helm-pull-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(dir)
+
+	p := action.NewPullWithOpts(action.WithConfig(&action.Configuration{
+		RegistryClient: regClient,
+	}))
+	p.Settings = cli.New()
+	p.DestDir = dir
+	p.Untar = true
+	p.UntarDir = dir
+	if version != "" {
+		p.Version = version
+	}
+
+	if _, err := p.Run(ociUrl); err != nil {
+		return nil, fmt.Errorf("failed to pull chart %q version %q: %w", ociUrl, version, err)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read extracted chart dir: %w", err)
+	}
+	var chartDir string
+	for _, e := range entries {
+		if e.IsDir() {
+			chartDir = dir + "/" + e.Name()
+			break
 		}
-		if condType, _ := cond["type"].(string); condType == "Ready" {
-			ready = cond["status"] == "True"
-			message, _ = cond["message"].(string)
+	}
+	if chartDir == "" {
+		return nil, fmt.Errorf("no chart directory found after pull for %q", ociUrl)
+	}
+
+	return loader.Load(chartDir)
+}
+
+// parseValues parses a YAML values string into a map. Empty string returns empty map.
+func parseValues(raw string) (map[string]any, error) {
+	if raw == "" {
+		return map[string]any{}, nil
+	}
+	vals := map[string]any{}
+	if err := yaml.Unmarshal([]byte(raw), &vals); err != nil {
+		return nil, err
+	}
+	return vals, nil
+}
+
+// toInstalledExtension converts a helm release to the API model.
+func toInstalledExtension(r *release.Release) models.InstalledExtension {
+	status := ""
+	if r.Info != nil {
+		status = r.Info.Status.String()
+	}
+	createdAt := time.Time{}
+	if r.Info != nil {
+		createdAt = r.Info.FirstDeployed.Time
+	}
+	chartVersion := ""
+	appVersion := ""
+	ociUrl := ""
+	if r.Chart != nil && r.Chart.Metadata != nil {
+		chartVersion = r.Chart.Metadata.Version
+		appVersion = r.Chart.Metadata.AppVersion
+		// For OCI charts, reconstruct the OCI URL from chart metadata sources.
+		if len(r.Chart.Metadata.Sources) > 0 {
+			ociUrl = r.Chart.Metadata.Sources[0]
 		}
 	}
 
-	status, _, _ := unstructured.NestedString(obj.Object, "status", "helmRelease", "status")
-	revision, _, _ := unstructured.NestedFieldNoCopy(obj.Object, "status", "helmRelease", "revision")
-	revisionInt := 0
-	if r, ok := revision.(int64); ok {
-		revisionInt = int(r)
+	vals := ""
+	if len(r.Config) > 0 {
+		if out, err := yaml.Marshal(r.Config); err == nil {
+			vals = string(out)
+		}
 	}
-	appVersion, _, _ := unstructured.NestedString(obj.Object, "status", "helmRelease", "appVersion")
-	originalValues, _, _ := unstructured.NestedString(obj.Object, "status", "originalValues")
 
-	return models.ExtensionResponse{
-		Name:             obj.GetName(),
-		ChartName:        chartName,
+	return models.InstalledExtension{
+		Name:             r.Name,
+		OCIUrl:           ociUrl,
 		ChartVersion:     chartVersion,
-		Repository:       repoName,
-		OCIRepository:    ociRepo,
-		ReleaseNamespace: releaseNamespace,
-		ReleaseName:      releaseName,
+		ReleaseNamespace: r.Namespace,
 		Status:           status,
-		Ready:            ready,
-		Message:          message,
-		Revision:         revisionInt,
 		AppVersion:       appVersion,
-		Suspended:        suspended,
-		Values:           values,
-		OriginalValues:   originalValues,
-		CreatedAt:        obj.GetCreationTimestamp().Time,
+		Values:           vals,
+		Revision:         r.Version,
+		CreatedAt:        createdAt,
 	}
 }
 
-func getStringField(m map[string]any, key string) string {
-	if v, ok := m[key]; ok {
-		if s, ok := v.(string); ok {
-			return s
-		}
+// configFlagsAdapter implements genericclioptions.RESTClientGetter using a kubeconfig path.
+// We embed ConfigFlags from k8s.io/cli-runtime to avoid re-implementing the interface.
+type configFlagsAdapter struct {
+	kubeConfigPath string
+	namespace      string
+}
+
+// newConfigFlagsFromPath returns a CLI-runtime ConfigFlags pointing at the given kubeconfig path.
+func newConfigFlagsFromPath(path, namespace string) *configFlagsAdapter {
+	return &configFlagsAdapter{kubeConfigPath: path, namespace: namespace}
+}
+
+func (c *configFlagsAdapter) ToRESTConfig() (*rest.Config, error) {
+	return clientcmd.BuildConfigFromFlags("", c.kubeConfigPath)
+}
+
+func (c *configFlagsAdapter) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
+	restConfig, err := c.ToRESTConfig()
+	if err != nil {
+		return nil, err
 	}
-	return ""
+	return memorycache.NewMemCacheClient(discovery.NewDiscoveryClientForConfigOrDie(restConfig)), nil
+}
+
+func (c *configFlagsAdapter) ToRESTMapper() (meta.RESTMapper, error) {
+	dc, err := c.ToDiscoveryClient()
+	if err != nil {
+		return nil, err
+	}
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(dc)
+	return mapper, nil
+}
+
+func (c *configFlagsAdapter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: c.kubeConfigPath},
+		&clientcmd.ConfigOverrides{},
+	)
 }

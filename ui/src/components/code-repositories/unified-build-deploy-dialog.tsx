@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { appsApi } from "@/api/apps"
 import { codeRepositoriesApi, type CodeRepositoryBuildConfig } from "@/api/code-repositories"
 import { envsApi } from "@/api/envs"
+import { type SimpleResponse } from "@/api/pagination"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -75,7 +76,7 @@ export function UnifiedBuildDeployDialog({
     enabled: !!projectId && open,
   })
 
-  const buildEnvs = envs.filter((e) => e.metadata?.is_build_env === "true")
+  const buildEnvs = envs.filter((e: SimpleResponse) => e.metadata?.is_build_env === "true")
   const deployEnvs = envs
 
   const isDeployMode = !!preSelectedBuildId
@@ -87,12 +88,12 @@ export function UnifiedBuildDeployDialog({
   })
 
   const existingRepoApps = appsInDeployEnv.filter(
-    (a) => a.metadata?.code_repository_id === repoId
+    (a: SimpleResponse) => a.metadata?.code_repository_id === repoId
   )
 
   const selectedConfig = (buildConfigs as CodeRepositoryBuildConfig[]).find((c) => c.id === selectedConfigId)
-  const selectedBuildEnv = envs.find((e) => e.id === buildEnvId)
-  const selectedDeployEnv = envs.find((e) => e.id === deployEnvId)
+  const selectedBuildEnv = envs.find((e: SimpleResponse) => e.id === buildEnvId)
+  const selectedDeployEnv = envs.find((e: SimpleResponse) => e.id === deployEnvId)
   const selectedApp = existingRepoApps.find((a) => a.id === deployAppId)
   const isBuildConfigMode = !!preSelectedConfigId && !preSelectedBuildId
   const isCodeRepoMode = !preSelectedConfigId && !preSelectedBuildId
@@ -362,7 +363,7 @@ export function UnifiedBuildDeployDialog({
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {(envs || []).map((env) => (
+                          {(envs || []).map((env: SimpleResponse) => (
                             <SelectItem key={env.id} value={env.id}>
                               {env.name} {env.metadata?.is_build_env === "true" && "(Build Env)"}
                             </SelectItem>
@@ -402,7 +403,7 @@ export function UnifiedBuildDeployDialog({
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {(deployEnvs || []).map((env) => (
+                        {(deployEnvs || []).map((env: SimpleResponse) => (
                           <SelectItem key={env.id} value={env.id}>
                             {env.name}
                           </SelectItem>

@@ -6,140 +6,179 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ketches/ketches/internal/api"
+"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
 
+func checkProjectAccess(c *gin.Context, projectID string) bool {
+	claims, _ := c.Get("claims")
+	if claims.(*app.Claims).Role == "admin" {
+		return true
+	}
+	user, _ := c.Get("user")
+	if user == nil {
+		return false
+	}
+	hasAccess, err := services.IsProjectMember(projectID, user.(*entities.User).ID)
+	if err != nil || !hasAccess {
+		api.Error(c, http.StatusForbidden, errors.New("no access to this project"))
+		return false
+	}
+	return true
+}
+
 func CreatePlugin(c *gin.Context) {
-	var req models.CreatePluginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		api.Error(c, http.StatusBadRequest, err)
-		return
-	}
+var req models.CreatePluginRequest
+if err := c.ShouldBindJSON(&req); err != nil {
+  api.Error(c, http.StatusBadRequest, err)
+  return
+}
 
-	projectID := c.Param("projectID")
-	if projectID != "" {
-		req.ProjectID = projectID
-	}
+projectID := c.Param("projectID")
+if projectID != "" {
+  req.ProjectID = projectID
+}
 
-	if req.ProjectID == "" {
-		api.Error(c, http.StatusBadRequest, errors.New("project_id is required"))
-		return
-	}
+if req.ProjectID == "" {
+  api.Error(c, http.StatusBadRequest, errors.New("project_id is required"))
+  return
+}
 
-	plugin, err := services.CreatePlugin(&req)
-	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
-		return
-	}
+if !checkProjectAccess(c, projectID) {
+  return
+}
 
-	api.Created(c, toPluginResponse(plugin))
+plugin, err := services.CreatePlugin(&req)
+if err != nil {
+  api.Error(c, http.StatusInternalServerError, err)
+  return
+}
+
+api.Created(c, toPluginResponse(plugin))
 }
 
 func GetPlugin(c *gin.Context) {
-	pluginID := c.Param("pluginID")
+pluginID := c.Param("pluginID")
+projectID := c.Param("projectID")
 
-	plugin, err := services.GetPlugin(pluginID)
-	if err != nil {
-		api.Error(c, http.StatusNotFound, err)
-		return
-	}
+if !checkProjectAccess(c, projectID) {
+  return
+}
 
-	api.Success(c, toPluginResponse(plugin))
+plugin, err := services.GetPlugin(pluginID)
+if err != nil {
+  api.Error(c, http.StatusNotFound, err)
+  return
+}
+
+api.Success(c, toPluginResponse(plugin))
 }
 
 func ListPlugins(c *gin.Context) {
-	projectID := c.Param("projectID")
+projectID := c.Param("projectID")
 
-	var req models.PaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		api.Error(c, http.StatusBadRequest, err)
-		return
-	}
-	req.Validate()
-
-	var plugins []entities.Plugin
-	var total int64
-	var err error
-	if projectID != "" {
-		total, plugins, err = services.ListProjectPlugins(projectID, req.Page, req.PageSize, req.Search)
-	} else {
-		total, plugins, err = services.ListPlugins(req.Page, req.PageSize, req.Search)
-	}
-
-	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	responses := make([]models.PluginResponse, 0, len(plugins))
-	for _, plugin := range plugins {
-		responses = append(responses, toPluginResponse(&plugin))
-	}
-
-	api.Success(c, models.ListPluginResponse{
-		Items:      responses,
-		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
-	})
+if !checkProjectAccess(c, projectID) {
+  return
 }
+
+var req models.PaginationRequest
+if err := c.ShouldBindQuery(&req); err != nil {
+  api.Error(c, http.StatusBadRequest, err)
+  return
+}
+req.Validate()
+
+total, plugins, err := services.ListProjectPlugins(projectID, req.Page, req.PageSize, req.Search)
+if err != nil {
+  api.Error(c, http.StatusInternalServerError, err)
+  return
+}
+
+responses := make([]models.PluginResponse, 0, len(plugins))
+for _, plugin := range plugins {
+  responses = append(responses, toPluginResponse(&plugin))
+}
+
+api.Success(c, models.ListPluginResponse{
+  Items:      responses,
+  Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+})
+}
+
 
 func ListPluginsSimple(c *gin.Context) {
-	projectID := c.Param("projectID")
-	var plugins []entities.Plugin
-	var err error
-	if projectID != "" {
-		plugins, err = services.ListProjectPluginsSimple(projectID)
-	} else {
-		plugins, err = services.ListPluginsSimple()
-	}
+projectID := c.Param("projectID")
 
-	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	res := []models.SimpleResponse{}
-	for _, p := range plugins {
-		res = append(res, models.SimpleResponse{
-			ID:          p.ID,
-			Slug:        p.Slug,
-			Name:        p.Name,
-			Description: p.Description,
-		})
-	}
-
-	api.Success(c, res)
+if !checkProjectAccess(c, projectID) {
+  return
 }
 
+plugins, err := services.ListProjectPluginsSimple(projectID)
+if err != nil {
+  api.Error(c, http.StatusInternalServerError, err)
+  return
+}
+
+var envVars []models.PluginEnvVar
+res := []models.SimplePluginResponse{}
+for _, p := range plugins {
+  if p.EnvVars != "" {
+    json.Unmarshal([]byte(p.EnvVars), &envVars)
+  }
+  res = append(res, models.SimplePluginResponse{
+    ID:          p.ID,
+    Slug:        p.Slug,
+    Name:        p.Name,
+    Description: p.Description,
+    PluginType:  p.PluginType,
+    EnvVars:     envVars,
+  })
+}
+
+api.Success(c, res)
+}
+
+
 func UpdatePlugin(c *gin.Context) {
-	pluginID := c.Param("pluginID")
+pluginID := c.Param("pluginID")
+projectID := c.Param("projectID")
 
-	var req models.UpdatePluginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		api.Error(c, http.StatusBadRequest, err)
-		return
-	}
+if !checkProjectAccess(c, projectID) {
+  return
+}
 
-	plugin, err := services.UpdatePlugin(pluginID, &req)
-	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
-		return
-	}
+var req models.UpdatePluginRequest
+if err := c.ShouldBindJSON(&req); err != nil {
+  api.Error(c, http.StatusBadRequest, err)
+  return
+}
 
-	api.Success(c, toPluginResponse(plugin))
+plugin, err := services.UpdatePlugin(pluginID, &req)
+if err != nil {
+  api.Error(c, http.StatusInternalServerError, err)
+  return
+}
+
+api.Success(c, toPluginResponse(plugin))
 }
 
 func DeletePlugin(c *gin.Context) {
-	pluginID := c.Param("pluginID")
+pluginID := c.Param("pluginID")
+projectID := c.Param("projectID")
 
-	if err := services.DeletePlugin(pluginID); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
-		return
-	}
+if !checkProjectAccess(c, projectID) {
+  return
+}
 
-	api.NoContent(c)
+if err := services.DeletePlugin(pluginID); err != nil {
+  api.Error(c, http.StatusInternalServerError, err)
+  return
+}
+
+api.NoContent(c)
 }
 
 func InstallPluginToApp(c *gin.Context) {
@@ -228,20 +267,25 @@ func UpdateAppPluginEnv(c *gin.Context) {
 }
 
 func GetPluginInstalledApps(c *gin.Context) {
-	pluginID := c.Param("pluginID")
+pluginID := c.Param("pluginID")
+projectID := c.Param("projectID")
 
-	apps, err := services.GetPluginInstalledApps(pluginID)
-	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
-		return
-	}
+if !checkProjectAccess(c, projectID) {
+  return
+}
 
-	responses := make([]models.AppResponse, 0, len(apps))
-	for _, app := range apps {
-		responses = append(responses, toAppResponse(c, &app))
-	}
+apps, err := services.GetPluginInstalledApps(pluginID)
+if err != nil {
+  api.Error(c, http.StatusInternalServerError, err)
+  return
+}
 
-	api.Success(c, responses)
+responses := make([]models.AppResponse, 0, len(apps))
+for _, app := range apps {
+  responses = append(responses, toAppResponse(c, &app))
+}
+
+api.Success(c, responses)
 }
 
 func toPluginResponse(plugin any) models.PluginResponse {

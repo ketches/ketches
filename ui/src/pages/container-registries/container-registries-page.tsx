@@ -78,6 +78,7 @@ export function ContainerRegistriesPage() {
       pageSize: pagination.pageSize
     }),
     enabled: !!activeProjectId,
+    placeholderData: (previousData) => previousData,
   })
 
   const registries = registriesResponse?.items ?? []
@@ -238,7 +239,15 @@ export function ContainerRegistriesPage() {
       <PageHeader items={breadcrumbs} />
 
       {!isLoading && safeRegistries.length === 0 ? (
-        <EmptyRegistryState onAction={() => setCreateOpen(true)} />
+        debouncedSearch ? (
+          <EmptyState
+            title="No results found"
+            description={`No registries matching "${debouncedSearch}"`}
+            icon={Warehouse}
+          />
+        ) : (
+          <EmptyRegistryState onAction={() => setCreateOpen(true)} />
+        )
       ) : (
         <>
           <div className="flex items-center justify-between">

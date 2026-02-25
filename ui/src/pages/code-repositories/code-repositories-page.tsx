@@ -75,6 +75,7 @@ export function CodeRepositoriesPage() {
       pageSize: pagination.pageSize
     }),
     enabled: !!activeProjectId,
+    placeholderData: (previousData) => previousData,
   })
 
   const repos = reposResponse?.items ?? []
@@ -189,7 +190,15 @@ export function CodeRepositoriesPage() {
       <PageHeader items={breadcrumbs} />
 
       {!isLoading && safeRepos.length === 0 ? (
-        <EmptyCodeRepositoryState onAction={() => setCreateOpen(true)} />
+        debouncedSearch ? (
+          <EmptyState
+            title="No results found"
+            description={`No repositories matching "${debouncedSearch}"`}
+            icon={FolderGit2}
+          />
+        ) : (
+          <EmptyCodeRepositoryState onAction={() => setCreateOpen(true)} />
+        )
       ) : (
         <>
           <div className="flex items-center justify-between">

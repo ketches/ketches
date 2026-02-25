@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 	wsPkg "github.com/ketches/ketches/pkg/websocket"
@@ -435,4 +436,15 @@ func UpdateClusterCredentials(c *gin.Context) {
 		LastCheckedAt:          cluster.LastCheckedAt,
 		CreatedAt:              cluster.CreatedAt,
 	})
+}
+
+// GetClusterGatewayAPIStatus checks whether Gateway API CRDs are installed on the cluster.
+func GetClusterGatewayAPIStatus(c *gin.Context) {
+	clusterID := c.Param("clusterID")
+	installed, err := core.ClusterHasGatewayAPICRDs(clusterID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.Success(c, gin.H{"installed": installed})
 }

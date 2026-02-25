@@ -22,6 +22,7 @@ import type { AxiosError } from "axios"
 
 interface EditPluginDialogProps {
   plugin: any
+  projectId: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -41,7 +42,7 @@ const pluginTypes = [
   },
 ]
 
-export function EditPluginDialog({ plugin, open, onOpenChange }: EditPluginDialogProps) {
+export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: EditPluginDialogProps) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState({
     name: "",
@@ -72,9 +73,9 @@ export function EditPluginDialog({ plugin, open, onOpenChange }: EditPluginDialo
   }, [plugin])
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => pluginsApi.updatePlugin(plugin.id, data),
+    mutationFn: (data: any) => pluginsApi.updatePlugin(projectId, plugin.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      queryClient.invalidateQueries({ queryKey: ['plugins', projectId] })
       toast.success("Plugin updated successfully")
       onOpenChange(false)
     },

@@ -6,7 +6,7 @@ import { toast } from "sonner"
 
 import type { App, GatewaySpec } from "@/api/apps"
 import { appsApi } from "@/api/apps"
-import { GatewayDialog } from "@/components/applications/gateway-dialog"
+import { GatewayEditor } from "@/components/applications/gateway-editor"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -144,7 +144,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       accessorKey: "port",
       header: "Port",
       cell: ({ row }) => (
-        <span className="font-mono text-sm font-medium">{row.original.port}</span>
+        <span className="font-mono text-xs font-medium">{row.original.port}</span>
       ),
     },
     {
@@ -175,9 +175,9 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       id: "domain_or_gateway_port",
       header: "Domain / Gateway Port",
       cell: ({ row }) => (
-        <span className="font-mono text-sm">
+        <span className="font-mono text-xs">
           {isHttpProtocol(row.original.protocol) ? (
-            row.original.domain || <span className="text-muted-foreground">-</span>
+            <Button variant="link" className="p-0 h-auto text-xs">{row.original.domain || <span className="text-muted-foreground">-</span>}</Button>
           ) : (
             row.original.gateway_port || <span className="text-muted-foreground">-</span>
           )}
@@ -188,7 +188,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       accessorKey: "path",
       header: "Path",
       cell: ({ row }) => (
-        <span className="font-mono text-sm">
+        <span className="font-mono text-xs">
           {isHttpProtocol(row.original.protocol) ? (
             row.original.path || <span className="text-muted-foreground">-</span>
           ) : (
@@ -304,7 +304,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
         )}
       </CardContent>
 
-      <GatewayDialog
+      <GatewayEditor
         app={app}
         gateway={editingGateway}
         open={isDialogOpen}

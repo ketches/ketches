@@ -111,17 +111,6 @@ func ApplyApp(ctx context.Context, app *entities.App) error {
 		}
 	}
 
-	svc := metadata.BuildService()
-	if _, err := client.CoreV1().Services(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{}); err != nil {
-		if errors.IsNotFound(err) {
-			if _, err := client.CoreV1().Services(svc.Namespace).Create(ctx, svc, metav1.CreateOptions{}); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-
 	if app.AutoScaling != nil {
 		hpa := metadata.BuildHorizontalPodAutoscaler()
 		if _, err := client.AutoscalingV2().HorizontalPodAutoscalers(hpa.Namespace).Get(ctx, hpa.Name, metav1.GetOptions{}); err != nil {
@@ -139,31 +128,7 @@ func ApplyApp(ctx context.Context, app *entities.App) error {
 		}
 	}
 
-	if len(app.Gateways) > 0 {
-		gwClient, err := kube.GlobalClusterStore.GetGatewayClient(app.Env.ClusterID)
-		if err != nil {
-			return err
-		}
-
-		for _, gw := range app.Gateways {
-			if gw.Exposed {
-				route := metadata.BuildHTTPRoute(gw)
-				if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Get(ctx, route.Name, metav1.GetOptions{}); err != nil {
-					if errors.IsNotFound(err) {
-						if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Create(ctx, route, metav1.CreateOptions{}); err != nil {
-							return err
-						}
-					} else {
-						return err
-					}
-				} else {
-					if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Update(ctx, route, metav1.UpdateOptions{}); err != nil {
-						return err
-					}
-				}
-			}
-		}
-	}
+	SyncGatewaysToK8s(ctx, app)
 
 	return nil
 }

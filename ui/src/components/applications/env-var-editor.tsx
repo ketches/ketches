@@ -23,7 +23,7 @@ export interface EnvVarSpec {
   value: string
 }
 
-interface EnvVarDialogProps {
+interface EnvVarEditorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   app: App
@@ -31,13 +31,13 @@ interface EnvVarDialogProps {
   onSuccess?: () => void
 }
 
-export function EnvVarDialog({
+export function EnvVarEditor({
   open,
   onOpenChange,
   app,
   envVar,
   onSuccess,
-}: EnvVarDialogProps) {
+}: EnvVarEditorProps) {
   const queryClient = useQueryClient()
 
   const [formData, setFormData] = React.useState<EnvVarSpec>({

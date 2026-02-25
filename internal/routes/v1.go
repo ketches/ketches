@@ -61,8 +61,11 @@ func SetupV1Routes(r *gin.Engine) {
 				projects.GET("/:projectID/plugins", handlers.ListPlugins)
 				projects.GET("/:projectID/plugins/simple", handlers.ListPluginsSimple)
 				projects.POST("/:projectID/plugins", handlers.CreatePlugin)
+				projects.GET("/:projectID/plugins/:pluginID", handlers.GetPlugin)
+				projects.PUT("/:projectID/plugins/:pluginID", handlers.UpdatePlugin)
+				projects.DELETE("/:projectID/plugins/:pluginID", handlers.DeletePlugin)
+				projects.GET("/:projectID/plugins/:pluginID/installed-apps", handlers.GetPluginInstalledApps)
 			}
-
 			codeRepos := authorized.Group("/code-repositories")
 			{
 				codeRepos.GET("/:repoID", handlers.GetCodeRepository)
@@ -97,6 +100,13 @@ func SetupV1Routes(r *gin.Engine) {
 				envs.GET("/:envID/apps", handlers.ListApps)
 				envs.GET("/:envID/apps/simple", handlers.ListAppsSimple)
 				envs.POST("/:envID/apps", handlers.CreateApp)
+
+				// Certificates (env scope)
+				envs.GET("/:envID/certificates", handlers.ListEnvCertificates)
+				envs.POST("/:envID/certificates", handlers.CreateEnvCertificate)
+				envs.GET("/:envID/certificates/:certID", handlers.GetCertificate)
+				envs.PUT("/:envID/certificates/:certID", handlers.UpdateCertificate)
+				envs.DELETE("/:envID/certificates/:certID", handlers.DeleteCertificate)
 			}
 
 			apps := authorized.Group("/apps")
@@ -182,21 +192,21 @@ func SetupV1Routes(r *gin.Engine) {
 			authorized.PUT("/gateways/:id", handlers.UpdateAppGateway)
 			authorized.DELETE("/gateways/:id", handlers.DeleteAppGateway)
 
-			plugins := authorized.Group("/plugins")
-			{
-				plugins.GET("", handlers.ListPlugins)
-				plugins.GET("/simple", handlers.ListPluginsSimple)
-				plugins.POST("", handlers.CreatePlugin)
-				plugins.GET("/:pluginID", handlers.GetPlugin)
-				plugins.PUT("/:pluginID", handlers.UpdatePlugin)
-				plugins.DELETE("/:pluginID", handlers.DeletePlugin)
-				plugins.GET("/:pluginID/installed-apps", handlers.GetPluginInstalledApps)
-			}
 
 			authorized.GET("/clusters/public", handlers.ListPublicClusters)
 			authorized.GET("/clusters/:clusterID/public", handlers.GetPublicCluster)
 			authorized.GET("/clusters/:clusterID/storage-classes", handlers.ListStorageClasses)
+			authorized.GET("/clusters/:clusterID/gateway-api-status", handlers.GetClusterGatewayAPIStatus)
 
+			// Extension Catalog (platform-level)
+			extensionCatalog := authorized.Group("/extension-catalog")
+			{
+				extensionCatalog.GET("", handlers.ListExtensionCatalog)
+				extensionCatalog.POST("", middlewares.AdminOnly(), handlers.CreateExtensionCatalogItem)
+				extensionCatalog.DELETE("/:itemID", middlewares.AdminOnly(), handlers.DeleteExtensionCatalogItem)
+				extensionCatalog.GET("/:itemID/versions", handlers.ListExtensionVersions)
+				extensionCatalog.GET("/:itemID/versions/:version/values", handlers.GetExtensionValues)
+			}
 			clusters := authorized.Group("/clusters")
 			clusters.Use(middlewares.AdminOnly())
 			{
@@ -228,17 +238,17 @@ func SetupV1Routes(r *gin.Engine) {
 				clusters.GET("/:clusterID/namespaces", handlers.ListClusterNamespaces)
 				clusters.GET("/:clusterID/services", handlers.ListClusterServices)
 
-				// Helm Operator
-				clusters.GET("/:clusterID/helm-operator/status", handlers.GetHelmOperatorStatus)
-				clusters.POST("/:clusterID/helm-operator/install", handlers.InstallHelmOperator)
-				clusters.POST("/:clusterID/helm-operator/uninstall", handlers.UninstallHelmOperator)
 
-				// Helm Repositories
-				clusters.GET("/:clusterID/helm-repositories", handlers.ListHelmRepositories)
-				clusters.POST("/:clusterID/helm-repositories", handlers.CreateHelmRepository)
-				clusters.GET("/:clusterID/helm-repositories/:repoName", handlers.GetHelmRepository)
-				clusters.GET("/:clusterID/helm-repositories/:repoName/charts/:chartName/values", handlers.GetChartValues)
-				clusters.DELETE("/:clusterID/helm-repositories/:repoName", handlers.DeleteHelmRepository)
+
+
+
+
+
+
+
+
+
+
 
 				// Extensions (HelmReleases)
 				clusters.GET("/:clusterID/extensions", handlers.ListExtensions)
@@ -250,6 +260,13 @@ func SetupV1Routes(r *gin.Engine) {
 				// Container Registries (cluster scope)
 				clusters.GET("/:clusterID/container-registries", handlers.ListClusterRegistries)
 				clusters.POST("/:clusterID/container-registries", handlers.CreateClusterRegistry)
+
+				// Certificates (cluster scope)
+				clusters.GET("/:clusterID/certificates", handlers.ListClusterCertificates)
+				clusters.POST("/:clusterID/certificates", handlers.CreateClusterCertificate)
+				clusters.GET("/:clusterID/certificates/:certID", handlers.GetCertificate)
+				clusters.PUT("/:clusterID/certificates/:certID", handlers.UpdateCertificate)
+				clusters.DELETE("/:clusterID/certificates/:certID", handlers.DeleteCertificate)
 			}
 
 			// Container Registries (common scope)

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Search, Trash2, User } from "lucide-react"
+import { Trash2, User } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
@@ -260,19 +260,6 @@ export function UsersPage() {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by username, email, or fullname..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
-
       <DataTable
         columns={columns}
         data={users}
@@ -281,6 +268,16 @@ export function UsersPage() {
         totalCount={total}
         pagination={pagination}
         onPaginationChange={setPagination}
+        leftActions={() => {
+          return (
+            <Input
+              className="flex flex-1 max-w-sm min-w-75"
+              placeholder="Search users..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          )
+        }}
         toolbarActions={(table) => {
           const selectedRows = table.getFilteredSelectedRowModel().rows
           return (

@@ -108,31 +108,6 @@ func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
 	}
 }
 
-func (m *AppMetadata) BuildService() *corev1.Service {
-	port := 80
-	if len(m.App.Gateways) > 0 {
-		port = m.App.Gateways[0].Port
-	}
-
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.App.Slug,
-			Namespace: m.App.Env.ClusterNamespace,
-			Labels:    m.getLabels(),
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: m.getLabels(),
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Port:       int32(port),
-					TargetPort: intstr.FromInt(port),
-				},
-			},
-		},
-	}
-}
-
 func (m *AppMetadata) buildVolumes() []corev1.Volume {
 	var volumes []corev1.Volume
 	for _, v := range m.App.Volumes {
@@ -512,7 +487,7 @@ func (m *AppMetadata) BuildHTTPRoute(gw entities.AppGateway) *gatewayv1.HTTPRout
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{
 				ParentRefs: []gatewayv1.ParentReference{
 					{
-						Name: "default",
+						Name: gatewayv1.ObjectName(EnvGatewayName(m.App.Env.Slug)),
 					},
 				},
 			},

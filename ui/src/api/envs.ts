@@ -29,7 +29,7 @@ export const envsApi = {
       params
     }) as Promise<{ items: Env[], pagination: PaginationResponse }>
   },
-  listSimple: async (projectId: string) => {
+  listSimpleByProject: async (projectId: string) => {
     return client.get(`/v1/projects/${projectId}/envs/simple`) as Promise<SimpleResponse[]>
   },
   create: async (projectId: string, data: CreateEnvRequest) => {

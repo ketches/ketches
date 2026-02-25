@@ -6,8 +6,8 @@ import { toast } from "sonner"
 
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
-import type { ConfigFileSpec } from "@/components/applications/config-file-dialog"
-import { ConfigFileDialog } from "@/components/applications/config-file-dialog"
+import type { ConfigFileSpec } from "@/components/applications/config-file-editor"
+import { ConfigFileEditor } from "@/components/applications/config-file-editor"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -144,14 +144,14 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
       accessorKey: "slug",
       header: "Slug",
       cell: ({ row }) => (
-        <span className="font-mono text-sm font-medium">{row.original.slug}</span>
+        <span className="font-mono text-xs font-medium">{row.original.slug}</span>
       ),
     },
     {
       accessorKey: "mount_path",
       header: "Mount Path",
       cell: ({ row }) => (
-        <span className="font-mono text-sm">{row.original.mount_path}</span>
+        <span className="font-mono text-xs">{row.original.mount_path}</span>
       ),
     },
     {
@@ -271,7 +271,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
         )}
       </CardContent>
 
-      <ConfigFileDialog
+      <ConfigFileEditor
         app={app}
         configFile={editingConfigFile}
         open={isDialogOpen}

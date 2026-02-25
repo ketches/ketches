@@ -70,7 +70,7 @@ func ListCodeRepositories(projectID string, page, pageSize int, search string) (
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
-	if err := query.Order("created_at asc").
+	if err := query.Order("created_at").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&repos).Error; err != nil {
@@ -81,7 +81,7 @@ func ListCodeRepositories(projectID string, page, pageSize int, search string) (
 
 func ListCodeRepositoriesSimple(projectID string) ([]entities.CodeRepository, error) {
 	var repos []entities.CodeRepository
-	if err := db.DB.Select("id, slug, name, description").Where("project_id = ?", projectID).Order("name").Find(&repos).Error; err != nil {
+	if err := db.DB.Select("id, slug, name, description").Where("project_id = ?", projectID).Order("created_at").Find(&repos).Error; err != nil {
 		return nil, err
 	}
 	return repos, nil
@@ -198,7 +198,7 @@ func ListCodeRepositoryBuildConfigs(repoID string) ([]entities.CodeRepositoryBui
 	var configs []entities.CodeRepositoryBuildConfig
 	if err := db.DB.Preload("Registry").
 		Where("code_repository_id = ?", repoID).
-		Order("created_at asc").
+		Order("created_at").
 		Find(&configs).Error; err != nil {
 		return nil, err
 	}
@@ -398,7 +398,7 @@ func GetCodeRepositoryTopology(repoID string) (*models.AppTopologyResponse, erro
 
 	// Get build configs
 	var buildConfigs []entities.CodeRepositoryBuildConfig
-	if err := db.DB.Where("code_repository_id = ?", repoID).Order("created_at asc").Find(&buildConfigs).Error; err == nil {
+	if err := db.DB.Where("code_repository_id = ?", repoID).Order("created_at").Find(&buildConfigs).Error; err == nil {
 		for _, bc := range buildConfigs {
 			bcNodeID := "bc-" + bc.ID
 			nodes = append(nodes, models.AppTopologyNode{

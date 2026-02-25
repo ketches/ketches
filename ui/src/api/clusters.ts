@@ -201,145 +201,88 @@ export const clustersApi = {
     }>>
   },
 
-  // Helm Operator
-  getHelmOperatorStatus: async (clusterId: string) => {
-    return client.get(`/v1/clusters/${clusterId}/helm-operator/status`) as Promise<HelmOperatorStatus>
+  // Extension Catalog (admin-managed, global)
+  listExtensionCatalog: async () => {
+    return client.get('/v1/extension-catalog') as Promise<ExtensionCatalogItem[]>
   },
 
-  installHelmOperator: async (clusterId: string) => {
-    return client.post(`/v1/clusters/${clusterId}/helm-operator/install`) as Promise<{ message: string }>
+  createExtensionCatalogItem: async (data: CreateExtensionCatalogItemRequest) => {
+    return client.post('/v1/extension-catalog', data) as Promise<ExtensionCatalogItem>
   },
 
-  uninstallHelmOperator: async (clusterId: string) => {
-    return client.post(`/v1/clusters/${clusterId}/helm-operator/uninstall`) as Promise<{ message: string }>
+  deleteExtensionCatalogItem: async (itemId: string) => {
+    return client.delete(`/v1/extension-catalog/${itemId}`)
   },
 
-  // Helm Repositories
-  listHelmRepositories: async (clusterId: string) => {
-    return client.get(`/v1/clusters/${clusterId}/helm-repositories`) as Promise<HelmRepository[]>
+  getExtensionVersions: async (itemId: string) => {
+    return client.get(`/v1/extension-catalog/${itemId}/versions`) as Promise<ExtensionVersionInfo[]>
   },
 
-  getHelmRepository: async (clusterId: string, repoName: string) => {
-    return client.get(`/v1/clusters/${clusterId}/helm-repositories/${repoName}`) as Promise<HelmRepository>
+  getExtensionValues: async (itemId: string, version: string) => {
+    return client.get(`/v1/extension-catalog/${itemId}/versions/${version}/values`) as Promise<{ values: string }>
   },
 
-  createHelmRepository: async (clusterId: string, data: CreateHelmRepositoryRequest) => {
-    return client.post(`/v1/clusters/${clusterId}/helm-repositories`, data) as Promise<HelmRepository>
-  },
-
-  deleteHelmRepository: async (clusterId: string, repoName: string) => {
-    return client.delete(`/v1/clusters/${clusterId}/helm-repositories/${repoName}`)
-  },
-
-  getChartValues: async (
-    clusterId: string,
-    repoName: string,
-    chartName: string,
-    version: string
-  ) => {
-    return client.get(
-      `/v1/clusters/${clusterId}/helm-repositories/${repoName}/charts/${encodeURIComponent(chartName)}/values`,
-      { params: { version } }
-    ) as Promise<{ values: string }>
-  },
-
-  // Extensions (HelmReleases)
+  // Installed extensions per cluster
   listExtensions: async (clusterId: string) => {
-    return client.get(`/v1/clusters/${clusterId}/extensions`) as Promise<Extension[]>
+    return client.get(`/v1/clusters/${clusterId}/extensions`) as Promise<InstalledExtension[]>
   },
 
   getExtension: async (clusterId: string, extensionName: string) => {
-    return client.get(`/v1/clusters/${clusterId}/extensions/${extensionName}`) as Promise<Extension>
+    return client.get(`/v1/clusters/${clusterId}/extensions/${extensionName}`) as Promise<InstalledExtension>
   },
 
   installExtension: async (clusterId: string, data: InstallExtensionRequest) => {
-    return client.post(`/v1/clusters/${clusterId}/extensions`, data) as Promise<Extension>
+    return client.post(`/v1/clusters/${clusterId}/extensions`, data) as Promise<InstalledExtension>
   },
 
   updateExtension: async (clusterId: string, extensionName: string, data: UpdateExtensionRequest) => {
-    return client.put(`/v1/clusters/${clusterId}/extensions/${extensionName}`, data) as Promise<Extension>
+    return client.put(`/v1/clusters/${clusterId}/extensions/${extensionName}`, data) as Promise<InstalledExtension>
   },
 
-  uninstallExtension: async (clusterId: string, extensionName: string) => {
-    return client.delete(`/v1/clusters/${clusterId}/extensions/${extensionName}`)
-  },
+	uninstallExtension: async (clusterId: string, extensionName: string) => {
+		return client.delete(`/v1/clusters/${clusterId}/extensions/${extensionName}`)
+	},
+
+	// Gateway API status
+	getGatewayAPIStatus: async (clusterId: string) => {
+		return client.get(`/v1/clusters/${clusterId}/gateway-api-status`) as Promise<GatewayAPIStatus>
+	},
 }
 
-export interface HelmOperatorStatus {
-  installed: boolean
-  resources?: Array<{
-    index: number
-    kind: string
-    name: string
-    namespace?: string
-    exists: boolean
-    error?: string
-  }>
-}
+// Extension Catalog types
 
-// Helm Repository types
-
-export interface HelmRepository {
+export interface ExtensionCatalogItem {
+  id: string
   name: string
-  url: string
-  type: 'helm' | 'oci'
-  ready: boolean
-  message?: string
-  charts?: HelmChartInfo[]
-  total_charts: number
-  last_sync_time?: string
-  created_at: string
-  system: boolean
-}
-
-export interface HelmChartInfo {
-  name: string
+  display_name?: string
   description?: string
-  versions?: HelmChartVersionInfo[]
+  oci_url: string
+  icon_url?: string
+  builtin: boolean
+  created_at: string
 }
 
-export interface HelmChartVersionInfo {
+export interface ExtensionVersionInfo {
   version: string
-  app_version?: string
-  created?: string
 }
 
-export interface CreateHelmRepositoryRequest {
+export interface InstalledExtension {
   name: string
-  url: string
-  type?: 'helm' | 'oci'
-  username?: string
-  password?: string
-}
-
-// Extension (HelmRelease) types
-
-export interface Extension {
-  name: string
-  chart_name: string
+  catalog_item_id?: string
+  oci_url: string
   chart_version: string
-  repository?: string
-  oci_repository?: string
   release_namespace: string
-  release_name: string
   status: string
-  ready: boolean
-  message?: string
-  revision: number
   app_version?: string
-  suspended: boolean
   values?: string
-  original_values?: string
+  revision: number
   created_at: string
 }
 
 export interface InstallExtensionRequest {
   name: string
-  chart_name: string
+  catalog_item_id: string
   chart_version?: string
-  repository?: string
-  repository_url?: string
-  oci_repository?: string
   release_namespace?: string
   create_namespace?: boolean
   values?: string
@@ -348,9 +291,15 @@ export interface InstallExtensionRequest {
 export interface UpdateExtensionRequest {
   chart_version?: string
   values?: string
-  suspended?: boolean
 }
 
+export interface CreateExtensionCatalogItemRequest {
+  name: string
+  display_name?: string
+  description?: string
+  oci_url: string
+  icon_url?: string
+}
 export type IntegrationType = 'prometheus' | 'grafana' | 'loki' | 'alertmanager'
 
 export interface ClusterIntegration {
@@ -395,4 +344,9 @@ export interface UpdateClusterIntegrationRequest {
   ca_cert?: string
   skip_tls_verify?: boolean
   enabled?: boolean
+}
+
+// GatewayAPIStatus indicates whether the Gateway API is installed on a cluster.
+export interface GatewayAPIStatus {
+  installed: boolean
 }

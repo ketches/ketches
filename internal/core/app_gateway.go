@@ -13,9 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// SyncGatewayToK8s synchronizes a single gateway to Kubernetes cluster
+// SyncGatewaysToK8s synchronizes app gateways to Kubernetes cluster
 // It creates/updates Service and HTTPRoute/TCPRoute resources as needed
-func SyncGatewayToK8s(ctx context.Context, app *entities.App, gateway *entities.AppGateway) error {
+func SyncGatewaysToK8s(ctx context.Context, app *entities.App) error {
 	if app.Env.ClusterID == "" {
 		return fmt.Errorf("app environment has no cluster configured")
 	}
@@ -43,36 +43,52 @@ func SyncGatewayToK8s(ctx context.Context, app *entities.App, gateway *entities.
 		}
 	}
 
-	// If gateway is exposed, create/update Gateway API resources
-	if gateway.Exposed {
-		gwClient, err := kube.GlobalClusterStore.GetGatewayClient(app.Env.ClusterID)
-		if err != nil {
-			return err
-		}
+	for _, gateway := range app.Gateways {
+		// If gateway is exposed, create/update Gateway API resources
+		if gateway.Exposed {
+			// Verify that Gateway API CRDs are installed before attempting to create an HTTPRoute.
+			hasGWAPI, err := ClusterHasGatewayAPICRDs(app.Env.ClusterID)
+			if err != nil {
+				return err
+			}
+			if !hasGWAPI {
+				return fmt.Errorf("Gateway API CRDs are not installed on cluster %s", app.Env.ClusterID)
+			}
+			// Ensure the env-level Gateway exists before creating HTTPRoute.
+			if err := EnsureEnvGateway(ctx, &app.Env, nil); err != nil {
+				return err
+			}
 
-		protocol := gateway.Protocol
-		if protocol == "http" || protocol == "https" {
-			// Create/Update HTTPRoute using metadata builder
-			route := metadata.BuildHTTPRoute(*gateway)
-			if route != nil {
-				if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Get(ctx, route.Name, metav1.GetOptions{}); err != nil {
-					if errors.IsNotFound(err) {
-						if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Create(ctx, route, metav1.CreateOptions{}); err != nil {
+			gwClient, err := kube.GlobalClusterStore.GetGatewayClient(app.Env.ClusterID)
+			if err != nil {
+				return err
+			}
+
+			protocol := gateway.Protocol
+			if protocol == "http" || protocol == "https" {
+				// Create/Update HTTPRoute using metadata builder
+				route := metadata.BuildHTTPRoute(gateway)
+				if route != nil {
+					if got, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Get(ctx, route.Name, metav1.GetOptions{}); err != nil {
+						if errors.IsNotFound(err) {
+							if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Create(ctx, route, metav1.CreateOptions{}); err != nil {
+								return err
+							}
+						} else {
 							return err
 						}
 					} else {
-						return err
-					}
-				} else {
-					if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Update(ctx, route, metav1.UpdateOptions{}); err != nil {
-						return err
+						route.ResourceVersion = got.ResourceVersion
+						if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Update(ctx, route, metav1.UpdateOptions{}); err != nil {
+							return err
+						}
 					}
 				}
+			} else {
+				// TCP/UDP - Create/Update TCPRoute or UDPRoute
+				// TODO: Implement TCPRoute/UDPRoute when Gateway API supports them
+				// For now, just ensure Service has the correct type
 			}
-		} else {
-			// TCP/UDP - Create/Update TCPRoute or UDPRoute
-			// TODO: Implement TCPRoute/UDPRoute when Gateway API supports them
-			// For now, just ensure Service has the correct type
 		}
 	}
 

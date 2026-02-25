@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 
 interface InstallPluginDialogProps {
   appId: string
+  projectId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   installedPluginIds: string[]
@@ -24,6 +25,7 @@ interface InstallPluginDialogProps {
 
 export function InstallPluginDialog({
   appId,
+  projectId,
   open,
   onOpenChange,
   installedPluginIds,
@@ -32,8 +34,9 @@ export function InstallPluginDialog({
   const queryClient = useQueryClient()
 
   const { data: plugins = [], isLoading } = useQuery({
-    queryKey: ["plugins-simple"],
-    queryFn: () => pluginsApi.listPluginsSimple(),
+    queryKey: ["plugins-simple", projectId],
+    queryFn: () => pluginsApi.listPluginsSimple(projectId),
+    enabled: !!projectId
   })
 
   const installMutation = useMutation({

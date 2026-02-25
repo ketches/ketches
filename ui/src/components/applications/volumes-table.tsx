@@ -6,8 +6,8 @@ import { toast } from "sonner"
 
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
-import type { VolumeSpec } from "@/components/applications/volume-dialog"
-import { VolumeDialog } from "@/components/applications/volume-dialog"
+import type { VolumeSpec } from "@/components/applications/volume-editor"
+import { VolumeEditor } from "@/components/applications/volume-editor"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -152,7 +152,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
       accessorKey: "slug",
       header: "Slug",
       cell: ({ row }) => (
-        <span className="font-mono text-sm font-medium">{row.original.slug}</span>
+        <span className="font-mono text-xs font-medium">{row.original.slug}</span>
       ),
     },
     {
@@ -168,7 +168,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
       accessorKey: "mount_path",
       header: "Mount Path",
       cell: ({ row }) => (
-        <span className="font-mono text-sm">{row.original.mount_path}</span>
+        <span className="font-mono text-xs">{row.original.mount_path}</span>
       ),
     },
     {
@@ -185,7 +185,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
       header: "Capacity",
       cell: ({ row }) => (
         row.original.volume_type === "pvc" ? (
-          <span className="text-sm">{row.original.capacity} GiB</span>
+          <span className="text-xs">{row.original.capacity} GiB</span>
         ) : (
           <span className="text-muted-foreground text-xs">-</span>
         )
@@ -299,7 +299,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
         )}
       </CardContent>
 
-      <VolumeDialog
+      <VolumeEditor
         app={app}
         volume={editingVolume}
         open={isDialogOpen}

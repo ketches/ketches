@@ -27,7 +27,7 @@ func ListBuilds(appID string, page, pageSize int) (int64, []entities.Build, erro
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
-	if err := query.Order("build_number desc").
+	if err := query.Order("build_number DESC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&builds).Error; err != nil {
@@ -87,7 +87,7 @@ func TriggerBuild(appID, userID string, req *models.TriggerBuildRequest) (*entit
 	// Get next build number
 	var lastBuild entities.Build
 	var buildNumber int
-	if err := db.DB.Where("app_id = ?", appID).Order("build_number desc").First(&lastBuild).Error; err != nil {
+	if err := db.DB.Where("app_id = ?", appID).Order("build_number DESC").First(&lastBuild).Error; err != nil {
 		buildNumber = 1
 	} else {
 		buildNumber = lastBuild.BuildNumber + 1
@@ -445,7 +445,7 @@ func sanitizeRef(ref string) string {
 func ListBuildsByCodeRepository(repoID string) ([]entities.Build, error) {
 	var builds []entities.Build
 	if err := db.DB.Where("code_repository_id = ?", repoID).
-		Order("build_number desc").
+		Order("build_number DESC").
 		Find(&builds).Error; err != nil {
 		return nil, err
 	}
@@ -456,7 +456,7 @@ func ListDeploymentsByCodeRepository(repoID string) ([]entities.Build, error) {
 	var builds []entities.Build
 	if err := db.DB.Preload("App.Env").
 		Where("code_repository_id = ? AND app_id IS NOT NULL", repoID).
-		Order("created_at desc").
+		Order("created_at DESC").
 		Find(&builds).Error; err != nil {
 		return nil, err
 	}
@@ -513,7 +513,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 
 	var lastBuild entities.Build
 	var buildNumber int
-	if err := db.DB.Where("code_repository_id = ?", repoID).Order("build_number desc").First(&lastBuild).Error; err != nil {
+	if err := db.DB.Where("code_repository_id = ?", repoID).Order("build_number DESC").First(&lastBuild).Error; err != nil {
 		buildNumber = 1
 	} else {
 		buildNumber = lastBuild.BuildNumber + 1

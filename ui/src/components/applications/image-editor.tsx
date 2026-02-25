@@ -16,19 +16,19 @@ import {
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
-interface EditImageDialogProps {
+interface ImageEditorProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   app: App | null
   onSuccess?: () => void
 }
 
-export function EditImageDialog({
+export function ImageEditor({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
   app,
   onSuccess,
-}: EditImageDialogProps) {
+}: ImageEditorProps) {
   const [internalOpen, setInternalOpen] = React.useState(false)
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = setControlledOpen || setInternalOpen

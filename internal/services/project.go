@@ -135,6 +135,14 @@ func PermanentlyDeleteProject(projectID string) error {
 	return db.DB.Unscoped().Delete(&entities.Project{}, "id = ?", projectID).Error
 }
 
+func IsProjectMember(projectID, userID string) (bool, error) {
+ var count int64
+ if err := db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND user_id = ?", projectID, userID).Count(&count).Error; err != nil {
+  return false, err
+ }
+ return count > 0, nil
+}
+
 func RestoreProject(projectID string) error {
 	return db.DB.Unscoped().Model(&entities.Project{}).Where("id = ?", projectID).Update("deleted_at", nil).Error
 }

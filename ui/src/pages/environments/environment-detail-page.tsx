@@ -9,6 +9,7 @@ import {
   Orbit,
   Pencil,
   RefreshCw,
+  ShieldCheck,
   ShipWheel,
   Telescope,
   Trash2,
@@ -23,6 +24,7 @@ import { clustersApi } from "@/api/clusters"
 import { envsApi } from "@/api/envs"
 import { ApplicationList } from "@/components/applications/application-list"
 import { EditEnvironmentDialog } from "@/components/environment/edit-environment-dialog"
+import { EnvCertificates } from "@/components/environment/env-certificates"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-resource-metrics"
@@ -209,6 +211,10 @@ export function EnvironmentDetailPage() {
             Applications
           </TabsTrigger>
         </TabsList>
+          <TabsTrigger value="certificates">
+            <ShieldCheck />
+            Certificates
+          </TabsTrigger>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
           <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent data-[active=true]:bg-transparent">
@@ -336,6 +342,10 @@ export function EnvironmentDetailPage() {
               <ApplicationList envId={envId!} envName={env.name} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="certificates" className="space-y-4 mt-2">
+          <EnvCertificates envId={envId!} />
         </TabsContent>
       </Tabs>
 

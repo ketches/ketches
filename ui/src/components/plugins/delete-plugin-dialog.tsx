@@ -16,17 +16,18 @@ import type { AxiosError } from "axios"
 
 interface DeletePluginDialogProps {
   plugin: any
+  projectId: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function DeletePluginDialog({ plugin, open, onOpenChange }: DeletePluginDialogProps) {
+export function DeletePluginDialog({ plugin, projectId, open, onOpenChange }: DeletePluginDialogProps) {
   const queryClient = useQueryClient()
 
   const deleteMutation = useMutation({
-    mutationFn: () => pluginsApi.deletePlugin(plugin.id),
+    mutationFn: () => pluginsApi.deletePlugin(projectId, plugin.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      queryClient.invalidateQueries({ queryKey: ['plugins', projectId] })
       toast.success("Plugin deleted successfully")
       onOpenChange(false)
     },

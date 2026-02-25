@@ -60,18 +60,19 @@ export function PluginsPage() {
   })
 
   const { data: pluginsResponse, isLoading, refetch } = useQuery({
-    queryKey: ['plugins', debouncedSearch, pagination.pageIndex, pagination.pageSize],
-    queryFn: () => pluginsApi.listPlugins({
+    queryKey: ['plugins', activeProjectId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
+    queryFn: () => pluginsApi.listPlugins(activeProjectId!, {
       search: debouncedSearch,
       page: pagination.pageIndex + 1,
       pageSize: pagination.pageSize
     }),
+    enabled: !!activeProjectId,
+    placeholderData: (previousData) => previousData,
   })
 
   const plugins = pluginsResponse?.items ?? []
   const paginationInfo = pluginsResponse?.pagination
   const safePlugins = Array.isArray(plugins) ? plugins : []
-
   const columns: ColumnDef<Plugin>[] = [
     {
       accessorKey: "name",
@@ -338,6 +339,7 @@ export function PluginsPage() {
       {editingPlugin && (
         <EditPluginDialog
           open={editDialogOpen}
+          projectId={activeProjectId!}
           onOpenChange={(open) => {
             setEditDialogOpen(open)
             if (!open) setTimeout(() => setEditingPlugin(null), 300)
@@ -349,6 +351,7 @@ export function PluginsPage() {
       {deletingPlugin && (
         <DeletePluginDialog
           open={deleteDialogOpen}
+          projectId={activeProjectId!}
           onOpenChange={(open) => {
             setDeleteDialogOpen(open)
             if (!open) setTimeout(() => setDeletingPlugin(null), 300)
@@ -360,6 +363,7 @@ export function PluginsPage() {
       {selectedPlugin && (
         <InstalledAppsDialog
           open={!!selectedPlugin}
+          projectId={activeProjectId!}
           onOpenChange={(open) => !open && setSelectedPlugin(null)}
           plugin={selectedPlugin}
         />

@@ -24,7 +24,7 @@ func ListClusterRegistries(clusterID string, page, pageSize int, search string) 
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
-	if err := query.Order("created_at asc").
+	if err := query.Order("created_at").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&registries).Error; err != nil {
@@ -43,7 +43,7 @@ func ListProjectContainerRegistries(projectID string, page, pageSize int, search
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
-	if err := query.Order("created_at asc").
+	if err := query.Order("created_at").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&registries).Error; err != nil {
@@ -54,7 +54,7 @@ func ListProjectContainerRegistries(projectID string, page, pageSize int, search
 
 func ListProjectContainerRegistriesSimple(projectID string) ([]entities.ContainerRegistry, error) {
 	var registries []entities.ContainerRegistry
-	if err := db.DB.Select("id, name, endpoint, provider").Where("project_id = ? AND scope = ?", projectID, entities.RegistryScopeProject).Order("name").Find(&registries).Error; err != nil {
+	if err := db.DB.Select("id, name, endpoint, provider").Where("project_id = ? AND scope = ?", projectID, entities.RegistryScopeProject).Order("created_at").Find(&registries).Error; err != nil {
 		return nil, err
 	}
 	return registries, nil
@@ -66,7 +66,7 @@ func ListAvailableRegistries(clusterID, projectID string) ([]entities.ContainerR
 		"(cluster_id = ? AND scope = ?) OR (project_id = ? AND scope = ?)",
 		clusterID, entities.RegistryScopeCluster,
 		projectID, entities.RegistryScopeProject,
-	).Where("enabled = ?", true).Order("scope asc, created_at asc").Find(&registries).Error; err != nil {
+	).Where("enabled = ?", true).Order("scope, created_at").Find(&registries).Error; err != nil {
 		return nil, err
 	}
 	return registries, nil

@@ -6,8 +6,8 @@ import { toast } from "sonner"
 
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
-import type { EnvVarSpec } from "@/components/applications/env-var-dialog"
-import { EnvVarDialog } from "@/components/applications/env-var-dialog"
+import type { EnvVarSpec } from "@/components/applications/env-var-editor"
+import { EnvVarEditor } from "@/components/applications/env-var-editor"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -139,7 +139,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
       accessorKey: "key",
       header: "Key",
       cell: ({ row }) => (
-        <span className="font-mono text-sm font-medium">{row.original.key}</span>
+        <span className="font-mono text-xs font-medium">{row.original.key}</span>
       ),
     },
     {
@@ -149,7 +149,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
         const value = row.original.value
         const displayValue = value && value.length > 50 ? value.substring(0, 50) + "..." : value
         return (
-          <span className="font-mono text-sm text-muted-foreground" title={value}>
+          <span className="font-mono text-xs text-muted-foreground" title={value}>
             {displayValue || <span className="text-muted-foreground">-</span>}
           </span>
         )
@@ -273,7 +273,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
         )}
       </CardContent>
 
-      <EnvVarDialog
+      <EnvVarEditor
         app={app}
         envVar={editingEnvVar}
         open={isDialogOpen}

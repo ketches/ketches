@@ -9,7 +9,7 @@ import (
 func ListDeletedApps(projectID string, page, pageSize int, search string) (int64, []models.RecycleBinAppResponse, error) {
 	var apps []entities.App
 	var total int64
-	query := db.DB.Unscoped().Model(&entities.App{}).Where("apps.deleted_at IS NOT NULL")
+	query := db.DB.Unscoped().Model(&entities.App{}).Where("apps.deleted_at IS NOT NULL").Order("deleted_at DESC")
 
 	if projectID != "" {
 		query = query.Joins("JOIN envs ON apps.env_id = envs.id").
@@ -54,7 +54,7 @@ func ListDeletedApps(projectID string, page, pageSize int, search string) (int64
 func ListDeletedEnvs(projectID string, page, pageSize int, search string) (int64, []models.RecycleBinEnvResponse, error) {
 	var envs []entities.Env
 	var total int64
-	query := db.DB.Unscoped().Model(&entities.Env{}).Where("envs.deleted_at IS NOT NULL")
+	query := db.DB.Unscoped().Model(&entities.Env{}).Where("envs.deleted_at IS NOT NULL").Order("deleted_at DESC")
 
 	if projectID != "" {
 		query = query.Where("envs.project_id = ?", projectID)

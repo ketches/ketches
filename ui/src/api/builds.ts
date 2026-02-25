@@ -1,4 +1,5 @@
-import client, { type PaginationResponse } from './client'
+import client from './client'
+import { type PaginationResponse } from './pagination'
 
 export type BuildStatus = 'pending' | 'cloning' | 'building' | 'succeeded' | 'failed' | 'cancelled'
 export type BuildTriggerType = 'manual' | 'webhook' | 'auto'

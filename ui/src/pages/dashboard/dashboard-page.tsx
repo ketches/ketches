@@ -207,7 +207,7 @@ function UserDashboard() {
 
   const { data: environments = [] } = useQuery({
     queryKey: ["environments-simple", activeProjectId],
-    queryFn: () => envsApi.listSimple(activeProjectId!),
+    queryFn: () => envsApi.listSimpleByProject(activeProjectId!),
     enabled: !!activeProjectId,
   })
 

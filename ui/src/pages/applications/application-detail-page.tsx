@@ -58,10 +58,10 @@ import { AutoScalingConfig } from "@/components/applications/auto-scaling-config
 import { CommandConfig } from "@/components/applications/command-config"
 import { ConfigFilesTable } from "@/components/applications/config-files-table"
 import { EditAppDialog } from "@/components/applications/edit-app-dialog"
-import { EditImageDialog } from "@/components/applications/edit-image-dialog"
 import { EnvVarTable } from "@/components/applications/env-var-table"
-import { NetworkConfig } from "@/components/applications/gateway-config"
+import { NetworkConfig } from "@/components/applications/gateway-table"
 import { HealthConfig } from "@/components/applications/health-config"
+import { ImageEditor } from "@/components/applications/image-editor"
 import { ResourceConfig } from "@/components/applications/resource-config"
 import { SchedulingConfig } from "@/components/applications/scheduling-config"
 import { VolumesTable } from "@/components/applications/volumes-table"
@@ -490,7 +490,7 @@ export function ApplicationDetailPage() {
 
   const { data: envs = [] } = useQuery({
     queryKey: ['envs-simple', projectIdToUse],
-    queryFn: () => envsApi.listSimple(projectIdToUse!),
+    queryFn: () => envsApi.listSimpleByProject(projectIdToUse!),
     enabled: !!projectIdToUse,
   })
 
@@ -1353,7 +1353,7 @@ export function ApplicationDetailPage() {
         </TabsContent>
 
         <TabsContent value="plugins" className="space-y-4 mt-2">
-          <AppPlugins appId={app.id} />
+          <AppPlugins appId={app.id} projectId={projectIdToUse!} />
         </TabsContent>
 
         <TabsContent value="build" className="space-y-4 mt-2">
@@ -1392,7 +1392,7 @@ export function ApplicationDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <EditImageDialog
+      <ImageEditor
         app={app}
         open={isEditImageDialogOpen}
         onOpenChange={setIsEditImageDialogOpen}

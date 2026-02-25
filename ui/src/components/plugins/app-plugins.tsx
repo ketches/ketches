@@ -43,10 +43,11 @@ import { EmptyState } from "../shared/empty-state"
 
 interface AppPluginsProps {
   appId: string
+  projectId: string
   readOnly?: boolean
 }
 
-export function AppPlugins({ appId, readOnly = false }: AppPluginsProps) {
+export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsProps) {
   const [installOpen, setInstallOpen] = React.useState(false)
   const [pluginToUninstall, setPluginToUninstall] = React.useState<string | null>(null)
   const [editEnvPlugin, setEditEnvPlugin] = React.useState<AppPlugin | null>(null)
@@ -281,6 +282,7 @@ export function AppPlugins({ appId, readOnly = false }: AppPluginsProps) {
 
       <InstallPluginDialog
         appId={appId}
+        projectId={projectId}
         open={installOpen}
         onOpenChange={setInstallOpen}
         installedPluginIds={appPlugins.map((p) => p.plugin_id)}

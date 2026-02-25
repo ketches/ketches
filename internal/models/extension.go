@@ -2,76 +2,58 @@ package models
 
 import "time"
 
-// Helm Repository models
-
-type HelmRepositoryResponse struct {
-	Name         string              `json:"name"`
-	URL          string              `json:"url"`
-	Type         string              `json:"type"`
-	Ready        bool                `json:"ready"`
-	Message      string              `json:"message,omitempty"`
-	Charts       []HelmChartInfo     `json:"charts,omitempty"`
-	TotalCharts  int                 `json:"total_charts"`
-	LastSyncTime *time.Time          `json:"last_sync_time,omitempty"`
-	CreatedAt    time.Time           `json:"created_at"`
-	System       bool                `json:"system"`
+// ExtensionCatalogItem is the platform-level catalog entry for an OCI-based helm chart.
+type ExtensionCatalogItem struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	DisplayName string    `json:"display_name"`
+	Description string    `json:"description"`
+	OCIUrl      string    `json:"oci_url"`
+	IconURL     string    `json:"icon_url,omitempty"`
+	Builtin     bool      `json:"builtin"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
-type HelmChartInfo struct {
-	Name        string                `json:"name"`
-	Description string                `json:"description,omitempty"`
-	Versions    []HelmChartVersionInfo `json:"versions,omitempty"`
+// CreateExtensionCatalogItemRequest is the request body for adding a catalog item.
+type CreateExtensionCatalogItemRequest struct {
+	Name        string `json:"name" binding:"required"`
+	DisplayName string `json:"display_name"`
+	Description string `json:"description"`
+	OCIUrl      string `json:"oci_url" binding:"required"`
+	IconURL     string `json:"icon_url"`
 }
 
-type HelmChartVersionInfo struct {
-	Version    string     `json:"version"`
-	AppVersion string     `json:"app_version,omitempty"`
-	Created    *time.Time `json:"created,omitempty"`
+// ExtensionVersionInfo holds a single chart version tag.
+type ExtensionVersionInfo struct {
+	Version string `json:"version"`
 }
 
-type CreateHelmRepositoryRequest struct {
-	Name     string `json:"name" binding:"required"`
-	URL      string `json:"url" binding:"required"`
-	Type     string `json:"type"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+// InstalledExtension represents a helm release installed in a cluster.
+type InstalledExtension struct {
+	Name             string    `json:"name"`
+	CatalogItemID    string    `json:"catalog_item_id,omitempty"`
+	OCIUrl           string    `json:"oci_url"`
+	ChartVersion     string    `json:"chart_version"`
+	ReleaseNamespace string    `json:"release_namespace"`
+	Status           string    `json:"status"`
+	AppVersion       string    `json:"app_version,omitempty"`
+	Values           string    `json:"values,omitempty"`
+	Revision         int       `json:"revision"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
-// Extension (HelmRelease) models
-
-type ExtensionResponse struct {
-	Name             string     `json:"name"`
-	ChartName        string     `json:"chart_name"`
-	ChartVersion     string     `json:"chart_version"`
-	Repository       string     `json:"repository,omitempty"`
-	OCIRepository    string     `json:"oci_repository,omitempty"`
-	ReleaseNamespace string     `json:"release_namespace"`
-	ReleaseName      string     `json:"release_name"`
-	Status           string     `json:"status"`
-	Ready            bool       `json:"ready"`
-	Message          string     `json:"message,omitempty"`
-	Revision         int        `json:"revision"`
-	AppVersion       string     `json:"app_version,omitempty"`
-	Suspended        bool       `json:"suspended"`
-	Values           string     `json:"values,omitempty"`
-	OriginalValues   string     `json:"original_values,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-}
-
+// InstallExtensionRequest is the request body for installing an extension into a cluster.
 type InstallExtensionRequest struct {
 	Name             string `json:"name" binding:"required"`
-	ChartName        string `json:"chart_name" binding:"required"`
+	CatalogItemID    string `json:"catalog_item_id" binding:"required"`
 	ChartVersion     string `json:"chart_version"`
-	Repository       string `json:"repository"`
-	RepositoryURL    string `json:"repository_url"`
-	OCIRepository    string `json:"oci_repository"`
 	ReleaseNamespace string `json:"release_namespace"`
 	CreateNamespace  bool   `json:"create_namespace"`
 	Values           string `json:"values"`
 }
 
+// UpdateExtensionRequest is the request body for updating an installed extension.
 type UpdateExtensionRequest struct {
 	ChartVersion string `json:"chart_version,omitempty"`
 	Values       string `json:"values,omitempty"`
-	Suspended    *bool  `json:"suspended,omitempty"`
 }

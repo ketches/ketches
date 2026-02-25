@@ -54,7 +54,7 @@ func CreateAppGateway(appID string, req *models.CreateGatewayRequest) (*entities
 	}
 
 	// Sync to Kubernetes cluster
-	if err := core.SyncGatewayToK8s(context.Background(), &app, entity); err != nil {
+	if err := core.SyncGatewaysToK8s(context.Background(), &app); err != nil {
 		return nil, err
 	}
 
@@ -104,7 +104,7 @@ func UpdateAppGateway(id string, req *models.UpdateGatewayRequest) (*entities.Ap
 	}
 
 	// Sync to Kubernetes cluster
-	if err := core.SyncGatewayToK8s(context.Background(), &app, &gateway); err != nil {
+	if err := core.SyncGatewaysToK8s(context.Background(), &app); err != nil {
 		return nil, err
 	}
 

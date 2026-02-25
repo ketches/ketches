@@ -46,6 +46,14 @@ type PluginResponse struct {
 	UpdatedAt        time.Time      `json:"updated_at"`
 }
 
+type SimplePluginResponse struct {
+  ID          string `json:"id"`
+  Slug        string `json:"slug"`
+  Name        string `json:"name"`
+  Description string `json:"description"`
+  PluginType  string `json:"plugin_type"`
+  EnvVars     []PluginEnvVar `json:"env_vars"`
+}
 type ListPluginResponse struct {
 	Items      []PluginResponse   `json:"items"`
 	Pagination PaginationResponse `json:"pagination"`

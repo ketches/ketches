@@ -16,16 +16,17 @@ import { EmptyState } from "../shared/empty-state"
 
 interface InstalledAppsDialogProps {
   plugin: any
+  projectId: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function InstalledAppsDialog({ plugin, open, onOpenChange }: InstalledAppsDialogProps) {
+export function InstalledAppsDialog({ plugin, projectId, open, onOpenChange }: InstalledAppsDialogProps) {
   const navigate = useNavigate()
 
   const { data: apps = [], isLoading } = useQuery({
-    queryKey: ['plugin-installed-apps', plugin?.id],
-    queryFn: () => pluginsApi.getPluginInstalledApps(plugin.id),
+    queryKey: ['plugin-installed-apps', projectId, plugin?.id],
+    queryFn: () => pluginsApi.getPluginInstalledApps(projectId, plugin.id),
     enabled: !!plugin && open
   })
 

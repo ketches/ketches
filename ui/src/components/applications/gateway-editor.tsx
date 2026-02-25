@@ -1,10 +1,12 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { InfoIcon, Loader2, Plus } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { InfoIcon, Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { appsApi, type App, type GatewaySpec } from "@/api/apps"
-// import { envsApi } from "@/api/envs" // TODO: Uncomment when certificate API is ready
+import { certificatesApi } from "@/api/certificates"
+import { clustersApi } from "@/api/clusters"
+import { envsApi } from "@/api/envs"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -20,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface GatewayDialogProps {
+interface GatewayEditorProps {
   app: App
   gateway?: GatewaySpec | null
   open?: boolean
@@ -28,11 +30,6 @@ interface GatewayDialogProps {
   onSuccess?: () => void
 }
 
-interface CertificateOption {
-  id: string
-  name: string
-  domain: string
-}
 
 const PROTOCOL_LABELS: Record<string, string> = {
   http: 'HTTP',
@@ -41,13 +38,13 @@ const PROTOCOL_LABELS: Record<string, string> = {
   udp: 'UDP'
 }
 
-export function GatewayDialog({
+export function GatewayEditor({
   app,
   gateway,
   open: controlledOpen,
   onOpenChange: setControlledOpen,
   onSuccess,
-}: GatewayDialogProps) {
+}: GatewayEditorProps) {
   const [internalOpen, setInternalOpen] = React.useState(false)
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = setControlledOpen || setInternalOpen
@@ -72,18 +69,39 @@ export function GatewayDialog({
     exposed: true,
   })
 
-  // Fetch environment to get certificates (TODO: Enable when certificate API is ready)
-  // const { data: env } = useQuery({
-  //   queryKey: ['env', app.env_id],
-  //   queryFn: () => envsApi.get(app.env_id),
-  //   enabled: !!app.env_id && open,
-  // })
+  // Fetch environment to get cluster_id, then fetch both cluster and env certificates
+  const { data: env } = useQuery({
+    queryKey: ['env', app.env_id],
+    queryFn: () => envsApi.get(app.env_id),
+    enabled: !!app.env_id && open,
+  })
 
-  // Mock certificates data - replace with actual API when available
-  const certificates: CertificateOption[] = React.useMemo(() => {
-    // TODO: Replace with actual certificates API
-    return []
-  }, [])
+  const { data: clusterCertsResponse } = useQuery({
+    queryKey: ['cluster-certificates', env?.cluster_id],
+    queryFn: () => certificatesApi.listByCluster(env!.cluster_id),
+    enabled: !!env?.cluster_id && open,
+  })
+
+  const { data: envCertsResponse } = useQuery({
+    queryKey: ['env-certificates', app.env_id],
+    queryFn: () => certificatesApi.listByEnv(app.env_id),
+    enabled: !!app.env_id && open,
+  })
+
+  // Check whether Gateway API is installed on the cluster.
+  const { data: gatewayAPIStatus } = useQuery({
+    queryKey: ['cluster-gateway-api-status', env?.cluster_id],
+    queryFn: () => clustersApi.getGatewayAPIStatus(env!.cluster_id),
+    enabled: !!env?.cluster_id && open,
+  })
+  const gatewayAPIInstalled = gatewayAPIStatus?.installed !== false
+
+  // Combine cluster and env certificates for selection
+  const certificates = React.useMemo(() => {
+    const clusterCerts = (clusterCertsResponse?.items ?? []).map(c => ({ ...c, label: `[Cluster] ${c.name}` }))
+    const envCerts = (envCertsResponse?.items ?? []).map(c => ({ ...c, label: `[Env] ${c.name}` }))
+    return [...clusterCerts, ...envCerts]
+  }, [clusterCertsResponse, envCertsResponse])
 
   React.useEffect(() => {
     if (open) {
@@ -284,13 +302,17 @@ export function GatewayDialog({
                         <Checkbox
                           checked={formData.exposed}
                           onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, exposed: !!checked }))}
+                          disabled={!gatewayAPIInstalled}
                         />
-                        <label htmlFor="exposed" className="cursor-pointer">Enable public access</label>
+                        <label htmlFor="exposed" className={`cursor-pointer ${!gatewayAPIInstalled ? 'text-muted-foreground' : ''}`}>Enable public access</label>
                       </div>
                     }
                   />
                   <TooltipContent side="top" align="start" className="max-w-64">
-                    <p className="text-xs">When enabled, creates routes to expose this service externally.</p>
+                    {gatewayAPIInstalled
+                      ? <p className="text-xs">When enabled, creates routes to expose this service externally.</p>
+                      : <p className="text-xs">Gateway API is not installed on this cluster. Contact your administrator to install the gateway extension.</p>
+                    }
                   </TooltipContent>
                 </Tooltip>
               </FieldContent>
@@ -387,41 +409,27 @@ export function GatewayDialog({
                       </Tooltip>
                     </FieldLabel>
                     <FieldContent>
-                      <div className="flex gap-2">
-                        <Select
-                          value={formData.cert_id || ''}
-                          onValueChange={(value) => setFormData((prev) => ({ ...prev, cert_id: value || undefined }))}
-                        >
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Select certificate (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {certificates.length === 0 ? (
-                              <div className="p-2 text-xs text-muted-foreground text-center">
-                                No certificates available
-                              </div>
-                            ) : (
-                              certificates.map((cert) => (
-                                <SelectItem key={cert.id} value={cert.name}>
-                                  {cert.name} - {cert.domain}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          title="Add new certificate"
-                          onClick={() => {
-                            // TODO: Open certificate management dialog
-                            toast.info("Certificate management will be available in environment settings")
-                          }}
-                        >
-                          <Plus />
-                        </Button>
-                      </div>
+                      <Select
+                        value={formData.cert_id || ''}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, cert_id: value || undefined }))}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select certificate (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {certificates.length === 0 ? (
+                            <div className="p-2 text-xs text-muted-foreground text-center">
+                              No certificates available
+                            </div>
+                          ) : (
+                            certificates.map((cert) => (
+                              <SelectItem key={cert.id} value={cert.id}>
+                                {cert.label}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
                     </FieldContent>
                   </Field>
                 )}

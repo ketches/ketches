@@ -34,7 +34,7 @@ export interface ConfigFileSpec {
   content: string
 }
 
-interface ConfigFileDialogProps {
+interface ConfigFileEditorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   app: App
@@ -50,13 +50,13 @@ const FILE_MODE_OPTIONS = [
   { value: "0777", label: "0777 (rwxrwxrwx)" },
 ]
 
-export function ConfigFileDialog({
+export function ConfigFileEditor({
   open,
   onOpenChange,
   app,
   configFile,
   onSuccess,
-}: ConfigFileDialogProps) {
+}: ConfigFileEditorProps) {
   const queryClient = useQueryClient()
   const { theme } = useTheme()
 

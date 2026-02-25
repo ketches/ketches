@@ -17,6 +17,7 @@ import {
   Pencil,
   PlugZap,
   Server,
+  ShieldCheck,
   ShipWheel,
   Telescope,
   Terminal,
@@ -32,6 +33,7 @@ import { ClusterExtensions } from "@/components/cluster/cluster-extensions"
 import { ClusterIntegrationsConfig } from "@/components/cluster/cluster-integrations-config"
 import { EditClusterDialog } from "@/components/cluster/edit-cluster-dialog"
 import { ContainerRegistryList } from "@/components/container-registries/container-registry-list"
+import { ClusterCertificates } from "@/components/cluster/cluster-certificates"
 import { DataTable } from "@/components/data-table/data-table"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
@@ -505,6 +507,10 @@ export function ClusterDetailPage() {
             <Database />
             Registries
           </TabsTrigger>
+          <TabsTrigger value="certificates">
+            <ShieldCheck />
+            Certificates
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
@@ -664,6 +670,10 @@ export function ClusterDetailPage() {
 
         <TabsContent value="registries" className="space-y-4 mt-2">
           <ContainerRegistryList scope="cluster" scopeId={clusterId!} />
+        </TabsContent>
+
+        <TabsContent value="certificates" className="space-y-4 mt-2">
+          <ClusterCertificates clusterId={clusterId!} />
         </TabsContent>
       </Tabs>
 
