@@ -5,7 +5,7 @@ import { toast } from "sonner"
 
 import { appsApi } from "@/api/apps"
 import { codeRepositoriesApi, type CodeRepositoryBuildConfig } from "@/api/code-repositories"
-import { envsApi, type Env } from "@/api/envs"
+import { envsApi } from "@/api/envs"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
