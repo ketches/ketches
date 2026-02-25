@@ -27,18 +27,21 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
   const [showDialog, setShowDialog] = React.useState(false)
   const [editRegistry, setEditRegistry] = React.useState<ContainerRegistry | null>(null)
 
-  const { data: containerRegistries, isLoading } = useQuery({
-    queryKey: ['registries', scope, scopeId],
-    queryFn: () => scope === 'cluster'
-      ? containerRegistriesApi.listByCluster(scopeId)
-      : containerRegistriesApi.listByProject(scopeId),
+  const { data: containerRegistries = [], isLoading } = useQuery({
+    queryKey: ["registries", scope, scopeId],
+    queryFn: async () => {
+      const res = await (scope === "cluster"
+        ? containerRegistriesApi.listByCluster(scopeId)
+        : containerRegistriesApi.listByProject(scopeId))
+      return res.items
+    },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => containerRegistriesApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['registries', scope, scopeId] })
-      toast.success('Container registry deleted')
+      queryClient.invalidateQueries({ queryKey: ["registries", scope, scopeId] })
+      toast.success("Container registry deleted")
     },
     onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to delete registry')

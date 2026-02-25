@@ -14,19 +14,47 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
-func ListClusterRegistries(clusterID string) ([]entities.ContainerRegistry, error) {
+func ListClusterRegistries(clusterID string, page, pageSize int, search string) (int64, []entities.ContainerRegistry, error) {
 	var registries []entities.ContainerRegistry
-	if err := db.DB.Where("cluster_id = ? AND scope = ?", clusterID, entities.RegistryScopeCluster).
-		Order("created_at asc").Find(&registries).Error; err != nil {
-		return nil, err
+	var total int64
+	query := db.DB.Model(&entities.ContainerRegistry{}).Where("cluster_id = ? AND scope = ?", clusterID, entities.RegistryScopeCluster)
+	if search != "" {
+		query = query.Where("name LIKE ? OR endpoint LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
-	return registries, nil
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+	if err := query.Order("created_at asc").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&registries).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, registries, nil
 }
 
-func ListProjectContainerRegistries(projectID string) ([]entities.ContainerRegistry, error) {
+func ListProjectContainerRegistries(projectID string, page, pageSize int, search string) (int64, []entities.ContainerRegistry, error) {
 	var registries []entities.ContainerRegistry
-	if err := db.DB.Where("project_id = ? AND scope = ?", projectID, entities.RegistryScopeProject).
-		Order("created_at asc").Find(&registries).Error; err != nil {
+	var total int64
+	query := db.DB.Model(&entities.ContainerRegistry{}).Where("project_id = ? AND scope = ?", projectID, entities.RegistryScopeProject)
+	if search != "" {
+		query = query.Where("name LIKE ? OR endpoint LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+	if err := query.Order("created_at asc").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&registries).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, registries, nil
+}
+
+func ListProjectContainerRegistriesSimple(projectID string) ([]entities.ContainerRegistry, error) {
+	var registries []entities.ContainerRegistry
+	if err := db.DB.Select("id, name, endpoint, provider").Where("project_id = ? AND scope = ?", projectID, entities.RegistryScopeProject).Order("name").Find(&registries).Error; err != nil {
 		return nil, err
 	}
 	return registries, nil
@@ -248,20 +276,20 @@ func ToContainerRegistryResponse(r *entities.ContainerRegistry) models.Container
 		pid = *r.ProjectID
 	}
 	return models.ContainerRegistryResponse{
-		ID:             r.ID,
-		Name:           r.Name,
-		Provider:       string(r.Provider),
-		Endpoint:       r.Endpoint,
-		SkipTLSVerify:  r.SkipTLSVerify,
-		Namespace:      r.Namespace,
-		Username:       r.Username,
-		Password:       r.Password,
-		Scope:          string(r.Scope),
-		ClusterID:      cid,
-		ProjectID:      pid,
-		IsDefault:      r.IsDefault,
-		Enabled:        r.Enabled,
-		Description:    r.Description,
-		CreatedAt:      r.CreatedAt,
+		ID:            r.ID,
+		Name:          r.Name,
+		Provider:      string(r.Provider),
+		Endpoint:      r.Endpoint,
+		SkipTLSVerify: r.SkipTLSVerify,
+		Namespace:     r.Namespace,
+		Username:      r.Username,
+		Password:      r.Password,
+		Scope:         string(r.Scope),
+		ClusterID:     cid,
+		ProjectID:     pid,
+		IsDefault:     r.IsDefault,
+		Enabled:       r.Enabled,
+		Description:   r.Description,
+		CreatedAt:     r.CreatedAt,
 	}
 }

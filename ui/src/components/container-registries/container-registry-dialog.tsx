@@ -89,9 +89,9 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
       return containerRegistriesApi.createForProject(scopeId, data)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['registries', scope, scopeId] })
+      queryClient.invalidateQueries({ queryKey: ["registries", scope, scopeId] })
       onOpenChange(false)
-      toast.success('Registry created')
+      toast.success("Registry created")
     },
     onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to create registry')
@@ -103,9 +103,9 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
       return containerRegistriesApi.update(registry!.id, data)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['registries', scope, scopeId] })
+      queryClient.invalidateQueries({ queryKey: ["registries", scope, scopeId] })
       onOpenChange(false)
-      toast.success('Registry updated')
+      toast.success("Registry updated")
     },
     onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || 'Failed to update registry')

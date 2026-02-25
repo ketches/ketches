@@ -38,7 +38,7 @@ func CreateAppGateway(appID string, req *models.CreateGatewayRequest) (*entities
 	if err == nil {
 		return nil, errors.New("gateway with this port and protocol already exists for this app")
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func UpdateAppGateway(id string, req *models.UpdateGatewayRequest) (*entities.Ap
 		if err == nil {
 			return nil, errors.New("gateway with this port and protocol already exists for this app")
 		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
 		}
 	}

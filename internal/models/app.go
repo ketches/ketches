@@ -144,6 +144,11 @@ type AppResponse struct {
 	CreatedAt        time.Time        `json:"created_at"`
 }
 
+type ListAppResponse struct {
+	Items      []AppResponse      `json:"items"`
+	Pagination PaginationResponse `json:"pagination"`
+}
+
 type AppInstanceResponse struct {
 	InstanceName       string    `json:"instanceName"`
 	Status             string    `json:"status"`

@@ -1,5 +1,6 @@
 import type { App } from './apps'
 import client from './client'
+import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
 
 export interface Plugin {
   id: string
@@ -53,10 +54,15 @@ export interface UpdatePluginRequest {
 
 export const pluginsApi = {
   // Global Plugin Management (Admin)
-  listPlugins: async (search?: string) => {
+  listPlugins: async (params?: PaginationParams) => {
     return client.get('/v1/plugins', {
-      params: { search }
-    }) as Promise<Plugin[]>
+      params
+    }) as Promise<{ items: Plugin[], pagination: PaginationResponse }>
+  },
+
+  listPluginsSimple: async (projectId?: string) => {
+    const url = projectId ? `/v1/projects/${projectId}/plugins/simple` : '/v1/plugins/simple'
+    return client.get(url) as Promise<SimpleResponse[]>
   },
 
   getPlugin: async (pluginID: string) => {

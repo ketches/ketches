@@ -22,13 +22,25 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-func ListApps(envID string, search string) ([]entities.App, error) {
+func ListApps(envID string, page, pageSize int, search string) (int64, []entities.App, error) {
 	var apps []entities.App
-	query := db.DB.Where("env_id = ?", envID)
+	var total int64
+	query := db.DB.Model(&entities.App{}).Where("env_id = ?", envID)
 	if search != "" {
 		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
-	if err := query.Find(&apps).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+	if err := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&apps).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, apps, nil
+}
+
+func ListAppsSimple(envID string) ([]entities.App, error) {
+	var apps []entities.App
+	if err := db.DB.Select("id, slug, name, description, code_repository_id").Where("env_id = ?", envID).Order("name").Find(&apps).Error; err != nil {
 		return nil, err
 	}
 	return apps, nil

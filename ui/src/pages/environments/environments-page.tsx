@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
   Clock,
   LayoutGrid,
@@ -64,11 +64,23 @@ export function EnvironmentsPage() {
     localStorage.setItem(ENVIRONMENTS_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
 
-  const { data: envs = [], isLoading, refetch } = useQuery<Env[]>({
-    queryKey: ['envs', activeProjectId, debouncedSearch],
-    queryFn: () => envsApi.list(activeProjectId!, debouncedSearch),
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
+  const { data: envsResponse, isLoading, refetch } = useQuery({
+    queryKey: ['envs', activeProjectId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
+    queryFn: () => envsApi.list(activeProjectId!, {
+      search: debouncedSearch,
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize
+    }),
     enabled: !!activeProjectId,
   })
+
+  const envs = envsResponse?.items ?? []
+  const paginationInfo = envsResponse?.pagination
 
   const deleteMutation = useMutation({
     mutationFn: (envId: string) => envsApi.delete(envId),
@@ -218,6 +230,10 @@ export function EnvironmentsPage() {
             data={safeEnvs}
             viewMode={viewMode}
             onRefresh={refetch}
+            manualPagination
+            totalCount={paginationInfo?.total || 0}
+            pagination={pagination}
+            onPaginationChange={setPagination}
             leftActions={() => toolbarLeft}
             toolbarActions={() => toolbarRight}
             renderCard={(env) => (

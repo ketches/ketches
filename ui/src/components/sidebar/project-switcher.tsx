@@ -94,9 +94,9 @@ export function ProjectSwitcher() {
   const [selectedProject, setSelectedProject] = React.useState<Project | null>(null)
   const { activeProjectId, setActiveProjectId } = useProjectStore()
 
-  const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['projects'],
-    queryFn: projectsApi.list,
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects-simple'],
+    queryFn: projectsApi.listSimple,
   })
 
   const safeProjects = Array.isArray(projects) ? projects : []

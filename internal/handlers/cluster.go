@@ -14,7 +14,14 @@ import (
 )
 
 func ListClusters(c *gin.Context) {
-	clusters, err := services.ListClusters()
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	total, clusters, err := services.ListClusters(req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -37,12 +44,36 @@ func ListClusters(c *gin.Context) {
 		})
 	}
 
-	log.Printf("Listing clusters: found %d records", len(res))
+	log.Printf("Listing clusters: found %d records out of %d total", len(res), total)
+	api.Success(c, models.ListClusterResponse{
+		Items:      res,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
+}
+
+func ListClustersSimple(c *gin.Context) {
+	clusters, err := services.ListClustersSimple()
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	res := []models.SimpleResponse{}
+	for _, cluster := range clusters {
+		res = append(res, models.SimpleResponse{
+			ID:          cluster.ID,
+			Slug:        cluster.Slug,
+			Name:        cluster.Name,
+			Description: cluster.Description,
+			Status:      cluster.ConnectionStatus,
+		})
+	}
+
 	api.Success(c, res)
 }
 
 func ListPublicClusters(c *gin.Context) {
-	clusters, err := services.ListClusters()
+	clusters, err := services.ListClustersSimple()
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

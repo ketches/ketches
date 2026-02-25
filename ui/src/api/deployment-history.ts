@@ -1,4 +1,4 @@
-import client from "./client"
+import client, { type PaginationResponse } from "./client"
 
 export interface DeploymentHistory {
   id: string
@@ -28,8 +28,10 @@ export interface DeploymentHistory {
 }
 
 export const deploymentHistoryApi = {
-  list: async (appId: string) => {
-    return client.get(`/v1/apps/${appId}/deployment-history`) as Promise<DeploymentHistory[]>
+  list: async (appId: string, page = 1, pageSize = 10) => {
+    return client.get(`/v1/apps/${appId}/deployment-history`, {
+      params: { page, page_size: pageSize }
+    }) as Promise<{ items: DeploymentHistory[], pagination: PaginationResponse }>
   },
   
   rollback: async (appId: string, historyId: string) => {

@@ -21,7 +21,7 @@ func CreateAppEnvVar(appID string, key, value string) (*entities.AppEnvVar, erro
 	if err == nil {
 		return nil, errors.New("environment variable with this key already exists for this app")
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 

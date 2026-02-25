@@ -24,3 +24,8 @@ type EnvResponse struct {
 	Status           string    `json:"status"`
 	CreatedAt        time.Time `json:"created_at"`
 }
+
+type ListEnvResponse struct {
+	Items      []EnvResponse      `json:"items"`
+	Pagination PaginationResponse `json:"pagination"`
+}

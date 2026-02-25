@@ -16,6 +16,11 @@ type ClusterResponse struct {
 	CreatedAt              time.Time  `json:"created_at"`
 }
 
+type ListClusterResponse struct {
+	Items      []ClusterResponse  `json:"items"`
+	Pagination PaginationResponse `json:"pagination"`
+}
+
 type ClusterPublicResponse struct {
 	ID               string `json:"id"`
 	Slug             string `json:"slug"`

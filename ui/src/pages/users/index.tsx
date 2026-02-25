@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
-import { Trash2, User, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from "lucide-react"
-import { useState, useEffect } from "react"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
+import { Search, Trash2, User } from "lucide-react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
-import { usersApi, type User as UserType, type ListUsersResponse } from "@/api/users"
+import { usersApi, type ListUsersResponse, type User as UserType } from "@/api/users"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -49,8 +49,10 @@ export function UsersPage() {
   const queryClient = useQueryClient()
 
   // Pagination and search state
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
 
@@ -58,19 +60,18 @@ export function UsersPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput)
-      setPage(1) // Reset to first page on search
+      setPagination(p => ({ ...p, pageIndex: 0 })) // Reset to first page on search
     }, 300)
     return () => clearTimeout(timer)
   }, [searchInput])
 
   const { data, isLoading, refetch } = useQuery<ListUsersResponse>({
-    queryKey: ['users', page, pageSize, search],
-    queryFn: () => usersApi.list({ page, pageSize, search }),
+    queryKey: ['users', pagination.pageIndex, pagination.pageSize, search],
+    queryFn: () => usersApi.list({ page: pagination.pageIndex + 1, pageSize: pagination.pageSize, search }),
   })
 
   const users = data?.users ?? []
   const total = data?.total ?? 0
-  const totalPages = Math.ceil(total / pageSize)
 
   const updateRoleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: string }) =>
@@ -276,7 +277,10 @@ export function UsersPage() {
         columns={columns}
         data={users}
         onRefresh={refetch}
-        hidePagination={true}
+        manualPagination
+        totalCount={total}
+        pagination={pagination}
+        onPaginationChange={setPagination}
         toolbarActions={(table) => {
           const selectedRows = table.getFilteredSelectedRowModel().rows
           return (
@@ -300,77 +304,6 @@ export function UsersPage() {
           )
         }}
       />
-
-      {/* Custom Server-side Pagination */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>Showing {users.length} of {total} users</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <p className="text-xs font-medium">Rows per page</p>
-            <Select
-              value={`${pageSize}`}
-              onValueChange={(value) => {
-                setPageSize(Number(value))
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue placeholder={pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 20, 30, 50, 100].map((size) => (
-                  <SelectItem key={size} value={`${size}`}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex w-[100px] items-center justify-center text-xs font-medium">
-            Page {page} of {totalPages || 1}
-          </div>
-          <div className="flex items-center space-x-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setPage(1)}
-              disabled={page <= 1}
-            >
-              <ChevronsLeft className="h-4 w-4" />
-              <span className="sr-only">First page</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="sr-only">Previous page</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-              <span className="sr-only">Next page</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setPage(totalPages)}
-              disabled={page >= totalPages}
-            >
-              <ChevronsRight className="h-4 w-4" />
-              <span className="sr-only">Last page</span>
-            </Button>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

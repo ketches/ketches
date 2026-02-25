@@ -99,8 +99,8 @@ export function CodeRepositoryDetailPage() {
   })
 
   const { data: repos = [] } = useQuery({
-    queryKey: ["code-repositories", repo?.project_id],
-    queryFn: () => codeRepositoriesApi.list(repo!.project_id),
+    queryKey: ["code-repositories-simple", repo?.project_id],
+    queryFn: () => codeRepositoriesApi.listSimple(repo!.project_id),
     enabled: !!repo?.project_id,
   })
 

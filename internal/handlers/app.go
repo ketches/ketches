@@ -121,8 +121,15 @@ func ExecAppContainerTerminal(c *gin.Context) {
 
 func ListApps(c *gin.Context) {
 	envID := c.Param("envID")
-	search := c.Query("search")
-	apps, err := services.ListApps(envID, search)
+
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	total, apps, err := services.ListApps(envID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -131,6 +138,38 @@ func ListApps(c *gin.Context) {
 	res := []models.AppResponse{}
 	for _, a := range apps {
 		res = append(res, toAppResponse(c, &a))
+	}
+
+	api.Success(c, models.ListAppResponse{
+		Items:      res,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
+}
+
+func ListAppsSimple(c *gin.Context) {
+	envID := c.Param("envID")
+	apps, err := services.ListAppsSimple(envID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	res := []models.SimpleResponse{}
+	for _, a := range apps {
+		codeRepoID := ""
+		if a.CodeRepositoryID != nil {
+			codeRepoID = *a.CodeRepositoryID
+		}
+		res = append(res, models.SimpleResponse{
+			ID:          a.ID,
+			Slug:        a.Slug,
+			Name:        a.Name,
+			Description: a.Description,
+			Status:      getAppStatus(c, &a),
+			Metadata: map[string]string{
+				"code_repository_id": codeRepoID,
+			},
+		})
 	}
 
 	api.Success(c, res)

@@ -12,7 +12,14 @@ import (
 func ListClusterRegistries(c *gin.Context) {
 	clusterID := c.Param("clusterID")
 
-	registries, err := services.ListClusterRegistries(clusterID)
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	total, registries, err := services.ListClusterRegistries(clusterID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -22,7 +29,10 @@ func ListClusterRegistries(c *gin.Context) {
 	for _, r := range registries {
 		res = append(res, services.ToContainerRegistryResponse(&r))
 	}
-	api.Success(c, res)
+	api.Success(c, models.ListContainerRegistryResponse{
+		Items:      res,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
 }
 
 func CreateClusterRegistry(c *gin.Context) {
@@ -46,7 +56,14 @@ func CreateClusterRegistry(c *gin.Context) {
 func ListProjectContainerRegistries(c *gin.Context) {
 	projectID := c.Param("projectID")
 
-	registries, err := services.ListProjectContainerRegistries(projectID)
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	total, registries, err := services.ListProjectContainerRegistries(projectID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -56,6 +73,30 @@ func ListProjectContainerRegistries(c *gin.Context) {
 	for _, r := range registries {
 		res = append(res, services.ToContainerRegistryResponse(&r))
 	}
+	api.Success(c, models.ListContainerRegistryResponse{
+		Items:      res,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
+}
+
+func ListProjectContainerRegistriesSimple(c *gin.Context) {
+	projectID := c.Param("projectID")
+	registries, err := services.ListProjectContainerRegistriesSimple(projectID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	res := []models.SimpleResponse{}
+	for _, r := range registries {
+		res = append(res, models.SimpleResponse{
+			ID:          r.ID,
+			Name:        r.Name,
+			Description: r.Endpoint, // endpoint as description for registries
+			Status:      string(r.Provider),
+		})
+	}
+
 	api.Success(c, res)
 }
 

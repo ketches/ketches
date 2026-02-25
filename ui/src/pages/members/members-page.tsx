@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { Trash2, Users } from "lucide-react"
 import { toast } from "sonner"
 
@@ -33,11 +33,22 @@ export function MembersPage() {
   const queryClient = useQueryClient()
   const { activeProjectId } = useProjectStore()
 
-  const { data: members = [], isLoading, refetch } = useQuery<ProjectMember[]>({
-    queryKey: ['project-members', activeProjectId],
-    queryFn: () => projectsApi.listMembers(activeProjectId!),
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
+  const { data: response, isLoading, refetch } = useQuery({
+    queryKey: ['project-members', activeProjectId, pagination.pageIndex, pagination.pageSize],
+    queryFn: () => projectsApi.listMembers(activeProjectId!, {
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize
+    }),
     enabled: !!activeProjectId,
   })
+
+  const members = response?.items ?? []
+  const paginationInfo = response?.pagination
 
   const updateRoleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: string }) =>
@@ -195,6 +206,10 @@ export function MembersPage() {
           columns={columns}
           data={members}
           onRefresh={refetch}
+          manualPagination
+          totalCount={paginationInfo?.total || 0}
+          pagination={pagination}
+          onPaginationChange={setPagination}
           searchKey="username"
           searchPlaceholder="Search members..."
           toolbarActions={(table) => {

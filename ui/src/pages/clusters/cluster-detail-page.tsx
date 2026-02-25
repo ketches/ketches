@@ -308,8 +308,8 @@ export function ClusterDetailPage() {
   })
 
   const { data: clusters = [] } = useQuery({
-    queryKey: ["clusters"],
-    queryFn: () => clustersApi.list(),
+    queryKey: ["clusters-simple"],
+    queryFn: () => clustersApi.listSimple(),
   })
 
   const safeClusters = Array.isArray(clusters) ? clusters : []

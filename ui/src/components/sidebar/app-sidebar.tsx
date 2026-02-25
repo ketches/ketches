@@ -1,6 +1,5 @@
 import {
   Box,
-  FileText,
   FolderGit2,
   LayoutDashboard,
   ShipWheel,
@@ -49,11 +48,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Container Registries",
       url: "/container-registries",
       icon: Warehouse,
-    },
-    {
-      title: "Templates",
-      url: "/templates",
-      icon: FileText,
     },
     {
       title: "Clusters",

@@ -489,16 +489,16 @@ export function ApplicationDetailPage() {
   const projectIdToUse = activeProjectId || currentEnv?.project_id
 
   const { data: envs = [] } = useQuery({
-    queryKey: ['envs', projectIdToUse],
-    queryFn: () => envsApi.list(projectIdToUse!),
+    queryKey: ['envs-simple', projectIdToUse],
+    queryFn: () => envsApi.listSimple(projectIdToUse!),
     enabled: !!projectIdToUse,
   })
 
   const safeEnvs = Array.isArray(envs) ? envs : []
 
-  const { data: apps = [] } = useQuery<App[]>({
-    queryKey: ['apps', app?.env_id],
-    queryFn: () => appsApi.list(app!.env_id!, ''),
+  const { data: apps = [] } = useQuery({
+    queryKey: ['apps-simple', app?.env_id],
+    queryFn: () => appsApi.listSimple(app!.env_id!),
     enabled: !!app?.env_id,
   })
 

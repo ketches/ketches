@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { Box, Orbit, RotateCcw, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -46,17 +46,41 @@ export function RecycleBinPage() {
   const [restoringItemId, setRestoringItemId] = React.useState<string | null>(null)
   const [deletingItemId, setDeletingItemId] = React.useState<string | null>(null)
 
-  const { data: apps = [], isLoading: _appsLoading, refetch: refetchApps } = useQuery<RecycleBinApp[]>({
-    queryKey: ['recycle-bin-apps', activeProjectId, debouncedSearch],
-    queryFn: () => recycleBinApi.listApps(activeProjectId ?? undefined, debouncedSearch),
+  const [appsPagination, setAppsPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
+  const [envsPagination, setEnvsPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
+  const { data: appsResponse, isLoading: _appsLoading, refetch: refetchApps } = useQuery({
+    queryKey: ['recycle-bin-apps', activeProjectId, debouncedSearch, appsPagination.pageIndex, appsPagination.pageSize],
+    queryFn: () => recycleBinApi.listApps(activeProjectId ?? undefined, {
+      search: debouncedSearch,
+      page: appsPagination.pageIndex + 1,
+      pageSize: appsPagination.pageSize
+    }),
     enabled: !!activeProjectId,
   })
 
-  const { data: envs = [], isLoading: _envsLoading, refetch: refetchEnvs } = useQuery<RecycleBinEnv[]>({
-    queryKey: ['recycle-bin-envs', activeProjectId, debouncedSearch],
-    queryFn: () => recycleBinApi.listEnvs(activeProjectId ?? undefined, debouncedSearch),
+  const apps = React.useMemo(() => appsResponse?.items ?? [], [appsResponse])
+  const appsPaginationInfo = appsResponse?.pagination
+
+  const { data: envsResponse, isLoading: _envsLoading, refetch: refetchEnvs } = useQuery({
+    queryKey: ['recycle-bin-envs', activeProjectId, debouncedSearch, envsPagination.pageIndex, envsPagination.pageSize],
+    queryFn: () => recycleBinApi.listEnvs(activeProjectId ?? undefined, {
+      search: debouncedSearch,
+      page: envsPagination.pageIndex + 1,
+      pageSize: envsPagination.pageSize
+    }),
     enabled: !!activeProjectId,
   })
+
+  const envs = React.useMemo(() => envsResponse?.items ?? [], [envsResponse])
+  const envsPaginationInfo = envsResponse?.pagination
 
   const selectedAppIds = React.useMemo(() => {
     return Object.keys(selectedAppRows).filter(key => (selectedAppRows as Record<string, boolean>)[key]).map(index => apps[parseInt(index)]?.id).filter(Boolean)
@@ -379,8 +403,6 @@ export function RecycleBinPage() {
     )
   }
 
-  const safeApps = Array.isArray(apps) ? apps : []
-  const safeEnvs = Array.isArray(envs) ? envs : []
   // const isLoading = appsLoading || envsLoading
   // const isEmpty = safeApps.length === 0 && safeEnvs.length === 0
 
@@ -407,12 +429,12 @@ export function RecycleBinPage() {
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "apps" | "envs")}>
         <TabsList>
-          <TabsTrigger value="apps">Applications ({safeApps.length})</TabsTrigger>
-          <TabsTrigger value="envs">Environments ({safeEnvs.length})</TabsTrigger>
+          <TabsTrigger value="apps">Applications ({appsPaginationInfo?.total || 0})</TabsTrigger>
+          <TabsTrigger value="envs">Environments ({envsPaginationInfo?.total || 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="apps" className="mt-2">
-          {safeApps.length === 0 ? (
+          {apps.length === 0 ? (
             <EmptyState
               title="No deleted applications"
               description="Deleted applications will appear here. You can restore or permanently delete them."
@@ -421,18 +443,22 @@ export function RecycleBinPage() {
           ) : (
             <DataTable
               columns={appColumns}
-              data={safeApps}
+              data={apps}
               leftActions={() => toolbarLeft}
               batchActions={batchActions}
               rowSelection={selectedAppRows}
               onRowSelectionChange={setSelectedAppRows}
               onRefresh={refetchApps}
+              manualPagination
+              totalCount={appsPaginationInfo?.total || 0}
+              pagination={appsPagination}
+              onPaginationChange={setAppsPagination}
             />
           )}
         </TabsContent>
 
         <TabsContent value="envs" className="mt-2">
-          {safeEnvs.length === 0 ? (
+          {envs.length === 0 ? (
             <EmptyState
               title="No deleted environments"
               description="Deleted environments will appear here. You can restore or permanently delete them."
@@ -441,12 +467,16 @@ export function RecycleBinPage() {
           ) : (
             <DataTable
               columns={envColumns}
-              data={safeEnvs}
+              data={envs}
               leftActions={() => toolbarLeft}
               batchActions={batchActions}
               rowSelection={selectedEnvRows}
               onRowSelectionChange={setSelectedEnvRows}
               onRefresh={refetchEnvs}
+              manualPagination
+              totalCount={envsPaginationInfo?.total || 0}
+              pagination={envsPagination}
+              onPaginationChange={setEnvsPagination}
             />
           )}
         </TabsContent>

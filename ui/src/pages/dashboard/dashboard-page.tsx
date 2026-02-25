@@ -38,12 +38,12 @@ function AdminDashboard() {
   })
 
   const { data: clusters = [] } = useQuery({
-    queryKey: ["clusters"],
-    queryFn: () => clustersApi.list(),
+    queryKey: ["clusters-simple"],
+    queryFn: () => clustersApi.listSimple(),
   })
 
-  const connectedClusters = clusters.filter((c) => c.connection_status === "connected").length
-  const disconnectedClusters = clusters.filter((c) => c.connection_status === "disconnected").length
+  const connectedClusters = clusters.filter((c) => c.status === "connected").length
+  const disconnectedClusters = clusters.filter((c) => c.status === "disconnected").length
 
   if (isLoading) {
     return (
@@ -132,8 +132,8 @@ function AdminDashboard() {
                         <p className="text-xs text-muted-foreground font-mono">{cluster.slug}</p>
                       </div>
                     </div>
-                    <ColorBadge color={cluster.connection_status === "connected" ? "green" : cluster.connection_status === "disconnected" ? "red" : "gray"}>
-                      {cluster.connection_status || "unknown"}
+                    <ColorBadge color={cluster.status === "connected" ? "green" : cluster.status === "disconnected" ? "red" : "gray"}>
+                      {cluster.status || "unknown"}
                     </ColorBadge>
                   </div>
                 ))}
@@ -206,8 +206,8 @@ function UserDashboard() {
   })
 
   const { data: environments = [] } = useQuery({
-    queryKey: ["environments", activeProjectId],
-    queryFn: () => envsApi.list(activeProjectId!),
+    queryKey: ["environments-simple", activeProjectId],
+    queryFn: () => envsApi.listSimple(activeProjectId!),
     enabled: !!activeProjectId,
   })
 
@@ -302,14 +302,14 @@ function UserDashboard() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h4 className="font-medium">{env.name}</h4>
-                      <p className="text-xs text-muted-foreground font-mono">{env.cluster_namespace}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{env.metadata?.cluster_namespace}</p>
                     </div>
                     <ColorBadge color={env.status === "ready" ? "green" : "gray"}>{env.status}</ColorBadge>
                   </div>
 
                   <EnvironmentResourceMetrics
-                    clusterId={env.cluster_id}
-                    namespace={env.cluster_namespace}
+                    clusterId={env.metadata?.cluster_id || ""}
+                    namespace={env.metadata?.cluster_namespace || ""}
                   />
                 </div>
               ))}

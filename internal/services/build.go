@@ -20,14 +20,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func ListBuilds(appID string) ([]entities.Build, error) {
+func ListBuilds(appID string, page, pageSize int) (int64, []entities.Build, error) {
+	var total int64
 	var builds []entities.Build
-	if err := db.DB.Where("app_id = ?", appID).
-		Order("build_number desc").
-		Find(&builds).Error; err != nil {
-		return nil, err
+	query := db.DB.Model(&entities.Build{}).Where("app_id = ?", appID)
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
 	}
-	return builds, nil
+	if err := query.Order("build_number desc").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&builds).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, builds, nil
 }
 
 func GetBuild(buildID string) (*entities.Build, error) {

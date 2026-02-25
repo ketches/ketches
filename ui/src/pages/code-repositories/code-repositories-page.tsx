@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
   FolderGit2,
   LayoutGrid,
@@ -62,11 +62,23 @@ export function CodeRepositoriesPage() {
     localStorage.setItem(CODE_REPOS_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
 
-  const { data: repos = [], isLoading, refetch } = useQuery({
-    queryKey: ["code-repositories", activeProjectId],
-    queryFn: () => codeRepositoriesApi.list(activeProjectId!),
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
+  const { data: reposResponse, isLoading, refetch } = useQuery({
+    queryKey: ["code-repositories", activeProjectId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
+    queryFn: () => codeRepositoriesApi.list(activeProjectId!, {
+      search: debouncedSearch,
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize
+    }),
     enabled: !!activeProjectId,
   })
+
+  const repos = reposResponse?.items ?? []
+  const paginationInfo = reposResponse?.pagination
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => codeRepositoriesApi.delete(id),
@@ -84,16 +96,7 @@ export function CodeRepositoriesPage() {
     },
   })
 
-  const safeRepos = React.useMemo(() => Array.isArray(repos) ? repos : [], [repos])
-  const filteredRepos = React.useMemo(() => {
-    if (!debouncedSearch.trim()) return safeRepos
-    const q = debouncedSearch.toLowerCase()
-    return safeRepos.filter(
-      (r) =>
-        (r.name?.toLowerCase().includes(q)) ||
-        (r.git_repo_url?.toLowerCase().includes(q))
-    )
-  }, [safeRepos, debouncedSearch])
+  const safeRepos = Array.isArray(repos) ? repos : []
 
   const columns: ColumnDef<CodeRepository>[] = [
     {
@@ -200,9 +203,13 @@ export function CodeRepositoriesPage() {
 
           <DataTable
             columns={columns}
-            data={filteredRepos}
+            data={safeRepos}
             viewMode={viewMode}
             onRefresh={refetch}
+            manualPagination
+            totalCount={paginationInfo?.total || 0}
+            pagination={pagination}
+            onPaginationChange={setPagination}
             leftActions={() => (
               <Input
                 className="flex flex-1 max-w-sm min-w-75"

@@ -54,10 +54,17 @@ interface DataTableProps<TData, TValue> {
   renderCard?: (data: TData, table: TanstackTable<TData>) => React.ReactNode
   viewMode?: "list" | "card"
   borderless?: boolean
+  // Pagination
+  pagination?: PaginationState
+  onPaginationChange?: OnChangeFn<PaginationState>
+  totalCount?: number
+  manualPagination?: boolean
   // Controlled row selection
   rowSelection?: RowSelectionState
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
 }
+
+import { type PaginationState } from "@tanstack/react-table"
 
 export function DataTable<TData, TValue>({
   columns,
@@ -74,6 +81,10 @@ export function DataTable<TData, TValue>({
   renderCard,
   viewMode = "list",
   borderless = false,
+  pagination: paginationProp,
+  onPaginationChange: onPaginationChangeProp,
+  totalCount,
+  manualPagination = false,
   rowSelection: controlledRowSelection,
   onRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
@@ -84,9 +95,16 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
   const [internalRowSelection, setInternalRowSelection] = React.useState({})
+  const [internalPagination, setInternalPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
   const rowSelection = controlledRowSelection ?? internalRowSelection
   const handleRowSelectionChange = onRowSelectionChange ?? setInternalRowSelection
+
+  const pagination = paginationProp ?? internalPagination
+  const onPaginationChange = onPaginationChangeProp ?? setInternalPagination
 
   const table = useReactTable({
     data,
@@ -94,16 +112,20 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: manualPagination ? undefined : getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: handleRowSelectionChange,
+    onPaginationChange,
+    manualPagination: manualPagination,
+    pageCount: manualPagination && totalCount !== undefined ? Math.ceil(totalCount / (pagination.pageSize || 10)) : undefined,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      pagination,
     },
   })
 

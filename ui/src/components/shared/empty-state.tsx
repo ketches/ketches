@@ -8,7 +8,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { cn } from "@/lib/utils"
-import { Box, FileText, FolderGit2, Orbit, Plus, ShipWheel, Warehouse, type LucideIcon } from "lucide-react"
+import { Box, FolderGit2, Orbit, Plus, ShipWheel, Warehouse, type LucideIcon } from "lucide-react"
 import * as React from "react"
 
 interface EmptyStateProps {
@@ -110,19 +110,6 @@ export function EmptyCodeRepositoryState({ onAction }: { onAction?: () => void }
       description="Add a Git repository to manage build configs and deploy to environments."
       icon={FolderGit2}
       actionText="Add Repository"
-      onAction={onAction}
-      actionIcon={Plus}
-    />
-  )
-}
-
-export function EmptyTemplateState({ onAction }: { onAction?: () => void }) {
-  return (
-    <EmptyState
-      title="No templates yet"
-      description="Create your first template to define reusable configurations for your resources."
-      icon={FileText}
-      actionText="Create Template"
       onAction={onAction}
       actionIcon={Plus}
     />

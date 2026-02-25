@@ -11,13 +11,25 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
-func ListEnvs(projectID string, search string) ([]entities.Env, error) {
+func ListEnvs(projectID string, page, pageSize int, search string) (int64, []entities.Env, error) {
 	var envs []entities.Env
-	query := db.DB.Where("project_id = ?", projectID)
+	var total int64
+	query := db.DB.Model(&entities.Env{}).Where("project_id = ?", projectID)
 	if search != "" {
 		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
-	if err := query.Find(&envs).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+	if err := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&envs).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, envs, nil
+}
+
+func ListEnvsSimple(projectID string) ([]entities.Env, error) {
+	var envs []entities.Env
+	if err := db.DB.Select("id, slug, name, description, cluster_id, cluster_namespace, is_build_env").Where("project_id = ?", projectID).Order("name").Find(&envs).Error; err != nil {
 		return nil, err
 	}
 	return envs, nil

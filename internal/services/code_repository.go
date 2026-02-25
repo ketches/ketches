@@ -60,11 +60,28 @@ func RepoSlugFromName(name string) string {
 	return s
 }
 
-func ListCodeRepositories(projectID string) ([]entities.CodeRepository, error) {
+func ListCodeRepositories(projectID string, page, pageSize int, search string) (int64, []entities.CodeRepository, error) {
 	var repos []entities.CodeRepository
-	if err := db.DB.Where("project_id = ?", projectID).
-		Order("created_at asc").
+	var total int64
+	query := db.DB.Model(&entities.CodeRepository{}).Where("project_id = ?", projectID)
+	if search != "" {
+		query = query.Where("name LIKE ? OR slug LIKE ? OR git_repo_url LIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+	if err := query.Order("created_at asc").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
 		Find(&repos).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, repos, nil
+}
+
+func ListCodeRepositoriesSimple(projectID string) ([]entities.CodeRepository, error) {
+	var repos []entities.CodeRepository
+	if err := db.DB.Select("id, slug, name, description").Where("project_id = ?", projectID).Order("name").Find(&repos).Error; err != nil {
 		return nil, err
 	}
 	return repos, nil

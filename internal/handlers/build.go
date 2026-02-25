@@ -11,8 +11,14 @@ import (
 
 func ListBuilds(c *gin.Context) {
 	appID := c.Param("appID")
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
 
-	builds, err := services.ListBuilds(appID)
+	total, builds, err := services.ListBuilds(appID, req.Page, req.PageSize)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -22,7 +28,11 @@ func ListBuilds(c *gin.Context) {
 	for _, b := range builds {
 		res = append(res, services.ToBuildResponse(&b))
 	}
-	api.Success(c, res)
+
+	api.Success(c, gin.H{
+		"items":      res,
+		"pagination": models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
 }
 
 func TriggerBuild(c *gin.Context) {

@@ -11,28 +11,44 @@ import (
 
 func ListRecycleBinApps(c *gin.Context) {
 	projectID := c.Query("project_id")
-	search := c.Query("search")
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
 
-	apps, err := services.ListDeletedApps(projectID, search)
+	total, apps, err := services.ListDeletedApps(projectID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	api.Success(c, apps)
+	api.Success(c, models.ListRecycleBinAppResponse{
+		Items:      apps,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
 }
 
 func ListRecycleBinEnvs(c *gin.Context) {
 	projectID := c.Query("project_id")
-	search := c.Query("search")
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
 
-	envs, err := services.ListDeletedEnvs(projectID, search)
+	total, envs, err := services.ListDeletedEnvs(projectID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	api.Success(c, envs)
+	api.Success(c, models.ListRecycleBinEnvResponse{
+		Items:      envs,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
 }
 
 func RestoreApps(c *gin.Context) {

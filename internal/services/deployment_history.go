@@ -10,12 +10,17 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
-func ListDeploymentHistory(appID string) ([]entities.DeploymentHistory, error) {
+func ListDeploymentHistory(appID string, page, pageSize int) (int64, []entities.DeploymentHistory, error) {
+	var total int64
 	var histories []entities.DeploymentHistory
-	if err := db.DB.Where("app_id = ?", appID).Order("created_at DESC").Find(&histories).Error; err != nil {
-		return nil, err
+	query := db.DB.Model(&entities.DeploymentHistory{}).Where("app_id = ?", appID)
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
 	}
-	return histories, nil
+	if err := query.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&histories).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, histories, nil
 }
 
 func CreateDeploymentHistory(history *entities.DeploymentHistory) error {

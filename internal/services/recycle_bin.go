@@ -6,9 +6,10 @@ import (
 	"github.com/ketches/ketches/internal/models"
 )
 
-func ListDeletedApps(projectID string, search string) ([]models.RecycleBinAppResponse, error) {
+func ListDeletedApps(projectID string, page, pageSize int, search string) (int64, []models.RecycleBinAppResponse, error) {
 	var apps []entities.App
-	query := db.DB.Unscoped().Where("apps.deleted_at IS NOT NULL")
+	var total int64
+	query := db.DB.Unscoped().Model(&entities.App{}).Where("apps.deleted_at IS NOT NULL")
 
 	if projectID != "" {
 		query = query.Joins("JOIN envs ON apps.env_id = envs.id").
@@ -19,8 +20,15 @@ func ListDeletedApps(projectID string, search string) ([]models.RecycleBinAppRes
 		query = query.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
 
-	if err := query.Preload("Env.Project").Find(&apps).Error; err != nil {
-		return nil, err
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	if err := query.Preload("Env.Project").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&apps).Error; err != nil {
+		return 0, nil, err
 	}
 
 	var result []models.RecycleBinAppResponse
@@ -40,12 +48,13 @@ func ListDeletedApps(projectID string, search string) ([]models.RecycleBinAppRes
 		})
 	}
 
-	return result, nil
+	return total, result, nil
 }
 
-func ListDeletedEnvs(projectID string, search string) ([]models.RecycleBinEnvResponse, error) {
+func ListDeletedEnvs(projectID string, page, pageSize int, search string) (int64, []models.RecycleBinEnvResponse, error) {
 	var envs []entities.Env
-	query := db.DB.Unscoped().Where("envs.deleted_at IS NOT NULL")
+	var total int64
+	query := db.DB.Unscoped().Model(&entities.Env{}).Where("envs.deleted_at IS NOT NULL")
 
 	if projectID != "" {
 		query = query.Where("envs.project_id = ?", projectID)
@@ -55,8 +64,15 @@ func ListDeletedEnvs(projectID string, search string) ([]models.RecycleBinEnvRes
 		query = query.Where("envs.name LIKE ? OR envs.slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
 
-	if err := query.Preload("Project").Preload("Cluster").Find(&envs).Error; err != nil {
-		return nil, err
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	if err := query.Preload("Project").Preload("Cluster").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&envs).Error; err != nil {
+		return 0, nil, err
 	}
 
 	var result []models.RecycleBinEnvResponse
@@ -79,7 +95,7 @@ func ListDeletedEnvs(projectID string, search string) ([]models.RecycleBinEnvRes
 		})
 	}
 
-	return result, nil
+	return total, result, nil
 }
 
 func BatchRestoreApps(appIDs []string) error {

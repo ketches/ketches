@@ -2,6 +2,7 @@ import type { App } from './apps'
 import type { Build } from './builds'
 import client from './client'
 import type { ContainerRegistry } from './container-registries'
+import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
 
 export interface CodeRepository {
   id: string
@@ -104,8 +105,11 @@ export interface DeployCodeRepositoryBuildRequest {
 }
 
 export const codeRepositoriesApi = {
-  list: async (projectId: string) => {
-    return client.get(`/v1/projects/${projectId}/code-repositories`) as Promise<CodeRepository[]>
+  list: async (projectId: string, params?: PaginationParams) => {
+    return client.get(`/v1/projects/${projectId}/code-repositories`, { params }) as Promise<{ items: CodeRepository[], pagination: PaginationResponse }>
+  },
+  listSimple: async (projectId: string) => {
+    return client.get(`/v1/projects/${projectId}/code-repositories/simple`) as Promise<SimpleResponse[]>
   },
   create: async (projectId: string, data: CreateCodeRepositoryRequest) => {
     return client.post(`/v1/projects/${projectId}/code-repositories`, data) as Promise<CodeRepository>

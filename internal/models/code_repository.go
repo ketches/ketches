@@ -36,6 +36,11 @@ type CodeRepositoryResponse struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+type ListCodeRepositoryResponse struct {
+	Items      []CodeRepositoryResponse `json:"items"`
+	Pagination PaginationResponse       `json:"pagination"`
+}
+
 // CreateCodeRepositoryBuildConfigRequest: used when adding a build config under a repo.
 type CreateCodeRepositoryBuildConfigRequest struct {
 	Name           string `json:"name" binding:"required"`

@@ -6,7 +6,7 @@ import {
 } from "lucide-react"
 import * as React from "react"
 
-import { envsApi, type Env } from "@/api/envs"
+import { envsApi } from "@/api/envs"
 import { ApplicationList } from "@/components/applications/application-list"
 import { CreateEnvironmentDialog } from "@/components/environment/create-environment-dialog"
 import { PageHeader } from "@/components/layout/page-header"
@@ -25,11 +25,13 @@ export function ApplicationsPage() {
   const [createEnvDialogOpen, setCreateEnvDialogOpen] = React.useState(false)
   const { activeProjectId, activeEnvId, setActiveEnvId } = useProjectStore()
 
-  const { data: envs = [], isLoading } = useQuery<Env[]>({
+  const { data: envsResponse, isLoading } = useQuery({
     queryKey: ['envs', activeProjectId],
     queryFn: () => envsApi.list(activeProjectId!),
     enabled: !!activeProjectId,
   })
+
+  const envs = envsResponse?.items ?? []
 
   const safeEnvs = Array.isArray(envs) ? envs : []
   const activeEnv = safeEnvs.find(e => e.id === activeEnvId) || safeEnvs[0]

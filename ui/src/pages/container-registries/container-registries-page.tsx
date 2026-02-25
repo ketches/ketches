@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
   LayoutGrid,
   List as ListIcon,
@@ -65,23 +65,24 @@ export function ContainerRegistriesPage() {
     localStorage.setItem(REGISTRIES_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
 
-  const { data: registries = [], isLoading, refetch } = useQuery({
-    queryKey: ["registries", "project", activeProjectId],
-    queryFn: () => containerRegistriesApi.listByProject(activeProjectId!),
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
+  const { data: registriesResponse, isLoading, refetch } = useQuery({
+    queryKey: ["registries", "project", activeProjectId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
+    queryFn: () => containerRegistriesApi.listByProject(activeProjectId!, {
+      search: debouncedSearch,
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize
+    }),
     enabled: !!activeProjectId,
   })
 
+  const registries = registriesResponse?.items ?? []
+  const paginationInfo = registriesResponse?.pagination
   const safeRegistries = Array.isArray(registries) ? registries : []
-  const filteredRegistries = React.useMemo(() => {
-    if (!debouncedSearch.trim()) return safeRegistries
-    const q = debouncedSearch.toLowerCase()
-    return safeRegistries.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.endpoint.toLowerCase().includes(q) ||
-        registryProviderLabels[r.provider].toLowerCase().includes(q)
-    )
-  }, [safeRegistries, debouncedSearch])
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => containerRegistriesApi.delete(id),
@@ -251,9 +252,13 @@ export function ContainerRegistriesPage() {
 
           <DataTable
             columns={columns}
-            data={filteredRegistries}
+            data={safeRegistries}
             viewMode={viewMode}
             onRefresh={refetch}
+            manualPagination
+            totalCount={paginationInfo?.total || 0}
+            pagination={pagination}
+            onPaginationChange={setPagination}
             leftActions={() => toolbarLeft}
             toolbarActions={() => toolbarRight}
             renderCard={(reg) => (

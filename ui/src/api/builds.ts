@@ -1,4 +1,4 @@
-import client from './client'
+import client, { type PaginationResponse } from './client'
 
 export type BuildStatus = 'pending' | 'cloning' | 'building' | 'succeeded' | 'failed' | 'cancelled'
 export type BuildTriggerType = 'manual' | 'webhook' | 'auto'
@@ -43,8 +43,10 @@ export interface TriggerBuildRequest {
 }
 
 export const buildsApi = {
-  list: async (appId: string) => {
-    return client.get(`/v1/apps/${appId}/builds`) as Promise<Build[]>
+  list: async (appId: string, page = 1, pageSize = 10) => {
+    return client.get(`/v1/apps/${appId}/builds`, {
+      params: { page, page_size: pageSize }
+    }) as Promise<{ items: Build[], pagination: PaginationResponse }>
   },
   trigger: async (appId: string, data?: TriggerBuildRequest) => {
     return client.post(`/v1/apps/${appId}/builds`, data || {}) as Promise<Build>

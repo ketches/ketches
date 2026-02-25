@@ -19,12 +19,28 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-func ListClusters() ([]entities.Cluster, error) {
+func ListClusters(page, pageSize int, search string) (int64, []entities.Cluster, error) {
 	var clusters []entities.Cluster
-	if err := db.DB.Order("created_at asc").Find(&clusters).Error; err != nil {
+	var total int64
+	query := db.DB.Model(&entities.Cluster{})
+	if search != "" {
+		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+	if err := query.Order("created_at asc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&clusters).Error; err != nil {
+		return 0, nil, err
+	}
+	log.Printf("Service ListClusters: found %d clusters out of %d total", len(clusters), total)
+	return total, clusters, nil
+}
+
+func ListClustersSimple() ([]entities.Cluster, error) {
+	var clusters []entities.Cluster
+	if err := db.DB.Select("id, slug, name, description").Order("name").Find(&clusters).Error; err != nil {
 		return nil, err
 	}
-	log.Printf("Service ListClusters: found %d clusters", len(clusters))
 	return clusters, nil
 }
 
@@ -455,7 +471,7 @@ func updateClusterConnectionStatus(clusterID, status, reason string) {
 }
 
 func CheckAllClustersConnectivity() {
-	clusters, err := ListClusters()
+	clusters, err := ListClustersSimple()
 	if err != nil {
 		log.Printf("CheckAllClustersConnectivity: failed to list clusters: %v", err)
 		return

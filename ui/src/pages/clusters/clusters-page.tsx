@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { CheckCircle2, Clock, LayoutGrid, Link2, List as ListIcon, Loader2, Network, Pencil, Plus, ShipWheel, Trash2, XCircle } from "lucide-react"
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
@@ -64,10 +64,22 @@ export function ClustersPage() {
     localStorage.setItem(CLUSTERS_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
 
-  const { data: clusters = [], isLoading, refetch } = useQuery<Cluster[]>({
-    queryKey: ['clusters', debouncedSearch],
-    queryFn: () => clustersApi.list(),
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
   })
+
+  const { data: clustersResponse, isLoading, refetch } = useQuery({
+    queryKey: ['clusters', debouncedSearch, pagination.pageIndex, pagination.pageSize],
+    queryFn: () => clustersApi.list({
+      search: debouncedSearch,
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize
+    }),
+  })
+
+  const clusters = clustersResponse?.items ?? []
+  const paginationInfo = clustersResponse?.pagination
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => clustersApi.delete(id),
@@ -270,6 +282,10 @@ export function ClustersPage() {
             data={safeClusters}
             viewMode={viewMode}
             onRefresh={refetch}
+            manualPagination
+            totalCount={paginationInfo?.total || 0}
+            pagination={pagination}
+            onPaginationChange={setPagination}
             leftActions={() => toolbarLeft}
             toolbarActions={() => toolbarRight}
             renderCard={(cluster) => (

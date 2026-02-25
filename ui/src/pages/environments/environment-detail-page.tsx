@@ -51,11 +51,12 @@ export function EnvironmentDetailPage() {
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const { activeProjectId } = useProjectStore()
 
-  const { data: envs = [] } = useQuery({
+  const { data: envsResponse } = useQuery({
     queryKey: ['envs', activeProjectId],
     queryFn: () => envsApi.list(activeProjectId!),
     enabled: !!activeProjectId,
   })
+  const envs = envsResponse?.items ?? []
 
   const { data: env, isLoading: envLoading, error: envError } = useQuery({
     queryKey: ["env", envId],
@@ -64,11 +65,12 @@ export function EnvironmentDetailPage() {
     retry: false,
   })
 
-  const { data: apps = [] } = useQuery({
+  const { data: appsResponse } = useQuery({
     queryKey: ["apps", envId],
     queryFn: () => appsApi.list(envId!),
     enabled: !!envId,
   })
+  const apps = appsResponse?.items ?? []
 
   const { data: cluster } = useQuery({
     queryKey: ["cluster", env?.cluster_id],

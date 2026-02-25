@@ -17,8 +17,28 @@ func ListProjects(userID string, role string) ([]entities.Project, error) {
 			return nil, err
 		}
 	} else {
-		err := db.DB.Joins("JOIN project_members ON project_members.project_id = projects.id").
+		err := db.DB.Select("projects.*").
+			Joins("JOIN project_members ON project_members.project_id = projects.id").
 			Where("project_members.user_id = ?", userID).
+			Find(&projects).Error
+		if err != nil {
+			return nil, err
+		}
+	}
+	return projects, nil
+}
+
+func ListProjectsSimple(userID string, role string) ([]entities.Project, error) {
+	var projects []entities.Project
+	query := db.DB.Select("projects.id, projects.name, projects.slug, projects.description")
+	if role == "admin" {
+		if err := query.Order("name").Find(&projects).Error; err != nil {
+			return nil, err
+		}
+	} else {
+		err := query.Joins("JOIN project_members ON project_members.project_id = projects.id").
+			Where("project_members.user_id = ?", userID).
+			Order("name").
 			Find(&projects).Error
 		if err != nil {
 			return nil, err
@@ -119,12 +139,26 @@ func RestoreProject(projectID string) error {
 	return db.DB.Unscoped().Model(&entities.Project{}).Where("id = ?", projectID).Update("deleted_at", nil).Error
 }
 
-func ListProjectMembers(projectID string) ([]entities.ProjectMember, error) {
+func ListProjectMembers(projectID string, page, pageSize int, search string) (int64, []entities.ProjectMember, error) {
 	var members []entities.ProjectMember
-	if err := db.DB.Preload("User").Where("project_id = ?", projectID).Find(&members).Error; err != nil {
-		return nil, err
+	var total int64
+	query := db.DB.Model(&entities.ProjectMember{}).Where("project_id = ?", projectID)
+
+	if search != "" {
+		query = query.Joins("User").Where("\"User\".username LIKE ? OR \"User\".email LIKE ? OR \"User\".fullname LIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
-	return members, nil
+
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	if err := query.Preload("User").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&members).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, members, nil
 }
 
 func UpdateProjectMemberRole(projectID, userID, role string) error {

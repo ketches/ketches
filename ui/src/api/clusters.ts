@@ -1,4 +1,5 @@
 import client from './client'
+import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
 
 export interface Cluster {
   id: string
@@ -89,8 +90,12 @@ export interface K8sNode {
 }
 
 export const clustersApi = {
-  list: async () => {
-    return client.get('/v1/clusters') as Promise<Cluster[]>
+  list: async (params?: PaginationParams) => {
+    return client.get('/v1/clusters', { params }) as Promise<{ items: Cluster[], pagination: PaginationResponse }>
+  },
+
+  listSimple: async () => {
+    return client.get('/v1/clusters/simple') as Promise<SimpleResponse[]>
   },
 
   listPublic: async () => {

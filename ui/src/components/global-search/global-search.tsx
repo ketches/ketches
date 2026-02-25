@@ -38,18 +38,20 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
   const navigate = useNavigate()
   const { activeProjectId, activeEnvId } = useProjectStore()
 
-  const { data: envs = [], isLoading: isLoadingEnvs } = useQuery({
+  const { data: envsResponse, isLoading: isLoadingEnvs } = useQuery({
     queryKey: ['envs', activeProjectId],
     queryFn: () => envsApi.list(activeProjectId!),
     enabled: !!activeProjectId && open,
   })
 
-  const { data: apps = [], isLoading: isLoadingApps } = useQuery({
+  const { data: appsResponse, isLoading: isLoadingApps } = useQuery({
     queryKey: ['apps', activeEnvId],
     queryFn: () => appsApi.list(activeEnvId!),
     enabled: !!activeEnvId && open,
   })
 
+  const envs = envsResponse?.items ?? []
+  const apps = appsResponse?.items ?? []
   const safeEnvs = Array.isArray(envs) ? envs : []
   const safeApps = Array.isArray(apps) ? apps : []
   const isLoading = isLoadingEnvs || isLoadingApps

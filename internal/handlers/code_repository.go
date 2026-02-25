@@ -12,7 +12,15 @@ import (
 
 func ListCodeRepositories(c *gin.Context) {
 	projectID := c.Param("projectID")
-	repos, err := services.ListCodeRepositories(projectID)
+
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	total, repos, err := services.ListCodeRepositories(projectID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -22,6 +30,30 @@ func ListCodeRepositories(c *gin.Context) {
 	for i := range repos {
 		res = append(res, services.ToCodeRepositoryResponse(&repos[i], baseURL))
 	}
+
+	api.Success(c, models.ListCodeRepositoryResponse{
+		Items:      res,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
+}
+
+func ListCodeRepositoriesSimple(c *gin.Context) {
+	projectID := c.Param("projectID")
+	repos, err := services.ListCodeRepositoriesSimple(projectID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	res := []models.SimpleResponse{}
+	for _, repo := range repos {
+		res = append(res, models.SimpleResponse{
+			ID:   repo.ID,
+			Slug: repo.Slug,
+			Name: repo.Name,
+		})
+	}
+
 	api.Success(c, res)
 }
 

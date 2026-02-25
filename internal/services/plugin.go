@@ -53,33 +53,67 @@ func GetPlugin(pluginID string) (*entities.Plugin, error) {
 	return &plugin, nil
 }
 
-func ListPlugins(search string) ([]entities.Plugin, error) {
+func ListPlugins(page, pageSize int, search string) (int64, []entities.Plugin, error) {
 	var plugins []entities.Plugin
-	query := db.DB.
+	var total int64
+	query := db.DB.Model(&entities.Plugin{})
+	if search != "" {
+		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	query = db.DB.
 		Select("plugins.*, (SELECT COUNT(*) FROM app_plugins WHERE app_plugins.plugin_id = plugins.id) as install_count").
 		Order("created_at DESC")
 	if search != "" {
 		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
-	if err := query.Find(&plugins).Error; err != nil {
+	if err := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&plugins).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, plugins, nil
+}
+
+func ListPluginsSimple() ([]entities.Plugin, error) {
+	var plugins []entities.Plugin
+	if err := db.DB.Select("id, slug, name, description").Order("name").Find(&plugins).Error; err != nil {
 		return nil, err
 	}
 	return plugins, nil
 }
 
-func ListProjectPlugins(projectID string, search string) ([]entities.Plugin, error) {
+func ListProjectPluginsSimple(projectID string) ([]entities.Plugin, error) {
 	var plugins []entities.Plugin
-	query := db.DB.
+	if err := db.DB.Select("id, slug, name, description").Where("project_id = ?", projectID).Order("name").Find(&plugins).Error; err != nil {
+		return nil, err
+	}
+	return plugins, nil
+}
+
+func ListProjectPlugins(projectID string, page, pageSize int, search string) (int64, []entities.Plugin, error) {
+	var plugins []entities.Plugin
+	var total int64
+	query := db.DB.Model(&entities.Plugin{}).Where("project_id = ?", projectID)
+	if search != "" {
+		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	query = db.DB.
 		Select("plugins.*, (SELECT COUNT(*) FROM app_plugins WHERE app_plugins.plugin_id = plugins.id) as install_count").
 		Where("project_id = ?", projectID).
 		Order("created_at DESC")
 	if search != "" {
 		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
-	if err := query.Find(&plugins).Error; err != nil {
-		return nil, err
+	if err := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&plugins).Error; err != nil {
+		return 0, nil, err
 	}
-	return plugins, nil
+	return total, plugins, nil
 }
 
 func UpdatePlugin(pluginID string, req *models.UpdatePluginRequest) (*entities.Plugin, error) {

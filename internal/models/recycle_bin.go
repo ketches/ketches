@@ -16,6 +16,11 @@ type RecycleBinAppResponse struct {
 	DeletedAt      time.Time `json:"deleted_at"`
 }
 
+type ListRecycleBinAppResponse struct {
+	Items      []RecycleBinAppResponse `json:"items"`
+	Pagination PaginationResponse      `json:"pagination"`
+}
+
 type RecycleBinEnvResponse struct {
 	ID               string    `json:"id"`
 	Slug             string    `json:"slug"`
@@ -27,6 +32,11 @@ type RecycleBinEnvResponse struct {
 	ClusterName      string    `json:"cluster_name"`
 	ClusterNamespace string    `json:"cluster_namespace"`
 	DeletedAt        time.Time `json:"deleted_at"`
+}
+
+type ListRecycleBinEnvResponse struct {
+	Items      []RecycleBinEnvResponse `json:"items"`
+	Pagination PaginationResponse      `json:"pagination"`
 }
 
 type RestoreResourceRequest struct {

@@ -1,4 +1,5 @@
 import client from './client'
+import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
 
 export type RegistryProvider = 'dockerhub' | 'harbor' | 'ghcr' | 'acr' | 'ecr' | 'custom'
 export type RegistryScope = 'cluster' | 'project'
@@ -54,16 +55,19 @@ export interface TestRegistryResponse {
 
 export const containerRegistriesApi = {
   // Cluster scope
-  listByCluster: async (clusterId: string) => {
-    return client.get(`/v1/clusters/${clusterId}/container-registries`) as Promise<ContainerRegistry[]>
+  listByCluster: async (clusterId: string, params?: PaginationParams) => {
+    return client.get(`/v1/clusters/${clusterId}/container-registries`, { params }) as Promise<{ items: ContainerRegistry[], pagination: PaginationResponse }>
   },
   createForCluster: async (clusterId: string, data: CreateContainerRegistryRequest) => {
     return client.post(`/v1/clusters/${clusterId}/container-registries`, data) as Promise<ContainerRegistry>
   },
 
   // Project scope
-  listByProject: async (projectId: string) => {
-    return client.get(`/v1/projects/${projectId}/container-registries`) as Promise<ContainerRegistry[]>
+  listByProject: async (projectId: string, params?: PaginationParams) => {
+    return client.get(`/v1/projects/${projectId}/container-registries`, { params }) as Promise<{ items: ContainerRegistry[], pagination: PaginationResponse }>
+  },
+  listSimpleByProject: async (projectId: string) => {
+    return client.get(`/v1/projects/${projectId}/container-registries/simple`) as Promise<SimpleResponse[]>
   },
   createForProject: async (projectId: string, data: CreateContainerRegistryRequest) => {
     return client.post(`/v1/projects/${projectId}/container-registries`, data) as Promise<ContainerRegistry>

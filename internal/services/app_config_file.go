@@ -40,7 +40,7 @@ func CreateAppConfigFile(appID string, req *models.CreateConfigFileRequest) (*en
 	if err == nil {
 		return nil, errors.New("config file with this slug already exists for this app")
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 

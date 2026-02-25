@@ -1,4 +1,5 @@
 import client from './client'
+import { type PaginationParams, type PaginationResponse } from './pagination'
 
 export interface RecycleBinApp {
   id: string
@@ -32,16 +33,16 @@ export interface EnvDeletionConflict {
 }
 
 export const recycleBinApi = {
-  listApps: async (projectId?: string, search?: string) => {
+  listApps: async (projectId?: string, params?: PaginationParams) => {
     return client.get('/v1/recycle-bin/apps', {
-      params: { project_id: projectId, search }
-    }) as Promise<RecycleBinApp[]>
+      params: { ...params, project_id: projectId }
+    }) as Promise<{ items: RecycleBinApp[], pagination: PaginationResponse }>
   },
 
-  listEnvs: async (projectId?: string, search?: string) => {
+  listEnvs: async (projectId?: string, params?: PaginationParams) => {
     return client.get('/v1/recycle-bin/envs', {
-      params: { project_id: projectId, search }
-    }) as Promise<RecycleBinEnv[]>
+      params: { ...params, project_id: projectId }
+    }) as Promise<{ items: RecycleBinEnv[], pagination: PaginationResponse }>
   },
 
   restoreApps: async (ids: string[]) => {

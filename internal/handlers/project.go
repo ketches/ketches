@@ -30,6 +30,27 @@ func ListProjects(c *gin.Context) {
 	api.Success(c, res)
 }
 
+func ListProjectsSimple(c *gin.Context) {
+	claims := api.GetClaims(c)
+	projects, err := services.ListProjectsSimple(claims.UserID, claims.Role)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	res := []models.SimpleResponse{}
+	for _, p := range projects {
+		res = append(res, models.SimpleResponse{
+			ID:          p.ID,
+			Slug:        p.Slug,
+			Name:        p.Name,
+			Description: p.Description,
+		})
+	}
+
+	api.Success(c, res)
+}
+
 func CreateProject(c *gin.Context) {
 	var req models.CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -101,7 +122,15 @@ func DeleteProject(c *gin.Context) {
 
 func ListProjectMembers(c *gin.Context) {
 	projectID := c.Param("projectID")
-	members, err := services.ListProjectMembers(projectID)
+
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	total, members, err := services.ListProjectMembers(projectID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -117,7 +146,10 @@ func ListProjectMembers(c *gin.Context) {
 			JoinedAt:    m.CreatedAt,
 		})
 	}
-	api.Success(c, res)
+	api.Success(c, models.ListProjectMemberResponse{
+		Items:      res,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
 }
 
 func AddProjectMember(c *gin.Context) {

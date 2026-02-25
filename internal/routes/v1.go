@@ -36,6 +36,7 @@ func SetupV1Routes(r *gin.Engine) {
 			projects := authorized.Group("/projects")
 			{
 				projects.GET("", handlers.ListProjects)
+				projects.GET("/simple", handlers.ListProjectsSimple)
 				projects.POST("", handlers.CreateProject)
 				projects.GET("/:projectID", handlers.GetProject)
 				projects.PUT("/:projectID", handlers.UpdateProject)
@@ -44,28 +45,22 @@ func SetupV1Routes(r *gin.Engine) {
 				projects.POST("/:projectID/members", handlers.AddProjectMember)
 				projects.DELETE("/:projectID/members", handlers.RemoveProjectMember)
 				projects.GET("/:projectID/envs", handlers.ListEnvs)
+				projects.GET("/:projectID/envs/simple", handlers.ListEnvsSimple)
 				projects.POST("/:projectID/envs", handlers.CreateEnv)
 
 				// Image Registries (project scope)
 				projects.GET("/:projectID/container-registries", handlers.ListProjectContainerRegistries)
+				projects.GET("/:projectID/container-registries/simple", handlers.ListProjectContainerRegistriesSimple)
 				projects.POST("/:projectID/container-registries", handlers.CreateProjectContainerRegistry)
 
 				// Code Repositories (project scope)
 				projects.GET("/:projectID/code-repositories", handlers.ListCodeRepositories)
+				projects.GET("/:projectID/code-repositories/simple", handlers.ListCodeRepositoriesSimple)
 				projects.POST("/:projectID/code-repositories", handlers.CreateCodeRepository)
 
 				projects.GET("/:projectID/plugins", handlers.ListPlugins)
+				projects.GET("/:projectID/plugins/simple", handlers.ListPluginsSimple)
 				projects.POST("/:projectID/plugins", handlers.CreatePlugin)
-
-				projects.GET("/:projectID/templates", handlers.ListTemplates)
-				projects.POST("/:projectID/templates", handlers.CreateTemplate)
-			}
-
-			templates := authorized.Group("/templates")
-			{
-				templates.GET("/:templateID", handlers.GetTemplate)
-				templates.PUT("/:templateID", handlers.UpdateTemplate)
-				templates.DELETE("/:templateID", handlers.DeleteTemplate)
 			}
 
 			codeRepos := authorized.Group("/code-repositories")
@@ -100,6 +95,7 @@ func SetupV1Routes(r *gin.Engine) {
 				envs.PATCH("/:envID/set-build-env", handlers.SetBuildEnv)
 				envs.PATCH("/:envID/unset-build-env", handlers.UnsetBuildEnv)
 				envs.GET("/:envID/apps", handlers.ListApps)
+				envs.GET("/:envID/apps/simple", handlers.ListAppsSimple)
 				envs.POST("/:envID/apps", handlers.CreateApp)
 			}
 
@@ -189,6 +185,7 @@ func SetupV1Routes(r *gin.Engine) {
 			plugins := authorized.Group("/plugins")
 			{
 				plugins.GET("", handlers.ListPlugins)
+				plugins.GET("/simple", handlers.ListPluginsSimple)
 				plugins.POST("", handlers.CreatePlugin)
 				plugins.GET("/:pluginID", handlers.GetPlugin)
 				plugins.PUT("/:pluginID", handlers.UpdatePlugin)
@@ -204,6 +201,7 @@ func SetupV1Routes(r *gin.Engine) {
 			clusters.Use(middlewares.AdminOnly())
 			{
 				clusters.GET("", handlers.ListClusters)
+				clusters.GET("/simple", handlers.ListClustersSimple)
 				clusters.POST("", handlers.CreateCluster)
 				clusters.POST("/ping", handlers.PingCluster)
 				clusters.POST("/check-connectivity", handlers.CheckAllClustersConnectivity)

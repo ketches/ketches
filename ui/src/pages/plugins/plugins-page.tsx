@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
   Clock,
   Copy,
@@ -54,11 +54,22 @@ export function PluginsPage() {
     localStorage.setItem(PLUGINS_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
 
-  const { data: plugins = [], isLoading, refetch } = useQuery<Plugin[]>({
-    queryKey: ['plugins', debouncedSearch],
-    queryFn: () => pluginsApi.listPlugins(debouncedSearch),
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
   })
 
+  const { data: pluginsResponse, isLoading, refetch } = useQuery({
+    queryKey: ['plugins', debouncedSearch, pagination.pageIndex, pagination.pageSize],
+    queryFn: () => pluginsApi.listPlugins({
+      search: debouncedSearch,
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize
+    }),
+  })
+
+  const plugins = pluginsResponse?.items ?? []
+  const paginationInfo = pluginsResponse?.pagination
   const safePlugins = Array.isArray(plugins) ? plugins : []
 
   const columns: ColumnDef<Plugin>[] = [
@@ -170,7 +181,7 @@ export function PluginsPage() {
 
   const toolbarRight = (
     <div className="flex items-center gap-2">
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto h-7">
+      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "card")} className="w-auto h-7">
         <TabsList>
           <TabsTrigger value="list">
             <ListIcon />
@@ -216,6 +227,10 @@ export function PluginsPage() {
             data={safePlugins}
             viewMode={viewMode}
             onRefresh={refetch}
+            manualPagination
+            totalCount={paginationInfo?.total || 0}
+            pagination={pagination}
+            onPaginationChange={setPagination}
             leftActions={() => toolbarLeft}
             toolbarActions={() => toolbarRight}
             renderCard={(plugin) => (

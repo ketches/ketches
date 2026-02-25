@@ -47,7 +47,7 @@ func CreateAppVolume(appID string, req *models.CreateVolumeRequest) (*entities.A
 	if err == nil {
 		return nil, errors.New("volume with this slug already exists for this app")
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
@@ -94,7 +94,7 @@ func UpdateAppVolume(id string, req *models.UpdateVolumeRequest) (*entities.AppV
 		if err == nil {
 			return nil, errors.New("volume with this slug already exists for this app")
 		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
 		}
 	}

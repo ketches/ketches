@@ -42,11 +42,13 @@ export function BuildList({ appId }: BuildListProps) {
     queryFn: () => appsApi.get(appId),
   })
 
-  const { data: builds, isLoading } = useQuery({
-    queryKey: ['builds', appId],
-    queryFn: () => buildsApi.list(appId),
+  const { data: buildsResponse, isLoading } = useQuery({
+    queryKey: ['builds', appId, currentPage, itemsPerPage],
+    queryFn: () => buildsApi.list(appId, currentPage, itemsPerPage),
     refetchInterval: 5000,
   })
+  const builds = buildsResponse?.items ?? []
+  const totalCount = buildsResponse?.pagination.total || 0
 
   const { data: config } = useQuery({
     queryKey: ['build-config', appId],
@@ -205,7 +207,7 @@ export function BuildList({ appId }: BuildListProps) {
                   </TableBody>
                 </Table>
               </div>
-              {builds.length > itemsPerPage && (
+              {totalCount > itemsPerPage && (
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
@@ -214,7 +216,7 @@ export function BuildList({ appId }: BuildListProps) {
                         className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
-                    {Array.from({ length: Math.ceil(builds.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                    {Array.from({ length: Math.ceil(totalCount / itemsPerPage) }, (_, i) => i + 1).map((page) => (
                       <PaginationItem key={page}>
                         <PaginationLink
                           onClick={() => setCurrentPage(page)}
@@ -227,8 +229,8 @@ export function BuildList({ appId }: BuildListProps) {
                     ))}
                     <PaginationItem>
                       <PaginationNext
-                        onClick={() => setCurrentPage(Math.min(Math.ceil(builds.length / itemsPerPage), currentPage + 1))}
-                        className={currentPage >= Math.ceil(builds.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        onClick={() => setCurrentPage(Math.min(Math.ceil(totalCount / itemsPerPage), currentPage + 1))}
+                        className={currentPage >= Math.ceil(totalCount / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
                   </PaginationContent>

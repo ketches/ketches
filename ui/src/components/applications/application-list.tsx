@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
   Clock,
   CloudCog,
@@ -70,13 +70,24 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
     localStorage.setItem(APPLICATIONS_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
 
-  const { data: apps = [], isLoading, refetch } = useQuery<App[]>({
-    queryKey: ['apps', envId, debouncedSearch],
-    queryFn: () => appsApi.list(envId, debouncedSearch),
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
+  const { data: appsResponse, isLoading, refetch } = useQuery({
+    queryKey: ['apps', envId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
+    queryFn: () => appsApi.list(envId, {
+      search: debouncedSearch,
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize
+    }),
     enabled: !!envId,
     refetchInterval: 5000,
   })
 
+  const apps = appsResponse?.items ?? []
+  const paginationInfo = appsResponse?.pagination
   const safeApps = Array.isArray(apps) ? apps : []
 
   const columns: ColumnDef<App>[] = [
@@ -251,6 +262,10 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
         data={safeApps}
         viewMode={viewMode}
         onRefresh={refetch}
+        manualPagination
+        totalCount={paginationInfo?.total || 0}
+        pagination={pagination}
+        onPaginationChange={setPagination}
         leftActions={() => toolbarLeft}
         toolbarActions={() => toolbarRight}
         renderCard={(app) => (

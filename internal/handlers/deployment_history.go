@@ -10,8 +10,14 @@ import (
 
 func ListDeploymentHistory(c *gin.Context) {
 	appID := c.Param("appID")
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.Validate()
 
-	histories, err := services.ListDeploymentHistory(appID)
+	total, histories, err := services.ListDeploymentHistory(appID, req.Page, req.PageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -22,7 +28,10 @@ func ListDeploymentHistory(c *gin.Context) {
 		result[i] = services.ConvertDeploymentHistoryToModel(&h)
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{
+		"items":      result,
+		"pagination": models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
 }
 
 func RollbackDeployment(c *gin.Context) {

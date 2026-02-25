@@ -26,8 +26,6 @@ import { EnvironmentsPage } from "@/pages/environments/environments-page"
 import { MembersPage } from "@/pages/members/members-page"
 import { PluginsPage } from "@/pages/plugins/plugins-page"
 import { RecycleBinPage } from "@/pages/recycle-bin/recycle-bin-page"
-import { TemplateDetailPage } from "@/pages/templates/template-detail-page"
-import { TemplatesPage } from "@/pages/templates/templates-page"
 import { UsersPage } from "@/pages/users"
 import { useAuthStore } from "@/stores/auth"
 import * as React from "react"
@@ -133,16 +131,6 @@ export function App() {
             <Route path="/code-repositories/:repoId" element={
               <ProtectedRoute>
                 <DashboardLayout><CodeRepositoryDetailPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/templates" element={
-              <ProtectedRoute>
-                <DashboardLayout><TemplatesPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/templates/:templateId" element={
-              <ProtectedRoute>
-                <DashboardLayout><TemplateDetailPage /></DashboardLayout>
               </ProtectedRoute>
             } />
             <Route path="/container-registries" element={

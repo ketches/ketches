@@ -46,6 +46,11 @@ type PluginResponse struct {
 	UpdatedAt        time.Time      `json:"updated_at"`
 }
 
+type ListPluginResponse struct {
+	Items      []PluginResponse   `json:"items"`
+	Pagination PaginationResponse `json:"pagination"`
+}
+
 type InstallPluginRequest struct {
 	PluginID string         `json:"plugin_id" binding:"required"`
 	EnvVars  []PluginEnvVar `json:"env_vars"`

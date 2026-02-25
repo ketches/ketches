@@ -58,8 +58,8 @@ export function ClusterNodeDetailPage() {
   const [taintsOpen, setTaintsOpen] = React.useState(false)
 
   const { data: clusters = [] } = useQuery({
-    queryKey: ["clusters"],
-    queryFn: () => clustersApi.list(),
+    queryKey: ["clusters-simple"],
+    queryFn: () => clustersApi.listSimple(),
   })
 
   const { data: nodes = [] } = useQuery({

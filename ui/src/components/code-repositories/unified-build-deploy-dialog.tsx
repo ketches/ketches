@@ -70,30 +70,30 @@ export function UnifiedBuildDeployDialog({
   })
 
   const { data: envs = [] } = useQuery({
-    queryKey: ["envs", projectId],
-    queryFn: () => envsApi.list(projectId),
+    queryKey: ["envs-simple", projectId],
+    queryFn: () => envsApi.listSimpleByProject(projectId!),
     enabled: !!projectId && open,
   })
 
-  const buildEnvs = (envs as Env[]).filter((e) => e.is_build_env)
-  const deployEnvs = envs as Env[]
+  const buildEnvs = envs.filter((e) => e.metadata?.is_build_env === "true")
+  const deployEnvs = envs
 
   const isDeployMode = !!preSelectedBuildId
 
   const { data: appsInDeployEnv = [], isLoading: isLoadingApps } = useQuery({
-    queryKey: ["apps", deployEnvId],
-    queryFn: () => appsApi.list(deployEnvId),
+    queryKey: ["apps-simple", deployEnvId],
+    queryFn: () => appsApi.listSimple(deployEnvId!),
     enabled: !!deployEnvId && (autoDeploy || isDeployMode) && open,
   })
 
-  const existingRepoApps = (appsInDeployEnv as { id: string; name: string; slug: string; code_repository_id?: string }[]).filter(
-    (a) => a.code_repository_id === repoId
+  const existingRepoApps = appsInDeployEnv.filter(
+    (a) => a.metadata?.code_repository_id === repoId
   )
 
   const selectedConfig = (buildConfigs as CodeRepositoryBuildConfig[]).find((c) => c.id === selectedConfigId)
-  const selectedBuildEnv = (envs as Env[]).find((e) => e.id === buildEnvId)
-  const selectedDeployEnv = (envs as Env[]).find((e) => e.id === deployEnvId)
-  const selectedApp = (existingRepoApps as any[]).find((a) => a.id === deployAppId)
+  const selectedBuildEnv = envs.find((e) => e.id === buildEnvId)
+  const selectedDeployEnv = envs.find((e) => e.id === deployEnvId)
+  const selectedApp = existingRepoApps.find((a) => a.id === deployAppId)
   const isBuildConfigMode = !!preSelectedConfigId && !preSelectedBuildId
   const isCodeRepoMode = !preSelectedConfigId && !preSelectedBuildId
 
@@ -146,7 +146,7 @@ export function UnifiedBuildDeployDialog({
 
   React.useEffect(() => {
     if (open && buildEnvs.length > 0 && !buildEnvId) {
-      setBuildEnvId(buildEnvs[0]?.id || (envs as Env[])[0]?.id || "")
+      setBuildEnvId(buildEnvs[0]?.id || envs[0]?.id || "")
     }
   }, [open, buildEnvs, buildEnvId, envs])
 
@@ -358,13 +358,13 @@ export function UnifiedBuildDeployDialog({
                       <Select value={buildEnvId} onValueChange={(v) => v !== null && setBuildEnvId(v)}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select build environment">
-                            {selectedBuildEnv ? `${selectedBuildEnv.name}${selectedBuildEnv.is_build_env ? ' (Build Env)' : ''}` : undefined}
+                            {selectedBuildEnv ? `${selectedBuildEnv.name}${selectedBuildEnv.metadata?.is_build_env === 'true' ? ' (Build Env)' : ''}` : undefined}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {(envs || []).map((env) => (
                             <SelectItem key={env.id} value={env.id}>
-                              {env.name} {env.is_build_env && "(Build Env)"}
+                              {env.name} {env.metadata?.is_build_env === "true" && "(Build Env)"}
                             </SelectItem>
                           ))}
                         </SelectContent>

@@ -22,3 +22,8 @@ type ProjectMemberResponse struct {
 	ProjectRole string    `json:"project_role"`
 	JoinedAt    time.Time `json:"joined_at"`
 }
+
+type ListProjectMemberResponse struct {
+	Items      []ProjectMemberResponse `json:"items"`
+	Pagination PaginationResponse      `json:"pagination"`
+}

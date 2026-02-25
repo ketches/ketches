@@ -11,8 +11,15 @@ import (
 
 func ListEnvs(c *gin.Context) {
 	projectID := c.Param("projectID")
-	search := c.Query("search")
-	envs, err := services.ListEnvs(projectID, search)
+
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	total, envs, err := services.ListEnvs(projectID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -31,6 +38,40 @@ func ListEnvs(c *gin.Context) {
 			IsBuildEnv:       e.IsBuildEnv,
 			Status:           "Active",
 			CreatedAt:        e.CreatedAt,
+		})
+	}
+
+	api.Success(c, models.ListEnvResponse{
+		Items:      res,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
+}
+
+func ListEnvsSimple(c *gin.Context) {
+	projectID := c.Param("projectID")
+	envs, err := services.ListEnvsSimple(projectID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	res := []models.SimpleResponse{}
+	for _, e := range envs {
+		isBuildEnv := "false"
+		if e.IsBuildEnv {
+			isBuildEnv = "true"
+		}
+		res = append(res, models.SimpleResponse{
+			ID:          e.ID,
+			Slug:        e.Slug,
+			Name:        e.Name,
+			Description: e.Description,
+			Status:      "Active",
+			Metadata: map[string]string{
+				"cluster_id":        e.ClusterID,
+				"cluster_namespace": e.ClusterNamespace,
+				"is_build_env":      isBuildEnv,
+			},
 		})
 	}
 

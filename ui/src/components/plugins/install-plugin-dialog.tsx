@@ -32,8 +32,8 @@ export function InstallPluginDialog({
   const queryClient = useQueryClient()
 
   const { data: plugins = [], isLoading } = useQuery({
-    queryKey: ["plugins"],
-    queryFn: () => pluginsApi.listPlugins(),
+    queryKey: ["plugins-simple"],
+    queryFn: () => pluginsApi.listPluginsSimple(),
   })
 
   const installMutation = useMutation({

@@ -1,4 +1,5 @@
 import client from './client'
+import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
 
 export interface Env {
   id: string
@@ -23,10 +24,13 @@ export interface CreateEnvRequest {
 }
 
 export const envsApi = {
-  list: async (projectId: string, search?: string) => {
+  list: async (projectId: string, params?: PaginationParams) => {
     return client.get(`/v1/projects/${projectId}/envs`, {
-      params: { search }
-    }) as Promise<Env[]>
+      params
+    }) as Promise<{ items: Env[], pagination: PaginationResponse }>
+  },
+  listSimple: async (projectId: string) => {
+    return client.get(`/v1/projects/${projectId}/envs/simple`) as Promise<SimpleResponse[]>
   },
   create: async (projectId: string, data: CreateEnvRequest) => {
     return client.post(`/v1/projects/${projectId}/envs`, data) as Promise<Env>

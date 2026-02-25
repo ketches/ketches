@@ -52,14 +52,21 @@ func GetPlugin(c *gin.Context) {
 
 func ListPlugins(c *gin.Context) {
 	projectID := c.Param("projectID")
-	search := c.Query("search")
+
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
 
 	var plugins []entities.Plugin
+	var total int64
 	var err error
 	if projectID != "" {
-		plugins, err = services.ListProjectPlugins(projectID, search)
+		total, plugins, err = services.ListProjectPlugins(projectID, req.Page, req.PageSize, req.Search)
 	} else {
-		plugins, err = services.ListPlugins(search)
+		total, plugins, err = services.ListPlugins(req.Page, req.PageSize, req.Search)
 	}
 
 	if err != nil {
@@ -72,7 +79,38 @@ func ListPlugins(c *gin.Context) {
 		responses = append(responses, toPluginResponse(&plugin))
 	}
 
-	api.Success(c, responses)
+	api.Success(c, models.ListPluginResponse{
+		Items:      responses,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
+}
+
+func ListPluginsSimple(c *gin.Context) {
+	projectID := c.Param("projectID")
+	var plugins []entities.Plugin
+	var err error
+	if projectID != "" {
+		plugins, err = services.ListProjectPluginsSimple(projectID)
+	} else {
+		plugins, err = services.ListPluginsSimple()
+	}
+
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	res := []models.SimpleResponse{}
+	for _, p := range plugins {
+		res = append(res, models.SimpleResponse{
+			ID:          p.ID,
+			Slug:        p.Slug,
+			Name:        p.Name,
+			Description: p.Description,
+		})
+	}
+
+	api.Success(c, res)
 }
 
 func UpdatePlugin(c *gin.Context) {
