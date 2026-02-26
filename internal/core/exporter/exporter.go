@@ -1,8 +1,14 @@
 package exporter
 
 import (
+	"archive/zip"
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
+
 	"github.com/ketches/ketches/internal/models"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +35,6 @@ type ExportGenerator interface {
 // K8sManifestGenerator generates Kubernetes YAML manifests.
 type K8sManifestGenerator struct{}
 
-// Generate generates Kubernetes YAML manifests from the given application metadata.
 // Generate generates Kubernetes YAML manifests from the given application metadata.
 func (g *K8sManifestGenerator) Generate(appMetadatas []models.AppMetadata) (string, error) {
 	var manifests []string
@@ -118,7 +123,7 @@ func (g *K8sManifestGenerator) Generate(appMetadatas []models.AppMetadata) (stri
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
 					},
-					Template: podTemplate,
+					Template:    podTemplate,
 					ServiceName: app.AppSlug, // Required for StatefulSet
 				},
 			}
@@ -222,13 +227,289 @@ type KetchesMetadataGenerator struct{}
 
 // Generate generates Ketches metadata JSON from the given application metadata.
 func (g *KetchesMetadataGenerator) Generate(appMetadatas []models.AppMetadata) (string, error) {
-	return "", nil
+	metadata := models.KetchesMetadataFile{
+		Version:    "v1",
+		Type:       "ketches-app-export",
+		Apps:       appMetadatas,
+		ExportedAt: time.Now().UTC(),
+	}
+
+	bytes, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes), nil
 }
 
 // HelmChartGenerator generates a Helm Chart (ZIP file).
 type HelmChartGenerator struct{}
 
+// HelmChartMetadata represents the content of Chart.yaml.
+type HelmChartMetadata struct {
+	APIVersion  string `json:"apiVersion"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"type"`
+	Version     string `json:"version"`
+	AppVersion  string `json:"appVersion"`
+}
+
+// HelmValues represents the content of values.yaml.
+type HelmValues struct {
+	ReplicaCount int `json:"replicaCount"`
+	Image        struct {
+		Repository string `json:"repository"`
+		PullPolicy string `json:"pullPolicy"`
+		Tag        string `json:"tag"`
+	} `json:"image"`
+	Service struct {
+		Type string `json:"type"`
+		Port int    `json:"port"`
+	} `json:"service"`
+	Resources struct {
+		Limits struct {
+			CPU    string `json:"cpu"`
+			Memory string `json:"memory"`
+		} `json:"limits"`
+		Requests struct {
+			CPU    string `json:"cpu"`
+			Memory string `json:"memory"`
+		} `json:"requests"`
+	} `json:"resources"`
+	Env []map[string]string `json:"env,omitempty"`
+}
+
 // Generate generates a Helm Chart from the given application metadata.
 func (g *HelmChartGenerator) Generate(appMetadatas []models.AppMetadata) (string, error) {
-	return "", nil
+	buf := new(bytes.Buffer)
+	zipWriter := zip.NewWriter(buf)
+
+	for _, app := range appMetadatas {
+		// 1. Chart.yaml
+		chartMeta := HelmChartMetadata{
+			APIVersion:  "v2",
+			Name:        app.AppSlug,
+			Description: "A Helm chart for Ketches application",
+			Type:        "application",
+			Version:     "0.1.0",
+			AppVersion:  "1.0",
+		}
+		chartBytes, err := yaml.Marshal(chartMeta)
+		if err != nil {
+			return "", err
+		}
+		if err := writeFileToZip(zipWriter, app.AppSlug+"/Chart.yaml", chartBytes); err != nil {
+			return "", err
+		}
+
+		// 2. values.yaml
+		// Extract image parts
+		imageParts := strings.Split(app.ContainerImage, ":")
+		repo := imageParts[0]
+		tag := "latest"
+		if len(imageParts) > 1 {
+			tag = imageParts[1]
+		}
+
+		values := HelmValues{
+			ReplicaCount: app.Replicas,
+		}
+		values.Image.Repository = repo
+		values.Image.Tag = tag
+		values.Image.PullPolicy = "IfNotPresent"
+		values.Service.Type = "ClusterIP"
+		values.Service.Port = 80 // Default
+		if len(app.Gateways) > 0 {
+			values.Service.Port = app.Gateways[0].Port
+		}
+		values.Resources.Limits.CPU = fmt.Sprintf("%dm", app.LimitCPU)
+		values.Resources.Limits.Memory = fmt.Sprintf("%dMi", app.LimitMemory)
+		values.Resources.Requests.CPU = fmt.Sprintf("%dm", app.RequestCPU)
+		values.Resources.Requests.Memory = fmt.Sprintf("%dMi", app.RequestMemory)
+
+		// Env vars
+		for _, env := range app.EnvVars {
+			values.Env = append(values.Env, map[string]string{"name": env.Key, "value": env.Value})
+		}
+
+		valuesBytes, err := yaml.Marshal(values)
+		if err != nil {
+			return "", err
+		}
+		if err := writeFileToZip(zipWriter, app.AppSlug+"/values.yaml", valuesBytes); err != nil {
+			return "", err
+		}
+
+		// 3. Templates
+		if err := writeFileToZip(zipWriter, app.AppSlug+"/templates/_helpers.tpl", []byte(helpersTpl)); err != nil {
+			return "", err
+		}
+
+		if app.AppType == "StatefulSet" {
+			if err := writeFileToZip(zipWriter, app.AppSlug+"/templates/statefulset.yaml", []byte(statefulSetTpl)); err != nil {
+				return "", err
+			}
+		} else {
+			if err := writeFileToZip(zipWriter, app.AppSlug+"/templates/deployment.yaml", []byte(deploymentTpl)); err != nil {
+				return "", err
+			}
+		}
+
+		if err := writeFileToZip(zipWriter, app.AppSlug+"/templates/service.yaml", []byte(serviceTpl)); err != nil {
+			return "", err
+		}
+	}
+
+
+	if err := zipWriter.Close(); err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
+
+func writeFileToZip(z *zip.Writer, name string, content []byte) error {
+	f, err := z.Create(name)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(content)
+	return err
+}
+
+const helpersTpl = `{{/*
+Expand the name of the chart.
+*/}}
+{{- define "app.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
+*/}}
+{{- define "app.fullname" -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create chart name and version as used by the chart label.
+*/}}
+{{- define "app.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "app.labels" -}}
+helm.sh/chart: {{ include "app.chart" . }}
+{{ include "app.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "app.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "app.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+`
+
+const deploymentTpl = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "app.fullname" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "app.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.env }}
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+          {{- end }}
+`
+
+const statefulSetTpl = `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "app.fullname" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "app.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "app.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.env }}
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+          {{- end }}
+`
+
+const serviceTpl = `apiVersion: v1
+
+kind: Service
+metadata:
+  name: {{ include "app.fullname" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "app.selectorLabels" . | nindent 4 }}
+`
