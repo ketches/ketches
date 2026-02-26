@@ -5,6 +5,7 @@ import {
   CloudCog,
   Copy,
   Cpu,
+  Download,
   Image,
   Layers,
   LayoutGrid,
@@ -12,7 +13,8 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  Trash2
+  Trash2,
+  Upload
 } from "lucide-react"
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
@@ -22,6 +24,8 @@ import { appsApi, type App } from "@/api/apps"
 import { AppActionIconsWrapper } from "@/components/applications/app-action-icons-wrapper"
 import { CreateAppDialog } from "@/components/applications/create-app-dialog"
 import { EditAppDialog } from "@/components/applications/edit-app-dialog"
+import { ExportAppsDialog } from "@/components/applications/export-apps-dialog"
+import { ImportAppsDialog } from "@/components/applications/import-apps-dialog"
 import { DataTable } from "@/components/data-table/data-table"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyApplicationState } from "@/components/shared/empty-state"
@@ -59,6 +63,11 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingApp, setEditingApp] = React.useState<App | null>(null)
+  const [importDialogOpen, setImportDialogOpen] = React.useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
+  const [exportAppIds, setExportAppIds] = React.useState<string[]>([])
+  const [exportAppId, setExportAppId] = React.useState<string | undefined>(undefined)
+
   const [viewMode, setViewMode] = React.useState<"list" | "card">(() => {
     const saved = localStorage.getItem(APPLICATIONS_VIEW_MODE_KEY)
     return (saved === "list" || saved === "card") ? saved : "list"
@@ -202,6 +211,25 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
             </TooltipContent>
           </Tooltip>
 
+          {/* <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()}>
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation()
+                setExportAppId(row.original.id)
+                setExportAppIds([])
+                setExportDialogOpen(true)
+              }}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu> */}
+
           <AppActionIconsWrapper appId={row.original.id} />
         </div>
       ),
@@ -232,6 +260,10 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
       <Button onClick={() => setCreateDialogOpen(true)}>
         <Plus />
         Create Application
+      </Button>
+      <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+        <Upload />
+        Import
       </Button>
     </div>
   )
@@ -370,6 +402,15 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
                 <Trash2 />
                 Delete
               </Button>
+              <Button variant="outline" onClick={() => {
+                const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.id)
+                setExportAppIds(selectedIds)
+                setExportAppId(undefined)
+                setExportDialogOpen(true)
+              }}>
+                <Download />
+                Export
+              </Button>
             </div>
           )
         }}
@@ -381,6 +422,22 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
         onOpenChange={setEditDialogOpen}
         app={editingApp}
         onSuccess={() => setEditingApp(null)}
+      />
+      <ImportAppsDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        envId={envId}
+        onSuccess={() => refetch()}
+      />
+      <ExportAppsDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        envId={envId}
+        appIds={exportAppIds}
+        appId={exportAppId}
+        onSuccess={() => {
+          setExportDialogOpen(false)
+        }}
       />
     </>
   )

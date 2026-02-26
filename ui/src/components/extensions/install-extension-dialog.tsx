@@ -220,7 +220,7 @@ export function InstallExtensionToClusterDialog({
                   <FieldContent>
                     <Select
                       value={selectedClusterId}
-                      onValueChange={setSelectedClusterId}
+                      onValueChange={(v) => setSelectedClusterId(v || "")}
                       disabled={clustersLoading}
                       required
                     >

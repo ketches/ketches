@@ -3,6 +3,7 @@ package handlers
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -426,9 +427,11 @@ func GetAppTopologyResourceYaml(c *gin.Context) {
 func getAppStatus(c *gin.Context, app *entities.App) string {
 	status := app.DeployStatus
 	if status == "deployed" {
-		if calculatedStatus, err := core.CalculateAppStatus(c.Request.Context(), app); err == nil {
-			status = string(calculatedStatus)
+		calculatedStatus, err := core.CalculateAppStatus(c.Request.Context(), app)
+		if err != nil {
+			log.Printf("Failed to calculate app status for app %s: %v", app.ID, err)
 		}
+		status = string(calculatedStatus)
 	}
 	return status
 }

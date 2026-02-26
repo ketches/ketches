@@ -24,6 +24,7 @@ profile.cov
 # Agents
 .opencode/*
 .cursor/*
+docs/plans/*
 
 # Database
 **/*.db

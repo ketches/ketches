@@ -6,6 +6,7 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -43,6 +44,9 @@ func CalculateAppStatus(ctx context.Context, application *entities.App) (app.App
 	case "Deployment":
 		deployment, err := client.AppsV1().Deployments(namespace).Get(ctx, appName, metav1.GetOptions{})
 		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return app.AppStatusUndeployed, nil
+			}
 			return app.AppStatusUnknown, err
 		}
 
@@ -77,6 +81,9 @@ func CalculateAppStatus(ctx context.Context, application *entities.App) (app.App
 	case "StatefulSet":
 		statefulSet, err := client.AppsV1().StatefulSets(namespace).Get(ctx, appName, metav1.GetOptions{})
 		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return app.AppStatusUndeployed, nil
+			}
 			return app.AppStatusUnknown, err
 		}
 

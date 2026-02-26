@@ -3,6 +3,7 @@ import {
   ArrowBigUpDash,
   Bug,
   BugOff,
+  Download,
   Loader2,
   MoreVertical,
   Pause,
@@ -32,6 +33,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -40,6 +42,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { ExportAppsDialog } from "./export-apps-dialog"
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   "rocket": Rocket,
@@ -62,6 +65,9 @@ interface AppActionIconsProps {
 export function AppActionIcons({ appId, actions }: AppActionIconsProps) {
   const queryClient = useQueryClient()
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
+  const [exportAppIds, setExportAppIds] = React.useState<string[]>([])
+  const [_exportAppId, setExportAppId] = React.useState<string | undefined>(undefined)
 
   const executeMutation = useMutation({
     mutationFn: async (action: string) => {
@@ -160,6 +166,16 @@ export function AppActionIcons({ appId, actions }: AppActionIconsProps) {
                   </DropdownMenuItem>
                 )
               })}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation()
+                setExportAppId(appId)
+                setExportAppIds([])
+                setExportDialogOpen(true)
+              }}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -184,6 +200,17 @@ export function AppActionIcons({ appId, actions }: AppActionIconsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+
+      <ExportAppsDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        appIds={exportAppIds}
+        appId={appId}
+        onSuccess={() => {
+          setExportDialogOpen(false)
+        }}
+      />
     </TooltipProvider>
   )
 }

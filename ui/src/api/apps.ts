@@ -212,4 +212,27 @@ export const appsApi = {
   getTopologyResourceYaml: async (appId: string, nodeId: string) => {
     return client.get(`/v1/apps/${appId}/topology/nodes/${nodeId}/resource-yaml`) as Promise<{ yaml: string }>
   },
+
+  importApps: async (envId: string, data: {
+    type: 'dockercompose' | 'kubernetes' | 'ketches'
+    content: string
+    conflict_strategy?: 'rename' | 'ask' | 'error'
+  }) => {
+    return client.post(`/v1/envs/${envId}/apps/import`, data) as Promise<{
+      imported: { name: string, slug: string, status: string }[]
+      conflicts: any[]
+    }>
+  },
+
+  exportApps: async (appId: string, format: 'kubernetes' | 'ketches' | 'helm') => {
+    return client.get(`/v1/apps/${appId}/export`, {
+      params: { format }
+    }) as Promise<{ yaml?: string, metadata?: string, chart?: string }>
+  },
+
+  exportEnvApps: async (envId: string, format: 'kubernetes' | 'ketches' | 'helm', appIds?: string[]) => {
+    return client.get(`/v1/envs/${envId}/apps/export`, {
+      params: { format, app_ids: appIds?.join(',') }
+    }) as Promise<{ yaml?: string, metadata?: string, chart?: string }>
+  }
 }
