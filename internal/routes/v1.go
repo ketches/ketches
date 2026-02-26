@@ -100,6 +100,8 @@ func SetupV1Routes(r *gin.Engine) {
 				envs.GET("/:envID/apps", handlers.ListApps)
 				envs.GET("/:envID/apps/simple", handlers.ListAppsSimple)
 				envs.POST("/:envID/apps", handlers.CreateApp)
+				envs.POST("/:envID/apps/import", handlers.ImportApps)
+				envs.GET("/:envID/apps/export", handlers.ExportEnvApps)
 
 				// Certificates (env scope)
 				envs.GET("/:envID/certificates", handlers.ListEnvCertificates)
@@ -114,6 +116,7 @@ func SetupV1Routes(r *gin.Engine) {
 				apps.GET("/:appID", handlers.GetApp)
 				apps.PUT("/:appID", handlers.UpdateApp)
 				apps.PATCH("/:appID/basic", handlers.UpdateAppBasic)
+				apps.GET("/:appID/export", handlers.ExportApps)
 				apps.DELETE("/:appID", handlers.DeleteApp)
 				apps.GET("/:appID/available-actions", handlers.GetAppAvailableActions)
 				apps.POST("/:appID/action", handlers.AppAction)
