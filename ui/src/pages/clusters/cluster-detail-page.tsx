@@ -3,7 +3,6 @@ import { AxiosError } from "axios"
 import {
   AlertCircle,
   ChartLine,
-  CheckCircle2,
   ChevronsUpDown,
   CircleSlash,
   Cpu,
@@ -21,19 +20,18 @@ import {
   ShipWheel,
   Telescope,
   Terminal,
-  Trash2,
-  XCircle
+  Trash2
 } from "lucide-react"
 import * as React from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { clustersApi } from "@/api/clusters"
+import { ClusterCertificates } from "@/components/cluster/cluster-certificates"
 import { ClusterExtensions } from "@/components/cluster/cluster-extensions"
 import { ClusterIntegrationsConfig } from "@/components/cluster/cluster-integrations-config"
 import { EditClusterDialog } from "@/components/cluster/edit-cluster-dialog"
 import { ContainerRegistryList } from "@/components/container-registries/container-registry-list"
-import { ClusterCertificates } from "@/components/cluster/cluster-certificates"
 import { DataTable } from "@/components/data-table/data-table"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
@@ -158,16 +156,14 @@ export function ClusterDetailPage() {
         )?.status === "True"
         const isUnschedulable = row.original.spec.unschedulable
         return (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             <ColorBadge color={isReady ? "green" : "red"}>
               {isReady ? (
                 <>
-                  <CheckCircle2 className="h-3 w-3" />
                   Ready
                 </>
               ) : (
                 <>
-                  <XCircle className="h-3 w-3" />
                   NotReady
                 </>
               )}
@@ -366,22 +362,19 @@ export function ClusterDetailPage() {
     switch (status) {
       case "connected":
         return (
-          <ColorBadge color="green" className="gap-1">
-            <CheckCircle2 className="h-3 w-3" />
+          <ColorBadge color="green">
             Connected
           </ColorBadge>
         )
       case "disconnected":
         return (
-          <ColorBadge color="red" className="gap-1">
-            <XCircle className="h-3 w-3" />
+          <ColorBadge color="red">
             Disconnected
           </ColorBadge>
         )
       default:
         return (
-          <ColorBadge color="gray" className="gap-1">
-            <AlertCircle className="h-3 w-3" />
+          <ColorBadge color="gray">
             Unknown
           </ColorBadge>
         )

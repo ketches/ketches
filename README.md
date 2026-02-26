@@ -77,7 +77,7 @@ Ketches is an enterprise-grade, open-source cloud-native application platform de
 
 ```bash
 # Download the compose file
-curl -fsSL https://raw.githubusercontent.com/ketches/ketches/main/docker-compose.yml \
+curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/docker-compose.yml \
   -o docker-compose.yml
 
 # Start all services (API + UI + PostgreSQL)
@@ -90,7 +90,7 @@ open http://localhost
 The default admin credentials are created during the first run — check the API container logs:
 
 ```bash
-docker compose logs api | grep -i "admin"
+docker compose logs ketches-api | grep -i "admin"
 ```
 
 ### Helm (Kubernetes)

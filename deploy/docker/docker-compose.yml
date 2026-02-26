@@ -1,5 +1,5 @@
 services:
-  postgres:
+  ketches-db:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: ketches
@@ -16,7 +16,7 @@ services:
       retries: 5
     restart: unless-stopped
 
-  api:
+  ketches-api:
     build:
       context: .
       dockerfile: Dockerfile
@@ -26,11 +26,11 @@ services:
       PORT: 8080
       LOG_LEVEL: info
       DB_DRIVER: postgres
-      DB_SOURCE: host=postgres port=5432 user=ketches password=ketches dbname=ketches sslmode=disable
+      DB_SOURCE: host=ketches-db port=5432 user=ketches password=ketches dbname=ketches sslmode=disable
       JWT_SECRET: change-this-in-production
       CORS_ALLOWED_ORIGINS: http://localhost
     depends_on:
-      postgres:
+      ketches-db:
         condition: service_healthy
     restart: unless-stopped
 
@@ -42,9 +42,9 @@ services:
       - "80:80"
     environment:
       # Points to the api service; change to an external URL if api is not co-located
-      BACKEND_URL: http://api:8080
+      BACKEND_URL: http://ketches-api:8080
     depends_on:
-      - api
+      - ketches-api
     restart: unless-stopped
 
 volumes:

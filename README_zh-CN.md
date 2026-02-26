@@ -77,7 +77,7 @@ Ketches 是一个面向企业级的开源云原生应用平台，旨在降低 Ku
 
 ```bash
 # 下载 Compose 配置文件
-curl -fsSL https://raw.githubusercontent.com/ketches/ketches/main/docker-compose.yml \
+curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/docker-compose.yml \
   -o docker-compose.yml
 
 # 启动所有服务（API + UI + PostgreSQL）
@@ -90,7 +90,7 @@ open http://localhost
 默认管理员账号在首次启动时自动创建，查看日志获取：
 
 ```bash
-docker compose logs api | grep -i "admin"
+docker compose logs ketches-api | grep -i "admin"
 ```
 
 ### Helm（Kubernetes）

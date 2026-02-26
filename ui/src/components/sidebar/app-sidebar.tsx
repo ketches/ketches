@@ -1,4 +1,5 @@
 import {
+  Blocks,
   Box,
   FolderGit2,
   LayoutDashboard,
@@ -62,6 +63,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   ]
 
   if (userRole === 'admin') {
+    navMain.push({
+      title: "Extensions",
+      url: "/extensions",
+      icon: Blocks,
+    })
     navMain.push({
       title: "Users",
       url: "/users",

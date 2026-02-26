@@ -1,0 +1,206 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ketches
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ketches-secrets
+  namespace: ketches
+type: Opaque
+stringData:
+  postgres-password: "ketches"
+  jwt-secret: "change-this-in-production"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ketches-config
+  namespace: ketches
+data:
+  LOG_LEVEL: "info"
+  DB_DRIVER: "postgres"
+  DB_SOURCE: "host=ketches-db port=5432 user=ketches password=ketches dbname=ketches sslmode=disable"
+  CORS_ALLOWED_ORIGINS: "*"
+  BACKEND_URL: "http://ketches-api:8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ketches-db
+  namespace: ketches
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: ketches-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ketches-db
+  namespace: ketches
+spec:
+  serviceName: "ketches-db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ketches-db
+  template:
+    metadata:
+      labels:
+        app: ketches-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "ketches"
+            - name: POSTGRES_USER
+              value: "ketches"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ketches-secrets
+                  key: postgres-password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ketches-api
+  namespace: ketches
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  selector:
+    app: ketches-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ketches-api
+  namespace: ketches
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ketches-api
+  template:
+    metadata:
+      labels:
+        app: ketches-api
+    spec:
+      containers:
+        - name: ketches-api
+          image: ghcr.io/ketches/ketches-api:latest # Replace with your actual image
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: ketches-config
+                  key: LOG_LEVEL
+            - name: DB_DRIVER
+              valueFrom:
+                configMapKeyRef:
+                  name: ketches-config
+                  key: DB_DRIVER
+            - name: DB_SOURCE
+              valueFrom:
+                configMapKeyRef:
+                  name: ketches-config
+                  key: DB_SOURCE
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ketches-secrets
+                  key: jwt-secret
+            - name: CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: ketches-config
+                  key: CORS_ALLOWED_ORIGINS
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ketches-ui
+  namespace: ketches
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+      name: http
+  selector:
+    app: ketches-ui
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ketches-ui
+  namespace: ketches
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ketches-ui
+  template:
+    metadata:
+      labels:
+        app: ketches-ui
+    spec:
+      containers:
+        - name: ketches-ui
+          image: ghcr.io/ketches/ketches-ui:latest # Replace with your actual image
+          ports:
+            - containerPort: 80
+          env:
+            - name: BACKEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ketches-config
+                  key: BACKEND_URL
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+            requests:
+              memory: "128Mi"
+              cpu: "250m"

@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertCircle, Edit2, ExternalLink, Loader2, Plus, Trash2 } from "lucide-react"
+import { AlertCircle, Edit2, ExternalLink, GamepadDirectional, Loader2, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { clustersApi, type ClusterIntegration, type CreateClusterIntegrationRequest, type IntegrationType } from "@/api/clusters"
+import { DataTable } from "@/components/data-table/data-table"
+import { EmptyState } from "@/components/shared/empty-state"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
@@ -14,6 +16,7 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import type { ColumnDef } from "@tanstack/react-table"
 
 const INTEGRATION_TYPES: { value: IntegrationType; label: string; description: string }[] = [
   { value: "prometheus", label: "Prometheus", description: "Metrics and monitoring" },
@@ -197,89 +200,126 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
     setDeleteOpen(true)
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
+  const columns: ColumnDef<ClusterIntegration>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => {
+        const integration = row.original
+        return (
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{integration.name}</span>
+            <ColorBadge color={integration.enabled ? "green" : "gray"}>
+              {integration.enabled ? "Active" : "Disabled"}
+            </ColorBadge>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "integration_type",
+      header: "Type",
+      cell: ({ row }) => {
+        const typeInfo = INTEGRATION_TYPES.find((t) => t.value === row.original.integration_type)
+        return (
+          <div>
+            <span className="capitalize text-sm">{typeInfo?.label || row.original.integration_type}</span>
+            <p className="text-xs text-muted-foreground">{typeInfo?.description}</p>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "endpoint",
+      header: "Endpoint",
+      cell: ({ row }) => {
+        const integration = row.original
+        return (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ExternalLink className="h-3 w-3 shrink-0" />
+            <span className="font-mono truncate max-w-48">
+              {integration.service_name
+                ? `${integration.namespace}/${integration.service_name}:${integration.service_port}`
+                : integration.endpoint}
+            </span>
+          </div>
+        )
+      },
+    },
+    {
+      id: "tls",
+      header: "TLS",
+      cell: ({ row }) => {
+        if (row.original.skip_tls_verify) {
+          return (
+            <div className="flex items-center gap-1 text-xs text-amber-600">
+              <AlertCircle className="h-3 w-3" />
+              Disabled
+            </div>
+          )
+        }
+        return <span className="text-xs text-muted-foreground">Enabled</span>
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1 justify-end">
+          <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEdit(row.original)}>
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon-xs" onClick={() => handleOpenDelete(row.original)}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+  ]
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">Integrations</h3>
-          <p className="text-sm text-muted-foreground">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GamepadDirectional className="h-4 w-4" />
+            Integrations
+          </CardTitle>
+          <CardDescription>
             Configure third-party service integrations for this cluster
-          </p>
-        </div>
-        <Button onClick={handleOpenCreate}>
-          <Plus />
-          Add Integration
-        </Button>
-      </div>
-
-      {integrations.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-sm font-medium">No integrations configured</p>
-            <p className="text-xs text-muted-foreground">
-              Add Prometheus, Grafana, or other integrations to enable monitoring
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {integrations.map((integration) => {
-            const typeInfo = INTEGRATION_TYPES.find((t) => t.value === integration.integration_type)
-            return (
-              <Card key={integration.id}>
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                  <div>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      {integration.name}
-                      <ColorBadge color={integration.enabled ? "green" : "gray"}>
-                        {integration.enabled ? "Active" : "Disabled"}
-                      </ColorBadge>
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-1">
-                      <span className="capitalize">{typeInfo?.label || integration.integration_type}</span>
-                      <span className="text-muted-foreground">·</span>
-                      <span>{typeInfo?.description}</span>
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEdit(integration)}>
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon-xs" onClick={() => handleOpenDelete(integration)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <ExternalLink className="h-3 w-3" />
-                    <span className="font-mono truncate">
-                      {integration.service_name
-                        ? `${integration.namespace}/${integration.service_name}:${integration.service_port}`
-                        : integration.endpoint}
-                    </span>
-                  </div>
-                  {integration.skip_tls_verify && (
-                    <div className="flex items-center gap-1 mt-2 text-xs text-amber-600">
-                      <AlertCircle className="h-3 w-3" />
-                      TLS verification disabled
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : integrations.length === 0 ? (
+            <EmptyState
+              title="No integrations configured"
+              description="Add Prometheus, Grafana, or other integrations to enable monitoring"
+              icon={GamepadDirectional}
+              actionText="Add Integration"
+              onAction={handleOpenCreate}
+              actionIcon={Plus}
+            />
+          ) : (
+            <DataTable
+              borderless
+              columns={columns}
+              data={integrations}
+              searchKey="name"
+              searchPlaceholder="Filter integrations..."
+              leftActions={() => (
+                <Button onClick={handleOpenCreate}>
+                  <Plus />
+                  Add Integration
+                </Button>
+              )}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-160 max-w-lg">

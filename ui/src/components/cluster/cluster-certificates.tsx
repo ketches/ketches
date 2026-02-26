@@ -4,6 +4,7 @@ import * as React from "react"
 import { toast } from "sonner"
 
 import { certificatesApi, type Certificate } from "@/api/certificates"
+import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
@@ -27,8 +28,8 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import type { ColumnDef } from "@tanstack/react-table"
 
 interface ClusterCertificatesProps {
   clusterId: string
@@ -151,25 +152,67 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
     setDeleteOpen(true)
   }
 
+  const columns: ColumnDef<Certificate>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.original.description || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "created_at",
+      header: "Created At",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(row.original.created_at).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1 justify-end">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleOpenEdit(row.original)}
+          >
+            <Pencil />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => handleOpenDelete(row.original)}
+            disabled={deleteMutation.isPending}
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" />
-                TLS Certificates
-              </CardTitle>
-              <CardDescription>
-                Cluster-level certificates available to all environments
-              </CardDescription>
-            </div>
-            <Button size="sm" onClick={handleOpenCreate}>
-              <Plus />
-              Add Certificate
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            TLS Certificates
+          </CardTitle>
+          <CardDescription>
+            Cluster-level certificates available to all environments
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -181,51 +224,24 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
               title="No certificates configured"
               description="Add a TLS certificate to enable HTTPS gateways"
               icon={ShieldCheck}
+              actionText="Add Certificate"
+              onAction={handleOpenCreate}
+              actionIcon={Plus}
             />
           ) : (
-            <div className="border-y border-x-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Created At</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {certificates.map((cert) => (
-                    <TableRow key={cert.id}>
-                      <TableCell className="font-medium">{cert.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{cert.description || "-"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(cert.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenEdit(cert)}
-                          >
-                            <Pencil />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleOpenDelete(cert)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <DataTable
+              borderless
+              columns={columns}
+              data={certificates}
+              searchKey="name"
+              searchPlaceholder="Filter certificates..."
+              leftActions={() => (
+                <Button onClick={handleOpenCreate}>
+                  <Plus />
+                  Add Certificate
+                </Button>
+              )}
+            />
           )}
         </CardContent>
       </Card>

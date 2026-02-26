@@ -122,13 +122,13 @@ docker-buildx: ## Build and push multi-arch images via buildx (requires a buildx
 # Docker Compose
 # ──────────────────────────────────────────────────────────────────────────────
 up: ## Start all services (builds images if needed)
-	docker compose up -d --build
+	cd deploy/docker && docker compose up -d --build
 
 down: ## Stop and remove all services
-	docker compose down
+	cd deploy/docker && docker compose down
 
 logs: ## Tail logs from all services
-	docker compose logs -f
+	cd deploy/docker && docker compose logs -f
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Cleanup

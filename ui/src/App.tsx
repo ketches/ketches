@@ -27,6 +27,7 @@ import { MembersPage } from "@/pages/members/members-page"
 import { PluginsPage } from "@/pages/plugins/plugins-page"
 import { RecycleBinPage } from "@/pages/recycle-bin/recycle-bin-page"
 import { UsersPage } from "@/pages/users/users-page"
+import { ExtensionsPage } from "@/pages/extensions/extensions-page"
 import { useAuthStore } from "@/stores/auth"
 import * as React from "react"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
@@ -157,6 +158,13 @@ export function App() {
               <ProtectedRoute>
                 <AdminRoute>
                   <DashboardLayout><UsersPage /></DashboardLayout>
+                </AdminRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/extensions" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <DashboardLayout><ExtensionsPage /></DashboardLayout>
                 </AdminRoute>
               </ProtectedRoute>
             } />
