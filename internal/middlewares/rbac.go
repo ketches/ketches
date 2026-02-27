@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
@@ -55,6 +56,71 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 			return "", false
 		}
 		return env.ProjectID, true
+	}
+
+	// Resolve flat app sub-resources via :id param (env-vars, volumes, config-files, gateways)
+	// Use the route path prefix to determine which table to look up.
+	if resourceID := c.Param("id"); resourceID != "" {
+		path := c.FullPath()
+		var appID string
+
+		switch {
+		case strings.HasPrefix(path, "/api/v1/env-vars/"):
+			var r entities.AppEnvVar
+			if err := db.DB.Select("app_id").Where("id = ?", resourceID).First(&r).Error; err != nil {
+				log.Printf("resolveProjectID: DB lookup AppEnvVar %q failed: %v", resourceID, err)
+				return "", false
+			}
+			appID = r.AppID
+		case strings.HasPrefix(path, "/api/v1/volumes/"):
+			var r entities.AppVolume
+			if err := db.DB.Select("app_id").Where("id = ?", resourceID).First(&r).Error; err != nil {
+				log.Printf("resolveProjectID: DB lookup AppVolume %q failed: %v", resourceID, err)
+				return "", false
+			}
+			appID = r.AppID
+		case strings.HasPrefix(path, "/api/v1/config-files/"):
+			var r entities.AppConfigFile
+			if err := db.DB.Select("app_id").Where("id = ?", resourceID).First(&r).Error; err != nil {
+				log.Printf("resolveProjectID: DB lookup AppConfigFile %q failed: %v", resourceID, err)
+				return "", false
+			}
+			appID = r.AppID
+		case strings.HasPrefix(path, "/api/v1/gateways/"):
+			var r entities.AppGateway
+			if err := db.DB.Select("app_id").Where("id = ?", resourceID).First(&r).Error; err != nil {
+				log.Printf("resolveProjectID: DB lookup AppGateway %q failed: %v", resourceID, err)
+				return "", false
+			}
+			appID = r.AppID
+		default:
+			return "", false
+		}
+
+		// Resolve appID → projectID via apps → envs join
+		var env entities.Env
+		if err := db.DB.Select("envs.project_id").
+			Joins("JOIN apps ON apps.env_id = envs.id").
+			Where("apps.id = ?", appID).
+			First(&env).Error; err != nil {
+			log.Printf("resolveProjectID: DB lookup via appID %q (flat resource) failed: %v", appID, err)
+			return "", false
+		}
+		return env.ProjectID, true
+	}
+
+	// Resolve via container registry ID
+	if registryID := c.Param("registryID"); registryID != "" {
+		var registry entities.ContainerRegistry
+		if err := db.DB.Select("project_id").Where("id = ?", registryID).First(&registry).Error; err != nil {
+			log.Printf("resolveProjectID: DB lookup ContainerRegistry %q failed: %v", registryID, err)
+			return "", false
+		}
+		// Cluster-scoped registries have no project context — skip RBAC check
+		if registry.ProjectID == nil {
+			return "", false
+		}
+		return *registry.ProjectID, true
 	}
 
 	return "", false
