@@ -188,19 +188,18 @@ func SetupV1Routes(r *gin.Engine) {
 				appsWrite.POST("/:appID/deployment-history/rollback", handlers.RollbackDeployment)
 			}
 
-			// ── Flat resource routes (env-vars, volumes, config-files, gateways) ──
-			// TODO: These routes lack project context; RBAC via RequireProjectRole not applicable here.
-			authorized.PUT("/env-vars/:id", handlers.UpdateAppEnvVar)
-			authorized.DELETE("/env-vars/:id", handlers.DeleteAppEnvVar)
-
-			authorized.PUT("/volumes/:id", handlers.UpdateAppVolume)
-			authorized.DELETE("/volumes/:id", handlers.DeleteAppVolume)
-
-			authorized.PUT("/config-files/:id", handlers.UpdateAppConfigFile)
-			authorized.DELETE("/config-files/:id", handlers.DeleteAppConfigFile)
-
-			authorized.PUT("/gateways/:id", handlers.UpdateAppGateway)
-			authorized.DELETE("/gateways/:id", handlers.DeleteAppGateway)
+			// Flat resource write routes — RequireProjectRole resolves project via resource→app→env chain.
+			flatResourcesWrite := authorized.Group("", middlewares.RequireProjectRole("developer"))
+			{
+				flatResourcesWrite.PUT("/env-vars/:id", handlers.UpdateAppEnvVar)
+				flatResourcesWrite.DELETE("/env-vars/:id", handlers.DeleteAppEnvVar)
+				flatResourcesWrite.PUT("/volumes/:id", handlers.UpdateAppVolume)
+				flatResourcesWrite.DELETE("/volumes/:id", handlers.DeleteAppVolume)
+				flatResourcesWrite.PUT("/config-files/:id", handlers.UpdateAppConfigFile)
+				flatResourcesWrite.DELETE("/config-files/:id", handlers.DeleteAppConfigFile)
+				flatResourcesWrite.PUT("/gateways/:id", handlers.UpdateAppGateway)
+				flatResourcesWrite.DELETE("/gateways/:id", handlers.DeleteAppGateway)
+			}
 
 			authorized.GET("/clusters/public", handlers.ListPublicClusters)
 			authorized.GET("/clusters/:clusterID/public", handlers.GetPublicCluster)
@@ -268,14 +267,16 @@ func SetupV1Routes(r *gin.Engine) {
 				clusters.DELETE("/:clusterID/certificates/:certID", handlers.DeleteCertificate)
 			}
 
-			// Container Registries (common scope)
-			// TODO: These routes lack project context; RBAC via RequireProjectRole not applicable here.
+			// Container Registries (project-scoped) — write routes enforce developer role via registryID→project chain.
 			containerRegistries := authorized.Group("/container-registries")
 			{
 				containerRegistries.GET("/:registryID", handlers.GetContainerRegistry)
-				containerRegistries.PUT("/:registryID", handlers.UpdateContainerRegistry)
-				containerRegistries.DELETE("/:registryID", handlers.DeleteContainerRegistry)
-				containerRegistries.POST("/:registryID/test", handlers.TestContainerRegistry)
+				containerRegistriesWrite := containerRegistries.Group("", middlewares.RequireProjectRole("developer"))
+				{
+					containerRegistriesWrite.PUT("/:registryID", handlers.UpdateContainerRegistry)
+					containerRegistriesWrite.DELETE("/:registryID", handlers.DeleteContainerRegistry)
+					containerRegistriesWrite.POST("/:registryID/test", handlers.TestContainerRegistry)
+				}
 			}
 
 			// Prometheus metrics - accessible by all authenticated users (not AdminOnly)
