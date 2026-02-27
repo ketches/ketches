@@ -2,6 +2,8 @@ package middlewares
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +24,11 @@ var projectRoleRank = map[string]int{
 // It checks :projectID, :envID, and :appID in order, resolving the latter
 // two via DB lookups through the env and app tables.
 func resolveProjectID(c *gin.Context) (string, bool) {
+	// Guard against uninitialized DB (startup race / misconfiguration).
+	if db.DB == nil {
+		return "", false
+	}
+
 	// Direct project ID from URL
 	if projectID := c.Param("projectID"); projectID != "" {
 		return projectID, true
@@ -31,6 +38,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 	if envID := c.Param("envID"); envID != "" {
 		var env entities.Env
 		if err := db.DB.Select("project_id").Where("id = ?", envID).First(&env).Error; err != nil {
+			log.Printf("resolveProjectID: DB lookup by envID %q failed: %v", envID, err)
 			return "", false
 		}
 		return env.ProjectID, true
@@ -43,6 +51,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 			Joins("JOIN apps ON apps.env_id = envs.id").
 			Where("apps.id = ?", appID).
 			First(&env).Error; err != nil {
+			log.Printf("resolveProjectID: DB lookup by appID %q failed: %v", appID, err)
 			return "", false
 		}
 		return env.ProjectID, true
@@ -55,6 +64,11 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 // Users with the "admin" system role bypass the check entirely.
 // Non-admin users must be a project member with a role rank >= the minimum.
 func RequireProjectRole(minRole string) gin.HandlerFunc {
+	// Panic at setup time for unknown roles — catches misconfiguration before any request.
+	if _, ok := projectRoleRank[minRole]; !ok {
+		panic(fmt.Sprintf("RequireProjectRole: unknown role %q", minRole))
+	}
+
 	return func(c *gin.Context) {
 		claims := api.GetClaims(c)
 		if claims == nil {
@@ -72,6 +86,13 @@ func RequireProjectRole(minRole string) gin.HandlerFunc {
 		projectID, ok := resolveProjectID(c)
 		if !ok {
 			api.Error(c, http.StatusBadRequest, errors.New("unable to resolve project"))
+			c.Abort()
+			return
+		}
+
+		// Guard against uninitialized DB before member lookup
+		if db.DB == nil {
+			api.Error(c, http.StatusInternalServerError, errors.New("service unavailable"))
 			c.Abort()
 			return
 		}
