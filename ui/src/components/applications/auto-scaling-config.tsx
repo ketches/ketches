@@ -14,6 +14,7 @@ import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/fie
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { AxiosError } from "axios"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 const autoScalingSchema = z.object({
   enabled: z.boolean(),
@@ -31,6 +32,8 @@ interface AutoScalingConfigProps {
 
 export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
   const queryClient = useQueryClient()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<z.infer<typeof autoScalingSchema>>({
     resolver: zodResolver(autoScalingSchema),
     defaultValues: {
@@ -211,10 +214,12 @@ export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
           </div>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={updateMutation.isPending}>
-              <Save />
-              {updateMutation.isPending ? "Saving..." : "Save"}
-            </Button>
+            {!isViewer && (
+              <Button type="submit" disabled={updateMutation.isPending}>
+                <Save />
+                {updateMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

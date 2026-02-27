@@ -57,7 +57,7 @@ interface ApplicationListProps {
   envName?: string
 }
 
-export function ApplicationList({ envId, envName }: ApplicationListProps) {
+export function ApplicationList({ envId, envName: _envName }: ApplicationListProps) {
   const navigate = useNavigate()
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)

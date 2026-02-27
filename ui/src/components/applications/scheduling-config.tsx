@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 const schedulingSchema = z.object({
   rule_type: z.string(),
@@ -53,6 +54,9 @@ interface SchedulingConfigProps {
 
 export function SchedulingConfig({ app }: SchedulingConfigProps) {
   const queryClient = useQueryClient()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
+
 
   let initialNodeSelectors: any[] = []
   try {
@@ -301,14 +305,16 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
           </div>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={updateMutation.isPending}>
-              <Save />
-              {updateMutation.isPending ? "Saving..." : "Save"}
-            </Button>
+            {!isViewer && (
+              <Button type="submit" disabled={updateMutation.isPending}>
+                <Save />
+                {updateMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>
-    </Card >
+    </Card>
   )
 }
 

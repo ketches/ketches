@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 const commandSchema = z.object({
   container_command: z.string().optional(),
@@ -23,6 +24,8 @@ interface CommandConfigProps {
 
 export function CommandConfig({ app }: CommandConfigProps) {
   const queryClient = useQueryClient()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof commandSchema>>({
     resolver: zodResolver(commandSchema),
     defaultValues: {
@@ -73,10 +76,12 @@ export function CommandConfig({ app }: CommandConfigProps) {
           </Field>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={updateMutation.isPending}>
-              <Save />
-              {updateMutation.isPending ? "Saving..." : "Save"}
-            </Button>
+            {!isViewer && (
+              <Button type="submit" disabled={updateMutation.isPending}>
+                <Save />
+                {updateMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

@@ -7,6 +7,7 @@ import * as z from "zod"
 
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
@@ -26,6 +27,8 @@ interface ResourceConfigProps {
 
 export function ResourceConfig({ app }: ResourceConfigProps) {
   const queryClient = useQueryClient()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof resourceSchema>>({
     resolver: zodResolver(resourceSchema),
     defaultValues: {
@@ -111,10 +114,12 @@ export function ResourceConfig({ app }: ResourceConfigProps) {
           </div>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={updateMutation.isPending}>
-              <Save />
-              {updateMutation.isPending ? "Saving..." : "Save"}
-            </Button>
+            {!isViewer && (
+              <Button type="submit" disabled={updateMutation.isPending}>
+                <Save />
+                {updateMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

@@ -206,25 +206,6 @@ export function RecycleBinPage() {
   }
 
   const appColumns: ColumnDef<RecycleBinApp>[] = [
-    ...(isViewer ? [] : [{
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    }]),
     {
       accessorKey: "name",
       header: "Application",
@@ -252,7 +233,29 @@ export function RecycleBinPage() {
       header: "Deleted At",
       cell: ({ row }) => formatDate(row.original.deleted_at),
     },
-    ...(isViewer ? [] : [{
+  ]
+
+  if (!isViewer) {
+    appColumns.unshift({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    })
+    appColumns.push({
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
@@ -284,29 +287,10 @@ export function RecycleBinPage() {
       ),
       enableSorting: false,
       enableHiding: false,
-    }]),
-  ]
+    })
+  }
 
   const envColumns: ColumnDef<RecycleBinEnv>[] = [
-    ...(isViewer ? [] : [{
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    }]),
     {
       accessorKey: "name",
       header: "Environment",
@@ -330,7 +314,29 @@ export function RecycleBinPage() {
       header: "Deleted At",
       cell: ({ row }) => formatDate(row.original.deleted_at),
     },
-    ...(isViewer ? [] : [{
+  ]
+
+  if (!isViewer) {
+    envColumns.unshift({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    })
+    envColumns.push({
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
@@ -364,9 +370,8 @@ export function RecycleBinPage() {
       ),
       enableSorting: false,
       enableHiding: false,
-    }]),
-  ]
-
+    })
+  }
   const selectedCount = activeTab === "apps" ? selectedAppIds.length : selectedEnvIds.length
 
   const breadcrumbs = [

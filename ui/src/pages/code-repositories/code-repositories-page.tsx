@@ -129,7 +129,10 @@ export function CodeRepositoriesPage() {
         </span>
       ),
     },
-    ...(isViewer ? [] : [{
+  ]
+
+  if (!isViewer) {
+    columns.push({
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
@@ -154,8 +157,8 @@ export function CodeRepositoriesPage() {
           </Tooltip>
         </div>
       ),
-    }]),
-  ]
+    })
+  }
 
   const breadcrumbs = [{ label: "Code Repositories", icon: FolderGit2 }]
 

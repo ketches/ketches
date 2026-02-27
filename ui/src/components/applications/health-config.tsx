@@ -14,6 +14,7 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { AxiosError } from "axios"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 const probeSchema = z.object({
   probes: z.array(z.object({
@@ -55,6 +56,8 @@ interface ProbeConfigProps {
 
 export function HealthConfig({ app }: ProbeConfigProps) {
   const queryClient = useQueryClient()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const { control, register, handleSubmit, watch } = useForm<ProbeFormValues>({
     resolver: zodResolver(probeSchema) as Resolver<ProbeFormValues>,
     defaultValues: {
@@ -272,10 +275,12 @@ export function HealthConfig({ app }: ProbeConfigProps) {
           </Button>
 
           <div className="flex justify-end pt-4">
-            <Button type="submit" disabled={updateMutation.isPending}>
-              <Save />
-              {updateMutation.isPending ? "Saving..." : "Save"}
-            </Button>
+            {!isViewer && (
+              <Button type="submit" disabled={updateMutation.isPending}>
+                <Save />
+                {updateMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

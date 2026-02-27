@@ -44,7 +44,7 @@ export function ImportAppsDialog({
   const [importType, setImportType] = React.useState<'dockercompose' | 'kubernetes' | 'ketches'>('dockercompose')
   const [content, setContent] = React.useState('')
   const [conflictStrategy, setConflictStrategy] = React.useState<'rename' | 'ask' | 'error'>('rename')
-  const [fileName, setFileName] = React.useState('')
+  const [_fileName, setFileName] = React.useState('')
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

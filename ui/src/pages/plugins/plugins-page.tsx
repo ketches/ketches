@@ -134,7 +134,10 @@ export function PluginsPage() {
         </span>
       ),
     },
-    ...(isViewer ? [] : [{
+  ]
+
+  if (!isViewer) {
+    columns.push({
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
@@ -164,8 +167,8 @@ export function PluginsPage() {
           </Button>
         </div>
       ),
-    }])
-  ]
+    })
+  }
 
   const breadcrumbs = [
     {
