@@ -13,6 +13,7 @@ interface NavItem {
   title: string
   url: string
   icon: LucideIcon
+  hidden?: boolean
 }
 
 export function NavMenuItem({ item }: { item: NavItem }) {
@@ -40,8 +41,9 @@ export function NavMain({
 }: {
   items: NavItem[]
 }) {
-  const dashboardItem = items.find((item) => item.url === "/")
-  const coreItems = items.filter((item) => item.url !== "/")
+  const visibleItems = items.filter((item) => !item.hidden)
+  const dashboardItem = visibleItems.find((item) => item.url === "/")
+  const coreItems = visibleItems.filter((item) => item.url !== "/")
 
   return (
     <>
