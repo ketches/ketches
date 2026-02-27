@@ -1,12 +1,12 @@
 import {
-Blocks,
-Box,
+  Blocks,
+  Box,
   FolderGit2,
   FolderKanban,
-LayoutDashboard,
-ShipWheel,
-Trash2,
-User,
+  LayoutDashboard,
+  ShipWheel,
+  Trash2,
+  User,
   Warehouse,
 } from "lucide-react"
 import * as React from "react"
@@ -64,10 +64,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-<SidebarHeader>
-{isAdmin ? <PlatformHeader /> :
-<ProjectSwitcher />}
-</SidebarHeader>
+      <SidebarHeader>
+        {isAdmin ? <PlatformHeader /> : <ProjectSwitcher />}
+      </SidebarHeader>
       <SidebarContent>
         <NavGlobalSearch onOpenSearch={() => setSearchOpen(true)} />
         <NavMain items={navItems} />
