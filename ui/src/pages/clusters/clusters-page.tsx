@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { CheckCircle2, Clock, LayoutGrid, Link2, List as ListIcon, Loader2, Network, Pencil, Plus, ShipWheel, Trash2, XCircle } from "lucide-react"
+import { Clock, LayoutGrid, Link2, List as ListIcon, Loader2, Network, Pencil, Plus, ShipWheel, Trash2 } from "lucide-react"
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -292,16 +292,13 @@ export function ClustersPage() {
                       <CardTitle className="text-base font-semibold truncate">{cluster.name}</CardTitle>
                       <ColorBadge
                         color={cluster.enabled ? "green" : "gray"}
-                        className="text-[10px] px-1.5 py-0 shrink-0"
                       >
                         {cluster.enabled ? (
                           <>
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
                             Active
                           </>
                         ) : (
                           <>
-                            <XCircle className="h-3 w-3 mr-1" />
                             Disabled
                           </>
                         )}

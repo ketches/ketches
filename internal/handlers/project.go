@@ -31,7 +31,11 @@ func ListProjects(c *gin.Context) {
 		ownerName := ""
 		for _, m := range p.Members {
 			if m.ProjectRole == "owner" {
-				ownerName = m.User.Username
+				if m.User.Fullname != "" {
+					ownerName = m.User.Fullname
+				} else {
+					ownerName = m.User.Username
+				}
 				break
 			}
 		}

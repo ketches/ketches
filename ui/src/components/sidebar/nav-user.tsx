@@ -12,8 +12,8 @@ import {
   UserCog
 } from "lucide-react"
 
-import { useTheme } from "@/components/theme-provider/theme-provider"
 import { AccountDialog } from "@/components/account/account-dialog"
+import { useTheme } from "@/components/theme-provider/theme-provider"
 import {
   Avatar,
   AvatarFallback,
@@ -55,7 +55,7 @@ export function NavUser({
   const { setTheme } = useTheme()
   const theme = useTheme().theme
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
-  
+
   const authUser = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const navigate = useNavigate()
@@ -117,11 +117,11 @@ export function NavUser({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => setAccountDialogOpen(true)}>
-                  <UserCog />
+                  <UserCog className="mr-2" />
                   Account
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Bell />
+                  <Bell className="mr-2" />
                   Notifications
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -129,7 +129,7 @@ export function NavUser({
               <DropdownMenuGroup>
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <PaletteIcon className="mr-2 h-4 w-4" />
+                    <PaletteIcon className="mr-2" />
                     <span>Appearance</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
@@ -137,15 +137,15 @@ export function NavUser({
                       <DropdownMenuRadioGroup value={theme}
                         onValueChange={setTheme}>
                         <DropdownMenuRadioItem value="system">
-                          <Monitor className="mr-2 h-4 w-4" />
+                          <Monitor className="mr-2" />
                           <span>System</span>
                         </DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="light">
-                          <Sun className="mr-2 h-4 w-4" />
+                          <Sun className="mr-2" />
                           <span>Light</span>
                         </DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="dark">
-                          <Moon className="mr-2 h-4 w-4" />
+                          <Moon className="mr-2" />
                           <span>Dark</span>
                         </DropdownMenuRadioItem>
                       </DropdownMenuRadioGroup>
@@ -157,7 +157,7 @@ export function NavUser({
               <DropdownMenuGroup>
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <Languages className="mr-2 h-4 w-4" />
+                    <Languages className="mr-2" />
                     <span>Language</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
@@ -180,7 +180,7 @@ export function NavUser({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut />
+                  <LogOut className="mr-2" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuGroup>

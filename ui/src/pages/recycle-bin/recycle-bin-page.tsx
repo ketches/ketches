@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Box, FolderKanban, Orbit, RotateCcw, Trash2 } from "lucide-react"
+import { Box, GalleryVerticalEnd, Orbit, RotateCcw, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -585,7 +585,7 @@ export function RecycleBinPage() {
             <EmptyState
               title="No deleted projects"
               description="Deleted projects will appear here. You can restore or permanently delete them."
-              icon={FolderKanban}
+              icon={GalleryVerticalEnd}
             />
           ) : (
             <DataTable

@@ -5,7 +5,6 @@ import {
   Box,
   Boxes,
   ChartLine,
-  FolderKanban,
   GalleryVerticalEnd,
   LayoutDashboard,
   Loader2,
@@ -216,7 +215,7 @@ function UserDashboard() {
       <div className="flex flex-col flex-1 gap-6">
         <PageHeader items={[{ label: "Dashboard", icon: LayoutDashboard }]} />
         <div className="flex flex-col flex-1 items-center justify-center">
-          <FolderKanban className="h-12 w-12 text-muted-foreground mb-4" />
+          <GalleryVerticalEnd className="h-12 w-12 text-muted-foreground mb-4" />
           <h2 className="text-lg font-medium">No Project Selected</h2>
           <p className="text-sm text-muted-foreground">Select a project from the sidebar to view its dashboard</p>
         </div>

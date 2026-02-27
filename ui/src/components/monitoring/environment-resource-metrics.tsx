@@ -4,11 +4,11 @@ import { useNavigate } from "react-router-dom"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
 import { clustersApi } from "@/api/clusters"
+import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty"
-import { EmptyState } from "../shared/empty-state"
 
 const cpuChartConfig: ChartConfig = {
   cpu: { label: "CPU (mCores)", color: "var(--chart-1)" },

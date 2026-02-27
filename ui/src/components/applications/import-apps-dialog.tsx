@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -24,7 +25,6 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 interface ImportAppsDialogProps {
   open: boolean

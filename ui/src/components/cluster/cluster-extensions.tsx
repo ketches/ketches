@@ -18,6 +18,7 @@ import { UpdateExtensionDialog } from "@/components/cluster/update-extension-dia
 import { DataTable } from "@/components/data-table/data-table"
 import { BrowseExtensionsDialog } from "@/components/extensions/browse-extensions-dialog"
 import { InstallExtensionToClusterDialog } from "@/components/extensions/install-extension-dialog"
+import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
@@ -38,7 +39,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ColorBadge } from "../shared/color-badge"
 
 interface ClusterExtensionsProps {
   clusterId: string

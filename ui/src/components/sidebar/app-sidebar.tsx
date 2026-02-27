@@ -3,7 +3,7 @@ import {
   Blocks,
   Box,
   FolderGit2,
-  FolderKanban,
+  GalleryVerticalEnd,
   LayoutDashboard,
   Orbit,
   Puzzle,
@@ -43,7 +43,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const adminNavItems = [
     { title: "Clusters", url: "/clusters", icon: ShipWheel },
     { title: "Extensions", url: "/extensions", icon: Blocks },
-    { title: "Projects", url: "/projects", icon: FolderKanban },
+    { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
     { title: "Users", url: "/users", icon: User },
   ]
 
@@ -59,7 +59,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Global group: cross-project modules
   const globalItems = isAdmin ? [] : [
-    { title: "Projects", url: "/projects", icon: FolderKanban },
+    { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
     { title: "Recycle Bin", url: "/recycle-bin", icon: Trash2, hidden: isViewer },
     { title: "Activity", url: "/activity", icon: Activity },
   ]

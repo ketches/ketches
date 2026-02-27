@@ -23,6 +23,8 @@ import { DataTable } from "@/components/data-table/data-table"
 import { EditAppPluginEnvDialog } from "@/components/plugins/edit-app-plugin-env-dialog"
 import { InstallPluginDialog } from "@/components/plugins/install-plugin-dialog"
 import { PluginResourcePopover } from "@/components/plugins/plugin-resource-popover"
+import { ColorBadge } from "@/components/shared/color-badge"
+import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,8 +40,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Link } from "react-router-dom"
-import { ColorBadge } from "../shared/color-badge"
-import { EmptyState } from "../shared/empty-state"
 
 interface AppPluginsProps {
   appId: string

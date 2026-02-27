@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { FolderKanban, GalleryVerticalEnd, LayoutGrid, List as ListIcon, LogIn, Pencil, Plus, Trash2 } from "lucide-react"
+import { GalleryVerticalEnd, LayoutGrid, List as ListIcon, LogIn, Pencil, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -10,6 +10,7 @@ import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import CreateProjectDialog from "@/components/project/create-project-dialog"
 import EditProjectDialog from "@/components/project/edit-project-dialog"
+import { ColorBadge } from "@/components/shared/color-badge"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -137,12 +139,21 @@ export function ProjectsPage() {
       header: "Name",
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="flex size-8 items-center justify-center rounded-lg border bg-sidebar-primary text-sidebar-primary-foreground shrink-0">
-            <GalleryVerticalEnd className="size-4" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="font-medium text-foreground truncate">{row.original.name}</span>
-            <span className="text-xs text-muted-foreground font-mono truncate">{row.original.slug}</span>
+          <Avatar className="h-8 w-8 rounded-lg bg-primary/10 text-primary border-none">
+            <AvatarFallback className="rounded-lg text-xs font-bold">
+              {row.original.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-foreground">{row.original.name}</span>
+              {row.original.id === activeProjectId && (
+                <ColorBadge color="green">
+                  Active
+                </ColorBadge>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground font-mono">{row.original.slug}</span>
           </div>
         </div>
       ),
@@ -240,7 +251,7 @@ export function ProjectsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader items={[{ label: "Projects", icon: FolderKanban }]} />
+      <PageHeader items={[{ label: "Projects", icon: GalleryVerticalEnd }]} />
 
       <div>
         <h1 className="text-2xl font-bold">Projects</h1>
@@ -267,12 +278,30 @@ export function ProjectsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="flex size-10 items-center justify-center rounded-lg border bg-sidebar-primary text-sidebar-primary-foreground shrink-0">
-                      <GalleryVerticalEnd className="size-5" />
-                    </div>
+                    <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
+                      <AvatarFallback className="rounded-lg text-lg font-bold">
+                        {project.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="flex flex-col min-w-0">
-                      <CardTitle className="text-base font-semibold truncate">{project.name}</CardTitle>
-                      <span className="text-xs text-muted-foreground font-mono truncate">{project.slug}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <CardTitle className="text-base font-semibold truncate">{project.name}</CardTitle>
+                        {project.id === activeProjectId && (
+                          <ColorBadge color="green">
+                            Active
+                          </ColorBadge>
+                        )}
+
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                        <span>{project.slug}</span>
+                        {project.description && (
+                          <>
+                            <span>•</span>
+                            <span className="truncate">{project.description}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   {/* Card action buttons, visible on hover */}
