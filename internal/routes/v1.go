@@ -12,6 +12,7 @@ func SetupV1Routes(r *gin.Engine) {
 		// Webhooks (public, no auth)
 		v1.POST("/webhooks/git/:appID", handlers.HandleGitWebhook)
 		v1.POST("/webhooks/git/repo/:repoID", handlers.HandleGitWebhookForCodeRepo)
+		v1.GET("/version", handlers.GetVersion)
 
 		users := v1.Group("/users")
 		{
