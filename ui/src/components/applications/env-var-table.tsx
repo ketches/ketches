@@ -6,6 +6,8 @@ import { toast } from "sonner"
 
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
+import { useProjectRole } from "@/hooks/useProjectRole"
+
 import type { EnvVarSpec } from "@/components/applications/env-var-editor"
 import { EnvVarEditor } from "@/components/applications/env-var-editor"
 import { DataTable } from "@/components/data-table/data-table"
@@ -28,6 +30,8 @@ interface EnvVarTableProps {
 
 export function EnvVarTable({ app }: EnvVarTableProps) {
   const queryClient = useQueryClient()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingEnvVar, setEditingEnvVar] = React.useState<EnvVarSpec | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -160,22 +164,26 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => handleEdit(row.original)}
-          >
-            <Edit2 />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => handleDelete(row.original)}
-            disabled={deleteMutation.isPending}
-          >
-            <Trash2 />
-          </Button>
+          {!isViewer && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => handleEdit(row.original)}
+              >
+                <Edit2 />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => handleDelete(row.original)}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 />
+              </Button>
+            </>
+          )}
         </div>
       ),
     },
@@ -229,7 +237,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
               />
 
               <div className="flex items-center gap-2">
-                {Object.keys(rowSelection).length > 0 && (
+                {Object.keys(rowSelection).length > 0 && !isViewer && (
                   <Button
                     variant="destructive"
                     onClick={() => {
@@ -255,10 +263,12 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
                     )
                   </Button>
                 )}
-                <Button onClick={handleAdd}>
-                  <Plus />
-                  Add Variable
-                </Button>
+                {!isViewer && (
+                  <Button onClick={handleAdd}>
+                    <Plus />
+                    Add Variable
+                  </Button>
+                )}
               </div>
             </div>
             <DataTable

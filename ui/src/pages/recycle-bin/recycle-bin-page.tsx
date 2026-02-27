@@ -252,7 +252,6 @@ export function RecycleBinPage() {
       header: "Deleted At",
       cell: ({ row }) => formatDate(row.original.deleted_at),
     },
-    {
     ...(isViewer ? [] : [{
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
@@ -331,7 +330,6 @@ export function RecycleBinPage() {
       header: "Deleted At",
       cell: ({ row }) => formatDate(row.original.deleted_at),
     },
-    {
     ...(isViewer ? [] : [{
       id: "actions",
       header: () => <div className="text-right">Actions</div>,

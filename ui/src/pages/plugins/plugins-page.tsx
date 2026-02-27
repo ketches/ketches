@@ -134,7 +134,6 @@ export function PluginsPage() {
         </span>
       ),
     },
-    {
     ...(isViewer ? [] : [{
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
@@ -165,7 +164,7 @@ export function PluginsPage() {
           </Button>
         </div>
       ),
-    }]),
+    }])
   ]
 
   const breadcrumbs = [
@@ -217,6 +216,7 @@ export function PluginsPage() {
           actionText={!isViewer ? "Create Plugin" : undefined}
           onAction={!isViewer ? () => setCreateDialogOpen(true) : undefined}
           actionIcon={!isViewer ? Plus : undefined}
+        />
       ) : (
         <>
           <div className="flex items-center justify-between">
@@ -300,6 +300,7 @@ export function PluginsPage() {
                         </Button>
                       </div>
                     )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-2">
                   <div className="space-y-2">

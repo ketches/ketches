@@ -6,6 +6,8 @@ import { toast } from "sonner"
 
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
+import { useProjectRole } from "@/hooks/useProjectRole"
+
 import type { ConfigFileSpec } from "@/components/applications/config-file-editor"
 import { ConfigFileEditor } from "@/components/applications/config-file-editor"
 import { DataTable } from "@/components/data-table/data-table"
@@ -29,6 +31,8 @@ interface ConfigFilesTableProps {
 
 export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
   const queryClient = useQueryClient()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingConfigFile, setEditingConfigFile] = React.useState<ConfigFileSpec | null>(
     null
@@ -168,22 +172,26 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => handleEdit(row.original)}
-          >
-            <Edit2 />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => handleDelete(row.original)}
-            disabled={deleteMutation.isPending}
-          >
-            <Trash2 />
-          </Button>
+          {!isViewer && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => handleEdit(row.original)}
+              >
+                <Edit2 />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => handleDelete(row.original)}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 />
+              </Button>
+            </>
+          )}
         </div>
       ),
     },
@@ -237,7 +245,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
               />
 
               <div className="flex items-center gap-2">
-                {Object.keys(rowSelection).length > 0 && (
+                {Object.keys(rowSelection).length > 0 && !isViewer && (
                   <Button
                     variant="destructive"
                     onClick={() => {
@@ -253,10 +261,12 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
                     Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
                   </Button>
                 )}
-                <Button onClick={handleAdd}>
-                  <Plus />
-                  Add Config File
-                </Button>
+                {!isViewer && (
+                  <Button onClick={handleAdd}>
+                    <Plus />
+                    Add Config File
+                  </Button>
+                )}
               </div>
             </div>
             <DataTable

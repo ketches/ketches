@@ -6,6 +6,8 @@ import { toast } from "sonner"
 
 import type { App, GatewaySpec } from "@/api/apps"
 import { appsApi } from "@/api/apps"
+import { useProjectRole } from "@/hooks/useProjectRole"
+
 import { GatewayEditor } from "@/components/applications/gateway-editor"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -22,6 +24,8 @@ interface GatewayConfigProps {
 
 export function NetworkConfig({ app }: GatewayConfigProps) {
   const queryClient = useQueryClient()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingGateway, setEditingGateway] = React.useState<GatewaySpec | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -177,7 +181,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       cell: ({ row }) => (
         <span className="font-mono text-xs">
           {isHttpProtocol(row.original.protocol) ? (
-            <Button variant="link" className="p-0 h-auto text-xs">{row.original.domain || <span className="text-muted-foreground">-</span>}</Button>
+            <Button variant="link" className="p-0 h-auto text-xs" onClick={() => window.open(`${row.original.protocol}://${row.original.domain}`, '_blank')}>{row.original.protocol}://{row.original.domain || <span className="text-muted-foreground">-</span>}</Button>
           ) : (
             row.original.gateway_port || <span className="text-muted-foreground">-</span>
           )}
@@ -202,22 +206,26 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => handleEdit(row.original)}
-          >
-            <Edit2 />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => handleDelete(row.original)}
-            disabled={deleteMutation.isPending}
-          >
-            <Trash2 />
-          </Button>
+          {!isViewer && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => handleEdit(row.original)}
+              >
+                <Edit2 />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => handleDelete(row.original)}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 />
+              </Button>
+            </>
+          )}
         </div>
       ),
     },
@@ -270,7 +278,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
               />
 
               <div className="flex items-center gap-2">
-                {Object.keys(rowSelection).length > 0 && (
+                {Object.keys(rowSelection).length > 0 && !isViewer && (
                   <Button
                     variant="destructive"
                     onClick={() => {
@@ -286,10 +294,12 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
                     Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
                   </Button>
                 )}
-                <Button onClick={handleAdd}>
-                  <Plus />
-                  Add Gateway
-                </Button>
+                {!isViewer && (
+                  <Button onClick={handleAdd}>
+                    <Plus />
+                    Add Gateway
+                  </Button>
+                )}
               </div>
             </div>
             <DataTable

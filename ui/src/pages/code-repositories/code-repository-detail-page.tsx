@@ -327,6 +327,7 @@ export function CodeRepositoryDetailPage() {
                 Build
               </Button>
             )}
+          </div>
         </div>
       </div>
 
@@ -849,7 +850,7 @@ export function CodeRepositoryDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div >
+    </div>
   )
 }
 
