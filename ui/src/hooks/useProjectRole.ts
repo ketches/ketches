@@ -9,17 +9,20 @@ export function useProjectRole(): ProjectRole | null {
   const user = useAuthStore((state) => state.user)
   const activeProjectId = useProjectStore((state) => state.activeProjectId)
 
-  // Admin system role gets full owner-equivalent access
-  if (user?.role === 'admin') {
-    return 'owner'
-  }
+  const isAdmin = user?.role === 'admin'
 
+  // Only fetch members for non-admin users with an active project
   const { data } = useQuery({
     queryKey: ['project-members', activeProjectId],
     queryFn: () => projectsApi.listMembers(activeProjectId!),
-    enabled: !!activeProjectId && !!user,
+    enabled: !isAdmin && !!activeProjectId && !!user,
     staleTime: 5 * 60 * 1000,
   })
+
+  // Admin system role gets full owner-equivalent access
+  if (isAdmin) {
+    return 'owner'
+  }
 
   if (!data || !user) return null
 
