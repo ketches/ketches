@@ -30,12 +30,15 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { toast } from "sonner"
 
 const PLUGINS_VIEW_MODE_KEY = "plugins_view_mode"
 
 export function PluginsPage() {
   const { activeProjectId } = useProjectStore()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
@@ -132,6 +135,7 @@ export function PluginsPage() {
       ),
     },
     {
+    ...(isViewer ? [] : [{
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
@@ -161,7 +165,7 @@ export function PluginsPage() {
           </Button>
         </div>
       ),
-    },
+    }]),
   ]
 
   const breadcrumbs = [
@@ -192,10 +196,12 @@ export function PluginsPage() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <Button onClick={() => setCreateDialogOpen(true)}>
-        <Plus />
-        Create Plugin
-      </Button>
+      {!isViewer && (
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus />
+          Create Plugin
+        </Button>
+      )}
     </div>
   )
 
@@ -208,10 +214,9 @@ export function PluginsPage() {
           title="No plugins found"
           description="Get started by creating your first plugin."
           icon={Puzzle}
-          actionText="Create Plugin"
-          onAction={() => setCreateDialogOpen(true)}
-          actionIcon={Plus}
-        />
+          actionText={!isViewer ? "Create Plugin" : undefined}
+          onAction={!isViewer ? () => setCreateDialogOpen(true) : undefined}
+          actionIcon={!isViewer ? Plus : undefined}
       ) : (
         <>
           <div className="flex items-center justify-between">
@@ -266,34 +271,35 @@ export function PluginsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditingPlugin(plugin)
-                          setEditDialogOpen(true)
-                        }}
-                      >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    {!isViewer && (
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingPlugin(plugin)
+                            setEditDialogOpen(true)
+                          }}
+                        >
+                          <Pencil />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
 
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setDeletingPlugin(plugin)
-                          setDeleteDialogOpen(true)
-                        }}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                  </div>
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeletingPlugin(plugin)
+                            setDeleteDialogOpen(true)
+                          }}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    )}
                 </CardHeader>
                 <CardContent className="space-y-4 pt-2">
                   <div className="space-y-2">

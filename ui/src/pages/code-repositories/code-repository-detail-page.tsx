@@ -27,6 +27,7 @@ import {
   type CodeRepositoryBuildConfig,
 } from "@/api/code-repositories"
 import { envsApi } from "@/api/envs"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { BuildLogViewer } from "@/components/builds/build-log-viewer"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
 import { CreateBuildConfigDialog } from "@/components/code-repositories/create-build-config-dialog"
@@ -84,6 +85,8 @@ export function CodeRepositoryDetailPage() {
   const [deletingConfig, setDeletingConfig] = React.useState<CodeRepositoryBuildConfig | null>(null)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
 
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   // Pagination and filtering state
   const [buildConfigsPage, setBuildConfigsPage] = React.useState(1)
   const [buildsPage, setBuildsPage] = React.useState(1)
@@ -308,11 +311,13 @@ export function CodeRepositoryDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
-              <Pencil />
-              Edit
-            </Button>
-            {buildConfigs.length > 0 && (
+            {!isViewer && (
+              <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+                <Pencil />
+                Edit
+              </Button>
+            )}
+            {buildConfigs.length > 0 && !isViewer && (
               <Button onClick={() => {
                 setSelectedBuildConfigId(undefined)
                 setSelectedBuildId(undefined)
@@ -322,7 +327,6 @@ export function CodeRepositoryDetailPage() {
                 Build
               </Button>
             )}
-          </div>
         </div>
       </div>
 
@@ -384,7 +388,7 @@ export function CodeRepositoryDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {buildConfigs.length > 0 ? (<div className="flex items-center justify-end">
+              {buildConfigs.length > 0 && !isViewer ? (<div className="flex items-center justify-end">
                 <Button onClick={() => setAddConfigOpen(true)}>
                   <Plus />
                   Create
@@ -395,9 +399,9 @@ export function CodeRepositoryDetailPage() {
                   title="No build configurations"
                   description="Add a build configuration to start building images from this repository."
                   icon={Hammer}
-                  actionText="Create build config"
-                  onAction={() => setAddConfigOpen(true)}
-                  actionIcon={Plus}
+                  actionText={!isViewer ? "Create build config" : undefined}
+                  onAction={!isViewer ? () => setAddConfigOpen(true) : undefined}
+                  actionIcon={!isViewer ? Plus : undefined}
                 />
               ) : (
                 <>
@@ -411,7 +415,7 @@ export function CodeRepositoryDetailPage() {
                           <TableHead>Context</TableHead>
                           <TableHead>Image</TableHead>
                           <TableHead>Registry</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                          {!isViewer && <TableHead className="text-right">Actions</TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -433,43 +437,45 @@ export function CodeRepositoryDetailPage() {
                               <TableCell>
                                 {cfg.registry?.name ?? cfg.registry_id}
                               </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    onClick={() => {
-                                      setEditingConfig(cfg)
-                                      setEditConfigOpen(true)
-                                    }}
-                                  >
-                                    <Pencil />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedBuildConfigId(cfg.id)
-                                      setSelectedBuildId(undefined)
-                                      setTriggerBuildDialogOpen(true)
-                                    }}
-                                  >
-                                    <Play />
-                                    Build
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => {
-                                      setDeletingConfig(cfg)
-                                      setDeleteConfigDialogOpen(true)
-                                    }}
-                                  >
-                                    <Trash2 />
-                                  </Button>
-                                </div>
-                              </TableCell>
+                              {!isViewer && (
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      onClick={() => {
+                                        setEditingConfig(cfg)
+                                        setEditConfigOpen(true)
+                                      }}
+                                    >
+                                      <Pencil />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedBuildConfigId(cfg.id)
+                                        setSelectedBuildId(undefined)
+                                        setTriggerBuildDialogOpen(true)
+                                      }}
+                                    >
+                                      <Play />
+                                      Build
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => {
+                                        setDeletingConfig(cfg)
+                                        setDeleteConfigDialogOpen(true)
+                                      }}
+                                    >
+                                      <Trash2 />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              )}
                             </TableRow>
                           ))}
                       </TableBody>
@@ -576,7 +582,7 @@ export function CodeRepositoryDetailPage() {
                                   >
                                     <FileText />
                                   </Button>
-                                  {(b.status === "failed" || b.status === "cancelled") && (
+                                  {!isViewer && (b.status === "failed" || b.status === "cancelled") && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -592,7 +598,7 @@ export function CodeRepositoryDetailPage() {
                                       Retry
                                     </Button>
                                   )}
-                                  {b.status === "succeeded" && (
+                                  {!isViewer && b.status === "succeeded" && (
                                     <Button
                                       variant="ghost"
                                       size="sm"

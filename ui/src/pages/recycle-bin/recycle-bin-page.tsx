@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectStore } from "@/stores/project"
 
+import { useProjectRole } from "@/hooks/useProjectRole"
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
   const date = new Date(dateString)
@@ -32,6 +33,8 @@ export function RecycleBinPage() {
   const queryClient = useQueryClient()
   const { activeProjectId } = useProjectStore()
   const [searchQuery, setSearchQuery] = React.useState("")
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const debouncedSearch = useDebounce(searchQuery, 300)
 
   const [selectedAppRows, setSelectedAppRows] = React.useState({})
@@ -203,7 +206,7 @@ export function RecycleBinPage() {
   }
 
   const appColumns: ColumnDef<RecycleBinApp>[] = [
-    {
+    ...(isViewer ? [] : [{
       id: "select",
       header: ({ table }) => (
         <Checkbox
@@ -221,7 +224,7 @@ export function RecycleBinPage() {
       ),
       enableSorting: false,
       enableHiding: false,
-    },
+    }]),
     {
       accessorKey: "name",
       header: "Application",
@@ -250,6 +253,7 @@ export function RecycleBinPage() {
       cell: ({ row }) => formatDate(row.original.deleted_at),
     },
     {
+    ...(isViewer ? [] : [{
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
@@ -281,11 +285,11 @@ export function RecycleBinPage() {
       ),
       enableSorting: false,
       enableHiding: false,
-    },
+    }]),
   ]
 
   const envColumns: ColumnDef<RecycleBinEnv>[] = [
-    {
+    ...(isViewer ? [] : [{
       id: "select",
       header: ({ table }) => (
         <Checkbox
@@ -303,7 +307,7 @@ export function RecycleBinPage() {
       ),
       enableSorting: false,
       enableHiding: false,
-    },
+    }]),
     {
       accessorKey: "name",
       header: "Environment",
@@ -328,6 +332,7 @@ export function RecycleBinPage() {
       cell: ({ row }) => formatDate(row.original.deleted_at),
     },
     {
+    ...(isViewer ? [] : [{
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
@@ -361,7 +366,7 @@ export function RecycleBinPage() {
       ),
       enableSorting: false,
       enableHiding: false,
-    },
+    }]),
   ]
 
   const selectedCount = activeTab === "apps" ? selectedAppIds.length : selectedEnvIds.length
@@ -445,7 +450,7 @@ export function RecycleBinPage() {
               columns={appColumns}
               data={apps}
               leftActions={() => toolbarLeft}
-              batchActions={batchActions}
+              batchActions={!isViewer ? batchActions : undefined}
               rowSelection={selectedAppRows}
               onRowSelectionChange={setSelectedAppRows}
               onRefresh={refetchApps}
@@ -469,7 +474,7 @@ export function RecycleBinPage() {
               columns={envColumns}
               data={envs}
               leftActions={() => toolbarLeft}
-              batchActions={batchActions}
+              batchActions={!isViewer ? batchActions : undefined}
               rowSelection={selectedEnvRows}
               onRowSelectionChange={setSelectedEnvRows}
               onRefresh={refetchEnvs}

@@ -31,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useDebounce } from "@/hooks/use-debounce"
 import { cn } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -49,6 +50,8 @@ const REGISTRIES_VIEW_MODE_KEY = "registries_view_mode"
 export function ContainerRegistriesPage() {
   const queryClient = useQueryClient()
   const { activeProjectId } = useProjectStore()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingRegistry, setEditingRegistry] = React.useState<ContainerRegistry | null>(null)
@@ -161,7 +164,7 @@ export function ContainerRegistriesPage() {
         </span>
       ),
     },
-    {
+    ...(isViewer ? [] : [{
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
@@ -184,7 +187,7 @@ export function ContainerRegistriesPage() {
           </Tooltip>
         </div>
       ),
-    },
+    }]),
   ]
 
   const breadcrumbs = [{ label: "Container Registries", icon: Warehouse }]
@@ -214,10 +217,12 @@ export function ContainerRegistriesPage() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <Button onClick={() => setCreateOpen(true)}>
-        <Plus />
-        Add Registry
-      </Button>
+      {!isViewer && (
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus />
+          Add Registry
+        </Button>
+      )}
     </div>
   )
 
@@ -306,28 +311,32 @@ export function ContainerRegistriesPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
-                    onClick={() => {
-                      setEditingRegistry(reg)
-                      setEditDialogOpen(true)
-                    }}
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => {
-                      setDeletingRegistry(reg)
-                      setDeleteDialogOpen(true)
-                    }}
-                  >
-                    <Trash2 />
-                  </Button>
+                  {!isViewer && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
+                      onClick={() => {
+                        setEditingRegistry(reg)
+                        setEditDialogOpen(true)
+                      }}
+                    >
+                      <Pencil />
+                    </Button>
+                  )}
+                  {!isViewer && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        setDeletingRegistry(reg)
+                        setDeleteDialogOpen(true)
+                      }}
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>

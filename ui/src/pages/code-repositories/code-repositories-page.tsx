@@ -27,6 +27,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectStore } from "@/stores/project"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -46,6 +47,8 @@ export function CodeRepositoriesPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { activeProjectId } = useProjectStore()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingRepo, setEditingRepo] = React.useState<CodeRepository | null>(null)
@@ -126,7 +129,7 @@ export function CodeRepositoriesPage() {
         </span>
       ),
     },
-    {
+    ...(isViewer ? [] : [{
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
@@ -151,7 +154,7 @@ export function CodeRepositoriesPage() {
           </Tooltip>
         </div>
       ),
-    },
+    }]),
   ]
 
   const breadcrumbs = [{ label: "Code Repositories", icon: FolderGit2 }]
@@ -211,10 +214,12 @@ export function CodeRepositoriesPage() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus />
-              Add Repository
-            </Button>
+            {!isViewer && (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus />
+                Add Repository
+              </Button>
+            )}
           </div>
         )}
         renderCard={(repo) => (
@@ -254,30 +259,34 @@ export function CodeRepositoriesPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditingRepo(repo)
-                      setEditDialogOpen(true)
-                    }}
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setDeletingRepo(repo)
-                      setDeleteDialogOpen(true)
-                    }}
-                  >
-                    <Trash2 />
-                  </Button>
+                  {!isViewer && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingRepo(repo)
+                        setEditDialogOpen(true)
+                      }}
+                    >
+                      <Pencil />
+                    </Button>
+                  )}
+                  {!isViewer && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeletingRepo(repo)
+                        setDeleteDialogOpen(true)
+                      }}
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>

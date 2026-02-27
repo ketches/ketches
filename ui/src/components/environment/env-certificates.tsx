@@ -32,7 +32,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 interface EnvCertificatesProps {
   envId: string
-}
+  isViewer?: boolean
 
 interface CertFormData {
   name: string
@@ -48,7 +48,7 @@ const defaultFormData: CertFormData = {
   key: "",
 }
 
-export function EnvCertificates({ envId }: EnvCertificatesProps) {
+export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
@@ -165,10 +165,12 @@ export function EnvCertificates({ envId }: EnvCertificatesProps) {
                 Environment-level certificates for this environment
               </CardDescription>
             </div>
-            <Button size="sm" onClick={handleOpenCreate}>
-              <Plus />
-              Add Certificate
-            </Button>
+            {!isViewer && (
+              <Button size="sm" onClick={handleOpenCreate}>
+                <Plus />
+                Add Certificate
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -190,7 +192,7 @@ export function EnvCertificates({ envId }: EnvCertificatesProps) {
                     <TableHead>Name</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Created At</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {!isViewer && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -201,26 +203,28 @@ export function EnvCertificates({ envId }: EnvCertificatesProps) {
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(cert.created_at).toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenEdit(cert)}
-                          >
-                            <Pencil />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleOpenDelete(cert)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {!isViewer && (
+                        <TableCell className="text-right">
+                          <div className="flex items-center gap-1 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEdit(cert)}
+                            >
+                              <Pencil />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleOpenDelete(cert)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

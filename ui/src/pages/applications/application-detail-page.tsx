@@ -1396,10 +1396,12 @@ export function ApplicationDetailPage() {
                   <ExternalLink className="h-4 w-4 mr-2" />
                   View in Code Repository
                 </Button>
+                {!isViewer && (
                 <Button onClick={() => setIsUnifiedBuildDialogOpen(true)} className="flex items-center">
                   <Hammer className="h-4 w-4 mr-2" />
                   Build & Deploy
                 </Button>
+                )}
               </CardContent>
             </Card>
           )}

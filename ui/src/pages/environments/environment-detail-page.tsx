@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import * as React from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { toast } from "sonner"
 
 import { appsApi } from "@/api/apps"
@@ -52,6 +53,8 @@ export function EnvironmentDetailPage() {
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const { activeProjectId } = useProjectStore()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
 
   const { data: envsResponse } = useQuery({
     queryKey: ['envs', activeProjectId],
@@ -174,7 +177,15 @@ export function EnvironmentDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+          {!isViewer && (
             <Button
+              variant="outline"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil />
+              Edit
+            </Button>
+          )}
               variant="outline"
               onClick={() => setEditOpen(true)}
             >
@@ -188,6 +199,7 @@ export function EnvironmentDetailPage() {
               <RefreshCw />
               Refresh
             </Button>
+          {!isViewer && (
             <Button
               variant="outline"
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -196,6 +208,7 @@ export function EnvironmentDetailPage() {
               <Trash2 />
               Delete
             </Button>
+          )}
           </div>
         </div>
       </div>
@@ -210,11 +223,11 @@ export function EnvironmentDetailPage() {
             <Box />
             Applications
           </TabsTrigger>
-        </TabsList>
           <TabsTrigger value="certificates">
             <ShieldCheck />
             Certificates
           </TabsTrigger>
+        </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
           <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent data-[active=true]:bg-transparent">
@@ -248,23 +261,27 @@ export function EnvironmentDetailPage() {
                     {env.is_build_env ? (
                       <>
                         <Badge variant="default" className="gap-1"><Hammer className="h-3 w-3" />Build Env</Badge>
-                        <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => {
-                          envsApi.unsetBuildEnv(env.id).then(() => {
-                            queryClient.invalidateQueries({ queryKey: ['env', env.id] })
-                            toast.success('Build environment unset')
-                          }).catch(() => toast.error('Failed to unset build environment'))
-                        }}>Unset</Button>
+                        {!isViewer && (
+                          <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => {
+                            envsApi.unsetBuildEnv(env.id).then(() => {
+                              queryClient.invalidateQueries({ queryKey: ['env', env.id] })
+                              toast.success('Build environment unset')
+                            }).catch(() => toast.error('Failed to unset build environment'))
+                          }}>Unset</Button>
+                        )}
                       </>
                     ) : (
-                      <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => {
-                        envsApi.setBuildEnv(env.id).then(() => {
-                          queryClient.invalidateQueries({ queryKey: ['env', env.id] })
-                          toast.success('Set as build environment')
-                        }).catch(() => toast.error('Failed to set build environment'))
-                      }}>
-                        <Hammer />
-                        Set as Build Env
-                      </Button>
+                      !isViewer && (
+                        <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => {
+                          envsApi.setBuildEnv(env.id).then(() => {
+                            queryClient.invalidateQueries({ queryKey: ['env', env.id] })
+                            toast.success('Set as build environment')
+                          }).catch(() => toast.error('Failed to set build environment'))
+                        }}>
+                          <Hammer />
+                          Set as Build Env
+                        </Button>
+                      )
                     )}
                   </div>
                 </div>
@@ -345,7 +362,7 @@ export function EnvironmentDetailPage() {
         </TabsContent>
 
         <TabsContent value="certificates" className="space-y-4 mt-2">
-          <EnvCertificates envId={envId!} />
+          <EnvCertificates envId={envId!} isViewer={isViewer} />
         </TabsContent>
       </Tabs>
 
