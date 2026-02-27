@@ -98,7 +98,7 @@ export function UpdateExtensionDialog({
   }, [extension, extensionDetails])
 
   // Fetch versions for this extension's catalog item
-  const { data: versionsData = [] } = useQuery({
+  const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
     queryKey: ["extension-versions", extension?.catalog_item_id],
     queryFn: () =>
       clustersApi.getExtensionVersions(extension!.catalog_item_id!),
@@ -203,28 +203,13 @@ export function UpdateExtensionDialog({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <DialogHeader className="shrink-0 px-6 pt-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <DialogTitle>Update Extension</DialogTitle>
-                <DialogDescription>
-                  Update <span className="font-medium">{extension.name}</span>{" "}
-                  —{" "}
-                  <span className="font-mono text-xs">{extension.oci_url}</span>
-                  . Edit values below and save to apply.
-                </DialogDescription>
-              </div>
-              <Button
-                type="button"
-                variant={showDiff ? "secondary" : "outline"}
-                size="sm"
-                className="shrink-0"
-                onClick={() => setShowDiff((v) => !v)}
-                disabled={!selectedVersion || !extension.catalog_item_id}
-              >
-                <GitCompare className="h-3.5 w-3.5" />
-                {showDiff ? "Hide diff" : "Compare with default Values"}
-              </Button>
-            </div>
+            <DialogTitle>Update Extension</DialogTitle>
+            <DialogDescription>
+              Update <span className="font-medium">{extension.name}</span>{" "}
+              —{" "}
+              <span className="font-mono text-xs">{extension.oci_url}</span>
+              . Edit values below and save to apply.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden px-6 py-4 lg:grid-cols-[minmax(0,280px)_1fr]">
@@ -235,9 +220,14 @@ export function UpdateExtensionDialog({
                   <Select
                     value={selectedVersion}
                     onValueChange={(v) => setSelectedVersion(v ?? "")}
+                    disabled={versionsLoading}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select version" />
+                      <SelectValue
+                        placeholder={
+                          versionsLoading ? "Loading versions..." : "Select version"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {versions.map((v) => (
@@ -258,16 +248,29 @@ export function UpdateExtensionDialog({
             </div>
 
             <Field className="flex min-h-0 flex-1 flex-col">
-              <FieldLabel className="shrink-0">
-                {showDiff
-                  ? "Diff: Default (left) vs current config (right)"
-                  : "Values (YAML)"}
-                {showDiff && chartValuesFetching && (
-                  <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Loading defaults...
-                  </span>
-                )}
+              <FieldLabel className="shrink-0 flex items-center justify-between">
+                <span>
+                  {showDiff
+                    ? "Diff: Default (left) vs current config (right)"
+                    : "Values (YAML)"}
+                  {showDiff && chartValuesFetching && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Loading defaults...
+                    </span>
+                  )}
+                </span>
+                <Button
+                  type="button"
+                  variant={showDiff ? "secondary" : "outline"}
+                  size="sm"
+                  className="shrink-0 h-6 px-2 text-xs"
+                  onClick={() => setShowDiff((v) => !v)}
+                  disabled={!selectedVersion || !extension.catalog_item_id}
+                >
+                  <GitCompare className="h-3 w-3" />
+                  {showDiff ? "Hide diff" : "Compare with default values"}
+                </Button>
               </FieldLabel>
               <FieldContent className="min-h-0 flex-1 overflow-hidden rounded-md border border-input">
                 <div className="h-full min-h-75 w-full">

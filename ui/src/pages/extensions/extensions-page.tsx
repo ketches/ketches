@@ -5,6 +5,7 @@ import {
   Download,
   LayoutGrid,
   List as ListIcon,
+  Pencil,
   Plus,
   Trash2,
 } from "lucide-react"
@@ -13,6 +14,7 @@ import { toast } from "sonner"
 
 import { clustersApi, type ExtensionCatalogItem } from "@/api/clusters"
 import { AddExtensionCatalogDialog } from "@/components/cluster/add-extension-catalog-dialog"
+import { EditExtensionCatalogDialog } from "@/components/cluster/edit-extension-catalog-dialog"
 import { DataTable } from "@/components/data-table/data-table"
 import { InstallExtensionToClusterDialog } from "@/components/extensions/install-extension-dialog"
 import { InstalledClustersDialog } from "@/components/extensions/installed-clusters-dialog"
@@ -56,6 +58,9 @@ export function ExtensionsPage() {
     React.useState(false)
   const [deleteTarget, setDeleteTarget] =
     React.useState<ExtensionCatalogItem | null>(null)
+  const [editTarget, setEditTarget] =
+    React.useState<ExtensionCatalogItem | null>(null)
+  const [editOpen, setEditOpen] = React.useState(false)
 
   const [viewMode, setViewMode] = React.useState<"list" | "card">(() => {
     const saved = localStorage.getItem(EXTENSIONS_VIEW_MODE_KEY)
@@ -178,7 +183,7 @@ export function ExtensionsPage() {
       cell: ({ row }) => {
         const item = row.original
         return (
-          <div className="flex items-center gap-2 justify-end">
+            <div className="flex items-center gap-2 justify-end">
             <Button
               variant="ghost"
               size="icon-sm"
@@ -190,14 +195,26 @@ export function ExtensionsPage() {
               <Download />
             </Button>
             {!item.builtin && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => setDeleteTarget(item)}
-              >
-                <Trash2 />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    setEditTarget(item)
+                    setEditOpen(true)
+                  }}
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setDeleteTarget(item)}
+                >
+                  <Trash2 />
+                </Button>
+              </>
             )}
           </div>
         )
@@ -333,14 +350,26 @@ export function ExtensionsPage() {
                         <Download />
                       </Button>
                       {!item.builtin && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeleteTarget(item)}
-                        >
-                          <Trash2 />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => {
+                              setEditTarget(item)
+                              setEditOpen(true)
+                            }}
+                          >
+                            <Pencil />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteTarget(item)}
+                          >
+                            <Trash2 />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -372,6 +401,12 @@ export function ExtensionsPage() {
 
       <AddExtensionCatalogDialog open={addOpen} onOpenChange={setAddOpen} />
 
+      <EditExtensionCatalogDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        item={editTarget}
+      />
+
       <InstallExtensionToClusterDialog
         open={installOpen}
         onOpenChange={setInstallOpen}
@@ -381,8 +416,7 @@ export function ExtensionsPage() {
       <InstalledClustersDialog
         open={installedClustersOpen}
         onOpenChange={setInstalledClustersOpen}
-        extensionName={installedClustersTarget?.name ?? ""}
-        extensionDisplayName={installedClustersTarget?.display_name}
+        catalogItem={installedClustersTarget}
       />
 
       <AlertDialog

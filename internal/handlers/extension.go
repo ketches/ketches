@@ -51,6 +51,33 @@ func DeleteExtensionCatalogItem(c *gin.Context) {
 	api.NoContent(c)
 }
 
+// UpdateExtensionCatalogItem updates a non-builtin catalog item's metadata (admin only).
+func UpdateExtensionCatalogItem(c *gin.Context) {
+	itemID := c.Param("itemID")
+	var req models.UpdateExtensionCatalogItemRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	item, err := services.UpdateExtensionCatalogItem(itemID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.Success(c, item)
+}
+
+// GetInstalledClustersForExtension returns all clusters that have a given catalog item installed.
+func GetInstalledClustersForExtension(c *gin.Context) {
+	itemID := c.Param("itemID")
+	clusters, err := services.GetInstalledClustersForExtension(itemID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.Success(c, clusters)
+}
+
 // Version and values handlers
 
 // ListExtensionVersions lists available OCI tags for a catalog item via crane.

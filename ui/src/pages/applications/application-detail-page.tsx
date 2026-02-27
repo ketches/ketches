@@ -1309,7 +1309,7 @@ export function ApplicationDetailPage() {
                               <Button
                                 variant="ghost"
                                 size="icon-xs"
-                                className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   setDeletingInstanceName(instance.instanceName)

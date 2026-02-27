@@ -65,9 +65,10 @@ export function UsersPage() {
     return () => clearTimeout(timer)
   }, [searchInput])
 
-  const { data, isLoading, refetch } = useQuery<ListUsersResponse>({
+  const { data, refetch } = useQuery<ListUsersResponse>({
     queryKey: ['users', pagination.pageIndex, pagination.pageSize, search],
     queryFn: () => usersApi.list({ page: pagination.pageIndex + 1, pageSize: pagination.pageSize, search }),
+    placeholderData: (previousData) => previousData,
   })
 
   const users = data?.users ?? []
@@ -240,13 +241,7 @@ export function UsersPage() {
     },
   ]
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <span className="text-muted-foreground animate-pulse">Loading users...</span>
-      </div>
-    )
-  }
+
 
   return (
     <div className="flex flex-col gap-6">

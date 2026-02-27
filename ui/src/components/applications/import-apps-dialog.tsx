@@ -1,10 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import type { AxiosError } from "axios"
 import { AlertCircle, Upload } from "lucide-react"
 import * as React from "react"
 import { toast as sonnerToast } from "sonner"
-import type { AxiosError } from "axios"
 
 import { appsApi } from "@/api/apps"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -22,10 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 interface ImportAppsDialogProps {
   open: boolean
@@ -41,7 +40,7 @@ export function ImportAppsDialog({
   onSuccess,
 }: ImportAppsDialogProps) {
   const queryClient = useQueryClient()
-  
+
   const [importType, setImportType] = React.useState<'dockercompose' | 'kubernetes' | 'ketches'>('dockercompose')
   const [content, setContent] = React.useState('')
   const [conflictStrategy, setConflictStrategy] = React.useState<'rename' | 'ask' | 'error'>('rename')
@@ -75,10 +74,10 @@ export function ImportAppsDialog({
   }
 
   const mutation = useMutation({
-    mutationFn: (data: { 
-      type: 'dockercompose' | 'kubernetes' | 'ketches', 
-      content: string, 
-      conflict_strategy: 'rename' | 'ask' | 'error' 
+    mutationFn: (data: {
+      type: 'dockercompose' | 'kubernetes' | 'ketches',
+      content: string,
+      conflict_strategy: 'rename' | 'ask' | 'error'
     }) => appsApi.importApps(envId, data),
     onSuccess: (data) => {
       sonnerToast.success(`Successfully imported ${data.imported.length} applications`)
@@ -119,7 +118,7 @@ export function ImportAppsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Applications</DialogTitle>
           <DialogDescription>
@@ -128,65 +127,59 @@ export function ImportAppsDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <Tabs value={importType} onValueChange={(v) => setImportType(v as 'dockercompose' | 'kubernetes' | 'ketches')} className="w-full">
+          <Tabs value={importType} onValueChange={(v) => { setImportType(v as 'dockercompose' | 'kubernetes' | 'ketches'); setContent("") }} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="dockercompose">Docker Compose</TabsTrigger>
               <TabsTrigger value="kubernetes">Kubernetes</TabsTrigger>
               <TabsTrigger value="ketches">Ketches</TabsTrigger>
             </TabsList>
           </Tabs>
-          
-          <div className="grid gap-2">
-            <Label>Upload File</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="file"
-                accept=".yaml,.yml,.json,.ketches"
-                onChange={handleFileUpload}
-                className="flex-1"
-              />
-              {fileName && (
-                <span className="text-sm text-muted-foreground truncate max-w-[150px]">
-                  {fileName}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or paste content below
-              </span>
-            </div>
-          </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="content">Configuration Content</Label>
-            <Textarea
-              id="content"
-              placeholder={getPlaceholder()}
-              className="min-h-[300px] font-mono text-xs"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-            />
+            <Field>
+              <div className="flex items-center justify-between">
+                <FieldLabel>
+                  Configuration Content *
+                </FieldLabel>
+                <label className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 bg-muted hover:bg-muted/80 rounded text-xs transition-colors shrink-0">
+                  <Upload className="h-3 w-3" />
+                  Upload
+                  <input
+                    type="file"
+                    accept={importType === 'ketches' ? '.json,.ketches' : '.yaml,.yml'}
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </label>
+              </div>
+              <FieldContent>
+                <Textarea
+                  id="content"
+                  placeholder={getPlaceholder()}
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap font-mono"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                />
+              </FieldContent>
+            </Field>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="strategy">Conflict Strategy</Label>
-            <Select value={conflictStrategy} onValueChange={(v) => setConflictStrategy(v as 'rename' | 'ask' | 'error')}>
-              <SelectTrigger id="strategy">
-                <SelectValue placeholder="Select strategy" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rename">Auto-rename (append suffix)</SelectItem>
-                <SelectItem value="ask">Ask (interactive)</SelectItem>
-                <SelectItem value="error">Error (fail if exists)</SelectItem>
-              </SelectContent>
-            </Select>
+            <Field>
+              <FieldLabel htmlFor="strategy">Conflict Strategy</FieldLabel>
+              <FieldContent>
+                <Select value={conflictStrategy} onValueChange={(v) => setConflictStrategy(v as 'rename' | 'ask' | 'error')}>
+                  <SelectTrigger id="strategy" className="w-full">
+                    <SelectValue placeholder="Select strategy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rename">Auto-rename (append suffix)</SelectItem>
+                    <SelectItem value="ask">Ask (interactive)</SelectItem>
+                    <SelectItem value="error">Error (fail if exists)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
           </div>
 
           {mutation.isError && (
@@ -209,7 +202,7 @@ export function ImportAppsDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }
 

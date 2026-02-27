@@ -25,7 +25,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-import { EmptyClusterState } from "@/components/shared/empty-state"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
@@ -69,13 +68,14 @@ export function ClustersPage() {
     pageSize: 10,
   })
 
-  const { data: clustersResponse, isLoading, refetch } = useQuery({
+  const { data: clustersResponse, refetch } = useQuery({
     queryKey: ['clusters', debouncedSearch, pagination.pageIndex, pagination.pageSize],
     queryFn: () => clustersApi.list({
       search: debouncedSearch,
       page: pagination.pageIndex + 1,
       pageSize: pagination.pageSize
     }),
+    placeholderData: (previousData) => previousData,
   })
 
   const clusters = clustersResponse?.items ?? []
@@ -141,12 +141,10 @@ export function ClustersPage() {
         <ColorBadge color={row.original.enabled ? "green" : "gray"}>
           {row.original.enabled ? (
             <>
-              <CheckCircle2 className="h-3 w-3 mr-1" />
               Active
             </>
           ) : (
             <>
-              <XCircle className="h-3 w-3 mr-1" />
               Disabled
             </>
           )}
@@ -249,158 +247,143 @@ export function ClustersPage() {
     </div>
   )
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col flex-1 gap-6">
-        <PageHeader items={breadcrumbs} />
-        <div className="flex items-center justify-center flex-1">
-          <div className="text-muted-foreground animate-pulse">Loading clusters...</div>
-        </div>
-      </div>
-    )
-  }
+
 
   return (
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
 
-      {safeClusters.length === 0 && !searchQuery ? (
-        <EmptyClusterState onAction={() => setCreateDialogOpen(true)} />
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Clusters</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage your Kubernetes clusters
-              </p>
-            </div>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Clusters</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your Kubernetes clusters
+          </p>
+        </div>
+      </div>
 
-          <DataTable
-            columns={columns}
-            data={safeClusters}
-            viewMode={viewMode}
-            onRefresh={refetch}
-            manualPagination
-            totalCount={paginationInfo?.total || 0}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            leftActions={() => toolbarLeft}
-            toolbarActions={() => toolbarRight}
-            renderCard={(cluster) => (
-              <Card
-                key={cluster.id}
-                className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
-                onClick={() => navigate(`/clusters/${cluster.id}`)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
-                        <AvatarFallback className="rounded-lg text-lg font-bold">
-                          {cluster.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <CardTitle className="text-base font-semibold truncate">{cluster.name}</CardTitle>
-                          <ColorBadge
-                            color={cluster.enabled ? "green" : "gray"}
-                            className="text-[10px] px-1.5 py-0 shrink-0"
-                          >
-                            {cluster.enabled ? (
-                              <>
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Active
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Disabled
-                              </>
-                            )}
-                          </ColorBadge>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                          <span>{cluster.slug}</span>
-                          {cluster.description && (
-                            <>
-                              <span>•</span>
-                              <span className="truncate">{cluster.description}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditingCluster(cluster)
-                          setEditDialogOpen(true)
-                        }}
+      <DataTable
+        columns={columns}
+        data={safeClusters}
+        viewMode={viewMode}
+        onRefresh={refetch}
+        manualPagination
+        totalCount={paginationInfo?.total || 0}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        leftActions={() => toolbarLeft}
+        toolbarActions={() => toolbarRight}
+        renderCard={(cluster) => (
+          <Card
+            key={cluster.id}
+            className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
+            onClick={() => navigate(`/clusters/${cluster.id}`)}
+          >
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
+                    <AvatarFallback className="rounded-lg text-lg font-bold">
+                      {cluster.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-base font-semibold truncate">{cluster.name}</CardTitle>
+                      <ColorBadge
+                        color={cluster.enabled ? "green" : "gray"}
+                        className="text-[10px] px-1.5 py-0 shrink-0"
                       >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setTestingClusterId(cluster.id)
-                          testConnectionMutation.mutate(cluster.id)
-                        }}
-                        disabled={testingClusterId === cluster.id}
-                        title="Test Connection"
-                      >
-                        {testingClusterId === cluster.id ? (
-                          <Loader2 className="animate-spin" />
+                        {cluster.enabled ? (
+                          <>
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Active
+                          </>
                         ) : (
-                          <Link2 />
+                          <>
+                            <XCircle className="h-3 w-3 mr-1" />
+                            Disabled
+                          </>
                         )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setDeletingCluster(cluster)
-                          setDeleteDialogOpen(true)
-                        }}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 />
-                      </Button>
+                      </ColorBadge>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                      <span>{cluster.slug}</span>
+                      {cluster.description && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{cluster.description}</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    {cluster.gateway_ip && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Network className="h-3.5 w-3.5" />
-                        <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{cluster.gateway_ip}</span>
-                      </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditingCluster(cluster)
+                      setEditDialogOpen(true)
+                    }}
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setTestingClusterId(cluster.id)
+                      testConnectionMutation.mutate(cluster.id)
+                    }}
+                    disabled={testingClusterId === cluster.id}
+                    title="Test Connection"
+                  >
+                    {testingClusterId === cluster.id ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Link2 />
                     )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDeletingCluster(cluster)
+                      setDeleteDialogOpen(true)
+                    }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-2">
+              <div className="space-y-2">
+                {cluster.gateway_ip && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Network className="h-3.5 w-3.5" />
+                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{cluster.gateway_ip}</span>
                   </div>
+                )}
+              </div>
 
-                  <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3 w-3" />
-                      <span>Added at {formatDate(cluster.created_at || "")}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          />
-        </>
-      )}
+              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  <span>Added at {formatDate(cluster.created_at || "")}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      />
 
       <CreateClusterDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
       <EditClusterDialog

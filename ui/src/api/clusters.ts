@@ -214,12 +214,20 @@ export const clustersApi = {
     return client.delete(`/v1/extension-catalog/${itemId}`)
   },
 
+  updateExtensionCatalogItem: async (itemId: string, data: UpdateExtensionCatalogItemRequest) => {
+    return client.put(`/v1/extension-catalog/${itemId}`, data) as Promise<ExtensionCatalogItem>
+  },
+
   getExtensionVersions: async (itemId: string) => {
     return client.get(`/v1/extension-catalog/${itemId}/versions`) as Promise<ExtensionVersionInfo[]>
   },
 
   getExtensionValues: async (itemId: string, version: string) => {
     return client.get(`/v1/extension-catalog/${itemId}/versions/${version}/values`) as Promise<{ values: string }>
+  },
+
+  getExtensionInstalledClusters: async (itemId: string) => {
+    return client.get(`/v1/extension-catalog/${itemId}/installed-clusters`) as Promise<InstalledCluster[]>
   },
 
   // Installed extensions per cluster
@@ -300,6 +308,13 @@ export interface CreateExtensionCatalogItemRequest {
   oci_url: string
   icon_url?: string
 }
+
+export interface UpdateExtensionCatalogItemRequest {
+  display_name?: string
+  description?: string
+  oci_url?: string
+  icon_url?: string
+}
 export type IntegrationType = 'prometheus' | 'grafana' | 'loki' | 'alertmanager'
 
 export interface ClusterIntegration {
@@ -349,4 +364,13 @@ export interface UpdateClusterIntegrationRequest {
 // GatewayAPIStatus indicates whether the Gateway API is installed on a cluster.
 export interface GatewayAPIStatus {
   installed: boolean
+}
+
+export interface InstalledCluster {
+  cluster_id: string
+  cluster_name: string
+  release_name: string
+  namespace: string
+  version: string
+  status: string
 }

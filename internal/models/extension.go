@@ -57,3 +57,21 @@ type UpdateExtensionRequest struct {
 	ChartVersion string `json:"chart_version,omitempty"`
 	Values       string `json:"values,omitempty"`
 }
+
+// UpdateExtensionCatalogItemRequest is the request body for updating a catalog item.
+type UpdateExtensionCatalogItemRequest struct {
+	DisplayName string `json:"display_name"`
+	Description string `json:"description"`
+	OCIUrl      string `json:"oci_url"`
+	IconURL     string `json:"icon_url"`
+}
+
+// InstalledCluster summarises a cluster that has a catalog extension installed.
+type InstalledCluster struct {
+	ClusterID   string `json:"cluster_id"`
+	ClusterName string `json:"cluster_name"`
+	ReleaseName string `json:"release_name"`
+	Namespace   string `json:"namespace"`
+	Version     string `json:"version"`
+	Status      string `json:"status"`
+}

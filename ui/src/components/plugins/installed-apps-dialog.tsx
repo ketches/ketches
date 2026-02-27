@@ -65,7 +65,6 @@ export function InstalledAppsDialog({ plugin, projectId, open, onOpenChange }: I
                     <span className="font-medium truncate">{app.name}</span>
                     <ColorBadge
                       color={app.status === 'running' ? 'green' : app.status === 'undeployed' ? 'gray' : 'yellow'}
-                      className="text-[10px]"
                     >
                       {app.status?.toUpperCase() || 'UNKNOWN'}
                     </ColorBadge>

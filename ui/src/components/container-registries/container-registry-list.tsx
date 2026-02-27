@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Database, Pencil, Plus, Star, Trash2, Warehouse } from "lucide-react"
+import { Pencil, Plus, Star, Trash2, Warehouse } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -15,8 +15,8 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import type { AxiosError } from "axios"
 import type { ColumnDef } from "@tanstack/react-table"
+import type { AxiosError } from "axios"
 
 interface ContainerRegistryListProps {
   scope: ContainerRegistryScope
@@ -121,8 +121,8 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            Image Registries
+            <Warehouse className="h-4 w-4" />
+            Container Registries
           </CardTitle>
           <CardDescription>
             {scope === 'cluster'
@@ -133,7 +133,7 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
         <CardContent>
           {!containerRegistries || containerRegistries.length === 0 ? (
             <EmptyState
-              title="No image registries configured"
+              title="No container registries configured"
               description="Add a registry to enable container image builds"
               icon={Warehouse}
               actionText="Add Registry"

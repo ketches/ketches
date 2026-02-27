@@ -5,9 +5,10 @@ import { AppActionIcons } from "@/components/applications/app-action-icons"
 
 interface AppActionIconsWrapperProps {
   appId: string
+  envId: string
 }
 
-export function AppActionIconsWrapper({ appId }: AppActionIconsWrapperProps) {
+export function AppActionIconsWrapper({ appId, envId }: AppActionIconsWrapperProps) {
   const { data: availableActions } = useQuery({
     queryKey: ['app-actions', appId],
     queryFn: () => appsApi.getAvailableActions(appId),
@@ -18,5 +19,5 @@ export function AppActionIconsWrapper({ appId }: AppActionIconsWrapperProps) {
     return null
   }
 
-  return <AppActionIcons appId={appId} actions={availableActions.actions} />
+  return <AppActionIcons appId={appId} envId={envId} actions={availableActions.actions} />
 }

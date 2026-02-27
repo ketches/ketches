@@ -120,6 +120,35 @@ func DeleteExtensionCatalogItem(itemID string) error {
 	return db.DB.Delete(&item).Error
 }
 
+// UpdateExtensionCatalogItem updates a non-builtin catalog item's metadata.
+func UpdateExtensionCatalogItem(itemID string, req *models.UpdateExtensionCatalogItemRequest) (*models.ExtensionCatalogItem, error) {
+	var item entities.ExtensionCatalogItem
+	if err := db.DB.Where("id = ?", itemID).First(&item).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("extension catalog item not found")
+		}
+		return nil, err
+	}
+	if item.Builtin {
+		return nil, fmt.Errorf("built-in extension catalog items cannot be modified")
+	}
+	if req.DisplayName != "" {
+		item.DisplayName = req.DisplayName
+	}
+	if req.Description != "" {
+		item.Description = req.Description
+	}
+	if req.OCIUrl != "" {
+		item.OCIUrl = req.OCIUrl
+	}
+	item.IconURL = req.IconURL
+	if err := db.DB.Save(&item).Error; err != nil {
+		return nil, fmt.Errorf("failed to update extension catalog item: %w", err)
+	}
+	m := toExtensionCatalogItemModel(&item)
+	return &m, nil
+}
+
 // toExtensionCatalogItemModel converts the DB entity to the API model.
 func toExtensionCatalogItemModel(e *entities.ExtensionCatalogItem) models.ExtensionCatalogItem {
 	return models.ExtensionCatalogItem{
@@ -132,4 +161,46 @@ func toExtensionCatalogItemModel(e *entities.ExtensionCatalogItem) models.Extens
 		Builtin:     e.Builtin,
 		CreatedAt:   e.CreatedAt,
 	}
+}
+
+
+// GetInstalledClustersForExtension returns all clusters that have a catalog item installed,
+// identified by catalog item ID or release name matching the item's name.
+func GetInstalledClustersForExtension(itemID string) ([]models.InstalledCluster, error) {
+	// Resolve the catalog item so we can match by name as a fallback.
+	item, err := GetExtensionCatalogItemEntity(itemID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load all clusters from the DB.
+	var clusters []entities.Cluster
+	if err := db.DB.Select("id, name").Find(&clusters).Error; err != nil {
+		return nil, fmt.Errorf("failed to list clusters: %w", err)
+	}
+
+	result := make([]models.InstalledCluster, 0)
+
+	for _, cluster := range clusters {
+		extensions, err := ListExtensions(cluster.ID)
+		if err != nil {
+			// Skip clusters we cannot connect to.
+			continue
+		}
+		for _, ext := range extensions {
+			if ext.CatalogItemID == item.ID || ext.Name == item.Name {
+				result = append(result, models.InstalledCluster{
+					ClusterID:   cluster.ID,
+					ClusterName: cluster.Name,
+					ReleaseName: ext.Name,
+					Namespace:   ext.ReleaseNamespace,
+					Version:     ext.ChartVersion,
+					Status:      ext.Status,
+				})
+				break
+			}
+		}
+	}
+
+	return result, nil
 }

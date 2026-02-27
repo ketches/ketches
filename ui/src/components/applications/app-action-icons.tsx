@@ -59,10 +59,11 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 interface AppActionIconsProps {
   appId: string
+  envId: string
   actions: ActionMetadata[]
 }
 
-export function AppActionIcons({ appId, actions }: AppActionIconsProps) {
+export function AppActionIcons({ appId, envId, actions }: AppActionIconsProps) {
   const queryClient = useQueryClient()
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
@@ -207,6 +208,7 @@ export function AppActionIcons({ appId, actions }: AppActionIconsProps) {
         onOpenChange={setExportDialogOpen}
         appIds={exportAppIds}
         appId={appId}
+        envId={envId}
         onSuccess={() => {
           setExportDialogOpen(false)
         }}

@@ -54,6 +54,8 @@ interface DataTableProps<TData, TValue> {
   renderCard?: (data: TData, table: TanstackTable<TData>) => React.ReactNode
   viewMode?: "list" | "card"
   borderless?: boolean
+  // Custom empty state rendered in place of "No results." when data is empty
+  emptyContent?: React.ReactNode
   // Pagination
   pagination?: PaginationState
   onPaginationChange?: OnChangeFn<PaginationState>
@@ -81,6 +83,7 @@ export function DataTable<TData, TValue>({
   renderCard,
   viewMode = "list",
   borderless = false,
+  emptyContent,
   pagination: paginationProp,
   onPaginationChange: onPaginationChangeProp,
   totalCount,
@@ -209,9 +212,9 @@ export function DataTable<TData, TValue>({
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="h-24 text-center"
+                    className={emptyContent ? "p-0" : "h-24 text-center"}
                   >
-                    No results.
+                    {emptyContent ?? "No results."}
                   </TableCell>
                 </TableRow>
               )}
@@ -239,9 +242,15 @@ export function DataTable<TData, TValue>({
               </div>
             ))
           ) : (
-            <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground border rounded-md">
-              No results.
-            </div>
+            emptyContent ? (
+              <div className="col-span-full">
+                {emptyContent}
+              </div>
+            ) : (
+              <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground border rounded-md">
+                No results.
+              </div>
+            )
           )}
         </div>
       )}

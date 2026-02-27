@@ -20,7 +20,7 @@ import {
 import { ContainerRegistryDialog } from "@/components/container-registries/container-registry-dialog"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
-import { EmptyRegistryState, EmptyState } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -70,7 +70,7 @@ export function ContainerRegistriesPage() {
     pageSize: 10,
   })
 
-  const { data: registriesResponse, isLoading, refetch } = useQuery({
+  const { data: registriesResponse, refetch } = useQuery({
     queryKey: ["registries", "project", activeProjectId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
     queryFn: () => containerRegistriesApi.listByProject(activeProjectId!, {
       search: debouncedSearch,
@@ -238,124 +238,110 @@ export function ContainerRegistriesPage() {
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
 
-      {!isLoading && safeRegistries.length === 0 ? (
-        debouncedSearch ? (
-          <EmptyState
-            title="No results found"
-            description={`No registries matching "${debouncedSearch}"`}
-            icon={Warehouse}
-          />
-        ) : (
-          <EmptyRegistryState onAction={() => setCreateOpen(true)} />
-        )
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Container Registries</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage image registries for builds and deployments
-              </p>
-            </div>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Container Registries</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage container registries for builds and deployments
+          </p>
+        </div>
+      </div>
 
-          <DataTable
-            columns={columns}
-            data={safeRegistries}
-            viewMode={viewMode}
-            onRefresh={refetch}
-            manualPagination
-            totalCount={paginationInfo?.total || 0}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            leftActions={() => toolbarLeft}
-            toolbarActions={() => toolbarRight}
-            renderCard={(reg) => (
-              <Card
-                key={reg.id}
-                className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
-                onClick={() => {
-                  setEditingRegistry(reg)
-                  setEditDialogOpen(true)
-                }}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
-                        <AvatarFallback className="rounded-lg text-lg font-bold">
-                          {reg.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <CardTitle className="text-base font-semibold truncate">
-                            {reg.name}
-                          </CardTitle>
-                          <div className="flex items-center gap-2">
-                            {reg.is_default && (
-                              <Star className="h-3.5 w-3.5 text-primary fill-primary shrink-0" />
-                            )}
-                            <span
-                              className={cn(
-                                "text-[10px] px-1.5 py-0 rounded-full border shrink-0",
-                                reg.enabled ? "bg-green-50 text-green-700 border-green-200" : "bg-muted text-muted-foreground"
-                              )}
-                            >
-                              {reg.enabled ? "Enabled" : "Disabled"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                          <span>{reg.endpoint}</span>
-                          {reg.description && (
-                            <>
-                              <span>•</span>
-                              <span className="truncate">{reg.description}</span>
-                            </>
+      <DataTable
+        columns={columns}
+        data={safeRegistries}
+        viewMode={viewMode}
+        onRefresh={refetch}
+        manualPagination
+        totalCount={paginationInfo?.total || 0}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        leftActions={() => toolbarLeft}
+        toolbarActions={() => toolbarRight}
+        renderCard={(reg) => (
+          <Card
+            key={reg.id}
+            className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
+            onClick={() => {
+              setEditingRegistry(reg)
+              setEditDialogOpen(true)
+            }}
+          >
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
+                    <AvatarFallback className="rounded-lg text-lg font-bold">
+                      {reg.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-base font-semibold truncate">
+                        {reg.name}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        {reg.is_default && (
+                          <Star className="h-3.5 w-3.5 text-primary fill-primary shrink-0" />
+                        )}
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0 rounded-full border shrink-0",
+                            reg.enabled ? "bg-green-50 text-green-700 border-green-200" : "bg-muted text-muted-foreground"
                           )}
-                        </div>
+                        >
+                          {reg.enabled ? "Enabled" : "Disabled"}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
-                        onClick={() => {
-                          setEditingRegistry(reg)
-                          setEditDialogOpen(true)
-                        }}
-                      >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          setDeletingRegistry(reg)
-                          setDeleteDialogOpen(true)
-                        }}
-                      >
-                        <Trash2 />
-                      </Button>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                      <span>{reg.endpoint}</span>
+                      {reg.description && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{reg.description}</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <span>{registryProviderLabels[reg.provider]}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2 mt-2">
-                    <span>Created at {formatDate(reg.created_at)}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          />
-        </>
-      )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
+                    onClick={() => {
+                      setEditingRegistry(reg)
+                      setEditDialogOpen(true)
+                    }}
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      setDeletingRegistry(reg)
+                      setDeleteDialogOpen(true)
+                    }}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>{registryProviderLabels[reg.provider]}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2 mt-2">
+                <span>Created at {formatDate(reg.created_at)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      />
 
       <ContainerRegistryDialog
         open={createOpen}

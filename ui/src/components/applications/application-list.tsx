@@ -28,7 +28,6 @@ import { ExportAppsDialog } from "@/components/applications/export-apps-dialog"
 import { ImportAppsDialog } from "@/components/applications/import-apps-dialog"
 import { DataTable } from "@/components/data-table/data-table"
 import { ColorBadge } from "@/components/shared/color-badge"
-import { EmptyApplicationState } from "@/components/shared/empty-state"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -84,7 +83,7 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
     pageSize: 10,
   })
 
-  const { data: appsResponse, isLoading, refetch } = useQuery({
+  const { data: appsResponse, refetch } = useQuery({
     queryKey: ['apps', envId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
     queryFn: () => appsApi.list(envId, {
       search: debouncedSearch,
@@ -93,6 +92,7 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
     }),
     enabled: !!envId,
     refetchInterval: 5000,
+    placeholderData: (previousData) => previousData,
   })
 
   const apps = appsResponse?.items ?? []
@@ -211,26 +211,7 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
             </TooltipContent>
           </Tooltip>
 
-          {/* <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()}>
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation()
-                setExportAppId(row.original.id)
-                setExportAppIds([])
-                setExportDialogOpen(true)
-              }}>
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu> */}
-
-          <AppActionIconsWrapper appId={row.original.id} />
+          <AppActionIconsWrapper appId={row.original.id} envId={envId} />
         </div>
       ),
     },
@@ -267,25 +248,6 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
       </Button>
     </div>
   )
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading applications...</p>
-      </div>
-    )
-  }
-
-  if (safeApps.length === 0 && !searchQuery) {
-    return (
-      <EmptyApplicationState
-        onAction={() => setCreateDialogOpen(true)}
-        environmentName={envName}
-        actionDisabled={!envId}
-      />
-    )
-  }
 
   return (
     <>
@@ -345,7 +307,7 @@ export function ApplicationList({ envId, envName }: ApplicationListProps) {
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <AppActionIconsWrapper appId={app.id} />
+                  <AppActionIconsWrapper appId={app.id} envId={envId} />
                 </div>
               </div>
             </CardHeader>

@@ -17,7 +17,7 @@ import { CreateCodeRepositoryDialog } from "@/components/code-repositories/creat
 import { EditCodeRepositoryDialog } from "@/components/code-repositories/edit-code-repository-dialog"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
-import { EmptyCodeRepositoryState, EmptyState } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -67,7 +67,7 @@ export function CodeRepositoriesPage() {
     pageSize: 10,
   })
 
-  const { data: reposResponse, isLoading, refetch } = useQuery({
+  const { data: reposResponse, refetch } = useQuery({
     queryKey: ["code-repositories", activeProjectId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
     queryFn: () => codeRepositoriesApi.list(activeProjectId!, {
       search: debouncedSearch,
@@ -169,159 +169,129 @@ export function CodeRepositoriesPage() {
     )
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col flex-1 gap-6 animate-pulse">
-        <div className="flex flex-col gap-2">
-          <div className="h-8 w-48 bg-muted rounded" />
-          <div className="h-4 w-64 bg-muted rounded" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-48 bg-muted rounded-lg" />
-          ))}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
 
-      {!isLoading && safeRepos.length === 0 ? (
-        debouncedSearch ? (
-          <EmptyState
-            title="No results found"
-            description={`No repositories matching "${debouncedSearch}"`}
-            icon={FolderGit2}
-          />
-        ) : (
-          <EmptyCodeRepositoryState onAction={() => setCreateOpen(true)} />
-        )
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Code Repositories</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage Git repositories, build configs, and deployments
-              </p>
-            </div>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Code Repositories</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage Git repositories, build configs, and deployments
+          </p>
+        </div>
+      </div>
 
-          <DataTable
-            columns={columns}
-            data={safeRepos}
-            viewMode={viewMode}
-            onRefresh={refetch}
-            manualPagination
-            totalCount={paginationInfo?.total || 0}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            leftActions={() => (
-              <Input
-                className="flex flex-1 max-w-sm min-w-75"
-                placeholder="Search repositories..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            )}
-            toolbarActions={() => (
-              <div className="flex items-center gap-2">
-                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "card")} className="w-auto h-7">
-                  <TabsList>
-                    <TabsTrigger value="list">
-                      <ListIcon />
-                    </TabsTrigger>
-                    <TabsTrigger value="card">
-                      <LayoutGrid />
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus />
-                  Add Repository
-                </Button>
-              </div>
-            )}
-            renderCard={(repo) => (
-              <Card
-                key={repo.id}
-                className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
-                onClick={() => navigate(`/code-repositories/${repo.id}`)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
-                        <AvatarFallback className="rounded-lg text-lg font-bold">
-                          {repo.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <CardTitle className="text-base font-semibold truncate">
-                            {repo.name}
-                          </CardTitle>
-                          {repo.webhook_enabled && (
-                            <span className="text-[10px] text-muted-foreground px-1.5 py-0 rounded-full bg-muted border shrink-0">
-                              Webhook enabled
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                          <span>{repo.slug}</span>
-                          {repo.description && (
-                            <>
-                              <span>•</span>
-                              <span className="truncate">{repo.description}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditingRepo(repo)
-                          setEditDialogOpen(true)
-                        }}
-                      >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setDeletingRepo(repo)
-                          setDeleteDialogOpen(true)
-                        }}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  <div className="text-[10px] text-muted-foreground truncate font-mono mb-2">
-                    {repo.git_repo_url}
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                    <span>Created at {formatDate(repo.created_at)}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+      <DataTable
+        columns={columns}
+        data={safeRepos}
+        viewMode={viewMode}
+        onRefresh={refetch}
+        manualPagination
+        totalCount={paginationInfo?.total || 0}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        leftActions={() => (
+          <Input
+            className="flex flex-1 max-w-sm min-w-75"
+            placeholder="Search repositories..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </>
-      )}
+        )}
+        toolbarActions={() => (
+          <div className="flex items-center gap-2">
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "card")} className="w-auto h-7">
+              <TabsList>
+                <TabsTrigger value="list">
+                  <ListIcon />
+                </TabsTrigger>
+                <TabsTrigger value="card">
+                  <LayoutGrid />
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus />
+              Add Repository
+            </Button>
+          </div>
+        )}
+        renderCard={(repo) => (
+          <Card
+            key={repo.id}
+            className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
+            onClick={() => navigate(`/code-repositories/${repo.id}`)}
+          >
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
+                    <AvatarFallback className="rounded-lg text-lg font-bold">
+                      {repo.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-base font-semibold truncate">
+                        {repo.name}
+                      </CardTitle>
+                      {repo.webhook_enabled && (
+                        <span className="text-[10px] text-muted-foreground px-1.5 py-0 rounded-full bg-muted border shrink-0">
+                          Webhook enabled
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                      <span>{repo.slug}</span>
+                      {repo.description && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{repo.description}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditingRepo(repo)
+                      setEditDialogOpen(true)
+                    }}
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDeletingRepo(repo)
+                      setDeleteDialogOpen(true)
+                    }}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="text-[10px] text-muted-foreground truncate font-mono mb-2">
+                {repo.git_repo_url}
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                <span>Created at {formatDate(repo.created_at)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      />
 
       <CreateCodeRepositoryDialog
         open={createOpen}

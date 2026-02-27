@@ -124,6 +124,8 @@ func GetExtensionValues(itemID, version string) (string, error) {
 }
 
 // ListExtensions lists all helm releases installed in a cluster.
+// ListExtensions lists all helm releases installed in a cluster and enriches
+// each entry with the catalog item ID (matched by OCI URL) when available.
 func ListExtensions(clusterID string) ([]models.InstalledExtension, error) {
 	actionConfig, cleanup, err := newHelmActionConfig(clusterID, "")
 	if err != nil {
@@ -140,9 +142,16 @@ func ListExtensions(clusterID string) ([]models.InstalledExtension, error) {
 		return nil, fmt.Errorf("failed to list extensions: %w", err)
 	}
 
+	// Build an OCI URL → catalog item ID lookup table for enrichment.
+	ociToCatalogID := buildOCIToCatalogIDMap()
+
 	result := make([]models.InstalledExtension, 0, len(releases))
 	for _, r := range releases {
-		result = append(result, toInstalledExtension(r))
+		ext := toInstalledExtension(r)
+		if id, ok := ociToCatalogID[ext.OCIUrl]; ok {
+			ext.CatalogItemID = id
+		}
+		result = append(result, ext)
 	}
 	return result, nil
 }
@@ -443,6 +452,23 @@ func toInstalledExtension(r *release.Release) models.InstalledExtension {
 		Revision:         r.Version,
 		CreatedAt:        createdAt,
 	}
+}
+
+// buildOCIToCatalogIDMap returns a map of OCI URL → catalog item ID
+// by querying the extension catalog. Errors are silently ignored so that
+// listing extensions still works even if the catalog DB is unavailable.
+func buildOCIToCatalogIDMap() map[string]string {
+	items, err := ListExtensionCatalog()
+	if err != nil {
+		return map[string]string{}
+	}
+	m := make(map[string]string, len(items))
+	for _, item := range items {
+		if item.OCIUrl != "" && item.ID != "" {
+			m[item.OCIUrl] = item.ID
+		}
+	}
+	return m
 }
 
 // configFlagsAdapter implements genericclioptions.RESTClientGetter using a kubeconfig path.

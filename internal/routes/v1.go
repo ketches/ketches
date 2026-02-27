@@ -48,7 +48,7 @@ func SetupV1Routes(r *gin.Engine) {
 				projects.GET("/:projectID/envs/simple", handlers.ListEnvsSimple)
 				projects.POST("/:projectID/envs", handlers.CreateEnv)
 
-				// Image Registries (project scope)
+				// Container Registries (project scope)
 				projects.GET("/:projectID/container-registries", handlers.ListProjectContainerRegistries)
 				projects.GET("/:projectID/container-registries/simple", handlers.ListProjectContainerRegistriesSimple)
 				projects.POST("/:projectID/container-registries", handlers.CreateProjectContainerRegistry)
@@ -195,7 +195,6 @@ func SetupV1Routes(r *gin.Engine) {
 			authorized.PUT("/gateways/:id", handlers.UpdateAppGateway)
 			authorized.DELETE("/gateways/:id", handlers.DeleteAppGateway)
 
-
 			authorized.GET("/clusters/public", handlers.ListPublicClusters)
 			authorized.GET("/clusters/:clusterID/public", handlers.GetPublicCluster)
 			authorized.GET("/clusters/:clusterID/storage-classes", handlers.ListStorageClasses)
@@ -207,8 +206,10 @@ func SetupV1Routes(r *gin.Engine) {
 				extensionCatalog.GET("", handlers.ListExtensionCatalog)
 				extensionCatalog.POST("", middlewares.AdminOnly(), handlers.CreateExtensionCatalogItem)
 				extensionCatalog.DELETE("/:itemID", middlewares.AdminOnly(), handlers.DeleteExtensionCatalogItem)
+				extensionCatalog.PUT("/:itemID", middlewares.AdminOnly(), handlers.UpdateExtensionCatalogItem)
 				extensionCatalog.GET("/:itemID/versions", handlers.ListExtensionVersions)
 				extensionCatalog.GET("/:itemID/versions/:version/values", handlers.GetExtensionValues)
+				extensionCatalog.GET("/:itemID/installed-clusters", handlers.GetInstalledClustersForExtension)
 			}
 			clusters := authorized.Group("/clusters")
 			clusters.Use(middlewares.AdminOnly())
@@ -240,18 +241,6 @@ func SetupV1Routes(r *gin.Engine) {
 
 				clusters.GET("/:clusterID/namespaces", handlers.ListClusterNamespaces)
 				clusters.GET("/:clusterID/services", handlers.ListClusterServices)
-
-
-
-
-
-
-
-
-
-
-
-
 
 				// Extensions (HelmReleases)
 				clusters.GET("/:clusterID/extensions", handlers.ListExtensions)

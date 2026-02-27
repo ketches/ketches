@@ -1,23 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
+  ArrowUpFromLine,
   Blocks,
-  CheckCircle2,
-  Clock,
   Loader2,
   Plus,
-  Trash2,
-  XCircle,
+  Trash2
 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import {
   clustersApi,
+  type ExtensionCatalogItem,
   type InstalledExtension,
 } from "@/api/clusters"
 import { UpdateExtensionDialog } from "@/components/cluster/update-extension-dialog"
-import { BrowseExtensionsDialog } from "@/components/extensions/browse-extensions-dialog"
 import { DataTable } from "@/components/data-table/data-table"
+import { BrowseExtensionsDialog } from "@/components/extensions/browse-extensions-dialog"
+import { InstallExtensionToClusterDialog } from "@/components/extensions/install-extension-dialog"
 import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
@@ -29,7 +29,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -39,6 +38,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { ColumnDef } from "@tanstack/react-table"
+import { ColorBadge } from "../shared/color-badge"
 
 interface ClusterExtensionsProps {
   clusterId: string
@@ -50,6 +50,9 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
   const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null)
   const [updateTarget, setUpdateTarget] =
     React.useState<InstalledExtension | null>(null)
+  const [installTarget, setInstallTarget] =
+    React.useState<ExtensionCatalogItem | null>(null)
+  const [installOpen, setInstallOpen] = React.useState(false)
 
   const { data: extensions = [], isLoading } = useQuery({
     queryKey: ["extensions", clusterId],
@@ -69,10 +72,10 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
       const msg =
         error && typeof error === "object" && "response" in error
           ? (
-              error as {
-                response?: { data?: { error?: string } }
-              }
-            ).response?.data?.error
+            error as {
+              response?: { data?: { error?: string } }
+            }
+          ).response?.data?.error
           : null
       toast.error("Failed to uninstall extension", {
         description:
@@ -88,28 +91,93 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
   // Derive installed extension names to pass to BrowseExtensionsDialog
   const installedNames = safeExtensions.map((e) => e.name)
 
+  // Fetch the full extension catalog to derive available (not-yet-installed) items
+  const { data: catalog = [], isLoading: catalogLoading } = useQuery({
+    queryKey: ["extension-catalog"],
+    queryFn: () => clustersApi.listExtensionCatalog(),
+  })
+
+  const safeCatalog: ExtensionCatalogItem[] = Array.isArray(catalog) ? catalog : []
+
+  // Filter out already-installed catalog items (match by catalog_item_id or by name)
+  const installedIds = new Set(safeExtensions.map((e) => e.catalog_item_id).filter(Boolean))
+  const installedNameSet = new Set(installedNames)
+  const availableItems = safeCatalog.filter(
+    (item) => !installedIds.has(item.id) && !installedNameSet.has(item.name),
+  )
+
+  const catalogColumns: ColumnDef<ExtensionCatalogItem>[] = [
+    {
+      accessorKey: "name",
+      header: "Extension",
+      cell: ({ row }) => {
+        const item = row.original
+        return (
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-primary/10 rounded-md text-primary shrink-0">
+              <Blocks />
+            </div>
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">
+                {item.display_name || item.name}
+              </p>
+              <p className="text-xs text-muted-foreground font-mono truncate">
+                {item.oci_url}
+              </p>
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground line-clamp-2">
+          {row.original.description || "-"}
+        </span>
+      ),
+    },
+    {
+      id: "catalog-actions",
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => {
+        const item = row.original
+        return (
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                setInstallTarget(item)
+                setInstallOpen(true)
+              }}
+            >
+              <Plus />
+              Install
+            </Button>
+          </div>
+        )
+      },
+    },
+  ]
+
   const getStatusBadge = (ext: InstalledExtension) => {
     if (ext.status === "deployed") {
       return (
-        <Badge variant="outline" className="text-green-600 gap-1">
-          <CheckCircle2 className="h-3 w-3" />
-          Deployed
-        </Badge>
+        <ColorBadge color="green">Completed</ColorBadge>
       )
     }
     if (ext.status === "failed") {
       return (
-        <Badge variant="destructive" className="gap-1">
-          <XCircle className="h-3 w-3" />
+        <ColorBadge color="red">
           Failed
-        </Badge>
+        </ColorBadge>
       )
     }
     return (
-      <Badge variant="outline" className="text-blue-600 gap-1">
-        <Clock className="h-3 w-3" />
+      <ColorBadge color="blue">
         {ext.status || "Pending"}
-      </Badge>
+      </ColorBadge>
     )
   }
 
@@ -122,7 +190,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
         return (
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-primary/10 rounded-md text-primary shrink-0">
-              <Blocks className="h-4 w-4" />
+              <Blocks />
             </div>
             <div className="min-w-0">
               <p className="font-medium text-sm truncate">{ext.name}</p>
@@ -173,15 +241,16 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
               size="sm"
               onClick={() => setUpdateTarget(ext)}
             >
+              <ArrowUpFromLine />
               Update
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="text-destructive hover:text-destructive"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={() => setDeleteTarget(ext.name)}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 />
               Uninstall
             </Button>
           </div>
@@ -236,6 +305,47 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Blocks className="h-4 w-4" />
+            Available Extensions
+          </CardTitle>
+          <CardDescription>
+            Extensions available to install on this cluster
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {catalogLoading ? (
+            <div className="flex flex-col items-center justify-center gap-4 py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Loading catalog...</p>
+            </div>
+          ) : availableItems.length === 0 ? (
+            <EmptyState
+              title="All Extensions Installed"
+              description="All available extensions from the catalog are already installed on this cluster."
+              icon={Blocks}
+            />
+          ) : (
+            <DataTable
+              borderless
+              columns={catalogColumns}
+              data={availableItems}
+              searchKey="name"
+              searchPlaceholder="Filter available extensions..."
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <InstallExtensionToClusterDialog
+        open={installOpen}
+        onOpenChange={setInstallOpen}
+        catalogItem={installTarget}
+        preselectedClusterId={clusterId}
+      />
 
       <BrowseExtensionsDialog
         clusterId={clusterId}

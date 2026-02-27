@@ -1,8 +1,8 @@
-import { useQueries, useQuery } from "@tanstack/react-query"
-import { ExternalLink, ServerCrash } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { Blocks, ExternalLink } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
-import { clustersApi, type InstalledExtension } from "@/api/clusters"
+import { clustersApi, type ExtensionCatalogItem, type InstalledCluster } from "@/api/clusters"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
@@ -15,86 +15,46 @@ import {
 } from "@/components/ui/dialog"
 
 interface InstalledClustersDialogProps {
+  catalogItem: ExtensionCatalogItem | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  // The extension catalog item name used to match installed extensions by name
-  extensionName: string
-  extensionDisplayName?: string
 }
 
-interface ClusterWithInstall {
-  clusterId: string
-  clusterName: string
-  extension: InstalledExtension
-}
-
-// Fetches all clusters, then queries each cluster's extensions to find matches.
-// Uses useQueries (not hooks-in-a-loop) to safely run parallel queries.
 export function InstalledClustersDialog({
+  catalogItem,
   open,
   onOpenChange,
-  extensionName,
-  extensionDisplayName,
 }: InstalledClustersDialogProps) {
   const navigate = useNavigate()
 
-  const { data: clusters = [], isLoading: clustersLoading } = useQuery({
-    queryKey: ["clusters-simple"],
-    queryFn: () => clustersApi.listSimple(),
-    enabled: open,
+  const { data: clusters = [], isLoading } = useQuery({
+    queryKey: ["extension-installed-clusters", catalogItem?.id],
+    queryFn: () => clustersApi.getExtensionInstalledClusters(catalogItem!.id),
+    enabled: !!catalogItem && open,
   })
 
-  // Use useQueries to safely run one query per cluster in parallel
-  const extensionQueries = useQueries({
-    queries: clusters.map((cluster) => ({
-      queryKey: ["extension-installed", cluster.id, extensionName],
-      queryFn: async (): Promise<InstalledExtension | null> => {
-        try {
-          return await clustersApi.getExtension(cluster.id, extensionName)
-        } catch {
-          return null
-        }
-      },
-      enabled: open && Boolean(cluster.id) && Boolean(extensionName),
-      staleTime: 30 * 1000,
-    })),
-  })
+  const safeCluster: InstalledCluster[] = Array.isArray(clusters) ? clusters : []
 
-  const isLoading =
-    clustersLoading || extensionQueries.some((q) => q.isLoading)
-
-  const installedList: ClusterWithInstall[] = extensionQueries
-    .map((q, i) => {
-      const cluster = clusters[i]
-      if (!cluster || !q.data) return null
-      return {
-        clusterId: cluster.id,
-        clusterName: cluster.name,
-        extension: q.data,
-      }
-    })
-    .filter((x): x is ClusterWithInstall => x !== null)
-
-  const handleNavigate = (clusterId: string) => {
+  const handleNavigateToCluster = (clusterId: string) => {
     onOpenChange(false)
     navigate(`/clusters/${clusterId}?tab=extensions`)
   }
 
-  const getStatusColor = (status: string) => {
-    if (status === "deployed") return "green"
-    if (status === "failed") return "red"
-    return "blue"
+  const statusColor = (status: string) => {
+    if (status === "deployed") return "green" as const
+    if (status === "failed") return "red" as const
+    return "blue" as const
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
+      <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Installed Clusters</DialogTitle>
           <DialogDescription>
             Clusters where{" "}
             <span className="font-medium">
-              {extensionDisplayName || extensionName}
+              {catalogItem?.display_name || catalogItem?.name}
             </span>{" "}
             is installed
           </DialogDescription>
@@ -107,43 +67,34 @@ export function InstalledClustersDialog({
                 Loading clusters...
               </span>
             </div>
-          ) : installedList.length === 0 ? (
+          ) : safeCluster.length === 0 ? (
             <EmptyState
               title="Not installed anywhere"
               description="This extension has not been installed on any cluster yet."
-              icon={ServerCrash}
+              icon={Blocks}
             />
           ) : (
-            installedList.map((item) => (
+            safeCluster.map((c) => (
               <div
-                key={item.clusterId}
+                key={c.cluster_id}
                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
               >
                 <div className="flex flex-col gap-1 min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium truncate">
-                      {item.clusterName}
-                    </span>
-                    <ColorBadge
-                      color={getStatusColor(item.extension.status)}
-                      className="text-[10px]"
-                    >
-                      {item.extension.status?.toUpperCase() || "UNKNOWN"}
+                    <span className="font-medium truncate">{c.cluster_name}</span>
+                    <ColorBadge color={statusColor(c.status)}>
+                      {c.status?.toUpperCase() || "UNKNOWN"}
                     </ColorBadge>
                   </div>
                   <span className="text-xs text-muted-foreground font-mono truncate">
-                    {item.extension.chart_version
-                      ? `v${item.extension.chart_version}`
-                      : ""}
-                    {item.extension.release_namespace
-                      ? ` · ${item.extension.release_namespace}`
-                      : ""}
+                    {c.release_name} · {c.namespace}
+                    {c.version ? ` · ${c.version}` : ""}
                   </span>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleNavigate(item.clusterId)}
+                  onClick={() => handleNavigateToCluster(c.cluster_id)}
                 >
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />
                   View

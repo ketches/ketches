@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios"
 import {
   AlertCircle,
+  Blocks,
   ChartLine,
   ChevronsUpDown,
   CircleSlash,
   Cpu,
-  Database,
   GamepadDirectional,
   Info,
   Link2,
@@ -14,13 +14,13 @@ import {
   MemoryStick,
   MoreVertical,
   Pencil,
-  PlugZap,
   Server,
   ShieldCheck,
   ShipWheel,
   Telescope,
   Terminal,
-  Trash2
+  Trash2,
+  Warehouse
 } from "lucide-react"
 import * as React from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
@@ -489,7 +489,7 @@ export function ClusterDetailPage() {
             Nodes
           </TabsTrigger>
           <TabsTrigger value="extensions">
-            <PlugZap />
+            <Blocks />
             Extensions
           </TabsTrigger>
           <TabsTrigger value="integrations">
@@ -497,7 +497,7 @@ export function ClusterDetailPage() {
             Integrations
           </TabsTrigger>
           <TabsTrigger value="registries">
-            <Database />
+            <Warehouse />
             Registries
           </TabsTrigger>
           <TabsTrigger value="certificates">
