@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useProjectStore } from "@/stores/project"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -34,6 +35,8 @@ const formatDate = (dateString: string) => {
 export function MembersPage() {
   const queryClient = useQueryClient()
   const { activeProjectId } = useProjectStore()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
 
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -133,7 +136,9 @@ export function MembersPage() {
       header: "Role",
       cell: ({ row }) => {
         const member = row.original
-        return (
+        return isViewer ? (
+          <span className="text-sm">{ProjectRoleLabels[member.project_role as ProjectRole]}</span>
+        ) : (
           <Select
             value={member.project_role}
             onValueChange={(val) => val && updateRoleMutation.mutate({ userId: member.user_id, role: val })}
@@ -167,6 +172,7 @@ export function MembersPage() {
         const member = row.original
         return (
           <div className="flex justify-end gap-2">
+          {!isViewer && (
             <Button
               variant="ghost"
               size="icon-sm"
@@ -177,6 +183,7 @@ export function MembersPage() {
               <Trash2 />
               <span className="sr-only">Remove</span>
             </Button>
+          )}
           </div>
         )
       },
@@ -218,7 +225,7 @@ export function MembersPage() {
             const selectedRows = table.getFilteredSelectedRowModel().rows
             return (
               <div className="flex items-center gap-2">
-                {selectedRows.length > 0 && (
+                {selectedRows.length > 0 && !isViewer && (
                   <Button
                     variant="destructive"
                     onClick={() => {
@@ -231,11 +238,13 @@ export function MembersPage() {
                     Remove Selected ({selectedRows.length})
                   </Button>
                 )}
-                <AddMemberDialog
-                  onAdd={(data) => {
-                    updateRoleMutation.mutate({ userId: data.userId, role: data.role })
-                  }}
-                />
+                {!isViewer && (
+                  <AddMemberDialog
+                    onAdd={(data) => {
+                      updateRoleMutation.mutate({ userId: data.userId, role: data.role })
+                    }}
+                  />
+                )}
               </div>
             )
           }}

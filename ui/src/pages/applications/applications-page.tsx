@@ -20,10 +20,13 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { useProjectStore } from "@/stores/project"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 export function ApplicationsPage() {
   const [createEnvDialogOpen, setCreateEnvDialogOpen] = React.useState(false)
   const { activeProjectId, activeEnvId, setActiveEnvId } = useProjectStore()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
 
   const { data: envsResponse, isLoading } = useQuery({
     queryKey: ['envs', activeProjectId],
@@ -77,7 +80,7 @@ export function ApplicationsPage() {
       <PageHeader items={breadcrumbs} />
 
       {!isLoading && safeEnvs.length === 0 ? (
-        <EmptyEnvironmentState onAction={() => setCreateEnvDialogOpen(true)} />
+        <EmptyEnvironmentState onAction={!isViewer ? () => setCreateEnvDialogOpen(true) : undefined} />
       ) : activeEnvId ? (
         <>
           <div className="flex items-center justify-between">

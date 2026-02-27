@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectStore } from "@/stores/project"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -59,6 +60,8 @@ export function EnvironmentsPage() {
   const debouncedSearch = useDebounce(searchQuery, 300)
 
   const { activeProjectId } = useProjectStore()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
 
   React.useEffect(() => {
     localStorage.setItem(ENVIRONMENTS_VIEW_MODE_KEY, viewMode)
@@ -149,6 +152,7 @@ export function EnvironmentsPage() {
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-2">
+          {!isViewer && (
           <Button
             variant="ghost"
             size="icon-sm"
@@ -160,6 +164,8 @@ export function EnvironmentsPage() {
           >
             <Pencil />
           </Button>
+          )}
+          {!isViewer && (
           <Button
             variant="ghost"
             size="icon-sm"
@@ -172,6 +178,7 @@ export function EnvironmentsPage() {
           >
             <Trash2 />
           </Button>
+          )}
         </div>
       ),
     },
@@ -201,10 +208,12 @@ export function EnvironmentsPage() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
+      {!isViewer && (
       <Button onClick={() => setCreateDialogOpen(true)}>
         <Plus />
         Create Environment
       </Button>
+      )}
     </div>
   )
 
@@ -213,7 +222,7 @@ export function EnvironmentsPage() {
       <PageHeader items={breadcrumbs} />
 
       {!isLoading && safeEnvs.length === 0 && !searchQuery ? (
-        <EmptyEnvironmentState onAction={() => setCreateDialogOpen(true)} />
+        <EmptyEnvironmentState onAction={!isViewer ? () => setCreateDialogOpen(true) : undefined} />
       ) : (
         <>
           <div className="flex items-center justify-between">
@@ -269,6 +278,7 @@ export function EnvironmentsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {!isViewer && (
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -281,6 +291,8 @@ export function EnvironmentsPage() {
                       >
                         <Pencil />
                       </Button>
+                      )}
+                      {!isViewer && (
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -293,6 +305,7 @@ export function EnvironmentsPage() {
                       >
                         <Trash2 />
                       </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>

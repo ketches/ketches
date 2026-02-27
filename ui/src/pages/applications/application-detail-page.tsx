@@ -90,6 +90,7 @@ import { useBottomPanel } from "@/contexts/bottom-panel-context"
 import { getAppStatusColor } from "@/lib/app-status"
 import { formatDate } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
+import { useProjectRole } from "@/hooks/useProjectRole"
 
 function ScaleAppPopover({ app }: { app: App }) {
   const [replicas, setReplicas] = React.useState(app.replicas)
@@ -466,6 +467,8 @@ export function ApplicationDetailPage() {
   const currentTab = searchParams.get("tab") || "overview"
   const { openPanel } = useBottomPanel()
   const { activeProjectId, setActiveEnvId } = useProjectStore()
+  const projectRole = useProjectRole()
+  const isViewer = projectRole === 'viewer'
 
   const { data: app, isLoading, error } = useQuery<App>({
     queryKey: ['app', appId],
@@ -679,6 +682,7 @@ export function ApplicationDetailPage() {
         const defaultContainer = containers.includes(appContainerName) ? appContainerName : containers[0]
         return (
           <div className="flex items-center justify-end gap-1">
+            {!isViewer && (
             <Button
               variant="ghost"
               size="icon-sm"
@@ -700,6 +704,8 @@ export function ApplicationDetailPage() {
             >
               <FileText />
             </Button>
+            )}
+            {!isViewer && (
             <Button
               variant="ghost"
               size="icon-sm"
@@ -721,6 +727,8 @@ export function ApplicationDetailPage() {
             >
               <TerminalIcon />
             </Button>
+            )}
+            {!isViewer && (
             <Button
               variant="ghost"
               size="icon-sm"
@@ -742,6 +750,8 @@ export function ApplicationDetailPage() {
             >
               <FolderOpen />
             </Button>
+            )}
+            {!isViewer && (
             <Button
               variant="ghost"
               size="icon-sm"
@@ -756,6 +766,7 @@ export function ApplicationDetailPage() {
             >
               <Trash2 />
             </Button>
+            )}
           </div>
         )
       },
@@ -904,6 +915,7 @@ export function ApplicationDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {!isViewer && (
             <Button
               variant="outline"
               onClick={() => setIsEditAppDialogOpen(true)}
@@ -911,7 +923,8 @@ export function ApplicationDetailPage() {
               <Pencil />
               Edit
             </Button>
-            {availableActions && availableActions.actions && (
+            )}
+            {!isViewer && availableActions && availableActions.actions && (
               <AppActionButtons
                 appId={app.id}
                 actions={availableActions.actions}
@@ -980,6 +993,7 @@ export function ApplicationDetailPage() {
                     >
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
+                    {!isViewer && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
@@ -987,6 +1001,7 @@ export function ApplicationDetailPage() {
                     >
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -1111,7 +1126,7 @@ export function ApplicationDetailPage() {
                 />
 
                 <div className="flex items-center gap-2">
-                  {Object.keys(rowSelection).length > 0 && (
+                  {Object.keys(rowSelection).length > 0 && !isViewer && (
                     <Button
                       variant="destructive"
                       onClick={() => {
@@ -1137,7 +1152,7 @@ export function ApplicationDetailPage() {
                       </TabsTrigger>
                     </TabsList>
                   </Tabs>
-                  <ScaleAppPopover app={app} />
+                  {!isViewer && <ScaleAppPopover app={app} />}
                 </div>
               </div>
               {filteredInstances.length === 0 ? (
@@ -1240,6 +1255,7 @@ export function ApplicationDetailPage() {
                               <span>{instance.runningDuration}</span>
                             </div>
                             <div className="flex items-center gap-1">
+                              {!isViewer && (
                               <Button
                                 variant="ghost"
                                 size="icon-xs"
@@ -1262,6 +1278,8 @@ export function ApplicationDetailPage() {
                               >
                                 <FileText className="h-3.5 w-3.5" />
                               </Button>
+                              )}
+                              {!isViewer && (
                               <Button
                                 variant="ghost"
                                 size="icon-xs"
@@ -1284,6 +1302,8 @@ export function ApplicationDetailPage() {
                               >
                                 <TerminalIcon className="h-3.5 w-3.5" />
                               </Button>
+                              )}
+                              {!isViewer && (
                               <Button
                                 variant="ghost"
                                 size="icon-xs"
@@ -1306,6 +1326,8 @@ export function ApplicationDetailPage() {
                               >
                                 <FolderOpen className="h-3.5 w-3.5" />
                               </Button>
+                              )}
+                              {!isViewer && (
                               <Button
                                 variant="ghost"
                                 size="icon-xs"
@@ -1320,6 +1342,7 @@ export function ApplicationDetailPage() {
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
+                              )}
                             </div>
                           </div>
                         </CardContent>
