@@ -10,6 +10,7 @@ export interface RecycleBinApp {
   env_name: string
   project_id: string
   project_name: string
+  project_slug: string
   app_type: string
   container_image: string
   deleted_at: string
@@ -22,6 +23,7 @@ export interface RecycleBinEnv {
   description: string
   project_id: string
   project_name: string
+  project_slug: string
   cluster_id: string
   cluster_name: string
   cluster_namespace: string
@@ -30,6 +32,14 @@ export interface RecycleBinEnv {
 
 export interface EnvDeletionConflict {
   apps: RecycleBinApp[]
+}
+
+export interface RecycleBinProject {
+  id: string
+  slug: string
+  name: string
+  description: string
+  deleted_at: string
 }
 
 export const recycleBinApi = {
@@ -63,5 +73,17 @@ export const recycleBinApi = {
 
   checkEnvDeletionConflicts: async (envId: string) => {
     return client.get(`/v1/recycle-bin/envs/${envId}/deletion-conflicts`) as Promise<EnvDeletionConflict>
-  }
+  },
+
+  listProjects: async (params?: PaginationParams) => {
+    return client.get('/v1/recycle-bin/projects', { params }) as Promise<{ items: RecycleBinProject[], pagination: PaginationResponse }>
+  },
+
+  restoreProjects: async (ids: string[]) => {
+    return client.post('/v1/recycle-bin/projects/restore', { ids })
+  },
+
+  permanentlyDeleteProjects: async (ids: string[]) => {
+    return client.post('/v1/recycle-bin/projects/permanently-delete', { ids })
+  },
 }

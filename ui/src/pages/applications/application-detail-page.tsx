@@ -941,13 +941,13 @@ export function ApplicationDetailPage() {
           <TabsTrigger value="topology"><Share2 />Topology</TabsTrigger>
           <TabsTrigger value="instances"><Shapes />Instances</TabsTrigger>
           <TabsTrigger value="resources"><Ruler />Resources</TabsTrigger>
-          <TabsTrigger value="env-vars"><Key />Env Vars</TabsTrigger>
-          <TabsTrigger value="config-files"><FileCog />Config Files</TabsTrigger>
-          <TabsTrigger value="volumes"><HardDrive />Volumes</TabsTrigger>
+          {!isViewer && <TabsTrigger value="env-vars"><Key />Env Vars</TabsTrigger>}
+          {!isViewer && <TabsTrigger value="config-files"><FileCog />Config Files</TabsTrigger>}
+          {!isViewer && <TabsTrigger value="volumes"><HardDrive />Volumes</TabsTrigger>}
           <TabsTrigger value="gateways"><Network />Gateways</TabsTrigger>
-          <TabsTrigger value="plugins"><Puzzle />Plugins</TabsTrigger>
-          <TabsTrigger value="build"><Hammer />Deploy</TabsTrigger>
-          <TabsTrigger value="advanced"><Cog />Advanced</TabsTrigger>
+          {!isViewer && <TabsTrigger value="plugins"><Puzzle />Plugins</TabsTrigger>}
+          {!isViewer && <TabsTrigger value="build"><Hammer />Deploy</TabsTrigger>}
+          {!isViewer && <TabsTrigger value="advanced"><Cog />Advanced</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
@@ -1101,7 +1101,7 @@ export function ApplicationDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TopologyView appId={app.id} />
+              <TopologyView appId={app.id} isViewer={isViewer} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -1363,22 +1363,31 @@ export function ApplicationDetailPage() {
           <NetworkConfig app={app} />
         </TabsContent>
 
+        {!isViewer && (
         <TabsContent value="env-vars" className="space-y-4 mt-2">
           <EnvVarTable app={app} />
         </TabsContent>
+        )}
 
+        {!isViewer && (
         <TabsContent value="volumes" className="space-y-4 mt-2">
           <VolumesTable app={app} />
         </TabsContent>
+        )}
 
+        {!isViewer && (
         <TabsContent value="config-files" className="space-y-4 mt-2">
           <ConfigFilesTable app={app} />
         </TabsContent>
+        )}
 
+        {!isViewer && (
         <TabsContent value="plugins" className="space-y-4 mt-2">
           <AppPlugins appId={app.id} projectId={projectIdToUse!} />
         </TabsContent>
+        )}
 
+        {!isViewer && (
         <TabsContent value="build" className="space-y-4 mt-2">
           {app.code_repository_id && (
             <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent">
@@ -1408,13 +1417,16 @@ export function ApplicationDetailPage() {
           <BuildList appId={app.id} />
           <DeploymentHistoryList appId={app.id} />
         </TabsContent>
+        )}
 
+        {!isViewer && (
         <TabsContent value="advanced" className="space-y-4 mt-2">
           <CommandConfig app={app} />
           <AutoScalingConfig app={app} />
           <HealthConfig app={app} />
           <SchedulingConfig app={app} />
         </TabsContent>
+        )}
       </Tabs>
 
       <ImageEditor

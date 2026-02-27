@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea"
 interface EnvCertificatesProps {
   envId: string
   isViewer?: boolean
+}
 
 interface CertFormData {
   name: string
@@ -165,7 +166,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
                 Environment-level certificates for this environment
               </CardDescription>
             </div>
-            {!isViewer && (
+            {!isViewer && certificates.length > 0 && (
               <Button size="sm" onClick={handleOpenCreate}>
                 <Plus />
                 Add Certificate
@@ -179,11 +180,22 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           ) : !certificates || certificates.length === 0 ? (
-            <EmptyState
-              title="No certificates configured"
-              description="Add a TLS certificate to enable HTTPS gateways"
-              icon={ShieldCheck}
-            />
+            isViewer ? (
+              <EmptyState
+                title="No certificates configured"
+                description="Add a TLS certificate to enable HTTPS gateways"
+                icon={ShieldCheck}
+                actionText=""
+              />
+            ) :
+              <EmptyState
+                title="No certificates configured"
+                description="Add a TLS certificate to enable HTTPS gateways"
+                icon={ShieldCheck}
+                actionIcon={Plus}
+                actionText="Add Certificate"
+                onAction={handleOpenCreate}
+              />
           ) : (
             <div className="border-y border-x-0">
               <Table>

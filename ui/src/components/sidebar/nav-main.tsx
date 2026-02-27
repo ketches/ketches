@@ -16,6 +16,7 @@ interface NavItem {
   hidden?: boolean
 }
 
+
 export function NavMenuItem({ item }: { item: NavItem }) {
   const location = useLocation()
   const isActive = item.url === "/"
@@ -37,16 +38,22 @@ export function NavMenuItem({ item }: { item: NavItem }) {
 }
 
 export function NavMain({
-  items,
+  dashboardItem,
+  projectItems,
+  projectGroupLabel = "Project",
+  globalItems,
 }: {
-  items: NavItem[]
+  dashboardItem?: NavItem
+  projectItems: NavItem[]
+  projectGroupLabel?: string
+  globalItems: NavItem[]
 }) {
-  const visibleItems = items.filter((item) => !item.hidden)
-  const dashboardItem = visibleItems.find((item) => item.url === "/")
-  const coreItems = visibleItems.filter((item) => item.url !== "/")
+  const visibleProjectItems = projectItems.filter((item) => !item.hidden)
+  const visibleGlobalItems = globalItems.filter((item) => !item.hidden)
 
   return (
     <>
+      {/* Dashboard rendered outside any group */}
       {dashboardItem && (
         <SidebarGroup>
           <SidebarMenu>
@@ -54,14 +61,26 @@ export function NavMain({
           </SidebarMenu>
         </SidebarGroup>
       )}
-      <SidebarGroup>
-        <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Core</SidebarGroupLabel>
-        <SidebarMenu>
-          {coreItems.map((item) => (
-            <NavMenuItem key={item.title} item={item} />
-          ))}
-        </SidebarMenu>
-      </SidebarGroup>
+      {visibleProjectItems.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">{projectGroupLabel}</SidebarGroupLabel>
+          <SidebarMenu>
+            {visibleProjectItems.map((item) => (
+              <NavMenuItem key={item.title} item={item} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
+      {visibleGlobalItems.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Global</SidebarGroupLabel>
+          <SidebarMenu>
+            {visibleGlobalItems.map((item) => (
+              <NavMenuItem key={item.title} item={item} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
     </>
   )
 }

@@ -1,12 +1,16 @@
 import {
+  Activity,
   Blocks,
   Box,
   FolderGit2,
   FolderKanban,
   LayoutDashboard,
+  Orbit,
+  Puzzle,
   ShipWheel,
   Trash2,
   User,
+  Users,
   Warehouse,
 } from "lucide-react"
 import * as React from "react"
@@ -14,7 +18,6 @@ import * as React from "react"
 import { GlobalSearchDialog } from "@/components/global-search/global-search"
 import { NavGlobalSearch } from "@/components/sidebar/nav-global-search"
 import { NavMain } from "@/components/sidebar/nav-main"
-import { NavOthers } from "@/components/sidebar/nav-others"
 import { NavUser } from "@/components/sidebar/nav-user"
 import { PlatformHeader } from "@/components/sidebar/platform-header"
 import { ProjectSwitcher } from "@/components/sidebar/project-switcher"
@@ -25,8 +28,8 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { useAuthStore } from "@/stores/auth"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useAuthStore } from "@/stores/auth"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [searchOpen, setSearchOpen] = React.useState(false)
@@ -36,25 +39,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isAdmin = userRole === 'admin'
   const isViewer = projectRole === 'viewer'
 
-  // Admin nav: global platform management modules only
+  // Admin nav: platform management modules (Dashboard rendered separately)
   const adminNavItems = [
-    { title: "Dashboard", url: "/", icon: LayoutDashboard },
-    { title: "Projects", url: "/projects", icon: FolderKanban },
     { title: "Clusters", url: "/clusters", icon: ShipWheel },
     { title: "Extensions", url: "/extensions", icon: Blocks },
+    { title: "Projects", url: "/projects", icon: FolderKanban },
     { title: "Users", url: "/users", icon: User },
   ]
 
-  // User nav: project-scoped modules; some hidden for viewers
-  const userNavItems = [
-    { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  // Project group: project-scoped modules (Dashboard rendered separately); some hidden for viewers
+  const projectItems = isAdmin ? [] : [
     { title: "Applications", url: "/applications", icon: Box },
+    { title: "Environments", url: "/environments", icon: Orbit, hidden: isViewer },
     { title: "Code Repositories", url: "/code-repositories", icon: FolderGit2, hidden: isViewer },
     { title: "Container Registries", url: "/container-registries", icon: Warehouse, hidden: isViewer },
-    { title: "Recycle Bin", url: "/recycle-bin", icon: Trash2, hidden: isViewer },
+    { title: "Plugins", url: "/plugins", icon: Puzzle, hidden: isViewer },
+    { title: "Members", url: "/members", icon: Users, hidden: isViewer },
   ]
 
-  const navItems = isAdmin ? adminNavItems : userNavItems
+  // Global group: cross-project modules
+  const globalItems = isAdmin ? [] : [
+    { title: "Projects", url: "/projects", icon: FolderKanban },
+    { title: "Recycle Bin", url: "/recycle-bin", icon: Trash2, hidden: isViewer },
+    { title: "Activity", url: "/activity", icon: Activity },
+  ]
 
   const userData = {
     name: "ketches",
@@ -69,8 +77,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavGlobalSearch onOpenSearch={() => setSearchOpen(true)} />
-        <NavMain items={navItems} />
-        <NavOthers />
+        <NavMain
+          dashboardItem={{ title: "Dashboard", url: "/", icon: LayoutDashboard }}
+          projectItems={isAdmin ? adminNavItems : projectItems}
+          projectGroupLabel={isAdmin ? "Admin" : "Project"}
+          globalItems={isAdmin ? [] : globalItems}
+        />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

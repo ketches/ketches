@@ -13,6 +13,12 @@ type ProjectResponse struct {
 	Slug        string `json:"slug"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	OwnerName   string `json:"owner_name"`
+}
+
+type ListProjectResponse struct {
+	Items      []ProjectResponse `json:"items"`
+	Pagination PaginationResponse `json:"pagination"`
 }
 
 type ProjectMemberResponse struct {

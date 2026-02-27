@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ChevronsUpDown, GalleryVerticalEnd, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
+import { useNavigate } from "react-router-dom"
 
 import { projectsApi, type Project } from "@/api/projects"
 import { CreateProjectDialog } from "@/components/project/create-project-dialog"
@@ -93,6 +94,7 @@ export function ProjectSwitcher() {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [selectedProject, setSelectedProject] = React.useState<Project | null>(null)
   const { activeProjectId, setActiveProjectId } = useProjectStore()
+  const navigate = useNavigate()
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects-simple'],
@@ -175,7 +177,7 @@ export function ProjectSwitcher() {
                   key={project.id}
                   project={project}
                   isActive={project.id === activeProjectId}
-                  onSelect={() => setActiveProjectId(project.id)}
+                  onSelect={() => { setActiveProjectId(project.id); navigate("/") }}
                   onEdit={() => handleEdit(project)}
                   onDelete={() => handleDelete(project)}
                 />

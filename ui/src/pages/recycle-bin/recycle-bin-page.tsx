@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Box, Orbit, RotateCcw, Trash2 } from "lucide-react"
+import { Box, FolderKanban, Orbit, RotateCcw, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { recycleBinApi, type RecycleBinApp, type RecycleBinEnv } from "@/api/recycle-bin"
+import { recycleBinApi, type RecycleBinApp, type RecycleBinEnv, type RecycleBinProject } from "@/api/recycle-bin"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -14,7 +14,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
-import { useProjectStore } from "@/stores/project"
 
 import { useProjectRole } from "@/hooks/useProjectRole"
 const formatDate = (dateString: string) => {
@@ -31,7 +30,6 @@ const formatDate = (dateString: string) => {
 
 export function RecycleBinPage() {
   const queryClient = useQueryClient()
-  const { activeProjectId } = useProjectStore()
   const [searchQuery, setSearchQuery] = React.useState("")
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
@@ -39,13 +37,14 @@ export function RecycleBinPage() {
 
   const [selectedAppRows, setSelectedAppRows] = React.useState({})
   const [selectedEnvRows, setSelectedEnvRows] = React.useState({})
+  const [selectedProjectRows, setSelectedProjectRows] = React.useState({})
 
   const [restoreDialogOpen, setRestoreDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [conflictDialogOpen, setConflictDialogOpen] = React.useState(false)
   const [conflictApps, setConflictApps] = React.useState<RecycleBinApp[]>([])
 
-  const [activeTab, setActiveTab] = React.useState<"apps" | "envs">("apps")
+  const [activeTab, setActiveTab] = React.useState<"projects" | "apps" | "envs">("projects")
   const [restoringItemId, setRestoringItemId] = React.useState<string | null>(null)
   const [deletingItemId, setDeletingItemId] = React.useState<string | null>(null)
 
@@ -59,31 +58,46 @@ export function RecycleBinPage() {
     pageSize: 10,
   })
 
+  const [projectsPagination, setProjectsPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
   const { data: appsResponse, isLoading: _appsLoading, refetch: refetchApps } = useQuery({
-    queryKey: ['recycle-bin-apps', activeProjectId, debouncedSearch, appsPagination.pageIndex, appsPagination.pageSize],
-    queryFn: () => recycleBinApi.listApps(activeProjectId ?? undefined, {
+    queryKey: ['recycle-bin-apps', debouncedSearch, appsPagination.pageIndex, appsPagination.pageSize],
+    queryFn: () => recycleBinApi.listApps(undefined, {
       search: debouncedSearch,
       page: appsPagination.pageIndex + 1,
       pageSize: appsPagination.pageSize
     }),
-    enabled: !!activeProjectId,
   })
 
   const apps = React.useMemo(() => appsResponse?.items ?? [], [appsResponse])
   const appsPaginationInfo = appsResponse?.pagination
 
   const { data: envsResponse, isLoading: _envsLoading, refetch: refetchEnvs } = useQuery({
-    queryKey: ['recycle-bin-envs', activeProjectId, debouncedSearch, envsPagination.pageIndex, envsPagination.pageSize],
-    queryFn: () => recycleBinApi.listEnvs(activeProjectId ?? undefined, {
+    queryKey: ['recycle-bin-envs', debouncedSearch, envsPagination.pageIndex, envsPagination.pageSize],
+    queryFn: () => recycleBinApi.listEnvs(undefined, {
       search: debouncedSearch,
       page: envsPagination.pageIndex + 1,
       pageSize: envsPagination.pageSize
     }),
-    enabled: !!activeProjectId,
   })
 
   const envs = React.useMemo(() => envsResponse?.items ?? [], [envsResponse])
   const envsPaginationInfo = envsResponse?.pagination
+
+  const { data: projectsResponse, isLoading: _projectsLoading, refetch: refetchProjects } = useQuery({
+    queryKey: ['recycle-bin-projects', debouncedSearch, projectsPagination.pageIndex, projectsPagination.pageSize],
+    queryFn: () => recycleBinApi.listProjects({
+      search: debouncedSearch,
+      page: projectsPagination.pageIndex + 1,
+      pageSize: projectsPagination.pageSize
+    }),
+  })
+
+  const projects = React.useMemo(() => projectsResponse?.items ?? [], [projectsResponse])
+  const projectsPaginationInfo = projectsResponse?.pagination
 
   const selectedAppIds = React.useMemo(() => {
     return Object.keys(selectedAppRows).filter(key => (selectedAppRows as Record<string, boolean>)[key]).map(index => apps[parseInt(index)]?.id).filter(Boolean)
@@ -92,6 +106,10 @@ export function RecycleBinPage() {
   const selectedEnvIds = React.useMemo(() => {
     return Object.keys(selectedEnvRows).filter(key => (selectedEnvRows as Record<string, boolean>)[key]).map(index => envs[parseInt(index)]?.id).filter(Boolean)
   }, [selectedEnvRows, envs])
+
+  const selectedProjectIds = React.useMemo(() => {
+    return Object.keys(selectedProjectRows).filter(key => (selectedProjectRows as Record<string, boolean>)[key]).map(index => projects[parseInt(index)]?.id).filter(Boolean)
+  }, [selectedProjectRows, projects])
 
   const restoreAppsMutation = useMutation({
     mutationFn: (ids: string[]) => recycleBinApi.restoreApps(ids),
@@ -171,8 +189,44 @@ export function RecycleBinPage() {
     },
   })
 
+  const restoreProjectsMutation = useMutation({
+    mutationFn: (ids: string[]) => recycleBinApi.restoreProjects(ids),
+    onSuccess: () => {
+      toast.success("Projects restored")
+      queryClient.invalidateQueries({ queryKey: ['recycle-bin-projects'] })
+      setSelectedProjectRows({})
+      setRestoreDialogOpen(false)
+      setRestoringItemId(null)
+    },
+    onError: (error: any) => {
+      toast.error("Failed to restore projects", {
+        description: error.response?.data?.error || "An unknown error occurred",
+      })
+      setRestoringItemId(null)
+    },
+  })
+
+  const deleteProjectsMutation = useMutation({
+    mutationFn: (ids: string[]) => recycleBinApi.permanentlyDeleteProjects(ids),
+    onSuccess: () => {
+      toast.success("Projects permanently deleted")
+      queryClient.invalidateQueries({ queryKey: ['recycle-bin-projects'] })
+      setSelectedProjectRows({})
+      setDeleteDialogOpen(false)
+      setDeletingItemId(null)
+    },
+    onError: (error: any) => {
+      toast.error("Failed to delete projects", {
+        description: error.response?.data?.error || "An unknown error occurred",
+      })
+      setDeletingItemId(null)
+    },
+  })
+
   const handleRestore = () => {
-    if (activeTab === "apps" && selectedAppIds.length > 0) {
+    if (activeTab === "projects" && selectedProjectIds.length > 0) {
+      restoreProjectsMutation.mutate(selectedProjectIds)
+    } else if (activeTab === "apps" && selectedAppIds.length > 0) {
       restoreAppsMutation.mutate(selectedAppIds)
     } else if (activeTab === "envs" && selectedEnvIds.length > 0) {
       restoreEnvsMutation.mutate(selectedEnvIds)
@@ -180,29 +234,112 @@ export function RecycleBinPage() {
   }
 
   const handleDelete = () => {
-    if (activeTab === "apps" && selectedAppIds.length > 0) {
+    if (activeTab === "projects" && selectedProjectIds.length > 0) {
+      deleteProjectsMutation.mutate(selectedProjectIds)
+    } else if (activeTab === "apps" && selectedAppIds.length > 0) {
       deleteAppsMutation.mutate(selectedAppIds)
     } else if (activeTab === "envs" && selectedEnvIds.length > 0) {
       deleteEnvsMutation.mutate(selectedEnvIds)
     }
   }
 
-  const handleRestoreSingle = (id: string, type: "app" | "env") => {
+  const handleRestoreSingle = (id: string, type: "project" | "app" | "env") => {
     setRestoringItemId(id)
-    if (type === "app") {
+    if (type === "project") {
+      restoreProjectsMutation.mutate([id])
+    } else if (type === "app") {
       restoreAppsMutation.mutate([id])
     } else {
       restoreEnvsMutation.mutate([id])
     }
   }
 
-  const handleDeleteSingle = (id: string, type: "app" | "env") => {
+  const handleDeleteSingle = (id: string, type: "project" | "app" | "env") => {
     setDeletingItemId(id)
-    if (type === "app") {
+    if (type === "project") {
+      deleteProjectsMutation.mutate([id])
+    } else if (type === "app") {
       deleteAppsMutation.mutate([id])
     } else {
       deleteEnvsMutation.mutate([id])
     }
+  }
+
+  const projectColumns: ColumnDef<RecycleBinProject>[] = [
+    {
+      accessorKey: "name",
+      header: "Project",
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.name}</div>
+          <div className="text-sm text-muted-foreground">{row.original.slug}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+    },
+    {
+      accessorKey: "deleted_at",
+      header: "Deleted At",
+      cell: ({ row }) => formatDate(row.original.deleted_at),
+    },
+  ]
+
+  if (!isViewer) {
+    projectColumns.unshift({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    })
+    projectColumns.push({
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleRestoreSingle(row.original.id, "project")
+            }}
+            disabled={restoringItemId === row.original.id}
+          >
+            <RotateCcw />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleDeleteSingle(row.original.id, "project")
+            }}
+            disabled={deletingItemId === row.original.id}
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    })
   }
 
   const appColumns: ColumnDef<RecycleBinApp>[] = [
@@ -223,6 +360,12 @@ export function RecycleBinPage() {
     {
       accessorKey: "project_name",
       header: "Project",
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.project_name}</div>
+          <div className="text-sm text-muted-foreground">{row.original.project_slug}</div>
+        </div>
+      ),
     },
     {
       accessorKey: "app_type",
@@ -304,6 +447,12 @@ export function RecycleBinPage() {
     {
       accessorKey: "project_name",
       header: "Project",
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.project_name}</div>
+          <div className="text-sm text-muted-foreground">{row.original.project_slug}</div>
+        </div>
+      ),
     },
     {
       accessorKey: "cluster_name",
@@ -372,7 +521,7 @@ export function RecycleBinPage() {
       enableHiding: false,
     })
   }
-  const selectedCount = activeTab === "apps" ? selectedAppIds.length : selectedEnvIds.length
+  const selectedCount = activeTab === "projects" ? selectedProjectIds.length : activeTab === "apps" ? selectedAppIds.length : selectedEnvIds.length
 
   const breadcrumbs = [
     { label: "Recycle Bin", icon: Trash2 }
@@ -411,21 +560,10 @@ export function RecycleBinPage() {
     )
   }
 
-  // const isLoading = appsLoading || envsLoading
-  // const isEmpty = safeApps.length === 0 && safeEnvs.length === 0
-
   return (
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
 
-      {/* {!isLoading && isEmpty && !searchQuery ? (
-        <EmptyState
-          title="Recycle bin is empty"
-          description="Deleted applications and environments will appear here. You can restore or permanently delete them."
-          icon={Trash2}
-        />
-      ) : (
-        <> */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Recycle Bin</h1>
@@ -435,11 +573,36 @@ export function RecycleBinPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "apps" | "envs")}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "projects" | "apps" | "envs")}>
         <TabsList>
+          <TabsTrigger value="projects">Projects ({projectsPaginationInfo?.total || 0})</TabsTrigger>
           <TabsTrigger value="apps">Applications ({appsPaginationInfo?.total || 0})</TabsTrigger>
           <TabsTrigger value="envs">Environments ({envsPaginationInfo?.total || 0})</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="projects" className="mt-2">
+          {projects.length === 0 ? (
+            <EmptyState
+              title="No deleted projects"
+              description="Deleted projects will appear here. You can restore or permanently delete them."
+              icon={FolderKanban}
+            />
+          ) : (
+            <DataTable
+              columns={projectColumns}
+              data={projects}
+              leftActions={() => toolbarLeft}
+              batchActions={!isViewer ? batchActions : undefined}
+              rowSelection={selectedProjectRows}
+              onRowSelectionChange={setSelectedProjectRows}
+              onRefresh={refetchProjects}
+              manualPagination
+              totalCount={projectsPaginationInfo?.total || 0}
+              pagination={projectsPagination}
+              onPaginationChange={setProjectsPagination}
+            />
+          )}
+        </TabsContent>
 
         <TabsContent value="apps" className="mt-2">
           {apps.length === 0 ? (
@@ -489,15 +652,13 @@ export function RecycleBinPage() {
           )}
         </TabsContent>
       </Tabs>
-      {/* </>
-      )} */}
 
       <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Restore Resources</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to restore {selectedCount} {activeTab === "apps" ? "application(s)" : "environment(s)"}?
+              Are you sure you want to restore {selectedCount} {activeTab === "projects" ? "project(s)" : activeTab === "apps" ? "application(s)" : "environment(s)"}?
               This will make them visible and usable again.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -513,7 +674,7 @@ export function RecycleBinPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Permanently Delete Resources</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete {selectedCount} {activeTab === "apps" ? "application(s)" : "environment(s)"}?
+              Are you sure you want to permanently delete {selectedCount} {activeTab === "projects" ? "project(s)" : activeTab === "apps" ? "application(s)" : "environment(s)"}?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

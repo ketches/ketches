@@ -11,6 +11,7 @@ type RecycleBinAppResponse struct {
 	EnvName        string    `json:"env_name"`
 	ProjectID      string    `json:"project_id"`
 	ProjectName    string    `json:"project_name"`
+	ProjectSlug    string    `json:"project_slug"`
 	AppType        string    `json:"app_type"`
 	ContainerImage string    `json:"container_image"`
 	DeletedAt      time.Time `json:"deleted_at"`
@@ -28,6 +29,7 @@ type RecycleBinEnvResponse struct {
 	Description      string    `json:"description"`
 	ProjectID        string    `json:"project_id"`
 	ProjectName      string    `json:"project_name"`
+	ProjectSlug      string    `json:"project_slug"`
 	ClusterID        string    `json:"cluster_id"`
 	ClusterName      string    `json:"cluster_name"`
 	ClusterNamespace string    `json:"cluster_namespace"`
@@ -37,6 +39,19 @@ type RecycleBinEnvResponse struct {
 type ListRecycleBinEnvResponse struct {
 	Items      []RecycleBinEnvResponse `json:"items"`
 	Pagination PaginationResponse      `json:"pagination"`
+}
+
+type RecycleBinProjectResponse struct {
+	ID          string    `json:"id"`
+	Slug        string    `json:"slug"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	DeletedAt   time.Time `json:"deleted_at"`
+}
+
+type ListRecycleBinProjectResponse struct {
+	Items      []RecycleBinProjectResponse `json:"items"`
+	Pagination PaginationResponse          `json:"pagination"`
 }
 
 type RestoreResourceRequest struct {

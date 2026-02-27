@@ -17,7 +17,6 @@ import "@xyflow/react/dist/style.css"
 import dagre from "dagre"
 import {
   Box,
-  CheckCircle2,
   Code,
   FileCog,
   FileKey,
@@ -28,8 +27,7 @@ import {
   Network,
   Route,
   Scale,
-  Shapes,
-  XCircle
+  Shapes
 } from "lucide-react"
 import * as React from "react"
 
@@ -168,7 +166,9 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction: string = L
 type TopologyViewContextValue = {
   appId: string
   openYamlDialog: (nodeId: string) => void
+  isViewer: boolean
 }
+
 
 const TopologyViewContext = React.createContext<TopologyViewContextValue | null>(null)
 
@@ -192,7 +192,7 @@ type CustomNodeData = {
 const CustomNode = ({ data }: { data: CustomNodeData }) => {
   const Icon = data.icon || Box
   const ctx = React.useContext(TopologyViewContext)
-  const canViewYaml = ctx?.appId && data.id && !String(data.id).startsWith("app-")
+  const canViewYaml = ctx?.appId && data.id && !String(data.id).startsWith("app-") && !ctx?.isViewer
   const targetHandles = data.targetHandles ?? []
   const sourceHandles = data.sourceHandles ?? []
 
@@ -230,8 +230,7 @@ const CustomNode = ({ data }: { data: CustomNodeData }) => {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-xs font-medium text-muted-foreground tracking-wider">{data.type}</p>
               {data.status && (
-                <ColorBadge color={getAppStatusColor(data.status)} className="text-[10px] px-1.5 py-0 shrink-0 gap-0.5">
-                  {data.status === "Running" ? <CheckCircle2 className="h-2.5 w-2.5" /> : <XCircle className="h-2.5 w-2.5" />}
+                <ColorBadge color={getAppStatusColor(data.status)} className="text-[10px] px-1.5 py-0 shrink-0">
                   {data.status}
                 </ColorBadge>
               )}
@@ -296,7 +295,7 @@ const getTypeIcon = (type: string) => {
   }
 }
 
-export function TopologyView({ appId }: { appId: string }) {
+export function TopologyView({ appId, isViewer }: { appId: string; isViewer?: boolean }) {
   const { theme } = useTheme()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -320,9 +319,11 @@ export function TopologyView({ appId }: { appId: string }) {
     () => ({
       appId,
       openYamlDialog: (nodeId) => setYamlDialogNodeId(nodeId),
+      isViewer: isViewer ?? false,
     }),
-    [appId]
+    [appId, isViewer]
   )
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["app-topology", appId],

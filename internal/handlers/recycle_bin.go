@@ -17,8 +17,14 @@ func ListRecycleBinApps(c *gin.Context) {
 		return
 	}
 	req.Validate()
+	// For non-admin users, filter to their non-viewer projects
+	userID := ""
+	claims := api.GetClaims(c)
+	if claims != nil && claims.Role != "admin" {
+		userID = claims.UserID
+	}
 
-	total, apps, err := services.ListDeletedApps(projectID, req.Page, req.PageSize, req.Search)
+	total, apps, err := services.ListDeletedApps(projectID, userID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -38,8 +44,14 @@ func ListRecycleBinEnvs(c *gin.Context) {
 		return
 	}
 	req.Validate()
+	// For non-admin users, filter to their non-viewer projects
+	userID := ""
+	claims := api.GetClaims(c)
+	if claims != nil && claims.Role != "admin" {
+		userID = claims.UserID
+	}
 
-	total, envs, err := services.ListDeletedEnvs(projectID, req.Page, req.PageSize, req.Search)
+	total, envs, err := services.ListDeletedEnvs(projectID, userID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -137,4 +149,63 @@ func CheckEnvDeletionConflicts(c *gin.Context) {
 	api.Success(c, models.EnvDeletionConflictResponse{
 		Apps: result,
 	})
+}
+
+// ListRecycleBinProjects lists soft-deleted projects.
+func ListRecycleBinProjects(c *gin.Context) {
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+	// For non-admin users, filter to their non-viewer projects
+	userID := ""
+	claims := api.GetClaims(c)
+	if claims != nil && claims.Role != "admin" {
+		userID = claims.UserID
+	}
+
+	total, projects, err := services.ListDeletedProjects(userID, req.Page, req.PageSize, req.Search)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, models.ListRecycleBinProjectResponse{
+		Items:      projects,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
+}
+
+// RestoreProjects restores soft-deleted projects.
+func RestoreProjects(c *gin.Context) {
+	var req models.RestoreResourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.BatchRestoreProjects(req.IDs); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.NoContent(c)
+}
+
+// PermanentlyDeleteProjects permanently deletes soft-deleted projects.
+func PermanentlyDeleteProjects(c *gin.Context) {
+	var req models.PermanentlyDeleteResourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.BatchPermanentlyDeleteProjects(req.IDs); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.NoContent(c)
 }

@@ -279,17 +279,6 @@ function UserDashboard() {
         </CardHeader>
         <CardContent>
           {environments.length === 0 ? (
-            // <Empty>
-            //   <EmptyHeader>
-            //     <EmptyMedia variant="icon">
-            //       <Box />
-            //     </EmptyMedia>
-            //     <EmptyTitle>No Environments</EmptyTitle>
-            //   </EmptyHeader>
-            //   <EmptyContent>
-            //     <p className="text-sm text-muted-foreground">No environments found in this project.</p>
-            //   </EmptyContent>
-            // </Empty>
             <EmptyEnvironmentState />
           ) : (
             <div className="space-y-6">
@@ -304,7 +293,7 @@ function UserDashboard() {
                       <h4 className="font-medium">{env.name}</h4>
                       <p className="text-xs text-muted-foreground font-mono">{env.metadata?.cluster_namespace}</p>
                     </div>
-                    <ColorBadge color={env.status === "ready" ? "green" : "gray"}>{env.status}</ColorBadge>
+                    <ColorBadge color={env.status === "Active" ? "green" : "gray"}>{env.status}</ColorBadge>
                   </div>
 
                   <EnvironmentResourceMetrics

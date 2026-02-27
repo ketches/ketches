@@ -129,7 +129,6 @@ func SetupV1Routes(r *gin.Engine) {
 				apps.GET("/:appID/export", handlers.ExportApps)
 				apps.GET("/:appID/available-actions", handlers.GetAppAvailableActions)
 				apps.GET("/:appID/topology", handlers.GetAppTopology)
-				apps.GET("/:appID/topology/nodes/:nodeID/resource-yaml", handlers.GetAppTopologyResourceYaml)
 				apps.GET("/:appID/instances", handlers.ListAppInstances)
 				apps.GET("/:appID/instances/:instanceName/events", handlers.ListAppInstanceEvents)
 				apps.GET("/:appID/env-vars", handlers.ListAppEnvVars)
@@ -146,6 +145,7 @@ func SetupV1Routes(r *gin.Engine) {
 
 				// Exec / Log / Files (block viewer — require at least developer)
 				appsExec := apps.Group("", middlewares.BlockViewer())
+				appsExec.GET("/:appID/topology/nodes/:nodeID/resource-yaml", handlers.GetAppTopologyResourceYaml)
 				appsExec.GET("/:appID/instances/:instanceName/logs", handlers.StreamAppLogs)
 				appsExec.GET("/:appID/instances/:instanceName/exec", handlers.ExecAppContainerTerminal)
 				appsExec.GET("/:appID/instances/:instanceName/files", handlers.ListFiles)
@@ -301,6 +301,9 @@ func SetupV1Routes(r *gin.Engine) {
 				recycleBin.POST("/envs/restore", handlers.RestoreEnvs)
 				recycleBin.POST("/envs/permanently-delete", handlers.PermanentlyDeleteEnvs)
 				recycleBin.GET("/envs/:envID/deletion-conflicts", handlers.CheckEnvDeletionConflicts)
+				recycleBin.GET("/projects", handlers.ListRecycleBinProjects)
+				recycleBin.POST("/projects/restore", handlers.RestoreProjects)
+				recycleBin.POST("/projects/permanently-delete", handlers.PermanentlyDeleteProjects)
 			}
 		}
 	}

@@ -19,8 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useProjectStore } from "@/stores/project"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useProjectStore } from "@/stores/project"
 
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -137,7 +137,7 @@ export function MembersPage() {
       cell: ({ row }) => {
         const member = row.original
         return isViewer ? (
-          <span className="text-sm">{ProjectRoleLabels[member.project_role as ProjectRole]}</span>
+          <span className="text-xs">{ProjectRoleLabels[member.project_role as ProjectRole]}</span>
         ) : (
           <Select
             value={member.project_role}
@@ -172,18 +172,18 @@ export function MembersPage() {
         const member = row.original
         return (
           <div className="flex justify-end gap-2">
-          {!isViewer && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => removeMemberMutation.mutate(member.user_id)}
-              disabled={removeMemberMutation.isPending}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 />
-              <span className="sr-only">Remove</span>
-            </Button>
-          )}
+            {!isViewer && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => removeMemberMutation.mutate(member.user_id)}
+                disabled={removeMemberMutation.isPending}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 />
+                <span className="sr-only">Remove</span>
+              </Button>
+            )}
           </div>
         )
       },

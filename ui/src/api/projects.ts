@@ -6,6 +6,7 @@ export interface Project {
   slug: string
   name: string
   description?: string
+  owner_name?: string
 }
 
 export const ProjectRole = {
@@ -33,8 +34,8 @@ export interface ProjectMember {
 }
 
 export const projectsApi = {
-  list: async () => {
-    return client.get('/v1/projects') as Promise<Project[]>
+  list: async (params?: { page?: number; page_size?: number; search?: string }) => {
+    return client.get('/v1/projects', { params }) as Promise<{ items: Project[], pagination: PaginationResponse }>
   },
   listSimple: async () => {
     return client.get('/v1/projects/simple') as Promise<SimpleResponse[]>

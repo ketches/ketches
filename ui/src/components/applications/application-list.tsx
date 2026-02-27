@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
 
 const formatDate = (dateString: string) => {
@@ -59,6 +60,9 @@ interface ApplicationListProps {
 
 export function ApplicationList({ envId, envName: _envName }: ApplicationListProps) {
   const navigate = useNavigate()
+  const projectRole = useProjectRole()
+  // Hide action buttons for viewers
+  const isViewer = projectRole === 'viewer'
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingApp, setEditingApp] = React.useState<App | null>(null)
@@ -192,26 +196,30 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-2">
-          <Tooltip>
-            <TooltipTrigger>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setEditingApp(row.original)
-                  setEditDialogOpen(true)
-                }}
-              >
-                <Pencil />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Edit</p>
-            </TooltipContent>
-          </Tooltip>
+          {!isViewer && (
+            <>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditingApp(row.original)
+                      setEditDialogOpen(true)
+                    }}
+                  >
+                    <Pencil />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit</p>
+                </TooltipContent>
+              </Tooltip>
 
-          <AppActionIconsWrapper appId={row.original.id} envId={envId} />
+              <AppActionIconsWrapper appId={row.original.id} envId={envId} />
+            </>
+          )}
         </div>
       ),
     },
@@ -227,26 +235,30 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
   )
 
   const toolbarRight = (
-    <div className="flex items-center gap-2">
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto h-7">
-        <TabsList>
-          <TabsTrigger value="list">
-            <ListIcon />
-          </TabsTrigger>
-          <TabsTrigger value="card">
-            <LayoutGrid />
-          </TabsTrigger>
-        </TabsList>
+<div className="flex items-center gap-2">
+<Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto h-7">
+<TabsList>
+<TabsTrigger value="list">
+<ListIcon />
+</TabsTrigger>
+<TabsTrigger value="card">
+<LayoutGrid />
+</TabsTrigger>
+</TabsList>
       </Tabs>
-      <Button onClick={() => setCreateDialogOpen(true)}>
-        <Plus />
-        Create Application
+      {!isViewer && (
+        <>
+<Button onClick={() => setCreateDialogOpen(true)}>
+<Plus />
+Create Application
+</Button>
+<Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+<Upload />
+Import
       </Button>
-      <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-        <Upload />
-        Import
-      </Button>
-    </div>
+        </>
+      )}
+</div>
   )
 
   return (
@@ -295,20 +307,24 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditingApp(app)
-                      setEditDialogOpen(true)
-                    }}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
+                  {!isViewer && (
+                    <>
+<Button
+variant="ghost"
+size="icon-xs"
+className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
+onClick={(e) => {
+e.stopPropagation()
+setEditingApp(app)
+setEditDialogOpen(true)
+}}
+>
+<Pencil className="h-3.5 w-3.5" />
+</Button>
                   <AppActionIconsWrapper appId={app.id} envId={envId} />
-                </div>
+                    </>
+                  )}
+</div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
@@ -352,8 +368,9 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
           </Card>
         )}
         batchActions={(table) => {
-          const selectedRows = table.getFilteredSelectedRowModel().rows
-          if (selectedRows.length === 0) return null
+          if (isViewer) return null
+const selectedRows = table.getFilteredSelectedRowModel().rows
+if (selectedRows.length === 0) return null
           return (
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => toast.info("Restarting applications...")}>

@@ -263,8 +263,8 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
             title="No gateways configured"
             description="Add a gateway to expose your application to the network."
             icon={Network}
-            actionText="Add Gateway"
-            onAction={handleAdd}
+            actionText={!isViewer ? "Add Gateway" : undefined}
+            onAction={!isViewer ? handleAdd : undefined}
             actionIcon={Plus}
           />
         ) : (

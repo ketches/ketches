@@ -1,3 +1,4 @@
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Box,
@@ -17,7 +18,6 @@ import {
 } from "lucide-react"
 import * as React from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { useProjectRole } from "@/hooks/useProjectRole"
 import { toast } from "sonner"
 
 import { appsApi } from "@/api/apps"
@@ -177,21 +177,15 @@ export function EnvironmentDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-          {!isViewer && (
-            <Button
-              variant="outline"
-              onClick={() => setEditOpen(true)}
-            >
-              <Pencil />
-              Edit
-            </Button>
-          )}
-              variant="outline"
-              onClick={() => setEditOpen(true)}
-            >
-              <Pencil />
-              Edit
-            </Button>
+            {!isViewer && (
+              <Button
+                variant="outline"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil />
+                Edit
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => queryClient.invalidateQueries({ queryKey: ["env", envId] })}
@@ -199,16 +193,16 @@ export function EnvironmentDetailPage() {
               <RefreshCw />
               Refresh
             </Button>
-          {!isViewer && (
-            <Button
-              variant="outline"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2 />
-              Delete
-            </Button>
-          )}
+            {!isViewer && (
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
       </div>

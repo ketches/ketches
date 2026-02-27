@@ -11,7 +11,15 @@ import (
 
 func ListProjects(c *gin.Context) {
 	claims := api.GetClaims(c)
-	projects, err := services.ListProjects(claims.UserID, claims.Role)
+
+	req := models.DefaultPaginationRequest()
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	total, projects, err := services.ListProjects(claims.UserID, claims.Role, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -19,15 +27,27 @@ func ListProjects(c *gin.Context) {
 
 	res := []models.ProjectResponse{}
 	for _, p := range projects {
+		// Find the owner member to populate owner_name
+		ownerName := ""
+		for _, m := range p.Members {
+			if m.ProjectRole == "owner" {
+				ownerName = m.User.Username
+				break
+			}
+		}
 		res = append(res, models.ProjectResponse{
 			ID:          p.ID,
 			Slug:        p.Slug,
 			Name:        p.Name,
 			Description: p.Description,
+			OwnerName:   ownerName,
 		})
 	}
 
-	api.Success(c, res)
+	api.Success(c, models.ListProjectResponse{
+		Items:      res,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
 }
 
 func ListProjectsSimple(c *gin.Context) {

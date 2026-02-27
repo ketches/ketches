@@ -28,6 +28,8 @@ import { PluginsPage } from "@/pages/plugins/plugins-page"
 import { RecycleBinPage } from "@/pages/recycle-bin/recycle-bin-page"
 import { UsersPage } from "@/pages/users/users-page"
 import { ExtensionsPage } from "@/pages/extensions/extensions-page"
+import { ProjectsPage } from "@/pages/projects/projects-page"
+import { ActivityPage } from "@/pages/activity/activity-page"
 import { useAuthStore } from "@/stores/auth"
 import * as React from "react"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
@@ -102,6 +104,16 @@ export function App() {
             <Route path="/" element={
               <ProtectedRoute>
                 <DashboardLayout><DashboardPage /></DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/projects" element={
+              <ProtectedRoute>
+                <DashboardLayout><ProjectsPage /></DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/activity" element={
+              <ProtectedRoute>
+                <DashboardLayout><ActivityPage /></DashboardLayout>
               </ProtectedRoute>
             } />
             <Route path="/environments" element={

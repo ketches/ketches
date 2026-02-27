@@ -10,22 +10,43 @@ import (
 	"gorm.io/gorm"
 )
 
-func ListProjects(userID string, role string) ([]entities.Project, error) {
+func ListProjects(userID string, role string, req *models.PaginationRequest) (int64, []entities.Project, error) {
 	var projects []entities.Project
+	var total int64
+
+	// Build base query depending on role
+	var baseQuery *gorm.DB
 	if role == "admin" {
-		if err := db.DB.Find(&projects).Error; err != nil {
-			return nil, err
-		}
+		baseQuery = db.DB.Model(&entities.Project{})
 	} else {
-		err := db.DB.Select("projects.*").
+		baseQuery = db.DB.Model(&entities.Project{}).
 			Joins("JOIN project_members ON project_members.project_id = projects.id").
-			Where("project_members.user_id = ?", userID).
-			Find(&projects).Error
-		if err != nil {
-			return nil, err
-		}
+			Where("project_members.user_id = ?", userID)
 	}
-	return projects, nil
+
+	// Apply search filter
+	if req.Search != "" {
+		search := "%" + req.Search + "%"
+		baseQuery = baseQuery.Where("projects.name LIKE ? OR projects.slug LIKE ? OR projects.description LIKE ?", search, search, search)
+	}
+
+	// Count total before pagination
+	if err := baseQuery.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	// Apply pagination and preload members with user info
+	err := baseQuery.
+		Select("projects.*").
+		Offset(req.GetOffset()).
+		Limit(req.PageSize).
+		Preload("Members", "project_role = ?", "owner").Preload("Members.User").
+		Find(&projects).Error
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return total, projects, nil
 }
 
 func ListProjectsSimple(userID string, role string) ([]entities.Project, error) {
@@ -136,11 +157,11 @@ func PermanentlyDeleteProject(projectID string) error {
 }
 
 func IsProjectMember(projectID, userID string) (bool, error) {
- var count int64
- if err := db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND user_id = ?", projectID, userID).Count(&count).Error; err != nil {
-  return false, err
- }
- return count > 0, nil
+	var count int64
+	if err := db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND user_id = ?", projectID, userID).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func RestoreProject(projectID string) error {
