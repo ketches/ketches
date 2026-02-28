@@ -9,13 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SimpleCombobox } from '@/components/ui/simple-combobox'
 import { AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -169,20 +163,16 @@ export function ExportAppsDialog({
             Format
           </FieldLabel>
           <FieldContent>
-            <Select
+            <SimpleCombobox
               value={format}
-              onValueChange={(value) => setFormat(value as ExportFormat)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select format" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="kubernetes">Kubernetes Manifests</SelectItem>
-                <SelectItem value="ketches">Ketches Metadata</SelectItem>
-                <SelectItem value="helm">Helm Chart</SelectItem>
-              </SelectContent>
-            </Select>
-          </FieldContent>
+              onValueChange={(v) => v && setFormat(v as ExportFormat)}
+              options={[
+                { value: 'kubernetes', label: 'Kubernetes Manifests', description: 'Raw Kubernetes YAML resources' },
+                { value: 'ketches', label: 'Ketches Metadata', description: 'Ketches-native application format' },
+                { value: 'helm', label: 'Helm Chart', description: 'Packaged Helm chart format' },
+              ]}
+              className="w-full"
+            />
 
           {isBatchMode && hasSelection && (
             <>
@@ -190,21 +180,15 @@ export function ExportAppsDialog({
                 Scope
               </FieldLabel>
               <FieldContent>
-                <Select
+                <SimpleCombobox
                   value={scope}
-                  onValueChange={(value) => setScope(value as ExportScope)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select scope" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="selected">
-                      Selected Apps ({appIds?.length})
-                    </SelectItem>
-                    <SelectItem value="all">All Apps in Environment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FieldContent>
+                  onValueChange={(v) => v && setScope(v as ExportScope)}
+                  options={[
+                    { value: 'selected', label: `Selected Apps (${appIds?.length})` },
+                    { value: 'all', label: 'All Apps in Environment' },
+                  ]}
+                  className="w-full"
+                />
             </>
           )}
         </div>

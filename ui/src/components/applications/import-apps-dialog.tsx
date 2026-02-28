@@ -7,22 +7,9 @@ import { toast as sonnerToast } from "sonner"
 import { appsApi } from "@/api/apps"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -169,17 +156,16 @@ export function ImportAppsDialog({
             <Field>
               <FieldLabel htmlFor="strategy">Conflict Strategy</FieldLabel>
               <FieldContent>
-                <Select value={conflictStrategy} onValueChange={(v) => setConflictStrategy(v as 'rename' | 'ask' | 'error')}>
-                  <SelectTrigger id="strategy" className="w-full">
-                    <SelectValue placeholder="Select strategy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rename">Auto-rename (append suffix)</SelectItem>
-                    <SelectItem value="ask">Ask (interactive)</SelectItem>
-                    <SelectItem value="error">Error (fail if exists)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FieldContent>
+                <SimpleCombobox
+                  value={conflictStrategy}
+                  onValueChange={(v) => v && setConflictStrategy(v as 'rename' | 'ask' | 'error')}
+                  options={[
+                    { value: 'rename', label: 'Auto-rename', description: 'Append suffix to conflicting names' },
+                    { value: 'ask', label: 'Ask (interactive)', description: 'Prompt on each conflict' },
+                    { value: 'error', label: 'Error', description: 'Fail immediately if conflict exists' },
+                  ]}
+                  className="w-full"
+                />
             </Field>
           </div>
 
