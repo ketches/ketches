@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
+  BarChart3,
+  CheckCircle,
   ChevronsUpDown,
   ExternalLink,
   FileClock,
@@ -277,6 +279,19 @@ export function CodeRepositoryDetailPage() {
     },
   ]
 
+
+  const totalBuilds = builds.length
+  const successfulBuilds = builds.filter((b) => b.status === "succeeded").length
+  const successRate = totalBuilds > 0 ? (successfulBuilds / totalBuilds) * 100 : 0
+  const totalDeployments = deployments.length
+  const totalBuildConfigs = buildConfigs.length
+
+  const getSuccessRateColor = (rate: number) => {
+    if (rate >= 90) return "text-green-500"
+    if (rate >= 70) return "text-orange-500"
+    return "text-red-500"
+  }
+
   return (
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
@@ -356,6 +371,51 @@ export function CodeRepositoryDetailPage() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Webhook</p>
                   <p className="text-sm">{repo.webhook_enabled ? "Enabled" : "Disabled"}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Repository Statistics
+              </CardTitle>
+              <CardDescription>
+                Build and deployment activity for this repository.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Hammer className="h-3 w-3" />
+                    Build Configs
+                  </p>
+                  <p className="text-2xl font-bold">{totalBuildConfigs}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Play className="h-3 w-3" />
+                    Total Builds
+                  </p>
+                  <p className="text-2xl font-bold">{totalBuilds}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Success Rate
+                  </p>
+                  <p className={`text-2xl font-bold ${totalBuilds > 0 ? getSuccessRateColor(successRate) : "text-muted-foreground"}`}>
+                    {totalBuilds > 0 ? `${successRate.toFixed(0)}%` : "N/A"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Rocket className="h-3 w-3" />
+                    Deployments
+                  </p>
+                  <p className="text-2xl font-bold">{totalDeployments}</p>
                 </div>
               </div>
             </CardContent>
