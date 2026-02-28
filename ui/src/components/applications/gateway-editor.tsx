@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface GatewayEditorProps {
@@ -266,22 +266,17 @@ export function GatewayEditor({
               <Field>
                 <FieldLabel>Protocol *</FieldLabel>
                 <FieldContent>
-                  <Select
+                  <SimpleCombobox
                     value={formData.protocol}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, protocol: value || 'http' }))}
-                  >
-                    <SelectTrigger aria-invalid={!!errors.protocol} className="w-full">
-                      <SelectValue>
-                        {PROTOCOL_LABELS[formData.protocol] || formData.protocol}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="http">HTTP</SelectItem>
-                      <SelectItem value="https">HTTPS</SelectItem>
-                      <SelectItem value="tcp">TCP</SelectItem>
-                      <SelectItem value="udp">UDP</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onValueChange={(value) => value && setFormData((prev) => ({ ...prev, protocol: value }))}
+                    options={[
+                      { value: "http", label: "HTTP", description: "Plaintext HTTP routing" },
+                      { value: "https", label: "HTTPS", description: "TLS-terminated HTTPS routing" },
+                      { value: "tcp", label: "TCP", description: "Raw TCP passthrough" },
+                      { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
+                    ]}
+                    className="w-full"
+                  />
                 </FieldContent>
                 {errors.protocol && (
                   <FieldError>
@@ -409,27 +404,13 @@ export function GatewayEditor({
                       </Tooltip>
                     </FieldLabel>
                     <FieldContent>
-                      <Select
-                        value={formData.cert_id || ''}
-                        onValueChange={(value) => setFormData((prev) => ({ ...prev, cert_id: value || undefined }))}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select certificate (optional)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {certificates.length === 0 ? (
-                            <div className="p-2 text-xs text-muted-foreground text-center">
-                              No certificates available
-                            </div>
-                          ) : (
-                            certificates.map((cert) => (
-                              <SelectItem key={cert.id} value={cert.id}>
-                                {cert.label}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <SimpleCombobox
+                        value={formData.cert_id || null}
+                        onValueChange={(v) => setFormData((prev) => ({ ...prev, cert_id: v || undefined }))}
+                        options={certificates.map((cert) => ({ value: cert.id, label: cert.label }))}
+                        placeholder="Select a certificate"
+                        className="w-full"
+                      />
                     </FieldContent>
                   </Field>
                 )}
