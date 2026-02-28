@@ -12,9 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { AxiosError } from "axios"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import type { AxiosError } from "axios"
 
 const probeSchema = z.object({
   probes: z.array(z.object({
@@ -76,11 +76,7 @@ export function HealthConfig({ app }: ProbeConfigProps) {
 
   const updateMutation = useMutation({
     mutationFn: (values: z.infer<typeof probeSchema>) => {
-      const data: Partial<App> = {
-        ...app,
-        probes: values.probes,
-      }
-      return appsApi.update(app.id, data)
+      return appsApi.updateHealth(app.id, values.probes)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
@@ -117,24 +113,16 @@ export function HealthConfig({ app }: ProbeConfigProps) {
                           control={control}
                           name={`probes.${index}.type`}
                           render={({ field }) => (
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              items={[
+                            <SimpleCombobox
+                              value={field.value}
+                              onValueChange={(v) => v && field.onChange(v)}
+                              options={[
                                 { value: "readiness", label: "READINESS" },
                                 { value: "liveness", label: "LIVENESS" },
                                 { value: "startup", label: "STARTUP" },
                               ]}
-                            >
-                              <SelectTrigger className="w-40 font-bold uppercase">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="readiness">READINESS</SelectItem>
-                                <SelectItem value="liveness">LIVENESS</SelectItem>
-                                <SelectItem value="startup">STARTUP</SelectItem>
-                              </SelectContent>
-                            </Select>
+                              className="w-40 font-bold uppercase"
+                            />
                           )}
                         />
                       </FieldContent>
@@ -168,24 +156,16 @@ export function HealthConfig({ app }: ProbeConfigProps) {
                             control={control}
                             name={`probes.${index}.probe_mode`}
                             render={({ field }) => (
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                                items={[
+                              <SimpleCombobox
+                                value={field.value}
+                                onValueChange={(v) => v && field.onChange(v)}
+                                options={[
                                   { value: "httpGet", label: "HTTP GET" },
                                   { value: "tcpSocket", label: "TCP Socket" },
                                   { value: "exec", label: "Exec Command" },
                                 ]}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="httpGet">HTTP GET</SelectItem>
-                                  <SelectItem value="tcpSocket">TCP Socket</SelectItem>
-                                  <SelectItem value="exec">Exec Command</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                className="w-full"
+                              />
                             )}
                           />
                         </FieldContent>
