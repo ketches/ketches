@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
   Activity,
+  BarChart3,
   ArrowDown,
   ArrowUp,
   Box,
@@ -91,6 +92,11 @@ import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
 import { formatDate } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
+import { InstanceResourceMetrics } from "@/components/monitoring/instance-resource-metrics"
+import { useTimeRange } from "@/components/monitoring/use-time-range"
+import { usePrometheusAvailable } from "@/components/monitoring/use-prometheus-available"
+import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
+
 
 function ScaleAppPopover({ app }: { app: App }) {
   const [replicas, setReplicas] = React.useState(app.replicas)
@@ -173,12 +179,14 @@ function ScaleAppPopover({ app }: { app: App }) {
 }
 
 function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string, namespace: string, appSlug: string, app: any }) {
+  const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
+  const { available: prometheusAvailable, isLoading: prometheusLoading } = usePrometheusAvailable(clusterId)
+
   const { data: metricsData, isLoading } = useQuery({
-    queryKey: ['app-metrics-v6', clusterId, namespace, appSlug],
+    queryKey: ['app-metrics-v6', clusterId, namespace, appSlug, timeRange],
     queryFn: async () => {
       const now = Math.floor(Date.now() / 1000)
-      const oneHourAgo = now - 3600
-      const step = "60"
+      const start = now - rangeSeconds
 
       const queries = {
         cpu: `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}", pod=~"${appSlug}-.*", container!=""}[5m])) by (pod) * 1000`,
@@ -190,7 +198,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
       const results = await Promise.all(
         Object.entries(queries).map(async ([key, query]) => {
           try {
-            const res = await clustersApi.prometheusQueryRange(clusterId, query, oneHourAgo.toString(), now.toString(), step) as any
+            const res = await clustersApi.prometheusQueryRange(clusterId, query, start.toString(), now.toString(), step) as any
             return { key, results: res?.result || [] }
           } catch {
             return { key, results: [] }
@@ -241,7 +249,21 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
   })
 
   if (isLoading) return <Skeleton className="h-64 w-full mt-6" />
-  if (!metricsData || metricsData.chartData.length === 0) return null
+  if (prometheusLoading) return <Skeleton className="h-64 w-full mt-6" />
+  if (!prometheusAvailable) return (
+    <EmptyState
+      title="Prometheus Not Available"
+      description="The cluster does not have a Prometheus integration configured. Please contact your administrator to enable Prometheus monitoring."
+      icon={Activity}
+    />
+  )
+  if (!metricsData || metricsData.chartData.length === 0) return (
+    <EmptyState
+      title="No Metrics Data"
+      description="No monitoring data is available for this application. Metrics will appear once the application is running and producing data."
+      icon={Activity}
+    />
+  )
 
   const { chartData, pods } = metricsData
   const lastPoint = chartData[chartData.length - 1]
@@ -257,6 +279,9 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -521,6 +546,7 @@ export function ApplicationDetailPage() {
   const [deletingInstanceName, setDeletingInstanceName] = React.useState<string | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = React.useState(false)
   const [selectedInstanceNames, setSelectedInstanceNames] = React.useState<string[]>([])
+  const [metricsInstance, setMetricsInstance] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     localStorage.setItem(INSTANCES_VIEW_MODE_KEY, viewMode)
@@ -682,6 +708,17 @@ export function ApplicationDetailPage() {
         const defaultContainer = containers.includes(appContainerName) ? appContainerName : containers[0]
         return (
           <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                setMetricsInstance(instance.instanceName)
+              }}
+              title="View Metrics"
+            >
+              <BarChart3 />
+            </Button>
             {!isViewer && (
             <Button
               variant="ghost"
@@ -1255,6 +1292,18 @@ export function ApplicationDetailPage() {
                               <span>{instance.runningDuration}</span>
                             </div>
                             <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setMetricsInstance(instance.instanceName)
+                                }}
+                                title="View Metrics"
+                              >
+                                <BarChart3 className="h-3.5 w-3.5" />
+                              </Button>
                               {!isViewer && (
                               <Button
                                 variant="ghost"
@@ -1461,6 +1510,15 @@ export function ApplicationDetailPage() {
           onOpenChange={(open) => !open && setSelectedInstanceForEvents(null)}
         />
       )}
+
+      <InstanceResourceMetrics
+        open={!!metricsInstance}
+        onOpenChange={(open) => { if (!open) setMetricsInstance(null) }}
+        clusterId={currentEnv?.cluster_id || ""}
+        namespace={currentEnv?.cluster_namespace || ""}
+        podName={metricsInstance || ""}
+        app={app}
+      />
 
       <AlertDialog open={deleteInstanceDialogOpen} onOpenChange={setDeleteInstanceDialogOpen}>
         <AlertDialogContent>
