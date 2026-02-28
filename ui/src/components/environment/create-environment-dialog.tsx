@@ -15,13 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useProjectStore } from "@/stores/project"
@@ -203,28 +197,18 @@ export function CreateEnvironmentDialog({
             <Field>
               <FieldLabel>Cluster *</FieldLabel>
               <FieldContent>
-                <Select
+                <SimpleCombobox
                   value={formData.cluster_id}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, cluster_id: value || "" }))}
-                  items={(clusters as Cluster[]).map((c) => ({ value: c.id, label: c.name }))}
-                >
-                  <SelectTrigger className="w-full" aria-invalid={!!errors.cluster_id}>
-                    <SelectValue placeholder="Select a cluster" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(clusters as Cluster[]).length === 0 ? (
-                      <SelectItem value="no-clusters" disabled>
-                        No clusters available
-                      </SelectItem>
-                    ) : (
-                      (clusters as Cluster[]).map((cluster) => (
-                        <SelectItem key={cluster.id} value={cluster.id}>
-                          {cluster.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                  onValueChange={(value) => value && setFormData((prev) => ({ ...prev, cluster_id: value }))}
+                  options={
+                    (clusters as Cluster[]).length === 0
+                      ? [{ value: "no-clusters", label: "No clusters available", disabled: true }]
+                      : (clusters as Cluster[]).map((cluster) => ({ value: cluster.id, label: cluster.name }))
+                  }
+                  placeholder="Select a cluster"
+                  className="w-full"
+                  aria-invalid={!!errors.cluster_id}
+                />
               </FieldContent>
               {errors.cluster_id && (
                 <FieldError>
