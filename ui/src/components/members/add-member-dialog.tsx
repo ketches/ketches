@@ -19,13 +19,7 @@ import {
   FieldContent,
   FieldLabel
 } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 export function AddMemberDialog({ onAdd }: { onAdd: (data: { userId: string, role: string }) => void }) {
   const [open, setOpen] = React.useState(false)
@@ -67,49 +61,25 @@ export function AddMemberDialog({ onAdd }: { onAdd: (data: { userId: string, rol
             <Field>
               <FieldLabel htmlFor="user">User</FieldLabel>
               <FieldContent>
-                <Select
+                <SimpleCombobox
                   value={userId}
                   onValueChange={(val) => setUserId(val || "")}
-                  items={users.map((u) => ({
-                    value: u.id,
-                    label: `${u.username} (${u.email})`,
-                  }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a user" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.username} ({user.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={users.map((u) => ({ value: u.id, label: `${u.username} (${u.email})` }))}
+                  placeholder="Select a user"
+                  className="w-full"
+                />
               </FieldContent>
             </Field>
             <Field>
               <FieldLabel htmlFor="role">Role</FieldLabel>
               <FieldContent>
-                <Select
+                <SimpleCombobox
                   value={role}
                   onValueChange={(val) => val && setRole(val)}
-                  items={PROJECT_ROLES.map((r) => ({
-                    value: r,
-                    label: ProjectRoleLabels[r as ProjectRole],
-                  }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROJECT_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {ProjectRoleLabels[r as ProjectRole]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={PROJECT_ROLES.map((r) => ({ value: r, label: ProjectRoleLabels[r as ProjectRole] }))}
+                  placeholder="Select a role"
+                  className="w-full"
+                />
               </FieldContent>
             </Field>
           </div>
