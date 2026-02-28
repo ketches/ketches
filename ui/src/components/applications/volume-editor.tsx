@@ -18,13 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 export interface VolumeSpec {
   id?: string
@@ -221,23 +215,12 @@ export function VolumeEditor({
             <Field>
               <FieldLabel htmlFor="volume-type">Storage Volume Type *</FieldLabel>
               <FieldContent>
-                <Select
+                <SimpleCombobox
                   value={formData.volume_type}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, volume_type: value ?? "" }))
-                  }
-                >
-                  <SelectTrigger id="volume-type" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VOLUME_TYPE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onValueChange={(value) => value && setFormData((prev) => ({ ...prev, volume_type: value }))}
+                  options={VOLUME_TYPE_OPTIONS}
+                  className="w-full"
+                />
               </FieldContent>
             </Field>
 
@@ -276,27 +259,25 @@ export function VolumeEditor({
                 <Field>
                   <FieldLabel htmlFor="storage-class">Storage Class</FieldLabel>
                   <FieldContent>
-                    <Select
-                      value={formData.storage_class || ""}
+                    <SimpleCombobox
+                      value={formData.storage_class || "default"}
                       onValueChange={(value) =>
-                        setFormData((prev) => ({
+                        value && setFormData((prev) => ({
                           ...prev,
-                          storage_class: value === "default" ? "" : (value || ""),
+                          storage_class: value === "default" ? "" : value,
                         }))
                       }
-                    >
-                      <SelectTrigger id="storage-class" className="w-full">
-                        <SelectValue placeholder="Select storage class (default: cluster default)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="default">Default (cluster default)</SelectItem>
-                        {storageClasses.map((sc: any) => (
-                          <SelectItem key={sc.name} value={sc.name}>
-                            {sc.name} {sc.isDefault && "(default)"} - {sc.provisioner}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={[
+                        { value: "default", label: "Default (cluster default)" },
+                        ...storageClasses.map((sc: any) => ({
+                          value: sc.name,
+                          label: sc.name,
+                          description: `${sc.provisioner}${sc.isDefault ? " (default)" : ""}`,
+                        })),
+                      ]}
+                      placeholder="Select storage class (default: cluster default)"
+                      className="w-full"
+                    />
                   </FieldContent>
                 </Field>
 
@@ -324,46 +305,28 @@ export function VolumeEditor({
                 <Field>
                   <FieldLabel htmlFor="access-modes">Access Mode *</FieldLabel>
                   <FieldContent>
-                    <Select
+                    <SimpleCombobox
                       value={formData.access_modes}
                       onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, access_modes: value ?? undefined }))
+                        value && setFormData((prev) => ({ ...prev, access_modes: value }))
                       }
-                    >
-                      <SelectTrigger id="access-modes" className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ACCESS_MODE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={ACCESS_MODE_OPTIONS}
+                      className="w-full"
+                    />
                   </FieldContent>
                 </Field>
 
                 <Field>
                   <FieldLabel htmlFor="volume-mode">Storage Mode *</FieldLabel>
                   <FieldContent>
-                    <Select
+                    <SimpleCombobox
                       value={formData.volume_mode}
                       onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, volume_mode: value ?? undefined }))
+                        value && setFormData((prev) => ({ ...prev, volume_mode: value }))
                       }
-                    >
-                      <SelectTrigger id="volume-mode" className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {VOLUME_MODE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={VOLUME_MODE_OPTIONS}
+                      className="w-full"
+                    />
                   </FieldContent>
                 </Field>
               </>
