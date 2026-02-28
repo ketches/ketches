@@ -12,10 +12,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel, FieldTitle } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { Textarea } from "@/components/ui/textarea"
-import type { AxiosError } from "axios"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import type { AxiosError } from "axios"
 
 const schedulingSchema = z.object({
   rule_type: z.string(),
@@ -100,23 +100,19 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
         return acc
       }, {})
 
-      const data: Partial<App> = {
-        ...app,
-        scheduling_rule: {
-          rule_type: values.rule_type,
-          node_name: values.node_name,
-          node_selector: JSON.stringify(nodeSelectorObj),
-          node_affinity: values.node_affinity,
-          tolerations: JSON.stringify(values.tolerations.map(t => ({
-            key: t.key,
-            operator: t.operator,
-            value: t.value,
-            effect: t.effect,
-            tolerationSeconds: t.toleration_seconds
-          }))),
-        }
-      }
-      return appsApi.update(app.id, data)
+      return appsApi.updateScheduling(app.id, {
+        rule_type: values.rule_type,
+        node_name: values.node_name,
+        node_selector: JSON.stringify(nodeSelectorObj),
+        node_affinity: values.node_affinity,
+        tolerations: JSON.stringify(values.tolerations.map(t => ({
+          key: t.key,
+          operator: t.operator,
+          value: t.value,
+          effect: t.effect,
+          tolerationSeconds: t.toleration_seconds
+        }))),
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
@@ -147,24 +143,16 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
                   control={control}
                   name="rule_type"
                   render={({ field }) => (
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      items={[
-                        { value: "nodeName", label: "Specific Node Name" },
-                        { value: "nodeSelector", label: "Node Selector (Labels)" },
-                        { value: "nodeAffinity", label: "Node Affinity (Advanced)" },
+                    <SimpleCombobox
+                      value={field.value}
+                      onValueChange={(v) => v && field.onChange(v)}
+                      options={[
+                        { value: "nodeName", label: "Specific Node Name", description: "Strictly schedule on this exact node" },
+                        { value: "nodeSelector", label: "Node Selector (Labels)", description: "Schedule on nodes matching label key-value pairs" },
+                        { value: "nodeAffinity", label: "Node Affinity (Advanced)", description: "Advanced affinity rules in Kubernetes format" },
                       ]}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select placement rule" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="nodeName">Specific Node Name</SelectItem>
-                        <SelectItem value="nodeSelector">Node Selector (Labels)</SelectItem>
-                        <SelectItem value="nodeAffinity">Node Affinity (Advanced)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      className="w-full"
+                    />
                   )}
                 />
               </FieldContent>
@@ -242,13 +230,15 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
                         control={control}
                         name={`tolerations.${index}.operator`}
                         render={({ field }) => (
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Equal">Equal</SelectItem>
-                              <SelectItem value="Exists">Exists</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <SimpleCombobox
+                            value={field.value}
+                            onValueChange={(v) => v && field.onChange(v)}
+                            options={[
+                              { value: "Equal", label: "Equal", description: "Key/value must match exactly" },
+                              { value: "Exists", label: "Exists", description: "Key must exist (value ignored)" },
+                            ]}
+                            className="w-full"
+                          />
                         )}
                       />
                     </FieldContent>
@@ -264,24 +254,17 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
                         control={control}
                         name={`tolerations.${index}.effect`}
                         render={({ field }) => (
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            items={[
-                              { value: "NoSchedule", label: "NoSchedule" },
-                              { value: "PreferNoSchedule", label: "PreferNoSchedule" },
-                              { value: "NoExecute", label: "NoExecute" },
-                              { value: "", label: "Any" },
+                          <SimpleCombobox
+                            value={field.value}
+                            onValueChange={(v) => v && field.onChange(v)}
+                            options={[
+                              { value: "NoSchedule", label: "NoSchedule", description: "Do not schedule unless tolerated" },
+                              { value: "PreferNoSchedule", label: "PreferNoSchedule", description: "Prefer not to schedule unless tolerated" },
+                              { value: "NoExecute", label: "NoExecute", description: "Evict existing pods unless tolerated" },
+                              { value: "", label: "Any", description: "Matches all effects" },
                             ]}
-                          >
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="NoSchedule">NoSchedule</SelectItem>
-                              <SelectItem value="PreferNoSchedule">PreferNoSchedule</SelectItem>
-                              <SelectItem value="NoExecute">NoExecute</SelectItem>
-                              <SelectItem value="">Any</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            className="w-full"
+                          />
                         )}
                       />
                     </FieldContent>
