@@ -12,9 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { AxiosError } from "axios"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import type { AxiosError } from "axios"
 
 const autoScalingSchema = z.object({
   enabled: z.boolean(),
@@ -53,16 +53,13 @@ export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
 
   const updateMutation = useMutation({
     mutationFn: (values: z.infer<typeof autoScalingSchema>) => {
-      const data: Partial<App> = {
-        ...app,
-        auto_scaling: values.enabled ? {
-          min_replicas: values.min_replicas,
-          max_replicas: values.max_replicas,
-          target_cpu_utilization: values.cpu_enabled ? values.target_cpu_utilization : 0,
-          target_memory_utilization: values.memory_enabled ? values.target_memory_utilization : 0,
-        } : undefined,
-      }
-      return appsApi.update(app.id, data)
+      const auto_scaling = values.enabled ? {
+        min_replicas: values.min_replicas,
+        max_replicas: values.max_replicas,
+        target_cpu_utilization: values.cpu_enabled ? values.target_cpu_utilization : 0,
+        target_memory_utilization: values.memory_enabled ? values.target_memory_utilization : 0,
+      } : null
+      return appsApi.updateAutoScaling(app.id, auto_scaling)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
@@ -121,25 +118,20 @@ export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium">Metrics</h4>
                 {(!cpuEnabled || !memoryEnabled) && (
-                  <Select
+                  <SimpleCombobox
+                    value={null}
                     onValueChange={(value) => {
                       if (value === "cpu") setValue("cpu_enabled", true)
                       if (value === "memory") setValue("memory_enabled", true)
                     }}
-                    disabled={!enabled}
-                    items={[
+                    options={[
                       ...(!cpuEnabled ? [{ value: "cpu", label: "CPU Utilization" }] : []),
                       ...(!memoryEnabled ? [{ value: "memory", label: "Memory Utilization" }] : []),
                     ]}
-                  >
-                    <SelectTrigger className="w-40 h-8 text-xs">
-                      <SelectValue placeholder="Add Metric" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {!cpuEnabled && <SelectItem value="cpu">CPU Utilization</SelectItem>}
-                      {!memoryEnabled && <SelectItem value="memory">Memory Utilization</SelectItem>}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Add Metric"
+                    disabled={!enabled}
+                    className="w-40 h-8 text-xs"
+                  />
                 )}
               </div>
 
