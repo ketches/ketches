@@ -31,13 +31,7 @@ import {
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw } from "lucide-react"
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -281,23 +275,17 @@ export function DataTable<TData, TValue>({
             <div className="flex items-center space-x-6 lg:space-x-8">
               <div className="flex items-center space-x-2">
                 <p className="text-xs font-medium">Rows per page</p>
-                <Select
+                <SimpleCombobox
                   value={`${table.getState().pagination.pageSize}`}
                   onValueChange={(value) => {
-                    table.setPageSize(Number(value))
+                    value && table.setPageSize(Number(value))
                   }}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder={table.getState().pagination.pageSize} />
-                  </SelectTrigger>
-                  <SelectContent side="top">
-                    {[10, 20, 30, 40, 50].map((pageSize) => (
-                      <SelectItem key={pageSize} value={`${pageSize}`}>
-                        {pageSize}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={[10, 20, 30, 40, 50].map((pageSize) => ({
+                    value: `${pageSize}`,
+                    label: `${pageSize}`,
+                  }))}
+                  className="h-8 w-16"
+                />
               </div>
               <div className="flex w-25 items-center justify-center text-xs font-medium">
                 Page {table.getState().pagination.pageIndex + 1} of{" "}
