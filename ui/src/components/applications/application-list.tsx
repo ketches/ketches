@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query"
-import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
 import {
   Clock,
   CloudCog,
@@ -28,6 +28,16 @@ import { ExportAppsDialog } from "@/components/applications/export-apps-dialog"
 import { ImportAppsDialog } from "@/components/applications/import-apps-dialog"
 import { DataTable } from "@/components/data-table/data-table"
 import { ColorBadge } from "@/components/shared/color-badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -60,6 +70,7 @@ interface ApplicationListProps {
 
 export function ApplicationList({ envId, envName: _envName }: ApplicationListProps) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const projectRole = useProjectRole()
   // Hide action buttons for viewers
   const isViewer = projectRole === 'viewer'
@@ -70,6 +81,9 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
   const [exportAppIds, setExportAppIds] = React.useState<string[]>([])
   const [exportAppId, setExportAppId] = React.useState<string | undefined>(undefined)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [deleteAppIds, setDeleteAppIds] = React.useState<string[]>([])
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
   const [viewMode, setViewMode] = React.useState<"list" | "card">(() => {
     const saved = localStorage.getItem(APPLICATIONS_VIEW_MODE_KEY)
@@ -97,6 +111,23 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
     enabled: !!envId,
     refetchInterval: 5000,
     placeholderData: (previousData) => previousData,
+  })
+
+  const batchDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await appsApi.batchDelete(ids)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['apps'] })
+      toast.success("Applications deleted successfully")
+      setDeleteDialogOpen(false)
+      setRowSelection({})
+    },
+    onError: (error: any) => {
+      toast.error("Failed to delete applications", {
+        description: error.response?.data?.error || "An error occurred while deleting applications",
+      })
+    },
   })
 
   const apps = appsResponse?.items ?? []
@@ -235,30 +266,30 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
   )
 
   const toolbarRight = (
-<div className="flex items-center gap-2">
-<Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto h-7">
-<TabsList>
-<TabsTrigger value="list">
-<ListIcon />
-</TabsTrigger>
-<TabsTrigger value="card">
-<LayoutGrid />
-</TabsTrigger>
-</TabsList>
+    <div className="flex items-center gap-2">
+      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto h-7">
+        <TabsList>
+          <TabsTrigger value="list">
+            <ListIcon />
+          </TabsTrigger>
+          <TabsTrigger value="card">
+            <LayoutGrid />
+          </TabsTrigger>
+        </TabsList>
       </Tabs>
       {!isViewer && (
         <>
-<Button onClick={() => setCreateDialogOpen(true)}>
-<Plus />
-Create Application
-</Button>
-<Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-<Upload />
-Import
-      </Button>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus />
+            Create Application
+          </Button>
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+            <Upload />
+            Import
+          </Button>
         </>
       )}
-</div>
+    </div>
   )
 
   return (
@@ -272,6 +303,8 @@ Import
         totalCount={paginationInfo?.total || 0}
         pagination={pagination}
         onPaginationChange={setPagination}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
         leftActions={() => toolbarLeft}
         toolbarActions={() => toolbarRight}
         renderCard={(app) => (
@@ -309,22 +342,22 @@ Import
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {!isViewer && (
                     <>
-<Button
-variant="ghost"
-size="icon-xs"
-className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
-onClick={(e) => {
-e.stopPropagation()
-setEditingApp(app)
-setEditDialogOpen(true)
-}}
->
-<Pencil className="h-3.5 w-3.5" />
-</Button>
-                  <AppActionIconsWrapper appId={app.id} envId={envId} />
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingApp(app)
+                          setEditDialogOpen(true)
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <AppActionIconsWrapper appId={app.id} envId={envId} />
                     </>
                   )}
-</div>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
@@ -369,15 +402,19 @@ setEditDialogOpen(true)
         )}
         batchActions={(table) => {
           if (isViewer) return null
-const selectedRows = table.getFilteredSelectedRowModel().rows
-if (selectedRows.length === 0) return null
+          const selectedRows = table.getFilteredSelectedRowModel().rows
+          if (selectedRows.length === 0) return null
           return (
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => toast.info("Restarting applications...")}>
                 <RefreshCw />
                 Restart
               </Button>
-              <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => toast.error("Batch delete not implemented")}>
+              <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
+                const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.id)
+                setDeleteAppIds(selectedIds)
+                setDeleteDialogOpen(true)
+              }}>
                 <Trash2 />
                 Delete
               </Button>
@@ -418,6 +455,26 @@ if (selectedRows.length === 0) return null
           setExportDialogOpen(false)
         }}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Applications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected {deleteAppIds.length} application(s) and remove all associated resources from the cluster.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => batchDeleteMutation.mutate(deleteAppIds)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {batchDeleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

@@ -56,6 +56,7 @@ This document defines the specialized agents involved in the development and mai
   - Implement application pages and routing logic in `ui/src/pages` and `ui/src/routes`.
   - Maintain reusable business components in `ui/src/components/ui`.
   - Ensure type safety across the entire frontend application.
+  - Use `Combobox` component for all dropdowns and selection inputs, adhering to the design system, never use `Select`.
 
 ## UI/UX Design Agent
 

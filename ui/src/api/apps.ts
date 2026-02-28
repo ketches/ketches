@@ -127,6 +127,12 @@ export const appsApi = {
   update: async (id: string, data: Partial<App>) => {
     return client.put(`/v1/apps/${id}`, data) as Promise<App>
   },
+  delete: async (id: string) => {
+    return client.delete(`/v1/apps/${id}`)
+  },
+  batchDelete: async (ids: string[]) => {
+    return client.post('/v1/apps/batch-delete', { ids })
+  },
   updateBasic: async (id: string, data: Partial<App>) => {
     return client.patch(`/v1/apps/${id}/basic`, data) as Promise<App>
   },

@@ -1,3 +1,17 @@
+// Copyright 2025 The Ketches Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package services
 
 import (
@@ -15,6 +29,7 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -276,28 +291,31 @@ func DeleteApp(appID string) error {
 		return err
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
-	if err != nil {
+	if _, err := executeStopAction(context.Background(), application); err != nil {
 		return err
 	}
-
-	ctx := context.Background()
-	ns := application.Env.ClusterNamespace
-
-	if application.AppType == "StatefulSet" {
-		_ = client.AppsV1().StatefulSets(ns).Delete(ctx, application.Slug, metav1.DeleteOptions{})
-	} else {
-		_ = client.AppsV1().Deployments(ns).Delete(ctx, application.Slug, metav1.DeleteOptions{})
-	}
-
-	_ = client.CoreV1().Services(ns).Delete(ctx, application.Slug, metav1.DeleteOptions{})
 
 	return db.DB.Delete(&entities.App{}, "id = ?", appID).Error
 }
 
+// BatchDeleteApps deletes multiple applications by their IDs
+func BatchDeleteApps(ids []string) error {
+	var errs []error
+	for _, id := range ids {
+		if err := DeleteApp(id); err != nil {
+			errs = append(errs, fmt.Errorf("failed to delete app %s: %w", id, err))
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to delete %d app(s): %v", len(errs), errs[0])
+	}
+	return nil
+}
+
 func PermanentlyDeleteApp(appID string) error {
 	var application entities.App
-	if err := db.DB.Unscoped().Preload("EnvVars").
+	if err := db.DB.Unscoped().Preload("Env.Cluster").
+		Preload("EnvVars").
 		Preload("Volumes").
 		Preload("ConfigFiles").
 		Preload("Gateways").
@@ -306,6 +324,11 @@ func PermanentlyDeleteApp(appID string) error {
 		Preload("AutoScaling").
 		Preload("SchedulingRule").
 		First(&application, "id = ?", appID).Error; err != nil {
+		return err
+	}
+
+	// Delete Kubernetes resources created by this app
+	if err := deleteAppK8sResources(context.Background(), &application); err != nil {
 		return err
 	}
 
@@ -358,6 +381,78 @@ func PermanentlyDeleteApp(appID string) error {
 	}
 
 	return db.DB.Unscoped().Delete(&entities.App{}, "id = ?", appID).Error
+}
+
+// deleteAppK8sResources deletes all Kubernetes resources created by an app
+func deleteAppK8sResources(ctx context.Context, app *entities.App) error {
+	if app.Env.ClusterID == "" {
+		return nil
+	}
+
+	client, err := kube.GlobalClusterStore.GetClient(app.Env.ClusterID)
+	if err != nil {
+		return err
+	}
+
+	ns := app.Env.ClusterNamespace
+	appLabel := "app=" + app.Slug
+
+	// Delete Deployment or StatefulSet
+	switch app.AppType {
+	case "Deployment":
+		if err := client.AppsV1().Deployments(ns).Delete(ctx, app.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		}
+	case "StatefulSet":
+		if err := client.AppsV1().StatefulSets(ns).Delete(ctx, app.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	// Delete Service
+	if err := client.CoreV1().Services(ns).Delete(ctx, app.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+		return err
+	}
+
+	// Delete ConfigMap if exists
+	configMapName := app.Slug + "-config"
+	if err := client.CoreV1().ConfigMaps(ns).Delete(ctx, configMapName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+		return err
+	}
+
+	// Delete registry Secret if exists
+	if app.RegistryUsername != "" {
+		secretName := app.Slug + "-registry"
+		if err := client.CoreV1().Secrets(ns).Delete(ctx, secretName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	// Delete PVCs
+	if err := client.CoreV1().PersistentVolumeClaims(ns).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: appLabel,
+	}); err != nil && !k8serrors.IsNotFound(err) {
+		return err
+	}
+
+	// Delete HPA if exists
+	if app.AutoScaling != nil {
+		hpaName := app.Slug
+		if err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	// Delete Gateway API resources
+	if gwClient, err := kube.GlobalClusterStore.GetGatewayClient(app.Env.ClusterID); err == nil {
+		if err := gwClient.GatewayV1().HTTPRoutes(ns).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: appLabel,
+		}); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func RestoreApp(appID string) error {

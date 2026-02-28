@@ -167,6 +167,7 @@ func SetupV1Routes(r *gin.Engine) {
 				appsWrite.PUT("/:appID", handlers.UpdateApp)
 				appsWrite.PATCH("/:appID/basic", handlers.UpdateAppBasic)
 				appsWrite.DELETE("/:appID", handlers.DeleteApp)
+				appsWrite.POST("/batch-delete", handlers.BatchDeleteApps)
 				appsWrite.DELETE("/:appID/instances/:instanceName", handlers.DeleteAppInstance)
 				appsWrite.POST("/:appID/action", handlers.AppAction)
 				appsWrite.POST("/:appID/action/apply", handlers.ApplyApp)

@@ -9,6 +9,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func ListEnvs(projectID string, page, pageSize int, search string) (int64, []entities.Env, error) {
@@ -131,11 +132,6 @@ func UpdateEnvBasic(envID string, req *models.UpdateBasicInfoRequest) (*entities
 }
 
 func DeleteEnv(envID string) error {
-	env, err := GetEnv(envID)
-	if err != nil {
-		return err
-	}
-
 	var appCount int64
 	if err := db.DB.Model(&entities.App{}).Where("env_id = ?", envID).Count(&appCount).Error; err != nil {
 		return err
@@ -145,17 +141,44 @@ func DeleteEnv(envID string) error {
 		return errors.New("cannot delete environment: it contains applications. Please delete all applications first or move them to recycle bin")
 	}
 
-	if err := core.DeleteNamespace(context.Background(), env.ClusterID, env.ClusterNamespace); err != nil {
-		return err
-	}
-
 	return db.DB.Delete(&entities.Env{}, "id = ?", envID).Error
 }
 
 func PermanentlyDeleteEnv(envID string) error {
 	var env entities.Env
-	if err := db.DB.Unscoped().First(&env, "id = ?", envID).Error; err != nil {
+	if err := db.DB.Unscoped().Preload("Cluster").First(&env, "id = ?", envID).Error; err != nil {
 		return err
+	}
+
+	// Get all soft-deleted apps in this environment
+	var deletedApps []entities.App
+	if err := db.DB.Unscoped().Where("env_id = ? AND deleted_at IS NOT NULL", envID).Find(&deletedApps).Error; err != nil {
+		return err
+	}
+
+	// Permanently delete all soft-deleted apps
+	for _, app := range deletedApps {
+		if err := PermanentlyDeleteApp(app.ID); err != nil {
+			return err
+		}
+	}
+
+	// Delete environment-level certificates
+	var certs []entities.Certificate
+	if err := db.DB.Unscoped().Where("env_id = ? AND scope = ?", envID, "env").Find(&certs).Error; err != nil {
+		return err
+	}
+	for _, cert := range certs {
+		if err := db.DB.Unscoped().Delete(&cert).Error; err != nil {
+			return err
+		}
+	}
+
+	// Delete the namespace in the cluster (if not already deleted during soft delete)
+	if env.ClusterID != "" && env.ClusterNamespace != "" {
+		if err := core.DeleteNamespace(context.Background(), env.ClusterID, env.ClusterNamespace); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	return db.DB.Unscoped().Delete(&entities.Env{}, "id = ?", envID).Error

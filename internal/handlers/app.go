@@ -297,6 +297,22 @@ func DeleteApp(c *gin.Context) {
 	api.NoContent(c)
 }
 
+func BatchDeleteApps(c *gin.Context) {
+	var req struct {
+		IDs []string `json:"ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.BatchDeleteApps(req.IDs); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.NoContent(c)
+}
+
 func ListAppInstances(c *gin.Context) {
 	appID := c.Param("appID")
 	instances, err := services.ListAppInstances(appID)
