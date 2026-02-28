@@ -16,16 +16,18 @@ import * as React from "react"
 import { appsApi } from "@/api/apps"
 import { clustersApi, type K8sNode } from "@/api/clusters"
 import { Button } from "@/components/ui/button"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Combobox,
+  ComboboxContent,
+  ComboboxGroup,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxList,
+  ComboboxSeparator,
+  ComboboxTrigger,
+  ComboboxValue,
+} from "@/components/ui/combobox"
 import { useSidebar } from "@/components/ui/sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useBottomPanel } from "@/contexts/bottom-panel-context"
@@ -145,25 +147,12 @@ export function BottomPanel() {
             <span>/</span>
 
             {items.length > 1 ? (
-              <Select
+              <SimpleCombobox
                 value={panelState.instanceName}
                 onValueChange={handleInstanceChange}
-              >
-                <SelectTrigger className="h-7 w-auto min-w-40 text-xs font-mono">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {items.map((item) => (
-                    <SelectItem
-                      key={item.name}
-                      value={item.name}
-                      className="text-xs font-mono"
-                    >
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={items.map((item) => ({ value: item.name, label: item.name }))}
+                className="h-7 w-auto min-w-40 text-xs font-mono"
+              />
             ) : (
               <span className="font-mono">{panelState.instanceName}</span>
             )}
@@ -171,43 +160,45 @@ export function BottomPanel() {
             {hasMultipleContainers && (
               <>
                 <span>/</span>
-                <Select
+                <Combobox.Root
                   value={panelState.containerName}
                   onValueChange={(value) => value && switchContainer(value)}
                 >
-                  <SelectTrigger className="h-7 w-auto min-w-30 text-xs font-mono">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {panelState.initContainers && panelState.initContainers.length > 0 && (
-                      <SelectGroup>
-                        <SelectLabel className="flex items-center gap-1.5 py-1">
-                          <Zap className="h-3 w-3" />
-                          Init Containers
-                        </SelectLabel>
-                        {panelState.initContainers.map((container) => (
-                          <SelectItem key={container} value={container} className="text-xs pl-6">
+                  <ComboboxTrigger className="h-7 w-auto min-w-30 text-xs font-mono border-input bg-input/20 dark:bg-input/30 rounded-md border px-2 py-1.5 flex items-center gap-1.5 outline-none disabled:cursor-not-allowed disabled:opacity-50">
+                    <ComboboxValue />
+                  </ComboboxTrigger>
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {panelState.initContainers && panelState.initContainers.length > 0 && (
+                        <ComboboxGroup>
+                          <ComboboxLabel className="flex items-center gap-1.5 py-1">
+                            <Zap className="h-3 w-3" />
+                            Init Containers
+                          </ComboboxLabel>
+                          {panelState.initContainers.map((container) => (
+                            <ComboboxItem key={container} value={container} className="text-xs pl-6">
+                              {container}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxGroup>
+                      )}
+                      {panelState.initContainers && panelState.initContainers.length > 0 && panelState.containers.length > 0 && (
+                        <ComboboxSeparator />
+                      )}
+                      <ComboboxGroup>
+                        <ComboboxLabel className="flex items-center gap-1.5 py-1">
+                          <Layers2 className="h-3 w-3" />
+                          Containers
+                        </ComboboxLabel>
+                        {panelState.containers.map((container) => (
+                          <ComboboxItem key={container} value={container} className="text-xs pl-6">
                             {container}
-                          </SelectItem>
+                          </ComboboxItem>
                         ))}
-                      </SelectGroup>
-                    )}
-                    {panelState.initContainers && panelState.initContainers.length > 0 && panelState.containers.length > 0 && (
-                      <SelectSeparator />
-                    )}
-                    <SelectGroup>
-                      <SelectLabel className="flex items-center gap-1.5 py-1">
-                        <Layers2 className="h-3 w-3" />
-                        Containers
-                      </SelectLabel>
-                      {panelState.containers.map((container) => (
-                        <SelectItem key={container} value={container} className="text-xs pl-6">
-                          {container}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                      </ComboboxGroup>
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox.Root>
               </>
             )}
           </div>
