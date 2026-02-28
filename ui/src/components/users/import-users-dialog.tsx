@@ -15,13 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 const FILE_TYPES = [
   { value: "json", label: "JSON", description: "Array of user objects" },
@@ -120,26 +114,16 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
             <Field>
               <FieldLabel>File Format *</FieldLabel>
               <FieldContent>
-                <Select
+                <SimpleCombobox
                   value={fileType}
                   onValueChange={(value) => value && setFileType(value as "json" | "csv" | "excel")}
-                >
-                  <SelectTrigger id="fileType" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FILE_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        <div className="flex flex-col">
-                          <span>{type.label}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {type.description}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={FILE_TYPES.map((type) => ({
+                    value: type.value,
+                    label: type.label,
+                    description: type.description,
+                  }))}
+                  className="w-full"
+                />
               </FieldContent>
             </Field>
 

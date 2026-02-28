@@ -14,13 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 const USER_ROLES = ["admin", "user"] as const
 type UserRole = (typeof USER_ROLES)[number]
@@ -195,26 +189,16 @@ export function AddUserDialog({ onSuccess }: AddUserDialogProps) {
             <Field>
               <FieldLabel htmlFor="role">Role *</FieldLabel>
               <FieldContent>
-                <Select
+                <SimpleCombobox
                   value={formData.role}
                   onValueChange={(value) => value && setFormData({ ...formData, role: value })}
-                >
-                  <SelectTrigger id="role" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {USER_ROLES.map((role) => (
-                      <SelectItem key={role} value={role}>
-                        <div className="flex flex-col">
-                          <span>{UserRoleLabels[role]}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {UserRoleDescriptions[role]}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={USER_ROLES.map((role) => ({
+                    value: role,
+                    label: UserRoleLabels[role],
+                    description: UserRoleDescriptions[role],
+                  }))}
+                  className="w-full"
+                />
               </FieldContent>
             </Field>
             {errors.submit && (
