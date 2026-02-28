@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldLabel, FieldTitle } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
 
@@ -241,27 +241,18 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
             <Field>
               <FieldLabel>Target Registry *</FieldLabel>
               <FieldContent>
-                <Select
-                  value={form.registry_id || undefined}
-                  onValueChange={(v) => setForm({ ...form, registry_id: v ?? "" })}
-                  items={
+                <SimpleCombobox
+                  value={form.registry_id}
+                  onValueChange={(v) => v && setForm({ ...form, registry_id: v })}
+                  options={
                     registries?.map((r: ContainerRegistry) => ({
                       value: r.id,
-                      label: `${r.name} (${registryProviderLabels[r.provider]})`,
+                      label: `${r.name} (${registryProviderLabels[r.provider]})`
                     })) ?? []
                   }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a registry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {registries?.map((r: ContainerRegistry) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.name} ({registryProviderLabels[r.provider]})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select a registry"
+                  className="w-full"
+                />
               </FieldContent>
             </Field>
           </div>
