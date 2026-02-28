@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
 
@@ -179,20 +179,12 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
             <Field>
               <FieldLabel>Provider *</FieldLabel>
               <FieldContent>
-                <Select
+                <SimpleCombobox
                   value={form.provider}
-                  onValueChange={(v) => handleProviderChange(v as ContainerRegistryProvider)}
-                  items={providers.map((p) => ({ value: p, label: registryProviderLabels[p] }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {providers.map((p) => (
-                      <SelectItem key={p} value={p}>{registryProviderLabels[p]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onValueChange={(v) => v && handleProviderChange(v as ContainerRegistryProvider)}
+                  options={providers.map((p) => ({ value: p, label: registryProviderLabels[p] }))}
+                  className="w-full"
+                />
               </FieldContent>
             </Field>
           </div>
