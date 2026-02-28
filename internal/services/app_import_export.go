@@ -1,6 +1,6 @@
 package services
 
-	import (
+import (
 	"fmt"
 	"time"
 
@@ -13,19 +13,19 @@ package services
 )
 
 type ImportResult struct {
-	Imported  []ImportAppResult
-	Conflicts []ConflictInfo
+	Imported  []ImportAppResult `json:"imported"`
+	Conflicts []ConflictInfo    `json:"conflicts"`
 }
 
 type ImportAppResult struct {
-	Name   string
-	Slug   string
-	Status string // "created", "updated"
+	Name   string `json:"name"`
+	Slug   string `json:"slug"`
+	Status string `json:"status"` // "created", "updated"
 }
 
 type ConflictInfo struct {
-	ExistingApp *entities.App
-	NewApp      *models.AppMetadata
+	ExistingApp *entities.App       `json:"existing_app"`
+	NewApp      *models.AppMetadata `json:"new_app"`
 }
 
 // ImportApps imports applications from content string

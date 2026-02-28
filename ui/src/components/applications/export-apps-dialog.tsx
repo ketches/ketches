@@ -116,7 +116,7 @@ export function ExportAppsDialog({
         case 'ketches':
           if (data.metadata) {
             content = data.metadata
-            filename = `ketches-export-${timestamp}.json`
+            filename = `ketches-export-${timestamp}.ketches`
             contentType = 'application/json'
           }
           break

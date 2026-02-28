@@ -80,7 +80,8 @@ export function ImportAppsDialog({
       conflict_strategy: 'rename' | 'ask' | 'error'
     }) => appsApi.importApps(envId, data),
     onSuccess: (data) => {
-      sonnerToast.success(`Successfully imported ${data.imported.length} applications`)
+      const count = data?.imported?.length || 0
+      sonnerToast.success(`Successfully imported ${count} applications`)
       queryClient.invalidateQueries({ queryKey: ['apps', envId] })
       onSuccess?.()
       onOpenChange(false)
