@@ -1,7 +1,7 @@
 import client from './client'
 import { type PaginationResponse } from './pagination'
 
-export type BuildStatus = 'pending' | 'cloning' | 'building' | 'succeeded' | 'failed' | 'cancelled'
+export type BuildStatus = 'pending' | 'cloning' | 'building' | 'succeeded' | 'failed' | 'cancelled' | 'unknown'
 export type BuildTriggerType = 'manual' | 'webhook' | 'auto'
 
 export interface Build {
@@ -73,6 +73,7 @@ export const buildStatusLabels: Record<BuildStatus, string> = {
   succeeded: 'Succeeded',
   failed: 'Failed',
   cancelled: 'Cancelled',
+  unknown: 'Unknown',
 }
 
 export const buildStatusColors: Record<BuildStatus, string> = {
@@ -82,4 +83,5 @@ export const buildStatusColors: Record<BuildStatus, string> = {
   succeeded: 'bg-green-100 text-green-800',
   failed: 'bg-red-100 text-red-800',
   cancelled: 'bg-gray-100 text-gray-800',
+  unknown: 'bg-gray-100 text-gray-800',
 }

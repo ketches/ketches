@@ -124,9 +124,6 @@ export const appsApi = {
   get: async (id: string) => {
     return client.get(`/v1/apps/${id}`) as Promise<App>
   },
-  update: async (id: string, data: Partial<App>) => {
-    return client.put(`/v1/apps/${id}`, data) as Promise<App>
-  },
   delete: async (id: string) => {
     return client.delete(`/v1/apps/${id}`)
   },
@@ -135,6 +132,27 @@ export const appsApi = {
   },
   updateBasic: async (id: string, data: Partial<App>) => {
     return client.patch(`/v1/apps/${id}/basic`, data) as Promise<App>
+  },
+  updateImage: async (id: string, data: { container_image: string, registry_username?: string, registry_password?: string }) => {
+    return client.patch(`/v1/apps/${id}/image`, data) as Promise<App>
+  },
+  updateReplicas: async (id: string, replicas: number) => {
+    return client.patch(`/v1/apps/${id}/replicas`, { replicas }) as Promise<App>
+  },
+  updateResources: async (id: string, data: { request_cpu: number, request_memory: number, limit_cpu: number, limit_memory: number }) => {
+    return client.patch(`/v1/apps/${id}/resources`, data) as Promise<App>
+  },
+  updateAutoScaling: async (id: string, auto_scaling: AutoScalingSpec | null) => {
+    return client.patch(`/v1/apps/${id}/auto-scaling`, { auto_scaling }) as Promise<App>
+  },
+  updateHealth: async (id: string, probes: ProbeSpec[]) => {
+    return client.patch(`/v1/apps/${id}/health`, { probes }) as Promise<App>
+  },
+  updateScheduling: async (id: string, scheduling_rule: SchedulingSpec | null) => {
+    return client.patch(`/v1/apps/${id}/scheduling`, { scheduling_rule }) as Promise<App>
+  },
+  updateCommand: async (id: string, container_command: string) => {
+    return client.patch(`/v1/apps/${id}/command`, { container_command }) as Promise<App>
   },
   getAvailableActions: async (id: string) => {
     return client.get(`/v1/apps/${id}/available-actions`) as Promise<AvailableActionsResponse>

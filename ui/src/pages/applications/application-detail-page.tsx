@@ -87,10 +87,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useBottomPanel } from "@/contexts/bottom-panel-context"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
 import { formatDate } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
-import { useProjectRole } from "@/hooks/useProjectRole"
 
 function ScaleAppPopover({ app }: { app: App }) {
   const [replicas, setReplicas] = React.useState(app.replicas)
@@ -102,7 +102,7 @@ function ScaleAppPopover({ app }: { app: App }) {
   }, [app.replicas])
 
   const scaleMutation = useMutation({
-    mutationFn: (count: number) => appsApi.update(app.id, { ...app, replicas: count }),
+    mutationFn: (count: number) => appsApi.updateReplicas(app.id, count),
     onSuccess: () => {
       toast.success(`Application scaling to ${replicas} replicas initiated`)
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })

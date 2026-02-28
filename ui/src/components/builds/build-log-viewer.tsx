@@ -1,12 +1,12 @@
 import Editor from "@monaco-editor/react"
 import { useQuery } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
 import * as React from "react"
 
 import { buildsApi } from "@/api/builds"
 import { codeRepositoriesApi } from "@/api/code-repositories"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
 import { useTheme } from "@/components/theme-provider/theme-provider"
+import { Loader2 } from "lucide-react"
 
 interface BuildLogViewerProps {
   appId?: string
@@ -16,7 +16,6 @@ interface BuildLogViewerProps {
 
 export function BuildLogViewer({ appId, buildId, repoId }: BuildLogViewerProps) {
   const [logs, setLogs] = React.useState<string[]>([])
-  const [streaming, setStreaming] = React.useState(false)
   const editorRef = React.useRef<any>(null)
 
   const handleEditorDidMount = (editor: any) => {
@@ -62,7 +61,6 @@ export function BuildLogViewer({ appId, buildId, repoId }: BuildLogViewerProps) 
 
   React.useEffect(() => {
     if (!buildId || (!repoId && !appId)) return
-    setStreaming(true)
     setLogs([])
 
     const authData = localStorage.getItem('auth-storage')
@@ -86,12 +84,10 @@ export function BuildLogViewer({ appId, buildId, repoId }: BuildLogViewerProps) 
     })
 
     eventSource.addEventListener('done', () => {
-      setStreaming(false)
       eventSource.close()
     })
 
     eventSource.onerror = () => {
-      setStreaming(false)
       eventSource.close()
     }
 
@@ -102,15 +98,15 @@ export function BuildLogViewer({ appId, buildId, repoId }: BuildLogViewerProps) 
 
   return (
     <div className="space-y-4">
-      {build && (
-        <div className="flex items-center gap-4 text-xs">
-          <span className="text-muted-foreground">Build #{build.build_number}</span>
-          <BuildStatusBadge status={build.status} />
-          {build.git_ref && <span className="text-muted-foreground">Ref: {build.git_ref}</span>}
-          {build.image_full_name && <span className="text-muted-foreground font-mono text-xs">{build.image_full_name}</span>}
-          {build.error_message && <span className="text-destructive text-xs">{build.error_message}</span>}
-        </div>
-      )}
+      {/* {build && ( */}
+      <div className="flex items-center gap-4 text-xs">
+        <span className="text-muted-foreground">Build #{build?.build_number}</span>
+        <BuildStatusBadge status={build?.status || "unknown"} />
+        {build?.git_ref && <span className="text-muted-foreground">Ref: {build?.git_ref}</span>}
+        {build?.image_full_name && <span className="text-muted-foreground font-mono text-xs">{build?.image_full_name}</span>}
+        {build?.error_message && <span className="text-destructive text-xs">{build?.error_message}</span>}
+      </div>
+      {/* )} */}
       <div className="border rounded-lg overflow-hidden h-[70vh]">
         <Editor
           height="100%"
@@ -129,19 +125,13 @@ export function BuildLogViewer({ appId, buildId, repoId }: BuildLogViewerProps) 
             padding: { top: 16, bottom: 16 },
           }}
           loading={
-            <div className="flex items-center justify-center h-full bg-zinc-950 text-zinc-500">
+            <div className="flex items-center justify-center w-full h-full">
               <Loader2 className="h-6 w-6 animate-spin mr-2" />
               Loading editor...
             </div>
           }
         />
       </div>
-      {streaming && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Streaming logs...
-        </div>
-      )}
     </div>
   )
 }

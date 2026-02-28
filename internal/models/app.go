@@ -3,14 +3,14 @@ package models
 import "time"
 
 type CreateAppRequest struct {
-	Slug             string `json:"slug" binding:"required"`
+	Slug             string `json:"slug"`
 	Name             string `json:"name" binding:"required"`
 	Description      string `json:"description"`
-	AppType          string `json:"app_type" binding:"required"`
+	AppType          string `json:"app_type"`
 	ContainerImage   string `json:"container_image" binding:"required"`
 	RegistryUsername string `json:"registry_username"`
 	RegistryPassword string `json:"registry_password"`
-	Replicas         int    `json:"replicas" binding:"required,min=0"`
+	Replicas         int    `json:"replicas"`
 	Deploy           bool   `json:"deploy"`
 
 	ContainerCommand string           `json:"container_command"`
@@ -211,4 +211,37 @@ type AppTopologyEdge struct {
 type AppTopologyResponse struct {
 	Nodes []AppTopologyNode `json:"nodes"`
 	Edges []AppTopologyEdge `json:"edges"`
+}
+
+type UpdateAppImageRequest struct {
+	ContainerImage   string `json:"container_image" binding:"required"`
+	RegistryUsername string `json:"registry_username"`
+	RegistryPassword string `json:"registry_password"`
+}
+
+type UpdateAppReplicasRequest struct {
+	Replicas int `json:"replicas" binding:"min=0"`
+}
+
+type UpdateAppResourcesRequest struct {
+	RequestCPU    int `json:"request_cpu"`
+	RequestMemory int `json:"request_memory"`
+	LimitCPU      int `json:"limit_cpu"`
+	LimitMemory   int `json:"limit_memory"`
+}
+
+type UpdateAppAutoScalingRequest struct {
+	AutoScaling *AutoScalingSpec `json:"auto_scaling"`
+}
+
+type UpdateAppHealthRequest struct {
+	Probes []ProbeSpec `json:"probes"`
+}
+
+type UpdateAppSchedulingRequest struct {
+	SchedulingRule *SchedulingSpec `json:"scheduling_rule"`
+}
+
+type UpdateAppCommandRequest struct {
+	ContainerCommand string `json:"container_command"`
 }

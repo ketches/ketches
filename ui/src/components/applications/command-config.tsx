@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
-import type { AxiosError } from "axios"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import type { AxiosError } from "axios"
 
 const commandSchema = z.object({
   container_command: z.string().optional(),
@@ -35,11 +35,7 @@ export function CommandConfig({ app }: CommandConfigProps) {
 
   const updateMutation = useMutation({
     mutationFn: (values: z.infer<typeof commandSchema>) => {
-      const data: Partial<App> = {
-        ...app,
-        container_command: values.container_command,
-      }
-      return appsApi.update(app.id, data)
+      return appsApi.updateCommand(app.id, values.container_command)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })

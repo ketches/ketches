@@ -123,6 +123,30 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 		return *registry.ProjectID, true
 	}
 
+	// Resolve via repo ID
+	if repoID := c.Param("repoID"); repoID != "" {
+		var repo entities.CodeRepository
+		if err := db.DB.Select("project_id").Where("id = ?", repoID).First(&repo).Error; err != nil {
+			log.Printf("resolveProjectID: DB lookup CodeRepository %q failed: %v", repoID, err)
+			return "", false
+		}
+		return repo.ProjectID, true
+	}
+
+	// Resolve via build config ID
+	if configID := c.Param("configID"); configID != "" {
+		var repo entities.CodeRepository
+		if err := db.DB.Select("code_repositories.project_id").
+			Table("code_repository_build_configs").
+			Joins("JOIN code_repositories ON code_repositories.id = code_repository_build_configs.code_repository_id").
+			Where("code_repository_build_configs.id = ?", configID).
+			First(&repo).Error; err != nil {
+			log.Printf("resolveProjectID: DB lookup via configID %q failed: %v", configID, err)
+			return "", false
+		}
+		return repo.ProjectID, true
+	}
+
 	return "", false
 }
 

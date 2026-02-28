@@ -10,6 +10,7 @@ const statusConfig: Record<BuildStatus, { icon: React.ElementType; color: "blue"
   succeeded: { icon: CheckCircle2, color: "green" },
   failed: { icon: XCircle, color: "red" },
   cancelled: { icon: Ban, color: "gray" },
+  unknown: { icon: Ban, color: "gray" },
 }
 
 export function BuildStatusBadge({ status }: { status: BuildStatus }) {

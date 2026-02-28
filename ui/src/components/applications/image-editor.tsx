@@ -53,11 +53,7 @@ export function ImageEditor({
   const mutation = useMutation({
     mutationFn: (data: { container_image: string; registry_username?: string; registry_password?: string }) => {
       if (!app) throw new Error("No application selected")
-      return appsApi.update(app.id, {
-        name: app.name,
-        description: app.description,
-        ...data
-      })
+      return appsApi.updateImage(app.id, data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app', app?.id] })

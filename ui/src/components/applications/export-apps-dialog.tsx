@@ -173,6 +173,7 @@ export function ExportAppsDialog({
               ]}
               className="w-full"
             />
+          </FieldContent>
 
           {isBatchMode && hasSelection && (
             <>
@@ -189,6 +190,7 @@ export function ExportAppsDialog({
                   ]}
                   className="w-full"
                 />
+              </FieldContent>
             </>
           )}
         </div>

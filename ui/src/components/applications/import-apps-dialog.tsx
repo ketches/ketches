@@ -7,6 +7,13 @@ import { toast as sonnerToast } from "sonner"
 import { appsApi } from "@/api/apps"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { SimpleCombobox } from "@/components/ui/simple-combobox"
@@ -166,6 +173,7 @@ export function ImportAppsDialog({
                   ]}
                   className="w-full"
                 />
+              </FieldContent>
             </Field>
           </div>
 

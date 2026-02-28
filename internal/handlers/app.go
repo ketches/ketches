@@ -254,23 +254,6 @@ func GetApp(c *gin.Context) {
 	api.Success(c, toAppResponse(c, app))
 }
 
-func UpdateApp(c *gin.Context) {
-	appID := c.Param("appID")
-	var req models.CreateAppRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		api.Error(c, http.StatusBadRequest, err)
-		return
-	}
-
-	app, err := services.UpdateApp(appID, &req)
-	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	api.Success(c, toAppResponse(c, app))
-}
-
 func UpdateAppBasic(c *gin.Context) {
 	appID := c.Param("appID")
 	var req models.UpdateBasicInfoRequest
@@ -280,6 +263,125 @@ func UpdateAppBasic(c *gin.Context) {
 	}
 
 	app, err := services.UpdateAppBasic(appID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, toAppResponse(c, app))
+}
+
+func UpdateAppImage(c *gin.Context) {
+	appID := c.Param("appID")
+	var req models.UpdateAppImageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	app, err := services.UpdateAppImage(appID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, toAppResponse(c, app))
+}
+
+func UpdateAppReplicas(c *gin.Context) {
+	appID := c.Param("appID")
+	var req models.UpdateAppReplicasRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	app, err := services.UpdateAppReplicas(appID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, toAppResponse(c, app))
+}
+
+func UpdateAppResources(c *gin.Context) {
+	appID := c.Param("appID")
+	var req models.UpdateAppResourcesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	app, err := services.UpdateAppResources(appID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, toAppResponse(c, app))
+}
+
+func UpdateAppAutoScaling(c *gin.Context) {
+	appID := c.Param("appID")
+	var req models.UpdateAppAutoScalingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	app, err := services.UpdateAppAutoScaling(appID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, toAppResponse(c, app))
+}
+
+func UpdateAppHealth(c *gin.Context) {
+	appID := c.Param("appID")
+	var req models.UpdateAppHealthRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	app, err := services.UpdateAppHealth(appID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, toAppResponse(c, app))
+}
+
+func UpdateAppScheduling(c *gin.Context) {
+	appID := c.Param("appID")
+	var req models.UpdateAppSchedulingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	app, err := services.UpdateAppScheduling(appID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, toAppResponse(c, app))
+}
+
+func UpdateAppCommand(c *gin.Context) {
+	appID := c.Param("appID")
+	var req models.UpdateAppCommandRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	app, err := services.UpdateAppCommand(appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

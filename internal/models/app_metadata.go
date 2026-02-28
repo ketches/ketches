@@ -105,7 +105,6 @@ type KetchesMetadataFile struct {
 	ExportedBy string        `json:"exported_by,omitempty"`
 }
 
-
 // ToCreateAppRequest converts AppMetadata to CreateAppRequest.
 func (m *AppMetadata) ToCreateAppRequest() *CreateAppRequest {
 	req := &CreateAppRequest{

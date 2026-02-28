@@ -67,6 +67,11 @@ func CreateApp(envID string, req *models.CreateAppRequest) (*entities.App, error
 		return nil, gorm.ErrDuplicatedKey
 	}
 
+	replicas := req.Replicas
+	if replicas == 0 {
+		replicas = 1
+	}
+
 	application := &entities.App{
 		Base:             entities.Base{ID: uuid.New()},
 		Slug:             req.Slug,
@@ -77,7 +82,7 @@ func CreateApp(envID string, req *models.CreateAppRequest) (*entities.App, error
 		ContainerCommand: req.ContainerCommand,
 		RegistryUsername: req.RegistryUsername,
 		RegistryPassword: req.RegistryPassword,
-		Replicas:         req.Replicas,
+		Replicas:         replicas,
 		RequestCPU:       req.RequestCPU,
 		RequestMemory:    req.RequestMemory,
 		LimitCPU:         req.LimitCPU,
@@ -183,45 +188,91 @@ func ApplyApp(application *entities.App) error {
 	return core.ApplyApp(context.Background(), application)
 }
 
-func UpdateApp(appID string, req *models.CreateAppRequest) (*entities.App, error) {
+func UpdateAppBasic(appID string, req *models.UpdateBasicInfoRequest) (*entities.App, error) {
 	application, err := GetApp(appID)
 	if err != nil {
 		return nil, err
 	}
 
-	if application.Slug != req.Slug {
-		var existing entities.App
-		if err := db.DB.Where("env_id = ? AND slug = ? AND id != ?", application.EnvID, req.Slug, appID).First(&existing).Error; err == nil {
-			return nil, gorm.ErrDuplicatedKey
-		}
-	}
-
-	appBefore := &entities.App{
-		ContainerImage: application.ContainerImage,
-		Replicas:       application.Replicas,
-		RequestCPU:     application.RequestCPU,
-		RequestMemory:  application.RequestMemory,
-		LimitCPU:       application.LimitCPU,
-		LimitMemory:    application.LimitMemory,
-	}
-
-	imageChanged := application.ContainerImage != req.ContainerImage
-
-	application.Slug = req.Slug
 	application.Name = req.Name
 	application.Description = req.Description
-	application.AppType = req.AppType
+
+	if err := db.DB.Save(application).Error; err != nil {
+		return nil, err
+	}
+
+	return application, nil
+}
+
+func UpdateAppImage(appID string, req *models.UpdateAppImageRequest) (*entities.App, error) {
+	application, err := GetApp(appID)
+	if err != nil {
+		return nil, err
+	}
+
 	application.ContainerImage = req.ContainerImage
-	application.ContainerCommand = req.ContainerCommand
 	application.RegistryUsername = req.RegistryUsername
 	if req.RegistryPassword != "" {
 		application.RegistryPassword = req.RegistryPassword
 	}
+
+	if err := db.DB.Save(application).Error; err != nil {
+		return nil, err
+	}
+
+	if err := ApplyApp(application); err != nil {
+		return nil, err
+	}
+
+	return application, nil
+}
+
+func UpdateAppReplicas(appID string, req *models.UpdateAppReplicasRequest) (*entities.App, error) {
+	application, err := GetApp(appID)
+	if err != nil {
+		return nil, err
+	}
+
 	application.Replicas = req.Replicas
+
+	if err := db.DB.Save(application).Error; err != nil {
+		return nil, err
+	}
+
+	if err := ApplyApp(application); err != nil {
+		return nil, err
+	}
+
+	return application, nil
+}
+
+func UpdateAppResources(appID string, req *models.UpdateAppResourcesRequest) (*entities.App, error) {
+	application, err := GetApp(appID)
+	if err != nil {
+		return nil, err
+	}
+
 	application.RequestCPU = req.RequestCPU
 	application.RequestMemory = req.RequestMemory
 	application.LimitCPU = req.LimitCPU
 	application.LimitMemory = req.LimitMemory
+
+	if err := db.DB.Save(application).Error; err != nil {
+		return nil, err
+	}
+
+	if err := ApplyApp(application); err != nil {
+		return nil, err
+	}
+
+	return application, nil
+}
+
+func UpdateAppAutoScaling(appID string, req *models.UpdateAppAutoScalingRequest) (*entities.App, error) {
+	application, err := GetApp(appID)
+	if err != nil {
+		return nil, err
+	}
 
 	if req.AutoScaling != nil {
 		if application.AutoScaling == nil {
@@ -236,6 +287,64 @@ func UpdateApp(appID string, req *models.CreateAppRequest) (*entities.App, error
 			db.DB.Delete(application.AutoScaling)
 			application.AutoScaling = nil
 		}
+	}
+
+	if err := db.DB.Save(application).Error; err != nil {
+		return nil, err
+	}
+
+	if err := ApplyApp(application); err != nil {
+		return nil, err
+	}
+
+	return application, nil
+}
+
+func UpdateAppHealth(appID string, req *models.UpdateAppHealthRequest) (*entities.App, error) {
+	application, err := GetApp(appID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		tx.Delete(&entities.AppProbe{}, "app_id = ?", application.ID)
+		for _, p := range req.Probes {
+			probe := &entities.AppProbe{
+				ID:                  uuid.New(),
+				AppID:               application.ID,
+				Type:                p.Type,
+				ProbeMode:           p.ProbeMode,
+				Enabled:             p.Enabled,
+				HttpGetPath:         p.HttpGetPath,
+				HttpGetPort:         p.HttpGetPort,
+				TcpSocketPort:       p.TcpSocketPort,
+				ExecCommand:         p.ExecCommand,
+				InitialDelaySeconds: p.InitialDelaySeconds,
+				PeriodSeconds:       p.PeriodSeconds,
+				TimeoutSeconds:      p.TimeoutSeconds,
+				SuccessThreshold:    p.SuccessThreshold,
+				FailureThreshold:    p.FailureThreshold,
+			}
+			if err := tx.Create(probe).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := ApplyApp(application); err != nil {
+		return nil, err
+	}
+
+	return GetApp(application.ID)
+}
+
+func UpdateAppScheduling(appID string, req *models.UpdateAppSchedulingRequest) (*entities.App, error) {
+	application, err := GetApp(appID)
+	if err != nil {
+		return nil, err
 	}
 
 	if req.SchedulingRule != nil {
@@ -254,31 +363,30 @@ func UpdateApp(appID string, req *models.CreateAppRequest) (*entities.App, error
 		}
 	}
 
-	if err := db.DB.Session(&gorm.Session{FullSaveAssociations: true}).Save(application).Error; err != nil {
+	if err := db.DB.Save(application).Error; err != nil {
 		return nil, err
 	}
 
-	if err := core.ApplyApp(context.Background(), application); err != nil {
+	if err := ApplyApp(application); err != nil {
 		return nil, err
-	}
-
-	if imageChanged {
-		_ = RecordDeployment(appBefore, application, "manual", "user", "Image updated via UI", nil)
 	}
 
 	return application, nil
 }
 
-func UpdateAppBasic(appID string, req *models.UpdateBasicInfoRequest) (*entities.App, error) {
+func UpdateAppCommand(appID string, req *models.UpdateAppCommandRequest) (*entities.App, error) {
 	application, err := GetApp(appID)
 	if err != nil {
 		return nil, err
 	}
 
-	application.Name = req.Name
-	application.Description = req.Description
+	application.ContainerCommand = req.ContainerCommand
 
 	if err := db.DB.Save(application).Error; err != nil {
+		return nil, err
+	}
+
+	if err := ApplyApp(application); err != nil {
 		return nil, err
 	}
 

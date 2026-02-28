@@ -469,12 +469,6 @@ function ResourceYamlDialog({
                 automaticLayout: true,
                 padding: { top: 16, bottom: 16 },
               }}
-              loading={
-                <div className="flex items-center justify-center h-full bg-zinc-950 text-zinc-500">
-                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                  Loading editor...
-                </div>
-              }
             />
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground bg-muted/30">

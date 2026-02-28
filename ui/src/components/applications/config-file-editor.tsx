@@ -212,7 +212,7 @@ export function ConfigFileEditor({
                   <SimpleCombobox
                     value={formData.file_mode}
                     onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, file_mode: value ?? "0644" }})
+                      setFormData((prev) => ({ ...prev, file_mode: value ?? "0644" }))
                     }
                     options={FILE_MODE_OPTIONS}
                     className="w-full"

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Box, GalleryVerticalEnd, Orbit, RotateCcw, Trash2 } from "lucide-react"
+import { ArchiveRestore, Box, GalleryVerticalEnd, Orbit, RotateCcw, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -321,7 +321,7 @@ export function RecycleBinPage() {
             }}
             disabled={restoringItemId === row.original.id}
           >
-            <RotateCcw />
+            <ArchiveRestore />
           </Button>
           <Button
             variant="ghost"
@@ -412,7 +412,7 @@ export function RecycleBinPage() {
             }}
             disabled={restoringItemId === row.original.id}
           >
-            <RotateCcw />
+            <ArchiveRestore />
           </Button>
           <Button
             variant="ghost"
@@ -499,7 +499,7 @@ export function RecycleBinPage() {
             }}
             disabled={restoringItemId === row.original.id}
           >
-            <RotateCcw />
+            <ArchiveRestore />
             Restore
           </Button>
           <Button

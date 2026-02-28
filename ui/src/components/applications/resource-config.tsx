@@ -7,11 +7,11 @@ import * as z from "zod"
 
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
-import { useProjectRole } from "@/hooks/useProjectRole"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
 
 const resourceSchema = z.object({
@@ -41,14 +41,12 @@ export function ResourceConfig({ app }: ResourceConfigProps) {
 
   const updateMutation = useMutation({
     mutationFn: (values: z.infer<typeof resourceSchema>) => {
-      const data: Partial<App> = {
-        ...app,
+      return appsApi.updateResources(app.id, {
         request_cpu: values.request_cpu,
         request_memory: values.request_memory,
         limit_cpu: values.limit_cpu,
         limit_memory: values.limit_memory,
-      }
-      return appsApi.update(app.id, data)
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
