@@ -2,15 +2,16 @@ import { useQuery } from "@tanstack/react-query"
 import { GitBranch, Loader2, Tag } from "lucide-react"
 
 import { codeRepositoriesApi } from "@/api/code-repositories"
+import { Combobox } from "@base-ui/react"
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  ComboboxContent,
+  ComboboxGroup,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxList,
+  ComboboxTrigger,
+  ComboboxValue,
+} from "@/components/ui/combobox"
 import { cn } from "@/lib/utils"
 
 interface GitRefSelectProps {
@@ -43,9 +44,14 @@ export function GitRefSelect({
   const hasValueInRefs = refs.some((r) => r.name === value)
 
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={disabled || isLoading}>
-      <SelectTrigger className={cn("w-full", className)}>
-        <SelectValue placeholder={placeholder}>
+    <Combobox.Root value={value} onValueChange={onValueChange} disabled={disabled || isLoading}>
+      <ComboboxTrigger
+        className={cn(
+          "border-input data-[placeholder]:text-muted-foreground bg-input/20 dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 gap-1.5 rounded-md border px-2 py-1.5 text-xs/relaxed transition-colors focus-visible:ring-[2px] h-7 flex w-full items-center justify-between whitespace-nowrap outline-none disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+      >
+        <ComboboxValue placeholder={placeholder}>
           {isLoading ? (
             <div className="flex items-center gap-2">
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -54,47 +60,49 @@ export function GitRefSelect({
           ) : (
             value
           )}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {value && !hasValueInRefs && (
-          <SelectGroup>
-            <SelectLabel>Current</SelectLabel>
-            <SelectItem value={value}>{value}</SelectItem>
-          </SelectGroup>
-        )}
-        {branches.length > 0 && (
-          <SelectGroup>
-            <SelectLabel className="flex items-center gap-2">
-              <GitBranch className="h-3 w-3" />
-              Branches
-            </SelectLabel>
-            {branches.map((ref) => (
-              <SelectItem key={ref.name} value={ref.name}>
-                {ref.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        )}
-        {tags.length > 0 && (
-          <SelectGroup>
-            <SelectLabel className="flex items-center gap-2">
-              <Tag className="h-3 w-3" />
-              Tags
-            </SelectLabel>
-            {tags.map((ref) => (
-              <SelectItem key={ref.name} value={ref.name}>
-                {ref.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        )}
-        {refs.length === 0 && !isLoading && (
-          <div className="p-2 text-xs text-muted-foreground text-center">
-            No branches or tags found
-          </div>
-        )}
-      </SelectContent>
-    </Select>
+        </ComboboxValue>
+      </ComboboxTrigger>
+      <ComboboxContent>
+        <ComboboxList>
+          {value && !hasValueInRefs && (
+            <ComboboxGroup>
+              <ComboboxLabel>Current</ComboboxLabel>
+              <ComboboxItem value={value}>{value}</ComboboxItem>
+            </ComboboxGroup>
+          )}
+          {branches.length > 0 && (
+            <ComboboxGroup>
+              <ComboboxLabel className="flex items-center gap-2">
+                <GitBranch className="h-3 w-3" />
+                Branches
+              </ComboboxLabel>
+              {branches.map((ref) => (
+                <ComboboxItem key={ref.name} value={ref.name}>
+                  {ref.name}
+                </ComboboxItem>
+              ))}
+            </ComboboxGroup>
+          )}
+          {tags.length > 0 && (
+            <ComboboxGroup>
+              <ComboboxLabel className="flex items-center gap-2">
+                <Tag className="h-3 w-3" />
+                Tags
+              </ComboboxLabel>
+              {tags.map((ref) => (
+                <ComboboxItem key={ref.name} value={ref.name}>
+                  {ref.name}
+                </ComboboxItem>
+              ))}
+            </ComboboxGroup>
+          )}
+          {refs.length === 0 && !isLoading && (
+            <div className="p-2 text-xs text-muted-foreground text-center">
+              No branches or tags found
+            </div>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox.Root>
   )
 }

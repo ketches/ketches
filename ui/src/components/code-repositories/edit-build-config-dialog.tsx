@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import type { AxiosError } from "axios"
 
 interface EditBuildConfigDialogProps {
@@ -136,27 +136,18 @@ export function EditBuildConfigDialog({ open, onOpenChange, repoId, config, onSu
           <Field>
             <FieldLabel>Container registry *</FieldLabel>
             <FieldContent>
-              <Select
+              <SimpleCombobox
                 value={form.registry_id || ''}
                 onValueChange={(v) => setForm({ ...form, registry_id: v ?? undefined })}
-                items={
+                options={
                   registries?.map((r) => ({
                     value: r.id,
                     label: `${r.name} (${registryProviderLabels[r.provider]})`,
                   })) ?? []
                 }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select registry" />
-                </SelectTrigger>
-                <SelectContent>
-                  {registries?.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name} ({registryProviderLabels[r.provider]})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select registry"
+                className="w-full"
+              />
             </FieldContent>
           </Field>
           <Field>
