@@ -11,13 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { AddUserDialog } from "@/components/users/add-user-dialog"
 import { EditPasswordDialog } from "@/components/users/edit-password-dialog"
 import { ImportUsersDialog } from "@/components/users/import-users-dialog"
@@ -177,27 +171,13 @@ export function UsersPage() {
         const isValidRole = USER_ROLES.includes(user.role as UserRole)
 
         return (
-          <Select
+          <SimpleCombobox
             value={isValidRole ? user.role : "user"}
             onValueChange={(val) => val && updateRoleMutation.mutate({ userId: user.id, role: val })}
+            options={USER_ROLES.map((r) => ({ value: r, label: UserRoleLabels[r as UserRole], description: UserRoleDescriptions[r as UserRole] }))}
             disabled={updateRoleMutation.isPending}
-          >
-            <SelectTrigger className="h-8 w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {USER_ROLES.map((r) => (
-                <SelectItem key={r} value={r}>
-                  <div className="flex flex-col">
-                    <span>{UserRoleLabels[r as UserRole]}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {UserRoleDescriptions[r as UserRole]}
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            className="w-40"
+          />
         )
       },
     },

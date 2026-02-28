@@ -12,13 +12,7 @@ import { AddMemberDialog } from "@/components/members/add-member-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
 
@@ -139,22 +133,13 @@ export function MembersPage() {
         return isViewer ? (
           <span className="text-xs">{ProjectRoleLabels[member.project_role as ProjectRole]}</span>
         ) : (
-          <Select
+          <SimpleCombobox
             value={member.project_role}
             onValueChange={(val) => val && updateRoleMutation.mutate({ userId: member.user_id, role: val })}
+            options={PROJECT_ROLES.map((r) => ({ value: r, label: ProjectRoleLabels[r as ProjectRole] }))}
             disabled={updateRoleMutation.isPending}
-          >
-            <SelectTrigger className="h-8 w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PROJECT_ROLES.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {ProjectRoleLabels[r as ProjectRole]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            className="w-32"
+          />
         )
       },
     },
