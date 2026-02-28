@@ -22,13 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 interface InstallExtensionToClusterDialogProps {
   open: boolean
@@ -218,29 +212,14 @@ export function InstallExtensionToClusterDialog({
                     Target Cluster *
                   </FieldLabel>
                   <FieldContent>
-                    <Select
+                    <SimpleCombobox
                       value={selectedClusterId}
-                      onValueChange={(v) => setSelectedClusterId(v || "")}
+                      onValueChange={(v) => v && setSelectedClusterId(v)}
+                      options={clusters.map((c) => ({ value: c.id, label: c.name }))}
+                      placeholder={clustersLoading ? "Loading clusters..." : "Select cluster"}
                       disabled={clustersLoading}
-                      required
-                    >
-                      <SelectTrigger id="target-cluster" className="w-full">
-                        <SelectValue
-                          placeholder={
-                            clustersLoading
-                              ? "Loading clusters..."
-                              : "Select cluster"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clusters.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      className="w-full"
+                    />
                   </FieldContent>
                 </Field>
               )}
@@ -260,28 +239,14 @@ export function InstallExtensionToClusterDialog({
               <Field>
                 <FieldLabel htmlFor="release-version">Version *</FieldLabel>
                 <FieldContent>
-                  <Select
+                  <SimpleCombobox
                     value={selectedVersion}
-                    onValueChange={(v) => setSelectedVersion(v ?? "")}
+                    onValueChange={(v) => v && setSelectedVersion(v)}
+                    options={versions.map((v) => ({ value: v.version, label: v.version }))}
+                    placeholder={versionsLoading ? "Loading versions..." : "Select version"}
                     disabled={versionsLoading}
-                  >
-                    <SelectTrigger id="release-version" className="w-full">
-                      <SelectValue
-                        placeholder={
-                          versionsLoading
-                            ? "Loading versions..."
-                            : "Select version"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {versions.map((v) => (
-                        <SelectItem key={v.version} value={v.version}>
-                          {v.version}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    className="w-full"
+                  />
                 </FieldContent>
               </Field>
 
