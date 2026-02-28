@@ -22,13 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 interface InstallExtensionDialogProps {
   open: boolean
@@ -201,26 +195,14 @@ export function InstallExtensionDialog({
               <Field>
                 <FieldLabel htmlFor="release-version">Version *</FieldLabel>
                 <FieldContent>
-                  <Select
+                  <SimpleCombobox
                     value={selectedVersion}
-                    onValueChange={(v) => setSelectedVersion(v ?? "")}
+                    onValueChange={(v) => v && setSelectedVersion(v)}
+                    options={versions.map((v) => ({ value: v.version, label: v.version }))}
+                    placeholder={versionsLoading ? "Loading versions..." : "Select version"}
                     disabled={versionsLoading}
-                  >
-                    <SelectTrigger id="release-version" className="w-full">
-                      <SelectValue
-                        placeholder={
-                          versionsLoading ? "Loading versions..." : "Select version"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {versions.map((v) => (
-                        <SelectItem key={v.version} value={v.version}>
-                          {v.version}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    className="w-full"
+                  />
                 </FieldContent>
               </Field>
 

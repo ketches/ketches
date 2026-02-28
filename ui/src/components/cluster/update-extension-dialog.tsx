@@ -22,13 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 interface UpdateExtensionDialogProps {
   open: boolean
@@ -217,26 +211,14 @@ export function UpdateExtensionDialog({
               <Field>
                 <FieldLabel>Chart version</FieldLabel>
                 <FieldContent>
-                  <Select
+                  <SimpleCombobox
                     value={selectedVersion}
-                    onValueChange={(v) => setSelectedVersion(v ?? "")}
+                    onValueChange={(v) => v && setSelectedVersion(v)}
+                    options={versions.map((v) => ({ value: v.version, label: v.version }))}
+                    placeholder={versionsLoading ? "Loading versions..." : "Select version"}
                     disabled={versionsLoading}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue
-                        placeholder={
-                          versionsLoading ? "Loading versions..." : "Select version"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {versions.map((v) => (
-                        <SelectItem key={v.version} value={v.version}>
-                          {v.version}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    className="w-full"
+                  />
                 </FieldContent>
               </Field>
               {showDiff && (

@@ -14,13 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 interface NodeTaintsEditorProps {
   clusterId: string
@@ -118,19 +112,16 @@ export function NodeTaintsEditor({
                 onChange={(e) => handleChange(index, "taint_value", e.target.value)}
                 className="flex-1 font-mono text-xs"
               />
-              <Select
+              <SimpleCombobox
                 value={taint.effect}
-                onValueChange={(v) => handleChange(index, "effect", v as string)}
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NoSchedule">NoSchedule</SelectItem>
-                  <SelectItem value="PreferNoSchedule">PreferNoSchedule</SelectItem>
-                  <SelectItem value="NoExecute">NoExecute</SelectItem>
-                </SelectContent>
-              </Select>
+                onValueChange={(v) => v && handleChange(index, "effect", v)}
+                options={[
+                  { value: "NoSchedule", label: "NoSchedule", description: "Do not schedule unless tolerated" },
+                  { value: "PreferNoSchedule", label: "PreferNoSchedule", description: "Prefer not to schedule" },
+                  { value: "NoExecute", label: "NoExecute", description: "Evict existing pods unless tolerated" },
+                ]}
+                className="w-40"
+              />
               <Button
                 variant="ghost"
                 size="icon"

@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { Textarea } from "@/components/ui/textarea"
 import type { ColumnDef } from "@tanstack/react-table"
 
@@ -346,44 +346,27 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                 <Field>
                   <FieldLabel>Type</FieldLabel>
                   <FieldContent>
-                    <Select
+                    <SimpleCombobox
                       value={formData.integration_type}
-                      onValueChange={(v) => setFormData({ ...formData, integration_type: v as IntegrationType })}
+                      onValueChange={(v) => v && setFormData({ ...formData, integration_type: v as IntegrationType })}
+                      options={INTEGRATION_TYPES.map((t) => ({ value: t.value, label: t.label, description: t.description }))}
                       disabled={!!editingIntegration}
-                      items={INTEGRATION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {INTEGRATION_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      className="w-full"
+                    />
                   </FieldContent>
                 </Field>
                 <Field>
                   <FieldLabel>Access Mode</FieldLabel>
                   <FieldContent>
-                    <Select
+                    <SimpleCombobox
                       value={formData.access_mode}
-                      onValueChange={(v) => setFormData({ ...formData, access_mode: v as "endpoint" | "service" })}
-                      items={[
-                        { value: "endpoint", label: "Endpoint URL" },
-                        { value: "service", label: "Cluster Service Proxy" },
+                      onValueChange={(v) => v && setFormData({ ...formData, access_mode: v as "endpoint" | "service" })}
+                      options={[
+                        { value: "endpoint", label: "Endpoint URL", description: "Direct external URL endpoint" },
+                        { value: "service", label: "Cluster Service Proxy", description: "Route through an in-cluster Kubernetes service" },
                       ]}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="endpoint">Endpoint URL</SelectItem>
-                        <SelectItem value="service">Cluster Service Proxy</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      className="w-full"
+                    />
                   </FieldContent>
                 </Field>
               </div>
@@ -405,43 +388,27 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                 <Field>
                   <FieldLabel>Namespace</FieldLabel>
                   <FieldContent>
-                    <Select
+                    <SimpleCombobox
                       value={formData.namespace || ""}
                       onValueChange={(v) => setFormData({ ...formData, namespace: v ?? "", service_name: "" })}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select namespace" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {namespaces.map((ns) => (
-                          <SelectItem key={ns} value={ns}>
-                            {ns}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={namespaces.map((ns) => ({ value: ns, label: ns }))}
+                      placeholder="Select namespace"
+                      className="w-full"
+                    />
                   </FieldContent>
                 </Field>
                 <div className="flex gap-2">
                   <Field className="flex-1">
                     <FieldLabel>Service Name</FieldLabel>
                     <FieldContent>
-                      <Select
+                      <SimpleCombobox
                         value={formData.service_name || ""}
                         onValueChange={(v) => setFormData({ ...formData, service_name: v ?? "" })}
+                        options={services.map((svc) => ({ value: svc, label: svc }))}
+                        placeholder="Select service"
                         disabled={!formData.namespace}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select service" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {services.map((svc) => (
-                            <SelectItem key={svc} value={svc}>
-                              {svc}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        className="w-full"
+                      />
                     </FieldContent>
                   </Field>
                   <Field className="w-24">
