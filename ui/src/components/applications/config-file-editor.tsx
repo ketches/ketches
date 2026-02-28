@@ -18,13 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SimpleCombobox } from "@/components/ui/simple-combobox"
 
 export interface ConfigFileSpec {
   id?: string
@@ -215,23 +209,14 @@ export function ConfigFileEditor({
               <Field>
                 <FieldLabel htmlFor="file-mode">File Permissions</FieldLabel>
                 <FieldContent>
-                  <Select
+                  <SimpleCombobox
                     value={formData.file_mode}
                     onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, file_mode: value ?? "" }))
+                      setFormData((prev) => ({ ...prev, file_mode: value ?? "0644" }})
                     }
-                  >
-                    <SelectTrigger id="file-mode" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FILE_MODE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={FILE_MODE_OPTIONS}
+                    className="w-full"
+                  />
                 </FieldContent>
               </Field>
             </div>
