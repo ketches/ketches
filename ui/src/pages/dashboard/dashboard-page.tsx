@@ -284,15 +284,13 @@ function UserDashboard() {
               {environments.map((env) => (
                 <div
                   key={env.id}
-                  className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => navigate(`/environments/${env.id}`)}
+                  className="p-4 border rounded-lg"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h4 className="font-medium">{env.name}</h4>
                       <p className="text-xs text-muted-foreground font-mono">{env.metadata?.cluster_namespace}</p>
                     </div>
-                    <ColorBadge color={env.status === "Active" ? "green" : "gray"}>{env.status}</ColorBadge>
                   </div>
 
                   <EnvironmentResourceMetrics

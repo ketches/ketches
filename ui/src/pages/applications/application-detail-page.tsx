@@ -248,22 +248,45 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
     enabled: !!clusterId && !!namespace && !!appSlug && !!app,
   })
 
-  if (isLoading) return <Skeleton className="h-64 w-full mt-6" />
-  if (prometheusLoading) return <Skeleton className="h-64 w-full mt-6" />
-  if (!prometheusAvailable) return (
-    <EmptyState
-      title="Prometheus Not Available"
-      description="The cluster does not have a Prometheus integration configured. Please contact your administrator to enable Prometheus monitoring."
-      icon={Activity}
-    />
-  )
-  if (!metricsData || metricsData.chartData.length === 0) return (
-    <EmptyState
-      title="No Metrics Data"
-      description="No monitoring data is available for this application. Metrics will appear once the application is running and producing data."
-      icon={Activity}
-    />
-  )
+  if (prometheusLoading) {
+    return (
+      <div className="min-h-[500px] flex items-center justify-center">
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
+  }
+
+  if (prometheusAvailable === false) {
+    return (
+      <div className="min-h-[500px]">
+        <EmptyState
+          title="Prometheus Not Available"
+          description="The cluster does not have a Prometheus integration configured. Please contact your administrator to enable Prometheus monitoring."
+          icon={Activity}
+        />
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[500px] flex items-center justify-center">
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
+  }
+
+  if (!metricsData || metricsData.chartData.length === 0) {
+    return (
+      <div className="min-h-[500px]">
+        <EmptyState
+          title="No Metrics Data"
+          description="No monitoring data is available for this application. Metrics will appear once the application is running and producing data."
+          icon={Activity}
+        />
+      </div>
+    )
+  }
 
   const { chartData, pods } = metricsData
   const lastPoint = chartData[chartData.length - 1]
@@ -278,7 +301,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
   const maxNet = Math.max(...chartData.flatMap(d => pods.map(p => Math.max(d[`ingress_${p}`] || 0, d[`egress_${p}`] || 0))))
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-h-[500px]">
       <div className="flex items-center justify-end">
         <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
       </div>
