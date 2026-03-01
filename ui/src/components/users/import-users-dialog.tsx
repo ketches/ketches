@@ -15,7 +15,15 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+
+
 
 const FILE_TYPES = [
   { value: "json", label: "JSON", description: "Array of user objects" },
@@ -114,16 +122,25 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
             <Field>
               <FieldLabel>File Format *</FieldLabel>
               <FieldContent>
-                <SimpleCombobox
+                <Combobox
                   value={fileType}
                   onValueChange={(value) => value && setFileType(value as "json" | "csv" | "excel")}
-                  options={FILE_TYPES.map((type) => ({
-                    value: type.value,
-                    label: type.label,
-                    description: type.description,
-                  }))}
-                  className="w-full"
-                />
+                  itemToStringLabel={(v) => FILE_TYPES.find((t) => t.value === v)?.label ?? v ?? ""}
+                >
+                    <ComboboxInput />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {FILE_TYPES.map((type) => (
+                        <ComboboxItem key={type.value} value={type.value}>
+                          <div className="flex flex-col gap-0.5">
+                            <span>{type.label}</span>
+                            <span className="text-muted-foreground text-[10px] leading-relaxed">{type.description}</span>
+                          </div>
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FieldContent>
             </Field>
 

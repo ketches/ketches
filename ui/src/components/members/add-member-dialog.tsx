@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Plus } from "lucide-react"
 import * as React from "react"
 
-import { PROJECT_ROLES, ProjectRole, ProjectRoleLabels } from "@/api/projects"
+import { PROJECT_ROLES, ProjectRole, ProjectRoleLabels, ProjectRoleDescriptions } from "@/api/projects"
 import { usersApi } from "@/api/users"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,7 +19,16 @@ import {
   FieldContent,
   FieldLabel
 } from "@/components/ui/field"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item"
+
+
 
 export function AddMemberDialog({ onAdd }: { onAdd: (data: { userId: string, role: string }) => void }) {
   const [open, setOpen] = React.useState(false)
@@ -61,25 +70,51 @@ export function AddMemberDialog({ onAdd }: { onAdd: (data: { userId: string, rol
             <Field>
               <FieldLabel htmlFor="user">User</FieldLabel>
               <FieldContent>
-                <SimpleCombobox
+                <Combobox
                   value={userId}
-                  onValueChange={(val) => setUserId(val || "")}
-                  options={users.map((u) => ({ value: u.id, label: `${u.username} (${u.email})` }))}
-                  placeholder="Select a user"
-                  className="w-full"
-                />
+                  onValueChange={(val: string | null) => setUserId(val || "")}
+                  itemToStringLabel={(id) => {
+                    const u = users.find((user) => user.id === id)
+                    return u ? `${u.username} (${u.email})` : id ?? ""
+                  }}
+                >
+                    <ComboboxInput placeholder="Select a user" />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {users.map((u) => (
+                        <ComboboxItem key={u.id} value={u.id}>
+                          {`${u.username} (${u.email})`}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FieldContent>
             </Field>
             <Field>
               <FieldLabel htmlFor="role">Role</FieldLabel>
               <FieldContent>
-                <SimpleCombobox
+                <Combobox
                   value={role}
-                  onValueChange={(val) => val && setRole(val)}
-                  options={PROJECT_ROLES.map((r) => ({ value: r, label: ProjectRoleLabels[r as ProjectRole] }))}
-                  placeholder="Select a role"
-                  className="w-full"
-                />
+                  onValueChange={(val: string | null) => val && setRole(val)}
+                  itemToStringLabel={(v) => ProjectRoleLabels[v as ProjectRole] ?? v ?? ""}
+                >
+                    <ComboboxInput placeholder="Select a role" />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {PROJECT_ROLES.map((r) => (
+                        <ComboboxItem key={r} value={r}>
+                          <Item size="xs" className="p-0">
+                            <ItemContent>
+                              <ItemTitle>{ProjectRoleLabels[r as ProjectRole]}</ItemTitle>
+                              <ItemDescription>{ProjectRoleDescriptions[r as ProjectRole]}</ItemDescription>
+                            </ItemContent>
+                          </Item>
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FieldContent>
             </Field>
           </div>

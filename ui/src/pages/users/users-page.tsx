@@ -11,7 +11,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item"
 import { AddUserDialog } from "@/components/users/add-user-dialog"
 import { EditPasswordDialog } from "@/components/users/edit-password-dialog"
 import { ImportUsersDialog } from "@/components/users/import-users-dialog"
@@ -171,13 +178,28 @@ export function UsersPage() {
         const isValidRole = USER_ROLES.includes(user.role as UserRole)
 
         return (
-          <SimpleCombobox
+          <Combobox
             value={isValidRole ? user.role : "user"}
-            onValueChange={(val) => val && updateRoleMutation.mutate({ userId: user.id, role: val })}
-            options={USER_ROLES.map((r) => ({ value: r, label: UserRoleLabels[r as UserRole], description: UserRoleDescriptions[r as UserRole] }))}
+            onValueChange={(val: string | null) => val && updateRoleMutation.mutate({ userId: user.id, role: val })}
             disabled={updateRoleMutation.isPending}
-            className="w-40"
-          />
+            itemToStringLabel={(v) => UserRoleLabels[v as UserRole] ?? v ?? ""}
+          >
+            <ComboboxInput className="w-40" />
+            <ComboboxContent>
+              <ComboboxList>
+                {USER_ROLES.map((r) => (
+                  <ComboboxItem key={r} value={r}>
+                    <Item size="xs" className="p-0">
+                      <ItemContent>
+                        <ItemTitle>{UserRoleLabels[r as UserRole]}</ItemTitle>
+                        <ItemDescription>{UserRoleDescriptions[r as UserRole]}</ItemDescription>
+                      </ItemContent>
+                    </Item>
+                  </ComboboxItem>
+                ))}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
         )
       },
     },

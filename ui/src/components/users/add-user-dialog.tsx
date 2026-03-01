@@ -14,7 +14,16 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item"
+
+
 
 const USER_ROLES = ["admin", "user"] as const
 type UserRole = (typeof USER_ROLES)[number]
@@ -189,16 +198,27 @@ export function AddUserDialog({ onSuccess }: AddUserDialogProps) {
             <Field>
               <FieldLabel htmlFor="role">Role *</FieldLabel>
               <FieldContent>
-                <SimpleCombobox
+                <Combobox
                   value={formData.role}
-                  onValueChange={(value) => value && setFormData({ ...formData, role: value })}
-                  options={USER_ROLES.map((role) => ({
-                    value: role,
-                    label: UserRoleLabels[role],
-                    description: UserRoleDescriptions[role],
-                  }))}
-                  className="w-full"
-                />
+                  onValueChange={(value) => value && setFormData({ ...formData, role: value as UserRole })}
+                  itemToStringLabel={(v) => UserRoleLabels[v as UserRole] ?? v ?? ""}
+                >
+                <ComboboxInput />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {USER_ROLES.map((role) => (
+                        <ComboboxItem key={role} value={role}>
+                          <Item size="xs" className="p-0">
+                            <ItemContent>
+                              <ItemTitle>{UserRoleLabels[role]}</ItemTitle>
+                              <ItemDescription>{UserRoleDescriptions[role]}</ItemDescription>
+                            </ItemContent>
+                          </Item>
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FieldContent>
             </Field>
             {errors.submit && (

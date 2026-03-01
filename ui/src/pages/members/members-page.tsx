@@ -5,14 +5,21 @@ import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { Trash2, Users } from "lucide-react"
 import { toast } from "sonner"
 
-import { PROJECT_ROLES, ProjectRole, ProjectRoleLabels, projectsApi, type ProjectMember } from "@/api/projects"
+import { PROJECT_ROLES, ProjectRole, ProjectRoleLabels, ProjectRoleDescriptions, projectsApi, type ProjectMember } from "@/api/projects"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { AddMemberDialog } from "@/components/members/add-member-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
 
@@ -133,13 +140,28 @@ export function MembersPage() {
         return isViewer ? (
           <span className="text-xs">{ProjectRoleLabels[member.project_role as ProjectRole]}</span>
         ) : (
-          <SimpleCombobox
+          <Combobox
             value={member.project_role}
-            onValueChange={(val) => val && updateRoleMutation.mutate({ userId: member.user_id, role: val })}
-            options={PROJECT_ROLES.map((r) => ({ value: r, label: ProjectRoleLabels[r as ProjectRole] }))}
+            onValueChange={(val: string | null) => val && updateRoleMutation.mutate({ userId: member.user_id, role: val })}
             disabled={updateRoleMutation.isPending}
-            className="w-32"
-          />
+            itemToStringLabel={(v) => ProjectRoleLabels[v as ProjectRole] ?? v ?? ""}
+          >
+            <ComboboxInput className="w-32" />
+            <ComboboxContent>
+              <ComboboxList>
+                {PROJECT_ROLES.map((r) => (
+                  <ComboboxItem key={r} value={r}>
+                    <Item size="xs" className="p-0">
+                      <ItemContent>
+                        <ItemTitle>{ProjectRoleLabels[r as ProjectRole]}</ItemTitle>
+                        <ItemDescription>{ProjectRoleDescriptions[r as ProjectRole]}</ItemDescription>
+                      </ItemContent>
+                    </Item>
+                  </ComboboxItem>
+                ))}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
         )
       },
     },
