@@ -31,7 +31,13 @@ import {
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw } from "lucide-react"
 
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -275,17 +281,23 @@ export function DataTable<TData, TValue>({
             <div className="flex items-center space-x-6 lg:space-x-8">
               <div className="flex items-center space-x-2">
                 <p className="text-xs font-medium">Rows per page</p>
-                <SimpleCombobox
+                <Combobox
                   value={`${table.getState().pagination.pageSize}`}
-                  onValueChange={(value) => {
+                  onValueChange={(value: string | null) => {
                     value && table.setPageSize(Number(value))
                   }}
-                  options={[10, 20, 30, 40, 50].map((pageSize) => ({
-                    value: `${pageSize}`,
-                    label: `${pageSize}`,
-                  }))}
-                  className="h-8 w-16"
-                />
+                >
+                  <ComboboxInput className="h-8 w-16" />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {[10, 20, 30, 40, 50].map((pageSize) => (
+                        <ComboboxItem key={pageSize} value={`${pageSize}`}>
+                          {`${pageSize}`}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </div>
               <div className="flex w-25 items-center justify-center text-xs font-medium">
                 Page {table.getState().pagination.pageIndex + 1} of{" "}

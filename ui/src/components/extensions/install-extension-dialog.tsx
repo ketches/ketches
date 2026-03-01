@@ -22,7 +22,13 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 
 interface InstallExtensionToClusterDialogProps {
   open: boolean
@@ -212,14 +218,23 @@ export function InstallExtensionToClusterDialog({
                     Target Cluster *
                   </FieldLabel>
                   <FieldContent>
-                    <SimpleCombobox
+                    <Combobox
                       value={selectedClusterId}
                       onValueChange={(v) => v && setSelectedClusterId(v)}
-                      options={clusters.map((c) => ({ value: c.id, label: c.name }))}
-                      placeholder={clustersLoading ? "Loading clusters..." : "Select cluster"}
                       disabled={clustersLoading}
-                      className="w-full"
-                    />
+                      itemToStringLabel={(id) => clusters?.find((c) => c.id === id)?.name ?? id ?? ""}
+                    >
+                        <ComboboxInput placeholder={clustersLoading ? "Loading clusters..." : "Select cluster"} />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {clusters.map((c) => (
+                            <ComboboxItem key={c.id} value={c.id}>
+                              {c.name}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </FieldContent>
                 </Field>
               )}
@@ -239,14 +254,22 @@ export function InstallExtensionToClusterDialog({
               <Field>
                 <FieldLabel htmlFor="release-version">Version *</FieldLabel>
                 <FieldContent>
-                  <SimpleCombobox
+                  <Combobox
                     value={selectedVersion}
                     onValueChange={(v) => v && setSelectedVersion(v)}
-                    options={versions.map((v) => ({ value: v.version, label: v.version }))}
-                    placeholder={versionsLoading ? "Loading versions..." : "Select version"}
                     disabled={versionsLoading}
-                    className="w-full"
-                  />
+                  >
+                      <ComboboxInput placeholder={versionsLoading ? "Loading versions..." : "Select version"} />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {versions.map((v) => (
+                          <ComboboxItem key={v.version} value={v.version}>
+                            {v.version}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </FieldContent>
               </Field>
 

@@ -12,10 +12,18 @@ import {
 } from "@/api/container-registries"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+
+
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
 
@@ -157,146 +165,158 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit' : 'Add'} Image Registry</DialogTitle>
-          <DialogDescription>
-            {scope === 'cluster' ? 'Cluster-level registry available to all projects' : 'Project-level registry'}
-          </DialogDescription>
-        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>{isEdit ? 'Edit' : 'Add'} Image Registry</DialogTitle>
+            <DialogDescription>
+              {scope === 'cluster' ? 'Cluster-level registry available to all projects' : 'Project-level registry'}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>Name *</FieldLabel>
+                <FieldContent>
+                  <Input
+                    placeholder="My Container Registry"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  />
+                </FieldContent>
+              </Field>
+              <Field>
+                <FieldLabel>Provider *</FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    value={form.provider}
+                    onValueChange={(v: string | null) => v && handleProviderChange(v as ContainerRegistryProvider)}
+                    itemToStringLabel={(v) => registryProviderLabels[v as ContainerRegistryProvider] ?? v ?? ""}
+                  >
+                    <ComboboxInput />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {providers.map((p) => (
+                          <ComboboxItem key={p} value={p}>
+                            {registryProviderLabels[p]}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </FieldContent>
+              </Field>
+            </div>
+
             <Field>
-              <FieldLabel>Name *</FieldLabel>
+              <FieldLabel>Server *</FieldLabel>
               <FieldContent>
                 <Input
-                  placeholder="My Container Registry"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="https://registry.example.com"
+                  value={form.endpoint}
+                  onChange={(e) => setForm({ ...form, endpoint: e.target.value })}
                 />
               </FieldContent>
             </Field>
+
+            {(form.provider === 'harbor' || form.provider === 'custom') && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="skip-tls"
+                    checked={form.skip_tls_verify ?? false}
+                    onCheckedChange={(v) => setForm({ ...form, skip_tls_verify: v === true })}
+                  />
+                  <label htmlFor="skip-tls" className="cursor-pointer">
+                    Skip TLS verification
+                  </label>
+                </div>
+                <p className="text-[11px] text-muted-foreground -mt-4">
+                  Use for self-hosted registries (e.g. Harbor) without a valid TLS certificate. Default is TLS verified.
+                </p>
+              </>
+            )}
+
             <Field>
-              <FieldLabel>Provider *</FieldLabel>
-              <FieldContent>
-                <SimpleCombobox
-                  value={form.provider}
-                  onValueChange={(v) => v && handleProviderChange(v as ContainerRegistryProvider)}
-                  options={providers.map((p) => ({ value: p, label: registryProviderLabels[p] }))}
-                  className="w-full"
-                />
-              </FieldContent>
-            </Field>
-          </div>
-
-          <Field>
-            <FieldLabel>Server *</FieldLabel>
-            <FieldContent>
-              <Input
-                placeholder="https://registry.example.com"
-                value={form.endpoint}
-                onChange={(e) => setForm({ ...form, endpoint: e.target.value })}
-              />
-            </FieldContent>
-          </Field>
-
-          {(form.provider === 'harbor' || form.provider === 'custom') && (
-            <>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="skip-tls"
-                  checked={form.skip_tls_verify ?? false}
-                  onCheckedChange={(v) => setForm({ ...form, skip_tls_verify: v === true })}
-                />
-                <label htmlFor="skip-tls" className="cursor-pointer">
-                  Skip TLS verification
-                </label>
-              </div>
-              <p className="text-[11px] text-muted-foreground -mt-4">
-                Use for self-hosted registries (e.g. Harbor) without a valid TLS certificate. Default is TLS verified.
-              </p>
-            </>
-          )}
-
-          <Field>
-            <FieldLabel>Namespace / Organization</FieldLabel>
-            <FieldContent>
-              <Input
-                placeholder="my-org"
-                value={form.namespace}
-                onChange={(e) => setForm({ ...form, namespace: e.target.value })}
-              />
-            </FieldContent>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <FieldLabel>Username</FieldLabel>
+              <FieldLabel>Namespace / Organization</FieldLabel>
               <FieldContent>
                 <Input
-                  value={form.username}
-                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  placeholder="my-org"
+                  value={form.namespace}
+                  onChange={(e) => setForm({ ...form, namespace: e.target.value })}
                 />
               </FieldContent>
             </Field>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>Username</FieldLabel>
+                <FieldContent>
+                  <Input
+                    value={form.username}
+                    onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  />
+                </FieldContent>
+              </Field>
+              <Field>
+                <FieldLabel>Password</FieldLabel>
+                <FieldContent>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  />
+                </FieldContent>
+              </Field>
+            </div>
+
             <Field>
-              <FieldLabel>Password</FieldLabel>
+              <FieldLabel>Description</FieldLabel>
               <FieldContent>
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={2}
                 />
               </FieldContent>
             </Field>
-          </div>
 
-          <Field>
-            <FieldLabel>Description</FieldLabel>
-            <FieldContent>
-              <Textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                rows={2}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="is-default"
+                checked={form.is_default}
+                onCheckedChange={(v) => setForm({ ...form, is_default: v === true })}
               />
-            </FieldContent>
-          </Field>
+              <label htmlFor="is-default" className="cursor-pointer">
+                Default Registry
+              </label>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="is-default"
-              checked={form.is_default}
-              onCheckedChange={(v) => setForm({ ...form, is_default: v === true })}
-            />
-            <label htmlFor="is-default" className="cursor-pointer">
-              Default Registry
-            </label>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="is-enabled"
+                checked={form.enabled}
+                onCheckedChange={(v) => setForm({ ...form, enabled: v === true })}
+              />
+              <label htmlFor="is-enabled" className="cursor-pointer">
+                Enabled
+              </label>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="is-enabled"
-              checked={form.enabled}
-              onCheckedChange={(v) => setForm({ ...form, enabled: v === true })}
-            />
-            <label htmlFor="is-enabled" className="cursor-pointer">
-              Enabled
-            </label>
-          </div>
-        </div>
-
-        <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-          <Button variant="outline" onClick={() => testMutation.mutate()} disabled={testMutation.isPending}>
-            {testMutation.isPending ? <Loader2 className="animate-spin" /> : null}
-            <Link2 />
-            Test Connection
-          </Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? <Loader2 className="animate-spin" /> : null}
-            {isEdit ? 'Update' : 'Create'}
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+            <Button variant="outline" onClick={() => testMutation.mutate()} disabled={testMutation.isPending}>
+              {testMutation.isPending ? <Loader2 className="animate-spin" /> : null}
+              <Link2 />
+              Test Connection
+            </Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? <Loader2 className="animate-spin" /> : null}
+              {isEdit ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

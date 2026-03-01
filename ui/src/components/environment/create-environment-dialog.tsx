@@ -15,7 +15,15 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+
+
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useProjectStore } from "@/stores/project"
@@ -197,18 +205,28 @@ export function CreateEnvironmentDialog({
             <Field>
               <FieldLabel>Cluster *</FieldLabel>
               <FieldContent>
-                <SimpleCombobox
+                <Combobox
                   value={formData.cluster_id}
-                  onValueChange={(value) => value && setFormData((prev) => ({ ...prev, cluster_id: value }))}
-                  options={
-                    (clusters as Cluster[]).length === 0
-                      ? [{ value: "no-clusters", label: "No clusters available", disabled: true }]
-                      : (clusters as Cluster[]).map((cluster) => ({ value: cluster.id, label: cluster.name }))
-                  }
-                  placeholder="Select a cluster"
-                  className="w-full"
-                  aria-invalid={!!errors.cluster_id}
-                />
+                  onValueChange={(value: string | null) => value && setFormData((prev) => ({ ...prev, cluster_id: value }))}
+                  itemToStringLabel={(id) => (clusters as Cluster[]).find((c) => c.id === id)?.name ?? id ?? ""}
+                >
+                  <ComboboxInput placeholder="Select a cluster" aria-invalid={!!errors.cluster_id} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {(clusters as Cluster[]).length === 0 ? (
+                        <ComboboxItem value="no-clusters" disabled>
+                          No clusters available
+                        </ComboboxItem>
+                      ) : (
+                        (clusters as Cluster[]).map((cluster) => (
+                          <ComboboxItem key={cluster.id} value={cluster.id}>
+                            {cluster.name}
+                          </ComboboxItem>
+                        ))
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FieldContent>
               {errors.cluster_id && (
                 <FieldError>
