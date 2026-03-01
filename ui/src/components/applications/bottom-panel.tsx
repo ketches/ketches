@@ -16,17 +16,15 @@ import * as React from "react"
 import { appsApi } from "@/api/apps"
 import { clustersApi, type K8sNode } from "@/api/clusters"
 import { Button } from "@/components/ui/button"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import {
   Combobox,
   ComboboxContent,
   ComboboxGroup,
+  ComboboxInput,
   ComboboxItem,
   ComboboxLabel,
   ComboboxList,
   ComboboxSeparator,
-  ComboboxTrigger,
-  ComboboxValue,
 } from "@/components/ui/combobox"
 import { useSidebar } from "@/components/ui/sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -147,12 +145,21 @@ export function BottomPanel() {
             <span>/</span>
 
             {items.length > 1 ? (
-              <SimpleCombobox
+              <Combobox
                 value={panelState.instanceName}
                 onValueChange={handleInstanceChange}
-                options={items.map((item) => ({ value: item.name, label: item.name }))}
-                className="h-7 w-auto min-w-40 text-xs font-mono"
-              />
+              >
+                <ComboboxInput className="h-7 w-auto min-w-40 text-xs font-mono" />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {items.map((item) => (
+                      <ComboboxItem key={item.name} value={item.name}>
+                        {item.name}
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             ) : (
               <span className="font-mono">{panelState.instanceName}</span>
             )}
@@ -160,13 +167,11 @@ export function BottomPanel() {
             {hasMultipleContainers && (
               <>
                 <span>/</span>
-                <Combobox.Root
+                <Combobox
                   value={panelState.containerName}
                   onValueChange={(value) => value && switchContainer(value)}
                 >
-                  <ComboboxTrigger className="h-7 w-auto min-w-30 text-xs font-mono border-input bg-input/20 dark:bg-input/30 rounded-md border px-2 py-1.5 flex items-center gap-1.5 outline-none disabled:cursor-not-allowed disabled:opacity-50">
-                    <ComboboxValue />
-                  </ComboboxTrigger>
+                  <ComboboxInput className="h-7 w-auto min-w-30 text-xs font-mono" />
                   <ComboboxContent>
                     <ComboboxList>
                       {panelState.initContainers && panelState.initContainers.length > 0 && (
@@ -198,7 +203,7 @@ export function BottomPanel() {
                       </ComboboxGroup>
                     </ComboboxList>
                   </ComboboxContent>
-                </Combobox.Root>
+                </Combobox>
               </>
             )}
           </div>
