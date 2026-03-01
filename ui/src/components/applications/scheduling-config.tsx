@@ -12,10 +12,22 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel, FieldTitle } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { Textarea } from "@/components/ui/textarea"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
+
+const PLACEMENT_RULE_OPTIONS = [
+  { value: "nodeName", label: "Specific Node Name", description: "Strictly schedule on this exact node" },
+  { value: "nodeSelector", label: "Node Selector (Labels)", description: "Schedule on nodes matching label key-value pairs" },
+  { value: "nodeAffinity", label: "Node Affinity (Advanced)", description: "Advanced affinity rules in Kubernetes format" },
+]
 
 const schedulingSchema = z.object({
   rule_type: z.string(),
@@ -143,16 +155,29 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
                   control={control}
                   name="rule_type"
                   render={({ field }) => (
-                    <SimpleCombobox
+                    <Combobox
                       value={field.value}
-                      onValueChange={(v) => v && field.onChange(v)}
-                      options={[
-                        { value: "nodeName", label: "Specific Node Name", description: "Strictly schedule on this exact node" },
-                        { value: "nodeSelector", label: "Node Selector (Labels)", description: "Schedule on nodes matching label key-value pairs" },
-                        { value: "nodeAffinity", label: "Node Affinity (Advanced)", description: "Advanced affinity rules in Kubernetes format" },
-                      ]}
-                      className="w-full"
-                    />
+                      onValueChange={(v: string | null) => v && field.onChange(v)}
+                      itemToStringLabel={(v) => PLACEMENT_RULE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                    >
+                      <ComboboxInput />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {[
+                            { value: "nodeName", label: "Specific Node Name", description: "Strictly schedule on this exact node" },
+                            { value: "nodeSelector", label: "Node Selector (Labels)", description: "Schedule on nodes matching label key-value pairs" },
+                            { value: "nodeAffinity", label: "Node Affinity (Advanced)", description: "Advanced affinity rules in Kubernetes format" },
+                          ].map((option) => (
+                            <ComboboxItem key={option.value} value={option.value}>
+                              <div className="flex flex-col gap-0.5">
+                                <span>{option.label}</span>
+                                <span className="text-muted-foreground text-[10px] leading-relaxed">{option.description}</span>
+                              </div>
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   )}
                 />
               </FieldContent>
@@ -230,15 +255,27 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
                         control={control}
                         name={`tolerations.${index}.operator`}
                         render={({ field }) => (
-                          <SimpleCombobox
+                          <Combobox
                             value={field.value}
-                            onValueChange={(v) => v && field.onChange(v)}
-                            options={[
-                              { value: "Equal", label: "Equal", description: "Key/value must match exactly" },
-                              { value: "Exists", label: "Exists", description: "Key must exist (value ignored)" },
-                            ]}
-                            className="w-full"
-                          />
+                            onValueChange={(v: string | null) => v && field.onChange(v)}
+                          >
+                            <ComboboxInput />
+                            <ComboboxContent>
+                              <ComboboxList>
+                                {[
+                                  { value: "Equal", label: "Equal", description: "Key/value must match exactly" },
+                                  { value: "Exists", label: "Exists", description: "Key must exist (value ignored)" },
+                                ].map((option) => (
+                                  <ComboboxItem key={option.value} value={option.value}>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span>{option.label}</span>
+                                      <span className="text-muted-foreground text-[10px] leading-relaxed">{option.description}</span>
+                                    </div>
+                                  </ComboboxItem>
+                                ))}
+                              </ComboboxList>
+                            </ComboboxContent>
+                          </Combobox>
                         )}
                       />
                     </FieldContent>
@@ -254,17 +291,29 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
                         control={control}
                         name={`tolerations.${index}.effect`}
                         render={({ field }) => (
-                          <SimpleCombobox
+                          <Combobox
                             value={field.value}
-                            onValueChange={(v) => v && field.onChange(v)}
-                            options={[
-                              { value: "NoSchedule", label: "NoSchedule", description: "Do not schedule unless tolerated" },
-                              { value: "PreferNoSchedule", label: "PreferNoSchedule", description: "Prefer not to schedule unless tolerated" },
-                              { value: "NoExecute", label: "NoExecute", description: "Evict existing pods unless tolerated" },
-                              { value: "", label: "Any", description: "Matches all effects" },
-                            ]}
-                            className="w-full"
-                          />
+                            onValueChange={(v: string | null) => v && field.onChange(v)}
+                          >
+                            <ComboboxInput />
+                            <ComboboxContent>
+                              <ComboboxList>
+                                {[
+                                  { value: "NoSchedule", label: "NoSchedule", description: "Do not schedule unless tolerated" },
+                                  { value: "PreferNoSchedule", label: "PreferNoSchedule", description: "Prefer not to schedule unless tolerated" },
+                                  { value: "NoExecute", label: "NoExecute", description: "Evict existing pods unless tolerated" },
+                                  { value: "", label: "Any", description: "Matches all effects" },
+                                ].map((option) => (
+                                  <ComboboxItem key={option.value} value={option.value}>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span>{option.label}</span>
+                                      <span className="text-muted-foreground text-[10px] leading-relaxed">{option.description}</span>
+                                    </div>
+                                  </ComboboxItem>
+                                ))}
+                              </ComboboxList>
+                            </ComboboxContent>
+                          </Combobox>
                         )}
                       />
                     </FieldContent>

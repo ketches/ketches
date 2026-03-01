@@ -16,9 +16,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+
+
+const CONFLICT_STRATEGY_OPTIONS = [
+  { value: 'rename', label: 'Auto-rename', description: 'Append suffix to conflicting names' },
+  { value: 'ask', label: 'Ask (interactive)', description: 'Prompt on each conflict' },
+  { value: 'error', label: 'Error', description: 'Fail immediately if conflict exists' },
+]
 
 interface ImportAppsDialogProps {
   open: boolean
@@ -163,16 +176,29 @@ export function ImportAppsDialog({
             <Field>
               <FieldLabel htmlFor="strategy">Conflict Strategy</FieldLabel>
               <FieldContent>
-                <SimpleCombobox
+                <Combobox
                   value={conflictStrategy}
-                  onValueChange={(v) => v && setConflictStrategy(v as 'rename' | 'ask' | 'error')}
-                  options={[
-                    { value: 'rename', label: 'Auto-rename', description: 'Append suffix to conflicting names' },
-                    { value: 'ask', label: 'Ask (interactive)', description: 'Prompt on each conflict' },
-                    { value: 'error', label: 'Error', description: 'Fail immediately if conflict exists' },
-                  ]}
-                  className="w-full"
-                />
+                  onValueChange={(v: string | null) => v && setConflictStrategy(v as 'rename' | 'ask' | 'error')}
+                  itemToStringLabel={(v) => CONFLICT_STRATEGY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                >
+                  <ComboboxInput />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {[
+                        { value: 'rename', label: 'Auto-rename', description: 'Append suffix to conflicting names' },
+                        { value: 'ask', label: 'Ask (interactive)', description: 'Prompt on each conflict' },
+                        { value: 'error', label: 'Error', description: 'Fail immediately if conflict exists' },
+                      ].map((option) => (
+                        <ComboboxItem key={option.value} value={option.value}>
+                          <div className="flex flex-col gap-0.5">
+                            <span>{option.label}</span>
+                            <span className="text-muted-foreground text-[10px] leading-relaxed">{option.description}</span>
+                          </div>
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FieldContent>
             </Field>
           </div>

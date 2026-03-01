@@ -9,7 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { SimpleCombobox } from '@/components/ui/simple-combobox'
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -26,6 +32,13 @@ interface ExportAppsDialogProps {
 
 type ExportFormat = 'kubernetes' | 'ketches' | 'helm'
 type ExportScope = 'selected' | 'all'
+
+const EXPORT_FORMAT_OPTIONS = [
+  { value: 'kubernetes', label: 'Kubernetes Manifests', description: 'Raw Kubernetes YAML resources' },
+  { value: 'ketches', label: 'Ketches Metadata', description: 'Ketches-native application format' },
+  { value: 'helm', label: 'Helm Chart', description: 'Packaged Helm chart format' },
+]
+
 
 const downloadFile = (content: string, filename: string, contentType: string, isBase64 = false) => {
   let url: string
@@ -163,16 +176,29 @@ export function ExportAppsDialog({
             Format
           </FieldLabel>
           <FieldContent>
-            <SimpleCombobox
+            <Combobox
               value={format}
-              onValueChange={(v) => v && setFormat(v as ExportFormat)}
-              options={[
-                { value: 'kubernetes', label: 'Kubernetes Manifests', description: 'Raw Kubernetes YAML resources' },
-                { value: 'ketches', label: 'Ketches Metadata', description: 'Ketches-native application format' },
-                { value: 'helm', label: 'Helm Chart', description: 'Packaged Helm chart format' },
-              ]}
-              className="w-full"
-            />
+              onValueChange={(v: string | null) => v && setFormat(v as ExportFormat)}
+              itemToStringLabel={(v) => EXPORT_FORMAT_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+            >
+              <ComboboxInput />
+              <ComboboxContent>
+                <ComboboxList>
+                  {[
+                    { value: 'kubernetes', label: 'Kubernetes Manifests', description: 'Raw Kubernetes YAML resources' },
+                    { value: 'ketches', label: 'Ketches Metadata', description: 'Ketches-native application format' },
+                    { value: 'helm', label: 'Helm Chart', description: 'Packaged Helm chart format' },
+                  ].map((option) => (
+                    <ComboboxItem key={option.value} value={option.value}>
+                      <div className="flex flex-col gap-0.5">
+                        <span>{option.label}</span>
+                        <span className="text-muted-foreground text-[10px] leading-relaxed">{option.description}</span>
+                      </div>
+                    </ComboboxItem>
+                  ))}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </FieldContent>
 
           {isBatchMode && hasSelection && (
@@ -181,15 +207,29 @@ export function ExportAppsDialog({
                 Scope
               </FieldLabel>
               <FieldContent>
-                <SimpleCombobox
+                <Combobox
                   value={scope}
-                  onValueChange={(v) => v && setScope(v as ExportScope)}
-                  options={[
-                    { value: 'selected', label: `Selected Apps (${appIds?.length})` },
-                    { value: 'all', label: 'All Apps in Environment' },
-                  ]}
-                  className="w-full"
-                />
+                  onValueChange={(v: string | null) => v && setScope(v as ExportScope)}
+                  itemToStringLabel={(v) => {
+                    if (v === 'selected') return `Selected Apps (${appIds?.length})`
+                    if (v === 'all') return 'All Apps in Environment'
+                    return v ?? ""
+                  }}
+                >
+                  <ComboboxInput />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {[
+                        { value: 'selected', label: `Selected Apps (${appIds?.length})` },
+                        { value: 'all', label: 'All Apps in Environment' },
+                      ].map((option) => (
+                        <ComboboxItem key={option.value} value={option.value}>
+                          {option.label}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FieldContent>
             </>
           )}

@@ -18,7 +18,13 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 
 export interface VolumeSpec {
   id?: string
@@ -215,12 +221,22 @@ export function VolumeEditor({
             <Field>
               <FieldLabel htmlFor="volume-type">Storage Volume Type *</FieldLabel>
               <FieldContent>
-                <SimpleCombobox
+                <Combobox
                   value={formData.volume_type}
-                  onValueChange={(value) => value && setFormData((prev) => ({ ...prev, volume_type: value }))}
-                  options={VOLUME_TYPE_OPTIONS}
-                  className="w-full"
-                />
+                  onValueChange={(value: string | null) => value && setFormData((prev) => ({ ...prev, volume_type: value }))}
+                  itemToStringLabel={(v) => VOLUME_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                >
+                  <ComboboxInput />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {VOLUME_TYPE_OPTIONS.map((option) => (
+                        <ComboboxItem key={option.value} value={option.value}>
+                          {option.label}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FieldContent>
             </Field>
 
@@ -259,25 +275,32 @@ export function VolumeEditor({
                 <Field>
                   <FieldLabel htmlFor="storage-class">Storage Class</FieldLabel>
                   <FieldContent>
-                    <SimpleCombobox
+                    <Combobox
                       value={formData.storage_class || "default"}
-                      onValueChange={(value) =>
+                      onValueChange={(value: string | null) =>
                         value && setFormData((prev) => ({
                           ...prev,
                           storage_class: value === "default" ? "" : value,
                         }))
                       }
-                      options={[
-                        { value: "default", label: "Default (cluster default)" },
-                        ...storageClasses.map((sc: any) => ({
-                          value: sc.name,
-                          label: sc.name,
-                          description: `${sc.provisioner}${sc.isDefault ? " (default)" : ""}`,
-                        })),
-                      ]}
-                      placeholder="Select storage class (default: cluster default)"
-                      className="w-full"
-                    />
+                    >
+                      <ComboboxInput placeholder="Select storage class (default: cluster default)" />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          <ComboboxItem key="default" value="default">
+                            Default (cluster default)
+                          </ComboboxItem>
+                          {storageClasses.map((sc: any) => (
+                            <ComboboxItem key={sc.name} value={sc.name}>
+                              <div className="flex flex-col gap-0.5">
+                                <span>{sc.name}</span>
+                                <span className="text-muted-foreground text-[10px] leading-relaxed">{`${sc.provisioner}${sc.isDefault ? " (default)" : ""}`}</span>
+                              </div>
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </FieldContent>
                 </Field>
 
@@ -305,28 +328,47 @@ export function VolumeEditor({
                 <Field>
                   <FieldLabel htmlFor="access-modes">Access Mode *</FieldLabel>
                   <FieldContent>
-                    <SimpleCombobox
+                    <Combobox
                       value={formData.access_modes}
-                      onValueChange={(value) =>
+                      onValueChange={(value: string | null) =>
                         value && setFormData((prev) => ({ ...prev, access_modes: value }))
                       }
-                      options={ACCESS_MODE_OPTIONS}
-                      className="w-full"
-                    />
+                      itemToStringLabel={(v) => ACCESS_MODE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                    >
+                        <ComboboxInput />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {ACCESS_MODE_OPTIONS.map((option) => (
+                            <ComboboxItem key={option.value} value={option.value}>
+                              {option.label}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </FieldContent>
                 </Field>
 
                 <Field>
                   <FieldLabel htmlFor="volume-mode">Storage Mode *</FieldLabel>
                   <FieldContent>
-                    <SimpleCombobox
+                    <Combobox
                       value={formData.volume_mode}
-                      onValueChange={(value) =>
+                      onValueChange={(value: string | null) =>
                         value && setFormData((prev) => ({ ...prev, volume_mode: value }))
                       }
-                      options={VOLUME_MODE_OPTIONS}
-                      className="w-full"
-                    />
+                    >
+                        <ComboboxInput />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {VOLUME_MODE_OPTIONS.map((option) => (
+                            <ComboboxItem key={option.value} value={option.value}>
+                              {option.label}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </FieldContent>
                 </Field>
               </>

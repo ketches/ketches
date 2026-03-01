@@ -10,12 +10,22 @@ import { appsApi } from "@/api/apps"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList
+} from "@/components/ui/combobox"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
 
+const METRIC_OPTIONS = [
+  { value: "cpu", label: "CPU Utilization" },
+  { value: "memory", label: "Memory Utilization" },
+]
 const autoScalingSchema = z.object({
   enabled: z.boolean(),
   min_replicas: z.number().min(0),
@@ -118,20 +128,30 @@ export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium">Metrics</h4>
                 {(!cpuEnabled || !memoryEnabled) && (
-                  <SimpleCombobox
+                  <Combobox
                     value={null}
-                    onValueChange={(value) => {
+                    onValueChange={(value: string | null) => {
                       if (value === "cpu") setValue("cpu_enabled", true)
                       if (value === "memory") setValue("memory_enabled", true)
                     }}
-                    options={[
-                      ...(!cpuEnabled ? [{ value: "cpu", label: "CPU Utilization" }] : []),
-                      ...(!memoryEnabled ? [{ value: "memory", label: "Memory Utilization" }] : []),
-                    ]}
-                    placeholder="Add Metric"
+                    itemToStringLabel={(v) => METRIC_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
                     disabled={!enabled}
-                    className="w-40 h-8 text-xs"
-                  />
+                  >
+                    <ComboboxInput placeholder="Add Metric" />
+                    <ComboboxInput placeholder="Add Metric" />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {[
+                          ...(!cpuEnabled ? [{ value: "cpu", label: "CPU Utilization" }] : []),
+                          ...(!memoryEnabled ? [{ value: "memory", label: "Memory Utilization" }] : []),
+                        ].map((option) => (
+                          <ComboboxItem key={option.value} value={option.value}>
+                            {option.label}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 )}
               </div>
 

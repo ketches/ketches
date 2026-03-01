@@ -10,6 +10,13 @@ import { envsApi } from "@/api/envs"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,8 +26,8 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface GatewayEditorProps {
   app: App
@@ -31,12 +38,6 @@ interface GatewayEditorProps {
 }
 
 
-const PROTOCOL_LABELS: Record<string, string> = {
-  http: 'HTTP',
-  https: 'HTTPS',
-  tcp: 'TCP',
-  udp: 'UDP'
-}
 
 export function GatewayEditor({
   app,
@@ -266,17 +267,40 @@ export function GatewayEditor({
               <Field>
                 <FieldLabel>Protocol *</FieldLabel>
                 <FieldContent>
-                  <SimpleCombobox
+                  <Combobox
                     value={formData.protocol}
-                    onValueChange={(value) => value && setFormData((prev) => ({ ...prev, protocol: value }))}
-                    options={[
-                      { value: "http", label: "HTTP", description: "Plaintext HTTP routing" },
-                      { value: "https", label: "HTTPS", description: "TLS-terminated HTTPS routing" },
-                      { value: "tcp", label: "TCP", description: "Raw TCP passthrough" },
-                      { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
-                    ]}
-                    className="w-full"
-                  />
+                    onValueChange={(value: string | null) => value && setFormData((prev) => ({ ...prev, protocol: value }))}
+                  >
+                    <ComboboxInput />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {[
+                          { value: "http", label: "HTTP", description: "Plaintext HTTP routing" },
+                          { value: "https", label: "HTTPS", description: "TLS-terminated HTTPS routing" },
+                          { value: "tcp", label: "TCP", description: "Raw TCP passthrough" },
+                          { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
+                        ].map((option) => (
+                          <ComboboxItem key={option.value} value={option.value}>
+                            {/* <div className="flex flex-col gap-0.5">
+                              <span>{option.label}</span>
+                              <span className="text-muted-foreground text-[10px] leading-relaxed">{option.description}</span>
+                            </div> */}
+
+                            <Item size="xs" className="p-0">
+                              <ItemContent>
+                                <ItemTitle className="whitespace-nowrap">
+                                  {option.label}
+                                </ItemTitle>
+                                <ItemDescription>
+                                  {option.description}
+                                </ItemDescription>
+                              </ItemContent>
+                            </Item>
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </FieldContent>
                 {errors.protocol && (
                   <FieldError>
@@ -404,13 +428,22 @@ export function GatewayEditor({
                       </Tooltip>
                     </FieldLabel>
                     <FieldContent>
-                      <SimpleCombobox
+                      <Combobox
                         value={formData.cert_id || null}
-                        onValueChange={(v) => setFormData((prev) => ({ ...prev, cert_id: v || undefined }))}
-                        options={certificates.map((cert) => ({ value: cert.id, label: cert.label }))}
-                        placeholder="Select a certificate"
-                        className="w-full"
-                      />
+                        onValueChange={(v: string | null) => setFormData((prev) => ({ ...prev, cert_id: v || undefined }))}
+                        itemToStringLabel={(v) => certificates.find((c) => c.id === v)?.label ?? v ?? ""}
+                      >
+                        <ComboboxInput placeholder="Select a certificate" />
+                        <ComboboxContent>
+                          <ComboboxList>
+                            {certificates.map((cert) => (
+                              <ComboboxItem key={cert.id} value={cert.id}>
+                                {cert.label}
+                              </ComboboxItem>
+                            ))}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
                     </FieldContent>
                   </Field>
                 )}

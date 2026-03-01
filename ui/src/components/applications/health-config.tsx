@@ -12,9 +12,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
+
+const PROBE_TYPE_OPTIONS = [
+  { value: "readiness", label: "READINESS" },
+  { value: "liveness", label: "LIVENESS" },
+  { value: "startup", label: "STARTUP" },
+]
+
+const PROBE_MODE_OPTIONS = [
+  { value: "httpGet", label: "HTTP GET" },
+  { value: "tcpSocket", label: "TCP Socket" },
+  { value: "exec", label: "Exec Command" },
+]
 
 const probeSchema = z.object({
   probes: z.array(z.object({
@@ -113,16 +131,26 @@ export function HealthConfig({ app }: ProbeConfigProps) {
                           control={control}
                           name={`probes.${index}.type`}
                           render={({ field }) => (
-                            <SimpleCombobox
+                            <Combobox
                               value={field.value}
                               onValueChange={(v) => v && field.onChange(v)}
-                              options={[
-                                { value: "readiness", label: "READINESS" },
-                                { value: "liveness", label: "LIVENESS" },
-                                { value: "startup", label: "STARTUP" },
-                              ]}
-                              className="w-40 font-bold uppercase"
-                            />
+                              itemToStringLabel={(v) => PROBE_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                            >
+                              <ComboboxInput />
+                              <ComboboxContent>
+                                <ComboboxList>
+                                  {[
+                                    { value: "readiness", label: "READINESS" },
+                                    { value: "liveness", label: "LIVENESS" },
+                                    { value: "startup", label: "STARTUP" },
+                                  ].map((option) => (
+                                    <ComboboxItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </ComboboxItem>
+                                  ))}
+                                </ComboboxList>
+                              </ComboboxContent>
+                            </Combobox>
                           )}
                         />
                       </FieldContent>
@@ -156,16 +184,26 @@ export function HealthConfig({ app }: ProbeConfigProps) {
                             control={control}
                             name={`probes.${index}.probe_mode`}
                             render={({ field }) => (
-                              <SimpleCombobox
+                              <Combobox
                                 value={field.value}
                                 onValueChange={(v) => v && field.onChange(v)}
-                                options={[
-                                  { value: "httpGet", label: "HTTP GET" },
-                                  { value: "tcpSocket", label: "TCP Socket" },
-                                  { value: "exec", label: "Exec Command" },
-                                ]}
-                                className="w-full"
-                              />
+                                itemToStringLabel={(v) => PROBE_MODE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                              >
+                                <ComboboxInput />
+                                <ComboboxContent>
+                                  <ComboboxList>
+                                    {[
+                                      { value: "httpGet", label: "HTTP GET" },
+                                      { value: "tcpSocket", label: "TCP Socket" },
+                                      { value: "exec", label: "Exec Command" },
+                                    ].map((option) => (
+                                      <ComboboxItem key={option.value} value={option.value}>
+                                        {option.label}
+                                      </ComboboxItem>
+                                    ))}
+                                  </ComboboxList>
+                                </ComboboxContent>
+                              </Combobox>
                             )}
                           />
                         </FieldContent>
