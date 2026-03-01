@@ -23,6 +23,12 @@ export const ProjectRoleLabels: Record<ProjectRole, string> = {
   [ProjectRole.VIEWER]: 'Viewer',
 }
 
+export const ProjectRoleDescriptions: Record<ProjectRole, string> = {
+  [ProjectRole.OWNER]: 'Full project access, can manage members and settings',
+  [ProjectRole.DEVELOPER]: 'Can deploy and manage applications',
+  [ProjectRole.VIEWER]: 'Read-only access to project resources',
+}
+
 export const PROJECT_ROLES = Object.values(ProjectRole) as ProjectRole[]
 
 export interface ProjectMember {
