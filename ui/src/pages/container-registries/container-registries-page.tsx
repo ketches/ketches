@@ -167,7 +167,7 @@ export function ContainerRegistriesPage() {
     ...(isViewer ? [] : [{
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
-      cell: ({ row }) => (
+      cell: ({ row }: { row: import('@tanstack/react-table').Row<ContainerRegistry> }) => (
         <div className="flex items-center justify-end gap-2">
           <Tooltip>
             <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={() => { setEditingRegistry(row.original); setEditDialogOpen(true) }} />}>

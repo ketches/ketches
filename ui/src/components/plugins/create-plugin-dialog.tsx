@@ -128,14 +128,14 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-160 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create Plugin</DialogTitle>
-          <DialogDescription>
-            Add a new plugin to the catalog. Plugins can be installed as init containers or sidecars.
-          </DialogDescription>
-        </DialogHeader>
-
         <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create Plugin</DialogTitle>
+            <DialogDescription>
+              Add a new plugin to the catalog. Plugins can be installed as init containers or sidecars.
+            </DialogDescription>
+          </DialogHeader>
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <Field>

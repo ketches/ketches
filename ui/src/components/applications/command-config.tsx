@@ -35,7 +35,7 @@ export function CommandConfig({ app }: CommandConfigProps) {
 
   const updateMutation = useMutation({
     mutationFn: (values: z.infer<typeof commandSchema>) => {
-      return appsApi.updateCommand(app.id, values.container_command)
+      return appsApi.updateCommand(app.id, values.container_command || "")
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
