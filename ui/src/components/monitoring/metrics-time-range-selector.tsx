@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { type TimeRange, TIME_RANGES } from "./use-time-range"
 
 interface MetricsTimeRangeSelectorProps {
@@ -8,18 +8,14 @@ interface MetricsTimeRangeSelectorProps {
 
 export function MetricsTimeRangeSelector({ value, onChange }: MetricsTimeRangeSelectorProps) {
   return (
-    <div className="flex items-center gap-1">
-      {TIME_RANGES.map((range) => (
-        <Button
-          key={range.value}
-          variant={value === range.value ? "default" : "outline"}
-          size="sm"
-          className="h-7 px-2.5 text-xs"
-          onClick={() => onChange(range.value)}
-        >
-          {range.label}
-        </Button>
-      ))}
-    </div>
+    <Tabs value={value} onValueChange={(v) => onChange(v as TimeRange)}>
+      <TabsList>
+        {TIME_RANGES.map((range) => (
+          <TabsTrigger key={range.value} value={range.value}>
+            {range.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   )
 }

@@ -110,7 +110,7 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
 
   if (prometheusLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="min-h-[500px] flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -118,17 +118,19 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
 
   if (prometheusAvailable === false) {
     return (
-      <EmptyState
-        title="Prometheus Not Available"
-        description="This cluster does not have a Prometheus integration configured. Please contact your administrator to add Prometheus monitoring to this environment's cluster."
-        icon={AlertCircle}
-      />
+      <div className="min-h-[500px]">
+        <EmptyState
+          title="Prometheus Not Available"
+          description="This cluster does not have a Prometheus integration configured. Please contact your administrator to add Prometheus monitoring to this environment's cluster."
+          icon={AlertCircle}
+        />
+      </div>
     )
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="min-h-[500px] flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -136,7 +138,7 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-6 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
+      <div className="min-h-[500px] flex flex-col items-center justify-center py-6 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon" className="bg-destructive/10 text-destructive">
@@ -161,32 +163,22 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
 
   if (!metrics || metrics.chartData.length === 0) {
     return (
-      // <div className="flex flex-col items-center justify-center text-center bg-muted/20 rounded-md border border-dashed">
-      //   <Empty>
-      //     <EmptyHeader>
-      //       <EmptyMedia variant="icon">
-      //         <CircleQuestionMark className="text-muted-foreground" />
-      //       </EmptyMedia>
-      //       <EmptyDescription>
-      //         No metrics data found.
-      //       </EmptyDescription>
-      //     </EmptyHeader>
-      //   </Empty>
-      // </div>
-      <EmptyState
-        title="No Metrics Data"
-        description="We couldn't find any resource metrics for this environment. This could be due to a connection issue with Prometheus or simply because there hasn't been any activity in the environment recently."
-        icon={CircleQuestionMark}
-      />
+      <div className="min-h-[500px]">
+        <EmptyState
+          title="No Metrics Data"
+          description="We couldn't find any resource metrics for this environment. This could be due to a connection issue with Prometheus or simply because there hasn't been any activity in the environment recently."
+          icon={CircleQuestionMark}
+        />
+      </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Resource Metrics</span>
+    <div className="space-y-4 min-h-[500px]">
+      <div className="flex items-center justify-end">
         <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
       </div>
+
       {/* Row 1: CPU Usage, CPU Utilization, Memory Usage */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

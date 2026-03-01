@@ -122,7 +122,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
 
   if (prometheusLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="min-h-[600px] flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -130,17 +130,19 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
 
   if (prometheusAvailable === false) {
     return (
-      <EmptyState
-        title="Prometheus Not Available"
-        description="This cluster does not have a Prometheus integration configured. Please contact your administrator to add Prometheus monitoring to this cluster."
-        icon={AlertCircle}
-      />
+      <div className="min-h-[600px]">
+        <EmptyState
+          title="Prometheus Not Available"
+          description="This cluster does not have a Prometheus integration configured. Please contact your administrator to add Prometheus monitoring to this cluster."
+          icon={AlertCircle}
+        />
+      </div>
     )
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="min-h-[600px] flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -148,7 +150,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-6 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
+      <div className="min-h-[600px] flex flex-col items-center justify-center py-6 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon" className="bg-destructive/10 text-destructive">
@@ -173,7 +175,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
 
   if (!metrics || metrics.chartData.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-md border border-dashed">
+      <div className="min-h-[600px] flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-md border border-dashed">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -189,9 +191,8 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Resource Metrics</span>
+    <div className="space-y-4 min-h-[600px]">
+      <div className="flex items-center justify-end">
         <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
       </div>
       <div className="grid gap-4 md:grid-cols-4">

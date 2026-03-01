@@ -17,6 +17,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -135,20 +136,21 @@ export function InstanceResourceMetrics({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[90vw] w-full min-h-[70vh] flex flex-col">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>Instance Metrics — {podName}</DialogTitle>
+          <DialogTitle>Instance Metrics</DialogTitle>
+          <DialogDescription className="flex items-center justify-between">
+            <span>{podName}</span>
             <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
-          </div>
+          </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center min-h-[500px]">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center py-6 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
+          <div className="flex flex-col items-center justify-center min-h-[500px] bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon" className="bg-destructive/10 text-destructive">
@@ -159,7 +161,7 @@ export function InstanceResourceMetrics({
             </Empty>
           </div>
         ) : !metrics || metrics.chartData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-md border border-dashed">
+          <div className="flex flex-col items-center justify-center min-h-[500px] text-center bg-muted/20 rounded-md border border-dashed">
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -170,6 +172,7 @@ export function InstanceResourceMetrics({
             </Empty>
           </div>
         ) : (
+
           <div className="space-y-4">
             {/* Row 1: CPU Usage, Memory Usage */}
             <div className="grid gap-4 md:grid-cols-2">
