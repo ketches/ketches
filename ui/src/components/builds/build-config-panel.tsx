@@ -10,7 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldLabel, FieldTitle } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
 
@@ -241,18 +248,22 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
             <Field>
               <FieldLabel>Target Registry *</FieldLabel>
               <FieldContent>
-                <SimpleCombobox
+                <Combobox
                   value={form.registry_id}
                   onValueChange={(v) => v && setForm({ ...form, registry_id: v })}
-                  options={
-                    registries?.map((r: ContainerRegistry) => ({
-                      value: r.id,
-                      label: `${r.name} (${registryProviderLabels[r.provider]})`
-                    })) ?? []
-                  }
-                  placeholder="Select a registry"
-                  className="w-full"
-                />
+                  itemToStringLabel={(id) => registries?.find((r: ContainerRegistry) => r.id === id)?.name ?? id ?? ""}
+                >
+                    <ComboboxInput placeholder="Select a registry" />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {registries?.map((r: ContainerRegistry) => (
+                        <ComboboxItem key={r.id} value={r.id}>
+                          {`${r.name} (${registryProviderLabels[r.provider]})`}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FieldContent>
             </Field>
           </div>

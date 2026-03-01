@@ -13,7 +13,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import type { AxiosError } from "axios"
 
 interface UnifiedBuildDeployDialogProps {
@@ -92,9 +98,6 @@ export function UnifiedBuildDeployDialog({
   )
 
   const selectedConfig = (buildConfigs as CodeRepositoryBuildConfig[]).find((c) => c.id === selectedConfigId)
-  const selectedBuildEnv = envs.find((e: SimpleResponse) => e.id === buildEnvId)
-  const selectedDeployEnv = envs.find((e: SimpleResponse) => e.id === deployEnvId)
-  const selectedApp = existingRepoApps.find((a) => a.id === deployAppId)
   const isBuildConfigMode = !!preSelectedConfigId && !preSelectedBuildId
   const isCodeRepoMode = !preSelectedConfigId && !preSelectedBuildId
 
@@ -321,16 +324,22 @@ export function UnifiedBuildDeployDialog({
                 <Field>
                   <FieldLabel>Build Config *</FieldLabel>
                   <FieldContent>
-                    <SimpleCombobox
+                    <Combobox
                       value={selectedConfigId}
                       onValueChange={(v) => v !== null && setSelectedConfigId(v)}
-                      options={(buildConfigs || []).map((config) => ({
-                        value: config.id,
-                        label: config.name,
-                      }))}
-                      placeholder="Select build config"
-                      className="w-full"
-                    />
+                      itemToStringLabel={(id) => buildConfigs?.find((c: CodeRepositoryBuildConfig) => c.id === id)?.name ?? id ?? ""}
+                    >
+                        <ComboboxInput placeholder="Select build config" />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {(buildConfigs || []).map((config) => (
+                            <ComboboxItem key={config.id} value={config.id}>
+                              {config.name}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </FieldContent>
                 </Field>
               )}
@@ -352,16 +361,22 @@ export function UnifiedBuildDeployDialog({
                   <Field>
                     <FieldLabel>Build Environment *</FieldLabel>
                     <FieldContent>
-                      <SimpleCombobox
+                      <Combobox
                         value={buildEnvId}
                         onValueChange={(v) => v !== null && setBuildEnvId(v)}
-                        options={(envs || []).map((env: SimpleResponse) => ({
-                          value: env.id,
-                          label: `${env.name}${env.metadata?.is_build_env === "true" ? " (Build Env)" : ""}`,
-                        }))}
-                        placeholder="Select build environment"
-                        className="w-full"
-                      />
+                        itemToStringLabel={(id) => envs?.find((e: SimpleResponse) => e.id === id)?.name ?? id ?? ""}
+                      >
+                          <ComboboxInput placeholder="Select build environment" />
+                        <ComboboxContent>
+                          <ComboboxList>
+                            {(envs || []).map((env: SimpleResponse) => (
+                              <ComboboxItem key={env.id} value={env.id}>
+                                {`${env.name}${env.metadata?.is_build_env === "true" ? " (Build Env)" : ""}`}
+                              </ComboboxItem>
+                            ))}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
                     </FieldContent>
                   </Field>
 
@@ -388,16 +403,22 @@ export function UnifiedBuildDeployDialog({
                 <Field>
                   <FieldLabel>Deploy Environment *</FieldLabel>
                   <FieldContent>
-                    <SimpleCombobox
+                    <Combobox
                       value={deployEnvId}
                       onValueChange={(v) => v !== null && setDeployEnvId(v)}
-                      options={(deployEnvs || []).map((env: SimpleResponse) => ({
-                        value: env.id,
-                        label: env.name,
-                      }))}
-                      placeholder="Select deploy environment"
-                      className="w-full"
-                    />
+                      itemToStringLabel={(id) => deployEnvs?.find((e: SimpleResponse) => e.id === id)?.name ?? id ?? ""}
+                    >
+                        <ComboboxInput placeholder="Select deploy environment" />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {(deployEnvs || []).map((env: SimpleResponse) => (
+                            <ComboboxItem key={env.id} value={env.id}>
+                              {env.name}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </FieldContent>
                 </Field>
               )}
@@ -415,16 +436,22 @@ export function UnifiedBuildDeployDialog({
                           <FieldLabel>Deploy to Application *</FieldLabel>
                           <FieldContent>
                             <div className="flex gap-2">
-                              <SimpleCombobox
+                              <Combobox
                                 value={deployAppId}
                                 onValueChange={(v) => v !== null && setDeployAppId(v)}
-                                options={(existingRepoApps || []).map((app) => ({
-                                  value: app.id,
-                                  label: app.name,
-                                }))}
-                                placeholder="Select application"
-                                className="flex-1"
-                              />
+                                itemToStringLabel={(id) => existingRepoApps?.find((a: SimpleResponse) => a.id === id)?.name ?? id ?? ""}
+                              >
+                                  <ComboboxInput placeholder="Select application" className="flex-1" />
+                                <ComboboxContent>
+                                  <ComboboxList>
+                                    {(existingRepoApps || []).map((app) => (
+                                      <ComboboxItem key={app.id} value={app.id}>
+                                        {app.name}
+                                      </ComboboxItem>
+                                    ))}
+                                  </ComboboxList>
+                                </ComboboxContent>
+                              </Combobox>
                               <Button
                                 variant="outline"
                                 size="icon"

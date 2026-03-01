@@ -1,18 +1,16 @@
 import { useQuery } from "@tanstack/react-query"
-import { GitBranch, Loader2, Tag } from "lucide-react"
+import { GitBranch, Tag } from "lucide-react"
 
 import { codeRepositoriesApi } from "@/api/code-repositories"
 import { Combobox } from "@base-ui/react"
 import {
   ComboboxContent,
   ComboboxGroup,
+  ComboboxInput,
   ComboboxItem,
   ComboboxLabel,
   ComboboxList,
-  ComboboxTrigger,
-  ComboboxValue,
 } from "@/components/ui/combobox"
-import { cn } from "@/lib/utils"
 
 interface GitRefSelectProps {
   repoId: string
@@ -45,23 +43,7 @@ export function GitRefSelect({
 
   return (
     <Combobox.Root value={value} onValueChange={onValueChange} disabled={disabled || isLoading}>
-      <ComboboxTrigger
-        className={cn(
-          "border-input data-[placeholder]:text-muted-foreground bg-input/20 dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 gap-1.5 rounded-md border px-2 py-1.5 text-xs/relaxed transition-colors focus-visible:ring-[2px] h-7 flex w-full items-center justify-between whitespace-nowrap outline-none disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-      >
-        <ComboboxValue placeholder={placeholder}>
-          {isLoading ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Loading...</span>
-            </div>
-          ) : (
-            value
-          )}
-        </ComboboxValue>
-      </ComboboxTrigger>
+      <ComboboxInput placeholder={isLoading ? "Loading..." : placeholder} className={className} />
       <ComboboxContent>
         <ComboboxList>
           {value && !hasValueInRefs && (
