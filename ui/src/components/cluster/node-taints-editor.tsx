@@ -14,7 +14,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 
 interface NodeTaintsEditorProps {
   clusterId: string
@@ -112,16 +118,34 @@ export function NodeTaintsEditor({
                 onChange={(e) => handleChange(index, "taint_value", e.target.value)}
                 className="flex-1 font-mono text-xs"
               />
-              <SimpleCombobox
+              <Combobox
                 value={taint.effect}
                 onValueChange={(v) => v && handleChange(index, "effect", v)}
-                options={[
-                  { value: "NoSchedule", label: "NoSchedule", description: "Do not schedule unless tolerated" },
-                  { value: "PreferNoSchedule", label: "PreferNoSchedule", description: "Prefer not to schedule" },
-                  { value: "NoExecute", label: "NoExecute", description: "Evict existing pods unless tolerated" },
-                ]}
-                className="w-40"
-              />
+              >
+                <ComboboxInput className="w-40" />
+                <ComboboxContent>
+                  <ComboboxList>
+                    <ComboboxItem value="NoSchedule">
+                      <div className="flex flex-col">
+                        <span>NoSchedule</span>
+                        <span className="text-muted-foreground text-[10px]">Do not schedule unless tolerated</span>
+                      </div>
+                    </ComboboxItem>
+                    <ComboboxItem value="PreferNoSchedule">
+                      <div className="flex flex-col">
+                        <span>PreferNoSchedule</span>
+                        <span className="text-muted-foreground text-[10px]">Prefer not to schedule</span>
+                      </div>
+                    </ComboboxItem>
+                    <ComboboxItem value="NoExecute">
+                      <div className="flex flex-col">
+                        <span>NoExecute</span>
+                        <span className="text-muted-foreground text-[10px]">Evict existing pods unless tolerated</span>
+                      </div>
+                    </ComboboxItem>
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
               <Button
                 variant="ghost"
                 size="icon"

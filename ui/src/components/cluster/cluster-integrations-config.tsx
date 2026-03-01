@@ -14,7 +14,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { SimpleCombobox } from "@/components/ui/simple-combobox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { Textarea } from "@/components/ui/textarea"
 import type { ColumnDef } from "@tanstack/react-table"
 
@@ -346,27 +352,58 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                 <Field>
                   <FieldLabel>Type</FieldLabel>
                   <FieldContent>
-                    <SimpleCombobox
+                    <Combobox
                       value={formData.integration_type}
                       onValueChange={(v) => v && setFormData({ ...formData, integration_type: v as IntegrationType })}
-                      options={INTEGRATION_TYPES.map((t) => ({ value: t.value, label: t.label, description: t.description }))}
                       disabled={!!editingIntegration}
-                      className="w-full"
-                    />
+                      itemToStringLabel={(v) => INTEGRATION_TYPES.find((t) => t.value === v)?.label ?? v ?? ""}
+                    >
+                      <ComboboxInput />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {INTEGRATION_TYPES.map((t) => (
+                            <ComboboxItem key={t.value} value={t.value}>
+                              <div className="flex flex-col">
+                                <span>{t.label}</span>
+                                <span className="text-muted-foreground text-[10px]">{t.description}</span>
+                              </div>
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </FieldContent>
                 </Field>
                 <Field>
                   <FieldLabel>Access Mode</FieldLabel>
                   <FieldContent>
-                    <SimpleCombobox
+                    <Combobox
                       value={formData.access_mode}
                       onValueChange={(v) => v && setFormData({ ...formData, access_mode: v as "endpoint" | "service" })}
-                      options={[
-                        { value: "endpoint", label: "Endpoint URL", description: "Direct external URL endpoint" },
-                        { value: "service", label: "Cluster Service Proxy", description: "Route through an in-cluster Kubernetes service" },
-                      ]}
-                      className="w-full"
-                    />
+                      itemToStringLabel={(v) => {
+                        if (v === 'endpoint') return 'Endpoint URL';
+                        if (v === 'service') return 'Cluster Service Proxy';
+                        return v ?? "";
+                      }}
+                    >
+                      <ComboboxInput />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          <ComboboxItem value="endpoint">
+                            <div className="flex flex-col">
+                              <span>Endpoint URL</span>
+                              <span className="text-muted-foreground text-[10px]">Direct external URL endpoint</span>
+                            </div>
+                          </ComboboxItem>
+                          <ComboboxItem value="service">
+                            <div className="flex flex-col">
+                              <span>Cluster Service Proxy</span>
+                              <span className="text-muted-foreground text-[10px]">Route through an in-cluster Kubernetes service</span>
+                            </div>
+                          </ComboboxItem>
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </FieldContent>
                 </Field>
               </div>
@@ -388,27 +425,43 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                 <Field>
                   <FieldLabel>Namespace</FieldLabel>
                   <FieldContent>
-                    <SimpleCombobox
+                    <Combobox
                       value={formData.namespace || ""}
                       onValueChange={(v) => setFormData({ ...formData, namespace: v ?? "", service_name: "" })}
-                      options={namespaces.map((ns) => ({ value: ns, label: ns }))}
-                      placeholder="Select namespace"
-                      className="w-full"
-                    />
+                    >
+                      <ComboboxInput placeholder="Select namespace" />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {namespaces.map((ns) => (
+                            <ComboboxItem key={ns} value={ns}>
+                              {ns}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </FieldContent>
                 </Field>
                 <div className="flex gap-2">
                   <Field className="flex-1">
                     <FieldLabel>Service Name</FieldLabel>
                     <FieldContent>
-                      <SimpleCombobox
+                      <Combobox
                         value={formData.service_name || ""}
                         onValueChange={(v) => setFormData({ ...formData, service_name: v ?? "" })}
-                        options={services.map((svc) => ({ value: svc, label: svc }))}
-                        placeholder="Select service"
                         disabled={!formData.namespace}
-                        className="w-full"
-                      />
+                      >
+                        <ComboboxInput placeholder="Select service" />
+                        <ComboboxContent>
+                          <ComboboxList>
+                            {services.map((svc) => (
+                              <ComboboxItem key={svc} value={svc}>
+                                {svc}
+                              </ComboboxItem>
+                            ))}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
                     </FieldContent>
                   </Field>
                   <Field className="w-24">
