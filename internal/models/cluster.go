@@ -36,6 +36,13 @@ type CreateClusterRequest struct {
 	GatewayIP   string `json:"gateway_ip"`
 }
 
+type UpdateClusterRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+	KubeConfig  string `json:"kube_config" binding:"required"`
+	GatewayIP   string `json:"gateway_ip"`
+}
+
 type PingClusterRequest struct {
 	KubeConfig string `json:"kube_config" binding:"required"`
 }

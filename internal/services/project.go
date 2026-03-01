@@ -111,20 +111,12 @@ func GetProject(projectID string) (*entities.Project, error) {
 	return &project, nil
 }
 
-func UpdateProject(projectID string, req *models.CreateProjectRequest) (*entities.Project, error) {
+func UpdateProject(projectID string, req *models.UpdateBasicInfoRequest) (*entities.Project, error) {
 	project, err := GetProject(projectID)
 	if err != nil {
 		return nil, err
 	}
 
-	if project.Slug != req.Slug {
-		var existing entities.Project
-		if err := db.DB.Where("slug = ? AND id != ?", req.Slug, projectID).First(&existing).Error; err == nil {
-			return nil, errors.New("project with this slug already exists")
-		}
-	}
-
-	project.Slug = req.Slug
 	project.Name = req.Name
 	project.Description = req.Description
 

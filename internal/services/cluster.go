@@ -79,20 +79,12 @@ func GetCluster(clusterID string) (*entities.Cluster, error) {
 	return &cluster, nil
 }
 
-func UpdateCluster(clusterID string, req *models.CreateClusterRequest) (*entities.Cluster, error) {
+func UpdateCluster(clusterID string, req *models.UpdateClusterRequest) (*entities.Cluster, error) {
 	cluster, err := GetCluster(clusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	if cluster.Slug != req.Slug {
-		var existing entities.Cluster
-		if err := db.DB.Where("slug = ? AND id != ?", req.Slug, clusterID).First(&existing).Error; err == nil {
-			return nil, fmt.Errorf("cluster with slug %s already exists", req.Slug)
-		}
-	}
-
-	cluster.Slug = req.Slug
 	cluster.Name = req.Name
 	cluster.Description = req.Description
 	cluster.KubeConfig = req.KubeConfig

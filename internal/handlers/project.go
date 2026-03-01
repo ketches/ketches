@@ -115,7 +115,7 @@ func GetProject(c *gin.Context) {
 
 func UpdateProject(c *gin.Context) {
 	projectID := c.Param("projectID")
-	var req models.CreateProjectRequest
+	var req models.UpdateBasicInfoRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
