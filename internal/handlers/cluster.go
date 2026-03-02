@@ -97,7 +97,7 @@ func ListPublicClusters(c *gin.Context) {
 }
 
 func CreateCluster(c *gin.Context) {
-	var req models.UpdateClusterRequest
+	var req models.CreateClusterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
