@@ -319,7 +319,6 @@ export function ClustersPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation()
                       setEditingCluster(cluster)
@@ -330,7 +329,7 @@ export function ClustersPage() {
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon-sm"
+                    size="icon-xs"
                     onClick={(e) => {
                       e.stopPropagation()
                       setTestingClusterId(cluster.id)
@@ -347,7 +346,7 @@ export function ClustersPage() {
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon-sm"
+                    size="icon-xs"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={(e) => {
                       e.stopPropagation()

@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
   Activity,
-  BarChart3,
   ArrowDown,
   ArrowUp,
   Box,
@@ -72,6 +71,10 @@ import { DataTable } from "@/components/data-table/data-table"
 import { DeploymentHistoryList } from "@/components/deployments/deployment-history-list"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
+import { InstanceResourceMetrics } from "@/components/monitoring/instance-resource-metrics"
+import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
+import { usePrometheusAvailable } from "@/components/monitoring/use-prometheus-available"
+import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { AppPlugins } from "@/components/plugins/app-plugins"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -92,10 +95,6 @@ import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
 import { formatDate } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
-import { InstanceResourceMetrics } from "@/components/monitoring/instance-resource-metrics"
-import { useTimeRange } from "@/components/monitoring/use-time-range"
-import { usePrometheusAvailable } from "@/components/monitoring/use-prometheus-available"
-import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 
 
 function ScaleAppPopover({ app }: { app: App }) {
@@ -491,7 +490,7 @@ function InstanceEventsDialog({ appId, instanceName, open, onOpenChange }: { app
               <Skeleton className="" />
             </div>
           )}
-          {!isLoading && events.length === 0 && (
+          {!isLoading && (!events || events.length === 0) && (
             <EmptyState
               title="No Events"
               description="No events found for this instance."
@@ -740,92 +739,92 @@ export function ApplicationDetailPage() {
               }}
               title="View Metrics"
             >
-              <BarChart3 />
+              <ChartLine />
             </Button>
             {!isViewer && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (app) {
-                  openPanel({
-                    type: "logs",
-                    appId: app.id,
-                    appName: app.name,
-                    instanceName: instance.instanceName,
-                    containerName: defaultContainer,
-                    containers,
-                    initContainers: instance.initContainers,
-                  })
-                }
-              }}
-              title="View Logs"
-            >
-              <FileText />
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (app) {
+                    openPanel({
+                      type: "logs",
+                      appId: app.id,
+                      appName: app.name,
+                      instanceName: instance.instanceName,
+                      containerName: defaultContainer,
+                      containers,
+                      initContainers: instance.initContainers,
+                    })
+                  }
+                }}
+                title="View Logs"
+              >
+                <FileText />
+              </Button>
             )}
             {!isViewer && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (app) {
-                  openPanel({
-                    type: "terminal",
-                    appId: app.id,
-                    appName: app.name,
-                    instanceName: instance.instanceName,
-                    containerName: defaultContainer,
-                    containers,
-                    initContainers: instance.initContainers,
-                  })
-                }
-              }}
-              title="Open Terminal"
-            >
-              <TerminalIcon />
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (app) {
+                    openPanel({
+                      type: "terminal",
+                      appId: app.id,
+                      appName: app.name,
+                      instanceName: instance.instanceName,
+                      containerName: defaultContainer,
+                      containers,
+                      initContainers: instance.initContainers,
+                    })
+                  }
+                }}
+                title="Open Terminal"
+              >
+                <TerminalIcon />
+              </Button>
             )}
             {!isViewer && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (app) {
-                  openPanel({
-                    type: "files",
-                    appId: app.id,
-                    appName: app.name,
-                    instanceName: instance.instanceName,
-                    containerName: defaultContainer,
-                    containers,
-                    initContainers: instance.initContainers,
-                  })
-                }
-              }}
-              title="File Explorer"
-            >
-              <FolderOpen />
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (app) {
+                    openPanel({
+                      type: "files",
+                      appId: app.id,
+                      appName: app.name,
+                      instanceName: instance.instanceName,
+                      containerName: defaultContainer,
+                      containers,
+                      initContainers: instance.initContainers,
+                    })
+                  }
+                }}
+                title="File Explorer"
+              >
+                <FolderOpen />
+              </Button>
             )}
             {!isViewer && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={(e) => {
-                e.stopPropagation()
-                setDeletingInstanceName(instance.instanceName)
-                setDeleteInstanceDialogOpen(true)
-              }}
-              disabled={deleteInstanceMutation.isPending}
-              title="Delete Instance"
-            >
-              <Trash2 />
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDeletingInstanceName(instance.instanceName)
+                  setDeleteInstanceDialogOpen(true)
+                }}
+                disabled={deleteInstanceMutation.isPending}
+                title="Delete Instance"
+              >
+                <Trash2 />
+              </Button>
             )}
           </div>
         )
@@ -976,13 +975,13 @@ export function ApplicationDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             {!isViewer && (
-            <Button
-              variant="outline"
-              onClick={() => setIsEditAppDialogOpen(true)}
-            >
-              <Pencil />
-              Edit
-            </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditAppDialogOpen(true)}
+              >
+                <Pencil />
+                Edit
+              </Button>
             )}
             {!isViewer && availableActions && availableActions.actions && (
               <AppActionButtons
@@ -1054,13 +1053,13 @@ export function ApplicationDetailPage() {
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
                     {!isViewer && (
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setIsEditImageDialogOpen(true)}
-                    >
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => setIsEditImageDialogOpen(true)}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -1259,17 +1258,117 @@ export function ApplicationDetailPage() {
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col min-w-0">
-                                <CardTitle className="font-mono text-xs font-semibold truncate" title={instance.instanceName}>
-                                  {instance.instanceName}
-                                </CardTitle>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <CardTitle className="font-mono text-xs font-semibold truncate" title={instance.instanceName}>
+                                    {instance.instanceName}
+                                  </CardTitle>
+                                  <ColorBadge color={isRunning ? "green" : "gray"} className="text-[10px] px-1.5 py-0 shrink-0">
+                                    {instance.status.toUpperCase()}
+                                  </ColorBadge>
+                                </div>
                                 <CardDescription className="font-mono text-[10px] truncate">
                                   {instance.ip || 'No IP assigned'}
                                 </CardDescription>
                               </div>
                             </div>
-                            <ColorBadge color={isRunning ? "green" : "gray"} className="text-[10px] px-1.5 py-0 shrink-0">
-                              {instance.status.toUpperCase()}
-                            </ColorBadge>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setMetricsInstance(instance.instanceName)
+                                }}
+                                title="View Metrics"
+                              >
+                                <ChartLine />
+                              </Button>
+                              {!isViewer && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (app) {
+                                      openPanel({
+                                        type: "logs",
+                                        appId: app.id,
+                                        appName: app.name,
+                                        instanceName: instance.instanceName,
+                                        containerName: defaultContainer,
+                                        containers,
+                                        initContainers: instance.initContainers,
+                                      })
+                                    }
+                                  }}
+                                  title="View Logs"
+                                >
+                                  <FileText />
+                                </Button>
+                              )}
+                              {!isViewer && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (app) {
+                                      openPanel({
+                                        type: "terminal",
+                                        appId: app.id,
+                                        appName: app.name,
+                                        instanceName: instance.instanceName,
+                                        containerName: defaultContainer,
+                                        containers,
+                                        initContainers: instance.initContainers,
+                                      })
+                                    }
+                                  }}
+                                  title="Open Terminal"
+                                >
+                                  <TerminalIcon />
+                                </Button>
+                              )}
+                              {!isViewer && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (app) {
+                                      openPanel({
+                                        type: "files",
+                                        appId: app.id,
+                                        appName: app.name,
+                                        instanceName: instance.instanceName,
+                                        containerName: defaultContainer,
+                                        containers,
+                                        initContainers: instance.initContainers,
+                                      })
+                                    }
+                                  }}
+                                  title="File Explorer"
+                                >
+                                  <FolderOpen />
+                                </Button>
+                              )}
+                              {!isViewer && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setDeletingInstanceName(instance.instanceName)
+                                    setDeleteInstanceDialogOpen(true)
+                                  }}
+                                  disabled={deleteInstanceMutation.isPending}
+                                  title="Delete Instance"
+                                >
+                                  <Trash2 />
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-2">
@@ -1314,108 +1413,7 @@ export function ApplicationDetailPage() {
                               <Clock className="h-3 w-3" />
                               <span>{instance.runningDuration}</span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setMetricsInstance(instance.instanceName)
-                                }}
-                                title="View Metrics"
-                              >
-                                <BarChart3 className="h-3.5 w-3.5" />
-                              </Button>
-                              {!isViewer && (
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (app) {
-                                    openPanel({
-                                      type: "logs",
-                                      appId: app.id,
-                                      appName: app.name,
-                                      instanceName: instance.instanceName,
-                                      containerName: defaultContainer,
-                                      containers,
-                                      initContainers: instance.initContainers,
-                                    })
-                                  }
-                                }}
-                                title="View Logs"
-                              >
-                                <FileText className="h-3.5 w-3.5" />
-                              </Button>
-                              )}
-                              {!isViewer && (
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (app) {
-                                    openPanel({
-                                      type: "terminal",
-                                      appId: app.id,
-                                      appName: app.name,
-                                      instanceName: instance.instanceName,
-                                      containerName: defaultContainer,
-                                      containers,
-                                      initContainers: instance.initContainers,
-                                    })
-                                  }
-                                }}
-                                title="Open Terminal"
-                              >
-                                <TerminalIcon className="h-3.5 w-3.5" />
-                              </Button>
-                              )}
-                              {!isViewer && (
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (app) {
-                                    openPanel({
-                                      type: "files",
-                                      appId: app.id,
-                                      appName: app.name,
-                                      instanceName: instance.instanceName,
-                                      containerName: defaultContainer,
-                                      containers,
-                                      initContainers: instance.initContainers,
-                                    })
-                                  }
-                                }}
-                                title="File Explorer"
-                              >
-                                <FolderOpen className="h-3.5 w-3.5" />
-                              </Button>
-                              )}
-                              {!isViewer && (
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setDeletingInstanceName(instance.instanceName)
-                                  setDeleteInstanceDialogOpen(true)
-                                }}
-                                disabled={deleteInstanceMutation.isPending}
-                                title="Delete Instance"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                              )}
-                            </div>
+
                           </div>
                         </CardContent>
                       </Card>
@@ -1436,68 +1434,68 @@ export function ApplicationDetailPage() {
         </TabsContent>
 
         {!isViewer && (
-        <TabsContent value="env-vars" className="space-y-4 mt-2">
-          <EnvVarTable app={app} />
-        </TabsContent>
+          <TabsContent value="env-vars" className="space-y-4 mt-2">
+            <EnvVarTable app={app} />
+          </TabsContent>
         )}
 
         {!isViewer && (
-        <TabsContent value="volumes" className="space-y-4 mt-2">
-          <VolumesTable app={app} />
-        </TabsContent>
+          <TabsContent value="volumes" className="space-y-4 mt-2">
+            <VolumesTable app={app} />
+          </TabsContent>
         )}
 
         {!isViewer && (
-        <TabsContent value="config-files" className="space-y-4 mt-2">
-          <ConfigFilesTable app={app} />
-        </TabsContent>
+          <TabsContent value="config-files" className="space-y-4 mt-2">
+            <ConfigFilesTable app={app} />
+          </TabsContent>
         )}
 
         {!isViewer && (
-        <TabsContent value="plugins" className="space-y-4 mt-2">
-          <AppPlugins appId={app.id} projectId={projectIdToUse!} />
-        </TabsContent>
+          <TabsContent value="plugins" className="space-y-4 mt-2">
+            <AppPlugins appId={app.id} projectId={projectIdToUse!} />
+          </TabsContent>
         )}
 
         {!isViewer && (
-        <TabsContent value="build" className="space-y-4 mt-2">
-          {app.code_repository_id && (
-            <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent">
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <FolderGit2 className="h-4 w-4" />
-                  Code Repository
-                </CardTitle>
-                <CardDescription>
-                  This application was deployed from a code repository. View build history and trigger new builds.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center gap-2">
-                <Button variant="outline" render={<Link to={`/code-repositories/${app.code_repository_id}`} className="flex items-center whitespace-nowrap" />}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View in Code Repository
-                </Button>
-                {!isViewer && (
-                <Button onClick={() => setIsUnifiedBuildDialogOpen(true)} className="flex items-center">
-                  <Hammer className="h-4 w-4 mr-2" />
-                  Build & Deploy
-                </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
-          <BuildList appId={app.id} />
-          <DeploymentHistoryList appId={app.id} />
-        </TabsContent>
+          <TabsContent value="build" className="space-y-4 mt-2">
+            {app.code_repository_id && (
+              <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent">
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <FolderGit2 className="h-4 w-4" />
+                    Code Repository
+                  </CardTitle>
+                  <CardDescription>
+                    This application was deployed from a code repository. View build history and trigger new builds.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center gap-2">
+                  <Button variant="outline" render={<Link to={`/code-repositories/${app.code_repository_id}`} className="flex items-center whitespace-nowrap" />}>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View in Code Repository
+                  </Button>
+                  {!isViewer && (
+                    <Button onClick={() => setIsUnifiedBuildDialogOpen(true)} className="flex items-center">
+                      <Hammer className="h-4 w-4 mr-2" />
+                      Build & Deploy
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+            <BuildList appId={app.id} />
+            <DeploymentHistoryList appId={app.id} />
+          </TabsContent>
         )}
 
         {!isViewer && (
-        <TabsContent value="advanced" className="space-y-4 mt-2">
-          <CommandConfig app={app} />
-          <AutoScalingConfig app={app} />
-          <HealthConfig app={app} />
-          <SchedulingConfig app={app} />
-        </TabsContent>
+          <TabsContent value="advanced" className="space-y-4 mt-2">
+            <CommandConfig app={app} />
+            <AutoScalingConfig app={app} />
+            <HealthConfig app={app} />
+            <SchedulingConfig app={app} />
+          </TabsContent>
         )}
       </Tabs>
 

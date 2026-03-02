@@ -344,15 +344,14 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
                     <>
                       <Button
                         variant="ghost"
-                        size="icon-xs"
-                        className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                        size="icon-sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           setEditingApp(app)
                           setEditDialogOpen(true)
                         }}
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil />
                       </Button>
                       <AppActionIconsWrapper appId={app.id} envId={envId} />
                     </>
@@ -369,15 +368,15 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
                   </span>
                   <Button
                     variant="ghost"
-                    size="icon-xs"
-                    className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                    size="icon-sm"
+                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation()
                       navigator.clipboard.writeText(app.container_image)
                       toast.success("Image address copied to clipboard")
                     }}
                   >
-                    <Copy className="h-3.5 w-3.5" />
+                    <Copy />
                   </Button>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">

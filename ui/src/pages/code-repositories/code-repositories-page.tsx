@@ -26,8 +26,8 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
-import { useProjectStore } from "@/stores/project"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useProjectStore } from "@/stores/project"
 
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -266,7 +266,6 @@ export function CodeRepositoriesPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
                       onClick={(e) => {
                         e.stopPropagation()
                         setEditingRepo(repo)

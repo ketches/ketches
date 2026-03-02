@@ -180,10 +180,10 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       header: "Domain / Gateway Port",
       cell: ({ row }) => (
         <span className="font-mono text-xs">
-          {isHttpProtocol(row.original.protocol) ? (
+          {isHttpProtocol(row.original.protocol) && row.original.exposed ? (
             <Button variant="link" className="p-0 h-auto text-xs" onClick={() => window.open(`${row.original.protocol}://${row.original.domain}`, '_blank')}>{row.original.protocol}://{row.original.domain || <span className="text-muted-foreground">-</span>}</Button>
           ) : (
-            row.original.gateway_port || <span className="text-muted-foreground">-</span>
+            row.original.gateway_port || <span className="text-muted-foreground">{app.slug}:{row.original.port}</span>
           )}
         </span>
       ),

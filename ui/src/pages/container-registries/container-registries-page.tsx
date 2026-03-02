@@ -29,9 +29,9 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { cn } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
-import { useProjectRole } from "@/hooks/useProjectRole"
 
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -315,7 +315,6 @@ export function ContainerRegistriesPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
                       onClick={() => {
                         setEditingRegistry(reg)
                         setEditDialogOpen(true)

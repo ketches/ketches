@@ -7,6 +7,7 @@ export interface Project {
   name: string
   description?: string
   owner_name?: string
+  created_at: string
 }
 
 export const ProjectRole = {

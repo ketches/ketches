@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { GalleryVerticalEnd, LayoutGrid, List as ListIcon, LogIn, Pencil, Plus, Trash2 } from "lucide-react"
+import { Clock, GalleryVerticalEnd, LayoutGrid, List as ListIcon, LogIn, Pencil, Plus, Trash2, UserCog } from "lucide-react"
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
+import { formatDate } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
 
 // LocalStorage key for persisting view mode preference
@@ -305,11 +306,19 @@ export function ProjectsPage() {
                     </div>
                   </div>
                   {/* Card action buttons, visible on hover */}
-                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEnterProject(project)}
+                      disabled={isActive}
+                    >
+                      <LogIn />
+                      Enter
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="h-6 w-6"
                       onClick={() => openEditDialog(project)}
                     >
                       <Pencil />
@@ -317,7 +326,6 @@ export function ProjectsPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
                       onClick={() => openDeleteDialog(project)}
                     >
                       <Trash2 />
@@ -326,23 +334,21 @@ export function ProjectsPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-2 space-y-3">
-                {project.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">{project.description}</p>
-                )}
-                {project.owner_name && (
-                  <p className="text-xs text-muted-foreground">Owner: {project.owner_name}</p>
-                )}
-                {/* Enter button at the bottom of the card */}
-                <Button
-                  variant={isActive ? "secondary" : "outline"}
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handleEnterProject(project)}
-                  disabled={isActive}
-                >
-                  <LogIn className="mr-1 h-3.5 w-3.5" />
-                  {isActive ? "Active" : "Enter"}
-                </Button>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <UserCog className="h-3.5 w-3.5" />
+                    <span className="font-mono">
+                      {project.owner_name}
+                    </span>
+                  </div>
+
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" />
+                    <span>Created at {formatDate(project.created_at)}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )

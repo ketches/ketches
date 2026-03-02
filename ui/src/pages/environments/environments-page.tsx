@@ -7,6 +7,7 @@ import {
   Orbit,
   Pencil,
   Plus,
+  ShipWheel,
   Trash2
 } from "lucide-react"
 import * as React from "react"
@@ -27,8 +28,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
-import { useProjectStore } from "@/stores/project"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useProjectStore } from "@/stores/project"
 
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -153,31 +154,31 @@ export function EnvironmentsPage() {
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-2">
           {!isViewer && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={(e) => {
-              e.stopPropagation()
-              setEditingEnv(row.original)
-              setEditDialogOpen(true)
-            }}
-          >
-            <Pencil />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                setEditingEnv(row.original)
+                setEditDialogOpen(true)
+              }}
+            >
+              <Pencil />
+            </Button>
           )}
           {!isViewer && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={(e) => {
-              e.stopPropagation()
-              setDeletingEnv(row.original)
-              setDeleteDialogOpen(true)
-            }}
-          >
-            <Trash2 />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={(e) => {
+                e.stopPropagation()
+                setDeletingEnv(row.original)
+                setDeleteDialogOpen(true)
+              }}
+            >
+              <Trash2 />
+            </Button>
           )}
         </div>
       ),
@@ -209,10 +210,10 @@ export function EnvironmentsPage() {
         </TabsList>
       </Tabs>
       {!isViewer && (
-      <Button onClick={() => setCreateDialogOpen(true)}>
-        <Plus />
-        Create Environment
-      </Button>
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus />
+          Create Environment
+        </Button>
       )}
     </div>
   )
@@ -279,40 +280,42 @@ export function EnvironmentsPage() {
                     </div>
                     <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                       {!isViewer && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditingEnv(env)
-                          setEditDialogOpen(true)
-                        }}
-                      >
-                        <Pencil />
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingEnv(env)
+                            setEditDialogOpen(true)
+                          }}
+                        >
+                          <Pencil />
+                        </Button>
                       )}
                       {!isViewer && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setDeletingEnv(env)
-                          setDeleteDialogOpen(true)
-                        }}
-                      >
-                        <Trash2 />
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeletingEnv(env)
+                            setDeleteDialogOpen(true)
+                          }}
+                        >
+                          <Trash2 />
+                        </Button>
                       )}
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-2">
                   <div className="space-y-2">
-                    <div className="text-xs text-muted-foreground">
-                      <span className="truncate flex-1">Cluster ID: <span className="font-mono text-[10px]">{env.cluster_id}</span></span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <ShipWheel className="h-3.5 w-3.5" />
+                      <span className="font-mono">
+                        {env.cluster_id}
+                      </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       <span>Namespace: <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{env.cluster_namespace}</span></span>

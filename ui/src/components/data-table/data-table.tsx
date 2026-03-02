@@ -284,7 +284,9 @@ export function DataTable<TData, TValue>({
                 <Combobox
                   value={`${table.getState().pagination.pageSize}`}
                   onValueChange={(value: string | null) => {
-                    value && table.setPageSize(Number(value))
+                    if (value) {
+                      table.setPageSize(Number(value))
+                    }
                   }}
                 >
                   <ComboboxInput className="h-8 w-16" />

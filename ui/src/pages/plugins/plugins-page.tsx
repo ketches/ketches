@@ -28,9 +28,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { formatDate } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
-import { useProjectRole } from "@/hooks/useProjectRole"
 import { toast } from "sonner"
 
 const PLUGINS_VIEW_MODE_KEY = "plugins_view_mode"
@@ -279,7 +279,6 @@ export function PluginsPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          className="opacity-0 group-hover/card:opacity-100 transition-opacity"
                           onClick={(e) => {
                             e.stopPropagation()
                             setEditingPlugin(plugin)
@@ -314,15 +313,15 @@ export function PluginsPage() {
                       </span>
                       <Button
                         variant="ghost"
-                        size="icon-xs"
-                        className="h-6 w-6 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                        size="icon-sm"
+                        className="opacity-0 group-hover/card:opacity-100 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation()
                           navigator.clipboard.writeText(plugin.image)
                           toast.success("Image address copied to clipboard")
                         }}
                       >
-                        <Copy className="h-3.5 w-3.5" />
+                        <Copy />
                       </Button>
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">

@@ -27,6 +27,7 @@ import {
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "../ui/input-group"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface GatewayEditorProps {
@@ -360,12 +361,17 @@ export function GatewayEditor({
                         </Tooltip>
                       </FieldLabel>
                       <FieldContent>
-                        <Input
-                          placeholder="app.example.com"
-                          value={formData.domain}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, domain: e.target.value }))}
-                          aria-invalid={!!errors.domain}
-                        />
+                        <InputGroup>
+                          <InputGroupInput placeholder="app.example.com" value={formData.domain}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, domain: e.target.value }))}
+                            aria-invalid={!!errors.domain} />
+                          <InputGroupAddon>
+                            <InputGroupText>{formData.protocol}://</InputGroupText>
+                          </InputGroupAddon>
+                          <InputGroupAddon align="inline-end">
+                            <InfoIcon />
+                          </InputGroupAddon>
+                        </InputGroup>
                       </FieldContent>
                       {errors.domain && (
                         <FieldError>

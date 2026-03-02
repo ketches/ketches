@@ -39,6 +39,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -440,6 +441,7 @@ function ResourceYamlDialog({
       <DialogContent className="flex flex-col h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] overflow-hidden sm:h-[90vh] sm:max-h-[90vh] sm:max-w-[90vw]">
         <DialogHeader>
           <DialogTitle>Resource YAML</DialogTitle>
+          <DialogDescription>{nodeId}</DialogDescription>
         </DialogHeader>
         <div className="flex-1 min-h-0 overflow-hidden rounded-md border">
           {isLoading ? (
@@ -469,6 +471,7 @@ function ResourceYamlDialog({
                 automaticLayout: true,
                 padding: { top: 16, bottom: 16 },
               }}
+              loading=""
             />
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground bg-muted/30">

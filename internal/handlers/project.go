@@ -45,6 +45,7 @@ func ListProjects(c *gin.Context) {
 			Name:        p.Name,
 			Description: p.Description,
 			OwnerName:   ownerName,
+			CreatedAt:   p.CreatedAt,
 		})
 	}
 

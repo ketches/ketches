@@ -9,15 +9,16 @@ type CreateProjectRequest struct {
 }
 
 type ProjectResponse struct {
-	ID          string `json:"id"`
-	Slug        string `json:"slug"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	OwnerName   string `json:"owner_name"`
+	ID          string    `json:"id"`
+	Slug        string    `json:"slug"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	OwnerName   string    `json:"owner_name"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type ListProjectResponse struct {
-	Items      []ProjectResponse `json:"items"`
+	Items      []ProjectResponse  `json:"items"`
 	Pagination PaginationResponse `json:"pagination"`
 }
 
