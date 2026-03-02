@@ -1,18 +1,17 @@
 import { useQuery } from "@tanstack/react-query"
-import { AlertCircle, ArrowDown, ArrowUp, Box, CircleSlash, Cpu, ExternalLink, HardDrive, Loader2, MemoryStick, Network, RefreshCcw, Server } from "lucide-react"
+import { AlertCircle, ArrowDown, ArrowUp, CircleSlash, Cpu, ExternalLink, HardDrive, Loader2, MemoryStick, Network } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
 import { clustersApi } from "@/api/clusters"
+import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty"
-import { useTimeRange } from "./use-time-range"
-import { usePrometheusAvailable } from "./use-prometheus-available"
-import { MetricsTimeRangeSelector } from "./metrics-time-range-selector"
 import { getUtilizationColor, getUtilizationColorClass } from "./metrics-utils"
-import { EmptyState } from "@/components/shared/empty-state"
+import { usePrometheusAvailable } from "./use-prometheus-available"
+import { type TimeRange } from "./use-time-range"
 
 const usageChartConfig: ChartConfig = {
   cpu: { label: "CPU (mCores)", color: "var(--chart-1)" },
@@ -31,21 +30,17 @@ const netChartConfig: ChartConfig = {
   egress: { label: "Egress", color: "var(--chart-2)" },
 }
 
-const clusterChartConfig: ChartConfig = {
-  pods: { label: "Running Pods", color: "var(--chart-4)" },
-  restarts: { label: "Container Restarts", color: "var(--chart-5)" },
-  nodeReady: { label: "Ready Nodes", color: "var(--chart-1)" },
-}
-
 interface ClusterNodeResourceMetricsProps {
   clusterId: string
   nodeName?: string
   nodeIp?: string
+  timeRange: TimeRange
+  rangeSeconds: number
+  step: string
 }
 
-export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: ClusterNodeResourceMetricsProps) {
+export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRange, rangeSeconds, step: timeStep }: ClusterNodeResourceMetricsProps) {
   const navigate = useNavigate()
-  const { timeRange, setTimeRange, rangeSeconds, step: timeStep } = useTimeRange()
   const { available: prometheusAvailable, isLoading: prometheusLoading } = usePrometheusAvailable(clusterId)
 
   const { data: metrics, isLoading, error } = useQuery({
@@ -67,9 +62,6 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
         storageUtil: `(1-avg(node_filesystem_free_bytes{device=~"/dev/.*", container!=""${nodeIpFilter}} / node_filesystem_size_bytes{device=~"/dev/.*", container!=""${nodeIpFilter}})) * 100`,
         ingress: `sum(rate(container_network_receive_bytes_total{${nodeName ? `node="${nodeName}"` : ""}}[5m])) / 1024`,
         egress: `sum(rate(container_network_transmit_bytes_total{${nodeName ? `node="${nodeName}"` : ""}}[5m])) / 1024`,
-        pods: `sum(kubelet_running_pods{${nodeName ? `node="${nodeName}"` : ""}})`,
-        restarts: `sum(increase(kube_pod_container_status_restarts_total{container!=""${filter}}[5m]))`,
-        nodeReady: `sum(kube_node_status_condition{condition="Ready",status="true"})`,
       }
 
       const results = await Promise.all(
@@ -110,9 +102,6 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
           storageUtil: last.storageUtil || 0,
           ingress: last.ingress || 0,
           egress: last.egress || 0,
-          pods: last.pods || 0,
-          restarts: last.restarts || 0,
-          nodeReady: last.nodeReady || 0,
         }
       }
     },
@@ -122,7 +111,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
 
   if (prometheusLoading) {
     return (
-      <div className="min-h-[600px] flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -130,19 +119,17 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
 
   if (prometheusAvailable === false) {
     return (
-      <div className="min-h-[600px]">
-        <EmptyState
-          title="Prometheus Not Available"
-          description="This cluster does not have a Prometheus integration configured. Please contact your administrator to add Prometheus monitoring to this cluster."
-          icon={AlertCircle}
-        />
-      </div>
+      <EmptyState
+        title="Prometheus Not Available"
+        description="This cluster does not have a Prometheus integration configured. Please contact your administrator to add Prometheus monitoring to this cluster."
+        icon={AlertCircle}
+      />
     )
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-[600px] flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -150,7 +137,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
 
   if (error) {
     return (
-      <div className="min-h-[600px] flex flex-col items-center justify-center py-6 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
+      <div className="flex flex-col items-center justify-center py-6 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon" className="bg-destructive/10 text-destructive">
@@ -175,7 +162,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
 
   if (!metrics || metrics.chartData.length === 0) {
     return (
-      <div className="min-h-[600px] flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-md border border-dashed">
+      <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-md border border-dashed">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -191,10 +178,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
   }
 
   return (
-    <div className="space-y-4 min-h-[600px]">
-      <div className="flex items-center justify-end">
-        <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
-      </div>
+    <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
@@ -352,79 +336,6 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp }: Clus
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Line dataKey="ingress" name="Ingress" type="monotone" stroke="var(--color-ingress)" strokeWidth={2} dot={false} />
                 <Line dataKey="egress" name="Egress" type="monotone" stroke="var(--color-egress)" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Pod Count Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1">
-                <Box className="h-3 w-3" />
-                Running Pods
-              </span>
-              <span className="font-mono text-xs">{metrics.current.pods.toFixed(0)}</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={clusterChartConfig} className="h-32 w-full">
-              <LineChart data={metrics.chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} domain={[0, 'auto']} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line dataKey="pods" type="monotone" stroke="var(--color-pods)" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        {/* Container Restarts Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1">
-                <RefreshCcw className="h-3 w-3" />
-                Container Restarts
-              </span>
-              <span className="font-mono text-xs">{metrics.current.restarts.toFixed(0)}/5m</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={clusterChartConfig} className="h-32 w-full">
-              <LineChart data={metrics.chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} domain={[0, 'auto']} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line dataKey="restarts" type="monotone" stroke="var(--color-restarts)" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        {/* Node Readiness Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1">
-                <Server className="h-3 w-3" />
-                Ready Nodes
-              </span>
-              <span className="font-mono text-xs">{metrics.current.nodeReady.toFixed(0)}</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={clusterChartConfig} className="h-32 w-full">
-              <LineChart data={metrics.chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} domain={[0, 'auto']} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line dataKey="nodeReady" type="monotone" stroke="var(--color-nodeReady)" strokeWidth={2} dot={false} />
               </LineChart>
             </ChartContainer>
           </CardContent>

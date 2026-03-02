@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
+  Clock,
+  Copy,
+  Handbag,
   LayoutGrid,
+  Link,
   List as ListIcon,
   Pencil,
   Plus,
@@ -20,6 +24,7 @@ import {
 import { ContainerRegistryDialog } from "@/components/container-registries/container-registry-dialog"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
+import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -111,16 +116,39 @@ export function ContainerRegistriesPage() {
       accessorKey: "name",
       header: "Registry",
       cell: ({ row }) => (
-        <div className="flex flex-col cursor-default">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground">{row.original.name}</span>
-            {row.original.is_default && (
-              <Star className="h-3.5 w-3.5 text-primary fill-primary shrink-0" />
-            )}
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-indigo-500/10 rounded-md text-indigo-600 shrink-0">
+            <Warehouse className="h-4 w-4" />
           </div>
-          <span className="text-xs text-muted-foreground font-mono truncate max-w-[280px]">
+          <div className="min-w-0">
+            <span className="font-medium text-foreground">{row.original.name}{row.original.is_default && (
+              <ColorBadge color="green" className="ml-2">Default</ColorBadge>
+            )}</span>
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {row.original.description}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "endpoint",
+      header: "Endpoint",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-mono truncate max-w-100">
             {row.original.endpoint}
           </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              navigator.clipboard.writeText(row.original.endpoint)
+              toast.success("Endpoint copied to clipboard")
+            }}
+          >
+            <Copy className="h-3 w-3" />
+          </Button>
         </div>
       ),
     },
@@ -134,25 +162,12 @@ export function ContainerRegistriesPage() {
       ),
     },
     {
-      accessorKey: "scope",
-      header: "Scope",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground capitalize">{row.original.scope}</span>
-      ),
-    },
-    {
       accessorKey: "enabled",
       header: "Status",
       cell: ({ row }) => (
-        <span
-          className={
-            row.original.enabled
-              ? "text-muted-foreground"
-              : "text-muted-foreground/70 italic"
-          }
-        >
+        <ColorBadge color={row.original.enabled ? "green" : "gray"} className="ml-2" >
           {row.original.enabled ? "Enabled" : "Disabled"}
-        </span>
+        </ColorBadge>
       ),
     },
     {
@@ -266,11 +281,7 @@ export function ContainerRegistriesPage() {
         renderCard={(reg) => (
           <Card
             key={reg.id}
-            className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
-            onClick={() => {
-              setEditingRegistry(reg)
-              setEditDialogOpen(true)
-            }}
+            className="group/card hover:shadow-md transition-shadow h-full"
           >
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-4">
@@ -282,7 +293,11 @@ export function ContainerRegistriesPage() {
                   </Avatar>
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base font-semibold truncate">
+                      <CardTitle className="text-base font-semibold truncate cursor-pointer"
+                        onClick={() => {
+                          setEditingRegistry(reg)
+                          setEditDialogOpen(true)
+                        }}>
                         {reg.name}
                       </CardTitle>
                       <div className="flex items-center gap-2">
@@ -339,12 +354,37 @@ export function ContainerRegistriesPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-2">
-              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>{registryProviderLabels[reg.provider]}</span>
+            <CardContent className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Link className="h-3.5 w-3.5" />
+                  <span className="font-mono">
+                    {reg.endpoint}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigator.clipboard.writeText(reg.endpoint)
+                      toast.success("Registry endpoint copied to clipboard")
+                    }}
+                  >
+                    <Copy />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Handbag className="h-3.5 w-3.5" />
+                  {registryProviderLabels[reg.provider]}
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2 mt-2">
-                <span>Created at {formatDate(reg.created_at)}</span>
+
+              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  <span>Created at {formatDate(reg.created_at)}</span>
+                </div>
               </div>
             </CardContent>
           </Card>

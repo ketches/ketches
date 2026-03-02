@@ -4,14 +4,15 @@ import "time"
 
 // ExtensionCatalogItem is the platform-level catalog entry for an OCI-based helm chart.
 type ExtensionCatalogItem struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	DisplayName string    `json:"display_name"`
-	Description string    `json:"description"`
-	OCIUrl      string    `json:"oci_url"`
-	IconURL     string    `json:"icon_url,omitempty"`
-	Builtin     bool      `json:"builtin"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	DisplayName  string    `json:"display_name"`
+	Description  string    `json:"description"`
+	OCIUrl       string    `json:"oci_url"`
+	IconURL      string    `json:"icon_url,omitempty"`
+	Builtin      bool      `json:"builtin"`
+	InstallCount int       `json:"install_count"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // CreateExtensionCatalogItemRequest is the request body for adding a catalog item.

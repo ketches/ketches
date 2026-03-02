@@ -36,6 +36,8 @@ import { DataTable } from "@/components/data-table/data-table"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { ClusterNodeResourceMetrics } from "@/components/monitoring/cluster-node-resource-metrics"
+import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
+import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -76,6 +78,40 @@ interface Node {
     }
     conditions: Array<{ type: string; status: string }>
   }
+}
+
+function NodeMetricsPanel({ clusterId, node }: { clusterId: string; node: Node }) {
+  const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
+  const isReady = node.status.conditions?.find((c) => c.type === "Ready")?.status === "True"
+  const internalIP = node.status.addresses?.find((a) => a.type === "InternalIP")?.address
+  return (
+    <div
+      className="p-4 border rounded-lg cursor-pointer"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h4 className="font-medium">{node.metadata.name}</h4>
+            <ColorBadge color={isReady ? "green" : "red"}>
+              {isReady ? "Ready" : "NotReady"}
+            </ColorBadge>
+          </div>
+          <p className="text-xs text-muted-foreground font-mono">{internalIP || "N/A"}</p>
+        </div>
+        <div onClick={(e) => e.stopPropagation()}>
+          <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+        </div>
+      </div>
+      <ClusterNodeResourceMetrics
+        clusterId={clusterId}
+        nodeName={node.metadata.name}
+        nodeIp={internalIP}
+        timeRange={timeRange}
+        rangeSeconds={rangeSeconds}
+        step={step}
+      />
+    </div>
+  )
 }
 
 export function ClusterDetailPage() {
@@ -586,34 +622,13 @@ export function ClusterDetailPage() {
                 </Empty>
               ) : (
                 <div className="space-y-6">
-                  {safeNodes.map((node) => {
-                    const isReady = node.status.conditions?.find((c) => c.type === "Ready")?.status === "True"
-                    const internalIP = node.status.addresses?.find((a) => a.type === "InternalIP")?.address
-
-                    return (
-                      <div
-                        key={node.metadata.name}
-                        className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => navigate(`/clusters/${clusterId}/nodes/${node.metadata.name}`)}
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h4 className="font-medium">{node.metadata.name}</h4>
-                            <p className="text-xs text-muted-foreground font-mono">{internalIP || "N/A"}</p>
-                          </div>
-                          <ColorBadge color={isReady ? "green" : "red"}>
-                            {isReady ? "Ready" : "NotReady"}
-                          </ColorBadge>
-                        </div>
-
-                        <ClusterNodeResourceMetrics
-                          clusterId={clusterId!}
-                          nodeName={node.metadata.name}
-                          nodeIp={internalIP}
-                        />
-                      </div>
-                    )
-                  })}
+                  {safeNodes.map((node) => (
+                    <NodeMetricsPanel
+                      key={node.metadata.name}
+                      clusterId={clusterId!}
+                      node={node}
+                    />
+                  ))}
                 </div>
               )}
             </CardContent>

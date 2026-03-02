@@ -29,6 +29,8 @@ import { EnvCertificates } from "@/components/environment/env-certificates"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-resource-metrics"
+import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
+import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -55,6 +57,7 @@ export function EnvironmentDetailPage() {
   const { activeProjectId } = useProjectStore()
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+  const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
 
   const { data: envsResponse } = useQuery({
     queryKey: ['envs', activeProjectId],
@@ -327,14 +330,18 @@ export function EnvironmentDetailPage() {
           </div>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium  flex items-center gap-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />Resource Usage</CardTitle>
+              <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
             </CardHeader>
             <CardContent>
               <EnvironmentResourceMetrics
                 clusterId={env.cluster_id}
                 namespace={env.cluster_namespace}
+                timeRange={timeRange}
+                rangeSeconds={rangeSeconds}
+                step={step}
               />
             </CardContent>
           </Card>

@@ -13,6 +13,13 @@ import {
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import { Button } from "@/components/ui/button"
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,13 +29,6 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox"
 
 interface InstallExtensionDialogProps {
   open: boolean
@@ -136,10 +136,10 @@ export function InstallExtensionDialog({
       const msg =
         error && typeof error === "object" && "response" in error
           ? (
-              error as {
-                response?: { data?: { error?: string } }
-              }
-            ).response?.data?.error
+            error as {
+              response?: { data?: { error?: string } }
+            }
+          ).response?.data?.error
           : null
       toast.error("Failed to install extension", {
         description:
@@ -253,7 +253,7 @@ export function InstallExtensionDialog({
                 )}
               </FieldLabel>
               <FieldContent className="min-h-0 flex-1 overflow-hidden rounded-md border border-input">
-                <div className="h-full min-h-[300px] w-full">
+                <div className="h-full min-h-75 w-full">
                   <Editor
                     height="100%"
                     defaultLanguage="yaml"

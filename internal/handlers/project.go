@@ -166,6 +166,7 @@ func ListProjectMembers(c *gin.Context) {
 		res = append(res, models.ProjectMemberResponse{
 			UserID:      m.UserID,
 			Username:    m.User.Username,
+			Fullname:    m.User.Fullname,
 			Email:       m.User.Email,
 			ProjectRole: m.ProjectRole,
 			JoinedAt:    m.CreatedAt,

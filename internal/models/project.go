@@ -25,6 +25,7 @@ type ListProjectResponse struct {
 type ProjectMemberResponse struct {
 	UserID      string    `json:"user_id"`
 	Username    string    `json:"username"`
+	Fullname    string    `json:"fullname"`
 	Email       string    `json:"email"`
 	ProjectRole string    `json:"project_role"`
 	JoinedAt    time.Time `json:"joined_at"`

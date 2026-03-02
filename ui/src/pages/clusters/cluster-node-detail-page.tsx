@@ -29,6 +29,8 @@ import { NodeTaintsEditor } from "@/components/cluster/node-taints-editor"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { ClusterNodeResourceMetrics } from "@/components/monitoring/cluster-node-resource-metrics"
+import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
+import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { StatCard } from "@/components/shared/stat-card"
@@ -56,6 +58,7 @@ export function ClusterNodeDetailPage() {
   const [labelsOpen, setLabelsOpen] = React.useState(false)
   const [annotationsOpen, setAnnotationsOpen] = React.useState(false)
   const [taintsOpen, setTaintsOpen] = React.useState(false)
+  const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
 
   const { data: clusters = [] } = useQuery({
     queryKey: ["clusters-simple"],
@@ -343,12 +346,20 @@ export function ClusterNodeDetailPage() {
           </div>
 
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />Node Resource Usage</CardTitle>
+              <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
             </CardHeader>
             <CardContent>
-              <ClusterNodeResourceMetrics clusterId={clusterId!} nodeName={nodeName!} nodeIp={internalIP} />
+              <ClusterNodeResourceMetrics
+                clusterId={clusterId!}
+                nodeName={nodeName!}
+                nodeIp={internalIP}
+                timeRange={timeRange}
+                rangeSeconds={rangeSeconds}
+                step={step}
+              />
             </CardContent>
           </Card>
 

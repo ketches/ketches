@@ -48,9 +48,38 @@ func ListExtensionCatalog() ([]models.ExtensionCatalogItem, error) {
 	if err := db.DB.Order("builtin DESC, created_at ASC").Find(&items).Error; err != nil {
 		return nil, fmt.Errorf("failed to list extension catalog: %w", err)
 	}
+
+	// Load all clusters for counting installs
+	var clusters []entities.Cluster
+	if err := db.DB.Select("id").Find(&clusters).Error; err != nil {
+		return nil, fmt.Errorf("failed to list clusters for install count: %w", err)
+	}
+
+	installMap := make(map[string]int) // itemID or name -> count
+	for _, cluster := range clusters {
+		extensions, err := ListExtensions(cluster.ID)
+		if err != nil {
+			continue // Skip clusters we cannot connect to
+		}
+		for _, ext := range extensions {
+			if ext.CatalogItemID != "" {
+				installMap[ext.CatalogItemID]++
+			} else {
+				// Fallback to name if not matched by OCI URL
+				installMap[ext.Name]++
+			}
+		}
+	}
+
 	result := make([]models.ExtensionCatalogItem, 0, len(items))
 	for _, item := range items {
-		result = append(result, toExtensionCatalogItemModel(&item))
+		m := toExtensionCatalogItemModel(&item)
+		if count, ok := installMap[m.ID]; ok {
+			m.InstallCount = count
+		} else if count, ok := installMap[m.Name]; ok {
+			m.InstallCount = count
+		}
+		result = append(result, m)
 	}
 	return result, nil
 }
@@ -162,7 +191,6 @@ func toExtensionCatalogItemModel(e *entities.ExtensionCatalogItem) models.Extens
 		CreatedAt:   e.CreatedAt,
 	}
 }
-
 
 // GetInstalledClustersForExtension returns all clusters that have a catalog item installed,
 // identified by catalog item ID or release name matching the item's name.

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { AlertCircle, ArrowDown, ArrowUp, Box, CircleQuestionMark, Cpu, ExternalLink, Loader2, MemoryStick, Network } from "lucide-react"
+import { AlertCircle, ArrowDown, ArrowUp, CircleQuestionMark, Cpu, ExternalLink, Loader2, MemoryStick, Network } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
@@ -9,10 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty"
-import { useTimeRange } from "./use-time-range"
 import { usePrometheusAvailable } from "./use-prometheus-available"
-import { MetricsTimeRangeSelector } from "./metrics-time-range-selector"
-import { getUtilizationColor, getUtilizationColorClass } from "./metrics-utils"
+import { type TimeRange } from "./use-time-range"
 
 const cpuChartConfig: ChartConfig = {
   cpu: { label: "CPU (mCores)", color: "var(--chart-1)" },
@@ -27,24 +25,16 @@ const netChartConfig: ChartConfig = {
   egress: { label: "Egress", color: "var(--chart-2)" },
 }
 
-const utilChartConfig: ChartConfig = {
-  cpuUtil: { label: "CPU Utilization (%)", color: "var(--chart-1)" },
-  memUtil: { label: "Memory Utilization (%)", color: "var(--chart-2)" },
-}
-
-const podChartConfig: ChartConfig = {
-  pods: { label: "Running Pods", color: "var(--chart-4)" },
-}
-
 interface EnvironmentResourceMetricsProps {
-
   clusterId: string
   namespace: string
+  timeRange: TimeRange
+  rangeSeconds: number
+  step: string
 }
 
-export function EnvironmentResourceMetrics({ clusterId, namespace }: EnvironmentResourceMetricsProps) {
+export function EnvironmentResourceMetrics({ clusterId, namespace, timeRange, rangeSeconds, step: timeStep }: EnvironmentResourceMetricsProps) {
   const navigate = useNavigate()
-  const { timeRange, setTimeRange, rangeSeconds, step: timeStep } = useTimeRange()
   const { available: prometheusAvailable, isLoading: prometheusLoading } = usePrometheusAvailable(clusterId)
 
   const { data: metrics, isLoading, error } = useQuery({
@@ -59,9 +49,6 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
         memory: `sum(container_memory_working_set_bytes{namespace="${namespace}"}) / 1024 / 1024 / 1024`,
         ingress: `sum(rate(container_network_receive_bytes_total{namespace="${namespace}"}[5m])) / 1024`,
         egress: `sum(rate(container_network_transmit_bytes_total{namespace="${namespace}"}[5m])) / 1024`,
-        cpuUtil: `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}"}[5m])) / sum(kube_resourcequota{namespace="${namespace}",resource="requests.cpu"}) * 100`,
-        memUtil: `sum(container_memory_working_set_bytes{namespace="${namespace}"}) / sum(kube_resourcequota{namespace="${namespace}",resource="requests.memory"}) * 100`,
-        pods: `count(kube_pod_info{namespace="${namespace}"})`,
       }
 
       const results = await Promise.all(
@@ -98,9 +85,6 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
           memory: last.memory || 0,
           ingress: last.ingress || 0,
           egress: last.egress || 0,
-          cpuUtil: last.cpuUtil || 0,
-          memUtil: last.memUtil || 0,
-          pods: last.pods || 0,
         }
       }
     },
@@ -110,7 +94,7 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
 
   if (prometheusLoading) {
     return (
-      <div className="min-h-[500px] flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -118,19 +102,17 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
 
   if (prometheusAvailable === false) {
     return (
-      <div className="min-h-[500px]">
-        <EmptyState
-          title="Prometheus Not Available"
-          description="This cluster does not have a Prometheus integration configured. Please contact your administrator to add Prometheus monitoring to this environment's cluster."
-          icon={AlertCircle}
-        />
-      </div>
+      <EmptyState
+        title="Prometheus Not Available"
+        description="This cluster does not have a Prometheus integration configured. Please contact your administrator to add Prometheus monitoring to this environment's cluster."
+        icon={AlertCircle}
+      />
     )
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-[500px] flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -138,7 +120,7 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
 
   if (error) {
     return (
-      <div className="min-h-[500px] flex flex-col items-center justify-center py-6 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
+      <div className="flex flex-col items-center justify-center py-6 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon" className="bg-destructive/10 text-destructive">
@@ -163,23 +145,16 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
 
   if (!metrics || metrics.chartData.length === 0) {
     return (
-      <div className="min-h-[500px]">
-        <EmptyState
-          title="No Metrics Data"
-          description="We couldn't find any resource metrics for this environment. This could be due to a connection issue with Prometheus or simply because there hasn't been any activity in the environment recently."
-          icon={CircleQuestionMark}
-        />
-      </div>
+      <EmptyState
+        title="No Metrics Data"
+        description="We couldn't find any resource metrics for this environment. This could be due to a connection issue with Prometheus or simply because there hasn't been any activity in the environment recently."
+        icon={CircleQuestionMark}
+      />
     )
   }
 
   return (
-    <div className="space-y-4 min-h-[500px]">
-      <div className="flex items-center justify-end">
-        <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
-      </div>
-
-      {/* Row 1: CPU Usage, CPU Utilization, Memory Usage */}
+    <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
@@ -207,28 +182,6 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
-                <Cpu className="h-3 w-3" />
-                CPU Utilization
-              </span>
-              <span className={`font-mono text-xs ${getUtilizationColorClass(metrics.current.cpuUtil)}`}>{metrics.current.cpuUtil.toFixed(1)}%</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={utilChartConfig} className="h-40 w-full">
-              <LineChart data={metrics.chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} domain={[0, 'auto']} />
-                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                <Line dataKey="cpuUtil" type="monotone" stroke={getUtilizationColor(metrics.current.cpuUtil)} strokeWidth={2} dot={false} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1">
                 <MemoryStick className="h-3 w-3" />
                 Memory Usage
               </span>
@@ -243,53 +196,6 @@ export function EnvironmentResourceMetrics({ clusterId, namespace }: Environment
                 <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={40} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Line dataKey="memory" type="monotone" stroke="var(--color-memory)" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-      {/* Row 2: Memory Utilization, Pod Count, Network Traffic */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1">
-                <MemoryStick className="h-3 w-3" />
-                Memory Utilization
-              </span>
-              <span className={`font-mono text-xs ${getUtilizationColorClass(metrics.current.memUtil)}`}>{metrics.current.memUtil.toFixed(1)}%</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={utilChartConfig} className="h-40 w-full">
-              <LineChart data={metrics.chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} domain={[0, 'auto']} />
-                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                <Line dataKey="memUtil" type="monotone" stroke={getUtilizationColor(metrics.current.memUtil)} strokeWidth={2} dot={false} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1">
-                <Box className="h-3 w-3" />
-                Running Pods
-              </span>
-              <span className="font-mono text-xs">{metrics.current.pods.toFixed(0)}</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={podChartConfig} className="h-40 w-full">
-              <LineChart data={metrics.chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} domain={[0, 'auto']} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line dataKey="pods" type="monotone" stroke="var(--color-pods)" strokeWidth={2} dot={false} />
               </LineChart>
             </ChartContainer>
           </CardContent>

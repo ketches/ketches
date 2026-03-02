@@ -13,6 +13,13 @@ import {
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import { Button } from "@/components/ui/button"
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,13 +29,6 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox"
 
 interface InstallExtensionToClusterDialogProps {
   open: boolean
@@ -224,7 +224,7 @@ export function InstallExtensionToClusterDialog({
                       disabled={clustersLoading}
                       itemToStringLabel={(id) => clusters?.find((c) => c.id === id)?.name ?? id ?? ""}
                     >
-                        <ComboboxInput placeholder={clustersLoading ? "Loading clusters..." : "Select cluster"} />
+                      <ComboboxInput placeholder={clustersLoading ? "Loading clusters..." : "Select cluster"} />
                       <ComboboxContent>
                         <ComboboxList>
                           {clusters.map((c) => (
@@ -259,7 +259,7 @@ export function InstallExtensionToClusterDialog({
                     onValueChange={(v) => v && setSelectedVersion(v)}
                     disabled={versionsLoading}
                   >
-                      <ComboboxInput placeholder={versionsLoading ? "Loading versions..." : "Select version"} />
+                    <ComboboxInput placeholder={versionsLoading ? "Loading versions..." : "Select version"} />
                     <ComboboxContent>
                       <ComboboxList>
                         {versions.map((v) => (
@@ -306,7 +306,7 @@ export function InstallExtensionToClusterDialog({
                 )}
               </FieldLabel>
               <FieldContent className="min-h-0 flex-1 overflow-hidden rounded-md border border-input">
-                <div className="h-full min-h-[300px] w-full">
+                <div className="h-full min-h-75 w-full">
                   <Editor
                     height="100%"
                     defaultLanguage="yaml"

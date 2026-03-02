@@ -17,9 +17,12 @@ import { useNavigate } from "react-router-dom"
 import { clustersApi } from "@/api/clusters"
 import { dashboardApi } from "@/api/dashboard"
 import { envsApi } from "@/api/envs"
+import { type SimpleResponse } from "@/api/pagination"
 import { projectsApi } from "@/api/projects"
 import { PageHeader } from "@/components/layout/page-header"
 import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-resource-metrics"
+import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
+import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyEnvironmentState } from "@/components/shared/empty-state"
 import { StatCard } from "@/components/shared/stat-card"
@@ -27,6 +30,28 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
+
+function EnvironmentMetricsPanel({ env }: { env: SimpleResponse }) {
+  const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
+  return (
+    <div className="p-4 border rounded-lg">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h4 className="font-medium">{env.name}</h4>
+          <p className="text-xs text-muted-foreground font-mono">{env.metadata?.cluster_namespace}</p>
+        </div>
+        <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+      </div>
+      <EnvironmentResourceMetrics
+        clusterId={env.metadata?.cluster_id || ""}
+        namespace={env.metadata?.cluster_namespace || ""}
+        timeRange={timeRange}
+        rangeSeconds={rangeSeconds}
+        step={step}
+      />
+    </div>
+  )
+}
 
 function AdminDashboard() {
   const navigate = useNavigate()
@@ -282,22 +307,7 @@ function UserDashboard() {
           ) : (
             <div className="space-y-6">
               {environments.map((env) => (
-                <div
-                  key={env.id}
-                  className="p-4 border rounded-lg"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h4 className="font-medium">{env.name}</h4>
-                      <p className="text-xs text-muted-foreground font-mono">{env.metadata?.cluster_namespace}</p>
-                    </div>
-                  </div>
-
-                  <EnvironmentResourceMetrics
-                    clusterId={env.metadata?.cluster_id || ""}
-                    namespace={env.metadata?.cluster_namespace || ""}
-                  />
-                </div>
+                <EnvironmentMetricsPanel key={env.id} env={env} />
               ))}
             </div>
           )}

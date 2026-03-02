@@ -247,14 +247,14 @@ export const clustersApi = {
     return client.put(`/v1/clusters/${clusterId}/extensions/${extensionName}`, data) as Promise<InstalledExtension>
   },
 
-	uninstallExtension: async (clusterId: string, extensionName: string) => {
-		return client.delete(`/v1/clusters/${clusterId}/extensions/${extensionName}`)
-	},
+  uninstallExtension: async (clusterId: string, extensionName: string) => {
+    return client.delete(`/v1/clusters/${clusterId}/extensions/${extensionName}`)
+  },
 
-	// Gateway API status
-	getGatewayAPIStatus: async (clusterId: string) => {
-		return client.get(`/v1/clusters/${clusterId}/gateway-api-status`) as Promise<GatewayAPIStatus>
-	},
+  // Gateway API status
+  getGatewayAPIStatus: async (clusterId: string) => {
+    return client.get(`/v1/clusters/${clusterId}/gateway-api-status`) as Promise<GatewayAPIStatus>
+  },
 }
 
 // Extension Catalog types
@@ -266,6 +266,7 @@ export interface ExtensionCatalogItem {
   description?: string
   oci_url: string
   icon_url?: string
+  install_count: number
   builtin: boolean
   created_at: string
 }

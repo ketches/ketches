@@ -31,7 +31,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -149,13 +148,13 @@ export function ExtensionsPage() {
       header: "Type",
       cell: ({ row }) =>
         row.original.builtin ? (
-          <Badge variant="secondary" className="text-[10px]">
+          <ColorBadge color="purple" className="text-[10px]">
             Built-in
-          </Badge>
+          </ColorBadge>
         ) : (
-          <Badge variant="outline" className="text-[10px]">
+          <ColorBadge color="blue" className="text-[10px]">
             Custom
-          </Badge>
+          </ColorBadge>
         ),
     },
     {
@@ -166,13 +165,13 @@ export function ExtensionsPage() {
         return (
           <Button
             variant="link"
-            className="p-0 h-auto font-normal text-xs"
+            className="p-0 h-auto font-normal"
             onClick={() => {
               setInstalledClustersTarget(item)
               setInstalledClustersOpen(true)
             }}
           >
-            View
+            {row.original.install_count}
           </Button>
         )
       },
@@ -183,7 +182,7 @@ export function ExtensionsPage() {
       cell: ({ row }) => {
         const item = row.original
         return (
-            <div className="flex items-center gap-2 justify-end">
+          <div className="flex items-center gap-2 justify-end">
             <Button
               variant="ghost"
               size="icon-sm"

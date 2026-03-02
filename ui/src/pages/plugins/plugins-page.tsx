@@ -3,6 +3,7 @@ import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
   Clock,
   Copy,
+  Download,
   Image,
   LayoutGrid,
   List as ListIcon,
@@ -81,9 +82,18 @@ export function PluginsPage() {
       accessorKey: "name",
       header: "Plugin",
       cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium text-foreground">{row.original.name}</span>
-          <span className="text-xs text-muted-foreground font-mono">{row.original.slug}</span>
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-amber-500/10 rounded-md text-amber-600 shrink-0">
+            <Puzzle className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-xs truncate">
+              {row.original.name}
+            </p>
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {row.original.slug}
+            </p>
+          </div>
         </div>
       ),
     },
@@ -246,7 +256,6 @@ export function PluginsPage() {
               <Card
                 key={plugin.id}
                 className="group/card hover:shadow-md transition-shadow h-full"
-                onClick={() => setSelectedPlugin(plugin)}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-4">
@@ -308,7 +317,7 @@ export function PluginsPage() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Image className="h-3.5 w-3.5" />
-                      <span className="font-mono truncate flex-1">
+                      <span className="font-mono">
                         {plugin.image}
                       </span>
                       <Button
@@ -325,9 +334,25 @@ export function PluginsPage() {
                       </Button>
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <div className="text-[10px]">
-                        {plugin.install_count} Installs
-                      </div>
+                      {plugin.install_count > 0 ? (
+                        <Button
+                          variant="link"
+                          className="p-0 h-auto font-normal"
+                          onClick={() => setSelectedPlugin(plugin)}
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {plugin.install_count} installs
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          disabled
+                          className="p-0 h-auto font-normal"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {plugin.install_count} installs
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">

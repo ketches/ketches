@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
+  Clock,
+  Copy,
   FolderGit2,
   LayoutGrid,
+  Link,
   List as ListIcon,
   Pencil,
   Plus,
@@ -107,16 +110,38 @@ export function CodeRepositoriesPage() {
       accessorKey: "name",
       header: "Repository",
       cell: ({ row }) => (
-        <div
-          className="flex flex-col cursor-pointer group/name"
-          onClick={() => navigate(`/code-repositories/${row.original.id}`)}
-        >
-          <span className="font-medium text-foreground group-hover/name:text-primary transition-colors">
-            {row.original.name}
-          </span>
-          <span className="text-xs text-muted-foreground font-mono truncate max-w-[280px]">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-sky-500/10 rounded-md text-sky-600 shrink-0">
+            <FolderGit2 className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
+              onClick={() => navigate(`/code-repositories/${row.original.id}`)}>{row.original.name}</span>
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {row.original.slug}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "git_repo_url",
+      header: "Git URL",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-mono truncate max-w-100">
             {row.original.git_repo_url}
           </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              navigator.clipboard.writeText(row.original.git_repo_url)
+              toast.success("Git repository URL copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
         </div>
       ),
     },
@@ -228,8 +253,7 @@ export function CodeRepositoriesPage() {
         renderCard={(repo) => (
           <Card
             key={repo.id}
-            className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
-            onClick={() => navigate(`/code-repositories/${repo.id}`)}
+            className="group/card hover:shadow-md transition-shadow h-full"
           >
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-4">
@@ -241,7 +265,8 @@ export function CodeRepositoriesPage() {
                   </Avatar>
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base font-semibold truncate">
+                      <CardTitle className="text-base font-semibold truncate cursor-pointer"
+                        onClick={() => navigate(`/code-repositories/${repo.id}`)}>
                         {repo.name}
                       </CardTitle>
                       {repo.webhook_enabled && (
@@ -292,12 +317,33 @@ export function CodeRepositoriesPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-2">
-              <div className="text-[10px] text-muted-foreground truncate font-mono mb-2">
-                {repo.git_repo_url}
+            <CardContent className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Link className="h-3.5 w-3.5" />
+                  <span className="font-mono">
+                    {repo.git_repo_url}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigator.clipboard.writeText(repo.git_repo_url)
+                      toast.success("Git repository URL copied to clipboard")
+                    }}
+                  >
+                    <Copy />
+                  </Button>
+                </div>
               </div>
+
               <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                <span>Created at {formatDate(repo.created_at)}</span>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  <span>Created at {formatDate(repo.created_at)}</span>
+                </div>
               </div>
             </CardContent>
           </Card>

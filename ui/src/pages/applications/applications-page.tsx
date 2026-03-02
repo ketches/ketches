@@ -19,8 +19,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import { useProjectStore } from "@/stores/project"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useProjectStore } from "@/stores/project"
 
 export function ApplicationsPage() {
   const [createEnvDialogOpen, setCreateEnvDialogOpen] = React.useState(false)
@@ -78,21 +78,18 @@ export function ApplicationsPage() {
   return (
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
-
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Applications</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your applications and deployments
+          </p>
+        </div>
+      </div>
       {!isLoading && safeEnvs.length === 0 ? (
         <EmptyEnvironmentState onAction={!isViewer ? () => setCreateEnvDialogOpen(true) : undefined} />
       ) : activeEnvId ? (
-        <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Applications</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage your applications and deployments
-              </p>
-            </div>
-          </div>
-          <ApplicationList envId={activeEnvId} envName={activeEnv?.name} />
-        </>
+        <ApplicationList envId={activeEnvId} envName={activeEnv?.name} />
       ) : null}
 
       <CreateEnvironmentDialog

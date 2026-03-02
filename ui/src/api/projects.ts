@@ -35,6 +35,7 @@ export const PROJECT_ROLES = Object.values(ProjectRole) as ProjectRole[]
 export interface ProjectMember {
   user_id: string
   username: string
+  fullname?: string
   email: string
   project_role: ProjectRole
   joined_at: string

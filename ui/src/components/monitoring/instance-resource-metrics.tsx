@@ -146,11 +146,11 @@ export function InstanceResourceMetrics({
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex items-center justify-center min-h-[500px]">
+          <div className="flex items-center justify-center min-h-125">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center min-h-[500px] bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
+          <div className="flex flex-col items-center justify-center min-h-125 bg-destructive/5 rounded-md border border-destructive/20 border-dashed">
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon" className="bg-destructive/10 text-destructive">
@@ -161,7 +161,7 @@ export function InstanceResourceMetrics({
             </Empty>
           </div>
         ) : !metrics || metrics.chartData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[500px] text-center bg-muted/20 rounded-md border border-dashed">
+          <div className="flex flex-col items-center justify-center min-h-125 text-center bg-muted/20 rounded-md border border-dashed">
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -277,32 +277,55 @@ export function InstanceResourceMetrics({
             </div>
 
             {/* Row 3: Network Traffic - Full width */}
-            <Card>
-              <CardHeader className="pb-4">
-                <CardDescription className="flex items-center justify-between">
-                  <span className="flex items-center gap-1"><Network className="h-3 w-3" />Network Traffic</span>
-                  <div className="flex gap-4 font-mono text-[10px]">
-                    <span className="flex items-center gap-1 text-primary"><ArrowDown className="h-2.5 w-2.5" />{metrics.current.ingress.toFixed(1)} KB/s</span>
-                    <span className="flex items-center gap-1 text-chart-2"><ArrowUp className="h-2.5 w-2.5" />{metrics.current.egress.toFixed(1)} KB/s</span>
-                  </div>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <ChartContainer config={netChartConfig} className="h-40 w-full">
-                  <LineChart data={metrics.chartData}>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={40} domain={[0, 'auto']} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line dataKey="ingress" name="Ingress" type="monotone" stroke="var(--color-ingress)" strokeWidth={2} dot={false} />
-                    <Line dataKey="egress" name="Egress" type="monotone" stroke="var(--color-egress)" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardDescription className="flex items-center justify-between">
+                    <span className="flex items-center gap-1"><Network className="h-3 w-3" />Ingress Traffic</span>
+                    <div className="flex gap-4 font-mono text-[10px]">
+                      <span className="flex items-center gap-1 text-primary"><ArrowDown className="h-2.5 w-2.5" />{metrics.current.ingress.toFixed(1)} KB/s</span>
+                      <span className="flex items-center gap-1 text-chart-2"><ArrowUp className="h-2.5 w-2.5" />{metrics.current.egress.toFixed(1)} KB/s</span>
+                    </div>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pb-2">
+                  <ChartContainer config={netChartConfig} className="h-40 w-full">
+                    <LineChart data={metrics.chartData}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={40} domain={[0, 'auto']} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line dataKey="ingress" name="Ingress" type="monotone" stroke="var(--color-ingress)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardDescription className="flex items-center justify-between">
+                    <span className="flex items-center gap-1"><Network className="h-3 w-3" />Egress Traffic</span>
+                    <div className="flex gap-4 font-mono text-[10px]">
+                      <span className="flex items-center gap-1 text-primary"><ArrowDown className="h-2.5 w-2.5" />{metrics.current.ingress.toFixed(1)} KB/s</span>
+                      <span className="flex items-center gap-1 text-chart-2"><ArrowUp className="h-2.5 w-2.5" />{metrics.current.egress.toFixed(1)} KB/s</span>
+                    </div>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pb-2">
+                  <ChartContainer config={netChartConfig} className="h-40 w-full">
+                    <LineChart data={metrics.chartData}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={40} domain={[0, 'auto']} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line dataKey="egress" name="Egress" type="monotone" stroke="var(--color-egress)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )}
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }

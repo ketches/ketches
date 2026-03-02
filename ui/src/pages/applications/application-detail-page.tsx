@@ -74,7 +74,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { InstanceResourceMetrics } from "@/components/monitoring/instance-resource-metrics"
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { usePrometheusAvailable } from "@/components/monitoring/use-prometheus-available"
-import { useTimeRange } from "@/components/monitoring/use-time-range"
+import { useTimeRange, type TimeRange } from "@/components/monitoring/use-time-range"
 import { AppPlugins } from "@/components/plugins/app-plugins"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -177,8 +177,7 @@ function ScaleAppPopover({ app }: { app: App }) {
   )
 }
 
-function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string, namespace: string, appSlug: string, app: any }) {
-  const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
+function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSeconds, step }: { clusterId: string, namespace: string, appSlug: string, app: any, timeRange: TimeRange, rangeSeconds: number, step: string }) {
   const { available: prometheusAvailable, isLoading: prometheusLoading } = usePrometheusAvailable(clusterId)
 
   const { data: metricsData, isLoading } = useQuery({
@@ -249,7 +248,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
 
   if (prometheusLoading) {
     return (
-      <div className="min-h-[500px] flex items-center justify-center">
+      <div className="min-h-125 flex items-center justify-center">
         <Skeleton className="h-64 w-full" />
       </div>
     )
@@ -257,7 +256,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
 
   if (prometheusAvailable === false) {
     return (
-      <div className="min-h-[500px]">
+      <div className="min-h-125">
         <EmptyState
           title="Prometheus Not Available"
           description="The cluster does not have a Prometheus integration configured. Please contact your administrator to enable Prometheus monitoring."
@@ -269,7 +268,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
 
   if (isLoading) {
     return (
-      <div className="min-h-[500px] flex items-center justify-center">
+      <div className="min-h-125 flex items-center justify-center">
         <Skeleton className="h-64 w-full" />
       </div>
     )
@@ -277,7 +276,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
 
   if (!metricsData || metricsData.chartData.length === 0) {
     return (
-      <div className="min-h-[500px]">
+      <div className="min-h-125">
         <EmptyState
           title="No Metrics Data"
           description="No monitoring data is available for this application. Metrics will appear once the application is running and producing data."
@@ -300,10 +299,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app }: { clusterId: string,
   const maxNet = Math.max(...chartData.flatMap(d => pods.map(p => Math.max(d[`ingress_${p}`] || 0, d[`egress_${p}`] || 0))))
 
   return (
-    <div className="space-y-4 min-h-[500px]">
-      <div className="flex items-center justify-end">
-        <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
-      </div>
+    <div className="space-y-4 min-h-125">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -516,6 +512,7 @@ export function ApplicationDetailPage() {
   const { activeProjectId, setActiveEnvId } = useProjectStore()
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+  const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
 
   const { data: app, isLoading, error } = useQuery<App>({
     queryKey: ['app', appId],
@@ -1131,10 +1128,11 @@ export function ApplicationDetailPage() {
 
           {currentEnv && (
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <ChartLine className="h-4 w-4" />Resource Usage
                 </CardTitle>
+                <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
               </CardHeader>
               <CardContent>
                 <AppMetrics
@@ -1142,6 +1140,9 @@ export function ApplicationDetailPage() {
                   namespace={currentEnv.cluster_namespace}
                   appSlug={app.slug}
                   app={app}
+                  timeRange={timeRange}
+                  rangeSeconds={rangeSeconds}
+                  step={step}
                 />
               </CardContent>
             </Card>

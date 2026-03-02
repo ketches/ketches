@@ -2,10 +2,10 @@ import * as React from "react"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Trash2, Users } from "lucide-react"
+import { Copy, Trash2, Users } from "lucide-react"
 import { toast } from "sonner"
 
-import { PROJECT_ROLES, ProjectRole, ProjectRoleLabels, ProjectRoleDescriptions, projectsApi, type ProjectMember } from "@/api/projects"
+import { PROJECT_ROLES, ProjectRole, ProjectRoleDescriptions, ProjectRoleLabels, projectsApi, type ProjectMember } from "@/api/projects"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { AddMemberDialog } from "@/components/members/add-member-dialog"
@@ -19,7 +19,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
-import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
 
@@ -125,11 +125,35 @@ export function MembersPage() {
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="font-medium text-foreground">{member.username}</span>
-              <span className="text-xs text-muted-foreground">{member.email}</span>
+              <span className="font-medium text-foreground">{member.fullname || member.username}</span>
+              <span className="text-xs text-muted-foreground">{member.username}</span>
             </div>
           </div>
         )
+      },
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => {
+        const member = row.original
+        // return <span className="text-xs text-muted-foreground">{member.email}</span>
+        return <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="font-mono">
+            {member.email}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigator.clipboard.writeText(member.email)
+              toast.success("Email address copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
+        </div>
       },
     },
     {
@@ -147,7 +171,7 @@ export function MembersPage() {
             itemToStringLabel={(v) => ProjectRoleLabels[v as ProjectRole] ?? v ?? ""}
           >
             <ComboboxInput className="w-32" />
-            <ComboboxContent>
+            <ComboboxContent className="w-auto">
               <ComboboxList>
                 {PROJECT_ROLES.map((r) => (
                   <ComboboxItem key={r} value={r}>

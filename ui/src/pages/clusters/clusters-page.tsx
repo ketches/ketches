@@ -125,12 +125,18 @@ export function ClustersPage() {
       accessorKey: "name",
       header: "Cluster",
       cell: ({ row }) => (
-        <div
-          className="flex flex-col cursor-pointer group/name"
-          onClick={() => navigate(`/clusters/${row.original.id}`)}
-        >
-          <span className="font-medium text-foreground group-hover/name:text-primary transition-colors">{row.original.name}</span>
-          <span className="text-xs text-muted-foreground font-mono">{row.original.slug}</span>
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600 shrink-0">
+            <ShipWheel className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-xs truncate">
+              {row.original.name}
+            </p>
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {row.original.slug}
+            </p>
+          </div>
         </div>
       ),
     },
@@ -276,8 +282,7 @@ export function ClustersPage() {
         renderCard={(cluster) => (
           <Card
             key={cluster.id}
-            className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
-            onClick={() => navigate(`/clusters/${cluster.id}`)}
+            className="group/card hover:shadow-md transition-shadow h-full"
           >
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-4">
@@ -289,7 +294,8 @@ export function ClustersPage() {
                   </Avatar>
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base font-semibold truncate">{cluster.name}</CardTitle>
+                      <CardTitle className="text-base font-semibold truncate cursor-pointer"
+                        onClick={() => navigate(`/clusters/${cluster.id}`)}>{cluster.name}</CardTitle>
                       <ColorBadge
                         color={cluster.enabled ? "green" : "gray"}
                       >

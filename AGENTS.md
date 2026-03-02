@@ -57,6 +57,8 @@ This document defines the specialized agents involved in the development and mai
   - Maintain reusable business components in `ui/src/components/ui`.
   - Ensure type safety across the entire frontend application.
   - Use `Combobox` component for all dropdowns and selection inputs, adhering to the design system, never use `Select`.
+  - Always use `min-h-?` for height constraints, never use `"min-h-[?px]` for that purpose.
+  - Always use `space-y-?` for vertical spacing, never use `gap-y-?` for that purpose.
 
 ## UI/UX Design Agent
 

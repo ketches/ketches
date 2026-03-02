@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useProjectRole } from "@/hooks/useProjectRole"
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -270,9 +271,16 @@ export function RecycleBinPage() {
       accessorKey: "name",
       header: "Project",
       cell: ({ row }) => (
-        <div>
-          <div className="font-medium">{row.original.name}</div>
-          <div className="text-sm text-muted-foreground">{row.original.slug}</div>
+        <div className="flex items-center gap-2">
+          <Avatar className="h-8 w-8 rounded-lg bg-primary/10 text-primary border-none">
+            <AvatarFallback className="rounded-lg text-xs font-bold">
+              {row.original.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">{row.original.name}</span>
+            <span className="text-xs text-muted-foreground font-mono">{row.original.slug}</span>
+          </div>
         </div>
       ),
     },
@@ -347,9 +355,18 @@ export function RecycleBinPage() {
       accessorKey: "name",
       header: "Application",
       cell: ({ row }) => (
-        <div>
-          <div className="font-medium">{row.original.name}</div>
-          <div className="text-sm text-muted-foreground">{row.original.slug}</div>
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600 shrink-0">
+            <Box className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-xs truncate">
+              {row.original.name}
+            </p>
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {row.original.slug}
+            </p>
+          </div>
         </div>
       ),
     },
@@ -438,9 +455,18 @@ export function RecycleBinPage() {
       accessorKey: "name",
       header: "Environment",
       cell: ({ row }) => (
-        <div>
-          <div className="font-medium">{row.original.name}</div>
-          <div className="text-sm text-muted-foreground">{row.original.slug}</div>
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600 shrink-0">
+            <Box className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-xs truncate">
+              {row.original.name}
+            </p>
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {row.original.slug}
+            </p>
+          </div>
         </div>
       ),
     },

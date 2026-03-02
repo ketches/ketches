@@ -112,13 +112,19 @@ export function EnvironmentsPage() {
       accessorKey: "name",
       header: "Environment",
       cell: ({ row }) => (
-        <div
-          className="flex flex-col cursor-pointer group/name"
-          onClick={() => navigate(`/environments/${row.original.id}`)}
-        >
-          <span className="font-medium text-foreground group-hover/name:text-primary transition-colors">{row.original.name}</span>
-          <span className="text-xs text-muted-foreground font-mono">{row.original.slug}</span>
-        </div>
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600 shrink-0">
+            <Orbit className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-xs truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/environments/${row.original.id}`)}>
+              {row.original.name}
+            </p>
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {row.original.slug}
+            </p>
+          </div>
+        </div >
       ),
     },
     {
@@ -221,118 +227,115 @@ export function EnvironmentsPage() {
   return (
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
-
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Environments</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your deployment environments
+          </p>
+        </div>
+      </div>
       {!isLoading && safeEnvs.length === 0 && !searchQuery ? (
         <EmptyEnvironmentState onAction={!isViewer ? () => setCreateDialogOpen(true) : undefined} />
       ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Environments</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage your deployment environments
-              </p>
-            </div>
-          </div>
-
-          <DataTable
-            columns={columns}
-            data={safeEnvs}
-            viewMode={viewMode}
-            onRefresh={refetch}
-            manualPagination
-            totalCount={paginationInfo?.total || 0}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            leftActions={() => toolbarLeft}
-            toolbarActions={() => toolbarRight}
-            renderCard={(env) => (
-              <Card
-                key={env.id}
-                className="group/card hover:shadow-md transition-shadow cursor-pointer h-full"
-                onClick={() => navigate(`/environments/${env.id}`)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
-                        <AvatarFallback className="rounded-lg text-lg font-bold">
-                          {env.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <CardTitle className="text-base font-semibold truncate">{env.name}</CardTitle>
-                          <ColorBadge color="green">
-                            {env.status || "Active"}
-                          </ColorBadge>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                          <span>{env.slug}</span>
-                          {env.description && (
-                            <>
-                              <span>•</span>
-                              <span className="truncate">{env.description}</span>
-                            </>
-                          )}
-                        </div>
+        <DataTable
+          columns={columns}
+          data={safeEnvs}
+          viewMode={viewMode}
+          onRefresh={refetch}
+          manualPagination
+          totalCount={paginationInfo?.total || 0}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          leftActions={() => toolbarLeft}
+          toolbarActions={() => toolbarRight}
+          renderCard={(env) => (
+            <Card
+              key={env.id}
+              className="group/card hover:shadow-md transition-shadow h-full"
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
+                      <AvatarFallback className="rounded-lg text-lg font-bold">
+                        {env.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <CardTitle className="text-base font-semibold truncate cursor-pointer"
+                          onClick={() => navigate(`/environments/${env.id}`)}>{env.name}</CardTitle>
+                        <ColorBadge color="green">
+                          {env.status || "Active"}
+                        </ColorBadge>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                        <span>{env.slug}</span>
+                        {env.description && (
+                          <>
+                            <span>•</span>
+                            <span className="truncate">{env.description}</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {!isViewer && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingEnv(env)
-                            setEditDialogOpen(true)
-                          }}
-                        >
-                          <Pencil />
-                        </Button>
-                      )}
-                      {!isViewer && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeletingEnv(env)
-                            setDeleteDialogOpen(true)
-                          }}
-                        >
-                          <Trash2 />
-                        </Button>
-                      )}
-                    </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <ShipWheel className="h-3.5 w-3.5" />
-                      <span className="font-mono">
-                        {env.cluster_id}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      <span>Namespace: <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{env.cluster_namespace}</span></span>
-                    </div>
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {!isViewer && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingEnv(env)
+                          setEditDialogOpen(true)
+                        }}
+                      >
+                        <Pencil />
+                      </Button>
+                    )}
+                    {!isViewer && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeletingEnv(env)
+                          setDeleteDialogOpen(true)
+                        }}
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3 w-3" />
-                      <span>Created at {formatDate(env.created_at)}</span>
-                    </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <ShipWheel className="h-3.5 w-3.5" />
+                    <span className="font-mono">
+                      {env.cluster_id}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          />
-        </>
-      )}
+                  <div className="text-xs text-muted-foreground">
+                    <span>Namespace: <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{env.cluster_namespace}</span></span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" />
+                    <span>Created at {formatDate(env.created_at)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        />
+      )
+      }
 
       <CreateEnvironmentDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
       <EditEnvironmentDialog
@@ -362,7 +365,7 @@ export function EnvironmentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div >
   )
 }
 

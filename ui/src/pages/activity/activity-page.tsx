@@ -7,7 +7,7 @@ export function ActivityPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader items={[{ label: "Activity", icon: Activity }]} />
-      
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Activity</h1>
@@ -17,13 +17,11 @@ export function ActivityPage() {
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center min-h-[400px]">
-        <EmptyState
-          title="No activity yet"
-          description="Your project activity and recent actions will appear here."
-          icon={Activity}
-        />
-      </div>
+      <EmptyState
+        title="No activity yet"
+        description="Your project activity and recent actions will appear here."
+        icon={Activity}
+      />
     </div>
   )
 }
