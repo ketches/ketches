@@ -81,7 +81,7 @@ func ListCodeRepositories(projectID string, page, pageSize int, search string) (
 
 func ListCodeRepositoriesSimple(projectID string) ([]entities.CodeRepository, error) {
 	var repos []entities.CodeRepository
-	if err := db.DB.Select("id, slug, name, description").Where("project_id = ?", projectID).Order("created_at").Find(&repos).Error; err != nil {
+	if err := db.DB.Select("id, slug, name").Where("project_id = ?", projectID).Order("created_at").Find(&repos).Error; err != nil {
 		return nil, err
 	}
 	return repos, nil
@@ -220,7 +220,7 @@ func CreateCodeRepositoryBuildConfig(repoID string, req *models.CreateCodeReposi
 		return nil, err
 	}
 	cfg := &entities.CodeRepositoryBuildConfig{
-		Base:             entities.Base{ID: uuid.New()},
+		ID:               uuid.New(),
 		CodeRepositoryID: repoID,
 		Name:             req.Name,
 		GitRef:           defaultStr(req.GitRef, "main"),
