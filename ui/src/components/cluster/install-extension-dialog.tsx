@@ -6,6 +6,10 @@ import { toast } from "sonner"
 
 import {
   clustersApi,
+  type Extension,
+  type ExtensionVersionInfo,
+  type InstallExtensionRequest,
+} from "@/api/clusters"
   type ExtensionCatalogItem,
   type ExtensionVersionInfo,
   type InstallExtensionRequest,
@@ -31,6 +35,11 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
 interface InstallExtensionDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  clusterId: string
+  catalogItem?: Extension | null
+}
   open: boolean
   onOpenChange: (open: boolean) => void
   clusterId: string
@@ -129,6 +138,12 @@ export function InstallExtensionDialog({
       toast.success("Extension installed", {
         description: `${catalogItem?.display_name || catalogItem?.name} is being installed to the cluster.`,
       })
+      queryClient.invalidateQueries({ queryKey: ["cluster-extensions", clusterId] })
+      onOpenChange(false)
+    },
+      toast.success("Extension installed", {
+        description: `${catalogItem?.display_name || catalogItem?.name} is being installed to the cluster.`,
+      })
       queryClient.invalidateQueries({ queryKey: ["extensions", clusterId] })
       onOpenChange(false)
     },
@@ -153,6 +168,12 @@ export function InstallExtensionDialog({
     if (!catalogItem) return
 
     const data: InstallExtensionRequest = {
+      release_name: releaseName,
+      extension_id: catalogItem.id,
+      version: selectedVersion || undefined,
+      namespace: releaseNamespace,
+      create_namespace: true,
+    }
       name: releaseName,
       catalog_item_id: catalogItem.id,
       chart_version: selectedVersion || undefined,

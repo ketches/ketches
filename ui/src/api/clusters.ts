@@ -201,55 +201,43 @@ export const clustersApi = {
     }>>
   },
 
-  // Extension Catalog (admin-managed, global)
-  listExtensionCatalog: async () => {
-    return client.get('/v1/extension-catalog') as Promise<ExtensionCatalogItem[]>
-  },
+  // Extension catalog (admin-managed, global)
+  listExtensions: async () =>
+    client.get('/v1/extensions') as Promise<Extension[]>,
 
-  createExtensionCatalogItem: async (data: CreateExtensionCatalogItemRequest) => {
-    return client.post('/v1/extension-catalog', data) as Promise<ExtensionCatalogItem>
-  },
+  createExtension: async (data: CreateExtensionRequest) =>
+    client.post('/v1/extensions', data) as Promise<Extension>,
 
-  deleteExtensionCatalogItem: async (itemId: string) => {
-    return client.delete(`/v1/extension-catalog/${itemId}`)
-  },
+  deleteExtension: async (extensionId: string) =>
+    client.delete(`/v1/extensions/${extensionId}`),
 
-  updateExtensionCatalogItem: async (itemId: string, data: UpdateExtensionCatalogItemRequest) => {
-    return client.put(`/v1/extension-catalog/${itemId}`, data) as Promise<ExtensionCatalogItem>
-  },
+  updateExtension: async (extensionId: string, data: UpdateExtensionRequest) =>
+    client.put(`/v1/extensions/${extensionId}`, data) as Promise<Extension>,
 
-  getExtensionVersions: async (itemId: string) => {
-    return client.get(`/v1/extension-catalog/${itemId}/versions`) as Promise<ExtensionVersionInfo[]>
-  },
+  getExtensionVersions: async (extensionId: string) =>
+    client.get(`/v1/extensions/${extensionId}/versions`) as Promise<ExtensionVersionInfo[]>,
 
-  getExtensionValues: async (itemId: string, version: string) => {
-    return client.get(`/v1/extension-catalog/${itemId}/versions/${version}/values`) as Promise<{ values: string }>
-  },
+  getExtensionValues: async (extensionId: string, version: string) =>
+    client.get(`/v1/extensions/${extensionId}/versions/${version}/values`) as Promise<{ values: string }>,
 
-  getExtensionInstalledClusters: async (itemId: string) => {
-    return client.get(`/v1/extension-catalog/${itemId}/installed-clusters`) as Promise<InstalledCluster[]>
-  },
+  getExtensionInstalledClusters: async (extensionId: string) =>
+    client.get(`/v1/extensions/${extensionId}/installed-clusters`) as Promise<InstalledCluster[]>,
 
-  // Installed extensions per cluster
-  listExtensions: async (clusterId: string) => {
-    return client.get(`/v1/clusters/${clusterId}/extensions`) as Promise<InstalledExtension[]>
-  },
+  // Cluster extensions (per-cluster installed)
+  listClusterExtensions: async (clusterId: string) =>
+    client.get(`/v1/clusters/${clusterId}/extensions`) as Promise<ClusterExtension[]>,
 
-  getExtension: async (clusterId: string, extensionName: string) => {
-    return client.get(`/v1/clusters/${clusterId}/extensions/${extensionName}`) as Promise<InstalledExtension>
-  },
+  getClusterExtension: async (clusterId: string, clusterExtensionId: string) =>
+    client.get(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}`) as Promise<ClusterExtension>,
 
-  installExtension: async (clusterId: string, data: InstallExtensionRequest) => {
-    return client.post(`/v1/clusters/${clusterId}/extensions`, data) as Promise<InstalledExtension>
-  },
+  installExtension: async (clusterId: string, data: InstallExtensionRequest) =>
+    client.post(`/v1/clusters/${clusterId}/extensions`, data) as Promise<ClusterExtension>,
 
-  updateExtension: async (clusterId: string, extensionName: string, data: UpdateExtensionRequest) => {
-    return client.put(`/v1/clusters/${clusterId}/extensions/${extensionName}`, data) as Promise<InstalledExtension>
-  },
+  upgradeExtension: async (clusterId: string, clusterExtensionId: string, data: UpgradeExtensionRequest) =>
+    client.put(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}`, data) as Promise<ClusterExtension>,
 
-  uninstallExtension: async (clusterId: string, extensionName: string) => {
-    return client.delete(`/v1/clusters/${clusterId}/extensions/${extensionName}`)
-  },
+  uninstallExtension: async (clusterId: string, clusterExtensionId: string) =>
+    client.delete(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}`),
 
   // Gateway API status
   getGatewayAPIStatus: async (clusterId: string) => {
@@ -257,9 +245,10 @@ export const clustersApi = {
   },
 }
 
-// Extension Catalog types
+// Extension types
 
-export interface ExtensionCatalogItem {
+// Extension catalog entry (global, admin-managed)
+export interface Extension {
   id: string
   name: string
   display_name?: string
@@ -275,34 +264,38 @@ export interface ExtensionVersionInfo {
   version: string
 }
 
-export interface InstalledExtension {
-  name: string
-  catalog_item_id?: string
-  oci_url: string
-  chart_version: string
-  release_namespace: string
-  status: string
-  app_version?: string
+// Installed extension on a specific cluster
+export interface ClusterExtension {
+  id: string
+  cluster_id: string
+  extension_id: string
+  namespace: string
+  release_name: string
+  version: string
   values?: string
-  revision: number
+  status: string
+  error_message?: string
   created_at: string
 }
 
+// Request to install an extension on a cluster
 export interface InstallExtensionRequest {
-  name: string
-  catalog_item_id: string
-  chart_version?: string
-  release_namespace?: string
+  extension_id: string
+  release_name: string
+  namespace?: string
+  version?: string
   create_namespace?: boolean
   values?: string
 }
 
-export interface UpdateExtensionRequest {
-  chart_version?: string
+// Request to upgrade a cluster extension
+export interface UpgradeExtensionRequest {
+  version?: string
   values?: string
 }
 
-export interface CreateExtensionCatalogItemRequest {
+// Request to create a new extension in catalog
+export interface CreateExtensionRequest {
   name: string
   display_name?: string
   description?: string
@@ -310,12 +303,14 @@ export interface CreateExtensionCatalogItemRequest {
   icon_url?: string
 }
 
-export interface UpdateExtensionCatalogItemRequest {
+// Request to update an extension in catalog
+export interface UpdateExtensionRequest {
   display_name?: string
   description?: string
   oci_url?: string
   icon_url?: string
 }
+
 export type IntegrationType = 'prometheus' | 'grafana' | 'loki' | 'alertmanager'
 
 export interface ClusterIntegration {

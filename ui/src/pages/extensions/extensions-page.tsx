@@ -12,7 +12,7 @@ import {
 import * as React from "react"
 import { toast } from "sonner"
 
-import { clustersApi, type ExtensionCatalogItem } from "@/api/clusters"
+import { clustersApi, type Extension } from "@/api/clusters"
 import { AddExtensionCatalogDialog } from "@/components/cluster/add-extension-catalog-dialog"
 import { EditExtensionCatalogDialog } from "@/components/cluster/edit-extension-catalog-dialog"
 import { DataTable } from "@/components/data-table/data-table"
@@ -49,6 +49,16 @@ export function ExtensionsPage() {
   const queryClient = useQueryClient()
   const [addOpen, setAddOpen] = React.useState(false)
   const [installTarget, setInstallTarget] =
+    React.useState<Extension | null>(null)
+  const [installOpen, setInstallOpen] = React.useState(false)
+  const [installedClustersTarget, setInstalledClustersTarget] =
+    React.useState<Extension | null>(null)
+  const [installedClustersOpen, setInstalledClustersOpen] =
+    React.useState(false)
+  const [deleteTarget, setDeleteTarget] =
+    React.useState<Extension | null>(null)
+  const [editTarget, setEditTarget] =
+    React.useState<Extension | null>(null)
     React.useState<ExtensionCatalogItem | null>(null)
   const [installOpen, setInstallOpen] = React.useState(false)
   const [installedClustersTarget, setInstalledClustersTarget] =
@@ -78,6 +88,11 @@ export function ExtensionsPage() {
   })
 
   const { data: catalog = [], isLoading, refetch } = useQuery({
+    queryKey: ["extensions"],
+    queryFn: () => clustersApi.listExtensions(),
+  })
+
+  const safeItems: Extension[] = Array.isArray(catalog)
     queryKey: ["extension-catalog"],
     queryFn: () => clustersApi.listExtensionCatalog(),
   })
@@ -98,6 +113,10 @@ export function ExtensionsPage() {
   })
 
   const deleteMutation = useMutation({
+    mutationFn: (id: string) => clustersApi.deleteExtension(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["extensions"] })
+      toast.success("Extension removed from catalog")
     mutationFn: (id: string) => clustersApi.deleteExtensionCatalogItem(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["extension-catalog"] })
@@ -111,7 +130,7 @@ export function ExtensionsPage() {
     },
   })
 
-  const columns: ColumnDef<ExtensionCatalogItem>[] = [
+  const columns: ColumnDef<Extension>[] = [
     {
       accessorKey: "name",
       header: "Extension",
@@ -407,6 +426,16 @@ export function ExtensionsPage() {
       />
 
       <InstallExtensionToClusterDialog
+        open={installOpen}
+        onOpenChange={setInstallOpen}
+        extension={installTarget}
+      />
+
+      <InstalledClustersDialog
+        open={installedClustersOpen}
+        onOpenChange={setInstalledClustersOpen}
+        extension={installedClustersTarget}
+      />
         open={installOpen}
         onOpenChange={setInstallOpen}
         catalogItem={installTarget}

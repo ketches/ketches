@@ -4,6 +4,8 @@ import { toast } from "sonner"
 
 import {
   clustersApi,
+  type CreateExtensionRequest,
+} from "@/api/clusters"
   type CreateExtensionCatalogItemRequest,
 } from "@/api/clusters"
 import { Button } from "@/components/ui/button"
@@ -48,6 +50,12 @@ export function AddExtensionCatalogDialog({
   }, [open])
 
   const createMutation = useMutation({
+    mutationFn: (data: CreateExtensionRequest) =>
+      clustersApi.createExtension(data),
+    onSuccess: () => {
+      toast.success("Extension added to catalog")
+      queryClient.invalidateQueries({ queryKey: ["extensions"] })
+      onOpenChange(false)
     mutationFn: (data: CreateExtensionCatalogItemRequest) =>
       clustersApi.createExtensionCatalogItem(data),
     onSuccess: () => {
@@ -71,6 +79,11 @@ export function AddExtensionCatalogDialog({
   })
 
   const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const data: CreateExtensionRequest = {
+      name: name.trim(),
+      oci_url: ociUrl.trim(),
+    }
     e.preventDefault()
     const data: CreateExtensionCatalogItemRequest = {
       name: name.trim(),

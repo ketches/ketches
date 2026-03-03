@@ -8,6 +8,10 @@ import { toast } from "sonner"
 import {
   clustersApi,
   type ExtensionVersionInfo,
+  type ClusterExtension,
+  type UpgradeExtensionRequest,
+} from "@/api/clusters"
+  type ExtensionVersionInfo,
   type InstalledExtension,
   type UpdateExtensionRequest,
 } from "@/api/clusters"
@@ -31,6 +35,11 @@ import {
 } from "@/components/ui/combobox"
 
 interface UpdateExtensionDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  clusterId: string
+  extension: ClusterExtension | null
+}
   open: boolean
   onOpenChange: (open: boolean) => void
   clusterId: string
@@ -72,6 +81,12 @@ export function UpdateExtensionDialog({
   const initialSyncedRef = React.useRef(false)
   React.useEffect(() => {
     if (!extension) return
+    setSelectedVersion(extension.version || "")
+    setModifiedValues(extension.values ?? "")
+    setShowDiff(false)
+    initialSyncedRef.current = false
+  }, [extension])
+    if (!extension) return
     setSelectedVersion(extension.chart_version || "")
     setModifiedValues(extension.values ?? "")
     setShowDiff(false)
@@ -79,6 +94,19 @@ export function UpdateExtensionDialog({
   }, [extension])
 
   // Fetch full extension details to get current values
+  const { data: extensionDetails } = useQuery({
+    queryKey: ["cluster-extensions", clusterId, extension?.id],
+    queryFn: () => clustersApi.getClusterExtension(clusterId, extension!.id),
+    enabled: open && Boolean(extension?.id),
+  })
+
+  React.useEffect(() => {
+    if (
+      !extensionDetails ||
+      !extension ||
+      extensionDetails.id !== extension.id ||
+      initialSyncedRef.current
+    )
   const { data: extensionDetails } = useQuery({
     queryKey: ["extensions", clusterId, extension?.name],
     queryFn: () => clustersApi.getExtension(clusterId, extension!.name),
@@ -98,6 +126,46 @@ export function UpdateExtensionDialog({
   }, [extension, extensionDetails])
 
   // Fetch versions for this extension's catalog item
+  const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
+    queryKey: ["extension-versions", extension?.extension_id],
+    queryFn: () =>
+      clustersApi.getExtensionVersions(extension!.extension_id!),
+    enabled: open && Boolean(extension?.extension_id),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const rawVersions: ExtensionVersionInfo[] = Array.isArray(versionsData)
+    ? versionsData
+    : []
+
+  // Ensure current version is always in the list
+  const versions: ExtensionVersionInfo[] =
+    rawVersions.length > 0
+      ? rawVersions
+      : extension?.version
+        ? [{ version: extension.version }]
+        : []
+
+  // Fetch default values for selected version (only in diff mode)
+  const { data: chartValuesData, isFetching: chartValuesFetching } = useQuery({
+    queryKey: [
+      "extension-values",
+      extension?.extension_id,
+      selectedVersion,
+    ],
+    queryFn: () =>
+      clustersApi.getExtensionValues(
+        extension!.extension_id!,
+        selectedVersion
+      ),
+    enabled: Boolean(
+      showDiff &&
+        open &&
+        extension?.extension_id &&
+        selectedVersion
+    ),
+    staleTime: 5 * 60 * 1000,
+  })
   const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
     queryKey: ["extension-versions", extension?.catalog_item_id],
     queryFn: () =>
@@ -143,6 +211,15 @@ export function UpdateExtensionDialog({
     (chartValuesData as { values?: string } | undefined)?.values ?? ""
 
   const updateMutation = useMutation({
+    mutationFn: (data: UpgradeExtensionRequest) =>
+      clustersApi.upgradeExtension(clusterId, extension!.id, data),
+    onSuccess: () => {
+      toast.success("Extension updated", {
+        description: `${extension?.release_name} has been updated.`,
+      })
+      queryClient.invalidateQueries({ queryKey: ["cluster-extensions", clusterId] })
+      onOpenChange(false)
+    },
     mutationFn: (data: UpdateExtensionRequest) =>
       clustersApi.updateExtension(clusterId, extension!.name, data),
     onSuccess: () => {
@@ -171,6 +248,14 @@ export function UpdateExtensionDialog({
   })
 
   const handleSave = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!extension) return
+    const data: UpgradeExtensionRequest = {
+      version: selectedVersion || undefined,
+      values: modifiedValues.trim() || undefined,
+    }
+    updateMutation.mutate(data)
+  }
     e.preventDefault()
     if (!extension) return
     const data: UpdateExtensionRequest = {
@@ -203,6 +288,13 @@ export function UpdateExtensionDialog({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <DialogHeader className="shrink-0 px-6 pt-6">
+            <DialogTitle>Update Extension</DialogTitle>
+            <DialogDescription>
+              Update <span className="font-medium">{extension.release_name}</span>{" "}
+              in namespace <span className="font-mono text-xs">{extension.namespace}</span>.
+              Edit values below and save to apply.
+            </DialogDescription>
+          </DialogHeader>
             <DialogTitle>Update Extension</DialogTitle>
             <DialogDescription>
               Update <span className="font-medium">{extension.name}</span>{" "}
@@ -262,6 +354,8 @@ export function UpdateExtensionDialog({
                   size="sm"
                   className="shrink-0 h-6 px-2 text-xs"
                   onClick={() => setShowDiff((v) => !v)}
+                  disabled={!selectedVersion || !extension.extension_id}
+                >
                   disabled={!selectedVersion || !extension.catalog_item_id}
                 >
                   <GitCompare className="h-3 w-3" />

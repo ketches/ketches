@@ -2,8 +2,8 @@ package models
 
 import "time"
 
-// ExtensionCatalogItem is the platform-level catalog entry for an OCI-based helm chart.
-type ExtensionCatalogItem struct {
+// Extension is the platform-level catalog entry for an OCI-based Helm chart.
+type Extension struct {
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
 	DisplayName  string    `json:"display_name"`
@@ -15,8 +15,8 @@ type ExtensionCatalogItem struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-// CreateExtensionCatalogItemRequest is the request body for adding a catalog item.
-type CreateExtensionCatalogItemRequest struct {
+// CreateExtensionRequest is the request body for adding a catalog extension.
+type CreateExtensionRequest struct {
 	Name        string `json:"name" binding:"required"`
 	DisplayName string `json:"display_name"`
 	Description string `json:"description"`
@@ -24,50 +24,50 @@ type CreateExtensionCatalogItemRequest struct {
 	IconURL     string `json:"icon_url"`
 }
 
-// ExtensionVersionInfo holds a single chart version tag.
-type ExtensionVersionInfo struct {
-	Version string `json:"version"`
-}
-
-// InstalledExtension represents a helm release installed in a cluster.
-type InstalledExtension struct {
-	Name             string    `json:"name"`
-	CatalogItemID    string    `json:"catalog_item_id,omitempty"`
-	OCIUrl           string    `json:"oci_url"`
-	ChartVersion     string    `json:"chart_version"`
-	ReleaseNamespace string    `json:"release_namespace"`
-	Status           string    `json:"status"`
-	AppVersion       string    `json:"app_version,omitempty"`
-	Values           string    `json:"values,omitempty"`
-	Revision         int       `json:"revision"`
-	CreatedAt        time.Time `json:"created_at"`
-}
-
-// InstallExtensionRequest is the request body for installing an extension into a cluster.
-type InstallExtensionRequest struct {
-	Name             string `json:"name" binding:"required"`
-	CatalogItemID    string `json:"catalog_item_id" binding:"required"`
-	ChartVersion     string `json:"chart_version"`
-	ReleaseNamespace string `json:"release_namespace"`
-	CreateNamespace  bool   `json:"create_namespace"`
-	Values           string `json:"values"`
-}
-
-// UpdateExtensionRequest is the request body for updating an installed extension.
+// UpdateExtensionRequest is the request body for updating a catalog extension.
 type UpdateExtensionRequest struct {
-	ChartVersion string `json:"chart_version,omitempty"`
-	Values       string `json:"values,omitempty"`
-}
-
-// UpdateExtensionCatalogItemRequest is the request body for updating a catalog item.
-type UpdateExtensionCatalogItemRequest struct {
 	DisplayName string `json:"display_name"`
 	Description string `json:"description"`
 	OCIUrl      string `json:"oci_url"`
 	IconURL     string `json:"icon_url"`
 }
 
-// InstalledCluster summarises a cluster that has a catalog extension installed.
+	// ExtensionVersionInfo holds a single chart version tag.
+	type ExtensionVersionInfo struct {
+	Version string `json:"version"`
+	}
+
+	// ClusterExtension represents an extension installed (or being installed) on a cluster.
+	type ClusterExtension struct {
+	ID           string    `json:"id"`
+	ClusterID    string    `json:"cluster_id"`
+	ExtensionID  string    `json:"extension_id"`
+	Namespace    string    `json:"namespace"`
+	ReleaseName  string    `json:"release_name"`
+	Version      string    `json:"version"`
+	Values       string    `json:"values,omitempty"`
+	Status       string    `json:"status"`
+	ErrorMessage string    `json:"error_message,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	}
+
+// InstallExtensionRequest is the request body for installing an extension into a cluster.
+type InstallExtensionRequest struct {
+	ExtensionID     string `json:"extension_id" binding:"required"`
+	ReleaseName     string `json:"release_name" binding:"required"`
+	Namespace       string `json:"namespace"`
+	Version         string `json:"version"`
+	CreateNamespace bool   `json:"create_namespace"`
+	Values          string `json:"values"`
+}
+
+	// UpgradeExtensionRequest is the request body for upgrading an installed cluster extension.
+	type UpgradeExtensionRequest struct {
+	Version string `json:"version,omitempty"`
+	Values  string `json:"values,omitempty"`
+}
+
+// InstalledCluster summarises a cluster that has an extension installed.
 type InstalledCluster struct {
 	ClusterID   string `json:"cluster_id"`
 	ClusterName string `json:"cluster_name"`

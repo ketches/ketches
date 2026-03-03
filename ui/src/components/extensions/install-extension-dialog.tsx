@@ -6,7 +6,7 @@ import { toast } from "sonner"
 
 import {
   clustersApi,
-  type ExtensionCatalogItem,
+  type Extension,
   type ExtensionVersionInfo,
   type InstallExtensionRequest,
 } from "@/api/clusters"
@@ -35,14 +35,14 @@ interface InstallExtensionToClusterDialogProps {
   onOpenChange: (open: boolean) => void
   // When provided, the cluster selector is pre-filled and locked
   preselectedClusterId?: string
-  catalogItem?: ExtensionCatalogItem | null
+  extension?: Extension | null
 }
 
 export function InstallExtensionToClusterDialog({
   open,
   onOpenChange,
   preselectedClusterId,
-  catalogItem,
+  extension,
 }: InstallExtensionToClusterDialogProps) {
   const queryClient = useQueryClient()
   const { theme } = useTheme()
@@ -78,15 +78,15 @@ export function InstallExtensionToClusterDialog({
     if (preselectedClusterId) setSelectedClusterId(preselectedClusterId)
   }, [preselectedClusterId])
 
-  // Reset form when catalog item or dialog open state changes
+  // Reset form when extension or dialog open state changes
   React.useEffect(() => {
-    if (catalogItem) {
-      setReleaseName(catalogItem.name)
+    if (extension) {
+      setReleaseName(extension.name)
       setReleaseNamespace("ketches-extensions")
       setSelectedVersion("")
       setValues("")
     }
-  }, [catalogItem])
+  }, [extension])
 
   // Reset cluster selection when dialog closes (unless locked)
   React.useEffect(() => {
@@ -104,9 +104,9 @@ export function InstallExtensionToClusterDialog({
 
   // Fetch available versions for this catalog item
   const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
-    queryKey: ["extension-versions", catalogItem?.id],
-    queryFn: () => clustersApi.getExtensionVersions(catalogItem!.id),
-    enabled: open && Boolean(catalogItem?.id),
+    queryKey: ["extension-versions", extension?.id],
+    queryFn: () => clustersApi.getExtensionVersions(extension!.id),
+    enabled: open && Boolean(extension?.id),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -129,10 +129,10 @@ export function InstallExtensionToClusterDialog({
     error: valuesError,
     isSuccess: valuesSuccess,
   } = useQuery({
-    queryKey: ["extension-values", catalogItem?.id, selectedVersion],
+    queryKey: ["extension-values", extension?.id, selectedVersion],
     queryFn: () =>
-      clustersApi.getExtensionValues(catalogItem!.id, selectedVersion),
-    enabled: open && Boolean(catalogItem?.id && selectedVersion),
+      clustersApi.getExtensionValues(extension!.id, selectedVersion),
+    enabled: open && Boolean(extension?.id && selectedVersion),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -150,10 +150,10 @@ export function InstallExtensionToClusterDialog({
       clustersApi.installExtension(selectedClusterId, data),
     onSuccess: () => {
       toast.success("Extension installed", {
-        description: `${catalogItem?.display_name || catalogItem?.name} is being installed to the cluster.`,
+        description: `${extension?.display_name || extension?.name} is being installed to the cluster.`,
       })
       queryClient.invalidateQueries({
-        queryKey: ["extensions", selectedClusterId],
+        queryKey: ["cluster-extensions", selectedClusterId],
       })
       onOpenChange(false)
     },
@@ -175,13 +175,13 @@ export function InstallExtensionToClusterDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!catalogItem || !selectedClusterId) return
+    if (!extension || !selectedClusterId) return
 
     const data: InstallExtensionRequest = {
-      name: releaseName,
-      catalog_item_id: catalogItem.id,
-      chart_version: selectedVersion || undefined,
-      release_namespace: releaseNamespace,
+      release_name: releaseName,
+      extension_id: extension.id,
+      version: selectedVersion || undefined,
+      namespace: releaseNamespace,
       create_namespace: true,
     }
     if (values.trim()) {
@@ -202,7 +202,7 @@ export function InstallExtensionToClusterDialog({
             <DialogDescription>
               Install{" "}
               <span className="font-medium">
-                {catalogItem?.display_name || catalogItem?.name}
+                {extension?.display_name || extension?.name}
               </span>{" "}
               to a cluster.
             </DialogDescription>

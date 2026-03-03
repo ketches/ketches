@@ -24,9 +24,9 @@ func main() {
 		log.Fatalf("failed to initialize database: %v", err)
 	}
 
-	// if err := db.Migrate(); err != nil {
-	// 	log.Fatalf("failed to migrate database: %v", err)
-	// }
+	if err := db.Migrate(); err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
+	}
 
 	if err := services.InitClusters(); err != nil {
 		log.Fatalf("failed to initialize clusters: %v", err)

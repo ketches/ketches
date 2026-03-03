@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { ArrowDownToLine, Blocks, Loader2 } from "lucide-react"
 import * as React from "react"
 
-import { clustersApi, type ExtensionCatalogItem } from "@/api/clusters"
+import { clustersApi, type Extension } from "@/api/clusters"
 import { InstallExtensionDialog } from "@/components/cluster/install-extension-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,17 +31,17 @@ export function BrowseExtensionsDialog({
 }: BrowseExtensionsDialogProps) {
   const [search, setSearch] = React.useState("")
   const [installTarget, setInstallTarget] =
-    React.useState<ExtensionCatalogItem | null>(null)
+    React.useState<Extension | null>(null)
   const [installOpen, setInstallOpen] = React.useState(false)
 
   // Fetch all catalog items
   const { data: catalog = [], isLoading } = useQuery({
-    queryKey: ["extension-catalog"],
-    queryFn: () => clustersApi.listExtensionCatalog(),
+    queryKey: ["extensions"],
+    queryFn: () => clustersApi.listExtensions(),
     enabled: open,
   })
 
-  const safeItems: ExtensionCatalogItem[] = Array.isArray(catalog)
+  const safeItems: Extension[] = Array.isArray(catalog)
     ? catalog
     : []
 
@@ -56,7 +56,7 @@ export function BrowseExtensionsDialog({
     return matchesSearch && notInstalled
   })
 
-  const handleInstallClick = (item: ExtensionCatalogItem) => {
+  const handleInstallClick = (item: Extension) => {
     setInstallTarget(item)
     setInstallOpen(true)
   }

@@ -4,6 +4,9 @@ import { toast } from "sonner"
 
 import {
   clustersApi,
+  type Extension,
+  type UpdateExtensionRequest,
+} from "@/api/clusters"
   type ExtensionCatalogItem,
   type UpdateExtensionCatalogItemRequest,
 } from "@/api/clusters"
@@ -21,6 +24,10 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 interface EditExtensionCatalogDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  item: Extension | null
+}
   open: boolean
   onOpenChange: (open: boolean) => void
   item: ExtensionCatalogItem | null
@@ -59,6 +66,12 @@ export function EditExtensionCatalogDialog({
   }, [open])
 
   const updateMutation = useMutation({
+    mutationFn: (data: UpdateExtensionRequest) =>
+      clustersApi.updateExtension(item!.id, data),
+    onSuccess: () => {
+      toast.success("Extension updated")
+      queryClient.invalidateQueries({ queryKey: ["extensions"] })
+      onOpenChange(false)
     mutationFn: (data: UpdateExtensionCatalogItemRequest) =>
       clustersApi.updateExtensionCatalogItem(item!.id, data),
     onSuccess: () => {
@@ -82,6 +95,10 @@ export function EditExtensionCatalogDialog({
   })
 
   const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const data: UpdateExtensionRequest = {
+      oci_url: ociUrl.trim() || undefined,
+    }
     e.preventDefault()
     const data: UpdateExtensionCatalogItemRequest = {
       oci_url: ociUrl.trim() || undefined,

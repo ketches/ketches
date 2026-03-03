@@ -10,11 +10,11 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
-// Extension Catalog handlers
+// === Extension Catalog handlers ===
 
-// ListExtensionCatalog returns all platform extension catalog items.
-func ListExtensionCatalog(c *gin.Context) {
-	items, err := services.ListExtensionCatalog()
+// ListExtensions returns all platform extension catalog items.
+func ListExtensions(c *gin.Context) {
+	items, err := services.ListExtensions()
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -22,18 +22,16 @@ func ListExtensionCatalog(c *gin.Context) {
 	api.Success(c, items)
 }
 
-// CreateExtensionCatalogItem adds a new catalog item (admin only).
-func CreateExtensionCatalogItem(c *gin.Context) {
-	var req models.CreateExtensionCatalogItemRequest
+// CreateExtension adds a new catalog extension (admin only).
+func CreateExtension(c *gin.Context) {
+	var req models.CreateExtensionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-
 	claims, _ := c.Get("claims")
 	userID := claims.(*app.Claims).UserID
-
-	item, err := services.CreateExtensionCatalogItem(&req, userID)
+	item, err := services.CreateExtension(&req, userID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -41,25 +39,25 @@ func CreateExtensionCatalogItem(c *gin.Context) {
 	api.Created(c, item)
 }
 
-// DeleteExtensionCatalogItem removes a catalog item by ID (admin only, builtin protected).
-func DeleteExtensionCatalogItem(c *gin.Context) {
-	itemID := c.Param("itemID")
-	if err := services.DeleteExtensionCatalogItem(itemID); err != nil {
+// DeleteExtension removes a catalog extension by ID (admin only, builtin protected).
+func DeleteExtension(c *gin.Context) {
+	extensionID := c.Param("extensionID")
+	if err := services.DeleteExtension(extensionID); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 	api.NoContent(c)
 }
 
-// UpdateExtensionCatalogItem updates a non-builtin catalog item's metadata (admin only).
-func UpdateExtensionCatalogItem(c *gin.Context) {
-	itemID := c.Param("itemID")
-	var req models.UpdateExtensionCatalogItemRequest
+// UpdateExtension updates a non-builtin catalog extension's metadata (admin only).
+func UpdateExtension(c *gin.Context) {
+	extensionID := c.Param("extensionID")
+	var req models.UpdateExtensionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-	item, err := services.UpdateExtensionCatalogItem(itemID, &req)
+	item, err := services.UpdateExtension(extensionID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -67,10 +65,10 @@ func UpdateExtensionCatalogItem(c *gin.Context) {
 	api.Success(c, item)
 }
 
-// GetInstalledClustersForExtension returns all clusters that have a given catalog item installed.
+// GetInstalledClustersForExtension returns all clusters that have a given extension installed.
 func GetInstalledClustersForExtension(c *gin.Context) {
-	itemID := c.Param("itemID")
-	clusters, err := services.GetInstalledClustersForExtension(itemID)
+	extensionID := c.Param("extensionID")
+	clusters, err := services.GetInstalledClustersForExtension(extensionID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -78,12 +76,10 @@ func GetInstalledClustersForExtension(c *gin.Context) {
 	api.Success(c, clusters)
 }
 
-// Version and values handlers
-
-// ListExtensionVersions lists available OCI tags for a catalog item via crane.
+// ListExtensionVersions lists available OCI tags for an extension.
 func ListExtensionVersions(c *gin.Context) {
-	itemID := c.Param("itemID")
-	versions, err := services.ListExtensionVersions(itemID)
+	extensionID := c.Param("extensionID")
+	versions, err := services.ListExtensionVersions(extensionID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -93,9 +89,9 @@ func ListExtensionVersions(c *gin.Context) {
 
 // GetExtensionValues returns the default values.yaml for a specific chart version.
 func GetExtensionValues(c *gin.Context) {
-	itemID := c.Param("itemID")
+	extensionID := c.Param("extensionID")
 	version := c.Param("version")
-	values, err := services.GetExtensionValues(itemID, version)
+	values, err := services.GetExtensionValues(extensionID, version)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -103,12 +99,12 @@ func GetExtensionValues(c *gin.Context) {
 	api.Success(c, gin.H{"values": values})
 }
 
-// Installed Extension (helm release) handlers
+// === Cluster Extension handlers ===
 
-// ListExtensions lists all helm releases installed in a cluster.
-func ListExtensions(c *gin.Context) {
+// ListClusterExtensions lists all extensions installed in a cluster (from DB).
+func ListClusterExtensions(c *gin.Context) {
 	clusterID := c.Param("clusterID")
-	extensions, err := services.ListExtensions(clusterID)
+	extensions, err := services.ListClusterExtensions(clusterID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -116,11 +112,11 @@ func ListExtensions(c *gin.Context) {
 	api.Success(c, extensions)
 }
 
-// GetExtension returns a single installed helm release by name.
-func GetExtension(c *gin.Context) {
+// GetClusterExtension returns a single installed cluster extension by UUID.
+func GetClusterExtension(c *gin.Context) {
 	clusterID := c.Param("clusterID")
-	name := c.Param("extensionName")
-	ext, err := services.GetExtension(clusterID, name)
+	id := c.Param("clusterExtensionID")
+	ext, err := services.GetClusterExtension(clusterID, id)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -128,32 +124,34 @@ func GetExtension(c *gin.Context) {
 	api.Success(c, ext)
 }
 
-// InstallExtension installs an OCI helm chart into a cluster.
-func InstallExtension(c *gin.Context) {
+// InstallClusterExtension installs an OCI helm chart into a cluster (async, returns 202).
+func InstallClusterExtension(c *gin.Context) {
 	clusterID := c.Param("clusterID")
 	var req models.InstallExtensionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-	ext, err := services.InstallExtension(clusterID, &req)
+	claims, _ := c.Get("claims")
+	userID := claims.(*app.Claims).UserID
+	ext, err := services.InstallClusterExtension(clusterID, &req, userID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Created(c, ext)
+	c.JSON(http.StatusAccepted, ext)
 }
 
-// UpdateExtension upgrades an installed helm release.
-func UpdateExtension(c *gin.Context) {
+// UpgradeClusterExtension upgrades an installed cluster extension (async).
+func UpgradeClusterExtension(c *gin.Context) {
 	clusterID := c.Param("clusterID")
-	name := c.Param("extensionName")
-	var req models.UpdateExtensionRequest
+	id := c.Param("clusterExtensionID")
+	var req models.UpgradeExtensionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-	ext, err := services.UpdateExtension(clusterID, name, &req)
+	ext, err := services.UpgradeClusterExtension(clusterID, id, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -161,11 +159,11 @@ func UpdateExtension(c *gin.Context) {
 	api.Success(c, ext)
 }
 
-// UninstallExtension removes an installed helm release from a cluster.
-func UninstallExtension(c *gin.Context) {
+// UninstallClusterExtension removes an installed helm release from a cluster (async).
+func UninstallClusterExtension(c *gin.Context) {
 	clusterID := c.Param("clusterID")
-	name := c.Param("extensionName")
-	if err := services.UninstallExtension(clusterID, name); err != nil {
+	id := c.Param("clusterExtensionID")
+	if err := services.UninstallClusterExtension(clusterID, id); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
