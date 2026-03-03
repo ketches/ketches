@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef } from "@tanstack/react-table"
 import {
   BarChart3,
   CheckCircle,
@@ -36,6 +37,7 @@ import { EditBuildConfigDialog } from "@/components/code-repositories/edit-build
 import { EditCodeRepositoryDialog } from "@/components/code-repositories/edit-code-repository-dialog"
 import { RepoTopologyView } from "@/components/code-repositories/repo-topology-view"
 import { UnifiedBuildDeployDialog } from "@/components/code-repositories/unified-build-deploy-dialog"
+import { DataTable } from "@/components/data-table/data-table"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -55,16 +57,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
@@ -89,13 +82,6 @@ export function CodeRepositoryDetailPage() {
 
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
-  // Pagination and filtering state
-  const [buildConfigsPage, setBuildConfigsPage] = React.useState(1)
-  const [buildsPage, setBuildsPage] = React.useState(1)
-  const [deploymentsPage, setDeploymentsPage] = React.useState(1)
-  const [deploymentEnvFilter, _setDeploymentEnvFilter] = React.useState<string>("")
-  const [deploymentAppFilter, _setDeploymentAppFilter] = React.useState<string>("")
-  const itemsPerPage = 10
 
   const { data: repo, isLoading } = useQuery({
     queryKey: ["code-repository", repoId],
@@ -154,24 +140,6 @@ export function CodeRepositoryDetailPage() {
     },
   })
 
-  const filteredDeployments = React.useMemo(() => {
-    let result = (deployments as any[]) || []
-    if (deploymentEnvFilter) {
-      result = result.filter((d) => d.app?.env_id === deploymentEnvFilter)
-    }
-    if (deploymentAppFilter) {
-      result = result.filter((d) => d.app_id === deploymentAppFilter)
-    }
-    return result
-  }, [deployments, deploymentEnvFilter, deploymentAppFilter])
-
-  const paginatedDeployments = React.useMemo(() => {
-    return filteredDeployments.slice(
-      (deploymentsPage - 1) * itemsPerPage,
-      deploymentsPage * itemsPerPage
-    )
-  }, [filteredDeployments, deploymentsPage, itemsPerPage])
-
   React.useEffect(() => {
     if (!triggerBuildDialogOpen) {
       setSelectedBuildConfigId(undefined)
@@ -198,6 +166,254 @@ export function CodeRepositoryDetailPage() {
     s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
   const configNameById = (id: string) =>
     buildConfigs.find((c) => c.id === id)?.name ?? id
+
+  // ColumnDef for Build Configs table
+  const buildConfigColumns: ColumnDef<CodeRepositoryBuildConfig>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+    },
+    {
+      accessorKey: "git_ref",
+      header: "Ref",
+      cell: ({ row }) => row.original.git_ref || "main",
+    },
+    {
+      accessorKey: "dockerfile_path",
+      header: "Dockerfile",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">{row.original.dockerfile_path}</span>
+      ),
+    },
+    {
+      accessorKey: "build_context",
+      header: "Context",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">{row.original.build_context}</span>
+      ),
+    },
+    {
+      accessorKey: "image_name",
+      header: "Image",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">{row.original.image_name}</span>
+      ),
+    },
+    {
+      id: "registry",
+      header: "Registry",
+      cell: ({ row }) => row.original.registry?.name ?? row.original.registry_id,
+    },
+    ...(!isViewer
+      ? [
+          {
+            id: "actions",
+            header: () => <span className="flex justify-end">Actions</span>,
+            cell: ({ row }: { row: { original: CodeRepositoryBuildConfig } }) => {
+              const cfg = row.original
+              return (
+                <div className="flex items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      setEditingConfig(cfg)
+                      setEditConfigOpen(true)
+                    }}
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedBuildConfigId(cfg.id)
+                      setSelectedBuildId(undefined)
+                      setTriggerBuildDialogOpen(true)
+                    }}
+                  >
+                    <Play />
+                    Build
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      setDeletingConfig(cfg)
+                      setDeleteConfigDialogOpen(true)
+                    }}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              )
+            },
+          } as ColumnDef<CodeRepositoryBuildConfig>,
+        ]
+      : []),
+  ]
+
+  // ColumnDef for Build History table
+  type BuildItem = (typeof builds)[number]
+  const buildHistoryColumns: ColumnDef<BuildItem>[] = [
+    {
+      accessorKey: "build_number",
+      header: "#",
+      cell: ({ row }) => row.original.build_number,
+    },
+    {
+      id: "config",
+      header: "Config",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-xs">
+          {row.original.code_repository_build_config_id
+            ? configNameById(row.original.code_repository_build_config_id)
+            : "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => <BuildStatusBadge status={row.original.status} />,
+    },
+    {
+      accessorKey: "git_ref",
+      header: "Ref",
+    },
+    {
+      accessorKey: "image_full_name",
+      header: "Image",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs max-w-50 truncate block">
+          {row.original.image_full_name}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "duration",
+      header: "Duration",
+      cell: ({ row }) => row.original.duration ? formatDuration(row.original.duration) : "-",
+    },
+    {
+      accessorKey: "created_at",
+      header: "Created",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-xs">
+          {new Date(row.original.created_at).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <span className="flex justify-end">Actions</span>,
+      cell: ({ row }) => {
+        const b = row.original
+        return (
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setLogBuildId(b.id)}
+              title="View Logs"
+            >
+              <FileText />
+            </Button>
+            {!isViewer && (b.status === "failed" || b.status === "cancelled") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => retryBuildMutation.mutate(b)}
+                disabled={retryBuildMutation.isPending}
+                title="Retry Build"
+              >
+                {retryBuildMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCcw />
+                )}
+                Retry
+              </Button>
+            )}
+            {!isViewer && b.status === "succeeded" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedBuildId(b.id)
+                  setSelectedBuildConfigId(b.code_repository_build_config_id || undefined)
+                  setTriggerBuildDialogOpen(true)
+                }}
+                title="Deploy Build"
+              >
+                <Rocket />
+                Deploy
+              </Button>
+            )}
+          </div>
+        )
+      },
+    },
+  ]
+
+  // ColumnDef for Deployment History table
+  type DeploymentItem = (typeof deployments)[number]
+  const deploymentColumns: ColumnDef<DeploymentItem>[] = [
+    {
+      accessorKey: "build_number",
+      header: "Build #",
+      cell: ({ row }) => <span className="font-medium">{row.original.build_number}</span>,
+    },
+    {
+      id: "environment",
+      header: "Environment",
+      cell: ({ row }) => row.original.app?.env?.name ?? "-",
+    },
+    {
+      id: "application",
+      header: "Application",
+      cell: ({ row }) => {
+        const d = row.original
+        return d.app ? (
+          <Button
+            variant="link"
+            className="p-0 h-auto text-xs"
+            onClick={() => navigate(`/applications/${d.app?.id}`)}
+          >
+            <ExternalLink />
+            {d.app.name}
+          </Button>
+        ) : (
+          "-"
+        )
+      },
+    },
+    {
+      accessorKey: "image_full_name",
+      header: "Image",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs max-w-40 truncate block" title={row.original.image_full_name}>
+          {row.original.image_full_name}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "git_ref",
+      header: "Ref",
+      cell: ({ row }) => <span className="text-xs">{row.original.git_ref}</span>,
+    },
+    {
+      accessorKey: "created_at",
+      header: "Deployed At",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-xs">
+          {new Date(row.original.created_at).toLocaleString()}
+        </span>
+      ),
+    },
+  ]
 
   if (!repoId) {
     return (
@@ -465,113 +681,11 @@ export function CodeRepositoryDetailPage() {
                   actionIcon={!isViewer ? Plus : undefined}
                 />
               ) : (
-                <>
-                  <div className="border-y border-x-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent border-b">
-                          <TableHead>Name</TableHead>
-                          <TableHead>Ref</TableHead>
-                          <TableHead>Dockerfile</TableHead>
-                          <TableHead>Context</TableHead>
-                          <TableHead>Image</TableHead>
-                          <TableHead>Registry</TableHead>
-                          {!isViewer && <TableHead className="text-right">Actions</TableHead>}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(buildConfigs || [])
-                          .slice((buildConfigsPage - 1) * itemsPerPage, buildConfigsPage * itemsPerPage)
-                          .map((cfg) => (
-                            <TableRow key={cfg.id}>
-                              <TableCell className="font-medium">{cfg.name}</TableCell>
-                              <TableCell>{cfg.git_ref || "main"}</TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {cfg.dockerfile_path}
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {cfg.build_context}
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {cfg.image_name}
-                              </TableCell>
-                              <TableCell>
-                                {cfg.registry?.name ?? cfg.registry_id}
-                              </TableCell>
-                              {!isViewer && (
-                                <TableCell className="text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon-sm"
-                                      onClick={() => {
-                                        setEditingConfig(cfg)
-                                        setEditConfigOpen(true)
-                                      }}
-                                    >
-                                      <Pencil />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedBuildConfigId(cfg.id)
-                                        setSelectedBuildId(undefined)
-                                        setTriggerBuildDialogOpen(true)
-                                      }}
-                                    >
-                                      <Play />
-                                      Build
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon-sm"
-                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                      onClick={() => {
-                                        setDeletingConfig(cfg)
-                                        setDeleteConfigDialogOpen(true)
-                                      }}
-                                    >
-                                      <Trash2 />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              )}
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  {buildConfigs.length > itemsPerPage && (
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() => setBuildConfigsPage(Math.max(1, buildConfigsPage - 1))}
-                            className={buildConfigsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                        {Array.from({ length: Math.ceil(buildConfigs.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              onClick={() => setBuildConfigsPage(page)}
-                              isActive={buildConfigsPage === page}
-                              className="cursor-pointer"
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() => setBuildConfigsPage(Math.min(Math.ceil(buildConfigs.length / itemsPerPage), buildConfigsPage + 1))}
-                            className={buildConfigsPage >= Math.ceil(buildConfigs.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  )}
-                </>
+                <DataTable
+                  columns={buildConfigColumns}
+                  data={buildConfigs}
+                  borderless
+                />
               )}
             </CardContent>
           </Card>
@@ -594,123 +708,11 @@ export function CodeRepositoryDetailPage() {
                   icon={FileClock}
                 />
               ) : (
-                <>
-                  <div className="border-y border-x-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent border-b">
-                          <TableHead>#</TableHead>
-                          <TableHead>Config</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Ref</TableHead>
-                          <TableHead>Image</TableHead>
-                          <TableHead>Duration</TableHead>
-                          <TableHead>Created</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(builds || [])
-                          .slice((buildsPage - 1) * itemsPerPage, buildsPage * itemsPerPage)
-                          .map((b) => (
-                            <TableRow key={b.id}>
-                              <TableCell>{b.build_number}</TableCell>
-                              <TableCell className="text-muted-foreground text-xs">
-                                {b.code_repository_build_config_id
-                                  ? configNameById(b.code_repository_build_config_id)
-                                  : "-"}
-                              </TableCell>
-                              <TableCell>
-                                <BuildStatusBadge status={b.status} />
-                              </TableCell>
-                              <TableCell>{b.git_ref}</TableCell>
-                              <TableCell className="font-mono text-xs max-w-50 truncate">
-                                {b.image_full_name}
-                              </TableCell>
-                              <TableCell>
-                                {b.duration ? formatDuration(b.duration) : "-"}
-                              </TableCell>
-                              <TableCell className="text-muted-foreground text-xs">
-                                {new Date(b.created_at).toLocaleString()}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    onClick={() => setLogBuildId(b.id)}
-                                    title="View Logs"
-                                  >
-                                    <FileText />
-                                  </Button>
-                                  {!isViewer && (b.status === "failed" || b.status === "cancelled") && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => retryBuildMutation.mutate(b)}
-                                      disabled={retryBuildMutation.isPending}
-                                      title="Retry Build"
-                                    >
-                                      {retryBuildMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <RotateCcw />
-                                      )}
-                                      Retry
-                                    </Button>
-                                  )}
-                                  {!isViewer && b.status === "succeeded" && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedBuildId(b.id)
-                                        setSelectedBuildConfigId(b.code_repository_build_config_id || undefined)
-                                        setTriggerBuildDialogOpen(true)
-                                      }}
-                                      title="Deploy Build"
-                                    >
-                                      <Rocket />
-                                      Deploy
-                                    </Button>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  {builds.length > itemsPerPage && (
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() => setBuildsPage(Math.max(1, buildsPage - 1))}
-                            className={buildsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                        {Array.from({ length: Math.ceil(builds.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              onClick={() => setBuildsPage(page)}
-                              isActive={buildsPage === page}
-                              className="cursor-pointer"
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() => setBuildsPage(Math.min(Math.ceil(builds.length / itemsPerPage), buildsPage + 1))}
-                            className={buildsPage >= Math.ceil(builds.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  )}
-                </>
+                <DataTable
+                  columns={buildHistoryColumns}
+                  data={builds}
+                  borderless
+                />
               )}
             </CardContent>
           </Card>
@@ -735,88 +737,11 @@ export function CodeRepositoryDetailPage() {
                   icon={History}
                 />
               ) : (
-                <>
-                  <div className="border-y border-x-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent border-b">
-                          <TableHead>Build #</TableHead>
-                          <TableHead>Environment</TableHead>
-                          <TableHead>Application</TableHead>
-                          <TableHead>Image</TableHead>
-                          <TableHead>Ref</TableHead>
-                          <TableHead>Deployed At</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedDeployments.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
-                              No deployments match the selected filters.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          paginatedDeployments.map((d) => (
-                            <TableRow key={d.id}>
-                              <TableCell className="font-medium">{d.build_number}</TableCell>
-                              <TableCell>{d.app?.env?.name ?? "-"}</TableCell>
-                              <TableCell>
-                                {d.app ? (
-                                  <Button
-                                    variant="link"
-                                    className="p-0 h-auto text-xs"
-                                    onClick={() => navigate(`/applications/${d.app?.id}`)}
-                                  >
-                                    <ExternalLink />
-                                    {d.app.name}
-                                  </Button>
-                                ) : (
-                                  "-"
-                                )}
-                              </TableCell>
-                              <TableCell className="font-mono text-xs max-w-40 truncate" title={d.image_full_name}>
-                                {d.image_full_name}
-                              </TableCell>
-                              <TableCell className="text-xs">{d.git_ref}</TableCell>
-                              <TableCell className="text-muted-foreground text-xs">
-                                {new Date(d.created_at).toLocaleString()}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  {filteredDeployments.length > itemsPerPage && (
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() => setDeploymentsPage(Math.max(1, deploymentsPage - 1))}
-                            className={deploymentsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                        {Array.from({ length: Math.ceil(filteredDeployments.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              onClick={() => setDeploymentsPage(page)}
-                              isActive={deploymentsPage === page}
-                              className="cursor-pointer"
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() => setDeploymentsPage(Math.min(Math.ceil(filteredDeployments.length / itemsPerPage), deploymentsPage + 1))}
-                            className={deploymentsPage >= Math.ceil(filteredDeployments.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  )}
-                </>
+                <DataTable
+                  columns={deploymentColumns}
+                  data={deployments as DeploymentItem[]}
+                  borderless
+                />
               )}
             </CardContent>
           </Card>
@@ -913,4 +838,3 @@ export function CodeRepositoryDetailPage() {
     </div>
   )
 }
-

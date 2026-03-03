@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef } from "@tanstack/react-table"
 import { Loader2, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { certificatesApi, type Certificate } from "@/api/certificates"
 import { EmptyState } from "@/components/shared/empty-state"
+import { DataTable } from "@/components/data-table/data-table"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +29,6 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 
 interface EnvCertificatesProps {
@@ -152,6 +153,60 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
     setDeleteOpen(true)
   }
 
+  const columns: ColumnDef<Certificate>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.original.description || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "created_at",
+      header: "Created At",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(row.original.created_at).toLocaleString()}
+        </span>
+      ),
+    },
+    ...(!isViewer
+      ? [
+          {
+            id: "actions",
+            header: () => <span className="flex justify-end">Actions</span>,
+            cell: ({ row }: { row: { original: Certificate } }) => (
+              <div className="flex items-center gap-1 justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleOpenEdit(row.original)}
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => handleOpenDelete(row.original)}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            ),
+          } as ColumnDef<Certificate>,
+        ]
+      : []),
+  ]
+
   return (
     <>
       <Card>
@@ -197,51 +252,11 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
                 onAction={handleOpenCreate}
               />
           ) : (
-            <div className="border-y border-x-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Created At</TableHead>
-                    {!isViewer && <TableHead className="text-right">Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {certificates.map((cert) => (
-                    <TableRow key={cert.id}>
-                      <TableCell className="font-medium">{cert.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{cert.description || "-"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(cert.created_at).toLocaleString()}
-                      </TableCell>
-                      {!isViewer && (
-                        <TableCell className="text-right">
-                          <div className="flex items-center gap-1 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenEdit(cert)}
-                            >
-                              <Pencil />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleOpenDelete(cert)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <DataTable
+              columns={columns}
+              data={certificates}
+              borderless
+            />
           )}
         </CardContent>
       </Card>
