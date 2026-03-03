@@ -105,7 +105,7 @@ func CreateExtension(req *models.CreateExtensionRequest, createdBy string) (*mod
 		return nil, fmt.Errorf("extension with name %q already exists", req.Name)
 	}
 	item := &entities.Extension{
-		Base:        entities.Base{ID: uuid.New()},
+		ID:          uuid.New(),
 		Name:        req.Name,
 		DisplayName: req.DisplayName,
 		Description: req.Description,

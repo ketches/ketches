@@ -23,7 +23,7 @@ func CreatePlugin(req *models.CreatePluginRequest) (*entities.Plugin, error) {
 	}
 
 	plugin := &entities.Plugin{
-		Base:             entities.Base{ID: uuid.New()},
+		ID:               uuid.New(),
 		ProjectID:        req.ProjectID,
 		Slug:             req.Slug,
 		Name:             req.Name,
@@ -85,11 +85,11 @@ func ListPluginsSimple() ([]entities.Plugin, error) {
 }
 
 func ListProjectPluginsSimple(projectID string) ([]entities.Plugin, error) {
-  var plugins []entities.Plugin
-  if err := db.DB.Select("id, slug, name, description, plugin_type, env_vars").Where("project_id = ?", projectID).Order("name").Find(&plugins).Error; err != nil {
-    return nil, err
-  }
-  return plugins, nil
+	var plugins []entities.Plugin
+	if err := db.DB.Select("id, slug, name, description, plugin_type, env_vars").Where("project_id = ?", projectID).Order("name").Find(&plugins).Error; err != nil {
+		return nil, err
+	}
+	return plugins, nil
 }
 
 func ListProjectPlugins(projectID string, page, pageSize int, search string) (int64, []entities.Plugin, error) {

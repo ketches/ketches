@@ -84,7 +84,7 @@ func CreateClusterRegistry(clusterID string, req *models.CreateContainerRegistry
 	cid := clusterID
 	skipTLS := req.SkipTLSVerify != nil && *req.SkipTLSVerify
 	registry := &entities.ContainerRegistry{
-		Base:          entities.Base{ID: uuid.New()},
+		ID:            uuid.New(),
 		Name:          req.Name,
 		Provider:      entities.RegistryProvider(req.Provider),
 		Endpoint:      ensureEndpointScheme(req.Endpoint),
@@ -116,7 +116,7 @@ func CreateProjectContainerRegistry(projectID string, req *models.CreateContaine
 	pid := projectID
 	skipTLS := req.SkipTLSVerify != nil && *req.SkipTLSVerify
 	registry := &entities.ContainerRegistry{
-		Base:          entities.Base{ID: uuid.New()},
+		ID:            uuid.New(),
 		Name:          req.Name,
 		Provider:      entities.RegistryProvider(req.Provider),
 		Endpoint:      ensureEndpointScheme(req.Endpoint),

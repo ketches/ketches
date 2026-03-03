@@ -62,9 +62,7 @@ func CreateClusterCertificate(clusterID string, req *models.CreateCertificateReq
 	}
 
 	cert := &entities.Certificate{
-		Base: entities.Base{
-			ID: uuid.New(),
-		},
+		ID:          uuid.New(),
 		Name:        req.Name,
 		Description: req.Description,
 		Cert:        req.Cert,
@@ -90,9 +88,7 @@ func CreateEnvCertificate(envID string, req *models.CreateCertificateRequest) (*
 	}
 
 	cert := &entities.Certificate{
-		Base: entities.Base{
-			ID: uuid.New(),
-		},
+		ID:          uuid.New(),
 		Name:        req.Name,
 		Description: req.Description,
 		Cert:        req.Cert,

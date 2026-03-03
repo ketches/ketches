@@ -31,12 +31,12 @@ func UpsertBuildConfig(appID string, req *models.UpsertBuildConfigRequest) (*ent
 		// Create new
 		webhookSecret, _ := generateWebhookSecret()
 		config = entities.AppBuildConfig{
-			Base:           entities.Base{ID: uuid.New()},
+			ID:             uuid.New(),
 			AppID:          appID,
 			GitRepoURL:     req.GitRepoURL,
 			GitRef:         defaultStr(req.GitRef, "main"),
-			GitUsername:     req.GitUsername,
-			GitPassword:     req.GitPassword,
+			GitUsername:    req.GitUsername,
+			GitPassword:    req.GitPassword,
 			DockerfilePath: defaultStr(req.DockerfilePath, "Dockerfile"),
 			BuildContext:   defaultStr(req.BuildContext, "."),
 			ImageName:      req.ImageName,
@@ -122,7 +122,7 @@ func ToBuildConfigResponse(config *entities.AppBuildConfig) models.BuildConfigRe
 		AppID:          config.AppID,
 		GitRepoURL:     config.GitRepoURL,
 		GitRef:         config.GitRef,
-		GitUsername:     config.GitUsername,
+		GitUsername:    config.GitUsername,
 		DockerfilePath: config.DockerfilePath,
 		BuildContext:   config.BuildContext,
 		ImageName:      config.ImageName,

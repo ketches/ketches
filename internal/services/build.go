@@ -121,7 +121,7 @@ func TriggerBuild(appID, userID string, req *models.TriggerBuildRequest) (*entit
 	appIDPtr := appID
 	buildConfigID := config.ID
 	build := &entities.Build{
-		Base:          entities.Base{ID: uuid.New()},
+		ID:            uuid.New(),
 		AppID:         &appIDPtr,
 		BuildConfigID: &buildConfigID,
 		BuildNumber:   buildNumber,
@@ -536,7 +536,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 	now := time.Now()
 	cfgID := config.ID
 	build := &entities.Build{
-		Base:                        entities.Base{ID: uuid.New()},
+		ID:                          uuid.New(),
 		CodeRepositoryID:            &repoID,
 		CodeRepositoryBuildConfigID: &cfgID,
 		AppID:                       nil,

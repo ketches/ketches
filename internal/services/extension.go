@@ -173,7 +173,7 @@ func InstallClusterExtension(clusterID string, req *models.InstallExtensionReque
 	}
 
 	record := &entities.ClusterExtension{
-		Base:        entities.Base{ID: uuid.New()},
+		ID:          uuid.New(),
 		ClusterID:   clusterID,
 		ExtensionID: req.ExtensionID,
 		Namespace:   namespace,
