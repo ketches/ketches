@@ -216,7 +216,7 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
               onClick={() => selectedHistory && rollbackMutation.mutate(selectedHistory.id)}
               disabled={rollbackMutation.isPending}
             >
-              {rollbackMutation.isPending && <RotateCcw className="mr-2 h-4 w-4 animate-spin" />}
+              {rollbackMutation.isPending && <RotateCcw className="h-4 w-4 animate-spin" />}
               Rollback
             </Button>
           </DialogFooter>

@@ -456,7 +456,7 @@ export function RecycleBinPage() {
       header: "Environment",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600 shrink-0">
+          <div className="p-1.5 bg-green-500/10 rounded-md text-green-600 shrink-0">
             <Box className="h-4 w-4" />
           </div>
           <div className="min-w-0">

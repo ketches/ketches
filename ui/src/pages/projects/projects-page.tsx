@@ -292,15 +292,14 @@ export function ProjectsPage() {
                             Active
                           </ColorBadge>
                         )}
-
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
                         <span>{project.slug}</span>
-                        {project.description && (
-                          <>
-                            <span>•</span>
-                            <span className="truncate">{project.description}</span>
-                          </>
+                        <span>•</span>
+                        {project.description ? (
+                          <span className="truncate">{project.description}</span>
+                        ) : (
+                          <span className="italic">No description</span>
                         )}
                       </div>
                     </div>

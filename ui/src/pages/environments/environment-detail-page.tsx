@@ -140,7 +140,7 @@ export function EnvironmentDetailPage() {
                   key={e.id}
                   onClick={() => navigate(`/environments/${e.id}`)}
                 >
-                  <Orbit className="mr-2 h-4 w-4" />
+                  <Orbit className="h-4 w-4" />
                   {e.name}
                 </DropdownMenuItem>
               ))}

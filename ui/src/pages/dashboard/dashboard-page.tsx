@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query"
 import {
   Activity,
   AlertCircle,
+  ArrowRight,
+  Blocks,
   Box,
   Boxes,
   ChartLine,
@@ -95,12 +97,14 @@ function AdminDashboard() {
           icon={ShipWheel}
           description={`${connectedClusters} connected`}
           onClick={() => navigate("/clusters")}
+          color="sky"
         />
         <StatCard
           title="Projects"
           value={stats?.project_count || 0}
           icon={GalleryVerticalEnd}
           description="Active projects"
+          color="indigo"
         />
         <StatCard
           title="Applications"
@@ -113,6 +117,7 @@ function AdminDashboard() {
           value={stats?.environment_count || 0}
           icon={Orbit}
           description="Across all projects"
+          color="green"
         />
         <StatCard
           title="Users"
@@ -120,6 +125,7 @@ function AdminDashboard() {
           icon={Users}
           description="Registered users"
           onClick={() => navigate("/users")}
+          color="red"
         />
       </div>
 
@@ -181,13 +187,33 @@ function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-2">
-              <Button variant="outline" className="justify-start" onClick={() => navigate("/clusters")}>
-                <ShipWheel />
-                Manage Clusters
+              <Button variant="outline" className="justify-between" onClick={() => navigate("/clusters")}>
+                <div className="flex items-center gap-2">
+                  <ShipWheel className="text-sky-600" />
+                  Manage Clusters
+                </div>
+                <ArrowRight />
               </Button>
-              <Button variant="outline" className="justify-start" onClick={() => navigate("/users")}>
-                <Users />
-                Manage Users
+              <Button variant="outline" className="justify-between" onClick={() => navigate("/extensions")}>
+                <div className="flex items-center gap-2">
+                  <Blocks className="text-purple-600" />
+                  Manage Extensions
+                </div>
+                <ArrowRight />
+              </Button>
+              <Button variant="outline" className="justify-between" onClick={() => navigate("/users")}>
+                <div className="flex items-center gap-2">
+                  <Users className="text-red-600" />
+                  Manage Users
+                </div>
+                <ArrowRight />
+              </Button>
+              <Button variant="outline" className="justify-between" onClick={() => navigate("/projects")}>
+                <div className="flex items-center gap-2">
+                  <GalleryVerticalEnd className="text-indigo-600" />
+                  Manage Projects
+                </div>
+                <ArrowRight />
               </Button>
             </div>
           </CardContent>
@@ -281,6 +307,7 @@ function UserDashboard() {
           icon={Orbit}
           description="Active environments"
           onClick={() => navigate("/environments")}
+          color="green"
         />
         <StatCard
           title="Members"
@@ -288,6 +315,7 @@ function UserDashboard() {
           icon={Users}
           description="Project members"
           onClick={() => navigate("/members")}
+          color="red"
         />
       </div>
 

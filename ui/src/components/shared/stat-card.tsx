@@ -1,7 +1,7 @@
-import * as React from "react"
-import type { LucideIcon } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import type { LucideIcon } from "lucide-react"
+import * as React from "react"
 
 interface StatCardProps {
   title: string
@@ -10,6 +10,7 @@ interface StatCardProps {
   description?: React.ReactNode
   onClick?: () => void
   className?: string
+  color?: string
 }
 
 export function StatCard({
@@ -19,20 +20,23 @@ export function StatCard({
   description,
   onClick,
   className,
+  color,
 }: StatCardProps) {
   return (
-    <Card 
+    <Card
       className={cn(
         onClick ? "cursor-pointer hover:bg-muted/50 transition-colors" : "",
         className
-      )} 
+      )}
       onClick={onClick}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">
           {title}
         </CardTitle>
-        {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+        <div className={`p-1.5 bg-${color || "blue"}-500/10 rounded-md text-${color || "blue"}-600 shrink-0`}>
+          {Icon && <Icon className="h-4 w-4" />}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>

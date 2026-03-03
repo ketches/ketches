@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ChevronsUpDown, GalleryVerticalEnd, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
-import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 
 import { projectsApi, type Project } from "@/api/projects"
 import { CreateProjectDialog } from "@/components/project/create-project-dialog"

@@ -113,7 +113,7 @@ export function EnvironmentsPage() {
       header: "Environment",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600 shrink-0">
+          <div className="p-1.5 bg-green-500/10 rounded-md text-green-600 shrink-0">
             <Orbit className="h-4 w-4" />
           </div>
           <div className="min-w-0">
@@ -264,7 +264,7 @@ export function EnvironmentsPage() {
                     </Avatar>
                     <div className="flex flex-col flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <CardTitle className="text-base font-semibold truncate cursor-pointer"
+                        <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
                           onClick={() => navigate(`/environments/${env.id}`)}>{env.name}</CardTitle>
                         <ColorBadge color="green">
                           {env.status || "Active"}
@@ -272,11 +272,11 @@ export function EnvironmentsPage() {
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
                         <span>{env.slug}</span>
-                        {env.description && (
-                          <>
-                            <span>•</span>
-                            <span className="truncate">{env.description}</span>
-                          </>
+                        <span>•</span>
+                        {env.description ? (
+                          <span className="truncate">{env.description}</span>
+                        ) : (
+                          <span className="italic">No description</span>
                         )}
                       </div>
                     </div>

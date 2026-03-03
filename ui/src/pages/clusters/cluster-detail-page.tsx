@@ -382,7 +382,7 @@ export function ClusterDetailPage() {
                   key={c.id}
                   onClick={() => navigate(`/clusters/${c.id}`)}
                 >
-                  <ShipWheel className="mr-2 h-4 w-4" />
+                  <ShipWheel className="h-4 w-4" />
                   {c.name}
                 </DropdownMenuItem>
               ))}
@@ -454,11 +454,11 @@ export function ClusterDetailPage() {
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="font-mono">{cluster.slug}</span>
-                {cluster.description && (
-                  <>
-                    <span>•</span>
-                    <span>{cluster.description}</span>
-                  </>
+                <span>•</span>
+                {cluster.description ? (
+                  <span className="truncate">{cluster.description}</span>
+                ) : (
+                  <span className="italic">No description</span>
                 )}
               </div>
             </div>

@@ -130,7 +130,7 @@ export function ClustersPage() {
             <ShipWheel className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="font-medium text-xs truncate">
+            <p className="font-medium text-xs truncate cursor-pointer hover:text-primary transition-colors">
               {row.original.name}
             </p>
             <p className="text-xs text-muted-foreground font-mono truncate">
@@ -294,7 +294,7 @@ export function ClustersPage() {
                   </Avatar>
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base font-semibold truncate cursor-pointer"
+                      <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
                         onClick={() => navigate(`/clusters/${cluster.id}`)}>{cluster.name}</CardTitle>
                       <ColorBadge
                         color={cluster.enabled ? "green" : "gray"}
@@ -312,11 +312,11 @@ export function ClustersPage() {
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
                       <span>{cluster.slug}</span>
-                      {cluster.description && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate">{cluster.description}</span>
-                        </>
+                      <span>•</span>
+                      {cluster.description ? (
+                        <span className="truncate">{cluster.description}</span>
+                      ) : (
+                        <span className="italic">No description</span>
                       )}
                     </div>
                   </div>

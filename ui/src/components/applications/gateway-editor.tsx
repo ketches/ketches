@@ -498,7 +498,7 @@ export function GatewayEditor({
               Cancel
             </Button>
             <Button type="submit" disabled={saveMutation.isPending}>
-              {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEditing ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>

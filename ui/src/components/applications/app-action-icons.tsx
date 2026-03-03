@@ -159,9 +159,9 @@ export function AppActionIcons({ appId, envId, actions }: AppActionIconsProps) {
                     className={isDestructive ? "text-destructive" : ""}
                   >
                     {isLoading ? (
-                      <Loader2 className="animate-spin mr-2" />
+                      <Loader2 className="animate-spin" />
                     ) : (
-                      <Icon className="mr-2" />
+                      <Icon />
                     )}
                     {action.label}
                   </DropdownMenuItem>
@@ -174,7 +174,7 @@ export function AppActionIcons({ appId, envId, actions }: AppActionIconsProps) {
                 setExportAppIds([])
                 setExportDialogOpen(true)
               }}>
-                <Download className="mr-2 h-4 w-4" />
+                <Download />
                 Export
               </DropdownMenuItem>
             </DropdownMenuContent>

@@ -135,7 +135,7 @@ export function ClusterNodeDetailPage() {
                   key={c.id}
                   onClick={() => navigate(`/clusters/${c.id}`)}
                 >
-                  <ShipWheel className="mr-2 h-4 w-4" />
+                  <ShipWheel className="h-4 w-4" />
                   {c.name}
                 </DropdownMenuItem>
               ))}
@@ -157,7 +157,7 @@ export function ClusterNodeDetailPage() {
                   key={n.metadata.name}
                   onClick={() => navigate(`/clusters/${clusterId}/nodes/${n.metadata.name}`)}
                 >
-                  <PcCase className="mr-2 h-4 w-4" />
+                  <PcCase className="h-4 w-4" />
                   {n.metadata.name}
                 </DropdownMenuItem>
               ))}

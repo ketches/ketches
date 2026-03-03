@@ -167,7 +167,7 @@ function ScaleAppPopover({ app }: { app: App }) {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setOpen(false)} className="flex-1">Cancel</Button>
             <Button size="sm" onClick={() => scaleMutation.mutate(replicas)} disabled={scaleMutation.isPending} className="flex-1">
-              {scaleMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {scaleMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Scale
             </Button>
           </div>
@@ -909,7 +909,7 @@ export function ApplicationDetailPage() {
                     navigate('/applications')
                   }}
                 >
-                  <Orbit className="mr-2 h-4 w-4" />
+                  <Orbit className="h-4 w-4" />
                   {env.name}
                 </DropdownMenuItem>
               ))}
@@ -931,7 +931,7 @@ export function ApplicationDetailPage() {
                   key={appItem.id}
                   onClick={() => navigate(`/applications/${appItem.id}`)}
                 >
-                  <Box className="mr-2 h-4 w-4" />
+                  <Box className="h-4 w-4" />
                   {appItem.name}
                 </DropdownMenuItem>
               ))}
@@ -961,11 +961,11 @@ export function ApplicationDetailPage() {
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="font-mono">{app.slug}</span>
-                {app.description && (
-                  <>
-                    <span>•</span>
-                    <span>{app.description}</span>
-                  </>
+                <span>•</span>
+                {app.description ? (
+                  <span className="truncate">{app.description}</span>
+                ) : (
+                  <span className="italic">No description</span>
                 )}
               </div>
             </div>

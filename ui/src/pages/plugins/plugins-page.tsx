@@ -274,11 +274,11 @@ export function PluginsPage() {
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
                           <span>{plugin.slug}</span>
-                          {plugin.description && (
-                            <>
-                              <span>•</span>
-                              <span className="truncate">{plugin.description}</span>
-                            </>
+                          <span>•</span>
+                          {plugin.description ? (
+                            <span className="truncate">{plugin.description}</span>
+                          ) : (
+                            <span className="italic">No description</span>
                           )}
                         </div>
                       </div>

@@ -121,11 +121,11 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
                           key={item.id}
                           value={`${item.name} ${item.description || ""}`}
                           onSelect={() => handleSelect(item)}
-                          className="gap-0"
+                          className="gap-2"
                         >
-                          <Box className="mr-2 h-4 w-4" />
+                          <Box className="h-4 w-4" />
                           <span>{item.name}</span>
-                          <span className="ml-2 text-xs text-muted-foreground font-mono">{item.description}</span>
+                          <span className="text-xs text-muted-foreground font-mono">{item.description}</span>
                           <div className="flex-1" />
                           {item.environmentName && (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
@@ -146,11 +146,11 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
                         key={item.id}
                         value={`${item.name} ${item.description || ""}`}
                         onSelect={() => handleSelect(item)}
-                        className="gap-0"
+                        className="gap-2"
                       >
-                        <Orbit className="mr-2 h-4 w-4" />
+                        <Orbit className="h-4 w-4" />
                         <span>{item.name}</span>
-                        <span className="ml-2 text-xs text-muted-foreground font-mono">{item.description}</span>
+                        <span className="text-xs text-muted-foreground font-mono">{item.description}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>

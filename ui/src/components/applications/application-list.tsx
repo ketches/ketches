@@ -338,11 +338,11 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
                       <span>{app.slug}</span>
-                      {app.description && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate">{app.description}</span>
-                        </>
+                      <span>•</span>
+                      {app.description ? (
+                        <span className="truncate">{app.description}</span>
+                      ) : (
+                        <span className="italic">No description</span>
                       )}
                     </div>
                   </div>

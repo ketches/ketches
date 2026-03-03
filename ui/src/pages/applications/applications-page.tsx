@@ -64,7 +64,7 @@ export function ApplicationsPage() {
             <DropdownMenuGroup>
               {safeEnvs.map(env => (
                 <DropdownMenuItem key={env.id} onClick={() => setActiveEnvId(env.id)}>
-                  <Orbit className="mr-2 h-4 w-4" />
+                  <Orbit className="h-4 w-4" />
                   {env.name}
                 </DropdownMenuItem>
               ))}

@@ -111,7 +111,7 @@ export function CodeRepositoriesPage() {
       header: "Repository",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-sky-500/10 rounded-md text-sky-600 shrink-0">
+          <div className="p-1.5 bg-lime-500/10 rounded-md text-lime-600 shrink-0">
             <FolderGit2 className="h-4 w-4" />
           </div>
           <div className="min-w-0">
@@ -265,7 +265,7 @@ export function CodeRepositoriesPage() {
                   </Avatar>
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base font-semibold truncate cursor-pointer"
+                      <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
                         onClick={() => navigate(`/code-repositories/${repo.id}`)}>
                         {repo.name}
                       </CardTitle>
@@ -277,11 +277,11 @@ export function CodeRepositoriesPage() {
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
                       <span>{repo.slug}</span>
-                      {repo.description && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate">{repo.description}</span>
-                        </>
+                      <span>•</span>
+                      {repo.description ? (
+                        <span className="truncate">{repo.description}</span>
+                      ) : (
+                        <span className="italic">No description</span>
                       )}
                     </div>
                   </div>

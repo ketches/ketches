@@ -29,7 +29,6 @@ import {
   type CodeRepositoryBuildConfig,
 } from "@/api/code-repositories"
 import { envsApi } from "@/api/envs"
-import { useProjectRole } from "@/hooks/useProjectRole"
 import { BuildLogViewer } from "@/components/builds/build-log-viewer"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
 import { CreateBuildConfigDialog } from "@/components/code-repositories/create-build-config-dialog"
@@ -67,6 +66,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
 
 export function CodeRepositoryDetailPage() {
@@ -268,7 +268,7 @@ export function CodeRepositoryDetailPage() {
                     key={r.id}
                     onClick={() => navigate(`/code-repositories/${r.id}`)}
                   >
-                    <FolderGit2 className="mr-2 h-4 w-4" />
+                    <FolderGit2 className="h-4 w-4" />
                     {r.name}
                   </DropdownMenuItem>
                 ))}
@@ -316,11 +316,11 @@ export function CodeRepositoryDetailPage() {
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="font-mono">{repo.slug}</span>
-                {repo.description && (
-                  <>
-                    <span>•</span>
-                    <span>{repo.description}</span>
-                  </>
+                <span>•</span>
+                {repo.description ? (
+                  <span className="truncate">{repo.description}</span>
+                ) : (
+                  <span className="italic">No description</span>
                 )}
               </div>
             </div>

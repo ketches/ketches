@@ -293,11 +293,7 @@ export function ContainerRegistriesPage() {
                   </Avatar>
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base font-semibold truncate cursor-pointer"
-                        onClick={() => {
-                          setEditingRegistry(reg)
-                          setEditDialogOpen(true)
-                        }}>
+                      <CardTitle className="text-base font-semibold truncate">
                         {reg.name}
                       </CardTitle>
                       <div className="flex items-center gap-2">
@@ -315,12 +311,11 @@ export function ContainerRegistriesPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                      <span>{reg.endpoint}</span>
-                      {reg.description && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate">{reg.description}</span>
-                        </>
+                      <span>•</span>
+                      {reg.description ? (
+                        <span className="truncate">{reg.description}</span>
+                      ) : (
+                        <span className="italic">No description</span>
                       )}
                     </div>
                   </div>
