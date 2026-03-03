@@ -6,11 +6,11 @@ import "time"
 type ClusterExtensionStatus string
 
 const (
-	ClusterExtensionStatusPending    ClusterExtensionStatus = "pending"
-	ClusterExtensionStatusInstalling ClusterExtensionStatus = "installing"
-	ClusterExtensionStatusDeployed   ClusterExtensionStatus = "deployed"
-	ClusterExtensionStatusFailed     ClusterExtensionStatus = "failed"
-	ClusterExtensionStatusUpgrading  ClusterExtensionStatus = "upgrading"
+	ClusterExtensionStatusPending      ClusterExtensionStatus = "pending"
+	ClusterExtensionStatusInstalling   ClusterExtensionStatus = "installing"
+	ClusterExtensionStatusDeployed     ClusterExtensionStatus = "deployed"
+	ClusterExtensionStatusFailed       ClusterExtensionStatus = "failed"
+	ClusterExtensionStatusUpgrading    ClusterExtensionStatus = "upgrading"
 	ClusterExtensionStatusUninstalling ClusterExtensionStatus = "uninstalling"
 )
 
@@ -26,7 +26,7 @@ type ClusterExtension struct {
 	Namespace    string                 `gorm:"type:varchar(128);not null;uniqueIndex:uidx_cluster_ns_ext"`
 	ReleaseName  string                 `gorm:"type:varchar(256);not null"`
 	Version      string                 `gorm:"type:varchar(64)"`
-	Values       string                 `gorm:"type:text"`
+	Values       string                 `gorm:"type:longtext"`
 	Status       ClusterExtensionStatus `gorm:"type:varchar(32);default:'pending'"`
 	ErrorMessage string                 `gorm:"type:text"`
 	InstalledBy  string                 `gorm:"type:varchar(36)"`
