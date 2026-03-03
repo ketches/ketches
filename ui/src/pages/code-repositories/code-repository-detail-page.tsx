@@ -207,51 +207,51 @@ export function CodeRepositoryDetailPage() {
     },
     ...(!isViewer
       ? [
-          {
-            id: "actions",
-            header: () => <span className="flex justify-end">Actions</span>,
-            cell: ({ row }: { row: { original: CodeRepositoryBuildConfig } }) => {
-              const cfg = row.original
-              return (
-                <div className="flex items-center justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => {
-                      setEditingConfig(cfg)
-                      setEditConfigOpen(true)
-                    }}
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedBuildConfigId(cfg.id)
-                      setSelectedBuildId(undefined)
-                      setTriggerBuildDialogOpen(true)
-                    }}
-                  >
-                    <Play />
-                    Build
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => {
-                      setDeletingConfig(cfg)
-                      setDeleteConfigDialogOpen(true)
-                    }}
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-              )
-            },
-          } as ColumnDef<CodeRepositoryBuildConfig>,
-        ]
+        {
+          id: "actions",
+          header: () => <span className="flex justify-end">Actions</span>,
+          cell: ({ row }: { row: { original: CodeRepositoryBuildConfig } }) => {
+            const cfg = row.original
+            return (
+              <div className="flex items-center justify-end gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    setEditingConfig(cfg)
+                    setEditConfigOpen(true)
+                  }}
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedBuildConfigId(cfg.id)
+                    setSelectedBuildId(undefined)
+                    setTriggerBuildDialogOpen(true)
+                  }}
+                >
+                  <Play />
+                  Build
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    setDeletingConfig(cfg)
+                    setDeleteConfigDialogOpen(true)
+                  }}
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            )
+          },
+        } as ColumnDef<CodeRepositoryBuildConfig>,
+      ]
       : []),
   ]
 
@@ -339,7 +339,7 @@ export function CodeRepositoryDetailPage() {
             )}
             {!isViewer && b.status === "succeeded" && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   setSelectedBuildId(b.id)
