@@ -5,14 +5,14 @@ import {
   ArrowRight,
   Blocks,
   Box,
-  Boxes,
   ChartLine,
   GalleryVerticalEnd,
   LayoutDashboard,
   Loader2,
   Orbit,
   ShipWheel,
-  Users
+  Users,
+  Zap
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
@@ -152,7 +152,7 @@ function AdminDashboard() {
                 {clusters.slice(0, 5).map((cluster) => (
                   <div
                     key={cluster.id}
-                    className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 rounded-md -mx-2"
+                    className="flex items-center justify-between cursor-pointer bg-muted hover:bg-sky-500/10 p-2 px-4 rounded-md -mx-2"
                     onClick={() => navigate(`/clusters/${cluster.id}`)}
                   >
                     <div className="flex items-center gap-3">
@@ -180,7 +180,7 @@ function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Boxes className="h-4 w-4" />
+              <Zap className="h-4 w-4" />
               Quick Actions
             </CardTitle>
             <CardDescription>Common administrative tasks</CardDescription>

@@ -107,6 +107,7 @@ export function DataTable<TData, TValue>({
   const handleRowSelectionChange = onRowSelectionChange ?? setInternalRowSelection
 
   const pagination = paginationProp ?? internalPagination
+  pagination.pageSize = viewMode === "card" ? 9 : 10
   const onPaginationChange = onPaginationChangeProp ?? setInternalPagination
 
   const table = useReactTable({
@@ -292,7 +293,7 @@ export function DataTable<TData, TValue>({
                   <ComboboxInput className="h-8 w-16" />
                   <ComboboxContent>
                     <ComboboxList>
-                      {[10, 20, 30, 40, 50].map((pageSize) => (
+                      {(viewMode === "card" ? [9, 15, 30, 45, 60] : [10, 20, 30, 40, 50]).map((pageSize) => (
                         <ComboboxItem key={pageSize} value={`${pageSize}`}>
                           {`${pageSize}`}
                         </ComboboxItem>
