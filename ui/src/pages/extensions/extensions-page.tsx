@@ -81,7 +81,9 @@ export function ExtensionsPage() {
     queryFn: () => clustersApi.listExtensions(),
   })
 
-  const safeItems: Extension[] = Array.isArray(catalog) ? catalog : []
+  const safeItems: Extension[] = Array.isArray(catalog)
+    ? catalog
+    : []
 
   // Client-side search filter
   const filteredItems = safeItems.filter((item) => {
