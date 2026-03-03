@@ -181,6 +181,7 @@ func InstallClusterExtension(clusterID string, req *models.InstallExtensionReque
 		Version:     req.Version,
 		Values:      req.Values,
 		Status:      entities.ClusterExtensionStatusPending,
+		Phase:       "installing",
 		InstalledBy: installedBy,
 	}
 	if err := db.DB.Create(record).Error; err != nil {
@@ -220,7 +221,7 @@ func InstallClusterExtension(clusterID string, req *models.InstallExtensionReque
 			return
 		}
 
-		db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusDeployed), "error_message": ""})
+		db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusDeployed), "error_message": "", "phase": ""})
 	}()
 
 	m := toClusterExtensionModel(record)
@@ -240,7 +241,7 @@ func UpgradeClusterExtension(clusterID, id string, req *models.UpgradeExtensionR
 	}
 
 	// Update record with new version/values and set status to upgrading.
-	updates := map[string]any{"status": string(entities.ClusterExtensionStatusUpgrading)}
+	updates := map[string]any{"status": string(entities.ClusterExtensionStatusUpgrading), "phase": "upgrading"}
 	if req.Version != "" {
 		updates["version"] = req.Version
 		record.Version = req.Version
@@ -283,14 +284,15 @@ func UpgradeClusterExtension(clusterID, id string, req *models.UpgradeExtensionR
 			return
 		}
 
-		db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusDeployed), "error_message": ""})
+		db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusDeployed), "error_message": "", "phase": ""})
 	}()
 
 	m := toClusterExtensionModel(record)
 	return &m, nil
 }
 
-// UninstallClusterExtension soft-deletes the DB record and runs Helm uninstall asynchronously.
+// UninstallClusterExtension sets status to "uninstalling" and runs helm uninstall asynchronously.
+// On success the DB record is hard-deleted; on failure status is set to "failed" with phase="uninstalling".
 func UninstallClusterExtension(clusterID, id string) error {
 	record, err := getClusterExtensionEntity(clusterID, id)
 	if err != nil {
@@ -300,15 +302,23 @@ func UninstallClusterExtension(clusterID, id string) error {
 	releaseName := record.ReleaseName
 	namespace := record.Namespace
 
-	// Soft-delete immediately.
-	if err := db.DB.Delete(record).Error; err != nil {
-		return fmt.Errorf("failed to delete cluster extension record: %w", err)
+	// Mark as uninstalling (do NOT delete yet).
+	if err := db.DB.Model(record).Updates(map[string]any{
+		"status":        string(entities.ClusterExtensionStatusUninstalling),
+		"phase":         "uninstalling",
+		"error_message": "",
+	}).Error; err != nil {
+		return fmt.Errorf("failed to update cluster extension status: %w", err)
 	}
 
 	go func() {
 		actionConfig, cleanup, err := newHelmActionConfig(clusterID, namespace)
 		if err != nil {
 			log.Printf("[extension] failed to init helm config for uninstall: %v", err)
+			db.DB.Model(record).Updates(map[string]any{
+				"status":        string(entities.ClusterExtensionStatusFailed),
+				"error_message": err.Error(),
+			})
 			return
 		}
 		defer cleanup()
@@ -316,8 +326,17 @@ func UninstallClusterExtension(clusterID, id string) error {
 		uninstaller := action.NewUninstall(actionConfig)
 		if _, err := uninstaller.Run(releaseName); err != nil {
 			log.Printf("[extension] helm uninstall %q failed: %v", releaseName, err)
+			db.DB.Model(record).Updates(map[string]any{
+				"status":        string(entities.ClusterExtensionStatusFailed),
+				"error_message": err.Error(),
+			})
+			return
 		}
+
+		// Success: hard-delete the record.
+		db.DB.Unscoped().Delete(record)
 	}()
+
 	return nil
 }
 
@@ -344,6 +363,7 @@ func toClusterExtensionModel(e *entities.ClusterExtension) models.ClusterExtensi
 		Version:      e.Version,
 		Values:       e.Values,
 		Status:       string(e.Status),
+		Phase:        e.Phase,
 		ErrorMessage: e.ErrorMessage,
 		CreatedAt:    e.CreatedAt,
 	}
