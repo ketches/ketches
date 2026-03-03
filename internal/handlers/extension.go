@@ -167,5 +167,12 @@ func UninstallClusterExtension(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.NoContent(c)
+	// Return the updated record (now status=uninstalling) as 202.
+	ext, err := services.GetClusterExtension(clusterID, id)
+	if err != nil {
+		// Record already hard-deleted (edge case) — return 204.
+		api.NoContent(c)
+		return
+	}
+	c.JSON(http.StatusAccepted, ext)
 }
