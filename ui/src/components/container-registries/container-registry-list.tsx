@@ -11,6 +11,7 @@ import {
 } from "@/api/container-registries"
 import { ContainerRegistryDialog } from "@/components/container-registries/container-registry-dialog"
 import { DataTable } from "@/components/data-table/data-table"
+import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -85,9 +86,7 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
       accessorKey: "enabled",
       header: "Status",
       cell: ({ row }) => (
-        <Badge variant={row.original.enabled ? 'default' : 'outline'}>
-          {row.original.enabled ? 'Enabled' : 'Disabled'}
-        </Badge>
+        <ColorBadge color={row.original.enabled ? 'green' : 'gray'} >{row.original.enabled ? 'Enabled' : 'Disabled'}</ColorBadge>
       ),
     },
     {
@@ -147,7 +146,7 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
               data={containerRegistries}
               searchKey="name"
               searchPlaceholder="Filter registries..."
-              leftActions={() => (
+              toolbarActions={() => (
                 <Button onClick={() => { setEditRegistry(null); setShowDialog(true) }}>
                   <Plus />
                   Add Registry

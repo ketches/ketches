@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
@@ -55,6 +56,11 @@ func GetCertificate(id string) (*entities.Certificate, error) {
 
 // CreateClusterCertificate creates a certificate scoped to a cluster
 func CreateClusterCertificate(clusterID string, req *models.CreateCertificateRequest) (*entities.Certificate, error) {
+	cluster, err := GetCluster(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
 	cert := &entities.Certificate{
 		Base: entities.Base{
 			ID: uuid.New(),
@@ -64,10 +70,10 @@ func CreateClusterCertificate(clusterID string, req *models.CreateCertificateReq
 		Cert:        req.Cert,
 		Key:         req.Key,
 		Scope:       "cluster",
-		ClusterID:   clusterID,
+		ClusterID:   cluster.ID,
 	}
 
-	if err := db.DB.Create(cert).Error; err != nil {
+	if err := db.DB.Select("id", "name", "description", "cert", "key", "scope", "cluster_id").Create(cert).Error; err != nil {
 		return nil, err
 	}
 	return cert, nil
@@ -75,6 +81,14 @@ func CreateClusterCertificate(clusterID string, req *models.CreateCertificateReq
 
 // CreateEnvCertificate creates a certificate scoped to an environment
 func CreateEnvCertificate(envID string, req *models.CreateCertificateRequest) (*entities.Certificate, error) {
+	env, err := GetEnv(envID)
+	if err != nil {
+		return nil, err
+	}
+	if env.ClusterID == "" {
+		return nil, errors.New("environment is not bound to a cluster")
+	}
+
 	cert := &entities.Certificate{
 		Base: entities.Base{
 			ID: uuid.New(),
@@ -85,9 +99,10 @@ func CreateEnvCertificate(envID string, req *models.CreateCertificateRequest) (*
 		Key:         req.Key,
 		Scope:       "env",
 		EnvID:       envID,
+		ClusterID:   env.ClusterID,
 	}
 
-	if err := db.DB.Create(cert).Error; err != nil {
+	if err := db.DB.Select("id", "name", "description", "cert", "key", "scope", "cluster_id", "env_id").Create(cert).Error; err != nil {
 		return nil, err
 	}
 
@@ -104,20 +119,32 @@ func UpdateCertificate(id string, req *models.UpdateCertificateRequest) (*entiti
 		return nil, err
 	}
 
+	updates := map[string]any{}
+
 	if req.Name != nil {
 		cert.Name = *req.Name
+		updates["name"] = *req.Name
 	}
 	if req.Description != nil {
 		cert.Description = *req.Description
+		updates["description"] = *req.Description
 	}
 	if req.Cert != nil {
 		cert.Cert = *req.Cert
+		updates["cert"] = *req.Cert
 	}
 	if req.Key != nil {
 		cert.Key = *req.Key
+		updates["key"] = *req.Key
 	}
 
-	if err := db.DB.Save(cert).Error; err != nil {
+	if len(updates) > 0 {
+		if err := db.DB.Model(&entities.Certificate{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	if err := db.DB.First(cert, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 

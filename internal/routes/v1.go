@@ -213,7 +213,7 @@ func SetupV1Routes(r *gin.Engine) {
 			authorized.GET("/clusters/:clusterID/storage-classes", handlers.ListStorageClasses)
 			authorized.GET("/clusters/:clusterID/gateway-api-status", handlers.GetClusterGatewayAPIStatus)
 
-			// Extensions catalog (platform-level)
+			// Extensions (platform-level)
 			extensions := authorized.Group("/extensions")
 			{
 				extensions.GET("", handlers.ListExtensions)

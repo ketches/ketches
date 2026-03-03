@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
 import { projectsApi, type Project } from "@/api/projects"
+import { type SimpleResponse } from "@/api/pagination"
 import { CreateProjectDialog } from "@/components/project/create-project-dialog"
 import { EditProjectDialog } from "@/components/project/edit-project-dialog"
 import {
@@ -42,7 +43,7 @@ function ProjectItem({
   onEdit,
   onDelete,
 }: {
-  project: Project
+  project: SimpleResponse
   isActive: boolean
   onSelect: () => void
   onEdit: () => void
@@ -92,7 +93,7 @@ export function ProjectSwitcher() {
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
-  const [selectedProject, setSelectedProject] = React.useState<Project | null>(null)
+  const [selectedProject, setSelectedProject] = React.useState<SimpleResponse | null>(null)
   const { activeProjectId, setActiveProjectId } = useProjectStore()
   const navigate = useNavigate()
 
@@ -127,12 +128,12 @@ export function ProjectSwitcher() {
     }
   })
 
-  const handleEdit = (project: Project) => {
+  const handleEdit = (project: SimpleResponse) => {
     setSelectedProject(project)
     setEditDialogOpen(true)
   }
 
-  const handleDelete = (project: Project) => {
+  const handleDelete = (project: SimpleResponse) => {
     setSelectedProject(project)
     setDeleteDialogOpen(true)
   }
@@ -204,7 +205,7 @@ export function ProjectSwitcher() {
       <EditProjectDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        project={selectedProject}
+        project={selectedProject as unknown as Project | null}
         onSuccess={() => {
           setSelectedProject(null)
         }}

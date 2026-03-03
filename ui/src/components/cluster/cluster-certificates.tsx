@@ -235,7 +235,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
               data={certificates}
               searchKey="name"
               searchPlaceholder="Filter certificates..."
-              leftActions={() => (
+              toolbarActions={() => (
                 <Button onClick={handleOpenCreate}>
                   <Plus />
                   Add Certificate
@@ -248,15 +248,15 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingCert ? "Edit Certificate" : "Add Certificate"}</DialogTitle>
-            <DialogDescription>
-              {editingCert
-                ? "Update the certificate details. Leave PEM fields blank to keep current values."
-                : "Add a TLS certificate to enable HTTPS gateways in this cluster."}
-            </DialogDescription>
-          </DialogHeader>
           <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>{editingCert ? "Edit Certificate" : "Add Certificate"}</DialogTitle>
+              <DialogDescription>
+                {editingCert
+                  ? "Update the certificate details. Leave PEM fields blank to keep current values."
+                  : "Add a TLS certificate to enable HTTPS gateways in this cluster."}
+              </DialogDescription>
+            </DialogHeader>
             <div className="grid gap-4 py-4">
               <Field>
                 <FieldLabel>Name *</FieldLabel>

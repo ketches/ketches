@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-  ArrowUpFromLine,
+  ArrowBigUpDash,
   Blocks,
+  Download,
   Loader2,
-  Plus,
   Trash2
 } from "lucide-react"
 import * as React from "react"
@@ -11,8 +11,8 @@ import { toast } from "sonner"
 
 import {
   clustersApi,
-  type Extension,
   type ClusterExtension,
+  type Extension,
 } from "@/api/clusters"
 import { UpdateExtensionDialog } from "@/components/cluster/update-extension-dialog"
 import { DataTable } from "@/components/data-table/data-table"
@@ -119,8 +119,8 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
         const item = row.original
         return (
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 rounded-md text-primary shrink-0">
-              <Blocks />
+            <div className="p-1.5 bg-purple-500/10 rounded-md text-purple-600 shrink-0">
+              <Blocks className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <p className="font-medium text-sm truncate">
@@ -157,7 +157,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
                 setInstallOpen(true)
               }}
             >
-              <Plus />
+              <Download />
               Install
             </Button>
           </div>
@@ -167,11 +167,11 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
   ]
 
   const getStatusBadge = (ext: ClusterExtension) => {
-    if (ext.status === "pending") return <ColorBadge color="gray">Pending</ColorBadge>
+    if (ext.status === "pending") return <ColorBadge color="orange">Pending</ColorBadge>
     if (ext.status === "installing") return <ColorBadge color="blue"><Loader2 className="h-3 w-3 animate-spin mr-1 inline-block" />Installing</ColorBadge>
     if (ext.status === "deployed") return <ColorBadge color="green">Completed</ColorBadge>
     if (ext.status === "failed") return <ColorBadge color="red">Failed</ColorBadge>
-    
+
     return <ColorBadge color="gray">{ext.status || "Unknown"}</ColorBadge>
   }
 
@@ -183,8 +183,8 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
         const ext = row.original
         return (
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 rounded-md text-primary shrink-0">
-              <Blocks />
+            <div className="p-1.5 bg-purple-500/10 rounded-md text-purple-600 shrink-0">
+              <Blocks className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <p className="font-medium text-sm truncate">{ext.release_name}</p>
@@ -216,11 +216,10 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
         return (
           <div className="flex items-center gap-2 justify-end">
             <Button
-              variant="outline"
               size="sm"
               onClick={() => setUpdateTarget(ext)}
             >
-              <ArrowUpFromLine />
+              <ArrowBigUpDash />
               Update
             </Button>
             <Button
@@ -267,7 +266,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
               icon={Blocks}
               actionText="Install Extension"
               onAction={() => setBrowseOpen(true)}
-              actionIcon={Plus}
+              actionIcon={Download}
             />
           ) : (
             <DataTable
@@ -278,7 +277,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
               searchPlaceholder="Filter extensions..."
               leftActions={() => (
                 <Button onClick={() => setBrowseOpen(true)}>
-                  <Plus />
+                  <Download />
                   Install Extension
                 </Button>
               )}

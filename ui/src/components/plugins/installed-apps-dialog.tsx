@@ -39,7 +39,7 @@ export function InstalledAppsDialog({ plugin, projectId, open, onOpenChange }: I
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-180 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Applications Using This Plugin</DialogTitle>
           <DialogDescription>
@@ -60,16 +60,23 @@ export function InstalledAppsDialog({ plugin, projectId, open, onOpenChange }: I
                 key={app.id}
                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors group"
               >
-                <div className="flex flex-col gap-1 min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{app.name}</span>
-                    <ColorBadge
-                      color={app.status === 'running' ? 'green' : app.status === 'undeployed' ? 'gray' : 'yellow'}
-                    >
-                      {app.status?.toUpperCase() || 'UNKNOWN'}
-                    </ColorBadge>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600 shrink-0">
+                    <Box className="h-4 w-4" />
                   </div>
-                  <span className="text-xs text-muted-foreground font-mono truncate">{app.slug}</span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium truncate">{app.name}</span>
+                      <ColorBadge
+                        color={app.status === 'running' ? 'green' : app.status === 'undeployed' ? 'gray' : 'yellow'}
+                      >
+                        {app.status?.toUpperCase() || 'UNKNOWN'}
+                      </ColorBadge>
+                    </div>
+                    <p className="text-xs text-muted-foreground font-mono truncate">
+                      {app.slug}
+                    </p>
+                  </div>
                 </div>
                 <Button
                   variant="ghost"

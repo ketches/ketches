@@ -1,22 +1,24 @@
-import { DiffEditor, Editor } from "@monaco-editor/react"
+import { DiffEditor, Editor, type MonacoDiffEditor } from "@monaco-editor/react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { GitCompare, Loader2 } from "lucide-react"
-import type { editor } from "monaco-editor"
 import * as React from "react"
 import { toast } from "sonner"
 
 import {
   clustersApi,
-  type ExtensionVersionInfo,
   type ClusterExtension,
-  type UpgradeExtensionRequest,
-} from "@/api/clusters"
   type ExtensionVersionInfo,
-  type InstalledExtension,
-  type UpdateExtensionRequest,
+  type UpgradeExtensionRequest,
 } from "@/api/clusters"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import { Button } from "@/components/ui/button"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -26,24 +28,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox"
 
 interface UpdateExtensionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   clusterId: string
   extension: ClusterExtension | null
-}
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  clusterId: string
-  extension: InstalledExtension | null
 }
 
 export function UpdateExtensionDialog({
@@ -86,12 +76,6 @@ export function UpdateExtensionDialog({
     setShowDiff(false)
     initialSyncedRef.current = false
   }, [extension])
-    if (!extension) return
-    setSelectedVersion(extension.chart_version || "")
-    setModifiedValues(extension.values ?? "")
-    setShowDiff(false)
-    initialSyncedRef.current = false
-  }, [extension])
 
   // Fetch full extension details to get current values
   const { data: extensionDetails } = useQuery({
@@ -105,19 +89,6 @@ export function UpdateExtensionDialog({
       !extensionDetails ||
       !extension ||
       extensionDetails.id !== extension.id ||
-      initialSyncedRef.current
-    )
-  const { data: extensionDetails } = useQuery({
-    queryKey: ["extensions", clusterId, extension?.name],
-    queryFn: () => clustersApi.getExtension(clusterId, extension!.name),
-    enabled: open && Boolean(extension?.name),
-  })
-
-  React.useEffect(() => {
-    if (
-      !extensionDetails ||
-      !extension ||
-      extensionDetails.name !== extension.name ||
       initialSyncedRef.current
     )
       return
@@ -166,46 +137,6 @@ export function UpdateExtensionDialog({
     ),
     staleTime: 5 * 60 * 1000,
   })
-  const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
-    queryKey: ["extension-versions", extension?.catalog_item_id],
-    queryFn: () =>
-      clustersApi.getExtensionVersions(extension!.catalog_item_id!),
-    enabled: open && Boolean(extension?.catalog_item_id),
-    staleTime: 5 * 60 * 1000,
-  })
-
-  const rawVersions: ExtensionVersionInfo[] = Array.isArray(versionsData)
-    ? versionsData
-    : []
-
-  // Ensure current version is always in the list
-  const versions: ExtensionVersionInfo[] =
-    rawVersions.length > 0
-      ? rawVersions
-      : extension?.chart_version
-        ? [{ version: extension.chart_version }]
-        : []
-
-  // Fetch default values for selected version (only in diff mode)
-  const { data: chartValuesData, isFetching: chartValuesFetching } = useQuery({
-    queryKey: [
-      "extension-values",
-      extension?.catalog_item_id,
-      selectedVersion,
-    ],
-    queryFn: () =>
-      clustersApi.getExtensionValues(
-        extension!.catalog_item_id!,
-        selectedVersion
-      ),
-    enabled: Boolean(
-      showDiff &&
-        open &&
-        extension?.catalog_item_id &&
-        selectedVersion
-    ),
-    staleTime: 5 * 60 * 1000,
-  })
 
   const originalValues: string =
     (chartValuesData as { values?: string } | undefined)?.values ?? ""
@@ -218,15 +149,6 @@ export function UpdateExtensionDialog({
         description: `${extension?.release_name} has been updated.`,
       })
       queryClient.invalidateQueries({ queryKey: ["cluster-extensions", clusterId] })
-      onOpenChange(false)
-    },
-    mutationFn: (data: UpdateExtensionRequest) =>
-      clustersApi.updateExtension(clusterId, extension!.name, data),
-    onSuccess: () => {
-      toast.success("Extension updated", {
-        description: `${extension?.name} has been updated.`,
-      })
-      queryClient.invalidateQueries({ queryKey: ["extensions", clusterId] })
       onOpenChange(false)
     },
     onError: (error: unknown) => {
@@ -256,17 +178,9 @@ export function UpdateExtensionDialog({
     }
     updateMutation.mutate(data)
   }
-    e.preventDefault()
-    if (!extension) return
-    const data: UpdateExtensionRequest = {
-      chart_version: selectedVersion || undefined,
-      values: modifiedValues.trim() || undefined,
-    }
-    updateMutation.mutate(data)
-  }
 
   const handleDiffMount = React.useCallback(
-    (diffEditor: editor.IStandaloneDiffEditor) => {
+    (diffEditor: MonacoDiffEditor) => {
       const modified = diffEditor.getModifiedEditor()
       const model = modified.getModel()
       if (!model) return
@@ -293,14 +207,6 @@ export function UpdateExtensionDialog({
               Update <span className="font-medium">{extension.release_name}</span>{" "}
               in namespace <span className="font-mono text-xs">{extension.namespace}</span>.
               Edit values below and save to apply.
-            </DialogDescription>
-          </DialogHeader>
-            <DialogTitle>Update Extension</DialogTitle>
-            <DialogDescription>
-              Update <span className="font-medium">{extension.name}</span>{" "}
-              —{" "}
-              <span className="font-mono text-xs">{extension.oci_url}</span>
-              . Edit values below and save to apply.
             </DialogDescription>
           </DialogHeader>
 
@@ -355,8 +261,6 @@ export function UpdateExtensionDialog({
                   className="shrink-0 h-6 px-2 text-xs"
                   onClick={() => setShowDiff((v) => !v)}
                   disabled={!selectedVersion || !extension.extension_id}
-                >
-                  disabled={!selectedVersion || !extension.catalog_item_id}
                 >
                   <GitCompare className="h-3 w-3" />
                   {showDiff ? "Hide diff" : "Compare with default values"}

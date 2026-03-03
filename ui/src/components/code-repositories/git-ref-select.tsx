@@ -2,14 +2,13 @@ import { useQuery } from "@tanstack/react-query"
 import { GitBranch, Tag } from "lucide-react"
 
 import { codeRepositoriesApi } from "@/api/code-repositories"
-import { Combobox } from "@base-ui/react"
 import {
-  ComboboxContent,
+  Combobox, ComboboxContent,
   ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
   ComboboxLabel,
-  ComboboxList,
+  ComboboxList
 } from "@/components/ui/combobox"
 
 interface GitRefSelectProps {
@@ -42,7 +41,7 @@ export function GitRefSelect({
   const hasValueInRefs = refs.some((r) => r.name === value)
 
   return (
-    <Combobox.Root value={value} onValueChange={onValueChange} disabled={disabled || isLoading}>
+    <Combobox value={value} onValueChange={onValueChange} disabled={disabled || isLoading}>
       <ComboboxInput placeholder={isLoading ? "Loading..." : placeholder} className={className} />
       <ComboboxContent>
         <ComboboxList>
@@ -85,6 +84,6 @@ export function GitRefSelect({
           )}
         </ComboboxList>
       </ComboboxContent>
-    </Combobox.Root>
+    </Combobox>
   )
 }

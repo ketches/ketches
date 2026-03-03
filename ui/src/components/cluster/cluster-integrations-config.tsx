@@ -5,15 +5,12 @@ import { toast } from "sonner"
 
 import { clustersApi, type ClusterIntegration, type CreateClusterIntegrationRequest, type IntegrationType } from "@/api/clusters"
 import { DataTable } from "@/components/data-table/data-table"
-import { EmptyState } from "@/components/shared/empty-state"
 import { ColorBadge } from "@/components/shared/color-badge"
+import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
 import {
   Combobox,
   ComboboxContent,
@@ -21,6 +18,9 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import type { ColumnDef } from "@tanstack/react-table"
 
@@ -316,7 +316,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
               data={integrations}
               searchKey="name"
               searchPlaceholder="Filter integrations..."
-              leftActions={() => (
+              toolbarActions={() => (
                 <Button onClick={handleOpenCreate}>
                   <Plus />
                   Add Integration
@@ -329,13 +329,13 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-160 max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingIntegration ? "Edit Integration" : "Add Integration"}</DialogTitle>
-            <DialogDescription>
-              Configure a third-party service integration for this cluster
-            </DialogDescription>
-          </DialogHeader>
           <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>{editingIntegration ? "Edit Integration" : "Add Integration"}</DialogTitle>
+              <DialogDescription>
+                Configure a third-party service integration for this cluster
+              </DialogDescription>
+            </DialogHeader>
             <div className="grid gap-4 py-4">
               <Field>
                 <FieldLabel>Name *</FieldLabel>

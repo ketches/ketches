@@ -26,9 +26,9 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "../ui/input-group"
-import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface GatewayEditorProps {
   app: App

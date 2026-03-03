@@ -59,16 +59,6 @@ export function ExtensionsPage() {
     React.useState<Extension | null>(null)
   const [editTarget, setEditTarget] =
     React.useState<Extension | null>(null)
-    React.useState<ExtensionCatalogItem | null>(null)
-  const [installOpen, setInstallOpen] = React.useState(false)
-  const [installedClustersTarget, setInstalledClustersTarget] =
-    React.useState<ExtensionCatalogItem | null>(null)
-  const [installedClustersOpen, setInstalledClustersOpen] =
-    React.useState(false)
-  const [deleteTarget, setDeleteTarget] =
-    React.useState<ExtensionCatalogItem | null>(null)
-  const [editTarget, setEditTarget] =
-    React.useState<ExtensionCatalogItem | null>(null)
   const [editOpen, setEditOpen] = React.useState(false)
 
   const [viewMode, setViewMode] = React.useState<"list" | "card">(() => {
@@ -77,31 +67,23 @@ export function ExtensionsPage() {
   })
   const [searchQuery, setSearchQuery] = React.useState("")
   const debouncedSearch = useDebounce(searchQuery, 300)
-
-  React.useEffect(() => {
-    localStorage.setItem(EXTENSIONS_VIEW_MODE_KEY, viewMode)
-  }, [viewMode])
-
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   })
+
+  React.useEffect(() => {
+    localStorage.setItem(EXTENSIONS_VIEW_MODE_KEY, viewMode)
+  }, [viewMode])
 
   const { data: catalog = [], isLoading, refetch } = useQuery({
     queryKey: ["extensions"],
     queryFn: () => clustersApi.listExtensions(),
   })
 
-  const safeItems: Extension[] = Array.isArray(catalog)
-    queryKey: ["extension-catalog"],
-    queryFn: () => clustersApi.listExtensionCatalog(),
-  })
+  const safeItems: Extension[] = Array.isArray(catalog) ? catalog : []
 
-  const safeItems: ExtensionCatalogItem[] = Array.isArray(catalog)
-    ? catalog
-    : []
-
-  // Client-side search filter (catalog API doesn't support server-side search)
+  // Client-side search filter
   const filteredItems = safeItems.filter((item) => {
     if (!debouncedSearch) return true
     const q = debouncedSearch.toLowerCase()
@@ -116,10 +98,6 @@ export function ExtensionsPage() {
     mutationFn: (id: string) => clustersApi.deleteExtension(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["extensions"] })
-      toast.success("Extension removed from catalog")
-    mutationFn: (id: string) => clustersApi.deleteExtensionCatalogItem(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["extension-catalog"] })
       toast.success("Extension removed from catalog")
       setDeleteTarget(null)
     },
@@ -293,7 +271,7 @@ export function ExtensionsPage() {
 
       {safeItems.length === 0 && !searchQuery ? (
         <EmptyState
-          title="No extensions in catalog"
+          title="No extensions found"
           description="Add OCI-based Helm chart extensions to make them available for installation on clusters."
           icon={Blocks}
           actionText="Add Extension"
@@ -302,15 +280,6 @@ export function ExtensionsPage() {
         />
       ) : (
         <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Extensions</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage OCI-based Helm chart extensions
-              </p>
-            </div>
-          </div>
-
           <DataTable
             columns={columns}
             data={filteredItems}
@@ -435,16 +404,6 @@ export function ExtensionsPage() {
         open={installedClustersOpen}
         onOpenChange={setInstalledClustersOpen}
         extension={installedClustersTarget}
-      />
-        open={installOpen}
-        onOpenChange={setInstallOpen}
-        catalogItem={installTarget}
-      />
-
-      <InstalledClustersDialog
-        open={installedClustersOpen}
-        onOpenChange={setInstalledClustersOpen}
-        catalogItem={installedClustersTarget}
       />
 
       <AlertDialog

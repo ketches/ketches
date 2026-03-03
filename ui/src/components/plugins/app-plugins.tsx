@@ -252,7 +252,7 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <div className="space-y-1">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Puzzle /> Installed Plugins
+            <Puzzle className="h-4 w-4" /> Installed Plugins
           </CardTitle>
           <CardDescription>
             Enhance your application with various features and integrations

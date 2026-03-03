@@ -6,6 +6,7 @@ import {
   ChartLine,
   ChevronsUpDown,
   CircleSlash,
+  Copy,
   Cpu,
   GamepadDirectional,
   Info,
@@ -174,14 +175,40 @@ export function ClusterDetailPage() {
     {
       accessorKey: "name",
       header: "Node Name",
-      cell: ({ row }) => (
-        <span
-          className="font-mono text-xs font-medium cursor-pointer hover:text-primary transition-colors"
-          onClick={() => navigate(`/clusters/${clusterId}/nodes/${row.original.metadata.name}`)}
-        >
-          {row.original.metadata.name}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const internalIP = row.original.status.addresses?.find(
+          (addr) => addr.type === "InternalIP"
+        )
+        return (
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-sky-500/10 rounded-md text-sky-600 shrink-0">
+              <Blocks className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/clusters/${clusterId}/nodes/${row.original.metadata.name}`)}>
+                {row.original.metadata.name}
+              </p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-mono truncate">
+                  {internalIP?.address}
+                </p>
+                {internalIP?.address && <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigator.clipboard.writeText(internalIP?.address || "")
+                    toast.success("Internal IP address copied to clipboard")
+                  }}
+                >
+                  <Copy />
+                </Button>}
+              </div>
+            </div>
+          </div>
+        )
+      },
     },
     {
       accessorKey: "status",
@@ -270,18 +297,6 @@ export function ClusterDetailPage() {
             </div>
             <div className="text-muted-foreground">Allocatable / Capacity</div>
           </div>
-        )
-      },
-    },
-    {
-      accessorKey: "ip",
-      header: "IP Address",
-      cell: ({ row }) => {
-        const internalIP = row.original.status.addresses?.find(
-          (addr) => addr.type === "InternalIP"
-        )
-        return (
-          <span className="font-mono text-xs">{internalIP?.address || "N/A"}</span>
         )
       },
     },
@@ -582,24 +597,27 @@ export function ClusterDetailPage() {
               value={safeNodes.length}
               icon={Server}
               description={`${safeNodes.filter(n => n.status.conditions?.find(c => c.type === "Ready")?.status === "True").length} Ready`}
+              color="sky"
             />
             <StatCard
               title="Total CPU"
               value={`${totalCpu} Cores`}
               icon={Cpu}
               description="Capacity"
+              color="mauve"
             />
             <StatCard
               title="Total Memory"
               value={`${totalMemory.toFixed(1)} Gi`}
               icon={MemoryStick}
               description="Capacity"
+              color="mauve"
             />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-">
                 <ChartLine className="h-4 w-4" />
                 Node Resource Usage
               </CardTitle>

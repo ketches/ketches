@@ -311,7 +311,6 @@ export function ContainerRegistriesPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                      <span>•</span>
                       {reg.description ? (
                         <span className="truncate">{reg.description}</span>
                       ) : (

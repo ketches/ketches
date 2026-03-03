@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Blocks, ExternalLink } from "lucide-react"
+import { Blocks, ExternalLink, ShipWheel } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { clustersApi, type Extension, type InstalledCluster } from "@/api/clusters"
@@ -43,12 +43,13 @@ export function InstalledClustersDialog({
   const statusColor = (status: string) => {
     if (status === "deployed") return "green" as const
     if (status === "failed") return "red" as const
+    if (status === "pending") return "orange" as const
     return "blue" as const
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-180 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Installed Clusters</DialogTitle>
           <DialogDescription>
@@ -79,17 +80,24 @@ export function InstalledClustersDialog({
                 key={c.cluster_id}
                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
               >
-                <div className="flex flex-col gap-1 min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium truncate">{c.cluster_name}</span>
-                    <ColorBadge color={statusColor(c.status)}>
-                      {c.status?.toUpperCase() || "UNKNOWN"}
-                    </ColorBadge>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-sky-500/10 rounded-md text-sky-600 shrink-0">
+                    <ShipWheel className="h-4 w-4" />
                   </div>
-                  <span className="text-xs text-muted-foreground font-mono truncate">
-                    {c.release_name} · {c.namespace}
-                    {c.version ? ` · ${c.version}` : ""}
-                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium truncate">{c.cluster_name}</span>
+                      <ColorBadge
+                        color={statusColor(c.status)}
+                      >
+                        {c.status?.toUpperCase() || "UNKNOWN"}
+                      </ColorBadge>
+                    </div>
+                    <p className="text-xs text-muted-foreground font-mono truncate">
+                      {c.release_name} · {c.namespace}
+                      {c.version ? ` · ${c.version}` : ""}
+                    </p>
+                  </div>
                 </div>
                 <Button
                   variant="ghost"

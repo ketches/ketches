@@ -7,9 +7,6 @@ import {
   type Extension,
   type UpdateExtensionRequest,
 } from "@/api/clusters"
-  type ExtensionCatalogItem,
-  type UpdateExtensionCatalogItemRequest,
-} from "@/api/clusters"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -27,10 +24,6 @@ interface EditExtensionCatalogDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   item: Extension | null
-}
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  item: ExtensionCatalogItem | null
 }
 
 export function EditExtensionCatalogDialog({
@@ -72,12 +65,6 @@ export function EditExtensionCatalogDialog({
       toast.success("Extension updated")
       queryClient.invalidateQueries({ queryKey: ["extensions"] })
       onOpenChange(false)
-    mutationFn: (data: UpdateExtensionCatalogItemRequest) =>
-      clustersApi.updateExtensionCatalogItem(item!.id, data),
-    onSuccess: () => {
-      toast.success("Extension updated")
-      queryClient.invalidateQueries({ queryKey: ["extension-catalog"] })
-      onOpenChange(false)
     },
     onError: (error: unknown) => {
       const msg =
@@ -97,10 +84,6 @@ export function EditExtensionCatalogDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const data: UpdateExtensionRequest = {
-      oci_url: ociUrl.trim() || undefined,
-    }
-    e.preventDefault()
-    const data: UpdateExtensionCatalogItemRequest = {
       oci_url: ociUrl.trim() || undefined,
     }
     if (displayName.trim()) data.display_name = displayName.trim()

@@ -10,10 +10,6 @@ import {
   type ExtensionVersionInfo,
   type InstallExtensionRequest,
 } from "@/api/clusters"
-  type ExtensionCatalogItem,
-  type ExtensionVersionInfo,
-  type InstallExtensionRequest,
-} from "@/api/clusters"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import { Button } from "@/components/ui/button"
 import {
@@ -39,11 +35,6 @@ interface InstallExtensionDialogProps {
   onOpenChange: (open: boolean) => void
   clusterId: string
   catalogItem?: Extension | null
-}
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  clusterId: string
-  catalogItem?: ExtensionCatalogItem | null
 }
 
 export function InstallExtensionDialog({
@@ -141,12 +132,6 @@ export function InstallExtensionDialog({
       queryClient.invalidateQueries({ queryKey: ["cluster-extensions", clusterId] })
       onOpenChange(false)
     },
-      toast.success("Extension installed", {
-        description: `${catalogItem?.display_name || catalogItem?.name} is being installed to the cluster.`,
-      })
-      queryClient.invalidateQueries({ queryKey: ["extensions", clusterId] })
-      onOpenChange(false)
-    },
     onError: (error: unknown) => {
       const msg =
         error && typeof error === "object" && "response" in error
@@ -172,12 +157,6 @@ export function InstallExtensionDialog({
       extension_id: catalogItem.id,
       version: selectedVersion || undefined,
       namespace: releaseNamespace,
-      create_namespace: true,
-    }
-      name: releaseName,
-      catalog_item_id: catalogItem.id,
-      chart_version: selectedVersion || undefined,
-      release_namespace: releaseNamespace,
       create_namespace: true,
     }
     if (values.trim()) {
