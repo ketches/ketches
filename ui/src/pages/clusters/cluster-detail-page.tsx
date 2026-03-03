@@ -87,7 +87,7 @@ function NodeMetricsPanel({ clusterId, node }: { clusterId: string; node: Node }
   const internalIP = node.status.addresses?.find((a) => a.type === "InternalIP")?.address
   return (
     <div
-      className="p-4 border rounded-lg cursor-pointer"
+      className="p-4 border rounded-lg"
     >
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -604,20 +604,20 @@ export function ClusterDetailPage() {
               value={`${totalCpu} Cores`}
               icon={Cpu}
               description="Capacity"
-              color="mauve"
+              color="amber"
             />
             <StatCard
               title="Total Memory"
               value={`${totalMemory.toFixed(1)} Gi`}
               icon={MemoryStick}
               description="Capacity"
-              color="mauve"
+              color="amber"
             />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-">
+              <CardTitle className="flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />
                 Node Resource Usage
               </CardTitle>

@@ -50,6 +50,13 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
 
+import { MoreHorizontal, Star } from 'lucide-react'
+import { appGroupsApi } from "@/api/app-groups"
+import { useProjectStore } from "@/stores/project"
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+  DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
   const date = new Date(dateString)
@@ -67,9 +74,15 @@ const APPLICATIONS_VIEW_MODE_KEY = "applications_view_mode"
 interface ApplicationListProps {
   envId: string
   envName?: string
+  favoritesOnly?: boolean
+  hideToolbarActions?: boolean
+  // When set, only show apps whose IDs are in this set (used by group view)
+  allowedAppIds?: Set<string>
+  // When set, shows 'Remove from Group' action instead of 'Add to Group' for this group
+  currentGroupId?: string
 }
 
-export function ApplicationList({ envId, envName: _envName }: ApplicationListProps) {
+export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideToolbarActions, allowedAppIds, currentGroupId }: ApplicationListProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
@@ -100,6 +113,46 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
+  })
+  const { activeProjectId } = useProjectStore()
+  const { data: favorites = [] } = useQuery({
+    queryKey: ['app-favorites'],
+    queryFn: () => appGroupsApi.listFavorites(),
+  })
+  const favoriteIds = new Set(favorites.map((f: any) => f.app_id))
+
+  const { data: appGroups = [] } = useQuery({
+    queryKey: ['app-groups', activeProjectId],
+    queryFn: () => appGroupsApi.list(activeProjectId!),
+    enabled: !!activeProjectId,
+  })
+
+  const toggleFavMutation = useMutation({
+    mutationFn: (app: App) =>
+      favoriteIds.has(app.id)
+        ? appGroupsApi.removeFavorite(app.id)
+        : appGroupsApi.addFavorite(app.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['app-favorites'] })
+    },
+  })
+
+  const removeFromGroupMutation = useMutation({
+    mutationFn: ({ groupId, appId }: { groupId: string; appId: string }) =>
+      appGroupsApi.removeApp(groupId, appId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['grouped-apps'] })
+      toast.success('Removed from group')
+    },
+  })
+
+  const addToGroupMutation = useMutation({
+    mutationFn: ({ groupId, appId }: { groupId: string; appId: string }) =>
+      appGroupsApi.addApp(groupId, appId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['grouped-apps'] })
+      toast.success('Added to group')
+    },
   })
 
   const { data: appsResponse, refetch } = useQuery({
@@ -133,7 +186,13 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
 
   const apps = appsResponse?.items ?? []
   const paginationInfo = appsResponse?.pagination
-  const safeApps = Array.isArray(apps) ? apps : []
+  const safeAppsRaw = Array.isArray(apps) ? apps : []
+  const safeApps = (() => {
+    let result = safeAppsRaw
+    if (favoritesOnly) result = result.filter(a => favoriteIds.has(a.id))
+    if (allowedAppIds) result = result.filter(a => allowedAppIds.has(a.id))
+    return result
+  })()
 
   const columns: ColumnDef<App>[] = [
     {
@@ -237,24 +296,52 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
         <div className="flex items-center justify-end gap-2">
           {!isViewer && (
             <>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditingApp(row.original)
-                      setEditDialogOpen(true)
-                    }}
-                  >
-                    <Pencil />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm">
+                    <MoreHorizontal className="h-4 w-4" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Edit</p>
-                </TooltipContent>
-              </Tooltip>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setEditingApp(row.original) || setEditDialogOpen(true)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toggleFavMutation.mutate(row.original)}>
+                    <Star className={`h-4 w-4 mr-2 ${favoriteIds.has(row.original.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
+                    {favoriteIds.has(row.original.id) ? 'Remove Favorite' : 'Add to Favorites'}
+                  </DropdownMenuItem>
+                  {/* Remove from group action (when viewing a specific group) */}
+                  {currentGroupId && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => removeFromGroupMutation.mutate({ groupId: currentGroupId, appId: row.original.id })}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove from Group
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {/* Add to group sub-menu (when not in a specific group view) */}
+                  {!currentGroupId && appGroups.length > 0 && (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>Add to Group</DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        {appGroups.map((g: any) => (
+                          <DropdownMenuItem
+                            key={g.id}
+                            onClick={() => addToGroupMutation.mutate({ groupId: g.id, appId: row.original.id })}
+                          >
+                            {g.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <AppActionIconsWrapper appId={row.original.id} envId={envId} />
             </>
@@ -285,7 +372,7 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      {!isViewer && (
+      {!isViewer && !hideToolbarActions && (
         <>
           <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus />
@@ -303,6 +390,7 @@ export function ApplicationList({ envId, envName: _envName }: ApplicationListPro
   return (
     <>
       <DataTable
+        borderless
         columns={columns}
         data={safeApps}
         viewMode={viewMode}

@@ -130,7 +130,7 @@ export function ClustersPage() {
             <ShipWheel className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="font-medium text-xs truncate cursor-pointer hover:text-primary transition-colors">
+            <p className="font-medium text-xs truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/clusters/${row.original.id}`)}>
               {row.original.name}
             </p>
             <p className="text-xs text-muted-foreground font-mono truncate">

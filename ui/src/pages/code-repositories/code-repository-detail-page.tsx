@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
-  BarChart3,
   CheckCircle,
   ChevronsUpDown,
   ExternalLink,
@@ -41,6 +40,7 @@ import { DataTable } from "@/components/data-table/data-table"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
+import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -502,11 +502,6 @@ export function CodeRepositoryDetailPage() {
   const totalDeployments = deployments.length
   const totalBuildConfigs = buildConfigs.length
 
-  const getSuccessRateColor = (rate: number) => {
-    if (rate >= 90) return "text-green-500"
-    if (rate >= 70) return "text-orange-500"
-    return "text-red-500"
-  }
 
   return (
     <div className="flex flex-col flex-1 gap-6">
@@ -591,51 +586,36 @@ export function CodeRepositoryDetailPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Repository Statistics
-              </CardTitle>
-              <CardDescription>
-                Build and deployment activity for this repository.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <Hammer className="h-3 w-3" />
-                    Build Configs
-                  </p>
-                  <p className="text-2xl font-bold">{totalBuildConfigs}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <Play className="h-3 w-3" />
-                    Total Builds
-                  </p>
-                  <p className="text-2xl font-bold">{totalBuilds}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3" />
-                    Success Rate
-                  </p>
-                  <p className={`text-2xl font-bold ${totalBuilds > 0 ? getSuccessRateColor(successRate) : "text-muted-foreground"}`}>
-                    {totalBuilds > 0 ? `${successRate.toFixed(0)}%` : "N/A"}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <Rocket className="h-3 w-3" />
-                    Deployments
-                  </p>
-                  <p className="text-2xl font-bold">{totalDeployments}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="Build Configs"
+              value={totalBuildConfigs}
+              icon={Hammer}
+              description="Configurations defined"
+              color="purple"
+            />
+            <StatCard
+              title="Total Builds"
+              value={totalBuilds}
+              icon={Play}
+              description="All time builds"
+              color="blue"
+            />
+            <StatCard
+              title="Success Rate"
+              value={totalBuilds > 0 ? `${successRate.toFixed(0)}%` : "N/A"}
+              icon={CheckCircle}
+              description="Build success rate"
+              color={totalBuilds > 0 ? (successRate >= 90 ? "green" : successRate >= 70 ? "orange" : "red") : "gray"}
+            />
+            <StatCard
+              title="Deployments"
+              value={totalDeployments}
+              icon={Rocket}
+              description="Total deployments"
+              color="sky"
+            />
+          </div>
         </TabsContent>
         <TabsContent value="topology" className="space-y-4 mt-2">
           <Card>

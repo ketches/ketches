@@ -53,6 +53,8 @@ func SetupV1Routes(r *gin.Engine) {
 				projects.GET("/:projectID/plugins/simple", handlers.ListPluginsSimple)
 				projects.GET("/:projectID/plugins/:pluginID", handlers.GetPlugin)
 				projects.GET("/:projectID/plugins/:pluginID/installed-apps", handlers.GetPluginInstalledApps)
+				projects.GET("/:projectID/app-groups", handlers.ListAppGroups)
+				projects.GET("/:projectID/envs/:envID/grouped-apps", handlers.ListGroupedApps)
 
 				// Write (require at least developer role)
 				projectsWrite := projects.Group("", middlewares.RequireProjectRole("developer"))
@@ -66,6 +68,7 @@ func SetupV1Routes(r *gin.Engine) {
 				projectsWrite.POST("/:projectID/plugins", handlers.CreatePlugin)
 				projectsWrite.PUT("/:projectID/plugins/:pluginID", handlers.UpdatePlugin)
 				projectsWrite.DELETE("/:projectID/plugins/:pluginID", handlers.DeletePlugin)
+				projectsWrite.POST("/:projectID/app-groups", handlers.CreateAppGroup)
 			}
 
 			// ── Code Repositories ─────────────────────────────────────
@@ -142,6 +145,7 @@ func SetupV1Routes(r *gin.Engine) {
 				apps.GET("/:appID/builds/:buildID", handlers.GetBuild)
 				apps.GET("/:appID/builds/:buildID/logs", handlers.StreamBuildLogs)
 				apps.GET("/:appID/deployment-history", handlers.ListDeploymentHistory)
+				apps.GET("/:appID/favorite", handlers.GetAppFavoriteStatus)
 
 				// Exec / Log / Files (block viewer — require at least developer)
 				appsExec := apps.Group("", middlewares.BlockViewer())
@@ -193,9 +197,26 @@ func SetupV1Routes(r *gin.Engine) {
 				appsWrite.POST("/:appID/builds/:buildID/deploy", handlers.DeployBuild)
 				appsWrite.POST("/:appID/builds/:buildID/rebuild", handlers.RebuildBuild)
 				appsWrite.POST("/:appID/deployment-history/rollback", handlers.RollbackDeployment)
+				appsWrite.POST("/:appID/favorite", handlers.AddFavoriteApp)
+				appsWrite.DELETE("/:appID/favorite", handlers.RemoveFavoriteApp)
 			}
 
 			// Flat resource write routes — RequireProjectRole resolves project via resource→app→env chain.
+			// ── App Groups (flat write routes) ───────────────────────────────
+			appGroupsWrite := authorized.Group("/app-groups", middlewares.RequireProjectRole("developer"))
+			{
+				appGroupsWrite.PUT("/:groupID", handlers.UpdateAppGroup)
+				appGroupsWrite.DELETE("/:groupID", handlers.DeleteAppGroup)
+				appGroupsWrite.POST("/:groupID/apps/:appID", handlers.AddAppToGroup)
+				appGroupsWrite.DELETE("/:groupID/apps/:appID", handlers.RemoveAppFromGroup)
+			}
+
+			// ── App Favorites ────────────────────────────────────────────────
+			favorites := authorized.Group("/favorites")
+			{
+				favorites.GET("/apps", handlers.ListFavoriteApps)
+			}
+
 			flatResourcesWrite := authorized.Group("", middlewares.RequireProjectRole("developer"))
 			{
 				flatResourcesWrite.PUT("/env-vars/:id", handlers.UpdateAppEnvVar)

@@ -147,6 +147,16 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 		return repo.ProjectID, true
 	}
 
+	// Resolve via app group ID
+	if groupID := c.Param("groupID"); groupID != "" {
+		var group entities.AppGroup
+		if err := db.DB.Select("project_id").Where("id = ?", groupID).First(&group).Error; err != nil {
+			log.Printf("resolveProjectID: DB lookup AppGroup %q failed: %v", groupID, err)
+			return "", false
+		}
+		return group.ProjectID, true
+	}
+
 	return "", false
 }
 

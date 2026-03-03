@@ -324,24 +324,28 @@ export function ClusterNodeDetailPage() {
               value={`${node.status.allocatable.cpu} / ${node.status.capacity.cpu}`}
               icon={Cpu}
               description="Allocatable / Capacity"
+              color="amber"
             />
             <StatCard
               title="Memory"
               value={`${memoryAllocatable.toFixed(1)}Gi / ${memoryCapacity.toFixed(1)}Gi`}
               icon={MemoryStick}
               description="Allocatable / Capacity"
+              color="amber"
             />
             <StatCard
               title="Storage"
               value={`${storageAllocatable.toFixed(1)}Gi / ${storageCapacity.toFixed(1)}Gi`}
               icon={HardDrive}
               description="Allocatable / Capacity"
+              color="amber"
             />
             <StatCard
               title="Pods"
               value={node.status.allocatable.pods}
               icon={Layers}
               description="Pod Capacity"
+              color="sky"
             />
           </div>
 

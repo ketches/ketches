@@ -39,6 +39,7 @@ import {
   Server,
   Shapes,
   Share2,
+  Star,
   Telescope,
   Terminal as TerminalIcon,
   Trash2,
@@ -49,6 +50,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import { toast } from "sonner"
 
+import { appGroupsApi } from "@/api/app-groups"
 import { appsApi, type App } from "@/api/apps"
 import { clustersApi } from "@/api/clusters"
 import { envsApi } from "@/api/envs"
@@ -548,6 +550,23 @@ export function ApplicationDetailPage() {
     queryFn: () => appsApi.listSimple(app!.env_id!),
     enabled: !!app?.env_id,
   })
+  const { data: favoriteStatus } = useQuery({
+    queryKey: ['app-favorite', appId],
+    queryFn: () => appGroupsApi.getFavoriteStatus(appId!),
+    enabled: !!appId,
+  })
+
+  const toggleFavMutation = useMutation({
+    mutationFn: () =>
+      favoriteStatus?.is_favorite
+        ? appGroupsApi.removeFavorite(appId!)
+        : appGroupsApi.addFavorite(appId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['app-favorite', appId] })
+      queryClient.invalidateQueries({ queryKey: ['app-favorites'] })
+      toast.success(favoriteStatus?.is_favorite ? 'Removed from favorites' : 'Added to favorites')
+    },
+  })
 
   const safeApps = Array.isArray(apps) ? apps : []
 
@@ -971,6 +990,16 @@ export function ApplicationDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {!isViewer && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => toggleFavMutation.mutate()}
+                title={favoriteStatus?.is_favorite ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Star className={`h-4 w-4 ${favoriteStatus?.is_favorite ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
+              </Button>
+            )}
             {!isViewer && (
               <Button
                 variant="outline"
