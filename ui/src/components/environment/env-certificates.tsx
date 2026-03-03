@@ -181,7 +181,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
       ? [
           {
             id: "actions",
-            header: () => <span className="flex justify-end">Actions</span>,
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }: { row: { original: Certificate } }) => (
               <div className="flex items-center gap-1 justify-end">
                 <Button
@@ -211,23 +211,13 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" />
-                TLS Certificates
-              </CardTitle>
-              <CardDescription>
-                Environment-level certificates for this environment
-              </CardDescription>
-            </div>
-            {!isViewer && certificates.length > 0 && (
-              <Button size="sm" onClick={handleOpenCreate}>
-                <Plus />
-                Add Certificate
-              </Button>
-            )}
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            TLS Certificates
+          </CardTitle>
+          <CardDescription>
+            Environment-level certificates for this environment
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -235,32 +225,31 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           ) : !certificates || certificates.length === 0 ? (
-            isViewer ? (
-              <EmptyState
-                title="No certificates configured"
-                description="Add a TLS certificate to enable HTTPS gateways"
-                icon={ShieldCheck}
-                actionText=""
-              />
-            ) :
-              <EmptyState
-                title="No certificates configured"
-                description="Add a TLS certificate to enable HTTPS gateways"
-                icon={ShieldCheck}
-                actionIcon={Plus}
-                actionText="Add Certificate"
-                onAction={handleOpenCreate}
-              />
+            <EmptyState
+              title="No certificates configured"
+              description="Add a TLS certificate to enable HTTPS gateways"
+              icon={ShieldCheck}
+              actionText={isViewer ? "" : "Add Certificate"}
+              onAction={isViewer ? undefined : handleOpenCreate}
+              actionIcon={isViewer ? undefined : Plus}
+            />
           ) : (
             <DataTable
+              borderless
               columns={columns}
               data={certificates}
-              borderless
+              searchKey="name"
+              searchPlaceholder="Filter certificates..."
+              toolbarActions={!isViewer ? () => (
+                <Button onClick={handleOpenCreate}>
+                  <Plus />
+                  Add Certificate
+                </Button>
+              ) : undefined}
             />
           )}
         </CardContent>
       </Card>
-
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
