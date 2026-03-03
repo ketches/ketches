@@ -1,3 +1,4 @@
+import Editor from "@monaco-editor/react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowBigUpDash,
@@ -20,6 +21,7 @@ import { BrowseExtensionsDialog } from "@/components/extensions/browse-extension
 import { InstallExtensionToClusterDialog } from "@/components/extensions/install-extension-dialog"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
+import { useTheme } from "@/components/theme-provider/theme-provider"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +40,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import type { ColumnDef } from "@tanstack/react-table"
 
 interface ClusterExtensionsProps {
@@ -52,7 +61,27 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
     React.useState<ClusterExtension | null>(null)
   const [installTarget, setInstallTarget] =
     React.useState<Extension | null>(null)
+  const [valuesTarget, setValuesTarget] =
+    React.useState<ClusterExtension | null>(null)
   const [installOpen, setInstallOpen] = React.useState(false)
+  const { theme } = useTheme()
+
+  const [monacoTheme, setMonacoTheme] = React.useState<"vs" | "vs-dark">("vs")
+  React.useEffect(() => {
+    const resolve = () => {
+      if (theme === "dark") return "vs-dark" as const
+      if (theme === "light") return "vs" as const
+      return document.documentElement.classList.contains("dark")
+        ? ("vs-dark" as const)
+        : ("vs" as const)
+    }
+    setMonacoTheme(resolve())
+    if (theme !== "system") return
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const handler = () => setMonacoTheme(resolve())
+    media.addEventListener("change", handler)
+    return () => media.removeEventListener("change", handler)
+  }, [theme])
 
   const { data: extensions = [], isLoading } = useQuery({
     queryKey: ["cluster-extensions", clusterId],
@@ -189,7 +218,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             <div className="min-w-0">
               <p className="font-medium text-sm truncate">{ext.release_name}</p>
               <p className="text-xs text-muted-foreground font-mono truncate">
-                {ext.namespace} · {ext.version}
+                {ext.namespace}
               </p>
             </div>
           </div>
@@ -206,6 +235,19 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
       header: "Namespace",
       cell: ({ row }) => (
         <span className="font-mono text-xs">{row.original.namespace}</span>
+      ),
+    },
+    {
+      accessorKey: "installed_version",
+      header: "Installed Version",
+      cell: ({ row }) => (
+        <Button
+          variant="link"
+          size="sm"
+          onClick={() => setValuesTarget(row.original)}
+        >
+          {row.original.version}
+        </Button>
       ),
     },
     {
@@ -367,6 +409,47 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={!!valuesTarget}
+        onOpenChange={(open) => !open && setValuesTarget(null)}
+      >
+        <DialogContent className="flex flex-col h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] overflow-hidden sm:h-[90vh] sm:max-h-[90vh] sm:max-w-[90vw]">
+          <DialogHeader>
+            <DialogTitle>
+              {valuesTarget?.version
+                ? `Extension Values - ${valuesTarget.version}`
+                : "Extension Values"}
+            </DialogTitle>
+            <DialogDescription>{valuesTarget?.release_name}</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-hidden rounded-md border">
+            {valuesTarget?.values ? (
+              <Editor
+                height="100%"
+                language="yaml"
+                theme={monacoTheme}
+                value={valuesTarget.values}
+                options={{
+                  readOnly: true,
+                  fontSize: 12,
+                  lineNumbers: "on",
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  wordWrap: "on",
+                  automaticLayout: true,
+                  padding: { top: 16, bottom: 16 },
+                }}
+                loading=""
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground bg-muted/30">
+                No content available
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
