@@ -88,10 +88,14 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
     queryFn: () => clustersApi.listClusterExtensions(clusterId),
     refetchInterval: (query) => {
       const data = query.state.data as ClusterExtension[] | undefined
-      const isInstalling = data?.some(
-        (e) => e.status === "pending" || e.status === "installing"
+      const isTransitioning = data?.some(
+        (e) =>
+          e.status === "pending" ||
+          e.status === "installing" ||
+          e.status === "uninstalling" ||
+          e.status === "upgrading"
       )
-      return isInstalling ? 3000 : 10000
+      return isTransitioning ? 3000 : 10000
     },
   })
 
@@ -198,11 +202,24 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
   const getStatusBadge = (ext: ClusterExtension) => {
     if (ext.status === "pending") return <ColorBadge color="orange">Pending</ColorBadge>
     if (ext.status === "installing") return <ColorBadge color="blue"><Loader2 className="h-3 w-3 animate-spin mr-1 inline-block" />Installing</ColorBadge>
-    if (ext.status === "deployed") return <ColorBadge color="green">Completed</ColorBadge>
-    if (ext.status === "failed") return <ColorBadge color="red">Failed</ColorBadge>
-
+    if (ext.status === "uninstalling")
+      return <ColorBadge color="orange"><Loader2 className="h-3 w-3 animate-spin mr-1 inline-block" />Uninstalling</ColorBadge>
+    if (ext.status === "upgrading")
+      return <ColorBadge color="blue"><Loader2 className="h-3 w-3 animate-spin mr-1 inline-block" />Upgrading</ColorBadge>
+    if (ext.status === "deployed")
+      return <ColorBadge color="green">Installed</ColorBadge>
+    if (ext.status === "failed" && ext.phase === "uninstalling")
+      return <ColorBadge color="red">Uninstall Failed</ColorBadge>
+    if (ext.status === "failed")
+      return <ColorBadge color="red">Install Failed</ColorBadge>
     return <ColorBadge color="gray">{ext.status || "Unknown"}</ColorBadge>
   }
+
+  const isTransitioning = (ext: ClusterExtension) =>
+    ext.status === "pending" ||
+    ext.status === "installing" ||
+    ext.status === "upgrading" ||
+    ext.status === "uninstalling"
 
   const columns: ColumnDef<ClusterExtension>[] = [
     {
@@ -255,24 +272,32 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
         const ext = row.original
+        const busy = isTransitioning(ext)
+        const uninstallFailed = ext.status === "failed" && ext.phase === "uninstalling"
         return (
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              size="sm"
-              onClick={() => setUpdateTarget(ext)}
-            >
-              <ArrowBigUpDash />
-              Update
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => setDeleteTarget(ext.id)}
-            >
-              <Trash2 />
-              Uninstall
-            </Button>
+            {/* Update button: only show when deployed */}
+            {ext.status === "deployed" && (
+              <Button
+                size="sm"
+                onClick={() => setUpdateTarget(ext)}
+              >
+                <ArrowBigUpDash />
+                Update
+              </Button>
+            )}
+            {/* Uninstall / Retry Uninstall: hidden while transitioning */}
+            {!busy && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setDeleteTarget(ext.id)}
+              >
+                <Trash2 />
+                {uninstallFailed ? "Retry Uninstall" : "Uninstall"}
+              </Button>
+            )}
           </div>
         )
       },

@@ -237,7 +237,7 @@ export const clustersApi = {
     client.put(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}`, data) as Promise<ClusterExtension>,
 
   uninstallExtension: async (clusterId: string, clusterExtensionId: string) =>
-    client.delete(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}`),
+    client.delete(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}`) as Promise<ClusterExtension>,
 
   // Gateway API status
   getGatewayAPIStatus: async (clusterId: string) => {
@@ -274,6 +274,7 @@ export interface ClusterExtension {
   version: string
   values?: string
   status: string
+  phase?: string
   error_message?: string
   created_at: string
 }
