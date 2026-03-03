@@ -11,8 +11,8 @@ import { toast } from "sonner"
 
 import {
   clustersApi,
-  type ExtensionCatalogItem,
-  type InstalledExtension,
+  type Extension,
+  type ClusterExtension,
 } from "@/api/clusters"
 import { UpdateExtensionDialog } from "@/components/cluster/update-extension-dialog"
 import { DataTable } from "@/components/data-table/data-table"
@@ -49,23 +49,29 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
   const [browseOpen, setBrowseOpen] = React.useState(false)
   const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null)
   const [updateTarget, setUpdateTarget] =
-    React.useState<InstalledExtension | null>(null)
+    React.useState<ClusterExtension | null>(null)
   const [installTarget, setInstallTarget] =
-    React.useState<ExtensionCatalogItem | null>(null)
+    React.useState<Extension | null>(null)
   const [installOpen, setInstallOpen] = React.useState(false)
 
   const { data: extensions = [], isLoading } = useQuery({
-    queryKey: ["extensions", clusterId],
-    queryFn: () => clustersApi.listExtensions(clusterId),
-    refetchInterval: 10000,
+    queryKey: ["cluster-extensions", clusterId],
+    queryFn: () => clustersApi.listClusterExtensions(clusterId),
+    refetchInterval: (query) => {
+      const data = query.state.data as ClusterExtension[] | undefined
+      const isInstalling = data?.some(
+        (e) => e.status === "pending" || e.status === "installing"
+      )
+      return isInstalling ? 3000 : 10000
+    },
   })
 
   const uninstallMutation = useMutation({
-    mutationFn: (name: string) =>
-      clustersApi.uninstallExtension(clusterId, name),
+    mutationFn: (id: string) =>
+      clustersApi.uninstallExtension(clusterId, id),
     onSuccess: () => {
       toast.success("Extension uninstalled")
-      queryClient.invalidateQueries({ queryKey: ["extensions", clusterId] })
+      queryClient.invalidateQueries({ queryKey: ["cluster-extensions", clusterId] })
       setDeleteTarget(null)
     },
     onError: (error: unknown) => {
@@ -84,29 +90,28 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
     },
   })
 
-  const safeExtensions: InstalledExtension[] = Array.isArray(extensions)
+  const safeExtensions: ClusterExtension[] = Array.isArray(extensions)
     ? extensions
     : []
 
   // Derive installed extension names to pass to BrowseExtensionsDialog
-  const installedNames = safeExtensions.map((e) => e.name)
+  const installedNames = safeExtensions.map((e) => e.release_name)
 
   // Fetch the full extension catalog to derive available (not-yet-installed) items
   const { data: catalog = [], isLoading: catalogLoading } = useQuery({
-    queryKey: ["extension-catalog"],
-    queryFn: () => clustersApi.listExtensionCatalog(),
+    queryKey: ["extensions"],
+    queryFn: () => clustersApi.listExtensions(),
   })
 
-  const safeCatalog: ExtensionCatalogItem[] = Array.isArray(catalog) ? catalog : []
+  const safeCatalog: Extension[] = Array.isArray(catalog) ? catalog : []
 
-  // Filter out already-installed catalog items (match by catalog_item_id or by name)
-  const installedIds = new Set(safeExtensions.map((e) => e.catalog_item_id).filter(Boolean))
-  const installedNameSet = new Set(installedNames)
+  // Filter out already-installed catalog items (match by extension_id)
+  const installedIds = new Set(safeExtensions.map((e) => e.extension_id))
   const availableItems = safeCatalog.filter(
-    (item) => !installedIds.has(item.id) && !installedNameSet.has(item.name),
+    (item) => !installedIds.has(item.id)
   )
 
-  const catalogColumns: ColumnDef<ExtensionCatalogItem>[] = [
+  const catalogColumns: ColumnDef<Extension>[] = [
     {
       accessorKey: "name",
       header: "Extension",
@@ -157,33 +162,22 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             </Button>
           </div>
         )
-      },
+      }
     },
   ]
 
-  const getStatusBadge = (ext: InstalledExtension) => {
-    if (ext.status === "deployed") {
-      return (
-        <ColorBadge color="green">Completed</ColorBadge>
-      )
-    }
-    if (ext.status === "failed") {
-      return (
-        <ColorBadge color="red">
-          Failed
-        </ColorBadge>
-      )
-    }
-    return (
-      <ColorBadge color="blue">
-        {ext.status || "Pending"}
-      </ColorBadge>
-    )
+  const getStatusBadge = (ext: ClusterExtension) => {
+    if (ext.status === "pending") return <ColorBadge color="gray">Pending</ColorBadge>
+    if (ext.status === "installing") return <ColorBadge color="blue"><Loader2 className="h-3 w-3 animate-spin mr-1 inline-block" />Installing</ColorBadge>
+    if (ext.status === "deployed") return <ColorBadge color="green">Completed</ColorBadge>
+    if (ext.status === "failed") return <ColorBadge color="red">Failed</ColorBadge>
+    
+    return <ColorBadge color="gray">{ext.status || "Unknown"}</ColorBadge>
   }
 
-  const columns: ColumnDef<InstalledExtension>[] = [
+  const columns: ColumnDef<ClusterExtension>[] = [
     {
-      accessorKey: "name",
+      accessorKey: "release_name",
       header: "Extension",
       cell: ({ row }) => {
         const ext = row.original
@@ -193,10 +187,9 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
               <Blocks />
             </div>
             <div className="min-w-0">
-              <p className="font-medium text-sm truncate">{ext.name}</p>
+              <p className="font-medium text-sm truncate">{ext.release_name}</p>
               <p className="text-xs text-muted-foreground font-mono truncate">
-                {ext.oci_url}
-                {ext.chart_version ? `:${ext.chart_version}` : ""}
+                {ext.namespace} · {ext.version}
               </p>
             </div>
           </div>
@@ -209,24 +202,10 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
       cell: ({ row }) => getStatusBadge(row.original),
     },
     {
-      accessorKey: "release_namespace",
+      accessorKey: "namespace",
       header: "Namespace",
       cell: ({ row }) => (
-        <span className="font-mono text-xs">{row.original.release_namespace}</span>
-      ),
-    },
-    {
-      accessorKey: "revision",
-      header: "Revision",
-      cell: ({ row }) => (
-        <span className="text-xs">{row.original.revision || "-"}</span>
-      ),
-    },
-    {
-      accessorKey: "app_version",
-      header: "App Version",
-      cell: ({ row }) => (
-        <span className="font-mono text-xs">{row.original.app_version || "-"}</span>
+        <span className="font-mono text-xs">{row.original.namespace}</span>
       ),
     },
     {
@@ -248,7 +227,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
               variant="outline"
               size="sm"
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => setDeleteTarget(ext.name)}
+              onClick={() => setDeleteTarget(ext.id)}
             >
               <Trash2 />
               Uninstall
@@ -258,6 +237,8 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
       },
     },
   ]
+
+  const deleteReleaseName = safeExtensions.find(e => e.id === deleteTarget)?.release_name ?? deleteTarget
 
   return (
     <>
@@ -293,7 +274,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
               borderless
               columns={columns}
               data={safeExtensions}
-              searchKey="name"
+              searchKey="release_name"
               searchPlaceholder="Filter extensions..."
               leftActions={() => (
                 <Button onClick={() => setBrowseOpen(true)}>
@@ -343,7 +324,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
       <InstallExtensionToClusterDialog
         open={installOpen}
         onOpenChange={setInstallOpen}
-        catalogItem={installTarget}
+        extension={installTarget}
         preselectedClusterId={clusterId}
       />
 
@@ -369,7 +350,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Uninstall Extension</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to uninstall "{deleteTarget}"? This will
+              Are you sure you want to uninstall "{deleteReleaseName}"? This will
               remove the Helm release and all associated resources from the
               cluster.
             </AlertDialogDescription>
@@ -390,3 +371,4 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
     </>
   )
 }
+

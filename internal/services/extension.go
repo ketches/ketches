@@ -2,33 +2,36 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/ketches/ketches/internal/db"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/pkg/uuid"
+	"gorm.io/gorm"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
-	 memorycache "k8s.io/client-go/discovery/cached/memory"
+	memorycache "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 )
 
-// ListExtensionVersions lists OCI tags for a catalog item, sorted newest first.
-func ListExtensionVersions(itemID string) ([]models.ExtensionVersionInfo, error) {
-	item, err := GetExtensionCatalogItemEntity(itemID)
+// ListExtensionVersions lists OCI tags for an extension, sorted newest first.
+func ListExtensionVersions(extensionID string) ([]models.ExtensionVersionInfo, error) {
+	item, err := GetExtensionEntity(extensionID)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +55,8 @@ func ListExtensionVersions(itemID string) ([]models.ExtensionVersionInfo, error)
 }
 
 // GetExtensionValues pulls the OCI helm chart and returns its default values.yaml content.
-func GetExtensionValues(itemID, version string) (string, error) {
-	item, err := GetExtensionCatalogItemEntity(itemID)
+func GetExtensionValues(extensionID, version string) (string, error) {
+	item, err := GetExtensionEntity(extensionID)
 	if err != nil {
 		return "", err
 	}
@@ -123,184 +126,231 @@ func GetExtensionValues(itemID, version string) (string, error) {
 	return "", nil
 }
 
-// ListExtensions lists all helm releases installed in a cluster.
-// ListExtensions lists all helm releases installed in a cluster and enriches
-// each entry with the catalog item ID (matched by OCI URL) when available.
-func ListExtensions(clusterID string) ([]models.InstalledExtension, error) {
-	actionConfig, cleanup, err := newHelmActionConfig(clusterID, "")
-	if err != nil {
-		return nil, err
+// ListClusterExtensions returns all cluster extensions for a cluster from the DB.
+func ListClusterExtensions(clusterID string) ([]models.ClusterExtension, error) {
+	var records []entities.ClusterExtension
+	if err := db.DB.Where("cluster_id = ?", clusterID).Find(&records).Error; err != nil {
+		return nil, fmt.Errorf("failed to list cluster extensions: %w", err)
 	}
-	defer cleanup()
-
-	l := action.NewList(actionConfig)
-	l.AllNamespaces = true
-	l.SetStateMask()
-
-	releases, err := l.Run()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list extensions: %w", err)
-	}
-
-	// Build an OCI URL → catalog item ID lookup table for enrichment.
-	ociToCatalogID := buildOCIToCatalogIDMap()
-
-	result := make([]models.InstalledExtension, 0, len(releases))
-	for _, r := range releases {
-		ext := toInstalledExtension(r)
-		if id, ok := ociToCatalogID[ext.OCIUrl]; ok {
-			ext.CatalogItemID = id
-		}
-		result = append(result, ext)
+	result := make([]models.ClusterExtension, 0, len(records))
+	for _, r := range records {
+		result = append(result, toClusterExtensionModel(&r))
 	}
 	return result, nil
 }
 
-// GetExtension returns a single installed helm release by name.
-func GetExtension(clusterID, name string) (*models.InstalledExtension, error) {
-	// Get the release status.
-	releases, err := ListExtensions(clusterID)
-	if err != nil {
-		return nil, err
-	}
-	for _, ext := range releases {
-		if ext.Name == name {
-			return &ext, nil
+// GetClusterExtension returns a single cluster extension by ID from the DB.
+func GetClusterExtension(clusterID, id string) (*models.ClusterExtension, error) {
+	var record entities.ClusterExtension
+	if err := db.DB.Where("cluster_id = ? AND id = ?", clusterID, id).First(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("cluster extension not found")
 		}
+		return nil, err
 	}
-	return nil, fmt.Errorf("extension %q not found", name)
+	m := toClusterExtensionModel(&record)
+	return &m, nil
 }
 
-// InstallExtension installs an OCI helm chart into the specified cluster.
-func InstallExtension(clusterID string, req *models.InstallExtensionRequest) (*models.InstalledExtension, error) {
-	// Resolve catalog item to get OCI URL.
-	item, err := GetExtensionCatalogItemEntity(req.CatalogItemID)
+// InstallClusterExtension creates a DB record (status=pending) and runs the Helm install asynchronously.
+// Returns 202-style result immediately.
+func InstallClusterExtension(clusterID string, req *models.InstallExtensionRequest, installedBy string) (*models.ClusterExtension, error) {
+	ext, err := GetExtensionEntity(req.ExtensionID)
 	if err != nil {
-		return nil, fmt.Errorf("catalog item not found: %w", err)
+		return nil, fmt.Errorf("extension not found: %w", err)
 	}
 
-	releaseNamespace := req.ReleaseNamespace
-	if releaseNamespace == "" {
-		releaseNamespace = "default"
+	namespace := req.Namespace
+	if namespace == "" {
+		namespace = "default"
 	}
 
-	actionConfig, cleanup, err := newHelmActionConfig(clusterID, releaseNamespace)
-	if err != nil {
-		return nil, err
-	}
-	defer cleanup()
-
-	// Pull the chart.
-	chrt, err := pullChart(item.OCIUrl, req.ChartVersion, actionConfig.RegistryClient)
-	if err != nil {
-		return nil, err
+	// Check uniqueness: same cluster, namespace, extensionID.
+	var existing entities.ClusterExtension
+	if err := db.DB.Where("cluster_id = ? AND namespace = ? AND extension_id = ? AND deleted_at IS NULL",
+		clusterID, namespace, req.ExtensionID).First(&existing).Error; err == nil {
+		return nil, fmt.Errorf("extension already installed in namespace %q", namespace)
 	}
 
-	installer := action.NewInstall(actionConfig)
-	installer.ReleaseName = req.Name
-	installer.Namespace = releaseNamespace
-	installer.CreateNamespace = req.CreateNamespace
-
-	vals, err := parseValues(req.Values)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse values: %w", err)
+	record := &entities.ClusterExtension{
+		Base:        entities.Base{ID: uuid.New()},
+		ClusterID:   clusterID,
+		ExtensionID: req.ExtensionID,
+		Namespace:   namespace,
+		ReleaseName: req.ReleaseName,
+		Version:     req.Version,
+		Values:      req.Values,
+		Status:      entities.ClusterExtensionStatusPending,
+		InstalledBy: installedBy,
+	}
+	if err := db.DB.Create(record).Error; err != nil {
+		return nil, fmt.Errorf("failed to create cluster extension record: %w", err)
 	}
 
-	rel, err := installer.RunWithContext(context.Background(), chrt, vals)
-	if err != nil {
-		return nil, fmt.Errorf("failed to install extension %q: %w", req.Name, err)
-	}
+	go func() {
+		// Update status to installing.
+		db.DB.Model(record).Update("status", entities.ClusterExtensionStatusInstalling)
 
-	ext := toInstalledExtension(rel)
-	ext.CatalogItemID = req.CatalogItemID
-	return &ext, nil
-}
-
-// UpdateExtension upgrades an installed helm release with optional new version / values.
-func UpdateExtension(clusterID, name string, req *models.UpdateExtensionRequest) (*models.InstalledExtension, error) {
-	// Look up the current release to obtain the OCI URL and namespace.
-	releases, err := ListExtensions(clusterID)
-	if err != nil {
-		return nil, err
-	}
-	var current *models.InstalledExtension
-	for i := range releases {
-		if releases[i].Name == name {
-			current = &releases[i]
-			break
+		actionConfig, cleanup, err := newHelmActionConfig(clusterID, namespace)
+		if err != nil {
+			db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusFailed), "error_message": err.Error()})
+			return
 		}
-	}
-	if current == nil {
-		return nil, fmt.Errorf("extension %q not found", name)
-	}
+		defer cleanup()
 
-	actionConfig, cleanup, err := newHelmActionConfig(clusterID, current.ReleaseNamespace)
-	if err != nil {
-		return nil, err
-	}
-	defer cleanup()
+		chrt, err := pullChart(ext.OCIUrl, req.Version, actionConfig.RegistryClient)
+		if err != nil {
+			db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusFailed), "error_message": err.Error()})
+			return
+		}
 
-	targetVersion := req.ChartVersion
-	if targetVersion == "" {
-		targetVersion = current.ChartVersion
-	}
+		installer := action.NewInstall(actionConfig)
+		installer.ReleaseName = req.ReleaseName
+		installer.Namespace = namespace
+		installer.CreateNamespace = req.CreateNamespace
 
-	chrt, err := pullChart(current.OCIUrl, targetVersion, actionConfig.RegistryClient)
-	if err != nil {
-		return nil, err
-	}
+		vals, err := parseValues(req.Values)
+		if err != nil {
+			db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusFailed), "error_message": err.Error()})
+			return
+		}
 
-	upgrader := action.NewUpgrade(actionConfig)
-	upgrader.Namespace = current.ReleaseNamespace
+		if _, err := installer.RunWithContext(context.Background(), chrt, vals); err != nil {
+			db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusFailed), "error_message": err.Error()})
+			return
+		}
 
-	vals, err := parseValues(req.Values)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse values: %w", err)
-	}
+		db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusDeployed), "error_message": ""})
+	}()
 
-	rel, err := upgrader.RunWithContext(context.Background(), name, chrt, vals)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update extension %q: %w", name, err)
-	}
-
-	ext := toInstalledExtension(rel)
-	ext.CatalogItemID = current.CatalogItemID
-	return &ext, nil
+	m := toClusterExtensionModel(record)
+	return &m, nil
 }
 
-// UninstallExtension removes an installed helm release from a cluster.
-func UninstallExtension(clusterID, name string) error {
-	// Find the release to get its namespace.
-	releases, err := ListExtensions(clusterID)
+// UpgradeClusterExtension upgrades an installed cluster extension asynchronously.
+func UpgradeClusterExtension(clusterID, id string, req *models.UpgradeExtensionRequest) (*models.ClusterExtension, error) {
+	record, err := getClusterExtensionEntity(clusterID, id)
+	if err != nil {
+		return nil, err
+	}
+
+	ext, err := GetExtensionEntity(record.ExtensionID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update record with new version/values and set status to upgrading.
+	updates := map[string]any{"status": string(entities.ClusterExtensionStatusUpgrading)}
+	if req.Version != "" {
+		updates["version"] = req.Version
+		record.Version = req.Version
+	}
+	if req.Values != "" {
+		updates["values"] = req.Values
+		record.Values = req.Values
+	}
+	db.DB.Model(record).Updates(updates)
+
+	targetVersion := record.Version
+	namespace := record.Namespace
+	releaseName := record.ReleaseName
+
+	go func() {
+		actionConfig, cleanup, err := newHelmActionConfig(clusterID, namespace)
+		if err != nil {
+			db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusFailed), "error_message": err.Error()})
+			return
+		}
+		defer cleanup()
+
+		chrt, err := pullChart(ext.OCIUrl, targetVersion, actionConfig.RegistryClient)
+		if err != nil {
+			db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusFailed), "error_message": err.Error()})
+			return
+		}
+
+		upgrader := action.NewUpgrade(actionConfig)
+		upgrader.Namespace = namespace
+
+		vals, err := parseValues(record.Values)
+		if err != nil {
+			db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusFailed), "error_message": err.Error()})
+			return
+		}
+
+		if _, err := upgrader.RunWithContext(context.Background(), releaseName, chrt, vals); err != nil {
+			db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusFailed), "error_message": err.Error()})
+			return
+		}
+
+		db.DB.Model(record).Updates(map[string]any{"status": string(entities.ClusterExtensionStatusDeployed), "error_message": ""})
+	}()
+
+	m := toClusterExtensionModel(record)
+	return &m, nil
+}
+
+// UninstallClusterExtension soft-deletes the DB record and runs Helm uninstall asynchronously.
+func UninstallClusterExtension(clusterID, id string) error {
+	record, err := getClusterExtensionEntity(clusterID, id)
 	if err != nil {
 		return err
 	}
-	var releaseNamespace string
-	for _, ext := range releases {
-		if ext.Name == name {
-			releaseNamespace = ext.ReleaseNamespace
-			break
+
+	releaseName := record.ReleaseName
+	namespace := record.Namespace
+
+	// Soft-delete immediately.
+	if err := db.DB.Delete(record).Error; err != nil {
+		return fmt.Errorf("failed to delete cluster extension record: %w", err)
+	}
+
+	go func() {
+		actionConfig, cleanup, err := newHelmActionConfig(clusterID, namespace)
+		if err != nil {
+			log.Printf("[extension] failed to init helm config for uninstall: %v", err)
+			return
 		}
-	}
-	if releaseNamespace == "" {
-		releaseNamespace = "default"
-	}
+		defer cleanup()
 
-	actionConfig, cleanup, err := newHelmActionConfig(clusterID, releaseNamespace)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	uninstaller := action.NewUninstall(actionConfig)
-	if _, err := uninstaller.Run(name); err != nil {
-		return fmt.Errorf("failed to uninstall extension %q: %w", name, err)
-	}
+		uninstaller := action.NewUninstall(actionConfig)
+		if _, err := uninstaller.Run(releaseName); err != nil {
+			log.Printf("[extension] helm uninstall %q failed: %v", releaseName, err)
+		}
+	}()
 	return nil
 }
 
+// getClusterExtensionEntity fetches the raw entity (internal helper).
+func getClusterExtensionEntity(clusterID, id string) (*entities.ClusterExtension, error) {
+	var record entities.ClusterExtension
+	if err := db.DB.Where("cluster_id = ? AND id = ?", clusterID, id).First(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("cluster extension not found")
+		}
+		return nil, err
+	}
+	return &record, nil
+}
+
+// toClusterExtensionModel converts a ClusterExtension entity to the API model.
+func toClusterExtensionModel(e *entities.ClusterExtension) models.ClusterExtension {
+	return models.ClusterExtension{
+		ID:           e.ID,
+		ClusterID:    e.ClusterID,
+		ExtensionID:  e.ExtensionID,
+		Namespace:    e.Namespace,
+		ReleaseName:  e.ReleaseName,
+		Version:      e.Version,
+		Values:       e.Values,
+		Status:       string(e.Status),
+		ErrorMessage: e.ErrorMessage,
+		CreatedAt:    e.CreatedAt,
+	}
+}
+
 // ========================
-// Internal helpers
+// Helm helpers
 // ========================
 
 // newHelmActionConfig creates a helm action.Configuration backed by the cluster kubeconfig.
@@ -410,65 +460,6 @@ func parseValues(raw string) (map[string]any, error) {
 		return nil, err
 	}
 	return vals, nil
-}
-
-// toInstalledExtension converts a helm release to the API model.
-func toInstalledExtension(r *release.Release) models.InstalledExtension {
-	status := ""
-	if r.Info != nil {
-		status = r.Info.Status.String()
-	}
-	createdAt := time.Time{}
-	if r.Info != nil {
-		createdAt = r.Info.FirstDeployed.Time
-	}
-	chartVersion := ""
-	appVersion := ""
-	ociUrl := ""
-	if r.Chart != nil && r.Chart.Metadata != nil {
-		chartVersion = r.Chart.Metadata.Version
-		appVersion = r.Chart.Metadata.AppVersion
-		// For OCI charts, reconstruct the OCI URL from chart metadata sources.
-		if len(r.Chart.Metadata.Sources) > 0 {
-			ociUrl = r.Chart.Metadata.Sources[0]
-		}
-	}
-
-	vals := ""
-	if len(r.Config) > 0 {
-		if out, err := yaml.Marshal(r.Config); err == nil {
-			vals = string(out)
-		}
-	}
-
-	return models.InstalledExtension{
-		Name:             r.Name,
-		OCIUrl:           ociUrl,
-		ChartVersion:     chartVersion,
-		ReleaseNamespace: r.Namespace,
-		Status:           status,
-		AppVersion:       appVersion,
-		Values:           vals,
-		Revision:         r.Version,
-		CreatedAt:        createdAt,
-	}
-}
-
-// buildOCIToCatalogIDMap returns a map of OCI URL → catalog item ID
-// by querying the extension catalog. Errors are silently ignored so that
-// listing extensions still works even if the catalog DB is unavailable.
-func buildOCIToCatalogIDMap() map[string]string {
-	items, err := ListExtensionCatalog()
-	if err != nil {
-		return map[string]string{}
-	}
-	m := make(map[string]string, len(items))
-	for _, item := range items {
-		if item.OCIUrl != "" && item.ID != "" {
-			m[item.OCIUrl] = item.ID
-		}
-	}
-	return m
 }
 
 // configFlagsAdapter implements genericclioptions.RESTClientGetter using a kubeconfig path.

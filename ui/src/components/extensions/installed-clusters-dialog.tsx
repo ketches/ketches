@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Blocks, ExternalLink } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
-import { clustersApi, type ExtensionCatalogItem, type InstalledCluster } from "@/api/clusters"
+import { clustersApi, type Extension, type InstalledCluster } from "@/api/clusters"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
@@ -15,22 +15,22 @@ import {
 } from "@/components/ui/dialog"
 
 interface InstalledClustersDialogProps {
-  catalogItem: ExtensionCatalogItem | null
+  extension: Extension | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
 export function InstalledClustersDialog({
-  catalogItem,
+  extension,
   open,
   onOpenChange,
 }: InstalledClustersDialogProps) {
   const navigate = useNavigate()
 
   const { data: clusters = [], isLoading } = useQuery({
-    queryKey: ["extension-installed-clusters", catalogItem?.id],
-    queryFn: () => clustersApi.getExtensionInstalledClusters(catalogItem!.id),
-    enabled: !!catalogItem && open,
+    queryKey: ["extension-installed-clusters", extension?.id],
+    queryFn: () => clustersApi.getExtensionInstalledClusters(extension!.id),
+    enabled: !!extension && open,
   })
 
   const safeCluster: InstalledCluster[] = Array.isArray(clusters) ? clusters : []
@@ -54,7 +54,7 @@ export function InstalledClustersDialog({
           <DialogDescription>
             Clusters where{" "}
             <span className="font-medium">
-              {catalogItem?.display_name || catalogItem?.name}
+              {extension?.display_name || extension?.name}
             </span>{" "}
             is installed
           </DialogDescription>

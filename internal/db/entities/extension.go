@@ -1,8 +1,8 @@
 package entities
 
-// ExtensionCatalogItem represents a Helm chart extension in the platform catalog.
+// Extension represents a platform-level OCI-based Helm chart extension in the catalog.
 // It is admin-managed and can be installed on any cluster.
-type ExtensionCatalogItem struct {
+type Extension struct {
 	Base
 	Name        string `gorm:"type:varchar(128);uniqueIndex;not null"`
 	DisplayName string `gorm:"type:varchar(256)"`

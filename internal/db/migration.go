@@ -38,7 +38,8 @@ func Migrate() error {
 		&entities.CodeRepositoryBuildConfig{},
 		&entities.DeploymentHistory{},
 		&entities.Certificate{},
-		&entities.ExtensionCatalogItem{},
+		&entities.Extension{},
+		&entities.ClusterExtension{},
 	); err != nil {
 		return err
 	}
