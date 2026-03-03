@@ -47,6 +47,7 @@ type UpdateExtensionRequest struct {
 	Version      string    `json:"version"`
 	Values       string    `json:"values,omitempty"`
 	Status       string    `json:"status"`
+	Phase        string    `json:"phase"`
 	ErrorMessage string    `json:"error_message,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	}

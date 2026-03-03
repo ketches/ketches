@@ -11,6 +11,7 @@ const (
 	ClusterExtensionStatusDeployed   ClusterExtensionStatus = "deployed"
 	ClusterExtensionStatusFailed     ClusterExtensionStatus = "failed"
 	ClusterExtensionStatusUpgrading  ClusterExtensionStatus = "upgrading"
+	ClusterExtensionStatusUninstalling ClusterExtensionStatus = "uninstalling"
 )
 
 // ClusterExtension tracks an extension installed on a specific cluster.
@@ -29,4 +30,5 @@ type ClusterExtension struct {
 	Status       ClusterExtensionStatus `gorm:"type:varchar(32);default:'pending'"`
 	ErrorMessage string                 `gorm:"type:text"`
 	InstalledBy  string                 `gorm:"type:varchar(36)"`
+	Phase        string                 `gorm:"type:varchar(32)"` // Phase records the operation in progress when status is "failed": "installing", "upgrading", or "uninstalling"
 }
