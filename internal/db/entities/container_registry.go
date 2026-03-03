@@ -1,5 +1,7 @@
 package entities
 
+import "time"
+
 type RegistryProvider string
 
 const (
@@ -19,20 +21,22 @@ const (
 )
 
 type ContainerRegistry struct {
-	Base
-	Name        string           `gorm:"type:varchar(128);not null"`
-	Provider    RegistryProvider `gorm:"type:varchar(32);not null"`
-	Endpoint    string           `gorm:"type:varchar(512);not null"`
-	SkipTLSVerify bool           `gorm:"type:bool;default:false"`
-	Namespace   string           `gorm:"type:varchar(256)"`
-	Username    string           `gorm:"type:varchar(128)"`
-	Password    string           `gorm:"type:varchar(512)"`
-	Scope       RegistryScope    `gorm:"type:varchar(16);not null"`
-	ClusterID   *string          `gorm:"type:varchar(36);index"` // NULL for project-scoped registries
-	ProjectID   *string          `gorm:"type:varchar(36);index"`  // NULL for cluster-scoped registries
-	IsDefault   bool             `gorm:"type:bool;default:false"`
-	Enabled     bool             `gorm:"type:bool;default:true"`
-	Description string           `gorm:"type:text"`
+	ID            string           `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt     time.Time        `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time        `gorm:"autoUpdateTime"`
+	Name          string           `gorm:"type:varchar(128);not null"`
+	Provider      RegistryProvider `gorm:"type:varchar(32);not null"`
+	Endpoint      string           `gorm:"type:varchar(512);not null"`
+	SkipTLSVerify bool             `gorm:"type:bool;default:false"`
+	Namespace     string           `gorm:"type:varchar(256)"`
+	Username      string           `gorm:"type:varchar(128)"`
+	Password      string           `gorm:"type:varchar(512)"`
+	Scope         RegistryScope    `gorm:"type:varchar(16);not null"`
+	ClusterID     *string          `gorm:"type:varchar(36);index"` // NULL for project-scoped registries
+	ProjectID     *string          `gorm:"type:varchar(36);index"` // NULL for cluster-scoped registries
+	IsDefault     bool             `gorm:"type:bool;default:false"`
+	Enabled       bool             `gorm:"type:bool;default:true"`
+	Description   string           `gorm:"type:text"`
 
 	Cluster *Cluster `gorm:"foreignKey:ClusterID"`
 	Project *Project `gorm:"foreignKey:ProjectID"`

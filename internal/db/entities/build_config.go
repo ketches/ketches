@@ -1,8 +1,12 @@
 package entities
 
+import "time"
+
 type AppBuildConfig struct {
-	Base
-	AppID string `gorm:"type:varchar(36);uniqueIndex;not null"`
+	ID        string    `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+	AppID     string    `gorm:"type:varchar(36);uniqueIndex;not null"`
 
 	// Git source
 	GitRepoURL  string `gorm:"type:varchar(512);not null"`
@@ -26,7 +30,7 @@ type AppBuildConfig struct {
 	WebhookEnabled bool   `gorm:"type:bool;default:false"`
 
 	// Relationships
-	App      App           `gorm:"foreignKey:AppID"`
+	App      App               `gorm:"foreignKey:AppID"`
 	Registry ContainerRegistry `gorm:"foreignKey:RegistryID"`
 }
 

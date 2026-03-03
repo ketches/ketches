@@ -22,7 +22,9 @@ const (
 )
 
 type Build struct {
-	Base
+	ID        string    `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 	// CodeRepositoryID: build belongs to this code repo. Optional for backward compat with app-bound builds.
 	CodeRepositoryID *string `gorm:"type:varchar(36);index"`
 	// CodeRepositoryBuildConfigID: which repo build config was used (required when CodeRepositoryID is set).

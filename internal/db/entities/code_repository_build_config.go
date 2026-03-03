@@ -1,10 +1,14 @@
 package entities
 
+import "time"
+
 // CodeRepositoryBuildConfig represents one build configuration under a code repository.
 // A repo can have multiple configs (e.g. multi-project repo: frontend, backend).
 type CodeRepositoryBuildConfig struct {
-	Base
-	CodeRepositoryID string `gorm:"type:varchar(36);index;not null"`
+	ID               string    `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt        time.Time `gorm:"autoCreateTime"`
+	UpdatedAt        time.Time `gorm:"autoUpdateTime"`
+	CodeRepositoryID string    `gorm:"type:varchar(36);index;not null"`
 
 	Name   string `gorm:"type:varchar(128);not null"`
 	GitRef string `gorm:"type:varchar(256);default:'main'"`
@@ -19,8 +23,8 @@ type CodeRepositoryBuildConfig struct {
 	AutoDeploy     bool `gorm:"type:bool;default:false"`
 	WebhookEnabled bool `gorm:"type:bool;default:false"` // when true, repo webhook triggers this config
 
-	CodeRepository CodeRepository     `gorm:"foreignKey:CodeRepositoryID"`
-	Registry       ContainerRegistry  `gorm:"foreignKey:RegistryID"`
+	CodeRepository CodeRepository    `gorm:"foreignKey:CodeRepositoryID"`
+	Registry       ContainerRegistry `gorm:"foreignKey:RegistryID"`
 }
 
 func (CodeRepositoryBuildConfig) TableName() string {

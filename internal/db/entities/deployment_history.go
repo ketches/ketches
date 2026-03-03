@@ -1,9 +1,13 @@
 package entities
 
+import "time"
+
 // DeploymentHistory records each deployment event when an app's image is updated
 type DeploymentHistory struct {
-	Base
-	AppID string `gorm:"type:varchar(36);index;not null"`
+	ID        string    `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+	AppID     string    `gorm:"type:varchar(36);index;not null"`
 
 	// Deployment snapshot
 	ImageBefore    string `gorm:"type:varchar(256)"` // Previous image

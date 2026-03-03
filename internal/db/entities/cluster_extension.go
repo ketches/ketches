@@ -1,5 +1,7 @@
 package entities
 
+import "time"
+
 // ClusterExtensionStatus represents the lifecycle state of an installed extension.
 type ClusterExtensionStatus string
 
@@ -15,7 +17,9 @@ const (
 // The composite unique index uidx_cluster_ns_ext ensures the same extension
 // cannot be installed in the same namespace of the same cluster more than once.
 type ClusterExtension struct {
-	Base
+	ID           string                 `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt    time.Time              `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time              `gorm:"autoUpdateTime"`
 	ClusterID    string                 `gorm:"type:varchar(36);not null;index;uniqueIndex:uidx_cluster_ns_ext"`
 	ExtensionID  string                 `gorm:"type:varchar(36);not null;index;uniqueIndex:uidx_cluster_ns_ext"`
 	Namespace    string                 `gorm:"type:varchar(128);not null;uniqueIndex:uidx_cluster_ns_ext"`
