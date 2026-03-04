@@ -233,14 +233,16 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
         />
       ) : (
         <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Plugins</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage system plugins and sidecars
-              </p>
+          {!projectIdProp && (
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold">Plugins</h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Manage system plugins and sidecars
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           <DataTable
             columns={columns}

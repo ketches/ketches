@@ -236,14 +236,16 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
   return (
     <div className="flex flex-col flex-1 gap-6">
       {!projectIdProp && <PageHeader items={breadcrumbs} />}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Environments</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your deployment environments
-          </p>
+      {!projectIdProp && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Environments</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage your deployment environments
+            </p>
+          </div>
         </div>
-      </div>
+      )}
       {!isLoading && safeEnvs.length === 0 && !searchQuery ? (
         <EmptyEnvironmentState onAction={!isViewer ? () => setCreateDialogOpen(true) : undefined} />
       ) : (

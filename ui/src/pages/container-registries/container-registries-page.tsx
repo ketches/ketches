@@ -259,14 +259,16 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
     <div className="flex flex-col flex-1 gap-6">
       {!projectIdProp && <PageHeader items={breadcrumbs} />}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Container Registries</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage container registries for builds and deployments
-          </p>
+      {!projectIdProp && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Container Registries</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage container registries for builds and deployments
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <DataTable
         columns={columns}

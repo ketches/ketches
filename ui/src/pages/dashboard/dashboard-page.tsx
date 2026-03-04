@@ -285,14 +285,16 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
 
   return (
     <div className="flex flex-col flex-1 gap-6">
-      <PageHeader items={[{ label: "Dashboard", icon: LayoutDashboard }]} />
+      {!projectIdProp && <PageHeader items={[{ label: "Dashboard", icon: LayoutDashboard }]} />}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{project?.name || "Project Dashboard"}</h1>
-          <p className="text-sm text-muted-foreground mt-1">Overview of your project resources</p>
+      {!projectIdProp && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">{project?.name || "Project Dashboard"}</h1>
+            <p className="text-sm text-muted-foreground mt-1">Overview of your project resources</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard

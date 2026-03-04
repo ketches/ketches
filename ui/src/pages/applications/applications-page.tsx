@@ -8,6 +8,13 @@ import { CreateEnvironmentDialog } from "@/components/environment/create-environ
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyEnvironmentState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
@@ -31,6 +38,9 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
     return localStorage.getItem('applications-active-tab') ?? 'all'
   })
 
+  // Local env selection state used only in embedded mode (projectIdProp set)
+  const [embeddedEnvId, setEmbeddedEnvId] = React.useState<string | null>(null)
+
   const { data: envsResponse, isLoading, refetch: refetchEnvs } = useQuery({
     queryKey: ['envs', activeProjectId],
     queryFn: () => envsApi.list(activeProjectId!),
@@ -41,14 +51,27 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
   const safeEnvs = Array.isArray(envs) ? envs : []
   const activeEnv = safeEnvs.find(e => e.id === activeEnvId) || safeEnvs[0]
 
+  // In embedded mode, maintain local env selection defaulting to first env
+  const embeddedEnv = safeEnvs.find(e => e.id === embeddedEnvId) || safeEnvs[0]
+  const effectiveEnvId = projectIdProp ? (embeddedEnv?.id ?? null) : activeEnvId
+  const effectiveEnv = projectIdProp ? embeddedEnv : activeEnv
+
   React.useEffect(() => {
-    if (safeEnvs.length > 0) {
-      const currentEnvExists = safeEnvs.some(e => e.id === activeEnvId)
-      if (!currentEnvExists) setActiveEnvId(safeEnvs[0].id)
+    if (projectIdProp) {
+      // In embedded mode, sync local state when envs load
+      if (safeEnvs.length > 0 && !embeddedEnvId) {
+        setEmbeddedEnvId(safeEnvs[0].id)
+      }
     } else {
-      if (activeEnvId !== null) setActiveEnvId(null)
+      // In standalone mode, sync global store
+      if (safeEnvs.length > 0) {
+        const currentEnvExists = safeEnvs.some(e => e.id === activeEnvId)
+        if (!currentEnvExists) setActiveEnvId(safeEnvs[0].id)
+      } else {
+        if (activeEnvId !== null) setActiveEnvId(null)
+      }
     }
-  }, [safeEnvs, activeEnvId, setActiveEnvId])
+  }, [safeEnvs, activeEnvId, setActiveEnvId, projectIdProp, embeddedEnvId])
 
   const handleTabChange = (value: string) => {
     setActiveTab(value)
@@ -81,30 +104,52 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
   return (
     <div className="flex flex-col flex-1 gap-6">
       {!projectIdProp && <PageHeader items={breadcrumbs} />}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Applications</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your applications and deployments
-          </p>
+      {!projectIdProp && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Applications</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage your applications and deployments
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {!isLoading && safeEnvs.length === 0 ? (
         <EmptyEnvironmentState onAction={!isViewer ? () => setCreateEnvDialogOpen(true) : undefined} />
-      ) : activeEnvId ? (
+      ) : effectiveEnvId ? (
         <div className="flex flex-col flex-1">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col w-auto h-7">
-            {/* Tabs row: TabsList on the left, action buttons on the right */}
+            {/* Tabs row: TabsList on the left (hidden in embedded mode), action buttons on the right */}
             <div className="flex items-center justify-between mb-2">
-              <TabsList>
-                <TabsTrigger value="all"><List />All</TabsTrigger>
-                <TabsTrigger value="groups"><LayoutList />Groups</TabsTrigger>
-                <TabsTrigger value="favorites"><Star />Favorites</TabsTrigger>
-              </TabsList>
+              {/* Environment selector (embedded mode) or All/Groups/Favorites tabs (standalone mode) */}
+              {projectIdProp ? (
+                <Combobox
+                  value={embeddedEnv?.id ?? null}
+                  onValueChange={(val: string | null) => val && setEmbeddedEnvId(val)}
+                  itemToStringLabel={(v) => safeEnvs.find(e => e.id === v)?.name ?? v ?? ""}
+                >
+                  <ComboboxInput className="w-48" />
+                  <ComboboxContent className="w-auto">
+                    <ComboboxList>
+                      {safeEnvs.map((env) => (
+                        <ComboboxItem key={env.id} value={env.id}>
+                          {env.name}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              ) : (
+                <TabsList>
+                  <TabsTrigger value="all"><List />All</TabsTrigger>
+                  <TabsTrigger value="groups"><LayoutList />Groups</TabsTrigger>
+                  <TabsTrigger value="favorites"><Star />Favorites</TabsTrigger>
+                </TabsList>
+              )}
               {!isViewer && (
                 <div className="flex items-center gap-2">
-                  {activeTab === 'groups' && (
+                  {activeTab === 'groups' && !projectIdProp && (
                     <Button variant="outline" onClick={() => setCreateGroupDialogOpen(true)}>
                       <Plus />
                       Add Group
@@ -125,18 +170,18 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
             <div className="flex-1">
               <TabsContent value="all" className="mt-0 h-full">
                 <ApplicationList
-                  envId={activeEnvId}
-                  envName={activeEnv?.name}
+                  envId={effectiveEnvId}
+                  envName={effectiveEnv?.name}
                   hideToolbarActions={true}
                 />
               </TabsContent>
               <TabsContent value="groups" className="mt-0 h-full">
-                <AppGroupsView envId={activeEnvId} />
+                <AppGroupsView envId={effectiveEnvId} />
               </TabsContent>
               <TabsContent value="favorites" className="mt-0 h-full">
                 <ApplicationList
-                  envId={activeEnvId}
-                  envName={activeEnv?.name}
+                  envId={effectiveEnvId}
+                  envName={effectiveEnv?.name}
                   favoritesOnly={true}
                   hideToolbarActions={true}
                 />
@@ -160,12 +205,12 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
       <ImportAppsDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
-        envId={activeEnvId!}
+        envId={effectiveEnvId!}
         onSuccess={() => refetchEnvs()}
       />
 
       <CreateAppGroupDialog
-        envId={activeEnvId!}
+        envId={effectiveEnvId!}
         open={createGroupDialogOpen}
         onOpenChange={setCreateGroupDialogOpen}
       />

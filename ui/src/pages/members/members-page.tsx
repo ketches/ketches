@@ -234,14 +234,16 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
     <div className="flex flex-col gap-6">
       {!projectIdProp && <PageHeader items={[{ label: "Members", icon: Users }]} />}
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Members</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage your project members and their roles.
-            </p>
+        {!projectIdProp && (
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Members</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage your project members and their roles.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <DataTable
           columns={columns}

@@ -1,6 +1,6 @@
 import * as React from "react"
-import { useParams } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useNavigate, useParams } from "react-router-dom"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   GalleryVerticalEnd,
   LayoutDashboard,
@@ -11,10 +11,25 @@ import {
   Puzzle,
   Users,
   Loader2,
+  Pencil,
+  Trash2,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { projectsApi } from "@/api/projects"
 import { PageHeader } from "@/components/layout/page-header"
+import { EditProjectDialog } from "@/components/project/edit-project-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UserDashboard } from "@/pages/dashboard/dashboard-page"
 import { EnvironmentsPage } from "@/pages/environments/environments-page"
@@ -26,12 +41,32 @@ import { MembersPage } from "@/pages/members/members-page"
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = React.useState("overview")
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", projectId],
     queryFn: () => projectsApi.get(projectId!),
     enabled: !!projectId,
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => projectsApi.delete(projectId!),
+    onSuccess: () => {
+      toast.success("Project deleted", {
+        description: `"${project?.name}" has been permanently deleted.`,
+      })
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+      navigate("/projects")
+    },
+    onError: (error: any) => {
+      toast.error("Failed to delete project", {
+        description: error.response?.data?.error || "An unknown error occurred",
+      })
+    },
   })
 
   const breadcrumbs = [
@@ -51,11 +86,31 @@ export function ProjectDetailPage() {
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
 
-      <div>
-        <h1 className="text-2xl font-bold">{project?.name}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {project?.description || "No description"}
-        </p>
+      {/* Hero section: icon, name, description, action buttons */}
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-primary/10 rounded-lg text-primary">
+              <GalleryVerticalEnd className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">{project?.name}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {project?.description || "No description"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil />
+              Edit
+            </Button>
+            <Button variant="outline" onClick={() => setDeleteOpen(true)}>
+              <Trash2 />
+              Delete
+            </Button>
+          </div>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -118,6 +173,38 @@ export function ProjectDetailPage() {
           <MembersPage projectId={projectId} />
         </TabsContent>
       </Tabs>
+
+      {/* Edit project dialog */}
+      <EditProjectDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        project={project ?? null}
+        onSuccess={() => {
+          setEditOpen(false)
+          queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+        }}
+      />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{project?.name}</strong> and all its associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
