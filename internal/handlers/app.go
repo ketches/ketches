@@ -13,6 +13,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
+	"github.com/ketches/ketches/pkg/containerregistry"
 	wsPkg "github.com/ketches/ketches/pkg/websocket"
 	"golang.org/x/net/websocket"
 )
@@ -551,4 +552,44 @@ func getAppStatus(c *gin.Context, app *entities.App) string {
 		status = string(calculatedStatus)
 	}
 	return status
+}
+
+// GetImageMetadata fetches and returns container image metadata (ENV, VOLUME, EXPOSE, HEALTHCHECK).
+// This is a read-only preview endpoint with no database side effects.
+// Query params: image (required), registry_username (optional), registry_password (optional)
+func GetImageMetadata(c *gin.Context) {
+	image := c.Query("image")
+	if image == "" {
+		api.Error(c, http.StatusBadRequest, fmt.Errorf("image query parameter is required"))
+		return
+	}
+
+	username := c.Query("registry_username")
+	password := c.Query("registry_password")
+
+	meta, err := containerregistry.FetchImageMetadata(c.Request.Context(), image, username, password)
+	if err != nil {
+		api.Error(c, http.StatusBadGateway, fmt.Errorf("failed to fetch image metadata: %w", err))
+		return
+	}
+
+	resp := models.ImageMetadataResponse{}
+
+	for _, ev := range meta.Env {
+		resp.Env = append(resp.Env, models.ImageEnvVar{Key: ev.Key, Value: ev.Value})
+	}
+	resp.Volumes = meta.Volumes
+	for _, pi := range meta.ExposedPorts {
+		resp.ExposedPorts = append(resp.ExposedPorts, models.ImagePortInfo{Port: pi.Port, Protocol: pi.Protocol})
+	}
+	if hc := meta.HealthCheck; hc != nil {
+		resp.HealthCheck = &models.ImageHealthCheck{
+			Test:     hc.Test,
+			Interval: int(hc.Interval.Seconds()),
+			Timeout:  int(hc.Timeout.Seconds()),
+			Retries:  hc.Retries,
+		}
+	}
+
+	api.Success(c, resp)
 }
