@@ -135,7 +135,6 @@ func ListApps(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-
 	res := []models.AppResponse{}
 	for _, a := range apps {
 		res = append(res, toAppResponse(c, &a))

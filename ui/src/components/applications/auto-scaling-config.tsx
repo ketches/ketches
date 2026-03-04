@@ -21,7 +21,7 @@ import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/fie
 import { Input } from "@/components/ui/input"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
-import { EmptyState } from "../shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 
 const METRIC_OPTIONS = [
   { value: "cpu", label: "CPU Utilization" },

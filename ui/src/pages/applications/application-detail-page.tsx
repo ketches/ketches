@@ -918,7 +918,7 @@ export function ApplicationDetailPage() {
       dropdown: safeEnvs.length > 1 ? (
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-40">
+          <DropdownMenuContent align="start" className="w-fit">
             <DropdownMenuGroup>
               {safeEnvs.map(env => (
                 <DropdownMenuItem
@@ -943,7 +943,7 @@ export function ApplicationDetailPage() {
       dropdown: safeApps.length > 1 ? (
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-fit">
             <DropdownMenuGroup>
               {safeApps.map(appItem => (
                 <DropdownMenuItem

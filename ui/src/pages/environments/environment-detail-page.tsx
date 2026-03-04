@@ -133,7 +133,7 @@ export function EnvironmentDetailPage() {
       dropdown: safeEnvs.length > 1 ? (
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-fit">
             <DropdownMenuGroup>
               {safeEnvs.map(e => (
                 <DropdownMenuItem

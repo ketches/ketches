@@ -128,7 +128,7 @@ export function ClusterNodeDetailPage() {
       dropdown: safeClusters.length > 1 ? (
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-fit">
             <DropdownMenuGroup>
               {safeClusters.map(c => (
                 <DropdownMenuItem
@@ -150,7 +150,7 @@ export function ClusterNodeDetailPage() {
       dropdown: safeNodes.length > 1 ? (
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-fit">
             <DropdownMenuGroup>
               {safeNodes.map(n => (
                 <DropdownMenuItem

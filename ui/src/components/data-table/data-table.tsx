@@ -66,8 +66,8 @@ interface DataTableProps<TData, TValue> {
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
 }
 
+import { EmptyState } from "@/components/shared/empty-state"
 import { type PaginationState } from "@tanstack/react-table"
-import { EmptyState } from "../shared/empty-state"
 
 export function DataTable<TData, TValue>({
   columns,

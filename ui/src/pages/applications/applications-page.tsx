@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
 import { useQuery } from "@tanstack/react-query"
-import { Box, ChevronsUpDown, List, ListTree, Orbit, Plus, Star, Upload } from "lucide-react"
+import { Box, ChevronsUpDown, LayoutList, List, Orbit, Plus, Star, Upload } from "lucide-react"
 import * as React from "react"
 
 export function ApplicationsPage() {
@@ -62,7 +62,7 @@ export function ApplicationsPage() {
       dropdown: safeEnvs.length > 1 ? (
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-40">
+          <DropdownMenuContent align="start" className="w-fit">
             <DropdownMenuGroup>
               {safeEnvs.map(env => (
                 <DropdownMenuItem key={env.id} onClick={() => setActiveEnvId(env.id)}>
@@ -98,7 +98,7 @@ export function ApplicationsPage() {
             <div className="flex items-center justify-between mb-2">
               <TabsList>
                 <TabsTrigger value="all"><List />All</TabsTrigger>
-                <TabsTrigger value="groups"><ListTree />Groups</TabsTrigger>
+                <TabsTrigger value="groups"><LayoutList />Groups</TabsTrigger>
                 <TabsTrigger value="favorites"><Star />Favorites</TabsTrigger>
               </TabsList>
               {!isViewer && (

@@ -105,7 +105,7 @@ func SetupV1Routes(r *gin.Engine) {
 				envs.GET("/:envID/apps/simple", handlers.ListAppsSimple)
 				envs.GET("/:envID/apps/export", handlers.ExportEnvApps)
 				envs.GET("/:envID/app-groups", handlers.ListAppGroups)
-				envs.GET("/:envID/favorites/apps", handlers.ListFavoriteApps)
+				envs.GET("/:envID/apps/favorites", handlers.ListFavoriteApps)
 				envs.GET("/:envID/certificates", handlers.ListEnvCertificates)
 				envs.GET("/:envID/certificates/:certID", handlers.GetCertificate)
 				// Write (require at least developer role)
@@ -204,12 +204,13 @@ func SetupV1Routes(r *gin.Engine) {
 			// ── App Groups (flat write routes) ───────────────────────────────
 			appGroupsWrite := authorized.Group("/app-groups", middlewares.RequireProjectRole("developer"))
 			{
+				appGroupsWrite.GET("/:groupID", handlers.GetAppGroup)
+				appGroupsWrite.GET("/:groupID/apps", handlers.ListSpecificGroupedApps)
 				appGroupsWrite.PUT("/:groupID", handlers.UpdateAppGroup)
 				appGroupsWrite.DELETE("/:groupID", handlers.DeleteAppGroup)
 				appGroupsWrite.POST("/:groupID/apps/:appID", handlers.AddAppToGroup)
 				appGroupsWrite.DELETE("/:groupID/apps/:appID", handlers.RemoveAppFromGroup)
 			}
-
 
 			flatResourcesWrite := authorized.Group("", middlewares.RequireProjectRole("developer"))
 			{

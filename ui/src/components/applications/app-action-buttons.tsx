@@ -143,7 +143,7 @@ export function AppActionButtons({ appId, actions, onDeleteSuccess }: AppActionB
                     key={action.action}
                     onClick={() => handleAction(action.action)}
                     disabled={executeMutation.isPending}
-                    className={isDestructive ? "text-destructive" : ""}
+                    className={isDestructive ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}
                   >
                     {isLoading ? (
                       <Loader2 className="animate-spin" />
@@ -157,7 +157,7 @@ export function AppActionButtons({ appId, actions, onDeleteSuccess }: AppActionB
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-      </div>
+      </div >
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

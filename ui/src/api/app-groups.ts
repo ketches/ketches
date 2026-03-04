@@ -15,6 +15,8 @@ export interface AppGroupWithApps extends AppGroup {
 export const appGroupsApi = {
   list: (envId: string): Promise<AppGroupWithApps[]> =>
     client.get(`/v1/envs/${envId}/app-groups`),
+  listSpecificApps: (groupId: string): Promise<AppGroupWithApps> =>
+    client.get(`/v1/app-groups/${groupId}/apps`),
   create: (envId: string, data: { name: string; description?: string }): Promise<AppGroup> =>
     client.post(`/v1/envs/${envId}/app-groups`, data),
   update: (groupId: string, data: { name: string; description?: string }): Promise<AppGroup> =>

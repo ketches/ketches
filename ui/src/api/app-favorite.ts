@@ -9,7 +9,7 @@ export interface AppFavorite {
 
 export const appFavoritesApi = {
     listFavorites: (envId: string): Promise<AppFavorite[]> =>
-        client.get(`/v1/envs/${envId}/favorites/apps`),
+        client.get(`/v1/envs/${envId}/apps/favorites`),
     getFavoriteStatus: (appId: string): Promise<{ is_favorite: boolean }> =>
         client.get(`/v1/apps/${appId}/favorite`),
     addFavorite: (appId: string): Promise<AppFavorite> =>

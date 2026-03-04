@@ -8,7 +8,7 @@ interface MetricsTimeRangeSelectorProps {
 
 export function MetricsTimeRangeSelector({ value, onChange }: MetricsTimeRangeSelectorProps) {
   return (
-    <Tabs value={value} onValueChange={(v) => onChange(v as TimeRange)}>
+    <Tabs value={value} onValueChange={(v) => onChange(v as TimeRange)} className="h-7">
       <TabsList>
         {TIME_RANGES.map((range) => (
           <TabsTrigger key={range.value} value={range.value}>

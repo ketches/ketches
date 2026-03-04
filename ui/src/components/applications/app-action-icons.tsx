@@ -4,6 +4,9 @@ import {
   Bug,
   BugOff,
   Download,
+  Folder,
+  FolderInput,
+  FolderOutput,
   Loader2,
   MoreVertical,
   Pause,
@@ -34,6 +37,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -61,9 +67,15 @@ interface AppActionIconsProps {
   appId: string
   envId: string
   actions: ActionMetadata[]
+  /** Groups available to move this app into */
+  appGroups?: Array<{ id: string; name: string }>
+  /** If set, show 'Remove from Group' instead of 'Move to Group' */
+  currentGroupId?: string
+  onMoveToGroup?: (groupId: string) => void
+  onRemoveFromGroup?: () => void
 }
 
-export function AppActionIcons({ appId, envId, actions }: AppActionIconsProps) {
+export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupId, onMoveToGroup, onRemoveFromGroup }: AppActionIconsProps) {
   const queryClient = useQueryClient()
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
@@ -117,19 +129,22 @@ export function AppActionIcons({ appId, envId, actions }: AppActionIconsProps) {
 
           return (
             <Tooltip key={action.action}>
-              <TooltipTrigger>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={(e) => handleAction(e, action.action)}
-                  disabled={executeMutation.isPending}
-                >
-                  {isLoading ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Icon />
-                  )}
-                </Button>
+              <TooltipTrigger
+                render={(
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => handleAction(e, action.action)}
+                    disabled={executeMutation.isPending}
+                    className={action.variant === "destructive" ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}
+                  />
+                )}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Icon className="h-4 w-4" />
+                )}
               </TooltipTrigger>
               <TooltipContent>
                 <p>{action.label}</p>
@@ -145,7 +160,7 @@ export function AppActionIcons({ appId, envId, actions }: AppActionIconsProps) {
             >
               <MoreVertical />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="w-fit">
               {moreActions.map((action) => {
                 const Icon = iconMap[action.icon] || RefreshCw
                 const isLoading = executeMutation.isPending && executeMutation.variables === action.action
@@ -156,7 +171,7 @@ export function AppActionIcons({ appId, envId, actions }: AppActionIconsProps) {
                     key={action.action}
                     onClick={(e) => handleAction(e, action.action)}
                     disabled={executeMutation.isPending}
-                    className={isDestructive ? "text-destructive" : ""}
+                    className={isDestructive ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}
                   >
                     {isLoading ? (
                       <Loader2 className="animate-spin" />
@@ -177,6 +192,27 @@ export function AppActionIcons({ appId, envId, actions }: AppActionIconsProps) {
                 <Download />
                 Export
               </DropdownMenuItem>
+              {/* Move to Group / Remove from Group below Export */}
+              {currentGroupId && onRemoveFromGroup && (
+                <DropdownMenuItem
+                  onClick={(e) => { e.stopPropagation(); onRemoveFromGroup() }}
+                >
+                  <FolderOutput />
+                  Remove from Group
+                </DropdownMenuItem>
+              )}
+              {!currentGroupId && appGroups && appGroups.length > 0 && onMoveToGroup && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger onClick={(e) => e.stopPropagation()}><FolderInput />Move to Group</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent onClick={(e) => e.stopPropagation()}>
+                    {appGroups.map((g) => (
+                      <DropdownMenuItem key={g.id} onClick={(e) => { e.stopPropagation(); onMoveToGroup(g.id) }}>
+                        <Folder />{g.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

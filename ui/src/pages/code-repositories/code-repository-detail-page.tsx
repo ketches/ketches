@@ -477,7 +477,7 @@ export function CodeRepositoryDetailPage() {
                 </Button>
               }
             />
-            <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuContent align="start" className="w-fit">
               <DropdownMenuGroup>
                 {safeRepos.map((r) => (
                   <DropdownMenuItem

@@ -40,10 +40,11 @@ import (
 func ListApps(envID string, page, pageSize int, search string) (int64, []entities.App, error) {
 	var apps []entities.App
 	var total int64
-	query := db.DB.Model(&entities.App{}).Where("env_id = ?", envID).Order("created_at DESC")
+	query := db.DB.Model(&entities.App{}).Where("apps.env_id = ?", envID).Order("apps.created_at DESC")
 	if search != "" {
-		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
+		query = query.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
+
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}

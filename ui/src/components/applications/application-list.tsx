@@ -51,11 +51,7 @@ import { getAppStatusColor } from "@/lib/app-status"
 
 import { appFavoritesApi } from "@/api/app-favorite"
 import { appGroupsApi } from "@/api/app-groups"
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
-  DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Star } from 'lucide-react'
+import { Star } from 'lucide-react'
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
   const date = new Date(dateString)
@@ -81,7 +77,7 @@ interface ApplicationListProps {
   currentGroupId?: string
 }
 
-export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideToolbarActions, allowedAppIds, currentGroupId }: ApplicationListProps) {
+export function ApplicationList({ envId, envName: _envName, favoritesOnly = false, hideToolbarActions, allowedAppIds, currentGroupId }: ApplicationListProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
@@ -113,7 +109,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
     pageIndex: 0,
     pageSize: 10,
   })
-  const { data: favorites = [] } = useQuery({
+  const { data: favorites = [], refetch: refetchFavorites } = useQuery({
     queryKey: ['app-favorites', envId],
     queryFn: () => appFavoritesApi.listFavorites(envId),
     enabled: !!envId,
@@ -133,7 +129,14 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
         : appFavoritesApi.addFavorite(app.id).then(() => undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app-favorites', envId] })
+      queryClient.invalidateQueries({ queryKey: ['apps', envId] })
+      toast.success('Favorite updated')
     },
+    onError: (error: any) => {
+      toast.error('Failed to update favorite', {
+        description: error.response?.data?.error || 'An error occurred'
+      })
+    }
   })
 
   const removeFromGroupMutation = useMutation({
@@ -141,17 +144,35 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
       appGroupsApi.removeApp(groupId, appId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app-groups', envId] })
+      queryClient.invalidateQueries({ queryKey: ['apps', envId] })
       toast.success('Removed from group')
     },
+    onError: (error: any) => {
+      toast.error('Failed to remove from group', {
+        description: error.response?.data?.error || 'An error occurred'
+      })
+    }
   })
 
   const addToGroupMutation = useMutation({
-    mutationFn: ({ groupId, appId }: { groupId: string; appId: string }) =>
-      appGroupsApi.addApp(groupId, appId),
+    mutationFn: async ({ groupId, appId }: { groupId: string; appId: string }) => {
+      // Find the current group this app belongs to
+      const currentGroup = appGroups.find((g: any) => g.apps?.some((a: any) => a.id === appId))
+      if (currentGroup && currentGroup.id !== groupId) {
+        await appGroupsApi.removeApp(currentGroup.id, appId)
+      }
+      return appGroupsApi.addApp(groupId, appId)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app-groups', envId] })
-      toast.success('Added to group')
+      queryClient.invalidateQueries({ queryKey: ['apps', envId] })
+      toast.success('Moved to group')
     },
+    onError: (error: any) => {
+      toast.error('Failed to move to group', {
+        description: error.response?.data?.error || 'An error occurred'
+      })
+    }
   })
 
   const { data: appsResponse, refetch } = useQuery({
@@ -159,7 +180,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
     queryFn: () => appsApi.list(envId, {
       search: debouncedSearch,
       page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize
+      pageSize: pagination.pageSize,
     }),
     enabled: !!envId,
     refetchInterval: 5000,
@@ -192,6 +213,21 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
     if (allowedAppIds) result = result.filter(a => allowedAppIds.has(a.id))
     return result
   })()
+
+  const handleRefresh = React.useCallback(async () => {
+    if (currentGroupId) {
+      await appGroupsApi.listSpecificApps(currentGroupId)
+      await queryClient.invalidateQueries({ queryKey: ['app-groups', envId] })
+      return
+    }
+
+    if (favoritesOnly) {
+      await refetchFavorites()
+      return
+    }
+
+    await refetch()
+  }, [currentGroupId, envId, favoritesOnly, queryClient, refetch, refetchFavorites])
 
   const columns: ColumnDef<App>[] = [
     {
@@ -295,54 +331,32 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
         <div className="flex items-center justify-end gap-2">
           {!isViewer && (
             <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setEditingApp(row.original) || setEditDialogOpen(true)}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => toggleFavMutation.mutate(row.original)}>
-                    <Star className={`h-4 w-4 mr-2 ${favoriteIds.has(row.original.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
-                    {favoriteIds.has(row.original.id) ? 'Remove Favorite' : 'Add to Favorites'}
-                  </DropdownMenuItem>
-                  {/* Remove from group action (when viewing a specific group) */}
-                  {currentGroupId && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => removeFromGroupMutation.mutate({ groupId: currentGroupId, appId: row.original.id })}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Remove from Group
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  {/* Add to group sub-menu (when not in a specific group view) */}
-                  {!currentGroupId && appGroups.length > 0 && (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>Add to Group</DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        {appGroups.map((g: any) => (
-                          <DropdownMenuItem
-                            key={g.id}
-                            onClick={() => addToGroupMutation.mutate({ groupId: g.id, appId: row.original.id })}
-                          >
-                            {g.name}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <AppActionIconsWrapper appId={row.original.id} envId={envId} />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEditingApp(row.original)
+                  setEditDialogOpen(true)
+                }}
+              >
+                <Pencil />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => { toggleFavMutation.mutate(row.original) }}
+              >
+                <Star className={`${favoriteIds.has(row.original.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
+              </Button>
+              <AppActionIconsWrapper
+                appId={row.original.id}
+                envId={envId}
+                appGroups={appGroups}
+                currentGroupId={currentGroupId}
+                onMoveToGroup={(groupId) => addToGroupMutation.mutate({ groupId, appId: row.original.id })}
+                onRemoveFromGroup={currentGroupId ? () => removeFromGroupMutation.mutate({ groupId: currentGroupId, appId: row.original.id }) : undefined}
+              />
             </>
           )}
         </div>
@@ -392,8 +406,8 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
         columns={columns}
         data={safeApps}
         viewMode={viewMode}
-        onRefresh={refetch}
-        manualPagination
+        onRefresh={handleRefresh}
+        manualPagination={true}
         totalCount={paginationInfo?.total || 0}
         pagination={pagination}
         onPaginationChange={setPagination}
@@ -447,7 +461,21 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
                       >
                         <Pencil />
                       </Button>
-                      <AppActionIconsWrapper appId={app.id} envId={envId} />
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => { toggleFavMutation.mutate(app) }}
+                      >
+                        <Star className={`${favoriteIds.has(app.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
+                      </Button>
+                      <AppActionIconsWrapper
+                        appId={app.id}
+                        envId={envId}
+                        appGroups={appGroups}
+                        currentGroupId={currentGroupId}
+                        onMoveToGroup={(groupId) => addToGroupMutation.mutate({ groupId, appId: app.id })}
+                        onRemoveFromGroup={currentGroupId ? () => removeFromGroupMutation.mutate({ groupId: currentGroupId, appId: app.id }) : undefined}
+                      />
                     </>
                   )}
                 </div>

@@ -4,8 +4,8 @@ import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
-import { projectsApi, type Project } from "@/api/projects"
 import { type SimpleResponse } from "@/api/pagination"
+import { projectsApi, type Project } from "@/api/projects"
 import { CreateProjectDialog } from "@/components/project/create-project-dialog"
 import { EditProjectDialog } from "@/components/project/edit-project-dialog"
 import {
@@ -69,7 +69,7 @@ function ProjectItem({
         >
           <MoreVertical className="text-muted-foreground" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-40">
+        <DropdownMenuContent align="start" className="w-fit">
           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
             <Pencil className="mr-2" />
             Edit

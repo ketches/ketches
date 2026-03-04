@@ -17,13 +17,12 @@ func ListAppGroups(envID string) ([]entities.AppGroup, error) {
 }
 
 // CreateAppGroup creates a new app group for an environment.
-func CreateAppGroup(envID, userID string, req *models.CreateAppGroupRequest) (*entities.AppGroup, error) {
+func CreateAppGroup(envID string, req *models.CreateAppGroupRequest) (*entities.AppGroup, error) {
 	group := &entities.AppGroup{
-		ID:              uuid.New(),
-		EnvID:           envID,
-		Name:            req.Name,
-		Description:     req.Description,
-		CreatedByUserID: userID,
+		ID:          uuid.New(),
+		EnvID:       envID,
+		Name:        req.Name,
+		Description: req.Description,
 	}
 	if err := db.DB.Create(group).Error; err != nil {
 		return nil, err
@@ -40,6 +39,15 @@ func UpdateAppGroup(groupID string, req *models.UpdateAppGroupRequest) (*entitie
 	group.Name = req.Name
 	group.Description = req.Description
 	if err := db.DB.Save(&group).Error; err != nil {
+		return nil, err
+	}
+	return &group, nil
+}
+
+// GetAppGroup returns an app group by ID.
+func GetAppGroup(groupID string) (*entities.AppGroup, error) {
+	var group entities.AppGroup
+	if err := db.DB.First(&group, "id = ?", groupID).Error; err != nil {
 		return nil, err
 	}
 	return &group, nil
@@ -80,32 +88,10 @@ func ListGroupedApps(envID string) ([]models.AppGroupWithApps, error) {
 		return nil, err
 	}
 
-	var result []models.AppGroupWithApps
+	result := make([]models.AppGroupWithApps, 0, len(groups))
+	groupIndexByID := make(map[string]int, len(groups))
+	groupIDs := make([]string, 0, len(groups))
 	for _, g := range groups {
-		var members []entities.AppGroupMember
-		if err := db.DB.Where("group_id = ?", g.ID).Find(&members).Error; err != nil {
-			return nil, err
-		}
-
-		var apps []models.AppSimpleResponse
-		for _, m := range members {
-			var app entities.App
-			if err := db.DB.Select("id, slug, name, deploy_status").
-				Where("id = ? AND env_id = ?", m.AppID, envID).
-				First(&app).Error; err != nil {
-				continue // skip apps not in this env (stale references)
-			}
-			apps = append(apps, models.AppSimpleResponse{
-				ID:     app.ID,
-				Slug:   app.Slug,
-				Name:   app.Name,
-				Status: app.DeployStatus,
-			})
-		}
-		if apps == nil {
-			apps = []models.AppSimpleResponse{}
-		}
-
 		result = append(result, models.AppGroupWithApps{
 			AppGroupResponse: models.AppGroupResponse{
 				ID:          g.ID,
@@ -114,11 +100,94 @@ func ListGroupedApps(envID string) ([]models.AppGroupWithApps, error) {
 				Description: g.Description,
 				CreatedAt:   g.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 			},
-			Apps: apps,
+			Apps: []models.AppSimpleResponse{},
+		})
+		groupIndexByID[g.ID] = len(result) - 1
+		groupIDs = append(groupIDs, g.ID)
+	}
+
+	if len(groupIDs) == 0 {
+		return result, nil
+	}
+
+	type groupAppRow struct {
+		GroupID      string
+		ID           string
+		Slug         string
+		Name         string
+		DeployStatus string
+	}
+
+	var rows []groupAppRow
+	if err := db.DB.Model(&entities.AppGroupMember{}).
+		Select("app_group_members.group_id, apps.id, apps.slug, apps.name, apps.deploy_status").
+		Joins("JOIN apps ON apps.id = app_group_members.app_id").
+		Where("app_group_members.group_id IN ? AND apps.env_id = ?", groupIDs, envID).
+		Order("app_group_members.created_at ASC").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	for _, row := range rows {
+		idx, ok := groupIndexByID[row.GroupID]
+		if !ok {
+			continue
+		}
+		result[idx].Apps = append(result[idx].Apps, models.AppSimpleResponse{
+			ID:     row.ID,
+			Slug:   row.Slug,
+			Name:   row.Name,
+			Status: row.DeployStatus,
 		})
 	}
-	if result == nil {
-		result = []models.AppGroupWithApps{}
+
+	return result, nil
+}
+
+// ListSpecificGroupedApps returns one group with its apps.
+func ListSpecificGroupedApps(groupID string) (models.AppGroupWithApps, error) {
+	group, err := GetAppGroup(groupID)
+	if err != nil {
+		return models.AppGroupWithApps{}, err
 	}
+
+	type appRow struct {
+		ID           string
+		Slug         string
+		Name         string
+		DeployStatus string
+	}
+
+	var rows []appRow
+	if err := db.DB.Model(&entities.AppGroupMember{}).
+		Select("apps.id, apps.slug, apps.name, apps.deploy_status").
+		Joins("JOIN apps ON apps.id = app_group_members.app_id").
+		Where("app_group_members.group_id = ?", group.ID).
+		Order("app_group_members.created_at ASC").
+		Scan(&rows).Error; err != nil {
+		return models.AppGroupWithApps{}, err
+	}
+
+	apps := make([]models.AppSimpleResponse, 0, len(rows))
+	for _, row := range rows {
+		apps = append(apps, models.AppSimpleResponse{
+			ID:     row.ID,
+			Slug:   row.Slug,
+			Name:   row.Name,
+			Status: row.DeployStatus,
+		})
+	}
+
+	result := models.AppGroupWithApps{
+		AppGroupResponse: models.AppGroupResponse{
+			ID:          group.ID,
+			EnvID:       group.EnvID,
+			Name:        group.Name,
+			Description: group.Description,
+			CreatedAt:   group.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		},
+		Apps: apps,
+	}
+
 	return result, nil
 }

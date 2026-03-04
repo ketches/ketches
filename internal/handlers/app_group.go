@@ -20,14 +20,20 @@ func ListAppGroups(c *gin.Context) {
 	api.Success(c, groups)
 }
 
+// ListSpecificGroupedApps returns a specific app group with its apps for an environment.
+func ListSpecificGroupedApps(c *gin.Context) {
+	groupID := c.Param("groupID")
+	group, err := services.ListSpecificGroupedApps(groupID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.Success(c, group)
+}
+
 // CreateAppGroup creates a new app group for an environment.
 func CreateAppGroup(c *gin.Context) {
 	envID := c.Param("envID")
-	claims := api.GetClaims(c)
-	if claims == nil {
-		api.Error(c, http.StatusUnauthorized, nil)
-		return
-	}
 
 	var req models.CreateAppGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -35,7 +41,7 @@ func CreateAppGroup(c *gin.Context) {
 		return
 	}
 
-	group, err := services.CreateAppGroup(envID, claims.UserID, &req)
+	group, err := services.CreateAppGroup(envID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -54,6 +60,18 @@ func UpdateAppGroup(c *gin.Context) {
 	}
 
 	group, err := services.UpdateAppGroup(groupID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.Success(c, group)
+}
+
+// GetAppGroup returns an app group by ID.
+func GetAppGroup(c *gin.Context) {
+	groupID := c.Param("groupID")
+
+	group, err := services.GetAppGroup(groupID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
