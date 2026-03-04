@@ -107,6 +107,7 @@ func SetupV1Routes(r *gin.Engine) {
 				envs.GET("/:envID/app-groups", handlers.ListAppGroups)
 				envs.GET("/:envID/apps/favorites", handlers.ListFavoriteApps)
 				envs.GET("/:envID/certificates", handlers.ListEnvCertificates)
+				envs.GET("/:envID/apps/image-metadata", handlers.GetImageMetadata)
 				envs.GET("/:envID/certificates/:certID", handlers.GetCertificate)
 				// Write (require at least developer role)
 				envsWrite := envs.Group("", middlewares.RequireProjectRole("developer"))
