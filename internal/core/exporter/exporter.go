@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	yamlv3 "gopkg.in/yaml.v3"
+
 	"github.com/ketches/ketches/internal/models"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +27,7 @@ const (
 	FormatKubernetes ExportFormat = "kubernetes"
 	FormatKetches    ExportFormat = "ketches"
 	FormatHelm       ExportFormat = "helm"
+	FormatDockerCompose ExportFormat = "dockercompose"
 )
 
 // ExportGenerator defines the interface for application export generators.
@@ -513,3 +516,135 @@ spec:
   selector:
     {{- include "app.selectorLabels" . | nindent 4 }}
 `
+
+
+// Docker Compose data structures
+type dockerComposeFile struct {
+	Version  string                          `yaml:"version"`
+	Services map[string]dockerComposeService `yaml:"services"`
+	Volumes  map[string]any                  `yaml:"volumes,omitempty"`
+}
+
+type dockerComposeService struct {
+	Image       string                    `yaml:"image"`
+	Command     []string                  `yaml:"command,omitempty"`
+	Environment map[string]string         `yaml:"environment,omitempty"`
+	Ports       []string                  `yaml:"ports,omitempty"`
+	Volumes     []string                  `yaml:"volumes,omitempty"`
+	Healthcheck *dockerComposeHealthcheck `yaml:"healthcheck,omitempty"`
+	Deploy      *dockerComposeDeploy      `yaml:"deploy,omitempty"`
+}
+
+type dockerComposeHealthcheck struct {
+	Test        []string `yaml:"test"`
+	Interval    string   `yaml:"interval"`
+	Timeout     string   `yaml:"timeout"`
+	Retries     int      `yaml:"retries"`
+	StartPeriod string   `yaml:"start_period,omitempty"`
+}
+
+type dockerComposeDeploy struct {
+	Replicas int `yaml:"replicas"`
+}
+
+// DockerComposeGenerator generates Docker Compose YAML.
+type DockerComposeGenerator struct{}
+
+// Generate generates a docker-compose.yml from the given application metadata.
+func (g *DockerComposeGenerator) Generate(appMetadatas []models.AppMetadata) (string, error) {
+	composeFile := dockerComposeFile{
+		Version:  "3.8",
+		Services: make(map[string]dockerComposeService),
+	}
+
+	var topLevelVolumes map[string]any
+
+	for _, app := range appMetadatas {
+		svc := dockerComposeService{
+			Image: app.ContainerImage,
+		}
+
+		// Command
+		if app.ContainerCommand != "" {
+			svc.Command = []string{"sh", "-c", app.ContainerCommand}
+		}
+
+		// Environment variables
+		if len(app.EnvVars) > 0 {
+			svc.Environment = make(map[string]string)
+			for _, env := range app.EnvVars {
+				svc.Environment[env.Key] = env.Value
+			}
+		}
+
+		// Ports
+		for _, gw := range app.Gateways {
+			protocol := strings.ToLower(gw.Protocol)
+			if protocol == "udp" {
+				svc.Ports = append(svc.Ports, fmt.Sprintf("%d:%d/udp", gw.Port, gw.Port))
+			} else {
+				svc.Ports = append(svc.Ports, fmt.Sprintf("%d:%d", gw.Port, gw.Port))
+			}
+		}
+
+		// Volumes
+		for _, vol := range app.Volumes {
+			svc.Volumes = append(svc.Volumes, fmt.Sprintf("%s:%s", vol.Slug, vol.MountPath))
+			if topLevelVolumes == nil {
+				topLevelVolumes = make(map[string]any)
+			}
+			topLevelVolumes[vol.Slug] = struct{}{}
+		}
+
+		// Healthcheck: first enabled liveness probe
+		for _, probe := range app.Probes {
+			if probe.Type == "liveness" && probe.Enabled {
+				hc := &dockerComposeHealthcheck{
+					Retries: probe.FailureThreshold,
+				}
+				if probe.PeriodSeconds > 0 {
+					hc.Interval = fmt.Sprintf("%ds", probe.PeriodSeconds)
+				}
+				if probe.TimeoutSeconds > 0 {
+					hc.Timeout = fmt.Sprintf("%ds", probe.TimeoutSeconds)
+				}
+				if probe.InitialDelaySeconds > 0 {
+					hc.StartPeriod = fmt.Sprintf("%ds", probe.InitialDelaySeconds)
+				}
+
+				switch probe.ProbeMode {
+				case "httpGet":
+					hc.Test = []string{"CMD", "curl", "-f", fmt.Sprintf("http://localhost:%d%s", probe.HttpGetPort, probe.HttpGetPath)}
+				case "tcpSocket":
+					hc.Test = []string{"CMD", "nc", "-z", "localhost", fmt.Sprintf("%d", probe.TcpSocketPort)}
+				case "exec":
+					hc.Test = []string{"CMD-SHELL", probe.ExecCommand}
+				}
+
+				if len(hc.Test) == 0 {
+					break // skip healthcheck for unknown probe mode
+				}
+				svc.Healthcheck = hc
+				break
+			}
+		}
+
+		// Deploy replicas
+		svc.Deploy = &dockerComposeDeploy{
+			Replicas: app.Replicas,
+		}
+
+		composeFile.Services[app.AppSlug] = svc
+	}
+
+	if topLevelVolumes != nil {
+		composeFile.Volumes = topLevelVolumes
+	}
+
+	out, err := yamlv3.Marshal(composeFile)
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}

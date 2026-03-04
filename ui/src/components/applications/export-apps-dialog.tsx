@@ -30,7 +30,7 @@ interface ExportAppsDialogProps {
   onSuccess?: () => void
 }
 
-type ExportFormat = 'kubernetes' | 'ketches' | 'helm'
+type ExportFormat = 'kubernetes' | 'ketches' | 'helm' | 'dockercompose'
 type ExportScope = 'selected' | 'all'
 
 const EXPORT_FORMAT_OPTIONS = [
@@ -94,7 +94,7 @@ export function ExportAppsDialog({
     setError(null)
 
     try {
-      let data: { yaml?: string; metadata?: string; chart?: string }
+      let data: { yaml?: string; metadata?: string; chart?: string; compose?: string }
 
       if (appId) {
         // Single app export
@@ -133,6 +133,13 @@ export function ExportAppsDialog({
             filename = `helm-chart-${timestamp}.zip`
             contentType = 'application/zip'
             isBase64 = true
+          }
+          break
+        case 'dockercompose':
+          if (data.compose) {
+            content = data.compose
+            filename = `docker-compose-${timestamp}.yml`
+            contentType = 'text/yaml'
           }
           break
       }
@@ -188,6 +195,7 @@ export function ExportAppsDialog({
                     { value: 'kubernetes', label: 'Kubernetes Manifests', description: 'Raw Kubernetes YAML resources' },
                     { value: 'ketches', label: 'Ketches Metadata', description: 'Ketches-native application format' },
                     { value: 'helm', label: 'Helm Chart', description: 'Packaged Helm chart format' },
+                    { value: 'dockercompose', label: 'Docker Compose', description: 'Docker Compose YAML file (docker-compose.yml)' },
                   ].map((option) => (
                     <ComboboxItem key={option.value} value={option.value}>
                       <div className="flex flex-col gap-0.5">

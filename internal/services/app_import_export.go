@@ -246,6 +246,8 @@ func generateExport(appMetadatas []models.AppMetadata, format exporter.ExportFor
 		generator = &exporter.KetchesMetadataGenerator{}
 	case exporter.FormatHelm:
 		generator = &exporter.HelmChartGenerator{}
+	case exporter.FormatDockerCompose:
+		generator = &exporter.DockerComposeGenerator{}
 	default:
 		return "", fmt.Errorf("unsupported export format: %s", format)
 	}

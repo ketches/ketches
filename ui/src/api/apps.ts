@@ -248,15 +248,15 @@ export const appsApi = {
     }>
   },
 
-  exportApps: async (appId: string, format: 'kubernetes' | 'ketches' | 'helm') => {
+  exportApps: async (appId: string, format: 'kubernetes' | 'ketches' | 'helm' | 'dockercompose') => {
     return client.get(`/v1/apps/${appId}/export`, {
       params: { format }
-    }) as Promise<{ yaml?: string, metadata?: string, chart?: string }>
+    }) as Promise<{ yaml?: string, metadata?: string, chart?: string, compose?: string }>
   },
 
-  exportEnvApps: async (envId: string, format: 'kubernetes' | 'ketches' | 'helm', appIds?: string[]) => {
+  exportEnvApps: async (envId: string, format: 'kubernetes' | 'ketches' | 'helm' | 'dockercompose', appIds?: string[]) => {
     return client.get(`/v1/envs/${envId}/apps/export`, {
       params: { format, app_ids: appIds?.join(',') }
-    }) as Promise<{ yaml?: string, metadata?: string, chart?: string }>
+    }) as Promise<{ yaml?: string, metadata?: string, chart?: string, compose?: string }>
   }
 }

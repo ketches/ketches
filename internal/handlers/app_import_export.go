@@ -87,6 +87,8 @@ func respondWithExport(c *gin.Context, format exporter.ExportFormat, content str
 		api.Success(c, gin.H{"metadata": content})
 	case exporter.FormatHelm:
 		api.Success(c, gin.H{"chart": content})
+	case exporter.FormatDockerCompose:
+		api.Success(c, gin.H{"compose": content})
 	default:
 		api.Success(c, gin.H{"content": content})
 	}
