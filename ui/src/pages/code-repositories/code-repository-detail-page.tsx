@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
+  GalleryVerticalEnd,
   CheckCircle,
   ChevronsUpDown,
   ExternalLink,
@@ -21,7 +22,7 @@ import {
   Trash2
 } from "lucide-react"
 import * as React from "react"
-import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import {
@@ -59,6 +60,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
 
@@ -82,6 +84,13 @@ export function CodeRepositoryDetailPage() {
 
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+
+  // Read project context from navigation state (set when navigating from admin project detail page)
+  const location = useLocation()
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin")
+  const fromProject = isAdmin
+    ? (location.state as { fromProjectId?: string; fromProjectName?: string } | null)
+    : null
 
   const { data: repo, isLoading } = useQuery({
     queryKey: ["code-repository", repoId],
@@ -459,6 +468,15 @@ export function CodeRepositoryDetailPage() {
   }
 
   const breadcrumbs = [
+    // Prepend project layer when navigating from admin project detail page
+    ...(fromProject?.fromProjectId ? [
+      { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+      {
+        label: fromProject.fromProjectName ?? "Project",
+        icon: GalleryVerticalEnd,
+        href: `/projects/${fromProject.fromProjectId}`,
+      },
+    ] : []),
     {
       label: "Code Repositories",
       href: "/code-repositories",

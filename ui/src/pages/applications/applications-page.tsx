@@ -16,13 +16,14 @@ import { useQuery } from "@tanstack/react-query"
 import { Box, ChevronsUpDown, LayoutList, List, Orbit, Plus, Star, Upload } from "lucide-react"
 import * as React from "react"
 
-export function ApplicationsPage() {
+export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const [createEnvDialogOpen, setCreateEnvDialogOpen] = React.useState(false)
   const [createAppDialogOpen, setCreateAppDialogOpen] = React.useState(false)
   const [createGroupDialogOpen, setCreateGroupDialogOpen] = React.useState(false)
   const [importDialogOpen, setImportDialogOpen] = React.useState(false)
 
-  const { activeProjectId, activeEnvId, setActiveEnvId } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore, activeEnvId, setActiveEnvId } = useProjectStore()
+  const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
 
@@ -79,7 +80,7 @@ export function ApplicationsPage() {
 
   return (
     <div className="flex flex-col flex-1 gap-6">
-      <PageHeader items={breadcrumbs} />
+      {!projectIdProp && <PageHeader items={breadcrumbs} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Applications</h1>

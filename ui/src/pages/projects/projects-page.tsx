@@ -316,6 +316,16 @@ export function ProjectsPage() {
                   </div>
                   {/* Card action buttons, visible on hover */}
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {isAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/projects/${project.id}`)}
+                      >
+                        <GalleryVerticalEnd className="h-3.5 w-3.5" />
+                        Details
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

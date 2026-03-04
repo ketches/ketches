@@ -15,6 +15,7 @@ import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
+import { projectsApi } from "@/api/projects"
 import { codeRepositoriesApi, type CodeRepository } from "@/api/code-repositories"
 import { CreateCodeRepositoryDialog } from "@/components/code-repositories/create-code-repository-dialog"
 import { EditCodeRepositoryDialog } from "@/components/code-repositories/edit-code-repository-dialog"
@@ -46,12 +47,20 @@ const formatDate = (dateString: string) => {
 
 const CODE_REPOS_VIEW_MODE_KEY = "code_repositories_view_mode"
 
-export function CodeRepositoriesPage() {
+export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { activeProjectId } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+
+  // Fetch project info when embedded in a project detail tab (for breadcrumb state)
+  const { data: project } = useQuery({
+    queryKey: ["project", projectIdProp],
+    queryFn: () => projectsApi.get(projectIdProp!),
+    enabled: !!projectIdProp,
+  })
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingRepo, setEditingRepo] = React.useState<CodeRepository | null>(null)
@@ -116,7 +125,7 @@ export function CodeRepositoriesPage() {
           </div>
           <div className="min-w-0">
             <span className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
-              onClick={() => navigate(`/code-repositories/${row.original.id}`)}>{row.original.name}</span>
+              onClick={() => navigate(`/code-repositories/${row.original.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>{row.original.name}</span>
             <p className="text-xs text-muted-foreground font-mono truncate">
               {row.original.slug}
             </p>
@@ -190,7 +199,7 @@ export function CodeRepositoriesPage() {
   if (!activeProjectId) {
     return (
       <div className="flex flex-col flex-1 gap-6">
-        <PageHeader items={breadcrumbs} />
+        {!projectIdProp && <PageHeader items={breadcrumbs} />}
         <EmptyState
           title="Select a project"
           description="Select a project to view and manage code repositories."
@@ -202,7 +211,7 @@ export function CodeRepositoriesPage() {
 
   return (
     <div className="flex flex-col flex-1 gap-6">
-      <PageHeader items={breadcrumbs} />
+      {!projectIdProp && <PageHeader items={breadcrumbs} />}
 
       <div className="flex items-center justify-between">
         <div>
@@ -266,7 +275,7 @@ export function CodeRepositoriesPage() {
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
-                        onClick={() => navigate(`/code-repositories/${repo.id}`)}>
+                        onClick={() => navigate(`/code-repositories/${repo.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>
                         {repo.name}
                       </CardTitle>
                       {repo.webhook_enabled && (

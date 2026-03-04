@@ -239,9 +239,10 @@ function AdminDashboard() {
   )
 }
 
-function UserDashboard() {
+export function UserDashboard({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const navigate = useNavigate()
-  const activeProjectId = useProjectStore((state) => state.activeProjectId)
+  const activeProjectIdFromStore = useProjectStore((state) => state.activeProjectId)
+  const activeProjectId = projectIdProp ?? activeProjectIdFromStore
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard-stats-user", activeProjectId],

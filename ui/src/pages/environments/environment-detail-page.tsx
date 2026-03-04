@@ -16,8 +16,9 @@ import {
   Trash2,
   Wrench
 } from "lucide-react"
+import { GalleryVerticalEnd } from "lucide-react"
 import * as React from "react"
-import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { appsApi } from "@/api/apps"
@@ -44,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 
 export function EnvironmentDetailPage() {
@@ -58,6 +60,13 @@ export function EnvironmentDetailPage() {
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
+
+  // Read project context from navigation state (set when navigating from admin project detail page)
+  const location = useLocation()
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin")
+  const fromProject = isAdmin
+    ? (location.state as { fromProjectId?: string; fromProjectName?: string } | null)
+    : null
 
   const { data: envsResponse } = useQuery({
     queryKey: ['envs', activeProjectId],
@@ -126,6 +135,15 @@ export function EnvironmentDetailPage() {
   const safeEnvs = Array.isArray(envs) ? envs : []
 
   const breadcrumbs = [
+    // Prepend project layer when navigating from admin project detail page
+    ...(fromProject?.fromProjectId ? [
+      { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+      {
+        label: fromProject.fromProjectName ?? "Project",
+        icon: GalleryVerticalEnd,
+        href: `/projects/${fromProject.fromProjectId}`,
+      },
+    ] : []),
     { label: "Environments", icon: Orbit, href: "/environments" },
     {
       label: env.name,
@@ -402,3 +420,5 @@ export function EnvironmentDetailPage() {
 }
 
 export default EnvironmentDetailPage
+
+import * as React from "react"

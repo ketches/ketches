@@ -33,9 +33,10 @@ const formatDate = (dateString: string) => {
   })
 }
 
-export function MembersPage() {
+export function MembersPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const queryClient = useQueryClient()
-  const { activeProjectId } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
 
@@ -231,7 +232,7 @@ export function MembersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader items={[{ label: "Members", icon: Users }]} />
+      {!projectIdProp && <PageHeader items={[{ label: "Members", icon: Users }]} />}
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>

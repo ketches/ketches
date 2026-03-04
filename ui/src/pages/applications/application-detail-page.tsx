@@ -45,8 +45,9 @@ import {
   Trash2,
   Zap
 } from "lucide-react"
+import { GalleryVerticalEnd } from "lucide-react"
 import * as React from "react"
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import { toast } from "sonner"
 
@@ -96,6 +97,7 @@ import { useBottomPanel } from "@/contexts/bottom-panel-context"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
 import { formatDate } from "@/lib/utils"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 
 
@@ -516,6 +518,13 @@ export function ApplicationDetailPage() {
   const isViewer = projectRole === 'viewer'
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
 
+  // Read project context from navigation state (set when navigating from admin project detail page)
+  const location = useLocation()
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin")
+  const fromProject = isAdmin
+    ? (location.state as { fromProjectId?: string; fromProjectName?: string } | null)
+    : null
+
   const { data: app, isLoading, error } = useQuery<App>({
     queryKey: ['app', appId],
     queryFn: () => appsApi.get(appId!),
@@ -910,6 +919,15 @@ export function ApplicationDetailPage() {
   }
 
   const breadcrumbs = [
+    // Prepend project layer when navigating from admin project detail page
+    ...(fromProject?.fromProjectId ? [
+      { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+      {
+        label: fromProject.fromProjectName ?? "Project",
+        icon: GalleryVerticalEnd,
+        href: `/projects/${fromProject.fromProjectId}`,
+      },
+    ] : []),
     { label: "Applications", icon: Box },
     {
       label: currentEnv?.name || "Environment",

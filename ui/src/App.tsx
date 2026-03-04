@@ -29,6 +29,7 @@ import { RecycleBinPage } from "@/pages/recycle-bin/recycle-bin-page"
 import { UsersPage } from "@/pages/users/users-page"
 import { ExtensionsPage } from "@/pages/extensions/extensions-page"
 import { ProjectsPage } from "@/pages/projects/projects-page"
+import { ProjectDetailPage } from "@/pages/projects/project-detail-page"
 import { ActivityPage } from "@/pages/activity/activity-page"
 import { useAuthStore } from "@/stores/auth"
 import * as React from "react"
@@ -109,6 +110,11 @@ export function App() {
             <Route path="/projects" element={
               <ProtectedRoute>
                 <DashboardLayout><ProjectsPage /></DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/projects/:projectId" element={
+              <ProtectedRoute>
+                <DashboardLayout><ProjectDetailPage /></DashboardLayout>
               </ProtectedRoute>
             } />
             <Route path="/activity" element={

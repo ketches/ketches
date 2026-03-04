@@ -14,6 +14,7 @@ import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
+import { projectsApi } from "@/api/projects"
 import { envsApi, type Env } from "@/api/envs"
 import { DataTable } from "@/components/data-table/data-table"
 import { CreateEnvironmentDialog } from "@/components/environment/create-environment-dialog"
@@ -45,7 +46,7 @@ const formatDate = (dateString: string) => {
 
 const ENVIRONMENTS_VIEW_MODE_KEY = "environments_view_mode"
 
-export function EnvironmentsPage() {
+export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
@@ -60,9 +61,17 @@ export function EnvironmentsPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const debouncedSearch = useDebounce(searchQuery, 300)
 
-  const { activeProjectId } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+
+  // Fetch project info when embedded in a project detail tab (for breadcrumb state)
+  const { data: project } = useQuery({
+    queryKey: ["project", projectIdProp],
+    queryFn: () => projectsApi.get(projectIdProp!),
+    enabled: !!projectIdProp,
+  })
 
   React.useEffect(() => {
     localStorage.setItem(ENVIRONMENTS_VIEW_MODE_KEY, viewMode)
@@ -117,7 +126,7 @@ export function EnvironmentsPage() {
             <Orbit className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="font-medium text-xs truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/environments/${row.original.id}`)}>
+            <p className="font-medium text-xs truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/environments/${row.original.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>
               {row.original.name}
             </p>
             <p className="text-xs text-muted-foreground font-mono truncate">
@@ -226,7 +235,7 @@ export function EnvironmentsPage() {
 
   return (
     <div className="flex flex-col flex-1 gap-6">
-      <PageHeader items={breadcrumbs} />
+      {!projectIdProp && <PageHeader items={breadcrumbs} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Environments</h1>
@@ -265,7 +274,7 @@ export function EnvironmentsPage() {
                     <div className="flex flex-col flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => navigate(`/environments/${env.id}`)}>{env.name}</CardTitle>
+                          onClick={() => navigate(`/environments/${env.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>{env.name}</CardTitle>
                         <ColorBadge color="green">
                           {env.status || "Active"}
                         </ColorBadge>

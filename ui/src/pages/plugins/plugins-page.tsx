@@ -36,8 +36,9 @@ import { toast } from "sonner"
 
 const PLUGINS_VIEW_MODE_KEY = "plugins_view_mode"
 
-export function PluginsPage() {
-  const { activeProjectId } = useProjectStore()
+export function PluginsPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
+  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
@@ -219,7 +220,7 @@ export function PluginsPage() {
 
   return (
     <div className="flex flex-col flex-1 gap-6">
-      <PageHeader items={breadcrumbs} />
+      {!projectIdProp && <PageHeader items={breadcrumbs} />}
 
       {!isLoading && safePlugins.length === 0 && !searchQuery ? (
         <EmptyState

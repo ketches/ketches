@@ -52,9 +52,10 @@ const formatDate = (dateString: string) => {
 
 const REGISTRIES_VIEW_MODE_KEY = "registries_view_mode"
 
-export function ContainerRegistriesPage() {
+export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const queryClient = useQueryClient()
-  const { activeProjectId } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
   const [createOpen, setCreateOpen] = React.useState(false)
@@ -244,7 +245,7 @@ export function ContainerRegistriesPage() {
   if (!activeProjectId) {
     return (
       <div className="flex flex-col flex-1 gap-6">
-        <PageHeader items={breadcrumbs} />
+        {!projectIdProp && <PageHeader items={breadcrumbs} />}
         <EmptyState
           title="Select a project"
           description="Select a project to view and manage container registries."
@@ -256,7 +257,7 @@ export function ContainerRegistriesPage() {
 
   return (
     <div className="flex flex-col flex-1 gap-6">
-      <PageHeader items={breadcrumbs} />
+      {!projectIdProp && <PageHeader items={breadcrumbs} />}
 
       <div className="flex items-center justify-between">
         <div>
