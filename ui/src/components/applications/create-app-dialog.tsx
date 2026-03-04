@@ -74,6 +74,7 @@ export function CreateAppDialog({
       limit_memory: 512,
       description: data.description,
       deploy: data.deploy,
+      seed_image_metadata: true,
     }),
     onSuccess: (app) => {
       queryClient.invalidateQueries({ queryKey: ['apps', activeEnvId] })

@@ -13,15 +13,16 @@ type CreateAppRequest struct {
 	Replicas         int    `json:"replicas"`
 	Deploy           bool   `json:"deploy"`
 
-	ContainerCommand string           `json:"container_command"`
-	RequestCPU       int              `json:"request_cpu"`
-	RequestMemory    int              `json:"request_memory"`
-	LimitCPU         int              `json:"limit_cpu"`
-	LimitMemory      int              `json:"limit_memory"`
-	AutoScaling      *AutoScalingSpec `json:"auto_scaling"`
-	SchedulingRule   *SchedulingSpec  `json:"scheduling_rule"`
-	Probes           []ProbeSpec      `json:"probes"`
-	Gateways         []GatewaySpec    `json:"gateways"`
+	ContainerCommand  string           `json:"container_command"`
+	RequestCPU        int              `json:"request_cpu"`
+	RequestMemory     int              `json:"request_memory"`
+	LimitCPU          int              `json:"limit_cpu"`
+	LimitMemory       int              `json:"limit_memory"`
+	AutoScaling       *AutoScalingSpec `json:"auto_scaling"`
+	SchedulingRule    *SchedulingSpec  `json:"scheduling_rule"`
+	Probes            []ProbeSpec      `json:"probes"`
+	Gateways          []GatewaySpec    `json:"gateways"`
+	SeedImageMetadata bool             `json:"seed_image_metadata,omitempty"` // if true, attempt to seed app configuration from image metadata; default false
 }
 
 type AutoScalingSpec struct {

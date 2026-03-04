@@ -122,8 +122,10 @@ func CreateApp(envID string, req *models.CreateAppRequest) (*entities.App, error
 	}
 
 	// Attempt to seed app configuration from image metadata; failure is non-fatal.
-	if err := seedAppFromImageMetadata(context.Background(), application); err != nil {
-		log.Printf("warn: image metadata seed skipped for app %s: %v", application.Slug, err)
+	if req.SeedImageMetadata {
+		if err := seedAppFromImageMetadata(context.Background(), application); err != nil {
+			log.Printf("warn: image metadata seed skipped for app %s: %v", application.Slug, err)
+		}
 	}
 
 	var env entities.Env

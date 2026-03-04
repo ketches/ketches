@@ -90,7 +90,8 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 		// Create app
 		createReq := appMeta.ToCreateAppRequest()
 		createReq.Description = "Imported application"
-		createReq.Deploy = false // Do not deploy immediately
+		createReq.Deploy = false            // Do not deploy immediately
+		createReq.SeedImageMetadata = false // pass through seed image metadata flag
 
 		createdApp, err := CreateApp(envID, createReq)
 		if err != nil {
