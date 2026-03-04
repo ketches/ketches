@@ -230,7 +230,6 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
             />
           ) : (
             <DataTable
-              borderless
               columns={columns}
               data={certificates}
               searchKey="name"

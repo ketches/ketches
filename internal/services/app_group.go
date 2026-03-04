@@ -7,20 +7,20 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
-// ListAppGroups returns all groups for a project.
-func ListAppGroups(projectID string) ([]entities.AppGroup, error) {
+// ListAppGroups returns all groups for an environment.
+func ListAppGroups(envID string) ([]entities.AppGroup, error) {
 	var groups []entities.AppGroup
-	if err := db.DB.Where("project_id = ?", projectID).Order("created_at ASC").Find(&groups).Error; err != nil {
+	if err := db.DB.Where("env_id = ?", envID).Order("created_at ASC").Find(&groups).Error; err != nil {
 		return nil, err
 	}
 	return groups, nil
 }
 
-// CreateAppGroup creates a new app group for a project.
-func CreateAppGroup(projectID, userID string, req *models.CreateAppGroupRequest) (*entities.AppGroup, error) {
+// CreateAppGroup creates a new app group for an environment.
+func CreateAppGroup(envID, userID string, req *models.CreateAppGroupRequest) (*entities.AppGroup, error) {
 	group := &entities.AppGroup{
-		Base:            entities.Base{ID: uuid.New()},
-		ProjectID:       projectID,
+		ID:              uuid.New(),
+		EnvID:           envID,
 		Name:            req.Name,
 		Description:     req.Description,
 		CreatedByUserID: userID,
@@ -61,7 +61,7 @@ func AddAppToGroup(groupID, appID string) error {
 		return nil
 	}
 	member := &entities.AppGroupMember{
-		Base:    entities.Base{ID: uuid.New()},
+		ID:      uuid.New(),
 		GroupID: groupID,
 		AppID:   appID,
 	}
@@ -73,9 +73,9 @@ func RemoveAppFromGroup(groupID, appID string) error {
 	return db.DB.Where("group_id = ? AND app_id = ?", groupID, appID).Delete(&entities.AppGroupMember{}).Error
 }
 
-// ListGroupedApps returns each group with its apps scoped to the given env.
-func ListGroupedApps(projectID, envID string) ([]models.AppGroupWithApps, error) {
-	groups, err := ListAppGroups(projectID)
+// ListGroupedApps returns each group with its apps for the given environment.
+func ListGroupedApps(envID string) ([]models.AppGroupWithApps, error) {
+	groups, err := ListAppGroups(envID)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func ListGroupedApps(projectID, envID string) ([]models.AppGroupWithApps, error)
 			if err := db.DB.Select("id, slug, name, deploy_status").
 				Where("id = ? AND env_id = ?", m.AppID, envID).
 				First(&app).Error; err != nil {
-				continue // skip apps not in this env
+				continue // skip apps not in this env (stale references)
 			}
 			apps = append(apps, models.AppSimpleResponse{
 				ID:     app.ID,
@@ -109,7 +109,7 @@ func ListGroupedApps(projectID, envID string) ([]models.AppGroupWithApps, error)
 		result = append(result, models.AppGroupWithApps{
 			AppGroupResponse: models.AppGroupResponse{
 				ID:          g.ID,
-				ProjectID:   g.ProjectID,
+				EnvID:       g.EnvID,
 				Name:        g.Name,
 				Description: g.Description,
 				CreatedAt:   g.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),

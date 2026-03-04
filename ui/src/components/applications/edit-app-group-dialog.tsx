@@ -23,8 +23,7 @@ export function EditAppGroupDialog({ group, open, onOpenChange, onSuccess }: Pro
   const mutation = useMutation({
     mutationFn: () => appGroupsApi.update(group.id, { name, description }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['app-groups', group.project_id] })
-      queryClient.invalidateQueries({ queryKey: ['grouped-apps', group.project_id] })
+      queryClient.invalidateQueries({ queryKey: ['app-groups', group.env_id] })
       toast.success('Group updated')
       onOpenChange(false)
       onSuccess?.()

@@ -50,7 +50,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import { toast } from "sonner"
 
-import { appGroupsApi } from "@/api/app-groups"
+import { appFavoritesApi } from "@/api/app-favorite"
 import { appsApi, type App } from "@/api/apps"
 import { clustersApi } from "@/api/clusters"
 import { envsApi } from "@/api/envs"
@@ -552,15 +552,15 @@ export function ApplicationDetailPage() {
   })
   const { data: favoriteStatus } = useQuery({
     queryKey: ['app-favorite', appId],
-    queryFn: () => appGroupsApi.getFavoriteStatus(appId!),
+    queryFn: () => appFavoritesApi.getFavoriteStatus(appId!),
     enabled: !!appId,
   })
 
   const toggleFavMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (): Promise<void> =>
       favoriteStatus?.is_favorite
-        ? appGroupsApi.removeFavorite(appId!)
-        : appGroupsApi.addFavorite(appId!),
+        ? appFavoritesApi.removeFavorite(appId!)
+        : appFavoritesApi.addFavorite(appId!).then(() => undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app-favorite', appId] })
       queryClient.invalidateQueries({ queryKey: ['app-favorites'] })
@@ -1262,7 +1262,6 @@ export function ApplicationDetailPage() {
                 </div>
               ) : viewMode === 'table' ? (
                 <DataTable
-                  borderless
                   columns={instanceColumns}
                   data={filteredInstances}
                   rowSelection={rowSelection}

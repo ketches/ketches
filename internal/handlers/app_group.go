@@ -9,10 +9,10 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
-// ListAppGroups returns all app groups for a project.
+// ListAppGroups returns all app groups (with their apps) for an environment.
 func ListAppGroups(c *gin.Context) {
-	projectID := c.Param("projectID")
-	groups, err := services.ListAppGroups(projectID)
+	envID := c.Param("envID")
+	groups, err := services.ListGroupedApps(envID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -20,21 +20,9 @@ func ListAppGroups(c *gin.Context) {
 	api.Success(c, groups)
 }
 
-// ListGroupedApps returns groups with their apps for a given project+env.
-func ListGroupedApps(c *gin.Context) {
-	projectID := c.Param("projectID")
-	envID := c.Param("envID")
-	result, err := services.ListGroupedApps(projectID, envID)
-	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
-		return
-	}
-	api.Success(c, result)
-}
-
-// CreateAppGroup creates a new app group.
+// CreateAppGroup creates a new app group for an environment.
 func CreateAppGroup(c *gin.Context) {
-	projectID := c.Param("projectID")
+	envID := c.Param("envID")
 	claims := api.GetClaims(c)
 	if claims == nil {
 		api.Error(c, http.StatusUnauthorized, nil)
@@ -47,7 +35,7 @@ func CreateAppGroup(c *gin.Context) {
 		return
 	}
 
-	group, err := services.CreateAppGroup(projectID, claims.UserID, &req)
+	group, err := services.CreateAppGroup(envID, claims.UserID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

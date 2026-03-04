@@ -311,7 +311,6 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
             />
           ) : (
             <DataTable
-              borderless
               columns={columns}
               data={integrations}
               searchKey="name"

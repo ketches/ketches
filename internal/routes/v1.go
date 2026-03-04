@@ -53,8 +53,6 @@ func SetupV1Routes(r *gin.Engine) {
 				projects.GET("/:projectID/plugins/simple", handlers.ListPluginsSimple)
 				projects.GET("/:projectID/plugins/:pluginID", handlers.GetPlugin)
 				projects.GET("/:projectID/plugins/:pluginID/installed-apps", handlers.GetPluginInstalledApps)
-				projects.GET("/:projectID/app-groups", handlers.ListAppGroups)
-				projects.GET("/:projectID/envs/:envID/grouped-apps", handlers.ListGroupedApps)
 
 				// Write (require at least developer role)
 				projectsWrite := projects.Group("", middlewares.RequireProjectRole("developer"))
@@ -68,7 +66,6 @@ func SetupV1Routes(r *gin.Engine) {
 				projectsWrite.POST("/:projectID/plugins", handlers.CreatePlugin)
 				projectsWrite.PUT("/:projectID/plugins/:pluginID", handlers.UpdatePlugin)
 				projectsWrite.DELETE("/:projectID/plugins/:pluginID", handlers.DeletePlugin)
-				projectsWrite.POST("/:projectID/app-groups", handlers.CreateAppGroup)
 			}
 
 			// ── Code Repositories ─────────────────────────────────────
@@ -107,9 +104,10 @@ func SetupV1Routes(r *gin.Engine) {
 				envs.GET("/:envID/apps", handlers.ListApps)
 				envs.GET("/:envID/apps/simple", handlers.ListAppsSimple)
 				envs.GET("/:envID/apps/export", handlers.ExportEnvApps)
+				envs.GET("/:envID/app-groups", handlers.ListAppGroups)
+				envs.GET("/:envID/favorites/apps", handlers.ListFavoriteApps)
 				envs.GET("/:envID/certificates", handlers.ListEnvCertificates)
 				envs.GET("/:envID/certificates/:certID", handlers.GetCertificate)
-
 				// Write (require at least developer role)
 				envsWrite := envs.Group("", middlewares.RequireProjectRole("developer"))
 				envsWrite.PUT("/:envID", handlers.UpdateEnv)
@@ -119,6 +117,7 @@ func SetupV1Routes(r *gin.Engine) {
 				envsWrite.PATCH("/:envID/unset-build-env", handlers.UnsetBuildEnv)
 				envsWrite.POST("/:envID/apps", handlers.CreateApp)
 				envsWrite.POST("/:envID/apps/import", handlers.ImportApps)
+				envsWrite.POST("/:envID/app-groups", handlers.CreateAppGroup)
 				envsWrite.POST("/:envID/certificates", handlers.CreateEnvCertificate)
 				envsWrite.PUT("/:envID/certificates/:certID", handlers.UpdateCertificate)
 				envsWrite.DELETE("/:envID/certificates/:certID", handlers.DeleteCertificate)
@@ -211,11 +210,6 @@ func SetupV1Routes(r *gin.Engine) {
 				appGroupsWrite.DELETE("/:groupID/apps/:appID", handlers.RemoveAppFromGroup)
 			}
 
-			// ── App Favorites ────────────────────────────────────────────────
-			favorites := authorized.Group("/favorites")
-			{
-				favorites.GET("/apps", handlers.ListFavoriteApps)
-			}
 
 			flatResourcesWrite := authorized.Group("", middlewares.RequireProjectRole("developer"))
 			{

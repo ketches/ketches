@@ -270,7 +270,6 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
               </div>
             </div>
             <DataTable
-              borderless
               columns={configFileColumns}
               data={filteredConfigFiles}
               rowSelection={rowSelection}

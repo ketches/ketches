@@ -276,7 +276,7 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
             actionIcon={ScanSearch}
           />
         ) : (
-          <DataTable borderless columns={columns} data={appPlugins} />
+          <DataTable columns={columns} data={appPlugins} />
         )}
       </CardContent>
 

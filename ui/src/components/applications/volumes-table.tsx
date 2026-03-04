@@ -298,7 +298,6 @@ export function VolumesTable({ app }: VolumesTableProps) {
               </div>
             </div>
             <DataTable
-              borderless
               columns={volumeColumns}
               data={filteredVolumes}
               rowSelection={rowSelection}

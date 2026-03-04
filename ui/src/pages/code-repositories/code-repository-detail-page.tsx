@@ -664,7 +664,6 @@ export function CodeRepositoryDetailPage() {
                 <DataTable
                   columns={buildConfigColumns}
                   data={buildConfigs}
-                  borderless
                 />
               )}
             </CardContent>
@@ -691,7 +690,6 @@ export function CodeRepositoryDetailPage() {
                 <DataTable
                   columns={buildHistoryColumns}
                   data={builds}
-                  borderless
                 />
               )}
             </CardContent>
@@ -720,7 +718,6 @@ export function CodeRepositoryDetailPage() {
                 <DataTable
                   columns={deploymentColumns}
                   data={deployments as DeploymentItem[]}
-                  borderless
                 />
               )}
             </CardContent>

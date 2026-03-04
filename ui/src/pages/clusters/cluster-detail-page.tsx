@@ -665,7 +665,6 @@ export function ClusterDetailPage() {
             </CardHeader>
             <CardContent>
               {safeNodes && safeNodes.length > 0 ? (<DataTable
-                borderless
                 columns={columns}
                 data={safeNodes}
                 searchKey="name"

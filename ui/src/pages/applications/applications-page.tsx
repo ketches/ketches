@@ -130,7 +130,7 @@ export function ApplicationsPage() {
                 />
               </TabsContent>
               <TabsContent value="groups" className="mt-0 h-full">
-                <AppGroupsView projectId={activeProjectId!} envId={activeEnvId} />
+                <AppGroupsView envId={activeEnvId} />
               </TabsContent>
               <TabsContent value="favorites" className="mt-0 h-full">
                 <ApplicationList
@@ -164,7 +164,7 @@ export function ApplicationsPage() {
       />
 
       <CreateAppGroupDialog
-        projectId={activeProjectId!}
+        envId={activeEnvId!}
         open={createGroupDialogOpen}
         onOpenChange={setCreateGroupDialogOpen}
       />

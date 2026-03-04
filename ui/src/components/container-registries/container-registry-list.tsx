@@ -141,7 +141,6 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
             />
           ) : (
             <DataTable
-              borderless
               columns={columns}
               data={containerRegistries}
               searchKey="name"

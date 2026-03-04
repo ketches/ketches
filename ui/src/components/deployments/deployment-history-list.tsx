@@ -4,8 +4,8 @@ import { Clock, History, Package, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 
 import { deploymentHistoryApi, type DeploymentHistory } from "@/api/deployment-history"
-import { EmptyState } from "@/components/shared/empty-state"
 import { DataTable } from "@/components/data-table/data-table"
+import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -151,7 +151,6 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
             <DataTable
               columns={columns}
               data={histories}
-              borderless
               manualPagination
               pagination={pagination}
               onPaginationChange={setPagination}

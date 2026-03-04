@@ -15,7 +15,7 @@ type UpdateAppGroupRequest struct {
 // AppGroupResponse is the response body for an app group.
 type AppGroupResponse struct {
 	ID          string `json:"id"`
-	ProjectID   string `json:"project_id"`
+	EnvID       string `json:"env_id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	CreatedAt   string `json:"created_at"`
@@ -33,10 +33,4 @@ type AppSimpleResponse struct {
 type AppGroupWithApps struct {
 	AppGroupResponse
 	Apps []AppSimpleResponse `json:"apps"`
-}
-
-// AppFavoriteResponse is the response for an app favorite record.
-type AppFavoriteResponse struct {
-	ID    string `json:"id"`
-	AppID string `json:"app_id"`
 }

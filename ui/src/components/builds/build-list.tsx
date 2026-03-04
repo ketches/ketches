@@ -10,8 +10,8 @@ import { buildsApi, type Build } from "@/api/builds"
 import { BuildLogViewer } from "@/components/builds/build-log-viewer"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
 import { UnifiedBuildDeployDialog } from "@/components/code-repositories/unified-build-deploy-dialog"
-import { EmptyState } from "@/components/shared/empty-state"
 import { DataTable } from "@/components/data-table/data-table"
+import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -222,7 +222,6 @@ export function BuildList({ appId }: BuildListProps) {
             <DataTable
               columns={columns}
               data={builds}
-              borderless
               onRowClick={(build) => setShowLogDialog(build.id)}
               getRowClassName={() => "cursor-pointer hover:bg-muted/50"}
               onRefresh={refetch}

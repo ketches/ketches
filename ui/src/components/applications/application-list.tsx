@@ -45,18 +45,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
 
-import { MoreHorizontal, Star } from 'lucide-react'
+import { appFavoritesApi } from "@/api/app-favorite"
 import { appGroupsApi } from "@/api/app-groups"
-import { useProjectStore } from "@/stores/project"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Star } from 'lucide-react'
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
   const date = new Date(dateString)
@@ -114,26 +113,26 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
     pageIndex: 0,
     pageSize: 10,
   })
-  const { activeProjectId } = useProjectStore()
   const { data: favorites = [] } = useQuery({
-    queryKey: ['app-favorites'],
-    queryFn: () => appGroupsApi.listFavorites(),
+    queryKey: ['app-favorites', envId],
+    queryFn: () => appFavoritesApi.listFavorites(envId),
+    enabled: !!envId,
   })
   const favoriteIds = new Set(favorites.map((f: any) => f.app_id))
 
   const { data: appGroups = [] } = useQuery({
-    queryKey: ['app-groups', activeProjectId],
-    queryFn: () => appGroupsApi.list(activeProjectId!),
-    enabled: !!activeProjectId,
+    queryKey: ['app-groups', envId],
+    queryFn: () => appGroupsApi.list(envId),
+    enabled: !!envId,
   })
 
   const toggleFavMutation = useMutation({
-    mutationFn: (app: App) =>
+    mutationFn: (app: App): Promise<void> =>
       favoriteIds.has(app.id)
-        ? appGroupsApi.removeFavorite(app.id)
-        : appGroupsApi.addFavorite(app.id),
+        ? appFavoritesApi.removeFavorite(app.id)
+        : appFavoritesApi.addFavorite(app.id).then(() => undefined),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['app-favorites'] })
+      queryClient.invalidateQueries({ queryKey: ['app-favorites', envId] })
     },
   })
 
@@ -141,7 +140,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
     mutationFn: ({ groupId, appId }: { groupId: string; appId: string }) =>
       appGroupsApi.removeApp(groupId, appId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grouped-apps'] })
+      queryClient.invalidateQueries({ queryKey: ['app-groups', envId] })
       toast.success('Removed from group')
     },
   })
@@ -150,7 +149,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
     mutationFn: ({ groupId, appId }: { groupId: string; appId: string }) =>
       appGroupsApi.addApp(groupId, appId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grouped-apps'] })
+      queryClient.invalidateQueries({ queryKey: ['app-groups', envId] })
       toast.success('Added to group')
     },
   })
@@ -390,7 +389,6 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly, hideT
   return (
     <>
       <DataTable
-        borderless
         columns={columns}
         data={safeApps}
         viewMode={viewMode}

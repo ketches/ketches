@@ -372,7 +372,7 @@ export function TopologyView({ appId, isViewer }: { appId: string; isViewer?: bo
 
   return (
     <TopologyViewContext.Provider value={ctxValue}>
-      <div className="w-full h-100 overflow-hidden border rounded-lg bg-muted/5">
+      <div className="w-full h-150 overflow-hidden border rounded-lg bg-muted/5">
         <ReactFlow
           nodes={nodes}
           edges={edges}

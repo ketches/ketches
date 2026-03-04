@@ -272,7 +272,6 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
               </div>
             </div>
             <DataTable
-              borderless
               columns={envVarColumns}
               data={filteredEnvVars}
               rowSelection={rowSelection}

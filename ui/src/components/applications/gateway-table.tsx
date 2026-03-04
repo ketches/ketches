@@ -303,7 +303,6 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
               </div>
             </div>
             <DataTable
-              borderless
               columns={gatewayColumns}
               data={filteredGateways}
               rowSelection={rowSelection}

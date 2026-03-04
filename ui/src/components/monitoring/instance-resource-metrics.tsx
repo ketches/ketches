@@ -67,12 +67,13 @@ export function InstanceResourceMetrics({
       const now = Math.floor(Date.now() / 1000)
       const start = now - rangeSeconds
       const step = timeStep
+      const rateWindow = `${parseInt(timeStep) * 2}s`
 
       const queries = {
-        cpu: `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}", pod="${podName}", container!=""}[5m])) * 1000`,
+        cpu: `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}", pod="${podName}", container!=""}[${rateWindow}])) * 1000`,
         memory: `sum(container_memory_working_set_bytes{namespace="${namespace}", pod="${podName}", container!=""}) / 1024 / 1024 / 1024`,
-        ingress: `sum(rate(container_network_receive_bytes_total{namespace="${namespace}", pod="${podName}"}[5m])) / 1024`,
-        egress: `sum(rate(container_network_transmit_bytes_total{namespace="${namespace}", pod="${podName}"}[5m])) / 1024`,
+        ingress: `sum(rate(container_network_receive_bytes_total{namespace="${namespace}", pod="${podName}"}[${rateWindow}])) / 1024`,
+        egress: `sum(rate(container_network_transmit_bytes_total{namespace="${namespace}", pod="${podName}"}[${rateWindow}])) / 1024`,
       }
 
       const results = await Promise.all(

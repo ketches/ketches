@@ -239,7 +239,7 @@ export function RepoTopologyView({ repoId }: { repoId: string }) {
   }
 
   return (
-    <div className="w-full h-100 overflow-hidden border rounded-lg bg-muted/5">
+    <div className="w-full h-150 overflow-hidden border rounded-lg bg-muted/5">
       <ReactFlow
         nodes={displayNodes}
         edges={displayEdges}

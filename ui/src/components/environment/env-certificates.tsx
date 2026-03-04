@@ -5,8 +5,8 @@ import * as React from "react"
 import { toast } from "sonner"
 
 import { certificatesApi, type Certificate } from "@/api/certificates"
-import { EmptyState } from "@/components/shared/empty-state"
 import { DataTable } from "@/components/data-table/data-table"
+import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -179,31 +179,31 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
     },
     ...(!isViewer
       ? [
-          {
-            id: "actions",
-            header: () => <div className="text-right">Actions</div>,
-            cell: ({ row }: { row: { original: Certificate } }) => (
-              <div className="flex items-center gap-1 justify-end">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleOpenEdit(row.original)}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => handleOpenDelete(row.original)}
-                  disabled={deleteMutation.isPending}
-                >
-                  <Trash2 />
-                </Button>
-              </div>
-            ),
-          } as ColumnDef<Certificate>,
-        ]
+        {
+          id: "actions",
+          header: () => <div className="text-right">Actions</div>,
+          cell: ({ row }: { row: { original: Certificate } }) => (
+            <div className="flex items-center gap-1 justify-end">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleOpenEdit(row.original)}
+              >
+                <Pencil />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => handleOpenDelete(row.original)}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 />
+              </Button>
+            </div>
+          ),
+        } as ColumnDef<Certificate>,
+      ]
       : []),
   ]
 
@@ -235,7 +235,6 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
             />
           ) : (
             <DataTable
-              borderless
               columns={columns}
               data={certificates}
               searchKey="name"

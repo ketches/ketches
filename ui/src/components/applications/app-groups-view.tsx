@@ -1,26 +1,26 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { appGroupsApi, type AppGroupWithApps } from '@/api/app-groups'
+import { appsApi } from '@/api/apps'
+import { ApplicationList } from '@/components/applications/application-list'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { appGroupsApi, type AppGroupWithApps } from '@/api/app-groups'
-import { appsApi } from '@/api/apps'
-import { ApplicationList } from '@/components/applications/application-list'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import { EditAppGroupDialog } from './edit-app-group-dialog'
 
-interface Props { projectId: string; envId: string }
+interface Props { envId: string }
 
-export function AppGroupsView({ projectId, envId }: Props) {
+export function AppGroupsView({ envId }: Props) {
   const queryClient = useQueryClient()
   const [editTarget, setEditTarget] = useState<AppGroupWithApps | null>(null)
 
   const { data: groupedApps = [] } = useQuery({
-    queryKey: ['grouped-apps', projectId, envId],
-    queryFn: () => appGroupsApi.listGrouped(projectId, envId),
-    enabled: !!projectId && !!envId,
+    queryKey: ['app-groups', envId],
+    queryFn: () => appGroupsApi.list(envId),
+    enabled: !!envId,
   })
 
   // Fetch all apps to compute ungrouped set
@@ -40,8 +40,7 @@ export function AppGroupsView({ projectId, envId }: Props) {
   const deleteMutation = useMutation({
     mutationFn: (groupId: string) => appGroupsApi.delete(groupId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grouped-apps', projectId, envId] })
-      queryClient.invalidateQueries({ queryKey: ['app-groups', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['app-groups', envId] })
       toast.success('Group deleted')
     },
     onError: () => toast.error('Failed to delete group'),
@@ -56,9 +55,6 @@ export function AppGroupsView({ projectId, envId }: Props) {
             {/* Group header with hover-visible actions */}
             <div className="group/header flex items-center gap-2 mb-3">
               <h3 className="text-sm font-semibold">{group.name}</h3>
-              {group.description && (
-                <span className="text-xs text-muted-foreground">{group.description}</span>
-              )}
               <div className="opacity-0 group-hover/header:opacity-100 transition-opacity">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -112,7 +108,7 @@ export function AppGroupsView({ projectId, envId }: Props) {
           open={!!editTarget}
           onOpenChange={open => !open && setEditTarget(null)}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['grouped-apps', projectId, envId] })
+            queryClient.invalidateQueries({ queryKey: ['app-groups', envId] })
             setEditTarget(null)
           }}
         />

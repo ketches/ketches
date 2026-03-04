@@ -38,7 +38,7 @@ func ListClusters(page, pageSize int, search string) (int64, []entities.Cluster,
 
 func ListClustersSimple() ([]entities.Cluster, error) {
 	var clusters []entities.Cluster
-	if err := db.DB.Select("id, slug, name, description").Order("created_at").Find(&clusters).Error; err != nil {
+	if err := db.DB.Select("id, slug, name, description, connection_status").Order("created_at").Find(&clusters).Error; err != nil {
 		return nil, err
 	}
 	return clusters, nil

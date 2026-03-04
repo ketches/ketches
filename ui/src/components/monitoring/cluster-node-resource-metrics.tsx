@@ -49,19 +49,20 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
       const now = Math.floor(Date.now() / 1000)
       const start = now - rangeSeconds
       const step = timeStep
+      const rateWindow = `${parseInt(timeStep) * 2}s`
 
       const filter = nodeName ? `, node="${nodeName}"` : ""
       const nodeIpFilter = nodeIp ? `, instance="${nodeIp}:9100"` : ""
 
       const queries = {
-        cpu: `sum(rate(container_cpu_usage_seconds_total{container!=""${filter}}[5m])) * 1000`,
-        cpuUtil: `sum(rate(container_cpu_usage_seconds_total{container!=""${filter}}[5m])) / sum(kube_node_status_allocatable{resource="cpu"${filter}}) * 100`,
+        cpu: `sum(rate(container_cpu_usage_seconds_total{container!=""${filter}}[${rateWindow}])) * 1000`,
+        cpuUtil: `sum(rate(container_cpu_usage_seconds_total{container!=""${filter}}[${rateWindow}])) / sum(kube_node_status_allocatable{resource="cpu"${filter}}) * 100`,
         memory: `sum(container_memory_working_set_bytes{container!=""${filter}}) / 1024 / 1024 / 1024`,
         memUtil: `sum(container_memory_working_set_bytes{container!=""${filter}}) / sum(kube_node_status_allocatable{resource="memory"${filter}}) * 100`,
         storage: `avg(node_filesystem_size_bytes{device=~"/dev/.*", container!=""${nodeIpFilter}}-node_filesystem_free_bytes{device=~"/dev/.*", container!=""${nodeIpFilter}}) / 1024 / 1024 / 1024`,
         storageUtil: `(1-avg(node_filesystem_free_bytes{device=~"/dev/.*", container!=""${nodeIpFilter}} / node_filesystem_size_bytes{device=~"/dev/.*", container!=""${nodeIpFilter}})) * 100`,
-        ingress: `sum(rate(container_network_receive_bytes_total{${nodeName ? `node="${nodeName}"` : ""}}[5m])) / 1024`,
-        egress: `sum(rate(container_network_transmit_bytes_total{${nodeName ? `node="${nodeName}"` : ""}}[5m])) / 1024`,
+        ingress: `sum(rate(container_network_receive_bytes_total{${nodeName ? `node="${nodeName}"` : ""}}[${rateWindow}])) / 1024`,
+        egress: `sum(rate(container_network_transmit_bytes_total{${nodeName ? `node="${nodeName}"` : ""}}[${rateWindow}])) / 1024`,
       }
 
       const results = await Promise.all(

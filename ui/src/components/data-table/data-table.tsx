@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Info, RefreshCw } from "lucide-react"
 
 import {
   Combobox,
@@ -67,6 +67,7 @@ interface DataTableProps<TData, TValue> {
 }
 
 import { type PaginationState } from "@tanstack/react-table"
+import { EmptyState } from "../shared/empty-state"
 
 export function DataTable<TData, TValue>({
   columns,
@@ -82,7 +83,7 @@ export function DataTable<TData, TValue>({
   getRowClassName,
   renderCard,
   viewMode = "list",
-  borderless = false,
+  borderless = true,
   emptyContent,
   pagination: paginationProp,
   onPaginationChange: onPaginationChangeProp,
@@ -102,6 +103,8 @@ export function DataTable<TData, TValue>({
     pageIndex: 0,
     pageSize: 10,
   })
+  // Go-to-page input state
+  const [goToPage, setGoToPage] = React.useState("")
 
   const rowSelection = controlledRowSelection ?? internalRowSelection
   const handleRowSelectionChange = onRowSelectionChange ?? setInternalRowSelection
@@ -133,12 +136,57 @@ export function DataTable<TData, TValue>({
     },
   })
 
+  // Determine the minimum page size threshold for the current view mode
+  const minPageSize = viewMode === "card" ? 9 : 10
+  // For manual pagination use totalCount; for local pagination use data length
+  const effectiveTotal = manualPagination ? (totalCount ?? 0) : data.length
+  // Show pagination only when data exceeds the minimum page size
+  const shouldShowPagination = !hidePagination && effectiveTotal > minPageSize
+
+  // Handle go-to-page navigation
+  const handleGoToPage = () => {
+    const page = parseInt(goToPage, 10)
+    if (!isNaN(page) && page >= 1 && page <= table.getPageCount()) {
+      table.setPageIndex(page - 1)
+    }
+    setGoToPage("")
+  }
+
+  // Card mode: select-all checkbox and selected count shown in toolbar
+  // Card mode: select-all shown on DataTable hover or when rows are selected
+  const hasSelection = table.getFilteredSelectedRowModel().rows.length > 0
+  const cardSelectAll = viewMode === "card" ? (
+    <label className={cn(
+      "flex items-center gap-2 cursor-pointer transition-opacity",
+      hasSelection ? "opacity-100" : "opacity-0 group-hover/datatable:opacity-100"
+    )}>
+      <Checkbox
+        checked={
+          (table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() ? "mixed" : false)) as any
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+      />
+      <p className="text-xs font-medium text-muted-foreground">Select all</p>
+    </label>
+  ) : null
+
+  const selectedCountBadge = hasSelection ? (
+    <i className="text-xs text-muted-foreground">
+      {table.getFilteredSelectedRowModel().rows.length} of{" "}
+      {table.getFilteredRowModel().rows.length} row(s) selected.
+    </i>
+  ) : null
+
+  // Determine whether toolbar should be rendered
+  const hasToolbar = searchKey || toolbarActions || batchActions || leftActions || viewMode === "card"
+
   return (
-    <div className="space-y-4">
-      {(searchKey || toolbarActions || batchActions || leftActions) && (
+    <div className="group/datatable space-y-4">
+      {hasToolbar && (
         <div className="flex items-center justify-between gap-4">
           <div className="flex flex-1 items-center gap-2">
-            {searchKey ? (
+            {searchKey && (
               <Input
                 placeholder={searchPlaceholder}
                 value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
@@ -147,9 +195,12 @@ export function DataTable<TData, TValue>({
                 }
                 className="flex flex-1 max-w-sm min-w-75"
               />
-            ) : (
-              leftActions?.(table)
             )}
+            {/* leftActions: shown after search box (or alone when no search box) */}
+            {leftActions?.(table)}
+            {/* Card mode: select-all and selected count after search box */}
+            {viewMode === "card" && cardSelectAll}
+            {viewMode === "card" && selectedCountBadge}
           </div>
           <div className="flex items-center gap-2">
             {batchActions?.(table)}
@@ -167,61 +218,60 @@ export function DataTable<TData, TValue>({
         </div>
       )}
       {viewMode === "list" ? (
-        <div className={cn("rounded-md border", borderless && "border-x-0 rounded-none")}>
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    onClick={() => onRowClick?.(row.original)}
-                    className={cn(
-                      onRowClick ? "cursor-pointer" : "",
-                      getRowClassName?.(row.original)
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
+        <>
+          {table.getRowModel().rows?.length ? (
+            <div className={cn("rounded-md border", borderless && "border-x-0 rounded-none")}>
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        return (
+                          <TableHead key={header.id}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                          </TableHead>
+                        )
+                      })}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && "selected"}
+                        onClick={() => onRowClick?.(row.original)}
+                        className={cn(
+                          onRowClick ? "cursor-pointer" : "",
+                          getRowClassName?.(row.original)
                         )}
-                      </TableCell>
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className={emptyContent ? "p-0" : "h-24 text-center"}
-                  >
-                    {emptyContent ?? "No results."}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="col-span-full flex items-center">
+              <EmptyState title="" description="No results." icon={Info} />
+            </div>
+          )
+          }
+        </>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {table.getRowModel().rows?.length ? (
@@ -248,40 +298,24 @@ export function DataTable<TData, TValue>({
                 {emptyContent}
               </div>
             ) : (
-              <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground border rounded-md">
-                No results.
+              <div className="col-span-full flex items-center">
+                <EmptyState title="" description="No results." icon={Info} />
               </div>
             )
           )}
         </div>
       )}
 
-      {!hidePagination && (
-        <div className="flex items-center justify-between px-2">
+      {shouldShowPagination && (
+        <div className="flex items-center justify-between">
           <div className="flex-1 flex items-center gap-2 text-xs">
-            {viewMode === "card" && (
-              <label className="flex items-center gap-2">
-                <Checkbox
-                  checked={
-                    (table.getIsAllPageRowsSelected() ||
-                      (table.getIsSomePageRowsSelected() ? "mixed" : false)) as any
-                  }
-                  onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                />
-                <p className="text-xs font-medium">Select all</p>
-              </label>
-            )}
-            {table.getFilteredSelectedRowModel().rows.length > 0 && (
-              <i className="text-muted-foreground">
-                {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                {table.getFilteredRowModel().rows.length} row(s) selected.
-              </i>
-            )}
+            {/* List mode: selected count shown here (card mode shows it in toolbar) */}
+            {viewMode === "list" && selectedCountBadge}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center space-x-6 lg:space-x-8">
               <div className="flex items-center space-x-2">
-                <p className="text-xs font-medium">Rows per page</p>
+                <p className="text-xs font-medium text-muted-foreground">Rows per page</p>
                 <Combobox
                   value={`${table.getState().pagination.pageSize}`}
                   onValueChange={(value: string | null) => {
@@ -290,7 +324,7 @@ export function DataTable<TData, TValue>({
                     }
                   }}
                 >
-                  <ComboboxInput className="h-8 w-16" />
+                  <ComboboxInput className="h-7 w-16" />
                   <ComboboxContent>
                     <ComboboxList>
                       {(viewMode === "card" ? [9, 15, 30, 45, 60] : [10, 20, 30, 40, 50]).map((pageSize) => (
@@ -302,9 +336,29 @@ export function DataTable<TData, TValue>({
                   </ComboboxContent>
                 </Combobox>
               </div>
-              <div className="flex w-25 items-center justify-center text-xs font-medium">
+              <div className="flex w-fit items-center justify-center text-xs font-medium text-muted-foreground">
                 Page {table.getState().pagination.pageIndex + 1} of{" "}
                 {table.getPageCount()}
+              </div>
+              {/* Go-to-page input */}
+              <div className="flex items-center space-x-2">
+                <p className="text-xs font-medium text-muted-foreground">Go to</p>
+                <Input
+                  className="h-7 w-14 text-xs text-center"
+                  value={goToPage}
+                  onChange={(e) => setGoToPage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleGoToPage()
+                  }}
+                  placeholder={`${table.getState().pagination.pageIndex + 1}`}
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleGoToPage}
+                  disabled={table.getPageCount() <= 1}
+                >
+                  Go
+                </Button>
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -347,4 +401,3 @@ export function DataTable<TData, TValue>({
     </div>
   )
 }
-

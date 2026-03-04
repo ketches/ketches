@@ -9,22 +9,21 @@ import { Textarea } from '@/components/ui/textarea'
 import { appGroupsApi } from '@/api/app-groups'
 
 interface Props {
-  projectId: string
+  envId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
 }
 
-export function CreateAppGroupDialog({ projectId, open, onOpenChange, onSuccess }: Props) {
+export function CreateAppGroupDialog({ envId, open, onOpenChange, onSuccess }: Props) {
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
 
   const mutation = useMutation({
-    mutationFn: () => appGroupsApi.create(projectId, { name, description }),
+    mutationFn: () => appGroupsApi.create(envId, { name, description }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['app-groups', projectId] })
-      queryClient.invalidateQueries({ queryKey: ['grouped-apps', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['app-groups', envId] })
       toast.success('Group created')
       setName('')
       setDescription('')

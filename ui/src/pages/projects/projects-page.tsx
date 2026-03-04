@@ -176,6 +176,16 @@ export function ProjectsPage() {
       ),
     },
     {
+      accessorKey: "created_at",
+      header: "Created At",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
+      ),
+    },
+    {
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {

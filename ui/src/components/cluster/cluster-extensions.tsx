@@ -337,7 +337,6 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             />
           ) : (
             <DataTable
-              borderless
               columns={columns}
               data={safeExtensions}
               searchKey="release_name"
@@ -377,7 +376,6 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             />
           ) : (
             <DataTable
-              borderless
               columns={catalogColumns}
               data={availableItems}
               searchKey="name"

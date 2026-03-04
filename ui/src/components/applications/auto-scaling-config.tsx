@@ -21,6 +21,7 @@ import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/fie
 import { Input } from "@/components/ui/input"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
+import { EmptyState } from "../shared/empty-state"
 
 const METRIC_OPTIONS = [
   { value: "cpu", label: "CPU Utilization" },
@@ -138,7 +139,6 @@ export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
                     disabled={!enabled}
                   >
                     <ComboboxInput placeholder="Add Metric" />
-                    <ComboboxInput placeholder="Add Metric" />
                     <ComboboxContent>
                       <ComboboxList>
                         {[
@@ -217,9 +217,7 @@ export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
                 )}
 
                 {!cpuEnabled && !memoryEnabled && (
-                  <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground text-xs">
-                    No metrics configured. Click "Add Metric" to begin.
-                  </div>
+                  <EmptyState title="" description="No metrics configured. Click 'Add Metric' to begin." />
                 )}
               </div>
             </div>
