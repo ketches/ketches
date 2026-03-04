@@ -446,7 +446,7 @@ func PermanentlyDeleteApp(appID string) error {
 	}
 
 	// Delete Kubernetes resources created by this app
-	if err := deleteAppK8sResources(context.Background(), &application); err != nil {
+	if err := deleteAppK8sResources(context.Background(), &application, false); err != nil {
 		return err
 	}
 
@@ -502,7 +502,7 @@ func PermanentlyDeleteApp(appID string) error {
 }
 
 // deleteAppK8sResources deletes all Kubernetes resources created by an app
-func deleteAppK8sResources(ctx context.Context, app *entities.App) error {
+func deleteAppK8sResources(ctx context.Context, app *entities.App, keepStorageData bool) error {
 	if app.Env.ClusterID == "" {
 		return nil
 	}
@@ -547,10 +547,12 @@ func deleteAppK8sResources(ctx context.Context, app *entities.App) error {
 	}
 
 	// Delete PVCs
-	if err := client.CoreV1().PersistentVolumeClaims(ns).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: appLabel,
-	}); err != nil && !k8serrors.IsNotFound(err) {
-		return err
+	if !keepStorageData {
+		if err := client.CoreV1().PersistentVolumeClaims(ns).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: appLabel,
+		}); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	// Delete HPA if exists
@@ -823,6 +825,9 @@ func executeUpdateAction(ctx context.Context, application *entities.App) (*entit
 }
 
 func executeRedeployAction(ctx context.Context, application *entities.App) (*entities.App, error) {
+	if err := deleteAppK8sResources(ctx, application, true); err != nil {
+		return nil, err
+	}
 	return executeDeployAction(ctx, application)
 }
 
@@ -1091,7 +1096,7 @@ func seedAppFromImageMetadata(ctx context.Context, application *entities.App) er
 			AppID:      application.ID,
 			Slug:       slug,
 			MountPath:  mountPath,
-			VolumeType: "emptydir",
+			VolumeType: "pvc",
 			Capacity:   1,
 		}
 		// Ignore duplicate mount path errors
@@ -1101,7 +1106,7 @@ func seedAppFromImageMetadata(ctx context.Context, application *entities.App) er
 	// Seed Gateways — skip duplicate port/protocol combinations
 	for _, pi := range meta.ExposedPorts {
 		// Map TCP→HTTP and UDP→UDP for gateway protocol
-		protocol := "HTTP"
+		protocol := "TCP"
 		if pi.Protocol == "UDP" {
 			protocol = "UDP"
 		}

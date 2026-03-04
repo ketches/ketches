@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
@@ -66,15 +67,23 @@ func ApplyApp(ctx context.Context, app *entities.App) error {
 
 	for _, v := range app.Volumes {
 		if v.VolumeType == "pvc" {
-			pvc := metadata.BuildPVC(v)
-			if _, err := client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(ctx, pvc.Name, metav1.GetOptions{}); err != nil {
-				if errors.IsNotFound(err) {
-					if _, err := client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(ctx, pvc, metav1.CreateOptions{}); err != nil {
+			switch app.AppType {
+			case "Deployment":
+				pvc := metadata.BuildPVC(v)
+				if _, err := client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(ctx, pvc.Name, metav1.GetOptions{}); err != nil {
+					if errors.IsNotFound(err) {
+						if _, err := client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(ctx, pvc, metav1.CreateOptions{}); err != nil {
+							return err
+						}
+					} else {
 						return err
 					}
-				} else {
-					return err
 				}
+			case "StatefulSet":
+				// For StatefulSet, PVCs are created by the StatefulSet controller based on the volumeClaimTemplates
+				// So we don't need to create them here. Just ensure they are defined in the volumeClaimTemplates.
+			default:
+				return fmt.Errorf("unsupported app type '%s' for volume '%s'", app.AppType, v.Slug)
 			}
 		}
 	}

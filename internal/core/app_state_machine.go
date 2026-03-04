@@ -42,6 +42,18 @@ var stateTransitions = map[app.AppStatus]map[app.AppAction]StateTransition{
 			IntermediateStatus: app.AppStatusUpdating,
 			FinalStatus:        app.AppStatusRunning,
 		},
+		app.AppActionStop: {
+			FromStatus:         app.AppStatusUndeployed,
+			Action:             app.AppActionStop,
+			IntermediateStatus: app.AppStatusStopping,
+			FinalStatus:        app.AppStatusStopped,
+		},
+		app.AppActionRollback: {
+			FromStatus:         app.AppStatusRunning,
+			Action:             app.AppActionRollback,
+			IntermediateStatus: app.AppStatusUpdating,
+			FinalStatus:        app.AppStatusRunning,
+		},
 		app.AppActionDelete: {
 			FromStatus:         app.AppStatusStarting,
 			Action:             app.AppActionDelete,
@@ -100,6 +112,12 @@ var stateTransitions = map[app.AppStatus]map[app.AppAction]StateTransition{
 			FromStatus:         app.AppStatusStopped,
 			Action:             app.AppActionStart,
 			IntermediateStatus: app.AppStatusStarting,
+			FinalStatus:        app.AppStatusRunning,
+		},
+		app.AppActionRollback: {
+			FromStatus:         app.AppStatusRunning,
+			Action:             app.AppActionRollback,
+			IntermediateStatus: app.AppStatusUpdating,
 			FinalStatus:        app.AppStatusRunning,
 		},
 		app.AppActionDelete: {

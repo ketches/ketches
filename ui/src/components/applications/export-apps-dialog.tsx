@@ -2,6 +2,13 @@ import { appsApi } from '@/api/apps'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -9,17 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox"
+import { Field, FieldContent, FieldLabel } from '@/components/ui/field'
 import { AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { FieldContent, FieldLabel } from '../ui/field'
 
 interface ExportAppsDialogProps {
   open: boolean
@@ -163,98 +163,102 @@ export function ExportAppsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-140">
-        <DialogHeader>
-          <DialogTitle>Export Applications</DialogTitle>
-          <DialogDescription>
-            Export your application configurations in various formats.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto">
+        <form>
+          <DialogHeader>
+            <DialogTitle>Export Applications</DialogTitle>
+            <DialogDescription>
+              Export your application configurations in various formats.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          <div className="grid gap-4 py-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <FieldLabel htmlFor="format" className="text-right">
-            Format
-          </FieldLabel>
-          <FieldContent>
-            <Combobox
-              value={format}
-              onValueChange={(v: string | null) => v && setFormat(v as ExportFormat)}
-              itemToStringLabel={(v) => EXPORT_FORMAT_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
-            >
-              <ComboboxInput />
-              <ComboboxContent>
-                <ComboboxList>
-                  {[
-                    { value: 'kubernetes', label: 'Kubernetes Manifests', description: 'Raw Kubernetes YAML resources' },
-                    { value: 'ketches', label: 'Ketches Metadata', description: 'Ketches-native application format' },
-                    { value: 'helm', label: 'Helm Chart', description: 'Packaged Helm chart format' },
-                    { value: 'dockercompose', label: 'Docker Compose', description: 'Docker Compose YAML file (docker-compose.yml)' },
-                  ].map((option) => (
-                    <ComboboxItem key={option.value} value={option.value}>
-                      <div className="flex flex-col gap-0.5">
-                        <span>{option.label}</span>
-                        <span className="text-muted-foreground text-[10px] leading-relaxed">{option.description}</span>
-                      </div>
-                    </ComboboxItem>
-                  ))}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-          </FieldContent>
-
-          {isBatchMode && hasSelection && (
-            <>
-              <FieldLabel htmlFor="scope" className="text-right">
-                Scope
+            <Field>
+              <FieldLabel htmlFor="format" className="text-right">
+                Format
               </FieldLabel>
               <FieldContent>
                 <Combobox
-                  value={scope}
-                  onValueChange={(v: string | null) => v && setScope(v as ExportScope)}
-                  itemToStringLabel={(v) => {
-                    if (v === 'selected') return `Selected Apps (${appIds?.length})`
-                    if (v === 'all') return 'All Apps in Environment'
-                    return v ?? ""
-                  }}
+                  value={format}
+                  onValueChange={(v: string | null) => v && setFormat(v as ExportFormat)}
+                  itemToStringLabel={(v) => EXPORT_FORMAT_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
                 >
                   <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {[
-                        { value: 'selected', label: `Selected Apps (${appIds?.length})` },
-                        { value: 'all', label: 'All Apps in Environment' },
+                        { value: 'kubernetes', label: 'Kubernetes Manifests', description: 'Raw Kubernetes YAML resources' },
+                        { value: 'ketches', label: 'Ketches Metadata', description: 'Ketches-native application format' },
+                        { value: 'helm', label: 'Helm Chart', description: 'Packaged Helm chart format' },
+                        { value: 'dockercompose', label: 'Docker Compose', description: 'Docker Compose YAML file (docker-compose.yml)' },
                       ].map((option) => (
                         <ComboboxItem key={option.value} value={option.value}>
-                          {option.label}
+                          <div className="flex flex-col gap-0.5">
+                            <span>{option.label}</span>
+                            <span className="text-muted-foreground text-[10px] leading-relaxed">{option.description}</span>
+                          </div>
                         </ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>
               </FieldContent>
-            </>
-          )}
-        </div>
+            </Field>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleExport} disabled={loading}>
-            {loading ? 'Exporting...' : 'Export'}
-          </Button>
-        </DialogFooter>
+            {isBatchMode && hasSelection && (
+              <Field>
+                <FieldLabel htmlFor="scope" className="text-right">
+                  Scope
+                </FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    value={scope}
+                    onValueChange={(v: string | null) => v && setScope(v as ExportScope)}
+                    itemToStringLabel={(v) => {
+                      if (v === 'selected') return `Selected Apps (${appIds?.length})`
+                      if (v === 'all') return 'All Apps in Environment'
+                      return v ?? ""
+                    }}
+                  >
+                    <ComboboxInput />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {[
+                          { value: 'selected', label: `Selected Apps (${appIds?.length})` },
+                          { value: 'all', label: 'All Apps in Environment' },
+                        ].map((option) => (
+                          <ComboboxItem key={option.value} value={option.value}>
+                            {option.label}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </FieldContent>
+              </Field>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleExport} disabled={loading}>
+              {loading ? 'Exporting...' : 'Export'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

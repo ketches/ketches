@@ -111,7 +111,7 @@ func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
 func (m *AppMetadata) buildVolumes() []corev1.Volume {
 	var volumes []corev1.Volume
 	for _, v := range m.App.Volumes {
-		if v.VolumeType == "pvc" {
+		if v.VolumeType == "pvc" && m.App.AppType != "StatefulSet" {
 			volumes = append(volumes, corev1.Volume{
 				Name: v.Slug,
 				VolumeSource: corev1.VolumeSource{
@@ -205,6 +205,26 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 	if m.App.RegistryUsername != "" {
 		statefulSet.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
 			{Name: m.App.Slug + "-registry"},
+		}
+	}
+
+	for _, v := range m.App.Volumes {
+		if v.VolumeType == "pvc" {
+			statefulSet.Spec.VolumeClaimTemplates = append(statefulSet.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      v.Slug,
+					Namespace: m.App.Env.ClusterNamespace,
+					Labels:    m.getLabels(),
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dGi", v.Capacity)),
+						},
+					},
+				},
+			})
 		}
 	}
 
