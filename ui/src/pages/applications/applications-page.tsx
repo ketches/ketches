@@ -62,6 +62,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
       if (safeEnvs.length > 0 && !embeddedEnvId) {
         setEmbeddedEnvId(safeEnvs[0].id)
       }
+      setActiveTab('all') // Default to "All" tab in embedded mode
     } else {
       // In standalone mode, sync global store
       if (safeEnvs.length > 0) {
@@ -130,7 +131,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
                   itemToStringLabel={(v) => safeEnvs.find(e => e.id === v)?.name ?? v ?? ""}
                 >
                   <ComboboxInput className="w-48" />
-                  <ComboboxContent className="w-auto">
+                  <ComboboxContent className="w-fit">
                     <ComboboxList>
                       {safeEnvs.map((env) => (
                         <ComboboxItem key={env.id} value={env.id}>

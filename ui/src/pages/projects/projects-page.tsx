@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 
 // LocalStorage key for persisting view mode preference
@@ -37,6 +38,7 @@ export function ProjectsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { activeProjectId, setActiveProjectId } = useProjectStore()
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 
   // View mode persisted in localStorage, defaulting to "list"
   const [viewMode, setViewMode] = React.useState<"list" | "card">(() => {
@@ -296,7 +298,15 @@ export function ProjectsPage() {
                     </Avatar>
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <CardTitle className="text-base font-semibold truncate">{project.name}</CardTitle>
+                        {isAdmin ? (
+                          <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/projects/${project.id}`)}>
+                            {project.name}
+                          </CardTitle>
+                        ) : (
+                          <CardTitle className="text-base font-semibold truncate">
+                            {project.name}
+                          </CardTitle>
+                        )}
                         {project.id === activeProjectId && (
                           <ColorBadge color="green">
                             Active
@@ -316,25 +326,17 @@ export function ProjectsPage() {
                   </div>
                   {/* Card action buttons, visible on hover */}
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {isAdmin && (
+                    {!isAdmin && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/projects/${project.id}`)}
+                        onClick={() => handleEnterProject(project)}
+                        disabled={isActive}
                       >
-                        <GalleryVerticalEnd className="h-3.5 w-3.5" />
-                        Details
+                        <LogIn />
+                        Enter
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEnterProject(project)}
-                      disabled={isActive}
-                    >
-                      <LogIn />
-                      Enter
-                    </Button>
                     <Button
                       variant="ghost"
                       size="icon-sm"

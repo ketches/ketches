@@ -1,19 +1,19 @@
-import * as React from "react"
-import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-  GalleryVerticalEnd,
-  LayoutDashboard,
-  Orbit,
   Box,
   FolderGit2,
-  Warehouse,
-  Puzzle,
-  Users,
+  GalleryVerticalEnd,
+  LayoutDashboard,
   Loader2,
+  Orbit,
   Pencil,
+  Puzzle,
   Trash2,
+  Users,
+  Warehouse,
 } from "lucide-react"
+import * as React from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { projectsApi } from "@/api/projects"
@@ -31,13 +31,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { UserDashboard } from "@/pages/dashboard/dashboard-page"
-import { EnvironmentsPage } from "@/pages/environments/environments-page"
 import { ApplicationsPage } from "@/pages/applications/applications-page"
 import { CodeRepositoriesPage } from "@/pages/code-repositories/code-repositories-page"
 import { ContainerRegistriesPage } from "@/pages/container-registries/container-registries-page"
-import { PluginsPage } from "@/pages/plugins/plugins-page"
+import { UserDashboard } from "@/pages/dashboard/dashboard-page"
+import { EnvironmentsPage } from "@/pages/environments/environments-page"
 import { MembersPage } from "@/pages/members/members-page"
+import { PluginsPage } from "@/pages/plugins/plugins-page"
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -116,60 +116,60 @@ export function ProjectDetailPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">
-            <LayoutDashboard className="h-4 w-4 mr-1.5" />
+            <LayoutDashboard />
             Overview
           </TabsTrigger>
           <TabsTrigger value="environments">
-            <Orbit className="h-4 w-4 mr-1.5" />
+            <Orbit />
             Environments
           </TabsTrigger>
           <TabsTrigger value="applications">
-            <Box className="h-4 w-4 mr-1.5" />
+            <Box />
             Applications
           </TabsTrigger>
           <TabsTrigger value="code-repositories">
-            <FolderGit2 className="h-4 w-4 mr-1.5" />
+            <FolderGit2 />
             Code Repositories
           </TabsTrigger>
           <TabsTrigger value="container-registries">
-            <Warehouse className="h-4 w-4 mr-1.5" />
+            <Warehouse />
             Container Registries
           </TabsTrigger>
           <TabsTrigger value="plugins">
-            <Puzzle className="h-4 w-4 mr-1.5" />
+            <Puzzle />
             Plugins
           </TabsTrigger>
           <TabsTrigger value="members">
-            <Users className="h-4 w-4 mr-1.5" />
+            <Users />
             Members
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-6">
+        <TabsContent value="overview" className="space-y-4 mt-2">
           <UserDashboard projectId={projectId} />
         </TabsContent>
 
-        <TabsContent value="environments" className="mt-6">
+        <TabsContent value="environments" className="space-y-4 mt-2">
           <EnvironmentsPage projectId={projectId} />
         </TabsContent>
 
-        <TabsContent value="applications" className="mt-6">
+        <TabsContent value="applications" className="space-y-4 mt-2">
           <ApplicationsPage projectId={projectId} />
         </TabsContent>
 
-        <TabsContent value="code-repositories" className="mt-6">
+        <TabsContent value="code-repositories" className="space-y-4 mt-2">
           <CodeRepositoriesPage projectId={projectId} />
         </TabsContent>
 
-        <TabsContent value="container-registries" className="mt-6">
+        <TabsContent value="container-registries" className="space-y-4 mt-2">
           <ContainerRegistriesPage projectId={projectId} />
         </TabsContent>
 
-        <TabsContent value="plugins" className="mt-6">
+        <TabsContent value="plugins" className="space-y-4 mt-2">
           <PluginsPage projectId={projectId} />
         </TabsContent>
 
-        <TabsContent value="members" className="mt-6">
+        <TabsContent value="members" className="space-y-4 mt-2">
           <MembersPage projectId={projectId} />
         </TabsContent>
       </Tabs>

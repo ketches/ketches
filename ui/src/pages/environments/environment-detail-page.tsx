@@ -420,5 +420,3 @@ export function EnvironmentDetailPage() {
 }
 
 export default EnvironmentDetailPage
-
-import * as React from "react"
