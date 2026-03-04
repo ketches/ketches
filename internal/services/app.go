@@ -19,6 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"path"
+	"strings"
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
@@ -26,6 +29,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/pkg/containerregistry"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
@@ -115,6 +119,11 @@ func CreateApp(envID string, req *models.CreateAppRequest) (*entities.App, error
 
 	if err := db.DB.Create(application).Error; err != nil {
 		return nil, err
+	}
+
+	// Attempt to seed app configuration from image metadata; failure is non-fatal.
+	if err := seedAppFromImageMetadata(context.Background(), application); err != nil {
+		log.Printf("warn: image metadata seed skipped for app %s: %v", application.Slug, err)
 	}
 
 	var env entities.Env
@@ -1043,4 +1052,104 @@ func GetAppTopologyResourceYaml(appID string, nodeID string) (string, error) {
 	}
 
 	return core.GetAppTopologyResourceYaml(context.Background(), client, application, nodeID)
+}
+
+// seedAppFromImageMetadata fetches the container image metadata and creates corresponding
+// database records for env vars, volumes, gateways, and health check probes.
+// Errors are logged and silently skipped to avoid blocking app creation.
+func seedAppFromImageMetadata(ctx context.Context, application *entities.App) error {
+	meta, err := containerregistry.FetchImageMetadata(
+		ctx,
+		application.ContainerImage,
+		application.RegistryUsername,
+		application.RegistryPassword,
+	)
+	if err != nil {
+		return fmt.Errorf("fetch image metadata: %w", err)
+	}
+
+	// Seed EnvVars — skip if the key already exists (unique constraint)
+	for _, ev := range meta.Env {
+		envVar := &entities.AppEnvVar{
+			ID:    uuid.New(),
+			AppID: application.ID,
+			Key:   ev.Key,
+			Value: ev.Value,
+		}
+		// Ignore duplicate key errors; the app may have been pre-populated
+		_ = db.DB.Create(envVar).Error
+	}
+
+	// Seed Volumes — skip duplicate mount paths
+	for _, mountPath := range meta.Volumes {
+		slug := strings.Trim(path.Base(mountPath), "/")
+		if slug == "" || slug == "." {
+			slug = "data"
+		}
+		volume := &entities.AppVolume{
+			ID:         uuid.New(),
+			AppID:      application.ID,
+			Slug:       slug,
+			MountPath:  mountPath,
+			VolumeType: "emptydir",
+			Capacity:   1,
+		}
+		// Ignore duplicate mount path errors
+		_ = db.DB.Create(volume).Error
+	}
+
+	// Seed Gateways — skip duplicate port/protocol combinations
+	for _, pi := range meta.ExposedPorts {
+		// Map TCP→HTTP and UDP→UDP for gateway protocol
+		protocol := "HTTP"
+		if pi.Protocol == "UDP" {
+			protocol = "UDP"
+		}
+		gateway := &entities.AppGateway{
+			ID:       uuid.New(),
+			AppID:    application.ID,
+			Port:     pi.Port,
+			Protocol: protocol,
+			Exposed:  false,
+			Path:     "/",
+		}
+		// Ignore duplicate port/protocol errors
+		_ = db.DB.Create(gateway).Error
+	}
+
+	// Seed health check probe from image HEALTHCHECK instruction
+	if hc := meta.HealthCheck; hc != nil && len(hc.Test) > 1 {
+		// HEALTHCHECK test slice: ["CMD", "arg1", "arg2"] or ["CMD-SHELL", "cmd string"]
+		// Skip index 0 (CMD / CMD-SHELL) and join the rest as the exec command
+		execCommand := strings.Join(hc.Test[1:], " ")
+
+		intervalSecs := int(hc.Interval.Seconds())
+		if intervalSecs <= 0 {
+			intervalSecs = 10
+		}
+		timeoutSecs := int(hc.Timeout.Seconds())
+		if timeoutSecs <= 0 {
+			timeoutSecs = 1
+		}
+		retries := hc.Retries
+		if retries <= 0 {
+			retries = 3
+		}
+
+		probe := &entities.AppProbe{
+			ID:               uuid.New(),
+			AppID:            application.ID,
+			Type:             "liveness",
+			ProbeMode:        "exec",
+			Enabled:          true,
+			ExecCommand:      execCommand,
+			PeriodSeconds:    intervalSecs,
+			TimeoutSeconds:   timeoutSecs,
+			FailureThreshold: retries,
+			SuccessThreshold: 1,
+		}
+		_ = db.DB.Create(probe).Error
+	}
+
+	return nil
 }
