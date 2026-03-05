@@ -282,11 +282,6 @@ export function GatewayEditor({
                           { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
                         ].map((option) => (
                           <ComboboxItem key={option.value} value={option.value}>
-                            {/* <div className="flex flex-col gap-0.5">
-                              <span>{option.label}</span>
-                              <span className="text-muted-foreground text-[10px] leading-relaxed">{option.description}</span>
-                            </div> */}
-
                             <Item size="xs" className="p-0">
                               <ItemContent>
                                 <ItemTitle className="whitespace-nowrap">

@@ -277,9 +277,9 @@ func ListClusterServices(clusterID string, namespace string) ([]string, error) {
 }
 
 type StorageClassInfo struct {
-	Name        string
-	Provisioner string
-	IsDefault   bool
+	Name        string `json:"name"`
+	Provisioner string `json:"provisioner"`
+	IsDefault   bool   `json:"is_default"`
 }
 
 func ListStorageClasses(clusterID string) ([]StorageClassInfo, error) {

@@ -9,6 +9,13 @@ import { clustersApi } from "@/api/clusters"
 import { envsApi } from "@/api/envs"
 import { Button } from "@/components/ui/button"
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,13 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 export interface VolumeSpec {
   id?: string
@@ -47,20 +48,20 @@ interface VolumeEditorProps {
 }
 
 const VOLUME_TYPE_OPTIONS = [
-  { value: "pvc", label: "Persistent Storage (PVC)" },
-  { value: "emptyDir", label: "Temporary Storage (emptyDir)" },
-  { value: "hostPath", label: "Local Storage (hostPath)" },
+  { value: "pvc", label: "Persistent Storage (PVC)", description: "Data will persist across restarts and deployments" },
+  { value: "emptyDir", label: "Temporary Storage (emptyDir)", description: "Data will be lost when the pod is terminated" },
+  { value: "hostPath", label: "Local Storage (hostPath)", description: "Data is stored on the host node" },
 ]
 
 const ACCESS_MODE_OPTIONS = [
-  { value: "ReadWriteOnce", label: "Single Node Read/Write (ReadWriteOnce)" },
-  { value: "ReadWriteMany", label: "Multi Node Read/Write (ReadWriteMany)" },
-  { value: "ReadOnlyMany", label: "Multi Node Read Only (ReadOnlyMany)" },
+  { value: "ReadWriteOnce", label: "ReadWriteOnce", description: "Single Node Read/Write: volume can be mounted as read-write by a single node" },
+  { value: "ReadWriteMany", label: "ReadWriteMany", description: "Multi Node Read/Write: volume can be mounted as read-write by multiple nodes" },
+  { value: "ReadOnlyMany", label: "ReadOnlyMany", description: "Multi Node Read Only: volume can be mounted as read-only by multiple nodes" },
 ]
 
 const VOLUME_MODE_OPTIONS = [
-  { value: "Filesystem", label: "Filesystem" },
-  { value: "Block", label: "Block" },
+  { value: "Filesystem", label: "Filesystem", description: "Volume is mounted as a filesystem" },
+  { value: "Block", label: "Block", description: "Volume is mounted as a raw block device" },
 ]
 
 export function VolumeEditor({
@@ -190,7 +191,7 @@ export function VolumeEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-160 max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
@@ -202,128 +203,163 @@ export function VolumeEditor({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <Field>
-              <FieldLabel htmlFor="slug">Slug *</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="slug"
-                  value={formData.slug}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, slug: e.target.value }))
-                  }
-                  placeholder="data-volume"
-                  required
-                />
-              </FieldContent>
-              {errors.slug && <FieldError>{errors.slug}</FieldError>}
-            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel htmlFor="slug">Slug *</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="slug"
+                    value={formData.slug}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, slug: e.target.value }))
+                    }
+                    placeholder="data-volume"
+                    required
+                    disabled={!!volume}
+                  />
+                </FieldContent>
+                {errors.slug && <FieldError>{errors.slug}</FieldError>}
+              </Field>
 
-            <Field>
-              <FieldLabel htmlFor="volume-type">Storage Volume Type *</FieldLabel>
-              <FieldContent>
-                <Combobox
-                  value={formData.volume_type}
-                  onValueChange={(value: string | null) => value && setFormData((prev) => ({ ...prev, volume_type: value }))}
-                  itemToStringLabel={(v) => VOLUME_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
-                >
-                  <ComboboxInput />
-                  <ComboboxContent>
-                    <ComboboxList>
-                      {VOLUME_TYPE_OPTIONS.map((option) => (
-                        <ComboboxItem key={option.value} value={option.value}>
-                          {option.label}
-                        </ComboboxItem>
-                      ))}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="mount-path">Mount Path *</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="mount-path"
-                  value={formData.mount_path}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, mount_path: e.target.value }))
-                  }
-                  placeholder="/data"
-                  required
-                />
-              </FieldContent>
-              {errors.mount_path && <FieldError>{errors.mount_path}</FieldError>}
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="sub-path">SubPath</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="sub-path"
-                  value={formData.sub_path}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, sub_path: e.target.value }))
-                  }
-                  placeholder="Optional"
-                />
-              </FieldContent>
-            </Field>
-
-            {isPVCType && (
-              <>
-                <Field>
-                  <FieldLabel htmlFor="storage-class">Storage Class</FieldLabel>
-                  <FieldContent>
-                    <Combobox
-                      value={formData.storage_class || "default"}
-                      onValueChange={(value: string | null) =>
-                        value && setFormData((prev) => ({
-                          ...prev,
-                          storage_class: value === "default" ? "" : value,
-                        }))
-                      }
-                    >
-                      <ComboboxInput placeholder="Select storage class (default: cluster default)" />
-                      <ComboboxContent>
-                        <ComboboxList>
-                          <ComboboxItem key="default" value="default">
-                            Default (cluster default)
+              <Field>
+                <FieldLabel htmlFor="volume-type">Storage Volume Type *</FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    value={formData.volume_type}
+                    onValueChange={(value: string | null) => value && setFormData((prev) => ({ ...prev, volume_type: value }))}
+                    itemToStringLabel={(v) => VOLUME_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                  >
+                    <ComboboxInput disabled={!!volume} />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {VOLUME_TYPE_OPTIONS.map((option) => (
+                          <ComboboxItem key={option.value} value={option.value}>
+                            {/* {option.label} */}
+                            <Item size="xs" className="p-0">
+                              <ItemContent>
+                                <ItemTitle className="whitespace-nowrap">
+                                  {option.label}
+                                </ItemTitle>
+                                <ItemDescription>
+                                  {option.description}
+                                </ItemDescription>
+                              </ItemContent>
+                            </Item>
                           </ComboboxItem>
-                          {storageClasses.map((sc: any) => (
-                            <ComboboxItem key={sc.name} value={sc.name}>
-                              <div className="flex flex-col gap-0.5">
-                                <span>{sc.name}</span>
-                                <span className="text-muted-foreground text-[10px] leading-relaxed">{`${sc.provisioner}${sc.isDefault ? " (default)" : ""}`}</span>
-                              </div>
-                            </ComboboxItem>
-                          ))}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
-                  </FieldContent>
-                </Field>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </FieldContent>
+              </Field>
+            </div>
 
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2">
                 <Field>
-                  <FieldLabel htmlFor="capacity">Storage Capacity (GiB) *</FieldLabel>
+                  <FieldLabel htmlFor="mount-path">Mount Path *</FieldLabel>
                   <FieldContent>
                     <Input
-                      id="capacity"
-                      type="number"
-                      value={formData.capacity}
+                      id="mount-path"
+                      value={formData.mount_path}
                       onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          capacity: parseInt(e.target.value, 10) || 10,
-                        }))
+                        setFormData((prev) => ({ ...prev, mount_path: e.target.value }))
                       }
-                      placeholder="10"
-                      min="1"
+                      placeholder="/data"
                       required
                     />
                   </FieldContent>
-                  {errors.capacity && <FieldError>{errors.capacity}</FieldError>}
+                  {errors.mount_path && <FieldError>{errors.mount_path}</FieldError>}
                 </Field>
+              </div>
+
+              <Field>
+                <FieldLabel htmlFor="sub-path">SubPath</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="sub-path"
+                    value={formData.sub_path}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, sub_path: e.target.value }))
+                    }
+                    placeholder="Optional"
+                  />
+                </FieldContent>
+              </Field>
+            </div>
+
+            {isPVCType && (
+              <>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-2">
+                    <Field>
+                      <FieldLabel htmlFor="storage-class">Storage Class</FieldLabel>
+                      <FieldContent>
+                        <Combobox
+                          value={formData.storage_class || "default"}
+                          onValueChange={(value: string | null) =>
+                            value && setFormData((prev) => ({
+                              ...prev,
+                              storage_class: value === "default" ? "" : value,
+                            }))
+                          }
+                        >
+                          <ComboboxInput placeholder="Select storage class (default: cluster default)" disabled={!!volume} />
+                          <ComboboxContent>
+                            <ComboboxList>
+                              <ComboboxItem key="default" value="default">
+                                Default (cluster default)
+                              </ComboboxItem>
+                              {storageClasses.map((sc: any) => (
+                                <ComboboxItem key={sc.name} value={sc.name}>
+                                  {/* <div className="flex flex-col gap-0.5">
+                                    <span>{sc.name}</span>
+                                    <span className="text-muted-foreground text-[10px] leading-relaxed">{`${sc.provisioner}${sc.isDefault ? " (default)" : ""}`}</span>
+                                  </div> */}
+
+                                  <Item size="xs" className="p-0">
+                                    <ItemContent>
+                                      <ItemTitle className="whitespace-nowrap">
+                                        {sc.name}
+                                      </ItemTitle>
+                                      <ItemDescription>
+                                        {sc.provisioner}{sc.isDefault && " (default)"}
+                                      </ItemDescription>
+                                    </ItemContent>
+                                  </Item>
+                                </ComboboxItem>
+                              ))}
+                            </ComboboxList>
+                          </ComboboxContent>
+                        </Combobox>
+                      </FieldContent>
+                    </Field>
+                  </div>
+
+
+                  <Field>
+                    <FieldLabel htmlFor="capacity">Storage Capacity (GiB) *</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="capacity"
+                        type="number"
+                        value={formData.capacity}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            capacity: parseInt(e.target.value, 10) || 10,
+                          }))
+                        }
+                        placeholder="10"
+                        min="1"
+                        required
+                        disabled={!!volume}
+                      />
+                    </FieldContent>
+                    {errors.capacity && <FieldError>{errors.capacity}</FieldError>}
+                  </Field>
+                </div>
+
 
                 <Field>
                   <FieldLabel htmlFor="access-modes">Access Mode *</FieldLabel>
@@ -335,12 +371,20 @@ export function VolumeEditor({
                       }
                       itemToStringLabel={(v) => ACCESS_MODE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
                     >
-                        <ComboboxInput />
+                      <ComboboxInput disabled={!!volume} />
                       <ComboboxContent>
                         <ComboboxList>
                           {ACCESS_MODE_OPTIONS.map((option) => (
                             <ComboboxItem key={option.value} value={option.value}>
-                              {option.label}
+                              {/* {option.label} */}
+                              <ItemContent>
+                                <ItemTitle className="whitespace-nowrap">
+                                  {option.label}
+                                </ItemTitle>
+                                <ItemDescription>
+                                  {option.description}
+                                </ItemDescription>
+                              </ItemContent>
                             </ComboboxItem>
                           ))}
                         </ComboboxList>
@@ -358,12 +402,19 @@ export function VolumeEditor({
                         value && setFormData((prev) => ({ ...prev, volume_mode: value }))
                       }
                     >
-                        <ComboboxInput />
+                      <ComboboxInput disabled={!!volume} />
                       <ComboboxContent>
                         <ComboboxList>
                           {VOLUME_MODE_OPTIONS.map((option) => (
                             <ComboboxItem key={option.value} value={option.value}>
-                              {option.label}
+                              <ItemContent>
+                                <ItemTitle className="whitespace-nowrap">
+                                  {option.label}
+                                </ItemTitle>
+                                <ItemDescription>
+                                  {option.description}
+                                </ItemDescription>
+                              </ItemContent>
                             </ComboboxItem>
                           ))}
                         </ComboboxList>

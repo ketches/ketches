@@ -498,11 +498,10 @@ func BuildImageFullName(registry *entities.ContainerRegistry, imageName, tag str
 		return imageWithTag
 	}
 
-	endpoint := normalizeRegistryHost(registry.Endpoint)
 	if registry.Namespace != "" {
-		return fmt.Sprintf("%s/%s/%s", endpoint, registry.Namespace, imageWithTag)
+		return fmt.Sprintf("%s/%s/%s", registry.Endpoint, registry.Namespace, imageWithTag)
 	}
-	return fmt.Sprintf("%s/%s", endpoint, imageWithTag)
+	return fmt.Sprintf("%s/%s", registry.Endpoint, imageWithTag)
 }
 
 func sanitizeImageReference(imageRef string) string {
@@ -517,19 +516,6 @@ func sanitizeImageReference(imageRef string) string {
 		return after
 	}
 	return imageRef
-}
-
-func normalizeRegistryHost(endpoint string) string {
-	endpoint = strings.TrimSpace(endpoint)
-	endpoint = strings.TrimSuffix(endpoint, "/")
-	if after, ok := strings.CutPrefix(endpoint, "https://"); ok {
-		endpoint = after
-	}
-	if after, ok := strings.CutPrefix(endpoint, "http://"); ok {
-		endpoint = after
-	}
-	endpoint = strings.TrimPrefix(endpoint, "//")
-	return strings.TrimSuffix(endpoint, "/")
 }
 
 func buildKanikoArgs(dockerfilePath, buildContext, imageDestination, buildArgsJSON string, registry *entities.ContainerRegistry) []string {
@@ -644,58 +630,19 @@ func withDefaultPlatformBuildArgs(args []string) []string {
 }
 
 func buildDockerConfigJSON(registry *entities.ContainerRegistry) []byte {
-	// endpoint := registry.Endpoint
-	// if registry.Provider == entities.RegistryProviderDockerHub {
-	// 	endpoint = "https://index.docker.io/v1/"
-	// }
-
-	// auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", registry.Username, registry.Password)))
-
-	// config := map[string]any{
-	// 	"auths": map[string]any{
-	// 		endpoint: map[string]string{
-	// 			"auth": auth,
-	// 		},
-	// 	},
-	// }
-
-	// data, _ := json.Marshal(config)
-	// return data
-
-	var auths map[string]any
-
+	endpoint := registry.Endpoint
 	if registry.Provider == entities.RegistryProviderDockerHub {
-		// For Docker Hub, configure auth for both v1 and v2 endpoints
-		auth := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", registry.Username, registry.Password))
-		auths = map[string]any{
-			"https://index.docker.io/v1/": map[string]string{
-				"auth": auth,
-			},
-			"https://index.docker.io/v2/": map[string]string{
-				"auth": auth,
-			},
-			"index.docker.io": map[string]string{
-				"auth": auth,
-			},
-			"registry-1.docker.io": map[string]string{
-				"auth": auth,
-			},
-		}
-	} else {
-		endpoint := normalizeRegistryHost(registry.Endpoint)
-		auth := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", registry.Username, registry.Password))
-		auths = map[string]any{
+		endpoint = "https://index.docker.io/v1/"
+	}
+
+	auth := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", registry.Username, registry.Password))
+
+	config := map[string]any{
+		"auths": map[string]any{
 			endpoint: map[string]string{
 				"auth": auth,
 			},
-			"https://" + endpoint: map[string]string{
-				"auth": auth,
-			},
-		}
-	}
-
-	config := map[string]any{
-		"auths": auths,
+		},
 	}
 
 	data, _ := json.Marshal(config)

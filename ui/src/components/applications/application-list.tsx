@@ -107,7 +107,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
 
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: viewMode === "card" ? 9 : 10,
   })
   const { data: favorites = [], refetch: refetchFavorites } = useQuery({
     queryKey: ['app-favorites', envId],
