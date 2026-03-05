@@ -115,7 +115,7 @@ func ListCodeRepositoryBuilds(c *gin.Context) {
 	}
 	res := make([]models.BuildResponse, 0, len(builds))
 	for i := range builds {
-		res = append(res, services.ToBuildResponse(&builds[i]))
+		res = append(res, services.ToBuildResponse(c.Request.Context(), &builds[i]))
 	}
 	api.Success(c, res)
 }
@@ -129,7 +129,7 @@ func ListCodeRepositoryDeployments(c *gin.Context) {
 	}
 	res := make([]models.BuildResponse, 0, len(builds))
 	for i := range builds {
-		res = append(res, services.ToBuildResponse(&builds[i]))
+		res = append(res, services.ToBuildResponse(c.Request.Context(), &builds[i]))
 	}
 	api.Success(c, res)
 }
@@ -150,7 +150,7 @@ func TriggerCodeRepositoryBuild(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Created(c, services.ToBuildResponse(build))
+	api.Created(c, services.ToBuildResponse(c.Request.Context(), build))
 }
 
 func GetCodeRepositoryBuild(c *gin.Context) {
@@ -161,7 +161,7 @@ func GetCodeRepositoryBuild(c *gin.Context) {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
-	api.Success(c, services.ToBuildResponse(build))
+	api.Success(c, services.ToBuildResponse(c.Request.Context(), build))
 }
 
 func StreamCodeRepositoryBuildLogs(c *gin.Context) {
@@ -176,7 +176,7 @@ func CancelCodeRepositoryBuild(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Success(c, services.ToBuildResponse(build))
+	api.Success(c, services.ToBuildResponse(c.Request.Context(), build))
 }
 
 func DeployCodeRepositoryBuild(c *gin.Context) {
@@ -193,7 +193,7 @@ func DeployCodeRepositoryBuild(c *gin.Context) {
 		return
 	}
 	api.Success(c, gin.H{
-		"build": services.ToBuildResponse(build),
+		"build": services.ToBuildResponse(c.Request.Context(), build),
 		"app":   app,
 	})
 }

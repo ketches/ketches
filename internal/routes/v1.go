@@ -232,6 +232,7 @@ func SetupV1Routes(r *gin.Engine) {
 
 			// Extensions (platform-level)
 			extensions := authorized.Group("/extensions")
+			extensions.Use(middlewares.AdminOnly())
 			{
 				extensions.GET("", handlers.ListExtensions)
 				extensions.POST("", middlewares.AdminOnly(), handlers.CreateExtension)

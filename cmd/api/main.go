@@ -9,6 +9,7 @@ import (
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/middlewares"
+	"github.com/ketches/ketches/internal/openapi"
 	"github.com/ketches/ketches/internal/routes"
 	"github.com/ketches/ketches/internal/services"
 )
@@ -44,6 +45,12 @@ func main() {
 	r.Use(middlewares.CORS())
 
 	routes.SetupV1Routes(r)
+	openapi.RegisterRoutes(r, openapi.Config{
+		Title:       "Ketches API",
+		Description: "Auto-generated from Gin route table.",
+		Version:     app.Version,
+		ServerURL:   "/",
+	})
 
 	log.Printf("server starting on :%s", app.Config.Port)
 	if err := r.Run(":" + app.Config.Port); err != nil {

@@ -3,14 +3,12 @@ package handlers
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/core"
-	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 	"github.com/ketches/ketches/pkg/containerregistry"
@@ -138,7 +136,7 @@ func ListApps(c *gin.Context) {
 	}
 	res := []models.AppResponse{}
 	for _, a := range apps {
-		res = append(res, toAppResponse(c, &a))
+		res = append(res, services.ToAppResponse(c.Request.Context(), &a))
 	}
 
 	api.Success(c, models.ListAppResponse{
@@ -157,18 +155,14 @@ func ListAppsSimple(c *gin.Context) {
 
 	res := []models.SimpleResponse{}
 	for _, a := range apps {
-		codeRepoID := ""
-		if a.CodeRepositoryID != nil {
-			codeRepoID = *a.CodeRepositoryID
-		}
 		res = append(res, models.SimpleResponse{
 			ID:          a.ID,
 			Slug:        a.Slug,
 			Name:        a.Name,
 			Description: a.Description,
-			Status:      getAppStatus(c, &a),
+			Status:      services.GetAppStatus(c, &a),
 			Metadata: map[string]string{
-				"code_repository_id": codeRepoID,
+				"code_repository_id": a.CodeRepositoryID,
 			},
 		})
 	}
@@ -176,55 +170,51 @@ func ListAppsSimple(c *gin.Context) {
 	api.Success(c, res)
 }
 
-func toAppResponse(c *gin.Context, a *entities.App) models.AppResponse {
-	status := getAppStatus(c, a)
+// func toAppResponse(c *gin.Context, a *entities.App) models.AppResponse {
+// 	status := getAppStatus(c, a)
 
-	codeRepoID := ""
-	if a.CodeRepositoryID != nil {
-		codeRepoID = *a.CodeRepositoryID
-	}
-	res := models.AppResponse{
-		ID:               a.ID,
-		Slug:             a.Slug,
-		Name:             a.Name,
-		Description:      a.Description,
-		EnvID:            a.EnvID,
-		AppType:          a.AppType,
-		CodeRepositoryID: codeRepoID,
-		ContainerImage:   a.ContainerImage,
-		ContainerCommand: a.ContainerCommand,
-		RegistryUsername: a.RegistryUsername,
-		RegistryPassword: a.RegistryPassword,
-		Replicas:         a.Replicas,
-		RequestCPU:       a.RequestCPU,
-		RequestMemory:    a.RequestMemory,
-		LimitCPU:         a.LimitCPU,
-		LimitMemory:      a.LimitMemory,
-		Status:           status,
-		CreatedAt:        a.CreatedAt,
-	}
+// 	res := models.AppResponse{
+// 		ID:               a.ID,
+// 		Slug:             a.Slug,
+// 		Name:             a.Name,
+// 		Description:      a.Description,
+// 		EnvID:            a.EnvID,
+// 		AppType:          a.AppType,
+// 		CodeRepositoryID: a.CodeRepositoryID,
+// 		ContainerImage:   a.ContainerImage,
+// 		ContainerCommand: a.ContainerCommand,
+// 		RegistryUsername: a.RegistryUsername,
+// 		RegistryPassword: a.RegistryPassword,
+// 		Replicas:         a.Replicas,
+// 		RequestCPU:       a.RequestCPU,
+// 		RequestMemory:    a.RequestMemory,
+// 		LimitCPU:         a.LimitCPU,
+// 		LimitMemory:      a.LimitMemory,
+// 		Status:           status,
+// 		CreatedAt:        a.CreatedAt,
+// 	}
 
-	if a.AutoScaling != nil {
-		res.AutoScaling = &models.AutoScalingSpec{
-			MinReplicas:             a.AutoScaling.MinReplicas,
-			MaxReplicas:             a.AutoScaling.MaxReplicas,
-			TargetCPUUtilization:    a.AutoScaling.TargetCPUUtilization,
-			TargetMemoryUtilization: a.AutoScaling.TargetMemoryUtilization,
-		}
-	}
+// 	if a.AutoScaling != nil {
+// 		res.AutoScaling = &models.AutoScalingSpec{
+// 			MinReplicas:             a.AutoScaling.MinReplicas,
+// 			MaxReplicas:             a.AutoScaling.MaxReplicas,
+// 			TargetCPUUtilization:    a.AutoScaling.TargetCPUUtilization,
+// 			TargetMemoryUtilization: a.AutoScaling.TargetMemoryUtilization,
+// 		}
+// 	}
 
-	if a.SchedulingRule != nil {
-		res.SchedulingRule = &models.SchedulingSpec{
-			RuleType:     a.SchedulingRule.RuleType,
-			NodeName:     a.SchedulingRule.NodeName,
-			NodeSelector: a.SchedulingRule.NodeSelector,
-			NodeAffinity: a.SchedulingRule.NodeAffinity,
-			Tolerations:  a.SchedulingRule.Tolerations,
-		}
-	}
+// 	if a.SchedulingRule != nil {
+// 		res.SchedulingRule = &models.SchedulingSpec{
+// 			RuleType:     a.SchedulingRule.RuleType,
+// 			NodeName:     a.SchedulingRule.NodeName,
+// 			NodeSelector: a.SchedulingRule.NodeSelector,
+// 			NodeAffinity: a.SchedulingRule.NodeAffinity,
+// 			Tolerations:  a.SchedulingRule.Tolerations,
+// 		}
+// 	}
 
-	return res
-}
+// 	return res
+// }
 
 func CreateApp(c *gin.Context) {
 	envID := c.Param("envID")
@@ -240,7 +230,7 @@ func CreateApp(c *gin.Context) {
 		return
 	}
 
-	api.Created(c, toAppResponse(c, app))
+	api.Created(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func GetApp(c *gin.Context) {
@@ -251,7 +241,7 @@ func GetApp(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, toAppResponse(c, app))
+	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func UpdateAppBasic(c *gin.Context) {
@@ -268,7 +258,7 @@ func UpdateAppBasic(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, toAppResponse(c, app))
+	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func UpdateAppImage(c *gin.Context) {
@@ -285,7 +275,7 @@ func UpdateAppImage(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, toAppResponse(c, app))
+	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func UpdateAppReplicas(c *gin.Context) {
@@ -302,7 +292,7 @@ func UpdateAppReplicas(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, toAppResponse(c, app))
+	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func UpdateAppResources(c *gin.Context) {
@@ -319,7 +309,7 @@ func UpdateAppResources(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, toAppResponse(c, app))
+	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func UpdateAppAutoScaling(c *gin.Context) {
@@ -336,7 +326,7 @@ func UpdateAppAutoScaling(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, toAppResponse(c, app))
+	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func UpdateAppHealth(c *gin.Context) {
@@ -353,7 +343,7 @@ func UpdateAppHealth(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, toAppResponse(c, app))
+	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func UpdateAppScheduling(c *gin.Context) {
@@ -370,7 +360,7 @@ func UpdateAppScheduling(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, toAppResponse(c, app))
+	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func UpdateAppCommand(c *gin.Context) {
@@ -387,7 +377,7 @@ func UpdateAppCommand(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, toAppResponse(c, app))
+	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
 func DeleteApp(c *gin.Context) {
@@ -497,7 +487,7 @@ func AppAction(c *gin.Context) {
 		return
 	}
 
-	status := getAppStatus(c, app)
+	status := services.GetAppStatus(c, app)
 
 	api.Success(c, models.AppActionResponse{
 		Status: status,
@@ -512,7 +502,7 @@ func GetAppAvailableActions(c *gin.Context) {
 		return
 	}
 
-	status := getAppStatus(c, app)
+	status := services.GetAppStatus(c, app)
 
 	actions := core.GetAvailableActions(status)
 	api.Success(c, models.AvailableActionsResponse{
@@ -542,17 +532,17 @@ func GetAppTopologyResourceYaml(c *gin.Context) {
 	api.Success(c, gin.H{"yaml": yamlStr})
 }
 
-func getAppStatus(c *gin.Context, app *entities.App) string {
-	status := app.DeployStatus
-	if status == "deployed" {
-		calculatedStatus, err := core.CalculateAppStatus(c.Request.Context(), app)
-		if err != nil {
-			log.Printf("Failed to calculate app status for app %s: %v", app.ID, err)
-		}
-		status = string(calculatedStatus)
-	}
-	return status
-}
+// func getAppStatus(c *gin.Context, app *entities.App) string {
+// 	status := app.DeployStatus
+// 	if status == "deployed" {
+// 		calculatedStatus, err := core.CalculateAppStatus(c.Request.Context(), app)
+// 		if err != nil {
+// 			log.Printf("Failed to calculate app status for app %s: %v", app.ID, err)
+// 		}
+// 		status = string(calculatedStatus)
+// 	}
+// 	return status
+// }
 
 // GetImageMetadata fetches and returns container image metadata (ENV, VOLUME, EXPOSE, HEALTHCHECK).
 // This is a read-only preview endpoint with no database side effects.

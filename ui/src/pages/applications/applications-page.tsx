@@ -16,7 +16,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
 import { useQuery } from "@tanstack/react-query"
@@ -169,24 +169,24 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
             </div>
 
             <div className="flex-1">
-              <TabsContent value="all" className="mt-0 h-full">
+              {activeTab === 'all' && (
                 <ApplicationList
                   envId={effectiveEnvId}
                   envName={effectiveEnv?.name}
                   hideToolbarActions={true}
                 />
-              </TabsContent>
-              <TabsContent value="groups" className="mt-0 h-full">
+              )}
+              {activeTab === 'groups' && (
                 <AppGroupsView envId={effectiveEnvId} />
-              </TabsContent>
-              <TabsContent value="favorites" className="mt-0 h-full">
+              )}
+              {activeTab === 'favorites' && (
                 <ApplicationList
                   envId={effectiveEnvId}
                   envName={effectiveEnv?.name}
                   favoritesOnly={true}
                   hideToolbarActions={true}
                 />
-              </TabsContent>
+              )}
             </div>
           </Tabs>
         </div>

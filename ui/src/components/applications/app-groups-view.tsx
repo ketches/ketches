@@ -12,7 +12,44 @@ import { toast } from 'sonner'
 import { Label } from '../ui/label'
 import { EditAppGroupDialog } from './edit-app-group-dialog'
 
+import { useDebounce } from "@/hooks/use-debounce"
+import { type PaginationState } from "@tanstack/react-table"
 interface Props { envId: string }
+
+function GroupAppList({ groupId, envId, currentGroupId }: { groupId: string; envId: string; currentGroupId: string }) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+  const [searchQuery, setSearchQuery] = useState("")
+  const debouncedSearch = useDebounce(searchQuery, 300)
+
+  const { data: groupAppsResponse } = useQuery({
+    queryKey: ['group-apps', groupId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
+    queryFn: () => appGroupsApi.listGroupApps(groupId, {
+      page: pagination.pageIndex + 1,
+      page_size: pagination.pageSize,
+      search: debouncedSearch,
+    }),
+    refetchInterval: 5000,
+    placeholderData: (prev) => prev,
+  })
+
+  return (
+    <ApplicationList
+      envId={envId}
+      hideToolbarActions={true}
+      currentGroupId={currentGroupId}
+      externalApps={groupAppsResponse?.items || []}
+      externalPagination={pagination}
+      onExternalPaginationChange={setPagination}
+      externalTotalCount={groupAppsResponse?.pagination?.total || 0}
+      externalSearchQuery={searchQuery}
+      onExternalSearchChange={setSearchQuery}
+    />
+  )
+}
+
 
 export function AppGroupsView({ envId }: Props) {
   const queryClient = useQueryClient()
@@ -51,7 +88,6 @@ export function AppGroupsView({ envId }: Props) {
   return (
     <div className="space-y-8">
       {groupedApps.map(group => {
-        const allowedIds = new Set(group.apps.map(a => a.id))
         return (
           <div key={group.id}>
             {/* Group header with hover-visible actions */}
@@ -78,10 +114,9 @@ export function AppGroupsView({ envId }: Props) {
             </div>
 
             {/* Full DataTable identical to All Apps, filtered to this group's app IDs */}
-            <ApplicationList
+            <GroupAppList
+              groupId={group.id}
               envId={envId}
-              hideToolbarActions={true}
-              allowedAppIds={allowedIds}
               currentGroupId={group.id}
             />
           </div>

@@ -44,7 +44,7 @@ import (
 func ListApps(envID string, page, pageSize int, search string) (int64, []entities.App, error) {
 	var apps []entities.App
 	var total int64
-	query := db.DB.Model(&entities.App{}).Where("apps.env_id = ?", envID).Order("apps.created_at DESC")
+	query := db.DB.Model(&entities.App{}).Preload("Env.Cluster").Where("apps.env_id = ?", envID).Order("apps.created_at DESC")
 	if search != "" {
 		query = query.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
@@ -145,7 +145,7 @@ func CreateApp(envID string, req *models.CreateAppRequest) (*entities.App, error
 	return application, nil
 }
 
-func CreateAppFromCodeRepositoryBuild(envID, slug, name, containerImage, registryUsername, registryPassword string, codeRepositoryID *string) (*entities.App, error) {
+func CreateAppFromCodeRepositoryBuild(envID, slug, name, containerImage, registryUsername, registryPassword string, codeRepositoryID string) (*entities.App, error) {
 	var existing entities.App
 	if err := db.DB.Where("env_id = ? AND slug = ?", envID, slug).First(&existing).Error; err == nil {
 		return nil, gorm.ErrDuplicatedKey
@@ -980,11 +980,9 @@ func executeDeleteAction(_ context.Context, application *entities.App) (*entitie
 	return application, nil
 }
 
-func ToAppResponse(a *entities.App) models.AppResponse {
-	codeRepoID := ""
-	if a.CodeRepositoryID != nil {
-		codeRepoID = *a.CodeRepositoryID
-	}
+func ToAppResponse(c context.Context, a *entities.App) models.AppResponse {
+	status := GetAppStatus(c, a)
+
 	res := models.AppResponse{
 		ID:               a.ID,
 		Slug:             a.Slug,
@@ -992,7 +990,7 @@ func ToAppResponse(a *entities.App) models.AppResponse {
 		Description:      a.Description,
 		EnvID:            a.EnvID,
 		AppType:          a.AppType,
-		CodeRepositoryID: codeRepoID,
+		CodeRepositoryID: a.CodeRepositoryID,
 		ContainerImage:   a.ContainerImage,
 		ContainerCommand: a.ContainerCommand,
 		RegistryUsername: a.RegistryUsername,
@@ -1002,7 +1000,7 @@ func ToAppResponse(a *entities.App) models.AppResponse {
 		RequestMemory:    a.RequestMemory,
 		LimitCPU:         a.LimitCPU,
 		LimitMemory:      a.LimitMemory,
-		Status:           a.DeployStatus,
+		Status:           status,
 		CreatedAt:        a.CreatedAt,
 	}
 
@@ -1031,6 +1029,18 @@ func ToAppResponse(a *entities.App) models.AppResponse {
 	}
 
 	return res
+}
+
+func GetAppStatus(c context.Context, app *entities.App) string {
+	status := app.DeployStatus
+	if status == "deployed" {
+		calculatedStatus, err := core.CalculateAppStatus(c, app)
+		if err != nil {
+			log.Printf("Failed to calculate app status for app %s: %v", app.ID, err)
+		}
+		status = string(calculatedStatus)
+	}
+	return status
 }
 
 func GetAppTopology(appID string) (*models.AppTopologyResponse, error) {

@@ -301,7 +301,6 @@ func handleCodeRepoBuildDeploy(build *entities.Build) {
 		app.DeployStatus = "deployed"
 		db.DB.Model(app).Update("deploy_status", "deployed")
 	} else if build.PendingDeployAppName != "" && build.PendingDeployAppSlug != "" {
-		repoIDStr := *build.CodeRepositoryID
 		newApp := &entities.App{
 			Base:             entities.Base{ID: uuid.New()},
 			Slug:             build.PendingDeployAppSlug,
@@ -317,7 +316,7 @@ func handleCodeRepoBuildDeploy(build *entities.Build) {
 			LimitMemory:      512,
 			AppType:          "Deployment",
 			DeployStatus:     "undeployed",
-			CodeRepositoryID: &repoIDStr,
+			CodeRepositoryID: *build.CodeRepositoryID,
 		}
 		if err := db.DB.Create(newApp).Error; err != nil {
 			log.Printf("Code repo auto-deploy: failed to create app: %v", err)

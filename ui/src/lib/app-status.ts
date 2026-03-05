@@ -10,8 +10,8 @@ export type AppStatus =
     | "debugging"
     | "unknown";
 
-export const getAppStatusColor = (status: string): "gray" | "blue" | "green" | "sky" | "amber" | "red" | "yellow" | "orange" => {
-    switch (status.toLowerCase()) {
+export const getAppStatusColor = (status: string | undefined | null): "gray" | "blue" | "green" | "sky" | "amber" | "red" | "yellow" | "orange" => {
+    switch ((status ?? "").toLowerCase()) {
         case "running":
         case "completed":
         case "succeeded":

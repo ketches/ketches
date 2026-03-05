@@ -1,18 +1,29 @@
 package services
 
 import (
+	"context"
+
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
-// ListFavoriteApps returns all favorite records for a user within an environment.
-func ListFavoriteApps(userID, envID string) ([]entities.AppFavorite, error) {
-	var favorites []entities.AppFavorite
-	if err := db.DB.Where("user_id = ? AND env_id = ?", userID, envID).Order("created_at DESC").Find(&favorites).Error; err != nil {
+// ListFavoriteApps returns full app details for all apps favorited by a user within an environment.
+func ListFavoriteApps(c context.Context, userID, envID string) ([]models.AppResponse, error) {
+	var apps []entities.App
+	if err := db.DB.Model(&entities.App{}).Preload("Env.Cluster").
+		Joins("JOIN app_favorites ON app_favorites.app_id = apps.id").
+		Where("app_favorites.user_id = ? AND app_favorites.env_id = ?", userID, envID).
+		Order("app_favorites.created_at DESC").
+		Find(&apps).Error; err != nil {
 		return nil, err
 	}
-	return favorites, nil
+	result := make([]models.AppResponse, 0, len(apps))
+	for i := range apps {
+		result = append(result, ToAppResponse(c, &apps[i]))
+	}
+	return result, nil
 }
 
 // IsFavoriteApp returns true if the user has favorited the given app in the given env.

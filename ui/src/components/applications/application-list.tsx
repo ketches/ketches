@@ -75,9 +75,28 @@ interface ApplicationListProps {
   allowedAppIds?: Set<string>
   // When set, shows 'Remove from Group' action instead of 'Add to Group' for this group
   currentGroupId?: string
+  externalApps?: App[]
+  externalPagination?: PaginationState
+  onExternalPaginationChange?: React.Dispatch<React.SetStateAction<PaginationState>>
+  externalTotalCount?: number
+  externalSearchQuery?: string
+  onExternalSearchChange?: (query: string) => void
 }
 
-export function ApplicationList({ envId, envName: _envName, favoritesOnly = false, hideToolbarActions, allowedAppIds, currentGroupId }: ApplicationListProps) {
+export function ApplicationList({
+  envId,
+  envName: _envName,
+  favoritesOnly = false,
+  hideToolbarActions,
+  allowedAppIds,
+  currentGroupId,
+  externalApps,
+  externalPagination,
+  onExternalPaginationChange,
+  externalTotalCount,
+  externalSearchQuery,
+  onExternalSearchChange
+}: ApplicationListProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
@@ -98,7 +117,9 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
     const saved = localStorage.getItem(APPLICATIONS_VIEW_MODE_KEY)
     return (saved === "list" || saved === "card") ? saved : "list"
   })
-  const [searchQuery, setSearchQuery] = React.useState("")
+  const [internalSearchQuery, setInternalSearchQuery] = React.useState("")
+  const searchQuery = externalSearchQuery ?? internalSearchQuery
+  const setSearchQuery = onExternalSearchChange ?? setInternalSearchQuery
   const debouncedSearch = useDebounce(searchQuery, 300)
 
   React.useEffect(() => {
@@ -113,8 +134,10 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
     queryKey: ['app-favorites', envId],
     queryFn: () => appFavoritesApi.listFavorites(envId),
     enabled: !!envId,
+    // Poll only when this list is the primary data source (Favorites tab)
+    refetchInterval: favoritesOnly ? 5000 : false,
   })
-  const favoriteIds = new Set(favorites.map((f: any) => f.app_id))
+  const favoriteIds = new Set(favorites.map((f: App) => f.id))
 
   const { data: appGroups = [] } = useQuery({
     queryKey: ['app-groups', envId],
@@ -182,7 +205,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
       page: pagination.pageIndex + 1,
       page_size: pagination.pageSize,
     }),
-    enabled: !!envId,
+    enabled: !!envId && !externalApps && !favoritesOnly,
     refetchInterval: 5000,
     placeholderData: (previousData) => previousData,
   })
@@ -206,17 +229,22 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
 
   const apps = appsResponse?.items ?? []
   const paginationInfo = appsResponse?.pagination
-  const safeAppsRaw = Array.isArray(apps) ? apps : []
+  const safeAppsRaw = externalApps ? externalApps : (Array.isArray(apps) ? apps : [])
   const safeApps = (() => {
+    if (favoritesOnly) return Array.isArray(favorites) ? favorites as App[] : []
     let result = safeAppsRaw
-    if (favoritesOnly) result = result.filter(a => favoriteIds.has(a.id))
     if (allowedAppIds) result = result.filter(a => allowedAppIds.has(a.id))
     return result
   })()
 
   const handleRefresh = React.useCallback(async () => {
+    if (externalApps && currentGroupId) {
+      // GroupAppList mode: invalidate the group-apps query so GroupAppList refetches
+      await queryClient.invalidateQueries({ queryKey: ['group-apps', currentGroupId] })
+      return
+    }
+
     if (currentGroupId) {
-      await appGroupsApi.listSpecificApps(currentGroupId)
       await queryClient.invalidateQueries({ queryKey: ['app-groups', envId] })
       return
     }
@@ -227,7 +255,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
     }
 
     await refetch()
-  }, [currentGroupId, envId, favoritesOnly, queryClient, refetch, refetchFavorites])
+  }, [externalApps, currentGroupId, envId, favoritesOnly, queryClient, refetch, refetchFavorites])
 
   const columns: ColumnDef<App>[] = [
     {
@@ -284,7 +312,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
         const status = row.original.status
         return (
           <ColorBadge color={getAppStatusColor(status)}>
-            {status.toUpperCase()}
+            {(status ?? "unknown").toUpperCase()}
           </ColorBadge>
         )
       },
@@ -415,10 +443,10 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
         data={safeApps}
         viewMode={viewMode}
         onRefresh={handleRefresh}
-        manualPagination={true}
-        totalCount={paginationInfo?.total || 0}
-        pagination={pagination}
-        onPaginationChange={setPagination}
+        manualPagination={favoritesOnly ? false : externalApps ? false : true}
+        totalCount={favoritesOnly ? favorites.length : externalApps ? (externalTotalCount ?? 0) : (paginationInfo?.total || 0)}
+        pagination={externalPagination ?? pagination}
+        onPaginationChange={onExternalPaginationChange ?? setPagination}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
         leftActions={() => toolbarLeft}
@@ -441,7 +469,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
                       <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
                         onClick={() => navigate(`/applications/${app.id}`)}>{app.name}</CardTitle>
                       <ColorBadge color={getAppStatusColor(app.status)} className="text-[10px] px-1.5 py-0 shrink-0">
-                        {app.status.toUpperCase() || "RUNNING"}
+                        {(app.status ?? "unknown").toUpperCase()}
                       </ColorBadge>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">

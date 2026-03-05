@@ -1,4 +1,5 @@
 import client from './client';
+import { type App } from './apps';
 
 
 export interface AppFavorite {
@@ -8,7 +9,7 @@ export interface AppFavorite {
 }
 
 export const appFavoritesApi = {
-    listFavorites: (envId: string): Promise<AppFavorite[]> =>
+    listFavorites: (envId: string): Promise<App[]> =>
         client.get(`/v1/envs/${envId}/apps/favorites`),
     getFavoriteStatus: (appId: string): Promise<{ is_favorite: boolean }> =>
         client.get(`/v1/apps/${appId}/favorite`),

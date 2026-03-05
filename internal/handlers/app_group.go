@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
@@ -20,15 +21,35 @@ func ListAppGroups(c *gin.Context) {
 	api.Success(c, groups)
 }
 
-// ListSpecificGroupedApps returns a specific app group with its apps for an environment.
+// ListSpecificGroupedApps returns paginated apps for a specific group.
 func ListSpecificGroupedApps(c *gin.Context) {
 	groupID := c.Param("groupID")
-	group, err := services.ListSpecificGroupedApps(groupID)
+
+	page := 1
+	pageSize := 10
+	search := c.Query("search")
+
+	if p := c.Query("page"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil && v > 0 {
+			page = v
+		}
+	}
+	if ps := c.Query("page_size"); ps != "" {
+		if v, err := strconv.Atoi(ps); err == nil && v > 0 {
+			pageSize = v
+		}
+	}
+
+	total, apps, err := services.ListSpecificGroupedApps(c.Request.Context(), groupID, page, pageSize, search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Success(c, group)
+
+	api.Success(c, models.ListAppResponse{
+		Items:      apps,
+		Pagination: models.BuildPaginationResponse(total, page, pageSize),
+	})
 }
 
 // CreateAppGroup creates a new app group for an environment.

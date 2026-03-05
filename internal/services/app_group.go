@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -144,50 +146,33 @@ func ListGroupedApps(envID string) ([]models.AppGroupWithApps, error) {
 	return result, nil
 }
 
-// ListSpecificGroupedApps returns one group with its apps.
-func ListSpecificGroupedApps(groupID string) (models.AppGroupWithApps, error) {
-	group, err := GetAppGroup(groupID)
-	if err != nil {
-		return models.AppGroupWithApps{}, err
+// ListSpecificGroupedApps returns paginated, full app details for a specific group.
+func ListSpecificGroupedApps(c context.Context, groupID string, page, pageSize int, search string) (int64, []models.AppResponse, error) {
+	query := db.DB.Model(&entities.App{}).Model(&entities.App{}).Preload("Env.Cluster").
+		Joins("JOIN app_group_members ON app_group_members.app_id = apps.id").
+		Where("app_group_members.group_id = ?", groupID)
+
+	if search != "" {
+		query = query.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
 
-	type appRow struct {
-		ID           string
-		Slug         string
-		Name         string
-		DeployStatus string
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
 	}
 
-	var rows []appRow
-	if err := db.DB.Model(&entities.AppGroupMember{}).
-		Select("apps.id, apps.slug, apps.name, apps.deploy_status").
-		Joins("JOIN apps ON apps.id = app_group_members.app_id").
-		Where("app_group_members.group_id = ?", group.ID).
+	var apps []entities.App
+	if err := query.
 		Order("app_group_members.created_at ASC").
-		Scan(&rows).Error; err != nil {
-		return models.AppGroupWithApps{}, err
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&apps).Error; err != nil {
+		return 0, nil, err
 	}
 
-	apps := make([]models.AppSimpleResponse, 0, len(rows))
-	for _, row := range rows {
-		apps = append(apps, models.AppSimpleResponse{
-			ID:     row.ID,
-			Slug:   row.Slug,
-			Name:   row.Name,
-			Status: row.DeployStatus,
-		})
+	result := make([]models.AppResponse, 0, len(apps))
+	for i := range apps {
+		result = append(result, ToAppResponse(c, &apps[i]))
 	}
-
-	result := models.AppGroupWithApps{
-		AppGroupResponse: models.AppGroupResponse{
-			ID:          group.ID,
-			EnvID:       group.EnvID,
-			Name:        group.Name,
-			Description: group.Description,
-			CreatedAt:   group.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		},
-		Apps: apps,
-	}
-
-	return result, nil
+	return total, result, nil
 }

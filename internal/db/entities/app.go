@@ -27,7 +27,7 @@ type App struct {
 	DeployStatus string `gorm:"type:varchar(32);default:'undeployed'"`
 
 	// CodeRepositoryID: when set, this app was deployed from this code repository (build & release)
-	CodeRepositoryID *string `gorm:"type:varchar(36);index"`
+	CodeRepositoryID string `gorm:"type:varchar(36);index"`
 
 	Env            Env                `gorm:"foreignKey:EnvID"`
 	EnvVars        []AppEnvVar        `gorm:"foreignKey:AppID"`

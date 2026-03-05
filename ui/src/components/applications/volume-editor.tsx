@@ -312,11 +312,6 @@ export function VolumeEditor({
                               </ComboboxItem>
                               {storageClasses.map((sc: any) => (
                                 <ComboboxItem key={sc.name} value={sc.name}>
-                                  {/* <div className="flex flex-col gap-0.5">
-                                    <span>{sc.name}</span>
-                                    <span className="text-muted-foreground text-[10px] leading-relaxed">{`${sc.provisioner}${sc.isDefault ? " (default)" : ""}`}</span>
-                                  </div> */}
-
                                   <Item size="xs" className="p-0">
                                     <ItemContent>
                                       <ItemTitle className="whitespace-nowrap">

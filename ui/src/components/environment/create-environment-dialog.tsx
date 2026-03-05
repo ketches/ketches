@@ -6,6 +6,13 @@ import { clustersApi, type Cluster } from "@/api/clusters"
 import { envsApi } from "@/api/envs"
 import { Button } from "@/components/ui/button"
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,13 +22,6 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox"
 
 
 import { Textarea } from "@/components/ui/textarea"
@@ -29,6 +29,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useProjectStore } from "@/stores/project"
 import type { AxiosError } from "axios"
 import { InfoIcon } from "lucide-react"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface CreateEnvironmentFormProps {
   open?: boolean
@@ -219,8 +220,18 @@ export function CreateEnvironmentDialog({
                         </ComboboxItem>
                       ) : (
                         (clusters as Cluster[]).map((cluster) => (
-                          <ComboboxItem key={cluster.id} value={cluster.id}>
-                            {cluster.name}
+                          <ComboboxItem key={cluster.id} value={cluster.id} disabled={cluster.connection_status !== "connected"}>
+                            <Item size="xs" className="p-0">
+                              <ItemContent>
+                                <ItemTitle className="whitespace-nowrap">
+                                  {cluster.name}
+                                </ItemTitle>
+                                <ItemDescription>
+                                  {cluster.slug}
+                                </ItemDescription>
+                              </ItemContent>
+                            </Item>
+
                           </ComboboxItem>
                         ))
                       )}
@@ -258,7 +269,7 @@ export function CreateEnvironmentDialog({
           </DialogFooter>
         </form>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }
 

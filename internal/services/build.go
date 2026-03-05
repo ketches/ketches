@@ -381,7 +381,7 @@ func StreamBuildLogs(c *gin.Context, buildID string) {
 	c.Writer.Flush()
 }
 
-func ToBuildResponse(b *entities.Build) models.BuildResponse {
+func ToBuildResponse(c context.Context, b *entities.Build) models.BuildResponse {
 	codeRepoID := ""
 	if b.CodeRepositoryID != nil {
 		codeRepoID = *b.CodeRepositoryID
@@ -425,7 +425,7 @@ func ToBuildResponse(b *entities.Build) models.BuildResponse {
 	}
 
 	if b.App != nil {
-		appResp := ToAppResponse(b.App)
+		appResp := ToAppResponse(c, b.App)
 		resp.App = &appResp
 	}
 
@@ -639,8 +639,7 @@ func DeployCodeRepositoryBuild(repoID, buildID string, req *models.DeployCodeRep
 		app.ContainerImage = build.ImageFullName
 		app.RegistryUsername = registry.Username
 		app.RegistryPassword = registry.Password
-		rid := repoID
-		app.CodeRepositoryID = &rid
+		app.CodeRepositoryID = repoID
 		if err := db.DB.Save(app).Error; err != nil {
 			return nil, nil, err
 		}
@@ -648,7 +647,7 @@ func DeployCodeRepositoryBuild(repoID, buildID string, req *models.DeployCodeRep
 		if req.Slug == "" || req.Name == "" {
 			return nil, nil, errors.New("name and slug are required when creating a new app")
 		}
-		app, err = CreateAppFromCodeRepositoryBuild(req.TargetEnvID, req.Slug, req.Name, build.ImageFullName, registry.Username, registry.Password, &repoID)
+		app, err = CreateAppFromCodeRepositoryBuild(req.TargetEnvID, req.Slug, req.Name, build.ImageFullName, registry.Username, registry.Password, repoID)
 		if err != nil {
 			return nil, nil, err
 		}

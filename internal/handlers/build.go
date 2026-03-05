@@ -26,7 +26,7 @@ func ListBuilds(c *gin.Context) {
 
 	res := make([]models.BuildResponse, 0, len(builds))
 	for _, b := range builds {
-		res = append(res, services.ToBuildResponse(&b))
+		res = append(res, services.ToBuildResponse(c.Request.Context(), &b))
 	}
 
 	api.Success(c, gin.H{
@@ -55,7 +55,7 @@ func TriggerBuild(c *gin.Context) {
 		return
 	}
 
-	api.Created(c, services.ToBuildResponse(build))
+	api.Created(c, services.ToBuildResponse(c.Request.Context(), build))
 }
 
 func GetBuild(c *gin.Context) {
@@ -67,7 +67,7 @@ func GetBuild(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, services.ToBuildResponse(build))
+	api.Success(c, services.ToBuildResponse(c.Request.Context(), build))
 }
 
 func StreamBuildLogs(c *gin.Context) {
@@ -84,7 +84,7 @@ func CancelBuild(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, services.ToBuildResponse(build))
+	api.Success(c, services.ToBuildResponse(c.Request.Context(), build))
 }
 
 func DeployBuild(c *gin.Context) {
@@ -96,7 +96,7 @@ func DeployBuild(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, services.ToBuildResponse(build))
+	api.Success(c, services.ToBuildResponse(c.Request.Context(), build))
 }
 
 func RebuildBuild(c *gin.Context) {
@@ -116,5 +116,5 @@ func RebuildBuild(c *gin.Context) {
 		return
 	}
 
-	api.Created(c, services.ToBuildResponse(build))
+	api.Created(c, services.ToBuildResponse(c.Request.Context(), build))
 }
