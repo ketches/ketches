@@ -13,6 +13,10 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
+func init() {
+	app.PrintVersionBanner()
+}
+
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("failed to load .env file: %v", err)

@@ -14,10 +14,16 @@ RUN go mod download
 COPY . .
 
 ARG VERSION=dev
+ARG COMMIT=unknown
+ARG TAG=
 ARG BUILD_TIME
 
 RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags="-w -s" \
+    -ldflags="-w -s \
+    -X github.com/ketches/ketches/internal/app.Version=${VERSION} \
+    -X github.com/ketches/ketches/internal/app.Commit=${COMMIT} \
+    -X github.com/ketches/ketches/internal/app.BuildTime=${BUILD_TIME} \
+    -X github.com/ketches/ketches/internal/app.Tag=${TAG}" \
     -o ketches \
     ./cmd/api
 

@@ -16,6 +16,7 @@ __debug_bin*
 coverage.*
 *.coverprofile
 profile.cov
+bin/
 
 # env file
 .env

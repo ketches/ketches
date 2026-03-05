@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
-  GalleryVerticalEnd,
   CheckCircle,
   ChevronsUpDown,
   ExternalLink,
   FileClock,
   FileText,
   FolderGit2,
+  GalleryVerticalEnd,
   Hammer,
   History,
   Info,
@@ -16,7 +16,7 @@ import {
   Play,
   Plus,
   Rocket,
-  RotateCcw,
+  RotateCw,
   Share2,
   Telescope,
   Trash2
@@ -60,8 +60,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAuthStore } from "@/stores/auth"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useAuthStore } from "@/stores/auth"
 import type { AxiosError } from "axios"
 
 export function CodeRepositoryDetailPage() {
@@ -341,7 +341,7 @@ export function CodeRepositoryDetailPage() {
                 {retryBuildMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <RotateCcw />
+                  <RotateCw />
                 )}
                 Retry
               </Button>
