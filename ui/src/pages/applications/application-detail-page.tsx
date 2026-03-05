@@ -585,6 +585,7 @@ export function ApplicationDetailPage() {
   })
   const [searchQuery, setSearchQuery] = React.useState("")
   const [rowSelection, setRowSelection] = React.useState({})
+  const [instancePagination, setInstancePagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [isEditImageDialogOpen, setIsEditImageDialogOpen] = React.useState(false)
   const [isEditAppDialogOpen, setIsEditAppDialogOpen] = React.useState(false)
   const [isUnifiedBuildDialogOpen, setIsUnifiedBuildDialogOpen] = React.useState(false)
@@ -1249,7 +1250,11 @@ export function ApplicationDetailPage() {
                       Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
                     </Button>
                   )}
-                  <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto h-7">
+                  <Tabs value={viewMode} onValueChange={(v) => {
+                    setViewMode(v as any)
+                    // Reset pagination when view mode changes
+                    setInstancePagination({ pageIndex: 0, pageSize: 10 })
+                  }} className="w-auto h-7">
                     <TabsList>
                       <TabsTrigger value="table" className="px-2">
                         <List />
@@ -1284,8 +1289,11 @@ export function ApplicationDetailPage() {
                   data={filteredInstances}
                   rowSelection={rowSelection}
                   onRowSelectionChange={setRowSelection}
+                  pagination={instancePagination}
+                  onPaginationChange={setInstancePagination}
                   hidePagination
                 />
+
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredInstances.map((instance) => {

@@ -110,7 +110,6 @@ export function DataTable<TData, TValue>({
   const handleRowSelectionChange = onRowSelectionChange ?? setInternalRowSelection
 
   const pagination = paginationProp ?? internalPagination
-  pagination.pageSize = viewMode === "card" ? 9 : 10
   const onPaginationChange = onPaginationChangeProp ?? setInternalPagination
 
   const table = useReactTable({
@@ -311,7 +310,12 @@ export function DataTable<TData, TValue>({
           <div className="flex-1 flex items-center gap-2 text-xs">
             {/* List mode: selected count shown here (card mode shows it in toolbar) */}
             {viewMode === "list" && selectedCountBadge}
+
+            <div className="flex w-fit items-center justify-center text-xs font-medium text-muted-foreground">
+              Total {effectiveTotal} {effectiveTotal === 1 ? "row" : "rows"}
+            </div>
           </div>
+
           <div className="flex items-center gap-4">
             <div className="flex items-center space-x-6 lg:space-x-8">
               <div className="flex items-center space-x-2">
