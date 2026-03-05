@@ -8,9 +8,6 @@ import { registryProviderLabels } from "@/api/container-registries"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
 import {
   Combobox,
   ComboboxContent,
@@ -18,6 +15,9 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 
 
 import type { AxiosError } from "axios"
@@ -154,7 +154,7 @@ export function CreateBuildConfigDialog({ open, onOpenChange, repoId, onSuccess 
                 onValueChange={(v) => setForm({ ...form, registry_id: v ?? "" })}
                 itemToStringLabel={(id) => registries?.find((r) => r.id === id)?.name ?? id ?? ""}
               >
-                  <ComboboxInput placeholder="Select registry" />
+                <ComboboxInput placeholder="Select registry" />
                 <ComboboxContent>
                   <ComboboxList>
                     {registries?.map((r) => (
@@ -171,7 +171,7 @@ export function CreateBuildConfigDialog({ open, onOpenChange, repoId, onSuccess 
             <FieldLabel>Build args (optional)</FieldLabel>
             <FieldContent>
               <Input
-                placeholder="KEY1=val1,KEY2=val2"
+                placeholder='KEY1=val1,KEY2=val2 or {"KEY1":"val1"}'
                 value={form.build_args ?? ''}
                 onChange={(e) => setForm({ ...form, build_args: e.target.value })}
               />

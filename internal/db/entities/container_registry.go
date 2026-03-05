@@ -10,6 +10,7 @@ const (
 	RegistryProviderGHCR      RegistryProvider = "ghcr"
 	RegistryProviderACR       RegistryProvider = "acr"
 	RegistryProviderECR       RegistryProvider = "ecr"
+	RegistryProviderAliyun    RegistryProvider = "aliyun"
 	RegistryProviderCustom    RegistryProvider = "custom"
 )
 

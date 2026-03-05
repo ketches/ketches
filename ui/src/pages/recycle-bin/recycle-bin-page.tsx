@@ -69,7 +69,7 @@ export function RecycleBinPage() {
     queryFn: () => recycleBinApi.listApps(undefined, {
       search: debouncedSearch,
       page: appsPagination.pageIndex + 1,
-      pageSize: appsPagination.pageSize
+      page_size: appsPagination.pageSize
     }),
   })
 
@@ -81,7 +81,7 @@ export function RecycleBinPage() {
     queryFn: () => recycleBinApi.listEnvs(undefined, {
       search: debouncedSearch,
       page: envsPagination.pageIndex + 1,
-      pageSize: envsPagination.pageSize
+      page_size: envsPagination.pageSize
     }),
   })
 
@@ -93,7 +93,7 @@ export function RecycleBinPage() {
     queryFn: () => recycleBinApi.listProjects({
       search: debouncedSearch,
       page: projectsPagination.pageIndex + 1,
-      pageSize: projectsPagination.pageSize
+      page_size: projectsPagination.pageSize
     }),
   })
 

@@ -14,8 +14,8 @@ import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
-import { projectsApi } from "@/api/projects"
 import { envsApi, type Env } from "@/api/envs"
+import { projectsApi } from "@/api/projects"
 import { DataTable } from "@/components/data-table/data-table"
 import { CreateEnvironmentDialog } from "@/components/environment/create-environment-dialog"
 import { EditEnvironmentDialog } from "@/components/environment/edit-environment-dialog"
@@ -87,7 +87,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
     queryFn: () => envsApi.list(activeProjectId!, {
       search: debouncedSearch,
       page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize
+      page_size: pagination.pageSize
     }),
     enabled: !!activeProjectId,
   })
@@ -214,7 +214,15 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
 
   const toolbarRight = (
     <div className="flex items-center gap-2">
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto h-7">
+      <Tabs value={viewMode} onValueChange={(v) => {
+        const newMode = v as "list" | "card"
+        setViewMode(newMode)
+        setPagination((prev) => ({
+          ...prev,
+          pageIndex: 0,
+          pageSize: newMode === "card" ? 9 : 10,
+        }))
+      }} className="w-auto h-7">
         <TabsList>
           <TabsTrigger value="list">
             <ListIcon />

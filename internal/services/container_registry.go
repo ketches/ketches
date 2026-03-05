@@ -1,13 +1,18 @@
 package services
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	remoteTransport "github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -87,7 +92,7 @@ func CreateClusterRegistry(clusterID string, req *models.CreateContainerRegistry
 		ID:            uuid.New(),
 		Name:          req.Name,
 		Provider:      entities.RegistryProvider(req.Provider),
-		Endpoint:      ensureEndpointScheme(req.Endpoint),
+		Endpoint:      req.Endpoint,
 		SkipTLSVerify: skipTLS,
 		Namespace:     req.Namespace,
 		Username:      req.Username,
@@ -119,7 +124,7 @@ func CreateProjectContainerRegistry(projectID string, req *models.CreateContaine
 		ID:            uuid.New(),
 		Name:          req.Name,
 		Provider:      entities.RegistryProvider(req.Provider),
-		Endpoint:      ensureEndpointScheme(req.Endpoint),
+		Endpoint:      req.Endpoint,
 		SkipTLSVerify: skipTLS,
 		Namespace:     req.Namespace,
 		Username:      req.Username,
@@ -157,7 +162,7 @@ func UpdateContainerRegistry(id string, req *models.UpdateContainerRegistryReque
 		registry.Provider = entities.RegistryProvider(req.Provider)
 	}
 	if req.Endpoint != "" {
-		registry.Endpoint = ensureEndpointScheme(req.Endpoint)
+		registry.Endpoint = req.Endpoint
 	}
 	if req.SkipTLSVerify != nil {
 		registry.SkipTLSVerify = *req.SkipTLSVerify
@@ -207,34 +212,59 @@ func DeleteContainerRegistry(id string) error {
 	return db.DB.Delete(&entities.ContainerRegistry{}, "id = ?", id).Error
 }
 
-// ensureEndpointScheme returns endpoint with https:// if it has no scheme (default TLS).
-func ensureEndpointScheme(endpoint string) string {
-	s := strings.TrimSpace(endpoint)
-	if s == "" {
-		return s
-	}
-	if strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") {
-		return s
-	}
-	return "https://" + s
-}
-
 func TestContainerRegistryConnection(req *models.TestContainerRegistryRequest) *models.TestContainerRegistryResponse {
-	endpoint := ensureEndpointScheme(req.Endpoint)
-	if req.Provider == string(entities.RegistryProviderDockerHub) {
-		endpoint = "https://registry-1.docker.io/v2/"
-	} else {
-		endpoint = fmt.Sprintf("%s/v2/", strings.TrimSuffix(endpoint, "/"))
+	host, insecure, err := resolveRegistryHost(req.Provider, req.Endpoint)
+	if err != nil {
+		return &models.TestContainerRegistryResponse{Success: false, Message: err.Error()}
 	}
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: req.SkipTLSVerify},
-		},
+	nameOpts := []name.Option{}
+	if insecure {
+		nameOpts = append(nameOpts, name.Insecure)
 	}
 
-	resp, err := client.Get(endpoint)
+	registry, err := name.NewRegistry(host, nameOpts...)
+	if err != nil {
+		return &models.TestContainerRegistryResponse{
+			Success: false,
+			Message: fmt.Sprintf("Invalid registry endpoint: %v", err),
+		}
+	}
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: req.SkipTLSVerify}
+
+	auth := authn.Anonymous
+	if req.Username != "" || req.Password != "" {
+		auth = &authn.Basic{Username: req.Username, Password: req.Password}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	authedTransport, err := remoteTransport.NewWithContext(ctx, registry, auth, transport, nil)
+	if err != nil {
+		var transportErr *remoteTransport.Error
+		if errors.As(err, &transportErr) && transportErr.StatusCode == http.StatusUnauthorized {
+			return &models.TestContainerRegistryResponse{Success: false, Message: "Authentication failed: unauthorized"}
+		}
+		return &models.TestContainerRegistryResponse{
+			Success: false,
+			Message: fmt.Sprintf("Connection failed: %v", err),
+		}
+	}
+
+	probeURL := fmt.Sprintf("%s://%s/v2/", registry.Scheme(), registry.RegistryStr())
+	probeReq, err := http.NewRequestWithContext(ctx, http.MethodGet, probeURL, nil)
+	if err != nil {
+		return &models.TestContainerRegistryResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create probe request: %v", err),
+		}
+	}
+
+	probeClient := &http.Client{Transport: authedTransport}
+	resp, err := probeClient.Do(probeReq)
 	if err != nil {
 		return &models.TestContainerRegistryResponse{
 			Success: false,
@@ -243,11 +273,20 @@ func TestContainerRegistryConnection(req *models.TestContainerRegistryRequest) *
 	}
 	defer resp.Body.Close()
 
-	// 200 = open registry, 401 = auth required (registry exists)
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
+	if resp.StatusCode == http.StatusOK {
 		return &models.TestContainerRegistryResponse{
 			Success: true,
 			Message: "Registry is reachable",
+		}
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		if req.Username != "" || req.Password != "" {
+			return &models.TestContainerRegistryResponse{Success: false, Message: "Authentication failed: unauthorized"}
+		}
+		return &models.TestContainerRegistryResponse{
+			Success: true,
+			Message: "Registry is reachable (authentication required)",
 		}
 	}
 
@@ -255,6 +294,31 @@ func TestContainerRegistryConnection(req *models.TestContainerRegistryRequest) *
 		Success: false,
 		Message: fmt.Sprintf("Registry returned status %d", resp.StatusCode),
 	}
+}
+
+func resolveRegistryHost(provider, endpoint string) (string, bool, error) {
+	if provider == string(entities.RegistryProviderDockerHub) {
+		return "registry-1.docker.io", false, nil
+	}
+
+	raw := strings.TrimSpace(endpoint)
+	if raw == "" {
+		return "", false, errors.New("endpoint is required")
+	}
+
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", false, fmt.Errorf("invalid endpoint: %w", err)
+	}
+	if u.Host == "" {
+		return "", false, errors.New("invalid endpoint: missing host")
+	}
+
+	return u.Host, strings.EqualFold(u.Scheme, "http"), nil
 }
 
 func clearDefaultRegistry(scope entities.RegistryScope, clusterID, projectID string) error {

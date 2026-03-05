@@ -4,7 +4,7 @@ import "time"
 
 type CreateContainerRegistryRequest struct {
 	Name          string `json:"name" binding:"required"`
-	Provider      string `json:"provider" binding:"required,oneof=dockerhub harbor ghcr acr ecr custom"`
+	Provider      string `json:"provider" binding:"required,oneof=dockerhub harbor ghcr acr ecr aliyun custom"`
 	Endpoint      string `json:"endpoint" binding:"required"`
 	SkipTLSVerify *bool  `json:"skip_tls_verify"`
 	Namespace     string `json:"namespace"`
@@ -17,7 +17,7 @@ type CreateContainerRegistryRequest struct {
 
 type UpdateContainerRegistryRequest struct {
 	Name          string `json:"name"`
-	Provider      string `json:"provider" binding:"omitempty,oneof=dockerhub harbor ghcr acr ecr custom"`
+	Provider      string `json:"provider" binding:"omitempty,oneof=dockerhub harbor ghcr acr ecr aliyun custom"`
 	Endpoint      string `json:"endpoint"`
 	SkipTLSVerify *bool  `json:"skip_tls_verify"`
 	Namespace     string `json:"namespace"`

@@ -49,7 +49,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
     queryKey: ['project-members', activeProjectId, pagination.pageIndex, pagination.pageSize],
     queryFn: () => projectsApi.listMembers(activeProjectId!, {
       page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize
+      page_size: pagination.pageSize
     }),
     enabled: !!activeProjectId,
   })

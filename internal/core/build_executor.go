@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/ketches/ketches/internal/db/entities"
@@ -44,24 +45,7 @@ func CreateBuildJob(
 	backoffLimit := int32(0)
 	ttl := int32(3600)
 
-	// Kaniko args
-	kanikoArgs := []string{
-		fmt.Sprintf("--dockerfile=%s", config.DockerfilePath),
-		fmt.Sprintf("--context=dir:///workspace/%s", config.BuildContext),
-		fmt.Sprintf("--destination=%s", imageDestination),
-		"--cache=true",
-		"--snapshot-mode=redo",
-	}
-
-	// Add build args
-	if config.BuildArgs != "" {
-		var buildArgs map[string]string
-		if err := json.Unmarshal([]byte(config.BuildArgs), &buildArgs); err == nil {
-			for k, v := range buildArgs {
-				kanikoArgs = append(kanikoArgs, fmt.Sprintf("--build-arg=%s=%s", k, v))
-			}
-		}
-	}
+	kanikoArgs := buildKanikoArgs(config.DockerfilePath, config.BuildContext, imageDestination, config.BuildArgs, registry)
 
 	// Git clone command
 	gitRef := build.GitRef
@@ -194,21 +178,7 @@ func CreateBuildJobFromCodeRepo(
 	backoffLimit := int32(0)
 	ttl := int32(3600)
 
-	kanikoArgs := []string{
-		fmt.Sprintf("--dockerfile=%s", config.DockerfilePath),
-		fmt.Sprintf("--context=dir:///workspace/%s", config.BuildContext),
-		fmt.Sprintf("--destination=%s", imageDestination),
-		"--cache=true",
-		"--snapshot-mode=redo",
-	}
-	if config.BuildArgs != "" {
-		var buildArgs map[string]string
-		if err := json.Unmarshal([]byte(config.BuildArgs), &buildArgs); err == nil {
-			for k, v := range buildArgs {
-				kanikoArgs = append(kanikoArgs, fmt.Sprintf("--build-arg=%s=%s", k, v))
-			}
-		}
-	}
+	kanikoArgs := buildKanikoArgs(config.DockerfilePath, config.BuildContext, imageDestination, config.BuildArgs, registry)
 
 	gitRef := build.GitRef
 	if gitRef == "" {
@@ -502,6 +472,8 @@ func CleanupBuildSecrets(ctx context.Context, clusterID, buildID, namespace stri
 // resolveImageDestination returns the full image reference for Kaniko --destination.
 // imageNameOrFull may be "image:tag" (short) or already a full reference; we use registry to build full if needed.
 func resolveImageDestination(registry *entities.ContainerRegistry, imageName, imageNameOrFull string) string {
+	imageNameOrFull = sanitizeImageReference(imageNameOrFull)
+
 	tag := imageNameOrFull
 	if idx := strings.LastIndex(imageNameOrFull, ":"); idx >= 0 && idx < len(imageNameOrFull)-1 {
 		tag = imageNameOrFull[idx+1:]
@@ -526,11 +498,149 @@ func BuildImageFullName(registry *entities.ContainerRegistry, imageName, tag str
 		return imageWithTag
 	}
 
-	endpoint := strings.TrimSuffix(registry.Endpoint, "/")
+	endpoint := normalizeRegistryHost(registry.Endpoint)
 	if registry.Namespace != "" {
 		return fmt.Sprintf("%s/%s/%s", endpoint, registry.Namespace, imageWithTag)
 	}
 	return fmt.Sprintf("%s/%s", endpoint, imageWithTag)
+}
+
+func sanitizeImageReference(imageRef string) string {
+	imageRef = strings.TrimSpace(imageRef)
+	if imageRef == "" {
+		return imageRef
+	}
+	if after, ok := strings.CutPrefix(imageRef, "https://"); ok {
+		return after
+	}
+	if after, ok := strings.CutPrefix(imageRef, "http://"); ok {
+		return after
+	}
+	return imageRef
+}
+
+func normalizeRegistryHost(endpoint string) string {
+	endpoint = strings.TrimSpace(endpoint)
+	endpoint = strings.TrimSuffix(endpoint, "/")
+	if after, ok := strings.CutPrefix(endpoint, "https://"); ok {
+		endpoint = after
+	}
+	if after, ok := strings.CutPrefix(endpoint, "http://"); ok {
+		endpoint = after
+	}
+	endpoint = strings.TrimPrefix(endpoint, "//")
+	return strings.TrimSuffix(endpoint, "/")
+}
+
+func buildKanikoArgs(dockerfilePath, buildContext, imageDestination, buildArgsJSON string, registry *entities.ContainerRegistry) []string {
+	kanikoArgs := []string{
+		fmt.Sprintf("--dockerfile=%s", dockerfilePath),
+		fmt.Sprintf("--context=dir:///workspace/%s", buildContext),
+		fmt.Sprintf("--destination=%s", imageDestination),
+		"--snapshot-mode=redo",
+		// Avoid failing the whole build when Kaniko cannot cleanup transient files on some runtimes.
+		"--cleanup=false",
+	}
+
+	if shouldEnableKanikoCache(registry) {
+		kanikoArgs = append(kanikoArgs, "--cache=true")
+	} else {
+		// Docker Hub cache pushes commonly fail due to separate cache repo auth scope.
+		kanikoArgs = append(kanikoArgs, "--cache=false")
+	}
+
+	buildArgs := parseBuildArgs(buildArgsJSON)
+	buildArgs = withDefaultPlatformBuildArgs(buildArgs)
+	for _, arg := range buildArgs {
+		kanikoArgs = append(kanikoArgs, fmt.Sprintf("--build-arg=%s", arg))
+	}
+
+	return kanikoArgs
+}
+
+func shouldEnableKanikoCache(registry *entities.ContainerRegistry) bool {
+	if registry == nil {
+		return false
+	}
+	return registry.Provider != entities.RegistryProviderDockerHub
+}
+
+func parseBuildArgs(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+
+	var args []string
+
+	// Preferred format: JSON object, e.g. {"KEY":"VALUE"}
+	var jsonArgs map[string]string
+	if err := json.Unmarshal([]byte(raw), &jsonArgs); err == nil && len(jsonArgs) > 0 {
+		for k, v := range jsonArgs {
+			args = append(args, fmt.Sprintf("%s=%s", strings.TrimSpace(k), v))
+		}
+		return args
+	}
+
+	// Compatibility format: KEY1=val1,KEY2=val2 or newline separated pairs.
+	normalized := strings.ReplaceAll(raw, "\n", ",")
+	for _, part := range strings.Split(normalized, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		if strings.Contains(part, "=") {
+			key, val, _ := strings.Cut(part, "=")
+			key = strings.TrimSpace(key)
+			val = strings.TrimSpace(val)
+			if key == "" {
+				continue
+			}
+			args = append(args, fmt.Sprintf("%s=%s", key, val))
+			continue
+		}
+
+		// Allow KEY form so Kaniko can resolve from environment if present.
+		args = append(args, part)
+	}
+
+	return args
+}
+
+func withDefaultPlatformBuildArgs(args []string) []string {
+	existing := make(map[string]bool)
+	for _, arg := range args {
+		key := arg
+		if k, _, ok := strings.Cut(arg, "="); ok {
+			key = strings.TrimSpace(k)
+		}
+		if key == "" {
+			continue
+		}
+		existing[key] = true
+	}
+
+	arch := runtime.GOARCH
+	os := runtime.GOOS
+	platform := fmt.Sprintf("%s/%s", os, arch)
+
+	defaults := []string{
+		fmt.Sprintf("BUILDPLATFORM=%s", platform),
+		fmt.Sprintf("TARGETPLATFORM=%s", platform),
+		fmt.Sprintf("TARGETOS=%s", os),
+		fmt.Sprintf("TARGETARCH=%s", arch),
+	}
+
+	for _, kv := range defaults {
+		k, _, _ := strings.Cut(kv, "=")
+		if existing[k] {
+			continue
+		}
+		args = append(args, kv)
+	}
+
+	return args
 }
 
 func buildDockerConfigJSON(registry *entities.ContainerRegistry) []byte {
@@ -572,10 +682,13 @@ func buildDockerConfigJSON(registry *entities.ContainerRegistry) []byte {
 			},
 		}
 	} else {
-		endpoint := registry.Endpoint
+		endpoint := normalizeRegistryHost(registry.Endpoint)
 		auth := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", registry.Username, registry.Password))
 		auths = map[string]any{
 			endpoint: map[string]string{
+				"auth": auth,
+			},
+			"https://" + endpoint: map[string]string{
 				"auth": auth,
 			},
 		}
@@ -603,23 +716,23 @@ func buildGitCloneCommand(repoURL, ref, username, password string) string {
 }
 
 func convertSSHToHTTPS(repoURL string) string {
-	if strings.HasPrefix(repoURL, "git@") {
-		repoURL = strings.TrimPrefix(repoURL, "git@")
+	if after, ok := strings.CutPrefix(repoURL, "git@"); ok {
+		repoURL = after
 		repoURL = strings.Replace(repoURL, ":", "/", 1)
 		return "https://" + repoURL
 	}
-	if strings.HasPrefix(repoURL, "ssh://git@") {
-		return "https://" + strings.TrimPrefix(repoURL, "ssh://git@")
+	if after, ok := strings.CutPrefix(repoURL, "ssh://git@"); ok {
+		return "https://" + after
 	}
 	return repoURL
 }
 
 func injectGitCredentials(repoURL, username, password string) string {
-	if strings.HasPrefix(repoURL, "https://") {
-		return fmt.Sprintf("https://%s:%s@%s", username, password, strings.TrimPrefix(repoURL, "https://"))
+	if after, ok := strings.CutPrefix(repoURL, "https://"); ok {
+		return fmt.Sprintf("https://%s:%s@%s", username, password, after)
 	}
-	if strings.HasPrefix(repoURL, "http://") {
-		return fmt.Sprintf("http://%s:%s@%s", username, password, strings.TrimPrefix(repoURL, "http://"))
+	if after, ok := strings.CutPrefix(repoURL, "http://"); ok {
+		return fmt.Sprintf("http://%s:%s@%s", username, password, after)
 	}
 	return repoURL
 }

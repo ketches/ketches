@@ -84,7 +84,7 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
     queryFn: () => containerRegistriesApi.listByProject(activeProjectId!, {
       search: debouncedSearch,
       page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize
+      page_size: pagination.pageSize
     }),
     enabled: !!activeProjectId,
     placeholderData: (previousData) => previousData,
@@ -221,7 +221,15 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
     <div className="flex items-center gap-2">
       <Tabs
         value={viewMode}
-        onValueChange={(v) => setViewMode(v as "list" | "card")}
+        onValueChange={(v) => {
+          const newMode = v as "list" | "card"
+          setViewMode(newMode)
+          setPagination((prev) => ({
+            ...prev,
+            pageIndex: 0,
+            pageSize: newMode === "card" ? 9 : 10,
+          }))
+        }}
         className="w-auto h-7"
       >
         <TabsList>

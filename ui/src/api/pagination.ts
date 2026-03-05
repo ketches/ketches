@@ -2,7 +2,7 @@
 
 export interface PaginationParams {
   page?: number
-  pageSize?: number
+  page_size?: number
   search?: string
   group_id?: string
   favorite?: boolean

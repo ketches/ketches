@@ -35,11 +35,13 @@ interface ContainerRegistryDialogProps {
   registry?: ContainerRegistry | null
 }
 
-const providers: ContainerRegistryProvider[] = ['dockerhub', 'harbor', 'ghcr', 'acr', 'ecr', 'custom']
+const providers: ContainerRegistryProvider[] = ['dockerhub', 'harbor', 'ghcr', 'acr', 'ecr', 'aliyun', 'custom']
 
 const providerEndpointDefaults: Partial<Record<ContainerRegistryProvider, string>> = {
   dockerhub: 'https://index.docker.io/v1/',
-  ghcr: 'https://ghcr.io',
+  harbor: 'harbor.example.com',
+  ghcr: 'ghcr.io',
+  aliyun: 'registry.cn-hangzhou.aliyuncs.com',
 }
 
 export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, registry }: ContainerRegistryDialogProps) {
@@ -208,16 +210,16 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
               </Field>
             </div>
 
-            <Field>
+            {form.provider !== 'dockerhub' && <Field>
               <FieldLabel>Server *</FieldLabel>
               <FieldContent>
                 <Input
-                  placeholder="https://registry.example.com"
+                  placeholder="registry.example.com"
                   value={form.endpoint}
                   onChange={(e) => setForm({ ...form, endpoint: e.target.value })}
                 />
               </FieldContent>
-            </Field>
+            </Field>}
 
             {(form.provider === 'harbor' || form.provider === 'custom') && (
               <>

@@ -243,7 +243,15 @@ export function ProjectsPage() {
     <div className="flex items-center gap-2">
       <Tabs
         value={viewMode}
-        onValueChange={(v) => setViewMode(v as "list" | "card")}
+        onValueChange={(v) => {
+          const newMode = v as "list" | "card"
+          setViewMode(newMode)
+          setPagination((prev) => ({
+            ...prev,
+            pageIndex: 0,
+            pageSize: newMode === "card" ? 9 : 10,
+          }))
+        }}
         className="w-auto h-7"
       >
         <TabsList>

@@ -1,7 +1,7 @@
 import client from './client'
 import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
 
-export type RegistryProvider = 'dockerhub' | 'harbor' | 'ghcr' | 'acr' | 'ecr' | 'custom'
+export type RegistryProvider = 'dockerhub' | 'harbor' | 'ghcr' | 'acr' | 'ecr' | 'aliyun' | 'custom'
 export type RegistryScope = 'cluster' | 'project'
 
 export interface ContainerRegistry {
@@ -94,5 +94,6 @@ export const registryProviderLabels: Record<RegistryProvider, string> = {
   ghcr: 'GitHub Container Registry',
   acr: 'Azure Container Registry',
   ecr: 'AWS ECR',
+  aliyun: 'Aliyun Container Registry',
   custom: 'Custom Registry',
 }

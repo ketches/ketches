@@ -87,7 +87,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
     queryFn: () => codeRepositoriesApi.list(activeProjectId!, {
       search: debouncedSearch,
       page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize
+      page_size: pagination.pageSize
     }),
     enabled: !!activeProjectId,
     placeholderData: (previousData) => previousData,
@@ -243,7 +243,15 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
         )}
         toolbarActions={() => (
           <div className="flex items-center gap-2">
-            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "card")} className="w-auto h-7">
+            <Tabs value={viewMode} onValueChange={(v) => {
+              const newMode = v as "list" | "card"
+              setViewMode(newMode)
+              setPagination((prev) => ({
+                ...prev,
+                pageIndex: 0,
+                pageSize: newMode === "card" ? 9 : 10,
+              }))
+            }} className="w-auto h-7">
               <TabsList>
                 <TabsTrigger value="list">
                   <ListIcon />

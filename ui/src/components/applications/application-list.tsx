@@ -180,7 +180,7 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
     queryFn: () => appsApi.list(envId, {
       search: debouncedSearch,
       page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize,
+      page_size: pagination.pageSize,
     }),
     enabled: !!envId,
     refetchInterval: 5000,
@@ -375,7 +375,15 @@ export function ApplicationList({ envId, envName: _envName, favoritesOnly = fals
 
   const toolbarRight = (
     <div className="flex items-center gap-2">
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto h-7">
+      <Tabs value={viewMode} onValueChange={(v) => {
+        const newMode = v as "list" | "card"
+        setViewMode(newMode)
+        setPagination((prev) => ({
+          ...prev,
+          pageIndex: 0,
+          pageSize: newMode === "card" ? 9 : 10,
+        }))
+      }} className="w-auto h-7">
         <TabsList>
           <TabsTrigger value="list">
             <ListIcon />
