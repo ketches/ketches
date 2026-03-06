@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -226,6 +227,10 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	}
 	httpClient := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: tlsCfg},
+		// Do not follow redirects — we need to see and rewrite Location headers.
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
 	// 6. Construct target URL
@@ -287,16 +292,37 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	}
 	defer resp.Body.Close()
 
-	// Forward response headers
+	// The /forward prefix for this gateway — used when rewriting Location headers
+	// and injecting <base href> into HTML responses.
+	forwardPrefix := "/forward/" + gatewayID
+
+	// Forward response headers, rewriting Location for redirect responses.
 	for key, vals := range resp.Header {
-		if !hopByHop[strings.ToLower(key)] {
+		if hopByHop[strings.ToLower(key)] {
+			continue
+		}
+		if strings.ToLower(key) == "location" {
 			for _, v := range vals {
-				c.Header(key, v)
+				c.Header(key, rewriteLocation(v, forwardPrefix))
 			}
+			continue
+		}
+		for _, v := range vals {
+			c.Header(key, v)
 		}
 	}
 	c.Status(resp.StatusCode)
-	io.Copy(c.Writer, resp.Body)
+
+	// For HTML responses, buffer the body and inject <base href> so that
+	// root-relative asset/link paths resolve correctly through the proxy.
+	contentType := resp.Header.Get("Content-Type")
+	if strings.Contains(contentType, "text/html") {
+		body, _ := io.ReadAll(resp.Body)
+		body = injectBaseHref(body, forwardPrefix+"/")
+		c.Writer.Write(body) //nolint:errcheck
+	} else {
+		io.Copy(c.Writer, resp.Body) //nolint:errcheck
+	}
 }
 
 // filterCookie removes a named cookie from a slice of raw Cookie header values.
@@ -319,4 +345,34 @@ func filterCookie(vals []string, name string) []string {
 		}
 	}
 	return out
+}
+
+// rewriteLocation rewrites an absolute-path Location header to include the
+// /forward/{gatewayID} prefix so the browser stays within the proxy scope.
+func rewriteLocation(location, forwardPrefix string) string {
+	if strings.HasPrefix(location, "/") && !strings.HasPrefix(location, forwardPrefix) {
+		return forwardPrefix + location
+	}
+	return location
+}
+
+// injectBaseHref inserts a <base href="prefix"> tag immediately after <head>
+// in an HTML document so relative and root-relative paths resolve correctly.
+func injectBaseHref(body []byte, prefix string) []byte {
+	baseTag := []byte(`<base href="` + prefix + `">`)
+	// Try to inject after <head> (case-insensitive match).
+	lower := bytes.ToLower(body)
+	if idx := bytes.Index(lower, []byte("<head>")); idx != -1 {
+		insertAt := idx + len("<head>")
+		return append(body[:insertAt:insertAt], append(baseTag, body[insertAt:]...)...)
+	}
+	// Fallback: inject after <html ...> opening tag if no explicit <head>.
+	if idx := bytes.Index(lower, []byte("<html")); idx != -1 {
+		end := bytes.IndexByte(body[idx:], '>')
+		if end != -1 {
+			insertAt := idx + end + 1
+			return append(body[:insertAt:insertAt], append(baseTag, body[insertAt:]...)...)
+		}
+	}
+	return body
 }
