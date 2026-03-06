@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/ketches/ketches/internal/app"
 	"k8s.io/client-go/dynamic"
@@ -18,7 +19,7 @@ type Clients struct {
 	Kube      *kubernetes.Clientset
 	Gateway   *gatewayclient.Clientset
 	Dynamic   dynamic.Interface
-	HTTPProxy *http.Client // plain HTTP client for K8s apiserver service proxy requests
+	HTTPProxy *http.Client
 }
 
 type ClusterStore struct {
@@ -110,7 +111,11 @@ func newHTTPProxyClient(restConfig *rest.Config) (*http.Client, error) {
 		tlsCfg = &tls.Config{} // plain HTTP cluster — still use a typed transport
 	}
 	return &http.Client{
-		Transport: &http.Transport{TLSClientConfig: tlsCfg},
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig:   tlsCfg,
+			DisableKeepAlives: true, // force connection close so EOF is detectable (prevents nginx keep-alive hang)
+		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
