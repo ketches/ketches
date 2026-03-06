@@ -18,5 +18,5 @@ type AppGroupMember struct {
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 	GroupID   string    `gorm:"type:varchar(36);not null;index:idx_app_group_members_group_id;uniqueIndex:idx_group_app"`
-	AppID     string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_group_app"`
+	AppID     string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_group_app;index"`
 }

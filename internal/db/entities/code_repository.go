@@ -5,7 +5,7 @@ package entities
 // Build configs (branch, Dockerfile, image, registry, etc.) are managed per-repo in CodeRepositoryBuildConfig.
 type CodeRepository struct {
 	Base
-	ProjectID string `gorm:"type:varchar(36);not null;uniqueIndex:idx_project_code_repo_slug"`
+	ProjectID string `gorm:"type:varchar(36);not null;uniqueIndex:idx_project_code_repo_slug;index"`
 
 	// Display name (default from URL repo name, editable)
 	Name string `gorm:"type:varchar(128);not null"`

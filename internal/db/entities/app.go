@@ -7,7 +7,7 @@ type App struct {
 	Slug        string `gorm:"type:varchar(64);not null;uniqueIndex:idx_env_app_slug"`
 	Name        string `gorm:"type:varchar(128);not null"`
 	Description string `gorm:"type:text"`
-	EnvID       string `gorm:"type:varchar(36);not null;uniqueIndex:idx_env_app_slug"`
+	EnvID       string `gorm:"type:varchar(36);not null;uniqueIndex:idx_env_app_slug;index"`
 	AppType     string `gorm:"type:varchar(32);default:'Deployment'"`
 
 	ContainerImage   string `gorm:"type:varchar(256);not null"`
@@ -41,7 +41,7 @@ type AppEnvVar struct {
 	ID        string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-	AppID     string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_env_key"`
+	AppID     string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_env_key;index"`
 	Key       string    `gorm:"type:varchar(256);not null;uniqueIndex:idx_app_env_key"`
 	Value     string    `gorm:"type:text"`
 }
@@ -50,7 +50,7 @@ type AppVolume struct {
 	ID           string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt    time.Time `gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
-	AppID        string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_volume_slug;uniqueIndex:idx_app_volume_mount_path"`
+	AppID        string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_volume_slug;uniqueIndex:idx_app_volume_mount_path;index"`
 	Slug         string    `gorm:"type:varchar(64);not null;uniqueIndex:idx_app_volume_slug"`
 	MountPath    string    `gorm:"type:varchar(256);not null;uniqueIndex:idx_app_volume_mount_path"`
 	SubPath      string    `gorm:"type:varchar(256)"`
@@ -65,7 +65,7 @@ type AppGateway struct {
 	ID          string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
-	AppID       string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_gateway_port_proto"`
+	AppID       string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_gateway_port_proto;index"`
 	Port        int       `gorm:"type:int;not null;uniqueIndex:idx_app_gateway_port_proto"`
 	Protocol    string    `gorm:"type:varchar(16);not null;uniqueIndex:idx_app_gateway_port_proto"`
 	Domain      string    `gorm:"type:varchar(256)"`
@@ -98,7 +98,7 @@ type AppConfigFile struct {
 	ID        string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-	AppID     string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_config_file_slug;uniqueIndex:idx_app_config_file_mount_path"`
+	AppID     string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_config_file_slug;uniqueIndex:idx_app_config_file_mount_path;index"`
 	Slug      string    `gorm:"type:varchar(64);not null;uniqueIndex:idx_app_config_file_slug"`
 	MountPath string    `gorm:"type:varchar(256);not null;uniqueIndex:idx_app_config_file_mount_path"`
 	Content   string    `gorm:"type:text;not null"`
@@ -109,7 +109,7 @@ type AppSchedulingRule struct {
 	ID           string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt    time.Time `gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
-	AppID        string    `gorm:"type:varchar(36);uniqueIndex;not null"`
+	AppID        string    `gorm:"type:varchar(36);uniqueIndex;not null;index"`
 	RuleType     string    `gorm:"type:varchar(32)"`
 	NodeName     string    `gorm:"type:varchar(256)"`
 	NodeSelector string    `gorm:"type:text"`
@@ -121,7 +121,7 @@ type AppAutoScaling struct {
 	ID                      string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt               time.Time `gorm:"autoCreateTime"`
 	UpdatedAt               time.Time `gorm:"autoUpdateTime"`
-	AppID                   string    `gorm:"type:varchar(36);uniqueIndex;not null"`
+	AppID                   string    `gorm:"type:varchar(36);uniqueIndex;not null;index"`
 	MinReplicas             int       `gorm:"type:int;default:1"`
 	MaxReplicas             int       `gorm:"type:int;default:10"`
 	TargetCPUUtilization    int       `gorm:"type:int"`

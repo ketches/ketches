@@ -13,8 +13,9 @@ type Certificate struct {
 	Cert        string    `gorm:"type:text;not null"`
 	Key         string    `gorm:"type:text;not null"`
 	Scope       string    `gorm:"type:varchar(16);not null"`
-	ClusterID   string    `gorm:"type:varchar(36);index"`
+	ClusterID   string    `gorm:"type:varchar(36);index;not null"`
 	EnvID       string    `gorm:"type:varchar(36);index"`
+
 	Cluster     *Cluster  `gorm:"foreignKey:ClusterID"`
 	Env         *Env      `gorm:"foreignKey:EnvID"`
 }

@@ -46,15 +46,7 @@ func Migrate() error {
 	); err != nil {
 		return err
 	}
-	if DB.Dialector.Name() == "mysql" {
-		for _, fk := range []string{"fk_apps_builds", "fk_builds_app_id"} {
-			_ = DB.Exec("ALTER TABLE builds DROP FOREIGN KEY " + fk).Error
-		}
-		for _, fk := range []string{"fk_builds_build_config", "fk_builds_build_config_id"} {
-			_ = DB.Exec("ALTER TABLE builds DROP FOREIGN KEY " + fk).Error
-		}
-		_ = DB.Exec("ALTER TABLE builds MODIFY COLUMN app_id VARCHAR(36) NULL").Error
-		_ = DB.Exec("ALTER TABLE builds MODIFY COLUMN build_config_id VARCHAR(36) NULL").Error
-	}
+	// No physical foreign keys will be created due to DisableForeignKeyConstraintWhenMigrating: true
+	// existing physical foreign key cleanup logic for legacy DBs is not needed for a clean start
 	return nil
 }

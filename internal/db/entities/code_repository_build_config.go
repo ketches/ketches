@@ -16,7 +16,7 @@ type CodeRepositoryBuildConfig struct {
 	DockerfilePath string `gorm:"type:varchar(256);default:'Dockerfile'"`
 	BuildContext   string `gorm:"type:varchar(256);default:'.'"`
 	ImageName      string `gorm:"type:varchar(256);not null"`
-	RegistryID     string `gorm:"type:varchar(36);not null"`
+	RegistryID     string `gorm:"type:varchar(36);not null;index"`
 	BuildArgs      string `gorm:"type:text"`
 
 	AutoBuild      bool `gorm:"type:bool;default:false"`

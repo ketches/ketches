@@ -36,7 +36,7 @@ type Build struct {
 	Status        BuildStatus `gorm:"type:varchar(32);default:'pending'"`
 
 	// Build environment (which env's cluster/namespace ran this build)
-	BuildEnvID string `gorm:"type:varchar(36);not null"`
+	BuildEnvID string `gorm:"type:varchar(36);not null;index"`
 
 	// Git info (snapshot at build time)
 	GitRepoURL   string `gorm:"type:varchar(512)"`

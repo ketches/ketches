@@ -6,7 +6,7 @@ type Plugin struct {
 	ID               string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt        time.Time `gorm:"autoCreateTime"`
 	UpdatedAt        time.Time `gorm:"autoUpdateTime"`
-	ProjectID        string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_project_plugin_slug"`
+	ProjectID        string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_project_plugin_slug;index"`
 	Slug             string    `gorm:"type:varchar(64);not null;uniqueIndex:idx_project_plugin_slug"`
 	Name             string    `gorm:"type:varchar(128);not null"`
 	Description      string    `gorm:"type:text"`
