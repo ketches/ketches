@@ -140,3 +140,23 @@ func DeleteAppGateway(id string) error {
 
 	return nil
 }
+
+// GetGatewayWithApp loads a gateway along with its parent App, Env, and Cluster.
+func GetGatewayWithApp(gatewayID string) (*entities.AppGateway, *entities.App, error) {
+	var gateway entities.AppGateway
+	err := db.DB.First(&gateway, "id = ?", gatewayID).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, errors.New("gateway not found")
+		}
+		return nil, nil, err
+	}
+
+	var application entities.App
+	if err := db.DB.Preload("Env.Cluster").
+		First(&application, "id = ?", gateway.AppID).Error; err != nil {
+		return nil, nil, err
+	}
+
+	return &gateway, &application, nil
+}
