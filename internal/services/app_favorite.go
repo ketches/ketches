@@ -9,19 +9,32 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
-// ListFavoriteApps returns full app details for all apps favorited by a user within an environment.
+// ListFavoriteApps returns a list of apps favorited by the user in the given environment.
+// Uses explicit JOINs on envs and clusters to avoid N+1 queries.
 func ListFavoriteApps(c context.Context, userID, envID string) ([]models.AppResponse, error) {
-	var apps []entities.App
-	if err := db.DB.Model(&entities.App{}).Preload("Env.Cluster").
+	var rows []models.AppListRow
+	if err := db.DB.Table("apps").
+		Select(`apps.id, apps.slug, apps.name, apps.description, apps.env_id,
+			apps.app_type, apps.code_repository_id, apps.container_image,
+			apps.container_command, apps.registry_username, apps.registry_password,
+			apps.replicas, apps.request_cpu, apps.request_memory,
+			apps.limit_cpu, apps.limit_memory, apps.deploy_status, apps.created_at,
+			envs.name AS env_name, envs.slug AS env_slug,
+			envs.cluster_id, envs.cluster_namespace, envs.is_build_env,
+			clusters.name AS cluster_name`).
 		Joins("JOIN app_favorites ON app_favorites.app_id = apps.id").
+		Joins("JOIN envs ON envs.id = apps.env_id").
+		Joins("JOIN clusters ON clusters.id = envs.cluster_id").
 		Where("app_favorites.user_id = ? AND app_favorites.env_id = ?", userID, envID).
+		Where("apps.deleted_at IS NULL").
 		Order("app_favorites.created_at DESC").
-		Find(&apps).Error; err != nil {
+		Find(&rows).Error; err != nil {
 		return nil, err
 	}
-	result := make([]models.AppResponse, 0, len(apps))
-	for i := range apps {
-		result = append(result, ToAppResponse(c, &apps[i]))
+
+	result := make([]models.AppResponse, 0, len(rows))
+	for i := range rows {
+		result = append(result, ToAppListResponse(c, &rows[i]))
 	}
 	return result, nil
 }
