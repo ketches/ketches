@@ -318,6 +318,10 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	contentType := resp.Header.Get("Content-Type")
 	if strings.Contains(contentType, "text/html") {
 		body, _ := io.ReadAll(resp.Body)
+		// Rewrite K8s apiserver proxy prefix → /forward/{gatewayID} so that
+		// absolute links already rewritten by kube-apiserver resolve correctly.
+		k8sProxyPrefix := fmt.Sprintf("/api/v1/namespaces/%s/services/%s:%d/proxy", ns, svcName, port)
+		body = bytes.ReplaceAll(body, []byte(k8sProxyPrefix), []byte(forwardPrefix))
 		body = injectBaseHref(body, forwardPrefix+"/")
 		c.Writer.Write(body) //nolint:errcheck
 	} else {
