@@ -85,9 +85,19 @@ func CreateEnv(projectID string, req *models.CreateEnvRequest) (*entities.Env, e
 
 func GetEnv(envID string) (*entities.Env, error) {
 	var env entities.Env
-	if err := db.DB.Preload("Project").Preload("Cluster").First(&env, "id = ?", envID).Error; err != nil {
+	if err := db.DB.First(&env, "id = ?", envID).Error; err != nil {
 		return nil, err
 	}
+	var project entities.Project
+	if err := db.DB.First(&project, "id = ?", env.ProjectID).Error; err != nil {
+		return nil, err
+	}
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+		return nil, err
+	}
+	env.Project = project
+	env.Cluster = cluster
 	return &env, nil
 }
 
@@ -146,7 +156,7 @@ func DeleteEnv(envID string) error {
 
 func PermanentlyDeleteEnv(envID string) error {
 	var env entities.Env
-	if err := db.DB.Unscoped().Preload("Cluster").First(&env, "id = ?", envID).Error; err != nil {
+	if err := db.DB.Unscoped().First(&env, "id = ?", envID).Error; err != nil {
 		return err
 	}
 
@@ -233,11 +243,16 @@ func UnsetBuildEnv(envID string) (*entities.Env, error) {
 
 func GetProjectBuildEnv(projectID string) (*entities.Env, error) {
 	var env entities.Env
-	if err := db.DB.Preload("Cluster").
+	if err := db.DB.
 		Where("project_id = ? AND is_build_env = ?", projectID, true).
 		First(&env).Error; err != nil {
 		return nil, err
 	}
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+		return nil, err
+	}
+	env.Cluster = cluster
 	return &env, nil
 }
 

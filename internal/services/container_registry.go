@@ -99,7 +99,7 @@ func CreateClusterRegistry(clusterID string, req *models.CreateContainerRegistry
 		Password:      req.Password,
 		Scope:         entities.RegistryScopeCluster,
 		ClusterID:     &cid,
-		ProjectID:     nil,
+		ProjectID:     "",
 		IsDefault:     req.IsDefault,
 		Enabled:       req.Enabled,
 		Description:   req.Description,
@@ -131,7 +131,7 @@ func CreateProjectContainerRegistry(projectID string, req *models.CreateContaine
 		Password:      req.Password,
 		Scope:         entities.RegistryScopeProject,
 		ClusterID:     nil,
-		ProjectID:     &pid,
+		ProjectID:     pid,
 		IsDefault:     req.IsDefault,
 		Enabled:       req.Enabled,
 		Description:   req.Description,
@@ -180,8 +180,8 @@ func UpdateContainerRegistry(id string, req *models.UpdateContainerRegistryReque
 			if registry.ClusterID != nil {
 				cid = *registry.ClusterID
 			}
-			if registry.ProjectID != nil {
-				pid = *registry.ProjectID
+			if registry.ProjectID != "" {
+				pid = registry.ProjectID
 			}
 			if err := clearDefaultRegistry(registry.Scope, cid, pid); err != nil {
 				return nil, err
@@ -336,9 +336,9 @@ func ToContainerRegistryResponse(r *entities.ContainerRegistry) models.Container
 	if r.ClusterID != nil {
 		cid = *r.ClusterID
 	}
-	if r.ProjectID != nil {
-		pid = *r.ProjectID
-	}
+		if r.ProjectID != "" {
+			pid = r.ProjectID
+		}
 	return models.ContainerRegistryResponse{
 		ID:            r.ID,
 		Name:          r.Name,

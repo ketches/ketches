@@ -10,43 +10,48 @@ import (
 	"gorm.io/gorm"
 )
 
-func ListProjects(userID string, role string, req *models.PaginationRequest) (int64, []entities.Project, error) {
-	var projects []entities.Project
+// ListProjects returns a paginated list of projects using an explicit JOIN to
+// fetch the owner name instead of GORM Preload. Results are scanned into the
+// flat ProjectListRow DTO.
+func ListProjects(userID string, role string, req *models.PaginationRequest) (int64, []models.ProjectListRow, error) {
+	var rows []models.ProjectListRow
 	var total int64
 
-	// Build base query depending on role
-	var baseQuery *gorm.DB
-	if role == "admin" {
-		baseQuery = db.DB.Model(&entities.Project{})
-	} else {
-		baseQuery = db.DB.Model(&entities.Project{}).
+	// Build count query depending on role
+	countQ := db.DB.Model(&entities.Project{})
+	if role != "admin" {
+		countQ = countQ.
 			Joins("JOIN project_members ON project_members.project_id = projects.id").
 			Where("project_members.user_id = ?", userID)
 	}
-
-	// Apply search filter
 	if req.Search != "" {
 		search := "%" + req.Search + "%"
-		baseQuery = baseQuery.Where("projects.name LIKE ? OR projects.slug LIKE ? OR projects.description LIKE ?", search, search, search)
+		countQ = countQ.Where("projects.name LIKE ? OR projects.slug LIKE ? OR projects.description LIKE ?", search, search, search)
 	}
-
-	// Count total before pagination
-	if err := baseQuery.Count(&total).Error; err != nil {
+	if err := countQ.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
 
-	// Apply pagination and preload members with user info
-	err := baseQuery.
-		Select("projects.*").
-		Offset(req.GetOffset()).
-		Limit(req.PageSize).
-		Preload("Members", "project_role = ?", "owner").Preload("Members.User").
-		Find(&projects).Error
-	if err != nil {
+	// Build data query with explicit JOIN for owner name
+	dataQ := db.DB.Table("projects").
+		Select(`projects.id, projects.slug, projects.name, projects.description, projects.created_at,
+			COALESCE(u.fullname, u.username, '') AS owner_name`).
+		Joins("LEFT JOIN project_members pm ON pm.project_id = projects.id AND pm.project_role = 'owner'").
+		Joins("LEFT JOIN users u ON u.id = pm.user_id").
+		Where("projects.deleted_at IS NULL")
+	if role != "admin" {
+		// Non-admin: must be a member of the project (use a subquery to avoid conflict with the owner join)
+		dataQ = dataQ.Where("projects.id IN (SELECT project_id FROM project_members WHERE user_id = ?)", userID)
+	}
+	if req.Search != "" {
+		search := "%" + req.Search + "%"
+		dataQ = dataQ.Where("projects.name LIKE ? OR projects.slug LIKE ? OR projects.description LIKE ?", search, search, search)
+	}
+	if err := dataQ.Offset(req.GetOffset()).Limit(req.PageSize).Find(&rows).Error; err != nil {
 		return 0, nil, err
 	}
 
-	return total, projects, nil
+	return total, rows, nil
 }
 
 func ListProjectsSimple(userID string, role string) ([]entities.Project, error) {
@@ -173,7 +178,7 @@ func ListProjectMembers(projectID string, page, pageSize int, search string) (in
 		return 0, nil, err
 	}
 
-	if err := query.Preload("User").
+	if err := query.Joins("User").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&members).Error; err != nil {

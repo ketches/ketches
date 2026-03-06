@@ -70,6 +70,7 @@ type Build struct {
 	BuildEnv            Env                        `gorm:"foreignKey:BuildEnvID"`
 }
 
+
 func (Build) TableName() string {
 	return "builds"
 }

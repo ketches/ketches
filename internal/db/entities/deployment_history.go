@@ -38,3 +38,4 @@ type DeploymentHistory struct {
 	App   App    `gorm:"foreignKey:AppID"`
 	Build *Build `gorm:"foreignKey:BuildID"`
 }
+

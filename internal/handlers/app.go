@@ -141,9 +141,9 @@ func ListApps(c *gin.Context) {
 	var wg sync.WaitGroup
 	for i, a := range apps {
 		wg.Add(1)
-		go func(i int, a entities.App) {
+		go func(i int, a models.AppListRow) {
 			defer wg.Done()
-			res[i] = services.ToAppResponse(c.Request.Context(), &a)
+			res[i] = services.ToAppListResponse(c.Request.Context(), &a)
 		}(i, a)
 	}
 	wg.Wait()

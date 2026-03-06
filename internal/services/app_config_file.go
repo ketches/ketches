@@ -56,7 +56,15 @@ func CreateAppConfigFile(appID string, req *models.CreateConfigFileRequest) (*en
 
 	// Load app with environment for K8s sync
 	var app entities.App
-	if err := db.DB.Preload("Env").Preload("ConfigFiles").First(&app, "id = ?", appID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", appID).Error; err != nil {
+		return nil, err
+	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		return nil, err
+	}
+	app.Env = env
+	if err := db.DB.Where("app_id = ?", appID).Find(&app.ConfigFiles).Error; err != nil {
 		return nil, err
 	}
 
@@ -112,7 +120,15 @@ func UpdateAppConfigFile(id string, req *models.UpdateConfigFileRequest) (*entit
 
 	// Load app with environment for K8s sync
 	var app entities.App
-	if err := db.DB.Preload("Env").Preload("ConfigFiles").First(&app, "id = ?", configFile.AppID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", configFile.AppID).Error; err != nil {
+		return nil, err
+	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		return nil, err
+	}
+	app.Env = env
+	if err := db.DB.Where("app_id = ?", configFile.AppID).Find(&app.ConfigFiles).Error; err != nil {
 		return nil, err
 	}
 
@@ -136,7 +152,15 @@ func DeleteAppConfigFile(id string) error {
 
 	// Load app with environment for K8s sync
 	var app entities.App
-	if err := db.DB.Preload("Env").Preload("ConfigFiles").First(&app, "id = ?", configFile.AppID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", configFile.AppID).Error; err != nil {
+		return err
+	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		return err
+	}
+	app.Env = env
+	if err := db.DB.Where("app_id = ?", configFile.AppID).Find(&app.ConfigFiles).Error; err != nil {
 		return err
 	}
 

@@ -49,7 +49,15 @@ func CreateAppGateway(appID string, req *models.CreateGatewayRequest) (*entities
 
 	// Load app with environment for K8s sync
 	var app entities.App
-	if err := db.DB.Preload("Env").Preload("Gateways").First(&app, "id = ?", appID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", appID).Error; err != nil {
+		return nil, err
+	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		return nil, err
+	}
+	app.Env = env
+	if err := db.DB.Where("app_id = ?", appID).Find(&app.Gateways).Error; err != nil {
 		return nil, err
 	}
 
@@ -99,7 +107,15 @@ func UpdateAppGateway(id string, req *models.UpdateGatewayRequest) (*entities.Ap
 
 	// Load app with environment for K8s sync
 	var app entities.App
-	if err := db.DB.Preload("Env").Preload("Gateways").First(&app, "id = ?", gateway.AppID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", gateway.AppID).Error; err != nil {
+		return nil, err
+	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		return nil, err
+	}
+	app.Env = env
+	if err := db.DB.Where("app_id = ?", gateway.AppID).Find(&app.Gateways).Error; err != nil {
 		return nil, err
 	}
 
@@ -124,7 +140,15 @@ func DeleteAppGateway(id string) error {
 
 	// Load app with environment for K8s sync
 	var app entities.App
-	if err := db.DB.Preload("Env").Preload("Gateways").First(&app, "id = ?", gateway.AppID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", gateway.AppID).Error; err != nil {
+		return err
+	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		return err
+	}
+	app.Env = env
+	if err := db.DB.Where("app_id = ?", gateway.AppID).Find(&app.Gateways).Error; err != nil {
 		return err
 	}
 
@@ -153,10 +177,19 @@ func GetGatewayWithApp(gatewayID string) (*entities.AppGateway, *entities.App, e
 	}
 
 	var application entities.App
-	if err := db.DB.Preload("Env.Cluster").
-		First(&application, "id = ?", gateway.AppID).Error; err != nil {
+	if err := db.DB.First(&application, "id = ?", gateway.AppID).Error; err != nil {
 		return nil, nil, err
 	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", application.EnvID).Error; err != nil {
+		return nil, nil, err
+	}
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+		return nil, nil, err
+	}
+	env.Cluster = cluster
+	application.Env = env
 
 	return &gateway, &application, nil
 }

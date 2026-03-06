@@ -26,6 +26,7 @@ type CodeRepository struct {
 	Builds       []Build                     `gorm:"foreignKey:CodeRepositoryID"`
 }
 
+
 func (CodeRepository) TableName() string {
 	return "code_repositories"
 }

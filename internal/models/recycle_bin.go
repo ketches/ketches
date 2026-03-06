@@ -1,5 +1,4 @@
 package models
-
 import "time"
 
 type RecycleBinAppResponse struct {

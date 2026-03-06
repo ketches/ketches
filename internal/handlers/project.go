@@ -27,24 +27,12 @@ func ListProjects(c *gin.Context) {
 
 	res := []models.ProjectResponse{}
 	for _, p := range projects {
-		// Find the owner member to populate owner_name
-		ownerName := ""
-		for _, m := range p.Members {
-			if m.ProjectRole == "owner" {
-				if m.User.Fullname != "" {
-					ownerName = m.User.Fullname
-				} else {
-					ownerName = m.User.Username
-				}
-				break
-			}
-		}
 		res = append(res, models.ProjectResponse{
 			ID:          p.ID,
 			Slug:        p.Slug,
 			Name:        p.Name,
 			Description: p.Description,
-			OwnerName:   ownerName,
+			OwnerName:   p.OwnerName,
 			CreatedAt:   p.CreatedAt,
 		})
 	}

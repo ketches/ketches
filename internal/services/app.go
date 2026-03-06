@@ -41,21 +41,45 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-func ListApps(envID string, page, pageSize int, search string) (int64, []entities.App, error) {
-	var apps []entities.App
+// ListApps returns a paginated list of apps for the given environment using
+// explicit JOINs on envs and clusters instead of GORM Preload. Results are
+// scanned into the flat AppListRow DTO.
+func ListApps(envID string, page, pageSize int, search string) (int64, []models.AppListRow, error) {
+	var rows []models.AppListRow
 	var total int64
-	query := db.DB.Model(&entities.App{}).Preload("Env.Cluster").Where("apps.env_id = ?", envID).Order("apps.created_at DESC")
+
+	// Count query (simple, no joins needed)
+	countQ := db.DB.Model(&entities.App{}).Where("apps.env_id = ?", envID)
 	if search != "" {
-		query = query.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
+		countQ = countQ.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if err := countQ.Count(&total).Error; err != nil {
+		return 0, nil, err
 	}
 
-	if err := query.Count(&total).Error; err != nil {
+	// Data query with explicit JOINs
+	dataQ := db.DB.Table("apps").
+		Select(`apps.id, apps.slug, apps.name, apps.description, apps.env_id,
+			apps.app_type, apps.code_repository_id, apps.container_image,
+			apps.container_command, apps.registry_username, apps.registry_password,
+			apps.replicas, apps.request_cpu, apps.request_memory,
+			apps.limit_cpu, apps.limit_memory, apps.deploy_status, apps.created_at,
+			envs.name AS env_name, envs.slug AS env_slug,
+			envs.cluster_id, envs.cluster_namespace, envs.is_build_env,
+			clusters.name AS cluster_name`).
+		Joins("JOIN envs ON envs.id = apps.env_id").
+		Joins("JOIN clusters ON clusters.id = envs.cluster_id").
+		Where("apps.env_id = ?", envID).
+		Where("apps.deleted_at IS NULL").
+		Order("apps.created_at DESC")
+	if search != "" {
+		dataQ = dataQ.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if err := dataQ.Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
 		return 0, nil, err
 	}
-	if err := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&apps).Error; err != nil {
-		return 0, nil, err
-	}
-	return total, apps, nil
+
+	return total, rows, nil
 }
 
 func ListAppsSimple(envID string) ([]entities.App, error) {
@@ -129,9 +153,14 @@ func CreateApp(envID string, req *models.CreateAppRequest) (*entities.App, error
 	}
 
 	var env entities.Env
-	if err := db.DB.Preload("Cluster").First(&env, "id = ?", envID).Error; err != nil {
+	if err := db.DB.First(&env, "id = ?", envID).Error; err != nil {
 		return nil, err
 	}
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+		return nil, err
+	}
+	env.Cluster = cluster
 	application.Env = env
 
 	if req.Deploy {
@@ -172,27 +201,64 @@ func CreateAppFromCodeRepositoryBuild(envID, slug, name, containerImage, registr
 		return nil, err
 	}
 	var env entities.Env
-	if err := db.DB.Preload("Cluster").First(&env, "id = ?", envID).Error; err != nil {
+	if err := db.DB.First(&env, "id = ?", envID).Error; err != nil {
 		return nil, err
 	}
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+		return nil, err
+	}
+	env.Cluster = cluster
 	application.Env = env
 	return application, nil
 }
 
 func GetApp(appID string) (*entities.App, error) {
 	var application entities.App
-	if err := db.DB.Preload("Env.Cluster").
-		Preload("EnvVars").
-		Preload("Volumes").
-		Preload("ConfigFiles").
-		Preload("Probes").
-		Preload("Gateways").
-		Preload("AppPlugins.Plugin").
-		Preload("AutoScaling").
-		Preload("SchedulingRule").
-		First(&application, "id = ?", appID).Error; err != nil {
+	if err := db.DB.First(&application, "id = ?", appID).Error; err != nil {
 		return nil, err
 	}
+
+	// Fetch Env + Cluster (N:1 chain)
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", application.EnvID).Error; err != nil {
+		return nil, err
+	}
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+		return nil, err
+	}
+	env.Cluster = cluster
+	application.Env = env
+
+	// Batch-fetch 1:N relations
+	db.DB.Where("app_id = ?", appID).Find(&application.EnvVars)
+	db.DB.Where("app_id = ?", appID).Find(&application.Volumes)
+	db.DB.Where("app_id = ?", appID).Find(&application.ConfigFiles)
+	db.DB.Where("app_id = ?", appID).Find(&application.Probes)
+	db.DB.Where("app_id = ?", appID).Find(&application.Gateways)
+
+	// Fetch 1:1 optional relations
+	var autoScaling entities.AppAutoScaling
+	if err := db.DB.Where("app_id = ?", appID).First(&autoScaling).Error; err == nil {
+		application.AutoScaling = &autoScaling
+	}
+	var schedulingRule entities.AppSchedulingRule
+	if err := db.DB.Where("app_id = ?", appID).First(&schedulingRule).Error; err == nil {
+		application.SchedulingRule = &schedulingRule
+	}
+
+	// Fetch AppPlugins with their Plugin (N:1)
+	var appPlugins []entities.AppPlugin
+	db.DB.Where("app_id = ?", appID).Find(&appPlugins)
+	for i := range appPlugins {
+		var plugin entities.Plugin
+		if err := db.DB.First(&plugin, "id = ?", appPlugins[i].PluginID).Error; err == nil {
+			appPlugins[i].Plugin = plugin
+		}
+	}
+	application.AppPlugins = appPlugins
+
 	return &application, nil
 }
 
@@ -434,17 +500,21 @@ func BatchDeleteApps(ids []string) error {
 
 func PermanentlyDeleteApp(appID string) error {
 	var application entities.App
-	if err := db.DB.Unscoped().Preload("Env.Cluster").
-		Preload("EnvVars").
-		Preload("Volumes").
-		Preload("ConfigFiles").
-		Preload("Gateways").
-		Preload("Probes").
-		Preload("AppPlugins").
-		Preload("AutoScaling").
-		Preload("SchedulingRule").
-		First(&application, "id = ?", appID).Error; err != nil {
+	if err := db.DB.Unscoped().First(&application, "id = ?", appID).Error; err != nil {
 		return err
+	}
+
+	// Fetch env for K8s resource cleanup (needs ClusterID, ClusterNamespace)
+	var env entities.Env
+	if err := db.DB.Unscoped().First(&env, "id = ?", application.EnvID).Error; err != nil {
+		return err
+	}
+	application.Env = env
+
+	// Check if autoScaling exists (deleteAppK8sResources checks app.AutoScaling != nil for HPA deletion)
+	var autoScaling entities.AppAutoScaling
+	if err := db.DB.Where("app_id = ?", appID).First(&autoScaling).Error; err == nil {
+		application.AutoScaling = &autoScaling
 	}
 
 	// Delete Kubernetes resources created by this app
@@ -452,52 +522,30 @@ func PermanentlyDeleteApp(appID string) error {
 		return err
 	}
 
-	if len(application.EnvVars) > 0 {
-		if err := db.DB.Unscoped().Delete(&application.EnvVars).Error; err != nil {
-			return err
-		}
+	// Hard-delete all child records directly (no need to fetch first)
+	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppEnvVar{}).Error; err != nil {
+		return err
 	}
-
-	if len(application.Volumes) > 0 {
-		if err := db.DB.Unscoped().Delete(&application.Volumes).Error; err != nil {
-			return err
-		}
+	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppVolume{}).Error; err != nil {
+		return err
 	}
-
-	if len(application.ConfigFiles) > 0 {
-		if err := db.DB.Unscoped().Delete(&application.ConfigFiles).Error; err != nil {
-			return err
-		}
+	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppConfigFile{}).Error; err != nil {
+		return err
 	}
-
-	if len(application.Gateways) > 0 {
-		if err := db.DB.Unscoped().Delete(&application.Gateways).Error; err != nil {
-			return err
-		}
+	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppGateway{}).Error; err != nil {
+		return err
 	}
-
-	if len(application.Probes) > 0 {
-		if err := db.DB.Unscoped().Delete(&application.Probes).Error; err != nil {
-			return err
-		}
+	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppProbe{}).Error; err != nil {
+		return err
 	}
-
-	if len(application.AppPlugins) > 0 {
-		if err := db.DB.Unscoped().Delete(&application.AppPlugins).Error; err != nil {
-			return err
-		}
+	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppPlugin{}).Error; err != nil {
+		return err
 	}
-
-	if application.AutoScaling != nil {
-		if err := db.DB.Unscoped().Delete(application.AutoScaling).Error; err != nil {
-			return err
-		}
+	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppAutoScaling{}).Error; err != nil {
+		return err
 	}
-
-	if application.SchedulingRule != nil {
-		if err := db.DB.Unscoped().Delete(application.SchedulingRule).Error; err != nil {
-			return err
-		}
+	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppSchedulingRule{}).Error; err != nil {
+		return err
 	}
 
 	return db.DB.Unscoped().Delete(&entities.App{}, "id = ?", appID).Error
@@ -1043,6 +1091,58 @@ func GetAppStatus(c context.Context, app *entities.App) string {
 	return status
 }
 
+// GetAppListRowStatus calculates the live status for an AppListRow.
+// For deployed apps, it queries the Kubernetes cluster using the flat DTO fields.
+func GetAppListRowStatus(ctx context.Context, row *models.AppListRow) string {
+	status := row.DeployStatus
+	if status == "deployed" && row.ClusterID != "" {
+		client, err := kube.GlobalClusterStore.GetClient(row.ClusterID)
+		if err != nil {
+			log.Printf("Failed to get cluster client for app %s: %v", row.ID, err)
+			return status
+		}
+		calculatedStatus, err := core.CalculateAppListStatus(ctx, client, row.ID, row.Slug, row.AppType, row.ClusterNamespace, row.Replicas)
+		if err != nil {
+			log.Printf("Failed to calculate app status for app %s: %v", row.ID, err)
+		}
+		status = string(calculatedStatus)
+	}
+	return status
+}
+
+// ToAppListResponse converts a flat AppListRow DTO into the API AppResponse.
+func ToAppListResponse(ctx context.Context, row *models.AppListRow) models.AppResponse {
+	status := GetAppListRowStatus(ctx, row)
+	return models.AppResponse{
+		ID:               row.ID,
+		Slug:             row.Slug,
+		Name:             row.Name,
+		Description:      row.Description,
+		EnvID:            row.EnvID,
+		AppType:          row.AppType,
+		CodeRepositoryID: row.CodeRepositoryID,
+		ContainerImage:   row.ContainerImage,
+		ContainerCommand: row.ContainerCommand,
+		RegistryUsername: row.RegistryUsername,
+		RegistryPassword: row.RegistryPassword,
+		Replicas:         row.Replicas,
+		RequestCPU:       row.RequestCPU,
+		RequestMemory:    row.RequestMemory,
+		LimitCPU:         row.LimitCPU,
+		LimitMemory:      row.LimitMemory,
+		Status:           status,
+		CreatedAt:        row.CreatedAt,
+		Env: &models.EnvResponse{
+			ID:               row.EnvID,
+			Slug:             row.EnvSlug,
+			Name:             row.EnvName,
+			ClusterID:        row.ClusterID,
+			ClusterNamespace: row.ClusterNamespace,
+			IsBuildEnv:       row.IsBuildEnv,
+		},
+	}
+}
+
 func GetAppTopology(appID string) (*models.AppTopologyResponse, error) {
 	application, err := GetApp(appID)
 	if err != nil {
@@ -1166,6 +1266,93 @@ func seedAppFromImageMetadata(ctx context.Context, application *entities.App) er
 			SuccessThreshold: 1,
 		}
 		_ = db.DB.Create(probe).Error
+	}
+
+	return nil
+}
+
+// batchLoadAppChildren populates the association fields on a slice of apps
+// using batch queries (one query per child type) instead of N+1 Preloads.
+func batchLoadAppChildren(apps []entities.App) error {
+	if len(apps) == 0 {
+		return nil
+	}
+
+	appIDs := make([]string, len(apps))
+	for i, a := range apps {
+		appIDs[i] = a.ID
+	}
+
+	// Batch-fetch all child types
+	var envVars []entities.AppEnvVar
+	if err := db.DB.Where("app_id IN ?", appIDs).Find(&envVars).Error; err != nil {
+		return err
+	}
+	var gateways []entities.AppGateway
+	if err := db.DB.Where("app_id IN ?", appIDs).Find(&gateways).Error; err != nil {
+		return err
+	}
+	var configFiles []entities.AppConfigFile
+	if err := db.DB.Where("app_id IN ?", appIDs).Find(&configFiles).Error; err != nil {
+		return err
+	}
+	var volumes []entities.AppVolume
+	if err := db.DB.Where("app_id IN ?", appIDs).Find(&volumes).Error; err != nil {
+		return err
+	}
+	var probes []entities.AppProbe
+	if err := db.DB.Where("app_id IN ?", appIDs).Find(&probes).Error; err != nil {
+		return err
+	}
+	var autoScalings []entities.AppAutoScaling
+	if err := db.DB.Where("app_id IN ?", appIDs).Find(&autoScalings).Error; err != nil {
+		return err
+	}
+	var schedulingRules []entities.AppSchedulingRule
+	if err := db.DB.Where("app_id IN ?", appIDs).Find(&schedulingRules).Error; err != nil {
+		return err
+	}
+
+	// Build lookup maps
+	envVarMap := make(map[string][]entities.AppEnvVar)
+	for _, v := range envVars {
+		envVarMap[v.AppID] = append(envVarMap[v.AppID], v)
+	}
+	gatewayMap := make(map[string][]entities.AppGateway)
+	for _, v := range gateways {
+		gatewayMap[v.AppID] = append(gatewayMap[v.AppID], v)
+	}
+	configFileMap := make(map[string][]entities.AppConfigFile)
+	for _, v := range configFiles {
+		configFileMap[v.AppID] = append(configFileMap[v.AppID], v)
+	}
+	volumeMap := make(map[string][]entities.AppVolume)
+	for _, v := range volumes {
+		volumeMap[v.AppID] = append(volumeMap[v.AppID], v)
+	}
+	probeMap := make(map[string][]entities.AppProbe)
+	for _, v := range probes {
+		probeMap[v.AppID] = append(probeMap[v.AppID], v)
+	}
+	autoScalingMap := make(map[string]*entities.AppAutoScaling)
+	for i := range autoScalings {
+		autoScalingMap[autoScalings[i].AppID] = &autoScalings[i]
+	}
+	schedulingRuleMap := make(map[string]*entities.AppSchedulingRule)
+	for i := range schedulingRules {
+		schedulingRuleMap[schedulingRules[i].AppID] = &schedulingRules[i]
+	}
+
+	// Wire up associations
+	for i := range apps {
+		id := apps[i].ID
+		apps[i].EnvVars = envVarMap[id]
+		apps[i].Gateways = gatewayMap[id]
+		apps[i].ConfigFiles = configFileMap[id]
+		apps[i].Volumes = volumeMap[id]
+		apps[i].Probes = probeMap[id]
+		apps[i].AutoScaling = autoScalingMap[id]
+		apps[i].SchedulingRule = schedulingRuleMap[id]
 	}
 
 	return nil

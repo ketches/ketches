@@ -27,6 +27,7 @@ type CodeRepositoryBuildConfig struct {
 	Registry       ContainerRegistry `gorm:"foreignKey:RegistryID"`
 }
 
+
 func (CodeRepositoryBuildConfig) TableName() string {
 	return "code_repository_build_configs"
 }

@@ -35,3 +35,14 @@ type ListProjectMemberResponse struct {
 	Items      []ProjectMemberResponse `json:"items"`
 	Pagination PaginationResponse      `json:"pagination"`
 }
+
+// ProjectListRow is a flattened DTO for listing projects via JOIN queries.
+// It avoids GORM Preload by scanning the owner name directly from a joined subquery.
+type ProjectListRow struct {
+	ID          string    `gorm:"column:id"`
+	Slug        string    `gorm:"column:slug"`
+	Name        string    `gorm:"column:name"`
+	Description string    `gorm:"column:description"`
+	CreatedAt   time.Time `gorm:"column:created_at"`
+	OwnerName   string    `gorm:"column:owner_name"`
+}

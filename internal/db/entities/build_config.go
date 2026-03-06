@@ -34,6 +34,7 @@ type AppBuildConfig struct {
 	Registry ContainerRegistry `gorm:"foreignKey:RegistryID"`
 }
 
+
 func (AppBuildConfig) TableName() string {
 	return "app_build_configs"
 }

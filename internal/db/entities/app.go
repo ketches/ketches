@@ -37,6 +37,7 @@ type App struct {
 	CodeRepository *CodeRepository    `gorm:"foreignKey:CodeRepositoryID;constraint:false"`
 }
 
+
 type AppEnvVar struct {
 	ID        string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`

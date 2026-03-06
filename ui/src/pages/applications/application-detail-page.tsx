@@ -18,6 +18,7 @@ import {
   FileText,
   FolderGit2,
   FolderOpen,
+  GalleryVerticalEnd,
   Hammer,
   HardDrive,
   Info,
@@ -45,7 +46,6 @@ import {
   Trash2,
   Zap
 } from "lucide-react"
-import { GalleryVerticalEnd } from "lucide-react"
 import * as React from "react"
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
@@ -1055,7 +1055,7 @@ export function ApplicationDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
-          <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent data-[active=true]:bg-transparent">
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
                 <Info className="h-4 w-4" />

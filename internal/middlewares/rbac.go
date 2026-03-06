@@ -117,10 +117,10 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 			return "", false
 		}
 		// Cluster-scoped registries have no project context — skip RBAC check
-		if registry.ProjectID == nil {
+		if registry.ProjectID == "" {
 			return "", false
 		}
-		return *registry.ProjectID, true
+		return registry.ProjectID, true
 	}
 
 	// Resolve via repo ID

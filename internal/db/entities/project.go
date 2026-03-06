@@ -11,6 +11,7 @@ type Project struct {
 	Envs        []Env           `gorm:"foreignKey:ProjectID"`
 }
 
+
 type ProjectMember struct {
 	ID          string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt   time.Time `gorm:"autoCreateTime"`

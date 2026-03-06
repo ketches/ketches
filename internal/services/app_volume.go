@@ -63,7 +63,15 @@ func CreateAppVolume(appID string, req *models.CreateVolumeRequest) (*entities.A
 
 	// Load app with environment for K8s sync
 	var app entities.App
-	if err := db.DB.Preload("Env").Preload("Volumes").First(&app, "id = ?", appID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", appID).Error; err != nil {
+		return nil, err
+	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		return nil, err
+	}
+	app.Env = env
+	if err := db.DB.Where("app_id = ?", appID).Find(&app.Volumes).Error; err != nil {
 		return nil, err
 	}
 
@@ -123,7 +131,15 @@ func UpdateAppVolume(id string, req *models.UpdateVolumeRequest) (*entities.AppV
 
 	// Load app with environment for K8s sync
 	var app entities.App
-	if err := db.DB.Preload("Env").Preload("Volumes").First(&app, "id = ?", volume.AppID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", volume.AppID).Error; err != nil {
+		return nil, err
+	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		return nil, err
+	}
+	app.Env = env
+	if err := db.DB.Where("app_id = ?", volume.AppID).Find(&app.Volumes).Error; err != nil {
 		return nil, err
 	}
 
@@ -149,9 +165,14 @@ func DeleteAppVolume(id string) error {
 
 	// Load app with environment for K8s sync
 	var app entities.App
-	if err := db.DB.Preload("Env").First(&app, "id = ?", volume.AppID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", volume.AppID).Error; err != nil {
 		return err
 	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		return err
+	}
+	app.Env = env
 
 	// Delete PVC from Kubernetes if applicable
 	if volume.VolumeType == "pvc" {
