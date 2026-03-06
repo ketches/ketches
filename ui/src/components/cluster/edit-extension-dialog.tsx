@@ -20,17 +20,17 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-interface EditExtensionCatalogDialogProps {
+interface EditExtensionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   item: Extension | null
 }
 
-export function EditExtensionCatalogDialog({
+export function EditExtensionDialog({
   open,
   onOpenChange,
   item,
-}: EditExtensionCatalogDialogProps) {
+}: EditExtensionDialogProps) {
   const queryClient = useQueryClient()
 
   const [displayName, setDisplayName] = React.useState("")
@@ -70,10 +70,10 @@ export function EditExtensionCatalogDialog({
       const msg =
         error && typeof error === "object" && "response" in error
           ? (
-              error as {
-                response?: { data?: { error?: string } }
-              }
-            ).response?.data?.error
+            error as {
+              response?: { data?: { error?: string } }
+            }
+          ).response?.data?.error
           : null
       toast.error("Failed to update extension", {
         description: msg ?? (error instanceof Error ? error.message : String(error)),

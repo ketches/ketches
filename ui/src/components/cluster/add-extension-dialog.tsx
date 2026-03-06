@@ -19,15 +19,15 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-interface AddExtensionCatalogDialogProps {
+interface AddExtensionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function AddExtensionCatalogDialog({
+export function AddExtensionDialog({
   open,
   onOpenChange,
-}: AddExtensionCatalogDialogProps) {
+}: AddExtensionDialogProps) {
   const queryClient = useQueryClient()
 
   const [name, setName] = React.useState("")
@@ -51,7 +51,7 @@ export function AddExtensionCatalogDialog({
     mutationFn: (data: CreateExtensionRequest) =>
       clustersApi.createExtension(data),
     onSuccess: () => {
-      toast.success("Extension added to catalog")
+      toast.success("Extension added")
       queryClient.invalidateQueries({ queryKey: ["extensions"] })
       onOpenChange(false)
     },
@@ -59,10 +59,10 @@ export function AddExtensionCatalogDialog({
       const msg =
         error && typeof error === "object" && "response" in error
           ? (
-              error as {
-                response?: { data?: { error?: string } }
-              }
-            ).response?.data?.error
+            error as {
+              response?: { data?: { error?: string } }
+            }
+          ).response?.data?.error
           : null
       toast.error("Failed to add extension", {
         description: msg ?? (error instanceof Error ? error.message : String(error)),
@@ -87,9 +87,9 @@ export function AddExtensionCatalogDialog({
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit} className="flex flex-col gap-0">
           <DialogHeader className="pb-4">
-            <DialogTitle>Add Extension to Catalog</DialogTitle>
+            <DialogTitle>Add Extension</DialogTitle>
             <DialogDescription>
-              Add a new OCI-based Helm chart to the extension catalog. Users can
+              Add a new OCI-based extension. Users can
               then install it on their clusters.
             </DialogDescription>
           </DialogHeader>

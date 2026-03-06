@@ -10,9 +10,9 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
-// === Extension Catalog handlers ===
+// === Extension handlers ===
 
-// ListExtensions returns all platform extension catalog items.
+// ListExtensions returns all platform extension items.
 func ListExtensions(c *gin.Context) {
 	items, err := services.ListExtensions()
 	if err != nil {
@@ -22,7 +22,7 @@ func ListExtensions(c *gin.Context) {
 	api.Success(c, items)
 }
 
-// CreateExtension adds a new catalog extension (admin only).
+// CreateExtension adds a new extension (admin only).
 func CreateExtension(c *gin.Context) {
 	var req models.CreateExtensionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -39,7 +39,7 @@ func CreateExtension(c *gin.Context) {
 	api.Created(c, item)
 }
 
-// DeleteExtension removes a catalog extension by ID (admin only, builtin protected).
+// DeleteExtension removes a extension by ID (admin only, builtin protected).
 func DeleteExtension(c *gin.Context) {
 	extensionID := c.Param("extensionID")
 	if err := services.DeleteExtension(extensionID); err != nil {
@@ -49,7 +49,7 @@ func DeleteExtension(c *gin.Context) {
 	api.NoContent(c)
 }
 
-// UpdateExtension updates a non-builtin catalog extension's metadata (admin only).
+// UpdateExtension updates a non-builtin extension's metadata (admin only).
 func UpdateExtension(c *gin.Context) {
 	extensionID := c.Param("extensionID")
 	var req models.UpdateExtensionRequest

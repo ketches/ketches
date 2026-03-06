@@ -2,7 +2,7 @@ package entities
 
 import "time"
 
-// Extension represents a platform-level OCI-based Helm chart extension in the catalog.
+// Extension represents a platform-level OCI-based Helm chart extension.
 // It is admin-managed and can be installed on any cluster.
 type Extension struct {
 	ID          string    `gorm:"type:varchar(36);primaryKey"`

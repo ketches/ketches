@@ -102,7 +102,7 @@ export function InstallExtensionToClusterDialog({
     enabled: open,
   })
 
-  // Fetch available versions for this catalog item
+  // Fetch available versions for this extension
   const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
     queryKey: ["extension-versions", extension?.id],
     queryFn: () => clustersApi.getExtensionVersions(extension!.id),

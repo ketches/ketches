@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// Extension is the platform-level catalog entry for an OCI-based Helm chart.
+// Extension is the platform-level entry for an OCI-based Helm chart.
 type Extension struct {
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
@@ -15,7 +15,7 @@ type Extension struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-// CreateExtensionRequest is the request body for adding a catalog extension.
+// CreateExtensionRequest is the request body for adding a extension.
 type CreateExtensionRequest struct {
 	Name        string `json:"name" binding:"required"`
 	DisplayName string `json:"display_name"`
@@ -24,7 +24,7 @@ type CreateExtensionRequest struct {
 	IconURL     string `json:"icon_url"`
 }
 
-// UpdateExtensionRequest is the request body for updating a catalog extension.
+// UpdateExtensionRequest is the request body for updating a extension.
 type UpdateExtensionRequest struct {
 	DisplayName string `json:"display_name"`
 	Description string `json:"description"`
@@ -32,13 +32,13 @@ type UpdateExtensionRequest struct {
 	IconURL     string `json:"icon_url"`
 }
 
-	// ExtensionVersionInfo holds a single chart version tag.
-	type ExtensionVersionInfo struct {
+// ExtensionVersionInfo holds a single chart version tag.
+type ExtensionVersionInfo struct {
 	Version string `json:"version"`
-	}
+}
 
-	// ClusterExtension represents an extension installed (or being installed) on a cluster.
-	type ClusterExtension struct {
+// ClusterExtension represents an extension installed (or being installed) on a cluster.
+type ClusterExtension struct {
 	ID           string    `json:"id"`
 	ClusterID    string    `json:"cluster_id"`
 	ExtensionID  string    `json:"extension_id"`
@@ -50,7 +50,7 @@ type UpdateExtensionRequest struct {
 	Phase        string    `json:"phase"`
 	ErrorMessage string    `json:"error_message,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
-	}
+}
 
 // InstallExtensionRequest is the request body for installing an extension into a cluster.
 type InstallExtensionRequest struct {
@@ -62,8 +62,8 @@ type InstallExtensionRequest struct {
 	Values          string `json:"values"`
 }
 
-	// UpgradeExtensionRequest is the request body for upgrading an installed cluster extension.
-	type UpgradeExtensionRequest struct {
+// UpgradeExtensionRequest is the request body for upgrading an installed cluster extension.
+type UpgradeExtensionRequest struct {
 	Version string `json:"version,omitempty"`
 	Values  string `json:"values,omitempty"`
 }

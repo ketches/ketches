@@ -132,7 +132,7 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
           <DialogHeader>
             <DialogTitle>Create Plugin</DialogTitle>
             <DialogDescription>
-              Add a new plugin to the catalog. Plugins can be installed as init containers or sidecars.
+              Create a new plugin. Plugins can be installed as init containers or sidecars.
             </DialogDescription>
           </DialogHeader>
 

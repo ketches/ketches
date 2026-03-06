@@ -432,7 +432,7 @@ func CheckClusterConnectivity(clusterID string) {
 
 		client, err := kube.CreateClientFromKubeConfig(cluster.KubeConfig)
 		if err != nil {
-			updateClusterConnectionStatus(clusterID, "disconnected", err.Error())
+			updateClusterConnectionStatus(clusterID, "disconnected", err.Error(), "")
 			return
 		}
 
@@ -441,20 +441,30 @@ func CheckClusterConnectivity(clusterID string) {
 
 		_, err = client.CoreV1().Nodes().List(ctx, metav1.ListOptions{Limit: 1})
 		if err != nil {
-			updateClusterConnectionStatus(clusterID, "disconnected", err.Error())
+			updateClusterConnectionStatus(clusterID, "disconnected", err.Error(), "")
 			return
 		}
 
-		updateClusterConnectionStatus(clusterID, "connected", "")
+		// Get ApiServer address from config
+		config, _ := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
+		apiServer := ""
+		if config != nil {
+			apiServer = config.Host
+		}
+
+		updateClusterConnectionStatus(clusterID, "connected", "", apiServer)
 	}()
 }
 
-func updateClusterConnectionStatus(clusterID, status, reason string) {
+func updateClusterConnectionStatus(clusterID, status, reason, apiServer string) {
 	now := time.Now()
 	updates := map[string]any{
 		"connection_status":        status,
 		"connection_status_reason": reason,
 		"last_checked_at":          &now,
+	}
+	if apiServer != "" {
+		updates["api_server"] = apiServer
 	}
 
 	if err := db.DB.Model(&entities.Cluster{}).Where("id = ?", clusterID).Updates(updates).Error; err != nil {

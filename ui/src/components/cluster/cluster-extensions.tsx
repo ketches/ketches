@@ -123,28 +123,28 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
     },
   })
 
-  const safeExtensions: ClusterExtension[] = Array.isArray(extensions)
+  const safeClusterExtensions: ClusterExtension[] = Array.isArray(extensions)
     ? extensions
     : []
 
   // Derive installed extension names to pass to BrowseExtensionsDialog
-  const installedNames = safeExtensions.map((e) => e.release_name)
+  const installedNames = safeClusterExtensions.map((e) => e.release_name)
 
-  // Fetch the full extension catalog to derive available (not-yet-installed) items
-  const { data: catalog = [], isLoading: catalogLoading } = useQuery({
+  // Fetch the full extension to derive available (not-yet-installed) items
+  const { data: extension = [], isLoading: loading } = useQuery({
     queryKey: ["extensions"],
     queryFn: () => clustersApi.listExtensions(),
   })
 
-  const safeCatalog: Extension[] = Array.isArray(catalog) ? catalog : []
+  const safeExtensions: Extension[] = Array.isArray(extension) ? extension : []
 
-  // Filter out already-installed catalog items (match by extension_id)
-  const installedIds = new Set(safeExtensions.map((e) => e.extension_id))
-  const availableItems = safeCatalog.filter(
+  // Filter out already-installed extensions (match by extension_id)
+  const installedIds = new Set(safeClusterExtensions.map((e) => e.extension_id))
+  const availableExtensions = safeExtensions.filter(
     (item) => !installedIds.has(item.id)
   )
 
-  const catalogColumns: ColumnDef<Extension>[] = [
+  const extensionColumns: ColumnDef<Extension>[] = [
     {
       accessorKey: "name",
       header: "Extension",
@@ -177,7 +177,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
       ),
     },
     {
-      id: "catalog-actions",
+      id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
         const item = row.original
@@ -304,7 +304,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
     },
   ]
 
-  const deleteReleaseName = safeExtensions.find(e => e.id === deleteTarget)?.release_name ?? deleteTarget
+  const deleteReleaseName = safeClusterExtensions.find(e => e.id === deleteTarget)?.release_name ?? deleteTarget
 
   return (
     <>
@@ -326,10 +326,10 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
                 Loading extensions...
               </p>
             </div>
-          ) : safeExtensions.length === 0 ? (
+          ) : safeClusterExtensions.length === 0 ? (
             <EmptyState
               title="No Extensions Installed"
-              description="Browse the extension catalog to discover and install extensions for this cluster."
+              description="Browse the extension to discover and install extensions for this cluster."
               icon={Blocks}
               actionText="Install Extension"
               onAction={() => setBrowseOpen(true)}
@@ -338,7 +338,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
           ) : (
             <DataTable
               columns={columns}
-              data={safeExtensions}
+              data={safeClusterExtensions}
               searchKey="release_name"
               searchPlaceholder="Filter extensions..."
               leftActions={() => (
@@ -363,21 +363,21 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {catalogLoading ? (
+          {loading ? (
             <div className="flex flex-col items-center justify-center gap-4 py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Loading catalog...</p>
+              <p className="text-sm text-muted-foreground">Loading...</p>
             </div>
-          ) : availableItems.length === 0 ? (
+          ) : availableExtensions.length === 0 ? (
             <EmptyState
               title="All Extensions Installed"
-              description="All available extensions from the catalog are already installed on this cluster."
+              description="All available extensions are already installed on this cluster."
               icon={Blocks}
             />
           ) : (
             <DataTable
-              columns={catalogColumns}
-              data={availableItems}
+              columns={extensionColumns}
+              data={availableExtensions}
               searchKey="name"
               searchPlaceholder="Filter available extensions..."
             />

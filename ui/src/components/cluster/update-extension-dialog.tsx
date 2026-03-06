@@ -96,7 +96,7 @@ export function UpdateExtensionDialog({
     initialSyncedRef.current = true
   }, [extension, extensionDetails])
 
-  // Fetch versions for this extension's catalog item
+  // Fetch versions for this extension
   const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
     queryKey: ["extension-versions", extension?.extension_id],
     queryFn: () =>
@@ -131,9 +131,9 @@ export function UpdateExtensionDialog({
       ),
     enabled: Boolean(
       showDiff &&
-        open &&
-        extension?.extension_id &&
-        selectedVersion
+      open &&
+      extension?.extension_id &&
+      selectedVersion
     ),
     staleTime: 5 * 60 * 1000,
   })
@@ -154,13 +154,13 @@ export function UpdateExtensionDialog({
     onError: (error: unknown) => {
       const msg =
         error &&
-        typeof error === "object" &&
-        "response" in error
+          typeof error === "object" &&
+          "response" in error
           ? (
-              error as {
-                response?: { data?: { error?: string } }
-              }
-            ).response?.data?.error
+            error as {
+              response?: { data?: { error?: string } }
+            }
+          ).response?.data?.error
           : null
       toast.error("Failed to update extension", {
         description:

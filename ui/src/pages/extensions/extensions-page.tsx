@@ -13,8 +13,8 @@ import * as React from "react"
 import { toast } from "sonner"
 
 import { clustersApi, type Extension } from "@/api/clusters"
-import { AddExtensionCatalogDialog } from "@/components/cluster/add-extension-catalog-dialog"
-import { EditExtensionCatalogDialog } from "@/components/cluster/edit-extension-catalog-dialog"
+import { AddExtensionDialog } from "@/components/cluster/add-extension-dialog"
+import { EditExtensionDialog } from "@/components/cluster/edit-extension-dialog"
 import { DataTable } from "@/components/data-table/data-table"
 import { InstallExtensionToClusterDialog } from "@/components/extensions/install-extension-dialog"
 import { InstalledClustersDialog } from "@/components/extensions/installed-clusters-dialog"
@@ -76,13 +76,13 @@ export function ExtensionsPage() {
     localStorage.setItem(EXTENSIONS_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
 
-  const { data: catalog = [], isLoading, refetch } = useQuery({
+  const { data: extension = [], isLoading, refetch } = useQuery({
     queryKey: ["extensions"],
     queryFn: () => clustersApi.listExtensions(),
   })
 
-  const safeItems: Extension[] = Array.isArray(catalog)
-    ? catalog
+  const safeItems: Extension[] = Array.isArray(extension)
+    ? extension
     : []
 
   // Client-side search filter
@@ -100,7 +100,7 @@ export function ExtensionsPage() {
     mutationFn: (id: string) => clustersApi.deleteExtension(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["extensions"] })
-      toast.success("Extension removed from catalog")
+      toast.success("Extension removed")
       setDeleteTarget(null)
     },
     onError: (error: AxiosError<{ error: string }>) => {
@@ -404,9 +404,9 @@ export function ExtensionsPage() {
         </>
       )}
 
-      <AddExtensionCatalogDialog open={addOpen} onOpenChange={setAddOpen} />
+      <AddExtensionDialog open={addOpen} onOpenChange={setAddOpen} />
 
-      <EditExtensionCatalogDialog
+      <EditExtensionDialog
         open={editOpen}
         onOpenChange={setEditOpen}
         item={editTarget}
@@ -430,11 +430,10 @@ export function ExtensionsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Extension from Catalog</AlertDialogTitle>
+            <AlertDialogTitle>Remove Extension</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove "
-              {deleteTarget?.display_name || deleteTarget?.name}" from the
-              catalog? Installed extensions will not be affected.
+              {deleteTarget?.display_name || deleteTarget?.name}"? Installed extensions will not be affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

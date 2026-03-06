@@ -8,8 +8,6 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
-	"github.com/ketches/ketches/internal/middlewares"
-	"github.com/ketches/ketches/internal/openapi"
 	"github.com/ketches/ketches/internal/routes"
 	"github.com/ketches/ketches/internal/services"
 )
@@ -41,17 +39,7 @@ func main() {
 	core.GlobalBuildWatcher.RecoverActiveBuilds()
 
 	r := gin.Default()
-
-	r.Use(middlewares.CORS())
-
-	routes.SetupV1Routes(r)
-	routes.SetupForwardRoutes(r)
-	openapi.RegisterRoutes(r, openapi.Config{
-		Title:       "Ketches API",
-		Description: "Auto-generated from Gin route table.",
-		Version:     app.Version,
-		ServerURL:   "/",
-	})
+	routes.SetupRoutes(r)
 
 	log.Printf("server starting on :%s", app.Config.Port)
 	if err := r.Run(":" + app.Config.Port); err != nil {

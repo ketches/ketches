@@ -8,6 +8,7 @@ type Cluster struct {
 	Name        string `gorm:"type:varchar(128);not null"`
 	Description string `gorm:"type:text"`
 	KubeConfig  string `gorm:"type:text;not null"`
+	ApiServer   string `gorm:"type:varchar(255)"`
 	GatewayIP   string `gorm:"type:varchar(64)"`
 	Enabled     bool   `gorm:"type:bool;default:true"`
 

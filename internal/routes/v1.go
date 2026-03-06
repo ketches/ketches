@@ -2,11 +2,27 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/handlers"
 	"github.com/ketches/ketches/internal/middlewares"
+	"github.com/ketches/ketches/internal/openapi"
 )
 
-func SetupV1Routes(r *gin.Engine) {
+func SetupRoutes(r *gin.Engine) {
+	r.Use(middlewares.CORS())
+
+	setupV1Routes(r)
+	setupForwardRoutes(r)
+
+	openapi.RegisterRoutes(r, openapi.Config{
+		Title:       "Ketches API",
+		Description: "Auto-generated from Gin route table.",
+		Version:     app.Version,
+		ServerURL:   "/",
+	})
+}
+
+func setupV1Routes(r *gin.Engine) {
 	v1 := r.Group("/api/v1")
 	{
 		// Webhooks (public, no auth)
@@ -338,12 +354,12 @@ func SetupV1Routes(r *gin.Engine) {
 	}
 }
 
-// SetupForwardRoutes registers /forward/:gatewayID/*path at the root level (outside
+// setupForwardRoutes registers /forward/:gatewayID/*path at the root level (outside
 // /api/v1) so that nginx can proxy /forward/* directly to the backend without a
 // path prefix, keeping the browser address bar at /forward/:gatewayID.
-func SetupForwardRoutes(r *gin.Engine) {
+func setupForwardRoutes(r *gin.Engine) {
 	forward := r.Group("/forward")
-	forward.Use(middlewares.Auth())
+	forward.Use(middlewares.ForwardAuth())
 	{
 		forward.GET("/:gatewayID/*path", handlers.ProxyGatewayHTTP)
 		forward.HEAD("/:gatewayID/*path", handlers.ProxyGatewayHTTP)

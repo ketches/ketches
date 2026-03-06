@@ -34,14 +34,14 @@ interface InstallExtensionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   clusterId: string
-  catalogItem?: Extension | null
+  extension?: Extension | null
 }
 
 export function InstallExtensionDialog({
   open,
   onOpenChange,
   clusterId,
-  catalogItem,
+  extension: extension,
 }: InstallExtensionDialogProps) {
   const queryClient = useQueryClient()
   const { theme } = useTheme()
@@ -69,21 +69,21 @@ export function InstallExtensionDialog({
     return () => media.removeEventListener("change", handler)
   }, [theme])
 
-  // Reset form when catalog item changes
+  // Reset form when extension changes
   React.useEffect(() => {
-    if (catalogItem) {
-      setReleaseName(catalogItem.name)
+    if (extension) {
+      setReleaseName(extension.name)
       setReleaseNamespace("default")
       setSelectedVersion("")
       setValues("")
     }
-  }, [catalogItem])
+  }, [extension])
 
-  // Fetch available versions for this catalog item
+  // Fetch available versions for this extension
   const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
-    queryKey: ["extension-versions", catalogItem?.id],
-    queryFn: () => clustersApi.getExtensionVersions(catalogItem!.id),
-    enabled: open && Boolean(catalogItem?.id),
+    queryKey: ["extension-versions", extension?.id],
+    queryFn: () => clustersApi.getExtensionVersions(extension!.id),
+    enabled: open && Boolean(extension?.id),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -106,10 +106,10 @@ export function InstallExtensionDialog({
     error: valuesError,
     isSuccess: valuesSuccess,
   } = useQuery({
-    queryKey: ["extension-values", catalogItem?.id, selectedVersion],
+    queryKey: ["extension-values", extension?.id, selectedVersion],
     queryFn: () =>
-      clustersApi.getExtensionValues(catalogItem!.id, selectedVersion),
-    enabled: open && Boolean(catalogItem?.id && selectedVersion),
+      clustersApi.getExtensionValues(extension!.id, selectedVersion),
+    enabled: open && Boolean(extension?.id && selectedVersion),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -127,7 +127,7 @@ export function InstallExtensionDialog({
       clustersApi.installExtension(clusterId, data),
     onSuccess: () => {
       toast.success("Extension installed", {
-        description: `${catalogItem?.display_name || catalogItem?.name} is being installed to the cluster.`,
+        description: `${extension?.display_name || extension?.name} is being installed to the cluster.`,
       })
       queryClient.invalidateQueries({ queryKey: ["cluster-extensions", clusterId] })
       onOpenChange(false)
@@ -150,11 +150,11 @@ export function InstallExtensionDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!catalogItem) return
+    if (!extension) return
 
     const data: InstallExtensionRequest = {
       release_name: releaseName,
-      extension_id: catalogItem.id,
+      extension_id: extension.id,
       version: selectedVersion || undefined,
       namespace: releaseNamespace,
       create_namespace: true,
@@ -177,7 +177,7 @@ export function InstallExtensionDialog({
             <DialogDescription>
               Install{" "}
               <span className="font-medium">
-                {catalogItem?.display_name || catalogItem?.name}
+                {extension?.display_name || extension?.name}
               </span>{" "}
               to your cluster.
             </DialogDescription>

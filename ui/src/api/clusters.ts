@@ -201,7 +201,7 @@ export const clustersApi = {
     }>>
   },
 
-  // Extension catalog (admin-managed, global)
+  // Extension (admin-managed, global)
   listExtensions: async () =>
     client.get('/v1/extensions') as Promise<Extension[]>,
 
@@ -247,7 +247,7 @@ export const clustersApi = {
 
 // Extension types
 
-// Extension catalog entry (global, admin-managed)
+// Extension entry (global, admin-managed)
 export interface Extension {
   id: string
   name: string
@@ -295,7 +295,7 @@ export interface UpgradeExtensionRequest {
   values?: string
 }
 
-// Request to create a new extension in catalog
+// Request to create a new extension
 export interface CreateExtensionRequest {
   name: string
   display_name?: string
@@ -304,7 +304,7 @@ export interface CreateExtensionRequest {
   icon_url?: string
 }
 
-// Request to update an extension in catalog
+// Request to update an extension
 export interface UpdateExtensionRequest {
   display_name?: string
   description?: string

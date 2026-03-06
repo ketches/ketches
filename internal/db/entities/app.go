@@ -15,18 +15,12 @@ type App struct {
 	RegistryUsername string `gorm:"type:varchar(128)"`
 	RegistryPassword string `gorm:"type:varchar(256)"`
 
-	Replicas      int `gorm:"type:int;default:1"`
-	RequestCPU    int `gorm:"type:int;default:100"`
-	RequestMemory int `gorm:"type:int;default:128"`
-	LimitCPU      int `gorm:"type:int;default:1000"`
-	LimitMemory   int `gorm:"type:int;default:512"`
-
-	Edition       string `gorm:"type:varchar(36)"`
-	ActualEdition string `gorm:"type:varchar(36)"`
-
-	DeployStatus string `gorm:"type:varchar(32);default:'undeployed'"`
-
-	// CodeRepositoryID: when set, this app was deployed from this code repository (build & release)
+	Replicas         int    `gorm:"type:int;default:1"`
+	RequestCPU       int    `gorm:"type:int;default:100"`
+	RequestMemory    int    `gorm:"type:int;default:128"`
+	LimitCPU         int    `gorm:"type:int;default:1000"`
+	LimitMemory      int    `gorm:"type:int;default:512"`
+	DeployStatus     string `gorm:"type:varchar(32);default:'undeployed'"`
 	CodeRepositoryID string `gorm:"type:varchar(36);index"`
 
 	Env            Env                `gorm:"foreignKey:EnvID"`
@@ -40,7 +34,7 @@ type App struct {
 	AppPlugins     []AppPlugin        `gorm:"foreignKey:AppID"`
 	BuildConfig    *AppBuildConfig    `gorm:"foreignKey:AppID"`
 	Builds         []Build            `gorm:"foreignKey:AppID;constraint:false"`
-	CodeRepository *CodeRepository    `gorm:"foreignKey:CodeRepositoryID"`
+	CodeRepository *CodeRepository    `gorm:"foreignKey:CodeRepositoryID;constraint:false"`
 }
 
 type AppEnvVar struct {

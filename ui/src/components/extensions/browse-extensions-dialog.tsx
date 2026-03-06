@@ -34,15 +34,15 @@ export function BrowseExtensionsDialog({
     React.useState<Extension | null>(null)
   const [installOpen, setInstallOpen] = React.useState(false)
 
-  // Fetch all catalog items
-  const { data: catalog = [], isLoading } = useQuery({
+  // Fetch all extensions
+  const { data: extension = [], isLoading } = useQuery({
     queryKey: ["extensions"],
     queryFn: () => clustersApi.listExtensions(),
     enabled: open,
   })
 
-  const safeItems: Extension[] = Array.isArray(catalog)
-    ? catalog
+  const safeItems: Extension[] = Array.isArray(extension)
+    ? extension
     : []
 
   // Filter: exclude already installed, apply search
@@ -157,7 +157,7 @@ export function BrowseExtensionsDialog({
         open={installOpen}
         onOpenChange={handleInstallDialogClose}
         clusterId={clusterId}
-        catalogItem={installTarget}
+        extension={installTarget}
       />
     </>
   )
