@@ -334,6 +334,10 @@ func SetupV1Routes(r *gin.Engine) {
 			// Gateway HTTP proxy — any authenticated user (read-only access)
 			authorized.GET("/gateways/:gatewayID/proxy/*path", handlers.ProxyGatewayHTTP)
 			authorized.HEAD("/gateways/:gatewayID/proxy/*path", handlers.ProxyGatewayHTTP)
+
+			// Gateway forward proxy — clean URL variant, same handler
+			authorized.GET("/forward/:gatewayID/*path", handlers.ProxyGatewayHTTP)
+			authorized.HEAD("/forward/:gatewayID/*path", handlers.ProxyGatewayHTTP)
 		}
 	}
 }
