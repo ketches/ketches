@@ -288,6 +288,7 @@ type AppListRow struct {
 // RecycleBinAppRow represents a flattened app record for the recycle bin list
 type RecycleBinAppRow struct {
 	entities.App
+	ProjectID   string `gorm:"column:project_id"`
 	EnvName     string `gorm:"column:env_name"`
 	ProjectName string `gorm:"column:project_name"`
 	ProjectSlug string `gorm:"column:project_slug"`

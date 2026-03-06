@@ -6,18 +6,21 @@ import (
 	"github.com/ketches/ketches/internal/models"
 )
 
-func ListDeletedApps(projectID string, userID string, page, pageSize int, search string) (int64, []models.RecycleBinAppResponse, error) {
-	var apps []entities.App
+func ListDeletedApps(projectID string, userID string, page, pageSize int, search string) (int64, []models.RecycleBinAppRow, error) {
+	var rows []models.RecycleBinAppRow
 	var total int64
-	query := db.DB.Unscoped().Model(&entities.App{}).Where("apps.deleted_at IS NOT NULL").Order("deleted_at DESC")
+	query := db.DB.Table("apps").
+		Select("apps.*, envs.name as env_name, projects.name as project_name, projects.slug as project_slug").
+		Joins("JOIN envs ON apps.env_id = envs.id").
+		Joins("JOIN projects ON envs.project_id = projects.id").
+		Where("apps.deleted_at IS NOT NULL").
+		Order("apps.deleted_at DESC")
 
 	if projectID != "" {
-		query = query.Joins("JOIN envs ON apps.env_id = envs.id").
-			Where("envs.project_id = ?", projectID)
+		query = query.Where("envs.project_id = ?", projectID)
 	} else if userID != "" {
 		// Filter to projects where the user has non-viewer role (owner or developer)
-		query = query.Joins("JOIN envs ON apps.env_id = envs.id").
-			Joins("JOIN project_members ON project_members.project_id = envs.project_id").
+		query = query.Joins("JOIN project_members ON project_members.project_id = envs.project_id").
 			Where("project_members.user_id = ? AND project_members.project_role IN ('owner', 'developer')", userID)
 	}
 
@@ -29,32 +32,11 @@ func ListDeletedApps(projectID string, userID string, page, pageSize int, search
 		return 0, nil, err
 	}
 
-	if err := query.Preload("Env.Project").
-		Offset((page - 1) * pageSize).
-		Limit(pageSize).
-		Find(&apps).Error; err != nil {
+	if err := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
 		return 0, nil, err
 	}
 
-	var result []models.RecycleBinAppResponse
-	for _, app := range apps {
-		result = append(result, models.RecycleBinAppResponse{
-			ID:             app.ID,
-			Slug:           app.Slug,
-			Name:           app.Name,
-			Description:    app.Description,
-			EnvID:          app.EnvID,
-			EnvName:        app.Env.Name,
-			ProjectID:      app.Env.ProjectID,
-			ProjectName:    app.Env.Project.Name,
-			ProjectSlug:    app.Env.Project.Slug,
-			AppType:        app.AppType,
-			ContainerImage: app.ContainerImage,
-			DeletedAt:      app.DeletedAt.Time,
-		})
-	}
-
-	return total, result, nil
+	return total, rows, nil
 }
 
 func ListDeletedEnvs(projectID string, userID string, page, pageSize int, search string) (int64, []models.RecycleBinEnvResponse, error) {

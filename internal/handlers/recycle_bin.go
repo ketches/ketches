@@ -24,10 +24,29 @@ func ListRecycleBinApps(c *gin.Context) {
 		userID = claims.UserID
 	}
 
-	total, apps, err := services.ListDeletedApps(projectID, userID, req.Page, req.PageSize, req.Search)
+	total, rows, err := services.ListDeletedApps(projectID, userID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
+	}
+
+	// Convert RecycleBinAppRow to RecycleBinAppResponse
+	var apps []models.RecycleBinAppResponse
+	for _, row := range rows {
+		apps = append(apps, models.RecycleBinAppResponse{
+			ID:             row.ID,
+			Slug:           row.Slug,
+			Name:           row.Name,
+			Description:    row.Description,
+			EnvID:          row.EnvID,
+			EnvName:        row.EnvName,
+			ProjectID:      row.ProjectID,
+			ProjectName:    row.ProjectName,
+			ProjectSlug:    row.ProjectSlug,
+			AppType:        row.AppType,
+			ContainerImage: row.ContainerImage,
+			DeletedAt:      row.DeletedAt.Time,
+		})
 	}
 
 	api.Success(c, models.ListRecycleBinAppResponse{
