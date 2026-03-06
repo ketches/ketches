@@ -23,18 +23,6 @@ type App struct {
 	DeployStatus     string `gorm:"type:varchar(32);default:'undeployed'"`
 	CodeRepositoryID string `gorm:"type:varchar(36);index"`
 
-	Env            Env                `gorm:"foreignKey:EnvID"`
-	EnvVars        []AppEnvVar        `gorm:"foreignKey:AppID"`
-	Volumes        []AppVolume        `gorm:"foreignKey:AppID"`
-	Gateways       []AppGateway       `gorm:"foreignKey:AppID"`
-	Probes         []AppProbe         `gorm:"foreignKey:AppID"`
-	ConfigFiles    []AppConfigFile    `gorm:"foreignKey:AppID"`
-	SchedulingRule *AppSchedulingRule `gorm:"foreignKey:AppID"`
-	AutoScaling    *AppAutoScaling    `gorm:"foreignKey:AppID"`
-	AppPlugins     []AppPlugin        `gorm:"foreignKey:AppID"`
-	BuildConfig    *AppBuildConfig    `gorm:"foreignKey:AppID"`
-	Builds         []Build            `gorm:"foreignKey:AppID;constraint:false"`
-	CodeRepository *CodeRepository    `gorm:"foreignKey:CodeRepositoryID;constraint:false"`
 }
 
 
