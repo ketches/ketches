@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/core"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 	"github.com/ketches/ketches/pkg/containerregistry"
@@ -134,10 +136,17 @@ func ListApps(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	res := []models.AppResponse{}
-	for _, a := range apps {
-		res = append(res, services.ToAppResponse(c.Request.Context(), &a))
+
+	res := make([]models.AppResponse, len(apps))
+	var wg sync.WaitGroup
+	for i, a := range apps {
+		wg.Add(1)
+		go func(i int, a entities.App) {
+			defer wg.Done()
+			res[i] = services.ToAppResponse(c.Request.Context(), &a)
+		}(i, a)
 	}
+	wg.Wait()
 
 	api.Success(c, models.ListAppResponse{
 		Items:      res,
@@ -153,68 +162,28 @@ func ListAppsSimple(c *gin.Context) {
 		return
 	}
 
-	res := []models.SimpleResponse{}
-	for _, a := range apps {
-		res = append(res, models.SimpleResponse{
-			ID:          a.ID,
-			Slug:        a.Slug,
-			Name:        a.Name,
-			Description: a.Description,
-			Status:      services.GetAppStatus(c, &a),
-			Metadata: map[string]string{
-				"code_repository_id": a.CodeRepositoryID,
-			},
-		})
+	res := make([]models.SimpleResponse, len(apps))
+	var wg sync.WaitGroup
+	for i, a := range apps {
+		wg.Add(1)
+		go func(i int, a entities.App) {
+			defer wg.Done()
+			res[i] = models.SimpleResponse{
+				ID:          a.ID,
+				Slug:        a.Slug,
+				Name:        a.Name,
+				Description: a.Description,
+				Status:      services.GetAppStatus(c, &a),
+				Metadata: map[string]string{
+					"code_repository_id": a.CodeRepositoryID,
+				},
+			}
+		}(i, a)
 	}
+	wg.Wait()
 
 	api.Success(c, res)
 }
-
-// func toAppResponse(c *gin.Context, a *entities.App) models.AppResponse {
-// 	status := getAppStatus(c, a)
-
-// 	res := models.AppResponse{
-// 		ID:               a.ID,
-// 		Slug:             a.Slug,
-// 		Name:             a.Name,
-// 		Description:      a.Description,
-// 		EnvID:            a.EnvID,
-// 		AppType:          a.AppType,
-// 		CodeRepositoryID: a.CodeRepositoryID,
-// 		ContainerImage:   a.ContainerImage,
-// 		ContainerCommand: a.ContainerCommand,
-// 		RegistryUsername: a.RegistryUsername,
-// 		RegistryPassword: a.RegistryPassword,
-// 		Replicas:         a.Replicas,
-// 		RequestCPU:       a.RequestCPU,
-// 		RequestMemory:    a.RequestMemory,
-// 		LimitCPU:         a.LimitCPU,
-// 		LimitMemory:      a.LimitMemory,
-// 		Status:           status,
-// 		CreatedAt:        a.CreatedAt,
-// 	}
-
-// 	if a.AutoScaling != nil {
-// 		res.AutoScaling = &models.AutoScalingSpec{
-// 			MinReplicas:             a.AutoScaling.MinReplicas,
-// 			MaxReplicas:             a.AutoScaling.MaxReplicas,
-// 			TargetCPUUtilization:    a.AutoScaling.TargetCPUUtilization,
-// 			TargetMemoryUtilization: a.AutoScaling.TargetMemoryUtilization,
-// 		}
-// 	}
-
-// 	if a.SchedulingRule != nil {
-// 		res.SchedulingRule = &models.SchedulingSpec{
-// 			RuleType:     a.SchedulingRule.RuleType,
-// 			NodeName:     a.SchedulingRule.NodeName,
-// 			NodeSelector: a.SchedulingRule.NodeSelector,
-// 			NodeAffinity: a.SchedulingRule.NodeAffinity,
-// 			Tolerations:  a.SchedulingRule.Tolerations,
-// 		}
-// 	}
-
-// 	return res
-// }
 
 func CreateApp(c *gin.Context) {
 	envID := c.Param("envID")
@@ -531,18 +500,6 @@ func GetAppTopologyResourceYaml(c *gin.Context) {
 	}
 	api.Success(c, gin.H{"yaml": yamlStr})
 }
-
-// func getAppStatus(c *gin.Context, app *entities.App) string {
-// 	status := app.DeployStatus
-// 	if status == "deployed" {
-// 		calculatedStatus, err := core.CalculateAppStatus(c.Request.Context(), app)
-// 		if err != nil {
-// 			log.Printf("Failed to calculate app status for app %s: %v", app.ID, err)
-// 		}
-// 		status = string(calculatedStatus)
-// 	}
-// 	return status
-// }
 
 // GetImageMetadata fetches and returns container image metadata (ENV, VOLUME, EXPOSE, HEALTHCHECK).
 // This is a read-only preview endpoint with no database side effects.

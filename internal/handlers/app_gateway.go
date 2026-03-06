@@ -16,7 +16,6 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
-
 // ListAppGateways lists all gateways for an app
 func ListAppGateways(c *gin.Context) {
 	appID := c.Param("appID")
@@ -177,7 +176,6 @@ func validateGatewayRequest(gateway any) error {
 	return nil
 }
 
-
 // ProxyGatewayHTTP reverse-proxies HTTP requests to the application via the
 // Kubernetes API Server service proxy sub-resource.
 // Route: GET|HEAD /api/v1/gateways/:gatewayID/proxy/*path
@@ -278,13 +276,17 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	// The /forward prefix for this gateway — used when rewriting Location headers
 	// and injecting <base href> into HTML responses.
 	forwardPrefix := "/forward/" + gatewayID
+	contentType := resp.Header.Get("Content-Type")
+	isHTML := strings.Contains(strings.ToLower(contentType), "text/html")
+	willRewriteHTML := isHTML && c.Request.Method != http.MethodHead
 
 	// Forward response headers, rewriting Location for redirect responses.
-	// Drop Content-Encoding: we strip Accept-Encoding from the request so the upstream
-	// returns plain text; forwarding this header would confuse the browser.
 	for key, vals := range resp.Header {
 		klower := strings.ToLower(key)
-		if hopByHop[klower] || klower == "content-encoding" {
+		if hopByHop[klower] {
+			continue
+		}
+		if willRewriteHTML && klower == "content-length" {
 			continue
 		}
 		if klower == "location" {
@@ -301,14 +303,14 @@ func ProxyGatewayHTTP(c *gin.Context) {
 
 	// For HTML responses, buffer the body and inject <base href> so that
 	// root-relative asset/link paths resolve correctly through the proxy.
-	contentType := resp.Header.Get("Content-Type")
-	if strings.Contains(contentType, "text/html") {
+	if willRewriteHTML {
 		body, _ := io.ReadAll(resp.Body)
 		// Rewrite K8s apiserver proxy prefix → /forward/{gatewayID} so that
 		// absolute links already rewritten by kube-apiserver resolve correctly.
 		k8sProxyPrefix := fmt.Sprintf("/api/v1/namespaces/%s/services/%s:%d/proxy", ns, svcName, port)
 		body = bytes.ReplaceAll(body, []byte(k8sProxyPrefix), []byte(forwardPrefix))
 		body = injectBaseHref(body, forwardPrefix+"/")
+		c.Header("Content-Length", fmt.Sprintf("%d", len(body)))
 		c.Writer.Write(body) //nolint:errcheck
 	} else {
 		io.Copy(c.Writer, resp.Body) //nolint:errcheck
