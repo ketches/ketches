@@ -228,8 +228,30 @@ func UninstallPluginFromApp(appID, pluginID string) error {
 
 func ListAppPlugins(appID string) ([]entities.AppPlugin, error) {
 	var appPlugins []entities.AppPlugin
-	if err := db.DB.Where("app_id = ?", appID).Preload("Plugin").Find(&appPlugins).Error; err != nil {
+	if err := db.DB.Where("app_id = ?", appID).Find(&appPlugins).Error; err != nil {
 		return nil, err
+	}
+	// Batch-fetch plugins
+	pluginIDs := make(map[string]struct{})
+	for _, ap := range appPlugins {
+		pluginIDs[ap.PluginID] = struct{}{}
+	}
+	if len(pluginIDs) > 0 {
+		ids := make([]string, 0, len(pluginIDs))
+		for id := range pluginIDs {
+			ids = append(ids, id)
+		}
+		var plugins []entities.Plugin
+		db.DB.Where("id IN ?", ids).Find(&plugins)
+		pMap := make(map[string]entities.Plugin, len(plugins))
+		for _, p := range plugins {
+			pMap[p.ID] = p
+		}
+		for i := range appPlugins {
+			if p, ok := pMap[appPlugins[i].PluginID]; ok {
+				appPlugins[i].Plugin = p
+			}
+		}
 	}
 	return appPlugins, nil
 }

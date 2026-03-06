@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,36 +13,36 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, application *entities.App) (*models.AppTopologyResponse, error) {
-	ns := application.Env.ClusterNamespace
+func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, appCtx *models.AppContext) (*models.AppTopologyResponse, error) {
+	ns := appCtx.Env.ClusterNamespace
 
 	var nodes []models.AppTopologyNode
 	var edges []models.AppTopologyEdge
 
 	nodes = append(nodes, models.AppTopologyNode{
-		ID:   "app-" + application.ID,
+		ID:   "app-" + appCtx.App.ID,
 		Type: "Application",
-		Name: application.Name,
+		Name: appCtx.App.Name,
 	})
 
 	workloadID := ""
-	workloadType := application.AppType
+	workloadType := appCtx.App.AppType
 	if workloadType == "" {
 		workloadType = "Deployment"
 	}
-	workloadID = "workload-" + application.Slug
+	workloadID = "workload-" + appCtx.App.Slug
 	nodes = append(nodes, models.AppTopologyNode{
 		ID:   workloadID,
 		Type: workloadType,
-		Name: application.Slug,
+		Name: appCtx.App.Slug,
 	})
 	edges = append(edges, models.AppTopologyEdge{
-		Source: "app-" + application.ID,
+		Source: "app-" + appCtx.App.ID,
 		Target: workloadID,
 	})
 
 	pods, _ := client.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
-		LabelSelector: "app=" + application.Slug,
+		LabelSelector: "app=" + appCtx.App.Slug,
 	})
 	for _, pod := range pods.Items {
 		podID := "pod-" + pod.Name
@@ -59,7 +58,7 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, applicati
 		})
 	}
 
-	if svc, err := client.CoreV1().Services(ns).Get(ctx, application.Slug, metav1.GetOptions{}); err == nil {
+	if svc, err := client.CoreV1().Services(ns).Get(ctx, appCtx.App.Slug, metav1.GetOptions{}); err == nil {
 		svcID := "svc-" + svc.Name
 		nodes = append(nodes, models.AppTopologyNode{
 			ID:   svcID,
@@ -71,7 +70,7 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, applicati
 			Target: svcID,
 		})
 
-		gwClient, err := kube.GlobalClusterStore.GetGatewayClient(application.Env.ClusterID)
+		gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.Env.ClusterID)
 		if err == nil {
 			routes, _ := gwClient.GatewayV1().HTTPRoutes(ns).List(ctx, metav1.ListOptions{})
 			for _, route := range routes.Items {
@@ -100,8 +99,8 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, applicati
 		}
 	}
 
-	if len(application.ConfigFiles) > 0 {
-		cmName := application.Slug + "-config"
+	if len(appCtx.ConfigFiles) > 0 {
+		cmName := appCtx.App.Slug + "-config"
 		cmID := "cm-" + cmName
 		nodes = append(nodes, models.AppTopologyNode{
 			ID:   cmID,
@@ -114,8 +113,8 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, applicati
 		})
 	}
 
-	if application.RegistryUsername != "" {
-		secretName := application.Slug + "-registry"
+	if appCtx.App.RegistryUsername != "" {
+		secretName := appCtx.App.Slug + "-registry"
 		secretID := "secret-" + secretName
 		nodes = append(nodes, models.AppTopologyNode{
 			ID:   secretID,
@@ -128,7 +127,7 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, applicati
 		})
 	}
 
-	for _, v := range application.Volumes {
+	for _, v := range appCtx.Volumes {
 		if v.VolumeType == "pvc" {
 			pvcID := "pvc-" + v.Slug
 			nodes = append(nodes, models.AppTopologyNode{
@@ -159,7 +158,7 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, applicati
 	hpaList, _ := client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(ctx, metav1.ListOptions{})
 	for _, hpa := range hpaList.Items {
 		ref := hpa.Spec.ScaleTargetRef
-		if ref.Name != application.Slug {
+		if ref.Name != appCtx.App.Slug {
 			continue
 		}
 		if ref.Kind != "Deployment" && ref.Kind != "StatefulSet" {
@@ -183,21 +182,21 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, applicati
 	}, nil
 }
 
-func GetAppTopologyResourceYaml(ctx context.Context, client *kubernetes.Clientset, application *entities.App, nodeID string) (string, error) {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(application.Env.ClusterID)
+func GetAppTopologyResourceYaml(ctx context.Context, client *kubernetes.Clientset, appCtx *models.AppContext, nodeID string) (string, error) {
+	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return "", err
 	}
 
-	ns := application.Env.ClusterNamespace
+	ns := appCtx.Env.ClusterNamespace
 
 	var gvr schema.GroupVersionResource
 	var name string
 
 	switch {
 	case len(nodeID) > 8 && nodeID[:8] == "workload":
-		name = application.Slug
-		if application.AppType == "StatefulSet" {
+		name = appCtx.App.Slug
+		if appCtx.App.AppType == "StatefulSet" {
 			gvr = schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}
 		} else {
 			gvr = schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}

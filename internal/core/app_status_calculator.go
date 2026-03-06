@@ -4,26 +4,26 @@ import (
 	"context"
 
 	"github.com/ketches/ketches/internal/app"
-	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/models"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-func CalculateAppStatus(ctx context.Context, application *entities.App) (app.AppStatus, error) {
+func CalculateAppStatus(ctx context.Context, appCtx *models.AppContext) (app.AppStatus, error) {
 	// If not deployed yet, return undeployed directly
-	if application.DeployStatus == "undeployed" {
+	if appCtx.App.DeployStatus == "undeployed" {
 		return app.AppStatusUndeployed, nil
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return app.AppStatusUnknown, err
 	}
 
-	namespace := application.Env.ClusterNamespace
-	appName := application.Slug
+	namespace := appCtx.Env.ClusterNamespace
+	appName := appCtx.App.Slug
 
 	// Check if any pod has debugging label
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
@@ -41,7 +41,7 @@ func CalculateAppStatus(ctx context.Context, application *entities.App) (app.App
 		}
 	}
 
-	switch application.AppType {
+	switch appCtx.App.AppType {
 	case "Deployment":
 		deployment, err := client.AppsV1().Deployments(namespace).Get(ctx, appName, metav1.GetOptions{})
 		if err != nil {

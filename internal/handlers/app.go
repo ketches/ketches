@@ -40,7 +40,7 @@ func StreamAppLogs(c *gin.Context) {
 		timestamps = true
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -90,7 +90,7 @@ func ExecAppContainerTerminal(c *gin.Context) {
 	instanceName := c.Param("instanceName")
 	containerName := c.Query("container")
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -173,7 +173,7 @@ func ListAppsSimple(c *gin.Context) {
 				Slug:        a.Slug,
 				Name:        a.Name,
 				Description: a.Description,
-				Status:      services.GetAppStatus(c, &a),
+				Status:      a.DeployStatus,
 				Metadata: map[string]string{
 					"code_repository_id": a.CodeRepositoryID,
 				},
@@ -193,7 +193,7 @@ func CreateApp(c *gin.Context) {
 		return
 	}
 
-	app, err := services.CreateApp(envID, &req)
+	app, err := services.CreateApp(c.Request.Context(), envID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -204,7 +204,7 @@ func CreateApp(c *gin.Context) {
 
 func GetApp(c *gin.Context) {
 	appID := c.Param("appID")
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -221,7 +221,7 @@ func UpdateAppBasic(c *gin.Context) {
 		return
 	}
 
-	app, err := services.UpdateAppBasic(appID, &req)
+	app, err := services.UpdateAppBasic(c.Request.Context(), appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -238,7 +238,7 @@ func UpdateAppImage(c *gin.Context) {
 		return
 	}
 
-	app, err := services.UpdateAppImage(appID, &req)
+	app, err := services.UpdateAppImage(c.Request.Context(), appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -255,7 +255,7 @@ func UpdateAppReplicas(c *gin.Context) {
 		return
 	}
 
-	app, err := services.UpdateAppReplicas(appID, &req)
+	app, err := services.UpdateAppReplicas(c.Request.Context(), appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -272,7 +272,7 @@ func UpdateAppResources(c *gin.Context) {
 		return
 	}
 
-	app, err := services.UpdateAppResources(appID, &req)
+	app, err := services.UpdateAppResources(c.Request.Context(), appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -289,7 +289,7 @@ func UpdateAppAutoScaling(c *gin.Context) {
 		return
 	}
 
-	app, err := services.UpdateAppAutoScaling(appID, &req)
+	app, err := services.UpdateAppAutoScaling(c.Request.Context(), appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -306,7 +306,7 @@ func UpdateAppHealth(c *gin.Context) {
 		return
 	}
 
-	app, err := services.UpdateAppHealth(appID, &req)
+	app, err := services.UpdateAppHealth(c.Request.Context(), appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -323,7 +323,7 @@ func UpdateAppScheduling(c *gin.Context) {
 		return
 	}
 
-	app, err := services.UpdateAppScheduling(appID, &req)
+	app, err := services.UpdateAppScheduling(c.Request.Context(), appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -340,7 +340,7 @@ func UpdateAppCommand(c *gin.Context) {
 		return
 	}
 
-	app, err := services.UpdateAppCommand(appID, &req)
+	app, err := services.UpdateAppCommand(c.Request.Context(), appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -351,7 +351,7 @@ func UpdateAppCommand(c *gin.Context) {
 
 func DeleteApp(c *gin.Context) {
 	appID := c.Param("appID")
-	if err := services.DeleteApp(appID); err != nil {
+	if err := services.DeleteApp(c.Request.Context(), appID); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -367,7 +367,7 @@ func BatchDeleteApps(c *gin.Context) {
 		return
 	}
 
-	if err := services.BatchDeleteApps(req.IDs); err != nil {
+	if err := services.BatchDeleteApps(c.Request.Context(), req.IDs); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -376,7 +376,7 @@ func BatchDeleteApps(c *gin.Context) {
 
 func ListAppInstances(c *gin.Context) {
 	appID := c.Param("appID")
-	instances, err := services.ListAppInstances(appID)
+	instances, err := services.ListAppInstances(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -388,13 +388,13 @@ func ListAppInstanceEvents(c *gin.Context) {
 	appID := c.Param("appID")
 	instanceName := c.Param("instanceName")
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
 
-	events, err := services.ListAppInstanceEvents(app, instanceName)
+	events, err := services.ListAppInstanceEvents(c.Request.Context(), app, instanceName)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -407,13 +407,13 @@ func DeleteAppInstance(c *gin.Context) {
 	appID := c.Param("appID")
 	instanceName := c.Param("instanceName")
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
 
-	if err := services.DeleteAppInstance(app, instanceName); err != nil {
+	if err := services.DeleteAppInstance(c.Request.Context(), app, instanceName); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -423,13 +423,13 @@ func DeleteAppInstance(c *gin.Context) {
 
 func ApplyApp(c *gin.Context) {
 	appID := c.Param("appID")
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
 
-	if err := services.ApplyApp(app); err != nil {
+	if err := services.ApplyApp(c.Request.Context(), app); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -444,19 +444,19 @@ func AppAction(c *gin.Context) {
 		return
 	}
 
-	_, err := services.AppAction(appID, req.Action)
+	_, err := services.AppAction(c.Request.Context(), appID, req.Action)
 	if err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	status := services.GetAppStatus(c, app)
+	status := services.GetAppStatus(c.Request.Context(), app)
 
 	api.Success(c, models.AppActionResponse{
 		Status: status,
@@ -465,13 +465,13 @@ func AppAction(c *gin.Context) {
 
 func GetAppAvailableActions(c *gin.Context) {
 	appID := c.Param("appID")
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
 
-	status := services.GetAppStatus(c, app)
+	status := services.GetAppStatus(c.Request.Context(), app)
 
 	actions := core.GetAvailableActions(status)
 	api.Success(c, models.AvailableActionsResponse{
@@ -481,7 +481,7 @@ func GetAppAvailableActions(c *gin.Context) {
 
 func GetAppTopology(c *gin.Context) {
 	appID := c.Param("appID")
-	topology, err := services.GetAppTopology(appID)
+	topology, err := services.GetAppTopology(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -493,7 +493,7 @@ func GetAppTopology(c *gin.Context) {
 func GetAppTopologyResourceYaml(c *gin.Context) {
 	appID := c.Param("appID")
 	nodeID := c.Param("nodeID")
-	yamlStr, err := services.GetAppTopologyResourceYaml(appID, nodeID)
+	yamlStr, err := services.GetAppTopologyResourceYaml(c.Request.Context(), appID, nodeID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return

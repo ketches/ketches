@@ -18,23 +18,23 @@ import (
 )
 
 type AppMetadata struct {
-	App *entities.App
+	AppContext *models.AppContext
 }
 
 func (m *AppMetadata) BuildNamespace() *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: m.App.Env.ClusterNamespace,
+			Name: m.AppContext.Env.ClusterNamespace,
 		},
 	}
 }
 
 func (m *AppMetadata) BuildDeployment() *appsv1.Deployment {
-	replicas := int32(m.App.Replicas)
+	replicas := int32(m.AppContext.App.Replicas)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.App.Slug,
-			Namespace: m.App.Env.ClusterNamespace,
+			Name:      m.AppContext.App.Slug,
+			Namespace: m.AppContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -58,9 +58,9 @@ func (m *AppMetadata) BuildDeployment() *appsv1.Deployment {
 		},
 	}
 
-	if m.App.RegistryUsername != "" {
+	if m.AppContext.App.RegistryUsername != "" {
 		deployment.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
-			{Name: m.App.Slug + "-registry"},
+			{Name: m.AppContext.App.Slug + "-registry"},
 		}
 	}
 
@@ -70,24 +70,24 @@ func (m *AppMetadata) BuildDeployment() *appsv1.Deployment {
 }
 
 func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
-	if m.App.RegistryUsername == "" {
+	if m.AppContext.App.RegistryUsername == "" {
 		return nil
 	}
 
 	registry := "https://index.docker.io/v1/"
-	imageParts := strings.Split(m.App.ContainerImage, "/")
+	imageParts := strings.Split(m.AppContext.App.ContainerImage, "/")
 	if len(imageParts) > 1 {
 		if strings.Contains(imageParts[0], ".") || strings.Contains(imageParts[0], ":") || imageParts[0] == "localhost" {
 			registry = imageParts[0]
 		}
 	}
 
-	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", m.App.RegistryUsername, m.App.RegistryPassword)))
+	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", m.AppContext.App.RegistryUsername, m.AppContext.App.RegistryPassword)))
 	dockerConfig := map[string]any{
 		"auths": map[string]any{
 			registry: map[string]any{
-				"username": m.App.RegistryUsername,
-				"password": m.App.RegistryPassword,
+				"username": m.AppContext.App.RegistryUsername,
+				"password": m.AppContext.App.RegistryPassword,
 				"auth":     auth,
 			},
 		},
@@ -97,8 +97,8 @@ func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.App.Slug + "-registry",
-			Namespace: m.App.Env.ClusterNamespace,
+			Name:      m.AppContext.App.Slug + "-registry",
+			Namespace: m.AppContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Type: corev1.SecretTypeDockerConfigJson,
@@ -110,8 +110,8 @@ func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
 
 func (m *AppMetadata) buildVolumes() []corev1.Volume {
 	var volumes []corev1.Volume
-	for _, v := range m.App.Volumes {
-		if v.VolumeType == "pvc" && m.App.AppType != "StatefulSet" {
+	for _, v := range m.AppContext.Volumes {
+		if v.VolumeType == "pvc" && m.AppContext.App.AppType != "StatefulSet" {
 			volumes = append(volumes, corev1.Volume{
 				Name: v.Slug,
 				VolumeSource: corev1.VolumeSource{
@@ -123,13 +123,13 @@ func (m *AppMetadata) buildVolumes() []corev1.Volume {
 		}
 	}
 
-	if len(m.App.ConfigFiles) > 0 {
+	if len(m.AppContext.ConfigFiles) > 0 {
 		volumes = append(volumes, corev1.Volume{
 			Name: "config-files",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: m.App.Slug + "-config",
+						Name: m.AppContext.App.Slug + "-config",
 					},
 				},
 			},
@@ -140,14 +140,14 @@ func (m *AppMetadata) buildVolumes() []corev1.Volume {
 
 func (m *AppMetadata) BuildConfigMap() *corev1.ConfigMap {
 	data := make(map[string]string)
-	for _, cf := range m.App.ConfigFiles {
+	for _, cf := range m.AppContext.ConfigFiles {
 		data[cf.Slug] = cf.Content
 	}
 
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.App.Slug + "-config",
-			Namespace: m.App.Env.ClusterNamespace,
+			Name:      m.AppContext.App.Slug + "-config",
+			Namespace: m.AppContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Data: data,
@@ -159,7 +159,7 @@ func (m *AppMetadata) BuildPVC(v entities.AppVolume) *corev1.PersistentVolumeCla
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      v.Slug,
-			Namespace: m.App.Env.ClusterNamespace,
+			Namespace: m.AppContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -174,11 +174,11 @@ func (m *AppMetadata) BuildPVC(v entities.AppVolume) *corev1.PersistentVolumeCla
 }
 
 func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
-	replicas := int32(m.App.Replicas)
+	replicas := int32(m.AppContext.App.Replicas)
 	statefulSet := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.App.Slug,
-			Namespace: m.App.Env.ClusterNamespace,
+			Name:      m.AppContext.App.Slug,
+			Namespace: m.AppContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: appsv1.StatefulSetSpec{
@@ -202,18 +202,18 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 		},
 	}
 
-	if m.App.RegistryUsername != "" {
+	if m.AppContext.App.RegistryUsername != "" {
 		statefulSet.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
-			{Name: m.App.Slug + "-registry"},
+			{Name: m.AppContext.App.Slug + "-registry"},
 		}
 	}
 
-	for _, v := range m.App.Volumes {
+	for _, v := range m.AppContext.Volumes {
 		if v.VolumeType == "pvc" {
 			statefulSet.Spec.VolumeClaimTemplates = append(statefulSet.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      v.Slug,
-					Namespace: m.App.Env.ClusterNamespace,
+					Namespace: m.AppContext.Env.ClusterNamespace,
 					Labels:    m.getLabels(),
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -235,39 +235,39 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 
 func (m *AppMetadata) getLabels() map[string]string {
 	return map[string]string{
-		"app.ketches.cn/slug": m.App.Slug,
-		"app":                 m.App.Slug,
+		"app.ketches.cn/slug": m.AppContext.App.Slug,
+		"app":                 m.AppContext.App.Slug,
 	}
 }
 
 func (m *AppMetadata) buildContainer() corev1.Container {
 	container := corev1.Container{
-		Name:  "app-" + m.App.Slug,
-		Image: m.App.ContainerImage,
+		Name:  "app-" + m.AppContext.App.Slug,
+		Image: m.AppContext.App.ContainerImage,
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%dm", m.App.RequestCPU)),
-				corev1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", m.App.RequestMemory)),
+				corev1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%dm", m.AppContext.App.RequestCPU)),
+				corev1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", m.AppContext.App.RequestMemory)),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%dm", m.App.LimitCPU)),
-				corev1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", m.App.LimitMemory)),
+				corev1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%dm", m.AppContext.App.LimitCPU)),
+				corev1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", m.AppContext.App.LimitMemory)),
 			},
 		},
 	}
 
-	if m.App.ContainerCommand != "" {
-		container.Command = []string{"sh", "-c", m.App.ContainerCommand}
+	if m.AppContext.App.ContainerCommand != "" {
+		container.Command = []string{"sh", "-c", m.AppContext.App.ContainerCommand}
 	}
 
-	for _, ev := range m.App.EnvVars {
+	for _, ev := range m.AppContext.EnvVars {
 		container.Env = append(container.Env, corev1.EnvVar{
 			Name:  ev.Key,
 			Value: ev.Value,
 		})
 	}
 
-	for _, v := range m.App.Volumes {
+	for _, v := range m.AppContext.Volumes {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      v.Slug,
 			MountPath: v.MountPath,
@@ -275,7 +275,7 @@ func (m *AppMetadata) buildContainer() corev1.Container {
 		})
 	}
 
-	for _, cf := range m.App.ConfigFiles {
+	for _, cf := range m.AppContext.ConfigFiles {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      "config-files",
 			MountPath: cf.MountPath,
@@ -283,7 +283,7 @@ func (m *AppMetadata) buildContainer() corev1.Container {
 		})
 	}
 
-	for _, p := range m.App.Probes {
+	for _, p := range m.AppContext.Probes {
 		probe := &corev1.Probe{
 			InitialDelaySeconds: int32(p.InitialDelaySeconds),
 			PeriodSeconds:       int32(p.PeriodSeconds),
@@ -323,7 +323,7 @@ func (m *AppMetadata) buildContainer() corev1.Container {
 
 func (m *AppMetadata) buildInitContainers() []corev1.Container {
 	var containers []corev1.Container
-	for _, appPlugin := range m.App.AppPlugins {
+	for _, appPlugin := range m.AppContext.AppPlugins {
 		if appPlugin.Enabled && appPlugin.Plugin.PluginType == "init" {
 			containers = append(containers, m.buildPluginContainer(&appPlugin.Plugin))
 		}
@@ -333,7 +333,7 @@ func (m *AppMetadata) buildInitContainers() []corev1.Container {
 
 func (m *AppMetadata) buildSidecarContainers() []corev1.Container {
 	var containers []corev1.Container
-	for _, appPlugin := range m.App.AppPlugins {
+	for _, appPlugin := range m.AppContext.AppPlugins {
 		if appPlugin.Enabled && appPlugin.Plugin.PluginType == "sidecar" {
 			containers = append(containers, m.buildPluginContainer(&appPlugin.Plugin))
 		}
@@ -360,7 +360,7 @@ func (m *AppMetadata) buildPluginContainer(plugin *entities.Plugin) corev1.Conta
 func (m *AppMetadata) buildPluginEnvVars(plugin *entities.Plugin) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{}
 
-	for _, ev := range m.App.EnvVars {
+	for _, ev := range m.AppContext.EnvVars {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  ev.Key,
 			Value: ev.Value,
@@ -385,7 +385,7 @@ func (m *AppMetadata) buildPluginEnvVars(plugin *entities.Plugin) []corev1.EnvVa
 func (m *AppMetadata) buildPluginVolumeMounts() []corev1.VolumeMount {
 	var volumeMounts []corev1.VolumeMount
 
-	for _, v := range m.App.Volumes {
+	for _, v := range m.AppContext.Volumes {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      v.Slug,
 			MountPath: v.MountPath,
@@ -393,7 +393,7 @@ func (m *AppMetadata) buildPluginVolumeMounts() []corev1.VolumeMount {
 		})
 	}
 
-	for _, cf := range m.App.ConfigFiles {
+	for _, cf := range m.AppContext.ConfigFiles {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "config-files",
 			MountPath: cf.MountPath,
@@ -405,11 +405,11 @@ func (m *AppMetadata) buildPluginVolumeMounts() []corev1.VolumeMount {
 }
 
 func (m *AppMetadata) applySchedulingRules(podSpec *corev1.PodSpec) {
-	if m.App.SchedulingRule == nil {
+	if m.AppContext.SchedulingRule == nil {
 		return
 	}
 
-	rule := m.App.SchedulingRule
+	rule := m.AppContext.SchedulingRule
 	if rule.NodeName != "" {
 		podSpec.NodeName = rule.NodeName
 	}
@@ -439,48 +439,48 @@ func (m *AppMetadata) applySchedulingRules(podSpec *corev1.PodSpec) {
 }
 
 func (m *AppMetadata) BuildHorizontalPodAutoscaler() *autoscalingv2.HorizontalPodAutoscaler {
-	if m.App.AutoScaling == nil {
+	if m.AppContext.AutoScaling == nil {
 		return nil
 	}
 
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.App.Slug,
-			Namespace: m.App.Env.ClusterNamespace,
+			Name:      m.AppContext.App.Slug,
+			Namespace: m.AppContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
 				APIVersion: "apps/v1",
-				Kind:       m.App.AppType,
-				Name:       m.App.Slug,
+				Kind:       m.AppContext.App.AppType,
+				Name:       m.AppContext.App.Slug,
 			},
-			MinReplicas: ptrInt32(int32(m.App.AutoScaling.MinReplicas)),
-			MaxReplicas: int32(m.App.AutoScaling.MaxReplicas),
+			MinReplicas: ptrInt32(int32(m.AppContext.AutoScaling.MinReplicas)),
+			MaxReplicas: int32(m.AppContext.AutoScaling.MaxReplicas),
 		},
 	}
 
-	if m.App.AutoScaling.TargetCPUUtilization > 0 {
+	if m.AppContext.AutoScaling.TargetCPUUtilization > 0 {
 		hpa.Spec.Metrics = append(hpa.Spec.Metrics, autoscalingv2.MetricSpec{
 			Type: autoscalingv2.ResourceMetricSourceType,
 			Resource: &autoscalingv2.ResourceMetricSource{
 				Name: corev1.ResourceCPU,
 				Target: autoscalingv2.MetricTarget{
 					Type:               autoscalingv2.UtilizationMetricType,
-					AverageUtilization: ptrInt32(int32(m.App.AutoScaling.TargetCPUUtilization)),
+					AverageUtilization: ptrInt32(int32(m.AppContext.AutoScaling.TargetCPUUtilization)),
 				},
 			},
 		})
 	}
 
-	if m.App.AutoScaling.TargetMemoryUtilization > 0 {
+	if m.AppContext.AutoScaling.TargetMemoryUtilization > 0 {
 		hpa.Spec.Metrics = append(hpa.Spec.Metrics, autoscalingv2.MetricSpec{
 			Type: autoscalingv2.ResourceMetricSourceType,
 			Resource: &autoscalingv2.ResourceMetricSource{
 				Name: corev1.ResourceMemory,
 				Target: autoscalingv2.MetricTarget{
 					Type:               autoscalingv2.UtilizationMetricType,
-					AverageUtilization: ptrInt32(int32(m.App.AutoScaling.TargetMemoryUtilization)),
+					AverageUtilization: ptrInt32(int32(m.AppContext.AutoScaling.TargetMemoryUtilization)),
 				},
 			},
 		})
@@ -499,15 +499,15 @@ func (m *AppMetadata) BuildHTTPRoute(gw entities.AppGateway) *gatewayv1.HTTPRout
 
 	route := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%d", m.App.Slug, gw.Port),
-			Namespace: m.App.Env.ClusterNamespace,
+			Name:      fmt.Sprintf("%s-%d", m.AppContext.App.Slug, gw.Port),
+			Namespace: m.AppContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: gatewayv1.HTTPRouteSpec{
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{
 				ParentRefs: []gatewayv1.ParentReference{
 					{
-						Name: gatewayv1.ObjectName(EnvGatewayName(m.App.Env.Slug)),
+						Name: gatewayv1.ObjectName(EnvGatewayName(m.AppContext.Env.Slug)),
 					},
 				},
 			},
@@ -526,7 +526,7 @@ func (m *AppMetadata) BuildHTTPRoute(gw entities.AppGateway) *gatewayv1.HTTPRout
 						{
 							BackendRef: gatewayv1.BackendRef{
 								BackendObjectReference: gatewayv1.BackendObjectReference{
-									Name: gatewayv1.ObjectName(m.App.Slug),
+									Name: gatewayv1.ObjectName(m.AppContext.App.Slug),
 									Port: ptrPort(gatewayv1.PortNumber(gw.Port)),
 								},
 							},

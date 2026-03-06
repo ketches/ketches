@@ -62,40 +62,40 @@ func RollbackDeployment(appID, historyID string) (*entities.App, error) {
 		return nil, err
 	}
 
-	app, err := GetApp(appID)
+	appCtx, err := GetApp(context.Background(), appID)
 	if err != nil {
 		return nil, err
 	}
 
 	appBefore := &entities.App{
-		ContainerImage: app.ContainerImage,
-		Replicas:       app.Replicas,
-		RequestCPU:     app.RequestCPU,
-		RequestMemory:  app.RequestMemory,
-		LimitCPU:       app.LimitCPU,
-		LimitMemory:    app.LimitMemory,
+		ContainerImage: appCtx.App.ContainerImage,
+		Replicas:       appCtx.App.Replicas,
+		RequestCPU:     appCtx.App.RequestCPU,
+		RequestMemory:  appCtx.App.RequestMemory,
+		LimitCPU:       appCtx.App.LimitCPU,
+		LimitMemory:    appCtx.App.LimitMemory,
 	}
 
-	app.ContainerImage = history.ImageBefore
-	app.Replicas = history.ReplicasBefore
-	app.RequestCPU = history.RequestCPUBefore
-	app.RequestMemory = history.RequestMemoryBefore
-	app.LimitCPU = history.LimitCPUBefore
-	app.LimitMemory = history.LimitMemoryBefore
+	appCtx.App.ContainerImage = history.ImageBefore
+	appCtx.App.Replicas = history.ReplicasBefore
+	appCtx.App.RequestCPU = history.RequestCPUBefore
+	appCtx.App.RequestMemory = history.RequestMemoryBefore
+	appCtx.App.LimitCPU = history.LimitCPUBefore
+	appCtx.App.LimitMemory = history.LimitMemoryBefore
 
-	if err := db.DB.Save(app).Error; err != nil {
+	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
 
-	if err := core.ApplyApp(context.Background(), app); err != nil {
+	if err := core.ApplyApp(context.Background(), appCtx); err != nil {
 		return nil, err
 	}
 
-	if err := RecordDeployment(appBefore, app, "rollback", "system", "Rollback to previous deployment", nil); err != nil {
+	if err := RecordDeployment(appBefore, &appCtx.App, "rollback", "system", "Rollback to previous deployment", nil); err != nil {
 		return nil, err
 	}
 
-	return app, nil
+	return &appCtx.App, nil
 }
 
 func ConvertDeploymentHistoryToModel(entity *entities.DeploymentHistory) *models.DeploymentHistory {

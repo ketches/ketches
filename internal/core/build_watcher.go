@@ -10,6 +10,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -77,7 +78,7 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 
 	// Get the build env to find the cluster
 	var buildEnv entities.Env
-	if err := db.DB.Preload("Cluster").First(&buildEnv, "id = ?", buildEnvID).Error; err != nil {
+	if err := db.DB.First(&buildEnv, "id = ?", buildEnvID).Error; err != nil {
 		log.Printf("Build watcher: failed to get build env %s: %v", buildEnvID, err)
 		updateBuildFailed(buildID, "Failed to get build environment")
 		return
@@ -224,10 +225,16 @@ func handleAutoDeploy(build *entities.Build) {
 		return
 	}
 	var config entities.AppBuildConfig
-	if err := db.DB.Preload("Registry").First(&config, "id = ?", *build.BuildConfigID).Error; err != nil {
+	if err := db.DB.First(&config, "id = ?", *build.BuildConfigID).Error; err != nil {
 		log.Printf("Auto deploy: failed to get build config: %v", err)
 		return
 	}
+	var registry entities.ContainerRegistry
+	if err := db.DB.First(&registry, "id = ?", config.RegistryID).Error; err != nil {
+		log.Printf("Auto deploy: failed to get registry: %v", err)
+		return
+	}
+	config.Registry = registry
 
 	if !config.AutoDeploy {
 		return
@@ -237,8 +244,18 @@ func handleAutoDeploy(build *entities.Build) {
 	}
 
 	var app entities.App
-	if err := db.DB.Preload("Env.Cluster").First(&app, "id = ?", *build.AppID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", *build.AppID).Error; err != nil {
 		log.Printf("Auto deploy: failed to get app: %v", err)
+		return
+	}
+	var env entities.Env
+	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
+		log.Printf("Auto deploy: failed to get env: %v", err)
+		return
+	}
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+		log.Printf("Auto deploy: failed to get cluster: %v", err)
 		return
 	}
 
@@ -251,7 +268,12 @@ func handleAutoDeploy(build *entities.Build) {
 		return
 	}
 
-	if err := ApplyApp(context.Background(), &app); err != nil {
+	appCtx := models.AppContext{
+		App:     app,
+		Env:     env,
+		Cluster: cluster,
+	}
+	if err := ApplyApp(context.Background(), &appCtx); err != nil {
 		log.Printf("Auto deploy: failed to apply app: %v", err)
 		return
 	}
@@ -264,22 +286,43 @@ func handleAutoDeploy(build *entities.Build) {
 
 func handleCodeRepoBuildDeploy(build *entities.Build) {
 	var deployEnv entities.Env
-	if err := db.DB.Preload("Cluster").First(&deployEnv, "id = ?", build.PendingDeployEnvID).Error; err != nil {
+	if err := db.DB.First(&deployEnv, "id = ?", build.PendingDeployEnvID).Error; err != nil {
 		log.Printf("Code repo auto-deploy: failed to get deploy env: %v", err)
+		return
+	}
+	var deployCluster entities.Cluster
+	if err := db.DB.First(&deployCluster, "id = ?", deployEnv.ClusterID).Error; err != nil {
+		log.Printf("Code repo auto-deploy: failed to get cluster: %v", err)
 		return
 	}
 
 	var config entities.CodeRepositoryBuildConfig
-	if err := db.DB.Preload("Registry").First(&config, "id = ?", *build.CodeRepositoryBuildConfigID).Error; err != nil {
+	if err := db.DB.First(&config, "id = ?", *build.CodeRepositoryBuildConfigID).Error; err != nil {
 		log.Printf("Code repo auto-deploy: failed to get build config: %v", err)
 		return
 	}
+	var repoRegistry entities.ContainerRegistry
+	if err := db.DB.First(&repoRegistry, "id = ?", config.RegistryID).Error; err != nil {
+		log.Printf("Code repo auto-deploy: failed to get registry: %v", err)
+		return
+	}
+	config.Registry = repoRegistry
 
 	var app *entities.App
 	if build.PendingDeployAppID != "" {
 		var existingApp entities.App
-		if err := db.DB.Preload("Env.Cluster").First(&existingApp, "id = ?", build.PendingDeployAppID).Error; err != nil {
+		if err := db.DB.First(&existingApp, "id = ?", build.PendingDeployAppID).Error; err != nil {
 			log.Printf("Code repo auto-deploy: failed to get app: %v", err)
+			return
+		}
+		var appEnv entities.Env
+		if err := db.DB.First(&appEnv, "id = ?", existingApp.EnvID).Error; err != nil {
+			log.Printf("Code repo auto-deploy: failed to get app env: %v", err)
+			return
+		}
+		var appCluster entities.Cluster
+		if err := db.DB.First(&appCluster, "id = ?", appEnv.ClusterID).Error; err != nil {
+			log.Printf("Code repo auto-deploy: failed to get app cluster: %v", err)
 			return
 		}
 		app = &existingApp
@@ -293,7 +336,12 @@ func handleCodeRepoBuildDeploy(build *entities.Build) {
 			return
 		}
 
-		if err := ApplyApp(context.Background(), app); err != nil {
+		appCtx := models.AppContext{
+			App:     existingApp,
+			Env:     appEnv,
+			Cluster: appCluster,
+		}
+		if err := ApplyApp(context.Background(), &appCtx); err != nil {
 			log.Printf("Code repo auto-deploy: failed to apply app: %v", err)
 			return
 		}
@@ -323,9 +371,12 @@ func handleCodeRepoBuildDeploy(build *entities.Build) {
 			return
 		}
 
-		newApp.Env = deployEnv
-
-		if err := ApplyApp(context.Background(), newApp); err != nil {
+		appCtx := models.AppContext{
+			App:     *newApp,
+			Env:     deployEnv,
+			Cluster: deployCluster,
+		}
+		if err := ApplyApp(context.Background(), &appCtx); err != nil {
 			log.Printf("Code repo auto-deploy: failed to apply new app: %v", err)
 			return
 		}

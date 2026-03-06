@@ -7,6 +7,7 @@ import (
 
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/models"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,20 +16,20 @@ import (
 
 // SyncGatewaysToK8s synchronizes app gateways to Kubernetes cluster
 // It creates/updates Service and HTTPRoute/TCPRoute resources as needed
-func SyncGatewaysToK8s(ctx context.Context, app *entities.App) error {
-	if app.Env.ClusterID == "" {
+func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
+	if appCtx.Env.ClusterID == "" {
 		return fmt.Errorf("app environment has no cluster configured")
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(app.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return err
 	}
 
-	metadata := &AppMetadata{App: app}
+	metadata := &AppMetadata{AppContext: appCtx}
 
 	// Always sync Service (update ports based on all gateways)
-	svc := metadata.BuildServiceForGateways(app.Gateways)
+	svc := metadata.BuildServiceForGateways(appCtx.Gateways)
 	if _, err := client.CoreV1().Services(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{}); err != nil {
 		if errors.IsNotFound(err) {
 			if _, err := client.CoreV1().Services(svc.Namespace).Create(ctx, svc, metav1.CreateOptions{}); err != nil {
@@ -43,23 +44,23 @@ func SyncGatewaysToK8s(ctx context.Context, app *entities.App) error {
 		}
 	}
 
-	for _, gateway := range app.Gateways {
+	for _, gateway := range appCtx.Gateways {
 		// If gateway is exposed, create/update Gateway API resources
 		if gateway.Exposed {
 			// Verify that Gateway API CRDs are installed before attempting to create an HTTPRoute.
-			hasGWAPI, err := ClusterHasGatewayAPICRDs(app.Env.ClusterID)
+			hasGWAPI, err := ClusterHasGatewayAPICRDs(appCtx.Env.ClusterID)
 			if err != nil {
 				return err
 			}
 			if !hasGWAPI {
-				return fmt.Errorf("Gateway API CRDs are not installed on cluster %s", app.Env.ClusterID)
+				return fmt.Errorf("Gateway API CRDs are not installed on cluster %s", appCtx.Env.ClusterID)
 			}
 			// Ensure the env-level Gateway exists before creating HTTPRoute.
-			if err := EnsureEnvGateway(ctx, &app.Env, nil); err != nil {
+			if err := EnsureEnvGateway(ctx, &appCtx.Env, nil); err != nil {
 				return err
 			}
 
-			gwClient, err := kube.GlobalClusterStore.GetGatewayClient(app.Env.ClusterID)
+			gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.Env.ClusterID)
 			if err != nil {
 				return err
 			}
@@ -96,12 +97,12 @@ func SyncGatewaysToK8s(ctx context.Context, app *entities.App) error {
 }
 
 // DeleteGatewayFromK8s removes Gateway API resources from Kubernetes
-func DeleteGatewayFromK8s(ctx context.Context, app *entities.App, gateway *entities.AppGateway) error {
-	if app.Env.ClusterID == "" {
+func DeleteGatewayFromK8s(ctx context.Context, appCtx *models.AppContext, gateway *entities.AppGateway) error {
+	if appCtx.Env.ClusterID == "" {
 		return fmt.Errorf("app environment has no cluster configured")
 	}
 
-	gwClient, err := kube.GlobalClusterStore.GetGatewayClient(app.Env.ClusterID)
+	gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return err
 	}
@@ -109,8 +110,8 @@ func DeleteGatewayFromK8s(ctx context.Context, app *entities.App, gateway *entit
 	protocol := gateway.Protocol
 	if protocol == "http" || protocol == "https" {
 		// Delete HTTPRoute
-		routeName := fmt.Sprintf("%s-%d", app.Slug, gateway.Port)
-		err := gwClient.GatewayV1().HTTPRoutes(app.Env.ClusterNamespace).Delete(ctx, routeName, metav1.DeleteOptions{})
+		routeName := fmt.Sprintf("%s-%d", appCtx.App.Slug, gateway.Port)
+		err := gwClient.GatewayV1().HTTPRoutes(appCtx.Env.ClusterNamespace).Delete(ctx, routeName, metav1.DeleteOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
@@ -120,18 +121,18 @@ func DeleteGatewayFromK8s(ctx context.Context, app *entities.App, gateway *entit
 	}
 
 	// Rebuild Service with remaining gateways
-	client, err := kube.GlobalClusterStore.GetClient(app.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return err
 	}
 
 	// Load all remaining gateways for this app
 	var remainingGateways []entities.AppGateway
-	// Note: This assumes app.Gateways is up-to-date after deletion in DB
+	// Note: This assumes appCtx.Gateways is up-to-date after deletion in DB
 	// The service layer should reload the app with gateways before calling this
-	remainingGateways = app.Gateways
+	remainingGateways = appCtx.Gateways
 
-	metadata := &AppMetadata{App: app}
+	metadata := &AppMetadata{AppContext: appCtx}
 	svc := metadata.BuildServiceForGateways(remainingGateways)
 
 	if _, err := client.CoreV1().Services(svc.Namespace).Update(ctx, svc, metav1.UpdateOptions{}); err != nil {
@@ -162,8 +163,8 @@ func (m *AppMetadata) BuildServiceForGateways(gateways []entities.AppGateway) *c
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.App.Slug,
-			Namespace: m.App.Env.ClusterNamespace,
+			Name:      m.AppContext.App.Slug,
+			Namespace: m.AppContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: corev1.ServiceSpec{

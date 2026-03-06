@@ -1515,7 +1515,7 @@ export function ApplicationDetailPage() {
         {!isViewer && (
           <TabsContent value="build" className="space-y-4 mt-2">
             {app.code_repository_id && (
-              <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent">
+              <Card className="bg-linear-to-b/increasing from-blue/5 to-transparent">
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2">
                     <FolderGit2 className="h-4 w-4" />

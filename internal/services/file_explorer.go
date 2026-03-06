@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -20,8 +19,8 @@ import (
 )
 
 // execCommand executes a non-interactive command in a container and returns stdout/stderr
-func execCommand(app *entities.App, instanceName, containerName string, command []string) (string, string, error) {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(app.Env.Cluster.KubeConfig))
+func execCommand(appCtx *models.AppContext, instanceName, containerName string, command []string) (string, string, error) {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
 	if err != nil {
 		return "", "", err
 	}
@@ -34,7 +33,7 @@ func execCommand(app *entities.App, instanceName, containerName string, command 
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(app.Env.ClusterNamespace).
+		Namespace(appCtx.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: containerName,
@@ -60,8 +59,8 @@ func execCommand(app *entities.App, instanceName, containerName string, command 
 }
 
 // execCommandWithStdin executes a command in a container with stdin input
-func execCommandWithStdin(app *entities.App, instanceName, containerName string, command []string, stdin io.Reader) (string, string, error) {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(app.Env.Cluster.KubeConfig))
+func execCommandWithStdin(appCtx *models.AppContext, instanceName, containerName string, command []string, stdin io.Reader) (string, string, error) {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
 	if err != nil {
 		return "", "", err
 	}
@@ -74,7 +73,7 @@ func execCommandWithStdin(app *entities.App, instanceName, containerName string,
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(app.Env.ClusterNamespace).
+		Namespace(appCtx.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: containerName,
@@ -101,8 +100,8 @@ func execCommandWithStdin(app *entities.App, instanceName, containerName string,
 }
 
 // execCommandStreamStdout executes a command and streams stdout to the provided writer
-func execCommandStreamStdout(app *entities.App, instanceName, containerName string, command []string, stdout io.Writer) error {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(app.Env.Cluster.KubeConfig))
+func execCommandStreamStdout(appCtx *models.AppContext, instanceName, containerName string, command []string, stdout io.Writer) error {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
 	if err != nil {
 		return err
 	}
@@ -115,7 +114,7 @@ func execCommandStreamStdout(app *entities.App, instanceName, containerName stri
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(app.Env.ClusterNamespace).
+		Namespace(appCtx.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: containerName,
@@ -139,8 +138,8 @@ func execCommandStreamStdout(app *entities.App, instanceName, containerName stri
 }
 
 // execCommandWithStdinStream executes a command with stdin stream and stdout writer
-func execCommandWithStdinStream(app *entities.App, instanceName, containerName string, command []string, stdin io.Reader, stdout io.Writer) error {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(app.Env.Cluster.KubeConfig))
+func execCommandWithStdinStream(appCtx *models.AppContext, instanceName, containerName string, command []string, stdin io.Reader, stdout io.Writer) error {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
 	if err != nil {
 		return err
 	}
@@ -153,7 +152,7 @@ func execCommandWithStdinStream(app *entities.App, instanceName, containerName s
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(app.Env.ClusterNamespace).
+		Namespace(appCtx.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: containerName,
@@ -178,8 +177,8 @@ func execCommandWithStdinStream(app *entities.App, instanceName, containerName s
 }
 
 // GetHomeDir returns the home directory ($HOME) of the container's default user
-func GetHomeDir(app *entities.App, instanceName, containerName string) (string, error) {
-	stdout, _, err := execCommand(app, instanceName, containerName, []string{"sh", "-c", `echo "$HOME"`})
+func GetHomeDir(appCtx *models.AppContext, instanceName, containerName string) (string, error) {
+	stdout, _, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", `echo "$HOME"`})
 	if err != nil {
 		return "/", nil // fallback to root
 	}
@@ -191,7 +190,7 @@ func GetHomeDir(app *entities.App, instanceName, containerName string) (string, 
 }
 
 // CheckWritable checks if a path is writable in the container
-func CheckWritable(app *entities.App, instanceName, containerName, path string) error {
+func CheckWritable(appCtx *models.AppContext, instanceName, containerName, path string) error {
 	path = filepath.Clean(path)
 	dir := filepath.Dir(path)
 
@@ -201,7 +200,7 @@ func CheckWritable(app *entities.App, instanceName, containerName, path string) 
 elif [ -w "%s" ]; then exit 0
 else echo "READONLY_DIR"; exit 1; fi`, path, path, dir)
 
-	stdout, _, err := execCommand(app, instanceName, containerName, []string{"sh", "-c", script})
+	stdout, _, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", script})
 	if err != nil {
 		msg := strings.TrimSpace(stdout)
 		if msg == "READONLY_FILE" {
@@ -216,7 +215,7 @@ else echo "READONLY_DIR"; exit 1; fi`, path, path, dir)
 }
 
 // CompressFiles compresses multiple files into a tar.gz archive inside the container
-func CompressFiles(app *entities.App, instanceName, containerName, baseDir string, fileNames []string, destPath string) error {
+func CompressFiles(appCtx *models.AppContext, instanceName, containerName, baseDir string, fileNames []string, destPath string) error {
 	baseDir = filepath.Clean(baseDir)
 	destPath = filepath.Clean(destPath)
 
@@ -226,7 +225,7 @@ func CompressFiles(app *entities.App, instanceName, containerName, baseDir strin
 		args += fmt.Sprintf(` "%s"`, name)
 	}
 
-	_, stderr, err := execCommand(app, instanceName, containerName, []string{"sh", "-c", args})
+	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", args})
 	if err != nil {
 		return fmt.Errorf("failed to compress files: %v, stderr: %s", err, stderr)
 	}
@@ -234,7 +233,7 @@ func CompressFiles(app *entities.App, instanceName, containerName, baseDir strin
 }
 
 // CompressAndDownloadFiles compresses multiple files and streams the tar.gz to the writer
-func CompressAndDownloadFiles(app *entities.App, instanceName, containerName, baseDir string, fileNames []string, writer io.Writer) error {
+func CompressAndDownloadFiles(appCtx *models.AppContext, instanceName, containerName, baseDir string, fileNames []string, writer io.Writer) error {
 	baseDir = filepath.Clean(baseDir)
 
 	// Build the tar command with all file names, output to stdout
@@ -244,14 +243,14 @@ func CompressAndDownloadFiles(app *entities.App, instanceName, containerName, ba
 	}
 
 	return execCommandStreamStdout(
-		app, instanceName, containerName,
+		appCtx, instanceName, containerName,
 		[]string{"sh", "-c", args},
 		writer,
 	)
 }
 
 // ListFiles lists files in a directory inside a container
-func ListFiles(app *entities.App, instanceName, containerName, path string) (*models.ListFilesResponse, error) {
+func ListFiles(appCtx *models.AppContext, instanceName, containerName, path string) (*models.ListFilesResponse, error) {
 	if path == "" {
 		path = "/"
 	}
@@ -276,7 +275,7 @@ for f in "$dir"/* "$dir"/.*; do
   printf '%%s\t%%s\t%%s\t%%s\t%%s\n' "$name" "$t" "$s" "$m" "$p"
 done`, path)
 
-	stdout, stderr, err := execCommand(app, instanceName, containerName, []string{"sh", "-c", script})
+	stdout, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", script})
 	if err != nil {
 		if strings.Contains(stderr, "ERROR: not a directory") {
 			return nil, fmt.Errorf("path is not a directory: %s", path)
@@ -314,7 +313,7 @@ done`, path)
 }
 
 // ReadFile reads the content of a text file inside a container
-func ReadFile(app *entities.App, instanceName, containerName, path string) (*models.ReadFileResponse, error) {
+func ReadFile(appCtx *models.AppContext, instanceName, containerName, path string) (*models.ReadFileResponse, error) {
 	path = filepath.Clean(path)
 
 	// First check if it's a file and get its size
@@ -324,7 +323,7 @@ if [ -d "$f" ]; then echo "ERROR: is a directory"; exit 1; fi
 s=$(stat -c %%s "$f" 2>/dev/null || stat -f %%z "$f" 2>/dev/null || echo 0)
 echo "$s"`, path)
 
-	stdout, stderr, err := execCommand(app, instanceName, containerName, []string{"sh", "-c", checkScript})
+	stdout, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", checkScript})
 	if err != nil {
 		if strings.Contains(stderr, "ERROR:") || strings.Contains(stdout, "ERROR:") {
 			msg := strings.TrimSpace(stderr)
@@ -345,7 +344,7 @@ echo "$s"`, path)
 	}
 
 	// Read the file content
-	content, stderr, err := execCommand(app, instanceName, containerName, []string{"cat", path})
+	content, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"cat", path})
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %v, stderr: %s", err, stderr)
 	}
@@ -358,23 +357,23 @@ echo "$s"`, path)
 }
 
 // WriteFile writes content to a file inside a container
-func WriteFile(app *entities.App, instanceName, containerName, path, content string) error {
+func WriteFile(appCtx *models.AppContext, instanceName, containerName, path, content string) error {
 	path = filepath.Clean(path)
 
 	// Pre-check if the path is writable
-	if err := CheckWritable(app, instanceName, containerName, path); err != nil {
+	if err := CheckWritable(appCtx, instanceName, containerName, path); err != nil {
 		return err
 	}
 
 	// Ensure parent directory exists
 	dir := filepath.Dir(path)
 	if dir != "/" && dir != "." {
-		execCommand(app, instanceName, containerName, []string{"mkdir", "-p", dir})
+		execCommand(appCtx, instanceName, containerName, []string{"mkdir", "-p", dir})
 	}
 
 	// Use cat with stdin to write file content (handles special characters safely)
 	_, stderr, err := execCommandWithStdin(
-		app, instanceName, containerName,
+		appCtx, instanceName, containerName,
 		[]string{"sh", "-c", fmt.Sprintf(`cat > "%s"`, path)},
 		strings.NewReader(content),
 	)
@@ -389,10 +388,10 @@ func WriteFile(app *entities.App, instanceName, containerName, path, content str
 }
 
 // MkdirInContainer creates a directory inside a container
-func MkdirInContainer(app *entities.App, instanceName, containerName, path string) error {
+func MkdirInContainer(appCtx *models.AppContext, instanceName, containerName, path string) error {
 	path = filepath.Clean(path)
 
-	_, stderr, err := execCommand(app, instanceName, containerName, []string{"mkdir", "-p", path})
+	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"mkdir", "-p", path})
 	if err != nil {
 		return fmt.Errorf("failed to create directory: %v, stderr: %s", err, stderr)
 	}
@@ -401,7 +400,7 @@ func MkdirInContainer(app *entities.App, instanceName, containerName, path strin
 }
 
 // DeleteFileInContainer deletes a file or directory inside a container
-func DeleteFileInContainer(app *entities.App, instanceName, containerName, path string) error {
+func DeleteFileInContainer(appCtx *models.AppContext, instanceName, containerName, path string) error {
 	path = filepath.Clean(path)
 
 	// Safety: prevent deleting root
@@ -409,7 +408,7 @@ func DeleteFileInContainer(app *entities.App, instanceName, containerName, path 
 		return fmt.Errorf("cannot delete root directory")
 	}
 
-	_, stderr, err := execCommand(app, instanceName, containerName, []string{"rm", "-rf", path})
+	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"rm", "-rf", path})
 	if err != nil {
 		return fmt.Errorf("failed to delete: %v, stderr: %s", err, stderr)
 	}
@@ -418,11 +417,11 @@ func DeleteFileInContainer(app *entities.App, instanceName, containerName, path 
 }
 
 // MoveFileInContainer moves/renames a file or directory inside a container
-func MoveFileInContainer(app *entities.App, instanceName, containerName, source, destination string) error {
+func MoveFileInContainer(appCtx *models.AppContext, instanceName, containerName, source, destination string) error {
 	source = filepath.Clean(source)
 	destination = filepath.Clean(destination)
 
-	_, stderr, err := execCommand(app, instanceName, containerName, []string{"mv", source, destination})
+	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"mv", source, destination})
 	if err != nil {
 		return fmt.Errorf("failed to move: %v, stderr: %s", err, stderr)
 	}
@@ -431,11 +430,11 @@ func MoveFileInContainer(app *entities.App, instanceName, containerName, source,
 }
 
 // CopyFileInContainer copies a file or directory inside a container
-func CopyFileInContainer(app *entities.App, instanceName, containerName, source, destination string) error {
+func CopyFileInContainer(appCtx *models.AppContext, instanceName, containerName, source, destination string) error {
 	source = filepath.Clean(source)
 	destination = filepath.Clean(destination)
 
-	_, stderr, err := execCommand(app, instanceName, containerName, []string{"cp", "-r", source, destination})
+	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"cp", "-r", source, destination})
 	if err != nil {
 		return fmt.Errorf("failed to copy: %v, stderr: %s", err, stderr)
 	}
@@ -444,20 +443,20 @@ func CopyFileInContainer(app *entities.App, instanceName, containerName, source,
 }
 
 // DownloadFile streams a file from a container to the writer using tar
-func DownloadFile(app *entities.App, instanceName, containerName, path string, writer io.Writer) error {
+func DownloadFile(appCtx *models.AppContext, instanceName, containerName, path string, writer io.Writer) error {
 	path = filepath.Clean(path)
 	dir := filepath.Dir(path)
 	base := filepath.Base(path)
 
 	return execCommandStreamStdout(
-		app, instanceName, containerName,
+		appCtx, instanceName, containerName,
 		[]string{"tar", "cf", "-", "-C", dir, base},
 		writer,
 	)
 }
 
 // UploadFile uploads a file to the container using tar
-func UploadFile(app *entities.App, instanceName, containerName, destDir, fileName string, fileContent io.Reader, fileSize int64) error {
+func UploadFile(appCtx *models.AppContext, instanceName, containerName, destDir, fileName string, fileContent io.Reader, fileSize int64) error {
 	destDir = filepath.Clean(destDir)
 
 	// Create a tar archive in memory containing the file
@@ -481,7 +480,7 @@ func UploadFile(app *entities.App, instanceName, containerName, destDir, fileNam
 
 	// Extract the tar archive in the destination directory
 	return execCommandWithStdinStream(
-		app, instanceName, containerName,
+		appCtx, instanceName, containerName,
 		[]string{"tar", "xf", "-", "-C", destDir},
 		&tarBuf,
 		io.Discard,

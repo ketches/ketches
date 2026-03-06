@@ -56,13 +56,23 @@ func CreateAppGateway(appID string, req *models.CreateGatewayRequest) (*entities
 	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
 		return nil, err
 	}
-	app.Env = env
-	if err := db.DB.Where("app_id = ?", appID).Find(&app.Gateways).Error; err != nil {
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
 		return nil, err
+	}
+	var gateways []entities.AppGateway
+	if err := db.DB.Where("app_id = ?", appID).Find(&gateways).Error; err != nil {
+		return nil, err
+	}
+	appCtx := &models.AppContext{
+		App:      app,
+		Env:      env,
+		Cluster:  cluster,
+		Gateways: gateways,
 	}
 
 	// Sync to Kubernetes cluster
-	if err := core.SyncGatewaysToK8s(context.Background(), &app); err != nil {
+	if err := core.SyncGatewaysToK8s(context.Background(), appCtx); err != nil {
 		return nil, err
 	}
 
@@ -114,13 +124,23 @@ func UpdateAppGateway(id string, req *models.UpdateGatewayRequest) (*entities.Ap
 	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
 		return nil, err
 	}
-	app.Env = env
-	if err := db.DB.Where("app_id = ?", gateway.AppID).Find(&app.Gateways).Error; err != nil {
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
 		return nil, err
+	}
+	var gateways []entities.AppGateway
+	if err := db.DB.Where("app_id = ?", gateway.AppID).Find(&gateways).Error; err != nil {
+		return nil, err
+	}
+	appCtx := &models.AppContext{
+		App:      app,
+		Env:      env,
+		Cluster:  cluster,
+		Gateways: gateways,
 	}
 
 	// Sync to Kubernetes cluster
-	if err := core.SyncGatewaysToK8s(context.Background(), &app); err != nil {
+	if err := core.SyncGatewaysToK8s(context.Background(), appCtx); err != nil {
 		return nil, err
 	}
 
@@ -147,13 +167,23 @@ func DeleteAppGateway(id string) error {
 	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
 		return err
 	}
-	app.Env = env
-	if err := db.DB.Where("app_id = ?", gateway.AppID).Find(&app.Gateways).Error; err != nil {
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
 		return err
+	}
+	var gateways []entities.AppGateway
+	if err := db.DB.Where("app_id = ?", gateway.AppID).Find(&gateways).Error; err != nil {
+		return err
+	}
+	appCtx := &models.AppContext{
+		App:      app,
+		Env:      env,
+		Cluster:  cluster,
+		Gateways: gateways,
 	}
 
 	// Delete from Kubernetes first
-	if err := core.DeleteGatewayFromK8s(context.Background(), &app, &gateway); err != nil {
+	if err := core.DeleteGatewayFromK8s(context.Background(), appCtx, &gateway); err != nil {
 		return err
 	}
 
@@ -166,7 +196,7 @@ func DeleteAppGateway(id string) error {
 }
 
 // GetGatewayWithApp loads a gateway along with its parent App, Env, and Cluster.
-func GetGatewayWithApp(gatewayID string) (*entities.AppGateway, *entities.App, error) {
+func GetGatewayWithApp(gatewayID string) (*entities.AppGateway, *models.AppContext, error) {
 	var gateway entities.AppGateway
 	err := db.DB.First(&gateway, "id = ?", gatewayID).Error
 	if err != nil {
@@ -188,8 +218,11 @@ func GetGatewayWithApp(gatewayID string) (*entities.AppGateway, *entities.App, e
 	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
 		return nil, nil, err
 	}
-	env.Cluster = cluster
-	application.Env = env
+	appCtx := &models.AppContext{
+		App:     application,
+		Env:     env,
+		Cluster: cluster,
+	}
 
-	return &gateway, &application, nil
+	return &gateway, appCtx, nil
 }

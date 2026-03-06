@@ -4,18 +4,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/models"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 )
 
-func ApplyApp(ctx context.Context, app *entities.App) error {
-	metadata := &AppMetadata{App: app}
+func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
+	metadata := &AppMetadata{AppContext: appCtx}
 
-	client, err := kube.GlobalClusterStore.GetClient(app.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func ApplyApp(ctx context.Context, app *entities.App) error {
 		}
 	}
 
-	if len(app.ConfigFiles) > 0 {
+	if len(appCtx.ConfigFiles) > 0 {
 		cm := metadata.BuildConfigMap()
 		if _, err := client.CoreV1().ConfigMaps(cm.Namespace).Get(ctx, cm.Name, metav1.GetOptions{}); err != nil {
 			if errors.IsNotFound(err) {
@@ -48,7 +48,7 @@ func ApplyApp(ctx context.Context, app *entities.App) error {
 		}
 	}
 
-	if app.RegistryUsername != "" {
+	if appCtx.App.RegistryUsername != "" {
 		secret := metadata.BuildRegistrySecret()
 		if _, err := client.CoreV1().Secrets(secret.Namespace).Get(ctx, secret.Name, metav1.GetOptions{}); err != nil {
 			if errors.IsNotFound(err) {
@@ -65,9 +65,9 @@ func ApplyApp(ctx context.Context, app *entities.App) error {
 		}
 	}
 
-	for _, v := range app.Volumes {
+	for _, v := range appCtx.Volumes {
 		if v.VolumeType == "pvc" {
-			switch app.AppType {
+			switch appCtx.App.AppType {
 			case "Deployment":
 				pvc := metadata.BuildPVC(v)
 				if _, err := client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(ctx, pvc.Name, metav1.GetOptions{}); err != nil {
@@ -83,12 +83,12 @@ func ApplyApp(ctx context.Context, app *entities.App) error {
 				// For StatefulSet, PVCs are created by the StatefulSet controller based on the volumeClaimTemplates
 				// So we don't need to create them here. Just ensure they are defined in the volumeClaimTemplates.
 			default:
-				return fmt.Errorf("unsupported app type '%s' for volume '%s'", app.AppType, v.Slug)
+				return fmt.Errorf("unsupported app type '%s' for volume '%s'", appCtx.App.AppType, v.Slug)
 			}
 		}
 	}
 
-	if app.AppType == "StatefulSet" {
+	if appCtx.App.AppType == "StatefulSet" {
 		sts := metadata.BuildStatefulSet()
 		if _, err := client.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{}); err != nil {
 			if errors.IsNotFound(err) {
@@ -120,7 +120,7 @@ func ApplyApp(ctx context.Context, app *entities.App) error {
 		}
 	}
 
-	if app.AutoScaling != nil {
+	if appCtx.AutoScaling != nil {
 		hpa := metadata.BuildHorizontalPodAutoscaler()
 		if _, err := client.AutoscalingV2().HorizontalPodAutoscalers(hpa.Namespace).Get(ctx, hpa.Name, metav1.GetOptions{}); err != nil {
 			if errors.IsNotFound(err) {
@@ -137,7 +137,7 @@ func ApplyApp(ctx context.Context, app *entities.App) error {
 		}
 	}
 
-	SyncGatewaysToK8s(ctx, app)
+	SyncGatewaysToK8s(ctx, appCtx)
 
 	return nil
 }

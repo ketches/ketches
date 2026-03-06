@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -15,11 +16,16 @@ import (
 
 func GetBuildConfig(appID string) (*entities.AppBuildConfig, error) {
 	var config entities.AppBuildConfig
-	if err := db.DB.Preload("Registry").
-		Where("app_id = ?", appID).
+	if err := db.DB.Where("app_id = ?", appID).
 		First(&config).Error; err != nil {
 		return nil, err
 	}
+	// Explicit load: Registry
+	var registry entities.ContainerRegistry
+	if err := db.DB.First(&registry, "id = ?", config.RegistryID).Error; err != nil {
+		return nil, err
+	}
+	config.Registry = registry
 	return &config, nil
 }
 
@@ -108,12 +114,12 @@ func TestGitConnection(req *models.TestGitConnectionRequest) *models.TestGitConn
 }
 
 func ListAvailableRegistriesForApp(appID string) ([]entities.ContainerRegistry, error) {
-	app, err := GetApp(appID)
+	appCtx, err := GetApp(context.Background(), appID)
 	if err != nil {
 		return nil, err
 	}
 
-	return ListAvailableRegistries(app.Env.ClusterID, app.Env.ProjectID)
+	return ListAvailableRegistries(appCtx.Env.ClusterID, appCtx.Env.ProjectID)
 }
 
 func ToBuildConfigResponse(config *entities.AppBuildConfig) models.BuildConfigResponse {

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -93,7 +94,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 		createReq.Deploy = false            // Do not deploy immediately
 		createReq.SeedImageMetadata = false // pass through seed image metadata flag
 
-		createdApp, err := CreateApp(envID, createReq)
+		createdApp, err := CreateApp(context.Background(), envID, createReq)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create app %s: %w", appMeta.AppName, err)
 		}
@@ -104,7 +105,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 			for _, ev := range appMeta.EnvVars {
 				envVars = append(envVars, entities.AppEnvVar{
 					ID:    uuid.New(),
-					AppID: createdApp.ID,
+				AppID: createdApp.App.ID,
 					Key:   ev.Key,
 					Value: ev.Value,
 				})
@@ -119,7 +120,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 			for _, gw := range appMeta.Gateways {
 				gateway := &entities.AppGateway{
 					ID:          uuid.New(),
-					AppID:       createdApp.ID,
+				AppID:       createdApp.App.ID,
 					Port:        gw.Port,
 					Protocol:    gw.Protocol,
 					GatewayPort: gw.GatewayPort,
@@ -139,7 +140,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 			for _, cf := range appMeta.ConfigFiles {
 				configFile := &entities.AppConfigFile{
 					ID:        uuid.New(),
-					AppID:     createdApp.ID,
+				AppID:     createdApp.App.ID,
 					Slug:      cf.Slug,
 					MountPath: cf.MountPath,
 					Content:   cf.Content,
@@ -159,7 +160,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 			for _, vol := range appMeta.Volumes {
 				volume := &entities.AppVolume{
 					ID:           uuid.New(),
-					AppID:        createdApp.ID,
+				AppID:        createdApp.App.ID,
 					Slug:         vol.Slug,
 					MountPath:    vol.MountPath,
 					SubPath:      vol.SubPath,
@@ -178,7 +179,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 			for _, p := range appMeta.Probes {
 				probe := &entities.AppProbe{
 					ID:                  uuid.New(),
-					AppID:               createdApp.ID,
+				AppID:               createdApp.App.ID,
 					Type:                p.Type,
 					ProbeMode:           p.ProbeMode,
 					Enabled:             p.Enabled,
@@ -199,8 +200,8 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 		}
 
 		result.Imported = append(result.Imported, ImportAppResult{
-			Name:   createdApp.Name,
-			Slug:   createdApp.Slug,
+			Name:   createdApp.App.Name,
+			Slug:   createdApp.App.Slug,
 			Status: "created",
 		})
 	}
@@ -210,12 +211,16 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 
 // ExportApps exports applications by IDs
 func ExportApps(appIDs []string, format exporter.ExportFormat) (string, error) {
-	var apps []entities.App
-	if err := db.DB.Preload("EnvVars").Preload("Gateways").Preload("ConfigFiles").Preload("Volumes").Preload("AutoScaling").Preload("SchedulingRule").Preload("Probes").Where("id IN ?", appIDs).Find(&apps).Error; err != nil {
-		return "", err
+	var appCtxs []*models.AppContext
+	for _, id := range appIDs {
+		appCtx, err := GetApp(context.Background(), id)
+		if err != nil {
+			return "", err
+		}
+		appCtxs = append(appCtxs, appCtx)
 	}
 
-	appMetadatas := convertAppsToMetadata(apps)
+	appMetadatas := convertAppContextsToMetadata(appCtxs)
 
 	return generateExport(appMetadatas, format)
 }
@@ -223,7 +228,7 @@ func ExportApps(appIDs []string, format exporter.ExportFormat) (string, error) {
 // ExportEnvApps exports all applications in an environment
 func ExportEnvApps(envID string, appIDs []string, format exporter.ExportFormat) (string, error) {
 	var apps []entities.App
-	query := db.DB.Preload("EnvVars").Preload("Gateways").Preload("ConfigFiles").Preload("Volumes").Preload("AutoScaling").Preload("SchedulingRule").Preload("Probes").Where("env_id = ?", envID)
+	query := db.DB.Where("env_id = ?", envID)
 
 	if len(appIDs) > 0 {
 		query = query.Where("id IN ?", appIDs)
@@ -233,7 +238,16 @@ func ExportEnvApps(envID string, appIDs []string, format exporter.ExportFormat) 
 		return "", err
 	}
 
-	appMetadatas := convertAppsToMetadata(apps)
+	var appCtxs []*models.AppContext
+	for _, a := range apps {
+		appCtx, err := GetApp(context.Background(), a.ID)
+		if err != nil {
+			return "", err
+		}
+		appCtxs = append(appCtxs, appCtx)
+	}
+
+	appMetadatas := convertAppContextsToMetadata(appCtxs)
 
 	return generateExport(appMetadatas, format)
 }
@@ -256,9 +270,10 @@ func generateExport(appMetadatas []models.AppMetadata, format exporter.ExportFor
 	return generator.Generate(appMetadatas)
 }
 
-func convertAppsToMetadata(apps []entities.App) []models.AppMetadata {
+func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMetadata {
 	var metadatas []models.AppMetadata
-	for _, app := range apps {
+	for _, appCtx := range appCtxs {
+		app := &appCtx.App
 		meta := models.AppMetadata{
 			AppName:          app.Name,
 			AppSlug:          app.Slug,
@@ -276,33 +291,33 @@ func convertAppsToMetadata(apps []entities.App) []models.AppMetadata {
 			ImportedAt:       time.Now(),
 		}
 
-		if app.AutoScaling != nil {
+		if appCtx.AutoScaling != nil {
 			meta.AutoScaling = &models.AutoScalingMetadata{
-				MinReplicas:             app.AutoScaling.MinReplicas,
-				MaxReplicas:             app.AutoScaling.MaxReplicas,
-				TargetCPUUtilization:    app.AutoScaling.TargetCPUUtilization,
-				TargetMemoryUtilization: app.AutoScaling.TargetMemoryUtilization,
+				MinReplicas:             appCtx.AutoScaling.MinReplicas,
+				MaxReplicas:             appCtx.AutoScaling.MaxReplicas,
+				TargetCPUUtilization:    appCtx.AutoScaling.TargetCPUUtilization,
+				TargetMemoryUtilization: appCtx.AutoScaling.TargetMemoryUtilization,
 			}
 		}
 
-		if app.SchedulingRule != nil {
+		if appCtx.SchedulingRule != nil {
 			meta.SchedulingRule = &models.SchedulingMetadata{
-				RuleType:     app.SchedulingRule.RuleType,
-				NodeName:     app.SchedulingRule.NodeName,
-				NodeSelector: app.SchedulingRule.NodeSelector,
-				NodeAffinity: app.SchedulingRule.NodeAffinity,
-				Tolerations:  app.SchedulingRule.Tolerations,
+				RuleType:     appCtx.SchedulingRule.RuleType,
+				NodeName:     appCtx.SchedulingRule.NodeName,
+				NodeSelector: appCtx.SchedulingRule.NodeSelector,
+				NodeAffinity: appCtx.SchedulingRule.NodeAffinity,
+				Tolerations:  appCtx.SchedulingRule.Tolerations,
 			}
 		}
 
-		for _, env := range app.EnvVars {
+		for _, env := range appCtx.EnvVars {
 			meta.EnvVars = append(meta.EnvVars, models.EnvVarMetadata{
 				Key:   env.Key,
 				Value: env.Value,
 			})
 		}
 
-		for _, gw := range app.Gateways {
+		for _, gw := range appCtx.Gateways {
 			meta.Gateways = append(meta.Gateways, models.GatewayMetadata{
 				Port:        gw.Port,
 				Protocol:    gw.Protocol,
@@ -314,7 +329,7 @@ func convertAppsToMetadata(apps []entities.App) []models.AppMetadata {
 			})
 		}
 
-		for _, cf := range app.ConfigFiles {
+		for _, cf := range appCtx.ConfigFiles {
 			meta.ConfigFiles = append(meta.ConfigFiles, models.ConfigFileMetadata{
 				Slug:      cf.Slug,
 				MountPath: cf.MountPath,
@@ -323,7 +338,7 @@ func convertAppsToMetadata(apps []entities.App) []models.AppMetadata {
 			})
 		}
 
-		for _, vol := range app.Volumes {
+		for _, vol := range appCtx.Volumes {
 			meta.Volumes = append(meta.Volumes, models.VolumeMetadata{
 				Slug:         vol.Slug,
 				MountPath:    vol.MountPath,
@@ -334,7 +349,7 @@ func convertAppsToMetadata(apps []entities.App) []models.AppMetadata {
 			})
 		}
 
-		for _, p := range app.Probes {
+		for _, p := range appCtx.Probes {
 			meta.Probes = append(meta.Probes, models.ProbeMetadata{
 				Type:                p.Type,
 				ProbeMode:           p.ProbeMode,

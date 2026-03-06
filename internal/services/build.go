@@ -38,16 +38,26 @@ func ListBuilds(appID string, page, pageSize int) (int64, []entities.Build, erro
 
 func GetBuild(buildID string) (*entities.Build, error) {
 	var build entities.Build
-	if err := db.DB.Preload("BuildEnv.Cluster").
-		First(&build, "id = ?", buildID).Error; err != nil {
+	if err := db.DB.First(&build, "id = ?", buildID).Error; err != nil {
 		return nil, err
 	}
+	// Explicit load: BuildEnv -> Cluster
+	var buildEnv entities.Env
+	if err := db.DB.First(&buildEnv, "id = ?", build.BuildEnvID).Error; err != nil {
+		return nil, err
+	}
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", buildEnv.ClusterID).Error; err != nil {
+		return nil, err
+	}
+	buildEnv.Cluster = cluster
+	build.BuildEnv = buildEnv
 	return &build, nil
 }
 
 func TriggerBuild(appID, userID string, req *models.TriggerBuildRequest) (*entities.Build, error) {
 	// Get app with env/project info
-	app, err := GetApp(appID)
+	appCtx, err := GetApp(context.Background(), appID)
 	if err != nil {
 		return nil, fmt.Errorf("app not found: %w", err)
 	}
@@ -65,7 +75,7 @@ func TriggerBuild(appID, userID string, req *models.TriggerBuildRequest) (*entit
 	}
 
 	// Get the build environment for this project
-	buildEnv, err := GetProjectBuildEnv(app.Env.ProjectID)
+	buildEnv, err := GetProjectBuildEnv(appCtx.Env.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("no build environment configured for this project: please set a build environment first")
 	}
@@ -146,7 +156,7 @@ func TriggerBuild(appID, userID string, req *models.TriggerBuildRequest) (*entit
 		config,
 		registry,
 		buildEnv,
-		app.Slug,
+		appCtx.App.Slug,
 	)
 	if err != nil {
 		// Update build as failed
@@ -235,46 +245,41 @@ func DeployBuild(buildID string) (*entities.Build, error) {
 		return nil, errors.New("build has no app build config; use code repository deploy for this build")
 	}
 	var config entities.AppBuildConfig
-	if err := db.DB.Preload("Registry").First(&config, "id = ?", *build.BuildConfigID).Error; err != nil {
+	if err := db.DB.First(&config, "id = ?", *build.BuildConfigID).Error; err != nil {
 		return nil, err
 	}
+	var registry entities.ContainerRegistry
+	if err := db.DB.First(&registry, "id = ?", config.RegistryID).Error; err != nil {
+		return nil, err
+	}
+	config.Registry = registry
 
 	// Get the app (app-bound builds only)
 	if build.AppID == nil || *build.AppID == "" {
 		return nil, errors.New("build has no associated app; use code repository deploy for this build")
 	}
-	var app entities.App
-	if err := db.DB.Preload("Env.Cluster").
-		Preload("EnvVars").
-		Preload("Volumes").
-		Preload("ConfigFiles").
-		Preload("Probes").
-		Preload("Gateways").
-		Preload("AppPlugins.Plugin").
-		Preload("AutoScaling").
-		Preload("SchedulingRule").
-		First(&app, "id = ?", *build.AppID).Error; err != nil {
+	appCtx, err := GetApp(context.Background(), *build.AppID)
+	if err != nil {
 		return nil, err
 	}
 
 	// Update app's container image
-	app.ContainerImage = build.ImageFullName
-	app.RegistryUsername = config.Registry.Username
-	app.RegistryPassword = config.Registry.Password
+	appCtx.App.ContainerImage = build.ImageFullName
+	appCtx.App.RegistryUsername = config.Registry.Username
+	appCtx.App.RegistryPassword = config.Registry.Password
 
-	if err := db.DB.Save(&app).Error; err != nil {
+	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
 
 	// Apply the app
-	if err := core.ApplyApp(context.Background(), &app); err != nil {
+	if err := core.ApplyApp(context.Background(), appCtx); err != nil {
 		return nil, fmt.Errorf("failed to deploy: %w", err)
 	}
 
 	// Update deploy status
-	app.DeployStatus = "deployed"
-	db.DB.Model(&app).Update("deploy_status", "deployed")
-
+	appCtx.App.DeployStatus = "deployed"
+	db.DB.Model(&appCtx.App).Update("deploy_status", "deployed")
 	return build, nil
 }
 
@@ -425,7 +430,7 @@ func ToBuildResponse(c context.Context, b *entities.Build) models.BuildResponse 
 	}
 
 	if b.App != nil {
-		appResp := ToAppResponse(c, b.App)
+		appResp := ToAppResponse(c, &models.AppContext{App: *b.App})
 		resp.App = &appResp
 	}
 
@@ -454,11 +459,35 @@ func ListBuildsByCodeRepository(repoID string) ([]entities.Build, error) {
 
 func ListDeploymentsByCodeRepository(repoID string) ([]entities.Build, error) {
 	var builds []entities.Build
-	if err := db.DB.Preload("App.Env").
-		Where("code_repository_id = ? AND app_id IS NOT NULL", repoID).
+	if err := db.DB.Where("code_repository_id = ? AND app_id IS NOT NULL", repoID).
 		Order("created_at DESC").
 		Find(&builds).Error; err != nil {
 		return nil, err
+	}
+	appIDs := make(map[string]struct{})
+	for _, b := range builds {
+		if b.AppID != nil && *b.AppID != "" {
+			appIDs[*b.AppID] = struct{}{}
+		}
+	}
+	if len(appIDs) > 0 {
+		ids := make([]string, 0, len(appIDs))
+		for id := range appIDs {
+			ids = append(ids, id)
+		}
+		var apps []entities.App
+		db.DB.Where("id IN ?", ids).Find(&apps)
+		appMap := make(map[string]*entities.App, len(apps))
+		for i := range apps {
+			appMap[apps[i].ID] = &apps[i]
+		}
+		for i := range builds {
+			if builds[i].AppID != nil {
+				if a, ok := appMap[*builds[i].AppID]; ok {
+					builds[i].App = a
+				}
+			}
+		}
 	}
 	return builds, nil
 }
@@ -466,11 +495,21 @@ func ListDeploymentsByCodeRepository(repoID string) ([]entities.Build, error) {
 // GetBuildByCodeRepository returns a build that belongs to the given code repository.
 func GetBuildByCodeRepository(repoID, buildID string) (*entities.Build, error) {
 	var build entities.Build
-	if err := db.DB.Preload("BuildEnv.Cluster").
-		Where("id = ? AND code_repository_id = ?", buildID, repoID).
+	if err := db.DB.Where("id = ? AND code_repository_id = ?", buildID, repoID).
 		First(&build).Error; err != nil {
 		return nil, err
 	}
+	// Explicit load: BuildEnv -> Cluster
+	var bEnv entities.Env
+	if err := db.DB.First(&bEnv, "id = ?", build.BuildEnvID).Error; err != nil {
+		return nil, err
+	}
+	var bCluster entities.Cluster
+	if err := db.DB.First(&bCluster, "id = ?", bEnv.ClusterID).Error; err != nil {
+		return nil, err
+	}
+	bEnv.Cluster = bCluster
+	build.BuildEnv = bEnv
 	return &build, nil
 }
 
@@ -591,7 +630,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 }
 
 // DeployCodeRepositoryBuild deploys a successful build to a target environment (create or update app).
-func DeployCodeRepositoryBuild(repoID, buildID string, req *models.DeployCodeRepositoryBuildRequest) (*entities.Build, *entities.App, error) {
+func DeployCodeRepositoryBuild(repoID, buildID string, req *models.DeployCodeRepositoryBuildRequest) (*entities.Build, *models.AppContext, error) {
 	build, err := GetBuildByCodeRepository(repoID, buildID)
 	if err != nil {
 		return nil, nil, err
@@ -627,41 +666,41 @@ func DeployCodeRepositoryBuild(repoID, buildID string, req *models.DeployCodeRep
 		return nil, nil, err
 	}
 
-	var app *entities.App
+	var appCtx *models.AppContext
 	if req.AppID != "" {
-		app, err = GetApp(req.AppID)
+		appCtx, err = GetApp(context.Background(), req.AppID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("app not found: %w", err)
 		}
-		if app.EnvID != req.TargetEnvID {
+		if appCtx.App.EnvID != req.TargetEnvID {
 			return nil, nil, errors.New("app does not belong to the target environment")
 		}
-		app.ContainerImage = build.ImageFullName
-		app.RegistryUsername = registry.Username
-		app.RegistryPassword = registry.Password
-		app.CodeRepositoryID = repoID
-		if err := db.DB.Save(app).Error; err != nil {
+		appCtx.App.ContainerImage = build.ImageFullName
+		appCtx.App.RegistryUsername = registry.Username
+		appCtx.App.RegistryPassword = registry.Password
+		appCtx.App.CodeRepositoryID = repoID
+		if err := db.DB.Save(&appCtx.App).Error; err != nil {
 			return nil, nil, err
 		}
 	} else {
 		if req.Slug == "" || req.Name == "" {
 			return nil, nil, errors.New("name and slug are required when creating a new app")
 		}
-		app, err = CreateAppFromCodeRepositoryBuild(req.TargetEnvID, req.Slug, req.Name, build.ImageFullName, registry.Username, registry.Password, repoID)
+		appCtx, err = CreateAppFromCodeRepositoryBuild(context.Background(), req.TargetEnvID, req.Slug, req.Name, build.ImageFullName, registry.Username, registry.Password, repoID)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
 
-	if err := core.ApplyApp(context.Background(), app); err != nil {
+	if err := core.ApplyApp(context.Background(), appCtx); err != nil {
 		return nil, nil, fmt.Errorf("failed to deploy: %w", err)
 	}
-	app.DeployStatus = "deployed"
-	db.DB.Model(app).Update("deploy_status", "deployed")
+	appCtx.App.DeployStatus = "deployed"
+	db.DB.Model(&appCtx.App).Update("deploy_status", "deployed")
 
-	appID := app.ID
+	appID := appCtx.App.ID
 	build.AppID = &appID
 	db.DB.Save(build)
 
-	return build, app, nil
+	return build, appCtx, nil
 }

@@ -89,10 +89,15 @@ func ListCodeRepositoriesSimple(projectID string) ([]entities.CodeRepository, er
 
 func GetCodeRepository(id string) (*entities.CodeRepository, error) {
 	var repo entities.CodeRepository
-	if err := db.DB.Preload("Project").
-		First(&repo, "id = ?", id).Error; err != nil {
+	if err := db.DB.First(&repo, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
+	// Explicit load: Project
+	var project entities.Project
+	if err := db.DB.First(&project, "id = ?", repo.ProjectID).Error; err != nil {
+		return nil, err
+	}
+	repo.Project = project
 	return &repo, nil
 }
 
@@ -196,21 +201,53 @@ func ToCodeRepositoryResponse(r *entities.CodeRepository, baseURL string) models
 
 func ListCodeRepositoryBuildConfigs(repoID string) ([]entities.CodeRepositoryBuildConfig, error) {
 	var configs []entities.CodeRepositoryBuildConfig
-	if err := db.DB.Preload("Registry").
-		Where("code_repository_id = ?", repoID).
+	if err := db.DB.Where("code_repository_id = ?", repoID).
 		Order("created_at").
 		Find(&configs).Error; err != nil {
 		return nil, err
+	}
+	// Batch-fetch registries
+	regIDs := make(map[string]struct{})
+	for _, c := range configs {
+		regIDs[c.RegistryID] = struct{}{}
+	}
+	if len(regIDs) > 0 {
+		ids := make([]string, 0, len(regIDs))
+		for id := range regIDs {
+			ids = append(ids, id)
+		}
+		var registries []entities.ContainerRegistry
+		db.DB.Where("id IN ?", ids).Find(&registries)
+		regMap := make(map[string]entities.ContainerRegistry, len(registries))
+		for _, r := range registries {
+			regMap[r.ID] = r
+		}
+		for i := range configs {
+			if r, ok := regMap[configs[i].RegistryID]; ok {
+				configs[i].Registry = r
+			}
+		}
 	}
 	return configs, nil
 }
 
 func GetCodeRepositoryBuildConfig(configID string) (*entities.CodeRepositoryBuildConfig, error) {
 	var cfg entities.CodeRepositoryBuildConfig
-	if err := db.DB.Preload("Registry").Preload("CodeRepository").
-		First(&cfg, "id = ?", configID).Error; err != nil {
+	if err := db.DB.First(&cfg, "id = ?", configID).Error; err != nil {
 		return nil, err
 	}
+	// Explicit load: Registry
+	var registry entities.ContainerRegistry
+	if err := db.DB.First(&registry, "id = ?", cfg.RegistryID).Error; err != nil {
+		return nil, err
+	}
+	cfg.Registry = registry
+	// Explicit load: CodeRepository
+	var codeRepo entities.CodeRepository
+	if err := db.DB.First(&codeRepo, "id = ?", cfg.CodeRepositoryID).Error; err != nil {
+		return nil, err
+	}
+	cfg.CodeRepository = codeRepo
 	return &cfg, nil
 }
 
@@ -360,11 +397,29 @@ func GetCodeRepositoryTopology(repoID string) (*models.AppTopologyResponse, erro
 
 	// Get associated apps and their envs
 	var apps []entities.App
-	db.DB.Preload("Env").Where("code_repository_id = ?", repoID).Find(&apps)
+	db.DB.Where("code_repository_id = ?", repoID).Find(&apps)
+	// Batch-fetch Env for each app
+	envIDs := make(map[string]struct{})
+	for _, a := range apps {
+		envIDs[a.EnvID] = struct{}{}
+	}
+	envMap := make(map[string]entities.Env)
+	if len(envIDs) > 0 {
+		envIDList := make([]string, 0, len(envIDs))
+		for id := range envIDs {
+			envIDList = append(envIDList, id)
+		}
+		var envs []entities.Env
+		db.DB.Where("id IN ?", envIDList).Find(&envs)
+		for _, e := range envs {
+			envMap[e.ID] = e
+		}
+	}
 
 	// Add env and app nodes
 	for _, app := range apps {
-		envNodeID := "env-" + app.Env.ID
+		env := envMap[app.EnvID]
+		envNodeID := "env-" + env.ID
 		appNodeID := "app-" + app.ID
 
 		// Add env node if not exists
@@ -379,7 +434,7 @@ func GetCodeRepositoryTopology(repoID string) (*models.AppTopologyResponse, erro
 			nodes = append(nodes, models.AppTopologyNode{
 				ID:   envNodeID,
 				Type: "Environment",
-				Name: app.Env.Name,
+				Name: env.Name,
 			})
 		}
 
@@ -415,7 +470,8 @@ func GetCodeRepositoryTopology(repoID string) (*models.AppTopologyResponse, erro
 			// In Ketches, a BuildConfig produces an image that is usually intended for specific apps.
 			// Since apps are linked to the repo, we can connect build configs to envs where these apps exist.
 			for _, app := range apps {
-				envNodeID := "env-" + app.Env.ID
+				env := envMap[app.EnvID]
+				envNodeID := "env-" + env.ID
 				edgeExists := false
 				for _, e := range edges {
 					if e.Source == bcNodeID && e.Target == envNodeID {

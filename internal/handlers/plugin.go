@@ -280,7 +280,11 @@ func GetPluginInstalledApps(c *gin.Context) {
 
 	responses := make([]models.AppResponse, 0, len(apps))
 	for _, app := range apps {
-		responses = append(responses, services.ToAppResponse(c.Request.Context(), &app))
+		appCtx, err := services.GetApp(c.Request.Context(), app.ID)
+		if err != nil {
+			continue
+		}
+		responses = append(responses, services.ToAppResponse(c.Request.Context(), appCtx))
 	}
 
 	api.Success(c, responses)

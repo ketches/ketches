@@ -25,9 +25,15 @@ func GetClusterIntegration(id string) (*entities.ClusterIntegration, error) {
 
 func GetClusterIntegrationByType(clusterID string, integrationType entities.IntegrationType) (*entities.ClusterIntegration, error) {
 	var integration entities.ClusterIntegration
-	if err := db.DB.Preload("Cluster").Where("cluster_id = ? AND integration_type = ? AND enabled = ?", clusterID, integrationType, true).First(&integration).Error; err != nil {
+	if err := db.DB.Where("cluster_id = ? AND integration_type = ? AND enabled = ?", clusterID, integrationType, true).First(&integration).Error; err != nil {
 		return nil, err
 	}
+	// Explicit load: Cluster
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", integration.ClusterID).Error; err != nil {
+		return nil, err
+	}
+	integration.Cluster = &cluster
 	return &integration, nil
 }
 

@@ -24,7 +24,7 @@ func GetHomeDir(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -56,7 +56,7 @@ func CompressFiles(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -87,7 +87,7 @@ func CompressAndDownloadFiles(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -113,7 +113,7 @@ func ListFiles(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -145,7 +145,7 @@ func ReadFile(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -177,7 +177,7 @@ func WriteFile(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -208,7 +208,7 @@ func MkdirInContainer(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -239,7 +239,7 @@ func DeleteFileInContainer(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -270,7 +270,7 @@ func MoveFileInContainer(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -301,7 +301,7 @@ func CopyFileInContainer(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -332,7 +332,7 @@ func DownloadFile(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -390,7 +390,7 @@ func DownloadFileDir(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -471,7 +471,7 @@ func UploadFile(c *gin.Context) {
 		destDir = "/"
 	}
 
-	app, err := services.GetApp(appID)
+	app, err := services.GetApp(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return

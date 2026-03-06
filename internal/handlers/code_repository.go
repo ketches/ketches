@@ -187,14 +187,14 @@ func DeployCodeRepositoryBuild(c *gin.Context) {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-	build, app, err := services.DeployCodeRepositoryBuild(repoID, buildID, &req)
+	build, appCtx, err := services.DeployCodeRepositoryBuild(repoID, buildID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 	api.Success(c, gin.H{
 		"build": services.ToBuildResponse(c.Request.Context(), build),
-		"app":   app,
+		"app":   services.ToAppResponse(c.Request.Context(), appCtx),
 	})
 }
 

@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -93,7 +95,7 @@ func ListDeletedEnvs(projectID string, userID string, page, pageSize int, search
 
 func BatchRestoreApps(appIDs []string) error {
 	for _, appID := range appIDs {
-		if err := RestoreApp(appID); err != nil {
+		if err := RestoreApp(context.Background(), appID); err != nil {
 			return err
 		}
 	}
@@ -102,7 +104,7 @@ func BatchRestoreApps(appIDs []string) error {
 
 func BatchPermanentlyDeleteApps(appIDs []string) error {
 	for _, appID := range appIDs {
-		if err := PermanentlyDeleteApp(appID); err != nil {
+		if err := PermanentlyDeleteApp(context.Background(), appID); err != nil {
 			return err
 		}
 	}

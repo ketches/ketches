@@ -273,7 +273,7 @@ export function ClusterNodeDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
-          <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent data-[active=true]:bg-transparent">
+          <Card className="bg-linear-to-b/increasing from-blue/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-4 w-4" />Node Information</CardTitle>

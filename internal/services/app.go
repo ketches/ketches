@@ -84,13 +84,13 @@ func ListApps(envID string, page, pageSize int, search string) (int64, []models.
 
 func ListAppsSimple(envID string) ([]entities.App, error) {
 	var apps []entities.App
-	if err := db.DB.Select("id, slug, name, description, code_repository_id").Where("env_id = ?", envID).Order("created_at DESC").Find(&apps).Error; err != nil {
+	if err := db.DB.Select("id, slug, name, description, code_repository_id, deploy_status").Where("env_id = ?", envID).Order("created_at DESC").Find(&apps).Error; err != nil {
 		return nil, err
 	}
 	return apps, nil
 }
 
-func CreateApp(envID string, req *models.CreateAppRequest) (*entities.App, error) {
+func CreateApp(ctx context.Context, envID string, req *models.CreateAppRequest) (*models.AppContext, error) {
 	var existing entities.App
 	if err := db.DB.Where("env_id = ? AND slug = ?", envID, req.Slug).First(&existing).Error; err == nil {
 		return nil, gorm.ErrDuplicatedKey
@@ -120,34 +120,46 @@ func CreateApp(envID string, req *models.CreateAppRequest) (*entities.App, error
 		DeployStatus:     "undeployed",
 	}
 
+	if err := db.DB.Create(application).Error; err != nil {
+		return nil, err
+	}
+
+	// Create AutoScaling record if requested
+	var autoScaling *entities.AppAutoScaling
 	if req.AutoScaling != nil {
-		application.AutoScaling = &entities.AppAutoScaling{
+		autoScaling = &entities.AppAutoScaling{
 			ID:                      uuid.New(),
+			AppID:                   application.ID,
 			MinReplicas:             req.AutoScaling.MinReplicas,
 			MaxReplicas:             req.AutoScaling.MaxReplicas,
 			TargetCPUUtilization:    req.AutoScaling.TargetCPUUtilization,
 			TargetMemoryUtilization: req.AutoScaling.TargetMemoryUtilization,
 		}
+		if err := db.DB.Create(autoScaling).Error; err != nil {
+			return nil, err
+		}
 	}
 
+	// Create SchedulingRule record if requested
+	var schedulingRule *entities.AppSchedulingRule
 	if req.SchedulingRule != nil {
-		application.SchedulingRule = &entities.AppSchedulingRule{
+		schedulingRule = &entities.AppSchedulingRule{
 			ID:           uuid.New(),
+			AppID:        application.ID,
 			RuleType:     req.SchedulingRule.RuleType,
 			NodeName:     req.SchedulingRule.NodeName,
 			NodeSelector: req.SchedulingRule.NodeSelector,
 			NodeAffinity: req.SchedulingRule.NodeAffinity,
 			Tolerations:  req.SchedulingRule.Tolerations,
 		}
-	}
-
-	if err := db.DB.Create(application).Error; err != nil {
-		return nil, err
+		if err := db.DB.Create(schedulingRule).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	// Attempt to seed app configuration from image metadata; failure is non-fatal.
 	if req.SeedImageMetadata {
-		if err := seedAppFromImageMetadata(context.Background(), application); err != nil {
+		if err := seedAppFromImageMetadata(ctx, application); err != nil {
 			log.Printf("warn: image metadata seed skipped for app %s: %v", application.Slug, err)
 		}
 	}
@@ -160,21 +172,28 @@ func CreateApp(envID string, req *models.CreateAppRequest) (*entities.App, error
 	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
 		return nil, err
 	}
-	env.Cluster = cluster
-	application.Env = env
+
+	// Build AppContext for core layer
+	appCtx := &models.AppContext{
+		App:            *application,
+		Env:            env,
+		Cluster:        cluster,
+		AutoScaling:    autoScaling,
+		SchedulingRule: schedulingRule,
+	}
 
 	if req.Deploy {
-		if err := core.ApplyApp(context.Background(), application); err != nil {
+		if err := core.ApplyApp(ctx, appCtx); err != nil {
 			return nil, err
 		}
-		application.DeployStatus = "deployed"
+		appCtx.App.DeployStatus = "deployed"
 		db.DB.Model(application).Update("deploy_status", "deployed")
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func CreateAppFromCodeRepositoryBuild(envID, slug, name, containerImage, registryUsername, registryPassword string, codeRepositoryID string) (*entities.App, error) {
+func CreateAppFromCodeRepositoryBuild(ctx context.Context, envID, slug, name, containerImage, registryUsername, registryPassword string, codeRepositoryID string) (*models.AppContext, error) {
 	var existing entities.App
 	if err := db.DB.Where("env_id = ? AND slug = ?", envID, slug).First(&existing).Error; err == nil {
 		return nil, gorm.ErrDuplicatedKey
@@ -208,12 +227,15 @@ func CreateAppFromCodeRepositoryBuild(envID, slug, name, containerImage, registr
 	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
 		return nil, err
 	}
-	env.Cluster = cluster
-	application.Env = env
-	return application, nil
+
+	return &models.AppContext{
+		App:     *application,
+		Env:     env,
+		Cluster: cluster,
+	}, nil
 }
 
-func GetApp(appID string) (*entities.App, error) {
+func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
 	var application entities.App
 	if err := db.DB.First(&application, "id = ?", appID).Error; err != nil {
 		return nil, err
@@ -228,24 +250,29 @@ func GetApp(appID string) (*entities.App, error) {
 	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
 		return nil, err
 	}
-	env.Cluster = cluster
-	application.Env = env
 
 	// Batch-fetch 1:N relations
-	db.DB.Where("app_id = ?", appID).Find(&application.EnvVars)
-	db.DB.Where("app_id = ?", appID).Find(&application.Volumes)
-	db.DB.Where("app_id = ?", appID).Find(&application.ConfigFiles)
-	db.DB.Where("app_id = ?", appID).Find(&application.Probes)
-	db.DB.Where("app_id = ?", appID).Find(&application.Gateways)
+	var envVars []entities.AppEnvVar
+	db.DB.Where("app_id = ?", appID).Find(&envVars)
+	var volumes []entities.AppVolume
+	db.DB.Where("app_id = ?", appID).Find(&volumes)
+	var configFiles []entities.AppConfigFile
+	db.DB.Where("app_id = ?", appID).Find(&configFiles)
+	var probes []entities.AppProbe
+	db.DB.Where("app_id = ?", appID).Find(&probes)
+	var gateways []entities.AppGateway
+	db.DB.Where("app_id = ?", appID).Find(&gateways)
 
 	// Fetch 1:1 optional relations
-	var autoScaling entities.AppAutoScaling
-	if err := db.DB.Where("app_id = ?", appID).First(&autoScaling).Error; err == nil {
-		application.AutoScaling = &autoScaling
+	var autoScaling *entities.AppAutoScaling
+	var as entities.AppAutoScaling
+	if err := db.DB.Where("app_id = ?", appID).First(&as).Error; err == nil {
+		autoScaling = &as
 	}
-	var schedulingRule entities.AppSchedulingRule
-	if err := db.DB.Where("app_id = ?", appID).First(&schedulingRule).Error; err == nil {
-		application.SchedulingRule = &schedulingRule
+	var schedulingRule *entities.AppSchedulingRule
+	var sr entities.AppSchedulingRule
+	if err := db.DB.Where("app_id = ?", appID).First(&sr).Error; err == nil {
+		schedulingRule = &sr
 	}
 
 	// Fetch AppPlugins with their Plugin (N:1)
@@ -257,139 +284,157 @@ func GetApp(appID string) (*entities.App, error) {
 			appPlugins[i].Plugin = plugin
 		}
 	}
-	application.AppPlugins = appPlugins
 
-	return &application, nil
+	// Fetch BuildConfig (1:1 optional)
+	var buildConfig *entities.AppBuildConfig
+	var bc entities.AppBuildConfig
+	if err := db.DB.Where("app_id = ?", appID).First(&bc).Error; err == nil {
+		buildConfig = &bc
+	}
+
+	return &models.AppContext{
+		App:            application,
+		Env:            env,
+		Cluster:        cluster,
+		EnvVars:        envVars,
+		Volumes:        volumes,
+		Gateways:       gateways,
+		Probes:         probes,
+		ConfigFiles:    configFiles,
+		SchedulingRule: schedulingRule,
+		AutoScaling:    autoScaling,
+		AppPlugins:     appPlugins,
+		BuildConfig:    buildConfig,
+	}, nil
 }
 
-func ApplyApp(application *entities.App) error {
-	return core.ApplyApp(context.Background(), application)
+func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
+	return core.ApplyApp(ctx, appCtx)
 }
 
-func UpdateAppBasic(appID string, req *models.UpdateBasicInfoRequest) (*entities.App, error) {
-	application, err := GetApp(appID)
+func UpdateAppBasic(ctx context.Context, appID string, req *models.UpdateBasicInfoRequest) (*models.AppContext, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	application.Name = req.Name
-	application.Description = req.Description
+	appCtx.App.Name = req.Name
+	appCtx.App.Description = req.Description
 
-	if err := db.DB.Save(application).Error; err != nil {
+	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func UpdateAppImage(appID string, req *models.UpdateAppImageRequest) (*entities.App, error) {
-	application, err := GetApp(appID)
+func UpdateAppImage(ctx context.Context, appID string, req *models.UpdateAppImageRequest) (*models.AppContext, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	application.ContainerImage = req.ContainerImage
-	application.RegistryUsername = req.RegistryUsername
+	appCtx.App.ContainerImage = req.ContainerImage
+	appCtx.App.RegistryUsername = req.RegistryUsername
 	if req.RegistryPassword != "" {
-		application.RegistryPassword = req.RegistryPassword
+		appCtx.App.RegistryPassword = req.RegistryPassword
 	}
 
-	if err := db.DB.Save(application).Error; err != nil {
+	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
 
-	if err := ApplyApp(application); err != nil {
+	if err := ApplyApp(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func UpdateAppReplicas(appID string, req *models.UpdateAppReplicasRequest) (*entities.App, error) {
-	application, err := GetApp(appID)
+func UpdateAppReplicas(ctx context.Context, appID string, req *models.UpdateAppReplicasRequest) (*models.AppContext, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	application.Replicas = req.Replicas
+	appCtx.App.Replicas = req.Replicas
 
-	if err := db.DB.Save(application).Error; err != nil {
+	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
 
-	if err := ApplyApp(application); err != nil {
+	if err := ApplyApp(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func UpdateAppResources(appID string, req *models.UpdateAppResourcesRequest) (*entities.App, error) {
-	application, err := GetApp(appID)
+func UpdateAppResources(ctx context.Context, appID string, req *models.UpdateAppResourcesRequest) (*models.AppContext, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	application.RequestCPU = req.RequestCPU
-	application.RequestMemory = req.RequestMemory
-	application.LimitCPU = req.LimitCPU
-	application.LimitMemory = req.LimitMemory
+	appCtx.App.RequestCPU = req.RequestCPU
+	appCtx.App.RequestMemory = req.RequestMemory
+	appCtx.App.LimitCPU = req.LimitCPU
+	appCtx.App.LimitMemory = req.LimitMemory
 
-	if err := db.DB.Save(application).Error; err != nil {
+	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
 
-	if err := ApplyApp(application); err != nil {
+	if err := ApplyApp(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func UpdateAppAutoScaling(appID string, req *models.UpdateAppAutoScalingRequest) (*entities.App, error) {
-	application, err := GetApp(appID)
+func UpdateAppAutoScaling(ctx context.Context, appID string, req *models.UpdateAppAutoScalingRequest) (*models.AppContext, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
 	if req.AutoScaling != nil {
-		if application.AutoScaling == nil {
-			application.AutoScaling = &entities.AppAutoScaling{ID: uuid.New(), AppID: application.ID}
+		if appCtx.AutoScaling == nil {
+			appCtx.AutoScaling = &entities.AppAutoScaling{ID: uuid.New(), AppID: appCtx.App.ID}
 		}
-		application.AutoScaling.MinReplicas = req.AutoScaling.MinReplicas
-		application.AutoScaling.MaxReplicas = req.AutoScaling.MaxReplicas
-		application.AutoScaling.TargetCPUUtilization = req.AutoScaling.TargetCPUUtilization
-		application.AutoScaling.TargetMemoryUtilization = req.AutoScaling.TargetMemoryUtilization
+		appCtx.AutoScaling.MinReplicas = req.AutoScaling.MinReplicas
+		appCtx.AutoScaling.MaxReplicas = req.AutoScaling.MaxReplicas
+		appCtx.AutoScaling.TargetCPUUtilization = req.AutoScaling.TargetCPUUtilization
+		appCtx.AutoScaling.TargetMemoryUtilization = req.AutoScaling.TargetMemoryUtilization
+		if err := db.DB.Save(appCtx.AutoScaling).Error; err != nil {
+			return nil, err
+		}
 	} else {
-		if application.AutoScaling != nil {
-			db.DB.Delete(application.AutoScaling)
-			application.AutoScaling = nil
+		if appCtx.AutoScaling != nil {
+			db.DB.Delete(appCtx.AutoScaling)
+			appCtx.AutoScaling = nil
 		}
 	}
 
-	if err := db.DB.Save(application).Error; err != nil {
+	if err := ApplyApp(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	if err := ApplyApp(application); err != nil {
-		return nil, err
-	}
-
-	return application, nil
+	return appCtx, nil
 }
 
-func UpdateAppHealth(appID string, req *models.UpdateAppHealthRequest) (*entities.App, error) {
-	application, err := GetApp(appID)
+func UpdateAppHealth(ctx context.Context, appID string, req *models.UpdateAppHealthRequest) (*models.AppContext, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := db.DB.Transaction(func(tx *gorm.DB) error {
-		tx.Delete(&entities.AppProbe{}, "app_id = ?", application.ID)
+		tx.Delete(&entities.AppProbe{}, "app_id = ?", appCtx.App.ID)
 		for _, p := range req.Probes {
 			probe := &entities.AppProbe{
 				ID:                  uuid.New(),
-				AppID:               application.ID,
+				AppID:               appCtx.App.ID,
 				Type:                p.Type,
 				ProbeMode:           p.ProbeMode,
 				Enabled:             p.Enabled,
@@ -412,72 +457,68 @@ func UpdateAppHealth(appID string, req *models.UpdateAppHealthRequest) (*entitie
 		return nil, err
 	}
 
-	if err := ApplyApp(application); err != nil {
-		return nil, err
-	}
-
-	return GetApp(application.ID)
+	// Re-fetch to get updated probes
+	return GetApp(ctx, appCtx.App.ID)
 }
 
-func UpdateAppScheduling(appID string, req *models.UpdateAppSchedulingRequest) (*entities.App, error) {
-	application, err := GetApp(appID)
+func UpdateAppScheduling(ctx context.Context, appID string, req *models.UpdateAppSchedulingRequest) (*models.AppContext, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
 	if req.SchedulingRule != nil {
-		if application.SchedulingRule == nil {
-			application.SchedulingRule = &entities.AppSchedulingRule{ID: uuid.New(), AppID: application.ID}
+		if appCtx.SchedulingRule == nil {
+			appCtx.SchedulingRule = &entities.AppSchedulingRule{ID: uuid.New(), AppID: appCtx.App.ID}
 		}
-		application.SchedulingRule.RuleType = req.SchedulingRule.RuleType
-		application.SchedulingRule.NodeName = req.SchedulingRule.NodeName
-		application.SchedulingRule.NodeSelector = req.SchedulingRule.NodeSelector
-		application.SchedulingRule.NodeAffinity = req.SchedulingRule.NodeAffinity
-		application.SchedulingRule.Tolerations = req.SchedulingRule.Tolerations
+		appCtx.SchedulingRule.RuleType = req.SchedulingRule.RuleType
+		appCtx.SchedulingRule.NodeName = req.SchedulingRule.NodeName
+		appCtx.SchedulingRule.NodeSelector = req.SchedulingRule.NodeSelector
+		appCtx.SchedulingRule.NodeAffinity = req.SchedulingRule.NodeAffinity
+		appCtx.SchedulingRule.Tolerations = req.SchedulingRule.Tolerations
+		if err := db.DB.Save(appCtx.SchedulingRule).Error; err != nil {
+			return nil, err
+		}
 	} else {
-		if application.SchedulingRule != nil {
-			db.DB.Delete(application.SchedulingRule)
-			application.SchedulingRule = nil
+		if appCtx.SchedulingRule != nil {
+			db.DB.Delete(appCtx.SchedulingRule)
+			appCtx.SchedulingRule = nil
 		}
 	}
 
-	if err := db.DB.Save(application).Error; err != nil {
+	if err := ApplyApp(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	if err := ApplyApp(application); err != nil {
-		return nil, err
-	}
-
-	return application, nil
+	return appCtx, nil
 }
 
-func UpdateAppCommand(appID string, req *models.UpdateAppCommandRequest) (*entities.App, error) {
-	application, err := GetApp(appID)
+func UpdateAppCommand(ctx context.Context, appID string, req *models.UpdateAppCommandRequest) (*models.AppContext, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	application.ContainerCommand = req.ContainerCommand
+	appCtx.App.ContainerCommand = req.ContainerCommand
 
-	if err := db.DB.Save(application).Error; err != nil {
+	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
 
-	if err := ApplyApp(application); err != nil {
+	if err := ApplyApp(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func DeleteApp(appID string) error {
-	application, err := GetApp(appID)
+func DeleteApp(ctx context.Context, appID string) error {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return err
 	}
 
-	if _, err := executeStopAction(context.Background(), application); err != nil {
+	if _, err := executeStopAction(ctx, appCtx); err != nil {
 		return err
 	}
 
@@ -485,10 +526,10 @@ func DeleteApp(appID string) error {
 }
 
 // BatchDeleteApps deletes multiple applications by their IDs
-func BatchDeleteApps(ids []string) error {
+func BatchDeleteApps(ctx context.Context, ids []string) error {
 	var errs []error
 	for _, id := range ids {
-		if err := DeleteApp(id); err != nil {
+		if err := DeleteApp(ctx, id); err != nil {
 			errs = append(errs, fmt.Errorf("failed to delete app %s: %w", id, err))
 		}
 	}
@@ -498,27 +539,37 @@ func BatchDeleteApps(ids []string) error {
 	return nil
 }
 
-func PermanentlyDeleteApp(appID string) error {
+func PermanentlyDeleteApp(ctx context.Context, appID string) error {
 	var application entities.App
 	if err := db.DB.Unscoped().First(&application, "id = ?", appID).Error; err != nil {
 		return err
 	}
 
-	// Fetch env for K8s resource cleanup (needs ClusterID, ClusterNamespace)
+	// Build a minimal AppContext for K8s resource cleanup
 	var env entities.Env
 	if err := db.DB.Unscoped().First(&env, "id = ?", application.EnvID).Error; err != nil {
 		return err
 	}
-	application.Env = env
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+		return err
+	}
 
-	// Check if autoScaling exists (deleteAppK8sResources checks app.AutoScaling != nil for HPA deletion)
-	var autoScaling entities.AppAutoScaling
-	if err := db.DB.Where("app_id = ?", appID).First(&autoScaling).Error; err == nil {
-		application.AutoScaling = &autoScaling
+	var autoScaling *entities.AppAutoScaling
+	var as entities.AppAutoScaling
+	if err := db.DB.Where("app_id = ?", appID).First(&as).Error; err == nil {
+		autoScaling = &as
+	}
+
+	appCtx := &models.AppContext{
+		App:         application,
+		Env:         env,
+		Cluster:     cluster,
+		AutoScaling: autoScaling,
 	}
 
 	// Delete Kubernetes resources created by this app
-	if err := deleteAppK8sResources(context.Background(), &application, false); err != nil {
+	if err := deleteAppK8sResources(ctx, appCtx, false); err != nil {
 		return err
 	}
 
@@ -552,45 +603,45 @@ func PermanentlyDeleteApp(appID string) error {
 }
 
 // deleteAppK8sResources deletes all Kubernetes resources created by an app
-func deleteAppK8sResources(ctx context.Context, app *entities.App, keepStorageData bool) error {
-	if app.Env.ClusterID == "" {
+func deleteAppK8sResources(ctx context.Context, appCtx *models.AppContext, keepStorageData bool) error {
+	if appCtx.Env.ClusterID == "" {
 		return nil
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(app.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return err
 	}
 
-	ns := app.Env.ClusterNamespace
-	appLabel := "app=" + app.Slug
+	ns := appCtx.Env.ClusterNamespace
+	appLabel := "app=" + appCtx.App.Slug
 
 	// Delete Deployment or StatefulSet
-	switch app.AppType {
+	switch appCtx.App.AppType {
 	case "Deployment":
-		if err := client.AppsV1().Deployments(ns).Delete(ctx, app.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+		if err := client.AppsV1().Deployments(ns).Delete(ctx, appCtx.App.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 			return err
 		}
 	case "StatefulSet":
-		if err := client.AppsV1().StatefulSets(ns).Delete(ctx, app.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+		if err := client.AppsV1().StatefulSets(ns).Delete(ctx, appCtx.App.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 			return err
 		}
 	}
 
 	// Delete Service
-	if err := client.CoreV1().Services(ns).Delete(ctx, app.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+	if err := client.CoreV1().Services(ns).Delete(ctx, appCtx.App.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
 	// Delete ConfigMap if exists
-	configMapName := app.Slug + "-config"
+	configMapName := appCtx.App.Slug + "-config"
 	if err := client.CoreV1().ConfigMaps(ns).Delete(ctx, configMapName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
 	// Delete registry Secret if exists
-	if app.RegistryUsername != "" {
-		secretName := app.Slug + "-registry"
+	if appCtx.App.RegistryUsername != "" {
+		secretName := appCtx.App.Slug + "-registry"
 		if err := client.CoreV1().Secrets(ns).Delete(ctx, secretName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 			return err
 		}
@@ -606,15 +657,15 @@ func deleteAppK8sResources(ctx context.Context, app *entities.App, keepStorageDa
 	}
 
 	// Delete HPA if exists
-	if app.AutoScaling != nil {
-		hpaName := app.Slug
+	if appCtx.AutoScaling != nil {
+		hpaName := appCtx.App.Slug
 		if err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 			return err
 		}
 	}
 
 	// Delete Gateway API resources
-	if gwClient, err := kube.GlobalClusterStore.GetGatewayClient(app.Env.ClusterID); err == nil {
+	if gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.Env.ClusterID); err == nil {
 		if err := gwClient.GatewayV1().HTTPRoutes(ns).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: appLabel,
 		}); err != nil && !k8serrors.IsNotFound(err) {
@@ -625,23 +676,23 @@ func deleteAppK8sResources(ctx context.Context, app *entities.App, keepStorageDa
 	return nil
 }
 
-func RestoreApp(appID string) error {
+func RestoreApp(ctx context.Context, appID string) error {
 	return db.DB.Unscoped().Model(&entities.App{}).Where("id = ?", appID).Update("deleted_at", nil).Error
 }
 
-func ListAppInstances(appID string) ([]models.AppInstanceResponse, error) {
-	application, err := GetApp(appID)
+func ListAppInstances(ctx context.Context, appID string) ([]models.AppInstanceResponse, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	pods, err := client.CoreV1().Pods(application.Env.ClusterNamespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: "app=" + application.Slug,
+	pods, err := client.CoreV1().Pods(appCtx.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "app=" + appCtx.App.Slug,
 	})
 	if err != nil {
 		return nil, err
@@ -654,13 +705,13 @@ func ListAppInstances(appID string) ([]models.AppInstanceResponse, error) {
 	return res, nil
 }
 
-func ListAppInstanceEvents(application *entities.App, instanceName string) ([]models.AppEventResponse, error) {
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+func ListAppInstanceEvents(ctx context.Context, appCtx *models.AppContext, instanceName string) ([]models.AppEventResponse, error) {
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	eventList, err := client.CoreV1().Events(application.Env.ClusterNamespace).List(context.Background(), metav1.ListOptions{
+	eventList, err := client.CoreV1().Events(appCtx.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
 		FieldSelector: "involvedObject.name=" + instanceName + ",involvedObject.kind=Pod",
 	})
 	if err != nil {
@@ -682,17 +733,17 @@ func ListAppInstanceEvents(application *entities.App, instanceName string) ([]mo
 	return events, nil
 }
 
-func DeleteAppInstance(application *entities.App, instanceName string) error {
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+func DeleteAppInstance(ctx context.Context, appCtx *models.AppContext, instanceName string) error {
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return err
 	}
 
-	return client.CoreV1().Pods(application.Env.ClusterNamespace).Delete(context.Background(), instanceName, metav1.DeleteOptions{})
+	return client.CoreV1().Pods(appCtx.Env.ClusterNamespace).Delete(ctx, instanceName, metav1.DeleteOptions{})
 }
 
-func StreamAppLogs(ctx context.Context, application *entities.App, instanceName, containerName string, tailLines int64, timestamps bool) (io.ReadCloser, error) {
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName, containerName string, tailLines int64, timestamps bool) (io.ReadCloser, error) {
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +755,7 @@ func StreamAppLogs(ctx context.Context, application *entities.App, instanceName,
 		Timestamps: timestamps,
 	}
 
-	req := client.CoreV1().Pods(application.Env.ClusterNamespace).GetLogs(instanceName, podLogOptions)
+	req := client.CoreV1().Pods(appCtx.Env.ClusterNamespace).GetLogs(instanceName, podLogOptions)
 	stream, err := req.Stream(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open log stream: %w", err)
@@ -712,8 +763,8 @@ func StreamAppLogs(ctx context.Context, application *entities.App, instanceName,
 	return stream, nil
 }
 
-func ExecAppContainer(application *entities.App, instanceName, containerName string, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(application.Env.Cluster.KubeConfig))
+func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName string, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
 	if err != nil {
 		return err
 	}
@@ -726,7 +777,7 @@ func ExecAppContainer(application *entities.App, instanceName, containerName str
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(application.Env.ClusterNamespace).
+		Namespace(appCtx.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&metav1.GetOptions{}, scheme.ParameterCodec)
 
@@ -739,13 +790,13 @@ func ExecAppContainer(application *entities.App, instanceName, containerName str
 	return nil
 }
 
-func AppAction(appID string, action app.AppAction) (*entities.App, error) {
-	application, err := GetApp(appID)
+func AppAction(ctx context.Context, appID string, action app.AppAction) (*models.AppContext, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	currentStatus, err := core.CalculateAppStatus(context.Background(), application)
+	currentStatus, err := core.CalculateAppStatus(ctx, appCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -755,163 +806,161 @@ func AppAction(appID string, action app.AppAction) (*entities.App, error) {
 		return nil, err
 	}
 
-	ctx := context.Background()
-
 	switch action {
 	case app.AppActionDeploy:
-		return executeDeployAction(ctx, application)
+		return executeDeployAction(ctx, appCtx)
 	case app.AppActionStart:
-		return executeStartAction(ctx, application)
+		return executeStartAction(ctx, appCtx)
 	case app.AppActionStop:
-		return executeStopAction(ctx, application)
+		return executeStopAction(ctx, appCtx)
 	case app.AppActionUpdate:
-		return executeUpdateAction(ctx, application)
+		return executeUpdateAction(ctx, appCtx)
 	case app.AppActionRedeploy:
-		return executeRedeployAction(ctx, application)
+		return executeRedeployAction(ctx, appCtx)
 	case app.AppActionRollback:
-		return executeRollbackAction(ctx, application)
+		return executeRollbackAction(ctx, appCtx)
 	case app.AppActionDebug:
-		return executeDebugAction(ctx, application)
+		return executeDebugAction(ctx, appCtx)
 	case app.AppActionDebugOff:
-		return executeDebugOffAction(ctx, application)
+		return executeDebugOffAction(ctx, appCtx)
 	case app.AppActionDelete:
-		return executeDeleteAction(ctx, application)
+		return executeDeleteAction(ctx, appCtx)
 	default:
 		return nil, errors.New("unsupported action")
 	}
 }
 
-func executeDeployAction(ctx context.Context, application *entities.App) (*entities.App, error) {
-	if err := core.ApplyApp(ctx, application); err != nil {
+func executeDeployAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
+	if err := core.ApplyApp(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	application.DeployStatus = "deployed"
-	if err := db.DB.Model(application).Update("deploy_status", "deployed").Error; err != nil {
+	appCtx.App.DeployStatus = "deployed"
+	if err := db.DB.Model(&appCtx.App).Update("deploy_status", "deployed").Error; err != nil {
 		return nil, err
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func executeStartAction(ctx context.Context, application *entities.App) (*entities.App, error) {
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+func executeStartAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	switch application.AppType {
+	switch appCtx.App.AppType {
 	case "Deployment":
-		deployment, err := client.AppsV1().Deployments(application.Env.ClusterNamespace).Get(ctx, application.Slug, metav1.GetOptions{})
+		deployment, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
-		replicas := int32(application.Replicas)
+		replicas := int32(appCtx.App.Replicas)
 		deployment.Spec.Replicas = &replicas
 
-		if _, err := client.AppsV1().Deployments(application.Env.ClusterNamespace).Update(ctx, deployment, metav1.UpdateOptions{}); err != nil {
+		if _, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Update(ctx, deployment, metav1.UpdateOptions{}); err != nil {
 			return nil, err
 		}
 	case "StatefulSet":
-		statefulSet, err := client.AppsV1().StatefulSets(application.Env.ClusterNamespace).Get(ctx, application.Slug, metav1.GetOptions{})
+		statefulSet, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
-		replicas := int32(application.Replicas)
+		replicas := int32(appCtx.App.Replicas)
 		statefulSet.Spec.Replicas = &replicas
 
-		if _, err := client.AppsV1().StatefulSets(application.Env.ClusterNamespace).Update(ctx, statefulSet, metav1.UpdateOptions{}); err != nil {
+		if _, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Update(ctx, statefulSet, metav1.UpdateOptions{}); err != nil {
 			return nil, err
 		}
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func executeStopAction(ctx context.Context, application *entities.App) (*entities.App, error) {
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+func executeStopAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
 	replicas := int32(0)
 
-	switch application.AppType {
+	switch appCtx.App.AppType {
 	case "Deployment":
-		deployment, err := client.AppsV1().Deployments(application.Env.ClusterNamespace).Get(ctx, application.Slug, metav1.GetOptions{})
+		deployment, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
 		deployment.Spec.Replicas = &replicas
 
-		if _, err := client.AppsV1().Deployments(application.Env.ClusterNamespace).Update(ctx, deployment, metav1.UpdateOptions{}); err != nil {
+		if _, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Update(ctx, deployment, metav1.UpdateOptions{}); err != nil {
 			return nil, err
 		}
 	case "StatefulSet":
-		statefulSet, err := client.AppsV1().StatefulSets(application.Env.ClusterNamespace).Get(ctx, application.Slug, metav1.GetOptions{})
+		statefulSet, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
 		statefulSet.Spec.Replicas = &replicas
 
-		if _, err := client.AppsV1().StatefulSets(application.Env.ClusterNamespace).Update(ctx, statefulSet, metav1.UpdateOptions{}); err != nil {
+		if _, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Update(ctx, statefulSet, metav1.UpdateOptions{}); err != nil {
 			return nil, err
 		}
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func executeUpdateAction(ctx context.Context, application *entities.App) (*entities.App, error) {
-	if err := core.ApplyApp(ctx, application); err != nil {
+func executeUpdateAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
+	if err := core.ApplyApp(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func executeRedeployAction(ctx context.Context, application *entities.App) (*entities.App, error) {
-	if err := deleteAppK8sResources(ctx, application, true); err != nil {
+func executeRedeployAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
+	if err := deleteAppK8sResources(ctx, appCtx, true); err != nil {
 		return nil, err
 	}
-	return executeDeployAction(ctx, application)
+	return executeDeployAction(ctx, appCtx)
 }
 
-func executeRollbackAction(ctx context.Context, application *entities.App) (*entities.App, error) {
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+func executeRollbackAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 	// TODO: Implement rollback logic, such as using Deployment's revision history or StatefulSet's update strategy to rollback to previous version
-	switch application.AppType {
+	switch appCtx.App.AppType {
 	case "Deployment":
-		if _, err := client.AppsV1().Deployments(application.Env.ClusterNamespace).Get(ctx, application.Slug, metav1.GetOptions{}); err != nil {
+		if _, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{}); err != nil {
 			return nil, err
 		}
 	case "StatefulSet":
-		if _, err := client.AppsV1().StatefulSets(application.Env.ClusterNamespace).Get(ctx, application.Slug, metav1.GetOptions{}); err != nil {
+		if _, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{}); err != nil {
 			return nil, err
 		}
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func executeDebugAction(ctx context.Context, application *entities.App) (*entities.App, error) {
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+func executeDebugAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	ns := application.Env.ClusterNamespace
+	ns := appCtx.Env.ClusterNamespace
 
-	switch application.AppType {
+	switch appCtx.App.AppType {
 	case "Deployment":
-		deployment, err := client.AppsV1().Deployments(ns).Get(ctx, application.Slug, metav1.GetOptions{})
+		deployment, err := client.AppsV1().Deployments(ns).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -921,7 +970,7 @@ func executeDebugAction(ctx context.Context, application *entities.App) (*entiti
 		}
 		deployment.Spec.Template.Labels["app.ketches.cn/debugging"] = "true"
 
-		appContainerName := "app-" + application.Slug
+		appContainerName := "app-" + appCtx.App.Slug
 		for i := range deployment.Spec.Template.Spec.Containers {
 			if deployment.Spec.Template.Spec.Containers[i].Name == appContainerName {
 				deployment.Spec.Template.Spec.Containers[i].Command = []string{"sh", "-c", "while true; do sleep 3600; done"}
@@ -934,7 +983,7 @@ func executeDebugAction(ctx context.Context, application *entities.App) (*entiti
 		}
 
 	case "StatefulSet":
-		statefulSet, err := client.AppsV1().StatefulSets(ns).Get(ctx, application.Slug, metav1.GetOptions{})
+		statefulSet, err := client.AppsV1().StatefulSets(ns).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -944,7 +993,7 @@ func executeDebugAction(ctx context.Context, application *entities.App) (*entiti
 		}
 		statefulSet.Spec.Template.Labels["app.ketches.cn/debugging"] = "true"
 
-		appContainerName := "app-" + application.Slug
+		appContainerName := "app-" + appCtx.App.Slug
 		for i := range statefulSet.Spec.Template.Spec.Containers {
 			if statefulSet.Spec.Template.Spec.Containers[i].Name == appContainerName {
 				statefulSet.Spec.Template.Spec.Containers[i].Command = []string{"sh", "-c", "while true; do sleep 3600; done"}
@@ -957,20 +1006,20 @@ func executeDebugAction(ctx context.Context, application *entities.App) (*entiti
 		}
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func executeDebugOffAction(ctx context.Context, application *entities.App) (*entities.App, error) {
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+func executeDebugOffAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	ns := application.Env.ClusterNamespace
+	ns := appCtx.Env.ClusterNamespace
 
-	switch application.AppType {
+	switch appCtx.App.AppType {
 	case "Deployment":
-		deployment, err := client.AppsV1().Deployments(ns).Get(ctx, application.Slug, metav1.GetOptions{})
+		deployment, err := client.AppsV1().Deployments(ns).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -979,12 +1028,12 @@ func executeDebugOffAction(ctx context.Context, application *entities.App) (*ent
 			delete(deployment.Spec.Template.Labels, "app.ketches.cn/debugging")
 		}
 
-		appContainerName := "app-" + application.Slug
+		appContainerName := "app-" + appCtx.App.Slug
 		for i := range deployment.Spec.Template.Spec.Containers {
 			if deployment.Spec.Template.Spec.Containers[i].Name == appContainerName {
 				var containerCommand []string
-				if application.ContainerCommand != "" {
-					containerCommand = []string{"sh", "-c", application.ContainerCommand}
+				if appCtx.App.ContainerCommand != "" {
+					containerCommand = []string{"sh", "-c", appCtx.App.ContainerCommand}
 				}
 				deployment.Spec.Template.Spec.Containers[i].Command = containerCommand
 				break
@@ -996,7 +1045,7 @@ func executeDebugOffAction(ctx context.Context, application *entities.App) (*ent
 		}
 
 	case "StatefulSet":
-		statefulSet, err := client.AppsV1().StatefulSets(ns).Get(ctx, application.Slug, metav1.GetOptions{})
+		statefulSet, err := client.AppsV1().StatefulSets(ns).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -1005,7 +1054,7 @@ func executeDebugOffAction(ctx context.Context, application *entities.App) (*ent
 			delete(statefulSet.Spec.Template.Labels, "app.ketches.cn/debugging")
 		}
 
-		appContainerName := "app-" + application.Slug
+		appContainerName := "app-" + appCtx.App.Slug
 		for i := range statefulSet.Spec.Template.Spec.Containers {
 			if statefulSet.Spec.Template.Spec.Containers[i].Name == appContainerName {
 				statefulSet.Spec.Template.Spec.Containers[i].Command = nil
@@ -1018,19 +1067,20 @@ func executeDebugOffAction(ctx context.Context, application *entities.App) (*ent
 		}
 	}
 
-	return application, nil
+	return appCtx, nil
 }
 
-func executeDeleteAction(_ context.Context, application *entities.App) (*entities.App, error) {
-	if err := DeleteApp(application.ID); err != nil {
+func executeDeleteAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
+	if err := DeleteApp(ctx, appCtx.App.ID); err != nil {
 		return nil, err
 	}
-	return application, nil
+	return appCtx, nil
 }
 
-func ToAppResponse(c context.Context, a *entities.App) models.AppResponse {
-	status := GetAppStatus(c, a)
+func ToAppResponse(c context.Context, appCtx *models.AppContext) models.AppResponse {
+	status := GetAppStatus(c, appCtx)
 
+	a := &appCtx.App
 	res := models.AppResponse{
 		ID:               a.ID,
 		Slug:             a.Slug,
@@ -1052,39 +1102,39 @@ func ToAppResponse(c context.Context, a *entities.App) models.AppResponse {
 		CreatedAt:        a.CreatedAt,
 	}
 
-	if a.AutoScaling != nil {
+	if appCtx.AutoScaling != nil {
 		res.AutoScaling = &models.AutoScalingSpec{
-			MinReplicas:             a.AutoScaling.MinReplicas,
-			MaxReplicas:             a.AutoScaling.MaxReplicas,
-			TargetCPUUtilization:    a.AutoScaling.TargetCPUUtilization,
-			TargetMemoryUtilization: a.AutoScaling.TargetMemoryUtilization,
+			MinReplicas:             appCtx.AutoScaling.MinReplicas,
+			MaxReplicas:             appCtx.AutoScaling.MaxReplicas,
+			TargetCPUUtilization:    appCtx.AutoScaling.TargetCPUUtilization,
+			TargetMemoryUtilization: appCtx.AutoScaling.TargetMemoryUtilization,
 		}
 	}
 
-	if a.SchedulingRule != nil {
+	if appCtx.SchedulingRule != nil {
 		res.SchedulingRule = &models.SchedulingSpec{
-			RuleType:     a.SchedulingRule.RuleType,
-			NodeName:     a.SchedulingRule.NodeName,
-			NodeSelector: a.SchedulingRule.NodeSelector,
-			NodeAffinity: a.SchedulingRule.NodeAffinity,
-			Tolerations:  a.SchedulingRule.Tolerations,
+			RuleType:     appCtx.SchedulingRule.RuleType,
+			NodeName:     appCtx.SchedulingRule.NodeName,
+			NodeSelector: appCtx.SchedulingRule.NodeSelector,
+			NodeAffinity: appCtx.SchedulingRule.NodeAffinity,
+			Tolerations:  appCtx.SchedulingRule.Tolerations,
 		}
 	}
 
-	if a.Env.ID != "" {
-		envResp := ToEnvResponse(&a.Env)
+	if appCtx.Env.ID != "" {
+		envResp := ToEnvResponse(&appCtx.Env)
 		res.Env = &envResp
 	}
 
 	return res
 }
 
-func GetAppStatus(c context.Context, app *entities.App) string {
-	status := app.DeployStatus
+func GetAppStatus(c context.Context, appCtx *models.AppContext) string {
+	status := appCtx.App.DeployStatus
 	if status == "deployed" {
-		calculatedStatus, err := core.CalculateAppStatus(c, app)
+		calculatedStatus, err := core.CalculateAppStatus(c, appCtx)
 		if err != nil {
-			log.Printf("Failed to calculate app status for app %s: %v", app.ID, err)
+			log.Printf("Failed to calculate app status for app %s: %v", appCtx.App.ID, err)
 		}
 		status = string(calculatedStatus)
 	}
@@ -1143,32 +1193,32 @@ func ToAppListResponse(ctx context.Context, row *models.AppListRow) models.AppRe
 	}
 }
 
-func GetAppTopology(appID string) (*models.AppTopologyResponse, error) {
-	application, err := GetApp(appID)
+func GetAppTopology(ctx context.Context, appID string) (*models.AppTopologyResponse, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	return core.GetAppTopology(context.Background(), client, application)
+	return core.GetAppTopology(ctx, client, appCtx)
 }
 
-func GetAppTopologyResourceYaml(appID string, nodeID string) (string, error) {
-	application, err := GetApp(appID)
+func GetAppTopologyResourceYaml(ctx context.Context, appID string, nodeID string) (string, error) {
+	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return "", err
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(application.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
 	if err != nil {
 		return "", err
 	}
 
-	return core.GetAppTopologyResourceYaml(context.Background(), client, application, nodeID)
+	return core.GetAppTopologyResourceYaml(ctx, client, appCtx, nodeID)
 }
 
 // seedAppFromImageMetadata fetches the container image metadata and creates corresponding
@@ -1271,89 +1321,3 @@ func seedAppFromImageMetadata(ctx context.Context, application *entities.App) er
 	return nil
 }
 
-// batchLoadAppChildren populates the association fields on a slice of apps
-// using batch queries (one query per child type) instead of N+1 Preloads.
-func batchLoadAppChildren(apps []entities.App) error {
-	if len(apps) == 0 {
-		return nil
-	}
-
-	appIDs := make([]string, len(apps))
-	for i, a := range apps {
-		appIDs[i] = a.ID
-	}
-
-	// Batch-fetch all child types
-	var envVars []entities.AppEnvVar
-	if err := db.DB.Where("app_id IN ?", appIDs).Find(&envVars).Error; err != nil {
-		return err
-	}
-	var gateways []entities.AppGateway
-	if err := db.DB.Where("app_id IN ?", appIDs).Find(&gateways).Error; err != nil {
-		return err
-	}
-	var configFiles []entities.AppConfigFile
-	if err := db.DB.Where("app_id IN ?", appIDs).Find(&configFiles).Error; err != nil {
-		return err
-	}
-	var volumes []entities.AppVolume
-	if err := db.DB.Where("app_id IN ?", appIDs).Find(&volumes).Error; err != nil {
-		return err
-	}
-	var probes []entities.AppProbe
-	if err := db.DB.Where("app_id IN ?", appIDs).Find(&probes).Error; err != nil {
-		return err
-	}
-	var autoScalings []entities.AppAutoScaling
-	if err := db.DB.Where("app_id IN ?", appIDs).Find(&autoScalings).Error; err != nil {
-		return err
-	}
-	var schedulingRules []entities.AppSchedulingRule
-	if err := db.DB.Where("app_id IN ?", appIDs).Find(&schedulingRules).Error; err != nil {
-		return err
-	}
-
-	// Build lookup maps
-	envVarMap := make(map[string][]entities.AppEnvVar)
-	for _, v := range envVars {
-		envVarMap[v.AppID] = append(envVarMap[v.AppID], v)
-	}
-	gatewayMap := make(map[string][]entities.AppGateway)
-	for _, v := range gateways {
-		gatewayMap[v.AppID] = append(gatewayMap[v.AppID], v)
-	}
-	configFileMap := make(map[string][]entities.AppConfigFile)
-	for _, v := range configFiles {
-		configFileMap[v.AppID] = append(configFileMap[v.AppID], v)
-	}
-	volumeMap := make(map[string][]entities.AppVolume)
-	for _, v := range volumes {
-		volumeMap[v.AppID] = append(volumeMap[v.AppID], v)
-	}
-	probeMap := make(map[string][]entities.AppProbe)
-	for _, v := range probes {
-		probeMap[v.AppID] = append(probeMap[v.AppID], v)
-	}
-	autoScalingMap := make(map[string]*entities.AppAutoScaling)
-	for i := range autoScalings {
-		autoScalingMap[autoScalings[i].AppID] = &autoScalings[i]
-	}
-	schedulingRuleMap := make(map[string]*entities.AppSchedulingRule)
-	for i := range schedulingRules {
-		schedulingRuleMap[schedulingRules[i].AppID] = &schedulingRules[i]
-	}
-
-	// Wire up associations
-	for i := range apps {
-		id := apps[i].ID
-		apps[i].EnvVars = envVarMap[id]
-		apps[i].Gateways = gatewayMap[id]
-		apps[i].ConfigFiles = configFileMap[id]
-		apps[i].Volumes = volumeMap[id]
-		apps[i].Probes = probeMap[id]
-		apps[i].AutoScaling = autoScalingMap[id]
-		apps[i].SchedulingRule = schedulingRuleMap[id]
-	}
-
-	return nil
-}

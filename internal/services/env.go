@@ -168,7 +168,7 @@ func PermanentlyDeleteEnv(envID string) error {
 
 	// Permanently delete all soft-deleted apps
 	for _, app := range deletedApps {
-		if err := PermanentlyDeleteApp(app.ID); err != nil {
+		if err := PermanentlyDeleteApp(context.Background(), app.ID); err != nil {
 			return err
 		}
 	}

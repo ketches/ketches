@@ -4,6 +4,7 @@ import {
   Box,
   ChartLine,
   ChevronsUpDown,
+  GalleryVerticalEnd,
   Hammer,
   Info,
   Loader2,
@@ -16,7 +17,6 @@ import {
   Trash2,
   Wrench
 } from "lucide-react"
-import { GalleryVerticalEnd } from "lucide-react"
 import * as React from "react"
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -245,7 +245,7 @@ export function EnvironmentDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
-          <Card className="bg-linear-to-b/increasing from-primary/5 to-transparent data-[active=true]:bg-transparent">
+          <Card className="bg-linear-to-b/increasing from-blue/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-4 w-4" />

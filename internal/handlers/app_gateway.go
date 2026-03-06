@@ -204,16 +204,16 @@ func ProxyGatewayHTTP(c *gin.Context) {
 
 	// 3. Get the cached HTTP client for this cluster from the global store.
 	// The client reuses TCP/TLS connections to the K8s apiserver across requests.
-	httpClient, err := kube.GlobalClusterStore.GetHTTPProxyClient(application.Env.Cluster.ID)
+	httpClient, err := kube.GlobalClusterStore.GetHTTPProxyClient(application.Cluster.ID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
 	// 4. Construct target URL using the stored ApiServer address.
-	k8sHost := strings.TrimSuffix(application.Env.Cluster.ApiServer, "/")
+	k8sHost := strings.TrimSuffix(application.Cluster.ApiServer, "/")
 	ns := application.Env.ClusterNamespace
-	svcName := application.Slug
+	svcName := application.App.Slug
 	port := gateway.Port
 	// Ensure path starts with /.
 	if !strings.HasPrefix(proxyPath, "/") {
