@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Edit2, Globe, Lock, Network, Plus, Trash2 } from "lucide-react"
+import { Edit2, ExternalLink, Globe, Lock, Network, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import type { App, GatewaySpec } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useAuthStore } from "@/stores/auth"
 
 import { GatewayEditor } from "@/components/applications/gateway-editor"
 import { DataTable } from "@/components/data-table/data-table"
@@ -26,6 +27,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+  const accessToken = useAuthStore((state) => state.accessToken)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingGateway, setEditingGateway] = React.useState<GatewaySpec | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -206,6 +208,23 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-1">
+          {/* Quick Access: visible when app is running/updating and protocol is http/https */}
+          {(app.status === 'running' || app.status === 'updating') &&
+           (row.original.protocol === 'http' || row.original.protocol === 'https') && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title="Quick Access"
+              onClick={() => {
+                window.open(
+                  `/api/v1/gateways/${row.original.id}/proxy/?token=${accessToken}`,
+                  '_blank'
+                )
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          )}
           {!isViewer && (
             <>
               <Button
