@@ -40,9 +40,15 @@ func ListDeletedApps(projectID string, userID string, page, pageSize int, search
 }
 
 func ListDeletedEnvs(projectID string, userID string, page, pageSize int, search string) (int64, []models.RecycleBinEnvResponse, error) {
-	var envs []entities.Env
+	var rows []models.RecycleBinEnvRow
 	var total int64
-	query := db.DB.Unscoped().Model(&entities.Env{}).Where("envs.deleted_at IS NOT NULL").Order("deleted_at DESC")
+
+	query := db.DB.Table("envs").
+		Select("envs.*, projects.name as project_name, projects.slug as project_slug, clusters.name as cluster_name").
+		Joins("JOIN projects ON envs.project_id = projects.id").
+		Joins("JOIN clusters ON envs.cluster_id = clusters.id").
+		Where("envs.deleted_at IS NOT NULL").
+		Order("envs.deleted_at DESC")
 
 	if projectID != "" {
 		query = query.Where("envs.project_id = ?", projectID)
@@ -60,31 +66,25 @@ func ListDeletedEnvs(projectID string, userID string, page, pageSize int, search
 		return 0, nil, err
 	}
 
-	if err := query.Preload("Project").Preload("Cluster").
-		Offset((page - 1) * pageSize).
-		Limit(pageSize).
-		Find(&envs).Error; err != nil {
+	if err := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
 		return 0, nil, err
 	}
 
+	// Convert RecycleBinEnvRow to RecycleBinEnvResponse
 	var result []models.RecycleBinEnvResponse
-	for _, env := range envs {
-		clusterName := ""
-		if env.Cluster.ID != "" {
-			clusterName = env.Cluster.Name
-		}
+	for _, row := range rows {
 		result = append(result, models.RecycleBinEnvResponse{
-			ID:               env.ID,
-			Slug:             env.Slug,
-			Name:             env.Name,
-			Description:      env.Description,
-			ProjectID:        env.ProjectID,
-			ProjectName:      env.Project.Name,
-			ProjectSlug:      env.Project.Slug,
-			ClusterID:        env.ClusterID,
-			ClusterName:      clusterName,
-			ClusterNamespace: env.ClusterNamespace,
-			DeletedAt:        env.DeletedAt.Time,
+			ID:               row.ID,
+			Slug:             row.Slug,
+			Name:             row.Name,
+			Description:      row.Description,
+			ProjectID:        row.ProjectID,
+			ProjectName:      row.ProjectName,
+			ProjectSlug:      row.ProjectSlug,
+			ClusterID:        row.ClusterID,
+			ClusterName:      row.ClusterName,
+			ClusterNamespace: row.ClusterNamespace,
+			DeletedAt:        row.DeletedAt.Time,
 		})
 	}
 
