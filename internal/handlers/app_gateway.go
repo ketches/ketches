@@ -2,57 +2,20 @@ package handlers
 
 import (
 	"bytes"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
-	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
-// clusterHTTPClients caches one *http.Client per cluster so that TCP/TLS
-// connections to the K8s apiserver are reused across proxy requests.
-var clusterHTTPClients sync.Map // key: clusterID (string) → *http.Client
-
-// getClusterHTTPClient returns a cached (or freshly built) *http.Client for
-// the given cluster. The client is configured with the cluster's TLS settings
-// and never follows redirects (so Location headers can be rewritten).
-func getClusterHTTPClient(cluster *entities.Cluster) (*http.Client, error) {
-	if v, ok := clusterHTTPClients.Load(cluster.ID); ok {
-		return v.(*http.Client), nil
-	}
-	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
-	if err != nil {
-		return nil, fmt.Errorf("failed to build cluster config: %w", err)
-	}
-	tlsCfg, err := rest.TLSConfigFor(restConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build TLS config: %w", err)
-	}
-	if tlsCfg == nil {
-		tlsCfg = &tls.Config{} // plain HTTP cluster — still use a typed transport
-	}
-	client := &http.Client{
-		Transport: &http.Transport{TLSClientConfig: tlsCfg},
-		// Do not follow redirects — Location headers must be rewritten first.
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	// Store only if not already present (another goroutine may have raced us).
-	actual, _ := clusterHTTPClients.LoadOrStore(cluster.ID, client)
-	return actual.(*http.Client), nil
-}
 
 // ListAppGateways lists all gateways for an app
 func ListAppGateways(c *gin.Context) {
@@ -241,9 +204,9 @@ func ProxyGatewayHTTP(c *gin.Context) {
 		return
 	}
 
-	// 3. Get (or create) a cached HTTP client for this cluster.
-	// Reuses TCP/TLS connections to the K8s apiserver across requests.
-	httpClient, err := getClusterHTTPClient(&application.Env.Cluster)
+	// 3. Get the cached HTTP client for this cluster from the global store.
+	// The client reuses TCP/TLS connections to the K8s apiserver across requests.
+	httpClient, err := kube.GlobalClusterStore.GetHTTPProxyClient(application.Env.Cluster.ID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
