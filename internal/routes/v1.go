@@ -330,6 +330,10 @@ func SetupV1Routes(r *gin.Engine) {
 				recycleBin.POST("/projects/restore", handlers.RestoreProjects)
 				recycleBin.POST("/projects/permanently-delete", handlers.PermanentlyDeleteProjects)
 			}
+
+			// Gateway HTTP proxy — any authenticated user (read-only access)
+			authorized.GET("/gateways/:gatewayID/proxy/*path", handlers.ProxyGatewayHTTP)
+			authorized.HEAD("/gateways/:gatewayID/proxy/*path", handlers.ProxyGatewayHTTP)
 		}
 	}
 }
