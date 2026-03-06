@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/ketches/ketches/internal/db/entities"
+)
 
 type CreateEnvRequest struct {
 	Slug             string `json:"slug" binding:"required"`
@@ -28,4 +32,12 @@ type EnvResponse struct {
 type ListEnvResponse struct {
 	Items      []EnvResponse      `json:"items"`
 	Pagination PaginationResponse `json:"pagination"`
+}
+
+// RecycleBinEnvRow represents a flattened environment record for the recycle bin list
+type RecycleBinEnvRow struct {
+	entities.Env
+	ProjectName string `gorm:"column:project_name"`
+	ProjectSlug string `gorm:"column:project_slug"`
+	ClusterName string `gorm:"column:cluster_name"`
 }

@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/ketches/ketches/internal/db/entities"
+)
 
 type CreateAppRequest struct {
 	Slug             string `json:"slug"`
@@ -245,4 +249,46 @@ type UpdateAppSchedulingRequest struct {
 
 type UpdateAppCommandRequest struct {
 	ContainerCommand string `json:"container_command"`
+}
+
+// AppListRow is a flattened DTO for listing apps via JOIN queries.
+// It avoids GORM Preload by scanning joined fields directly.
+type AppListRow struct {
+	// App fields
+	ID               string    `gorm:"column:id"`
+	Slug             string    `gorm:"column:slug"`
+	Name             string    `gorm:"column:name"`
+	Description      string    `gorm:"column:description"`
+	EnvID            string    `gorm:"column:env_id"`
+	AppType          string    `gorm:"column:app_type"`
+	CodeRepositoryID string    `gorm:"column:code_repository_id"`
+	ContainerImage   string    `gorm:"column:container_image"`
+	ContainerCommand string    `gorm:"column:container_command"`
+	RegistryUsername string    `gorm:"column:registry_username"`
+	RegistryPassword string    `gorm:"column:registry_password"`
+	Replicas         int       `gorm:"column:replicas"`
+	RequestCPU       int       `gorm:"column:request_cpu"`
+	RequestMemory    int       `gorm:"column:request_memory"`
+	LimitCPU         int       `gorm:"column:limit_cpu"`
+	LimitMemory      int       `gorm:"column:limit_memory"`
+	DeployStatus     string    `gorm:"column:deploy_status"`
+	CreatedAt        time.Time `gorm:"column:created_at"`
+
+	// Joined Env fields
+	EnvName          string `gorm:"column:env_name"`
+	EnvSlug          string `gorm:"column:env_slug"`
+	ClusterID        string `gorm:"column:cluster_id"`
+	ClusterNamespace string `gorm:"column:cluster_namespace"`
+	IsBuildEnv       bool   `gorm:"column:is_build_env"`
+
+	// Joined Cluster fields
+	ClusterName string `gorm:"column:cluster_name"`
+}
+
+// RecycleBinAppRow represents a flattened app record for the recycle bin list
+type RecycleBinAppRow struct {
+	entities.App
+	EnvName     string `gorm:"column:env_name"`
+	ProjectName string `gorm:"column:project_name"`
+	ProjectSlug string `gorm:"column:project_slug"`
 }
