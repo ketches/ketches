@@ -241,10 +241,14 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	}
 
 	// Forward safe request headers (skip hop-by-hop and Ketches-internal headers)
+	// Forward safe request headers (skip hop-by-hop and Ketches-internal headers).
+	// Drop Accept-Encoding so the upstream returns a plain (non-compressed) body that
+	// we can inspect and rewrite before forwarding to the browser.
 	hopByHop := map[string]bool{
 		"connection": true, "keep-alive": true, "proxy-authenticate": true,
 		"proxy-authorization": true, "te": true, "trailers": true,
 		"transfer-encoding": true, "upgrade": true, "authorization": true,
+		"accept-encoding": true, // prevent compressed response we cannot rewrite
 	}
 	for key, vals := range c.Request.Header {
 		if hopByHop[strings.ToLower(key)] {
@@ -276,11 +280,14 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	forwardPrefix := "/forward/" + gatewayID
 
 	// Forward response headers, rewriting Location for redirect responses.
+	// Drop Content-Encoding: we strip Accept-Encoding from the request so the upstream
+	// returns plain text; forwarding this header would confuse the browser.
 	for key, vals := range resp.Header {
-		if hopByHop[strings.ToLower(key)] {
+		klower := strings.ToLower(key)
+		if hopByHop[klower] || klower == "content-encoding" {
 			continue
 		}
-		if strings.ToLower(key) == "location" {
+		if klower == "location" {
 			for _, v := range vals {
 				c.Header(key, rewriteLocation(v, forwardPrefix))
 			}
