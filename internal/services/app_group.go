@@ -146,33 +146,47 @@ func ListGroupedApps(envID string) ([]models.AppGroupWithApps, error) {
 	return result, nil
 }
 
-// ListSpecificGroupedApps returns paginated, full app details for a specific group.
+// ListSpecificGroupedApps returns paginated, full app details for a specific group using Joins and AppListRow DTO.
 func ListSpecificGroupedApps(c context.Context, groupID string, page, pageSize int, search string) (int64, []models.AppResponse, error) {
-	query := db.DB.Model(&entities.App{}).Model(&entities.App{}).Preload("Env.Cluster").
+	var rows []models.AppListRow
+	var total int64
+
+	// Count query with joins
+	countQ := db.DB.Model(&entities.App{}).
 		Joins("JOIN app_group_members ON app_group_members.app_id = apps.id").
 		Where("app_group_members.group_id = ?", groupID)
-
 	if search != "" {
-		query = query.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
+		countQ = countQ.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	if err := countQ.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
 
-	var apps []entities.App
-	if err := query.
-		Order("app_group_members.created_at ASC").
-		Offset((page - 1) * pageSize).
-		Limit(pageSize).
-		Find(&apps).Error; err != nil {
+	// Data query with explicit JOINs to envs and clusters
+	dataQ := db.DB.Table("apps").
+		Select(`apps.id, apps.slug, apps.name, apps.description, apps.env_id,
+			apps.app_type, apps.code_repository_id, apps.container_image,
+			apps.container_command, apps.registry_username, apps.registry_password,
+			apps.replicas, apps.request_cpu, apps.request_memory,
+			apps.limit_cpu, apps.limit_memory, apps.deploy_status, apps.created_at,
+			envs.name AS env_name, envs.slug AS env_slug,
+			envs.cluster_id, envs.cluster_namespace, envs.is_build_env,
+			clusters.name AS cluster_name`).
+		Joins("JOIN app_group_members ON app_group_members.app_id = apps.id").
+		Joins("JOIN envs ON envs.id = apps.env_id").
+		Joins("JOIN clusters ON clusters.id = envs.cluster_id").
+		Where("app_group_members.group_id = ?", groupID).
+		Order("app_group_members.created_at ASC")
+	if search != "" {
+		dataQ = dataQ.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if err := dataQ.Offset((page-1)*pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
 		return 0, nil, err
 	}
 
-	result := make([]models.AppResponse, 0, len(apps))
-	for i := range apps {
-		result = append(result, ToAppResponse(c, &apps[i]))
+	result := make([]models.AppResponse, 0, len(rows))
+	for i := range rows {
+		result = append(result, ToAppListResponse(c, &rows[i]))
 	}
 	return total, result, nil
 }
