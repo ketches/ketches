@@ -7,8 +7,6 @@ import { toast } from "sonner"
 import type { App, GatewaySpec } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { useProjectRole } from "@/hooks/useProjectRole"
-import { useAuthStore } from "@/stores/auth"
-
 import { GatewayEditor } from "@/components/applications/gateway-editor"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -27,7 +25,6 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
-  const accessToken = useAuthStore((state) => state.accessToken)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingGateway, setEditingGateway] = React.useState<GatewaySpec | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -217,7 +214,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
               title="Quick Access"
               onClick={() => {
                 window.open(
-                  `/api/v1/gateways/${row.original.id}/proxy/?token=${accessToken}`,
+                  `/forward/${row.original.id}`,
                   '_blank'
                 )
               }}

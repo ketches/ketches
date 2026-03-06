@@ -31,6 +31,7 @@ import { ExtensionsPage } from "@/pages/extensions/extensions-page"
 import { ProjectsPage } from "@/pages/projects/projects-page"
 import { ProjectDetailPage } from "@/pages/projects/project-detail-page"
 import { ActivityPage } from "@/pages/activity/activity-page"
+import { ForwardPage } from "@/pages/forward/forward-page"
 import { useAuthStore } from "@/stores/auth"
 import * as React from "react"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
@@ -199,6 +200,11 @@ export function App() {
             <Route path="/recycle-bin" element={
               <ProtectedRoute>
                 <DashboardLayout><RecycleBinPage /></DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/forward/:gatewayID" element={
+              <ProtectedRoute>
+                <ForwardPage />
               </ProtectedRoute>
             } />
           </Routes>
