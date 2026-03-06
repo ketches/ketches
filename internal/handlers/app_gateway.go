@@ -2,21 +2,57 @@ package handlers
 
 import (
 	"bytes"
-	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
+
+// clusterHTTPClients caches one *http.Client per cluster so that TCP/TLS
+// connections to the K8s apiserver are reused across proxy requests.
+var clusterHTTPClients sync.Map // key: clusterID (string) → *http.Client
+
+// getClusterHTTPClient returns a cached (or freshly built) *http.Client for
+// the given cluster. The client is configured with the cluster's TLS settings
+// and never follows redirects (so Location headers can be rewritten).
+func getClusterHTTPClient(cluster *entities.Cluster) (*http.Client, error) {
+	if v, ok := clusterHTTPClients.Load(cluster.ID); ok {
+		return v.(*http.Client), nil
+	}
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build cluster config: %w", err)
+	}
+	tlsCfg, err := rest.TLSConfigFor(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build TLS config: %w", err)
+	}
+	if tlsCfg == nil {
+		tlsCfg = &tls.Config{} // plain HTTP cluster — still use a typed transport
+	}
+	client := &http.Client{
+		Transport: &http.Transport{TLSClientConfig: tlsCfg},
+		// Do not follow redirects — Location headers must be rewritten first.
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	// Store only if not already present (another goroutine may have raced us).
+	actual, _ := clusterHTTPClients.LoadOrStore(cluster.ID, client)
+	return actual.(*http.Client), nil
+}
 
 // ListAppGateways lists all gateways for an app
 func ListAppGateways(c *gin.Context) {
@@ -205,45 +241,25 @@ func ProxyGatewayHTTP(c *gin.Context) {
 		return
 	}
 
-	// 3. Validate app status
-	status := services.GetAppStatus(context.Background(), application)
-	if status != "running" && status != "updating" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("quick access is only available when the app is running or updating (current: %s)", status))
-		return
-	}
-
-	// 4. Build K8s REST config from cluster KubeConfig
-	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(application.Env.Cluster.KubeConfig))
+	// 3. Get (or create) a cached HTTP client for this cluster.
+	// Reuses TCP/TLS connections to the K8s apiserver across requests.
+	httpClient, err := getClusterHTTPClient(&application.Env.Cluster)
 	if err != nil {
-		api.Error(c, http.StatusInternalServerError, fmt.Errorf("failed to build cluster config: %w", err))
+		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	// 5. Build TLS-aware HTTP client
-	tlsCfg, err := rest.TLSConfigFor(restConfig)
-	if err != nil {
-		api.Error(c, http.StatusInternalServerError, fmt.Errorf("failed to build TLS config: %w", err))
-		return
-	}
-	httpClient := &http.Client{
-		Transport: &http.Transport{TLSClientConfig: tlsCfg},
-		// Do not follow redirects — we need to see and rewrite Location headers.
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	// 6. Construct target URL
-	k8sHost := strings.TrimSuffix(restConfig.Host, "/")
+	// 4. Construct target URL using the stored ApiServer address.
+	k8sHost := strings.TrimSuffix(application.Env.Cluster.ApiServer, "/")
 	ns := application.Env.ClusterNamespace
 	svcName := application.Slug
 	port := gateway.Port
-	// Ensure path starts with /
+	// Ensure path starts with /.
 	if !strings.HasPrefix(proxyPath, "/") {
 		proxyPath = "/" + proxyPath
 	}
 	rawQuery := c.Request.URL.RawQuery
-	// Remove the auth token from the forwarded query string
+	// Remove the auth token from the forwarded query string.
 	if rawQuery != "" {
 		qv, _ := url.ParseQuery(rawQuery)
 		qv.Del("token")
