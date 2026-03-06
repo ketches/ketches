@@ -334,10 +334,18 @@ func SetupV1Routes(r *gin.Engine) {
 			// Gateway HTTP proxy — any authenticated user (read-only access)
 			authorized.GET("/gateways/:gatewayID/proxy/*path", handlers.ProxyGatewayHTTP)
 			authorized.HEAD("/gateways/:gatewayID/proxy/*path", handlers.ProxyGatewayHTTP)
-
-			// Gateway forward proxy — clean URL variant, same handler
-			authorized.GET("/forward/:gatewayID/*path", handlers.ProxyGatewayHTTP)
-			authorized.HEAD("/forward/:gatewayID/*path", handlers.ProxyGatewayHTTP)
 		}
+	}
+}
+
+// SetupForwardRoutes registers /forward/:gatewayID/*path at the root level (outside
+// /api/v1) so that nginx can proxy /forward/* directly to the backend without a
+// path prefix, keeping the browser address bar at /forward/:gatewayID.
+func SetupForwardRoutes(r *gin.Engine) {
+	forward := r.Group("/forward")
+	forward.Use(middlewares.Auth())
+	{
+		forward.GET("/:gatewayID/*path", handlers.ProxyGatewayHTTP)
+		forward.HEAD("/:gatewayID/*path", handlers.ProxyGatewayHTTP)
 	}
 }

@@ -24,15 +24,21 @@ func Auth() gin.HandlerFunc {
 			}
 		}
 
-		if tokenString == "" {
-			tokenString = c.Query("token")
-		}
+	if tokenString == "" {
+		tokenString = c.Query("token")
+	}
 
-		if tokenString == "" {
-			api.Error(c, http.StatusUnauthorized, jwt.ErrTokenSignatureInvalid)
-			c.Abort()
-			return
-		}
+	if tokenString == "" {
+		// X-Ketches-Token cookie is used by the gateway quick-access feature so
+		// the JWT never appears in the browser address bar.
+		tokenString, _ = c.Cookie("X-Ketches-Token")
+	}
+
+	if tokenString == "" {
+		api.Error(c, http.StatusUnauthorized, jwt.ErrTokenSignatureInvalid)
+		c.Abort()
+		return
+	}
 
 		claims := &app.Claims{}
 

@@ -181,6 +181,7 @@ func validateGatewayRequest(gateway any) error {
 // ProxyGatewayHTTP reverse-proxies HTTP requests to the application via the
 // Kubernetes API Server service proxy sub-resource.
 // Route: GET|HEAD /api/v1/gateways/:gatewayID/proxy/*path
+// Route: GET|HEAD /forward/:gatewayID/*path
 func ProxyGatewayHTTP(c *gin.Context) {
 	gatewayID := c.Param("gatewayID")
 	proxyPath := c.Param("path") // e.g. "/", "/healthz"
@@ -255,17 +256,26 @@ func ProxyGatewayHTTP(c *gin.Context) {
 		return
 	}
 
-	// Forward safe request headers (skip hop-by-hop)
+	// Forward safe request headers (skip hop-by-hop and Ketches-internal headers)
 	hopByHop := map[string]bool{
 		"connection": true, "keep-alive": true, "proxy-authenticate": true,
 		"proxy-authorization": true, "te": true, "trailers": true,
 		"transfer-encoding": true, "upgrade": true, "authorization": true,
 	}
 	for key, vals := range c.Request.Header {
-		if !hopByHop[strings.ToLower(key)] {
-			for _, v := range vals {
-				req.Header.Add(key, v)
+		if hopByHop[strings.ToLower(key)] {
+			continue
+		}
+		// Strip the Ketches auth cookie so it is never forwarded to the upstream app.
+		if strings.ToLower(key) == "cookie" {
+			filtered := filterCookie(vals, "X-Ketches-Token")
+			if len(filtered) > 0 {
+				req.Header[key] = filtered
 			}
+			continue
+		}
+		for _, v := range vals {
+			req.Header.Add(key, v)
 		}
 	}
 
@@ -287,4 +297,26 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	}
 	c.Status(resp.StatusCode)
 	io.Copy(c.Writer, resp.Body)
+}
+
+// filterCookie removes a named cookie from a slice of raw Cookie header values.
+// Each element in vals is a full Cookie header line (may contain multiple name=value pairs).
+func filterCookie(vals []string, name string) []string {
+	var out []string
+	for _, line := range vals {
+		var kept []string
+		for _, part := range strings.Split(line, ";") {
+			part = strings.TrimSpace(part)
+			if kv := strings.SplitN(part, "=", 2); len(kv) > 0 && strings.TrimSpace(kv[0]) == name {
+				continue // drop this cookie
+			}
+			if part != "" {
+				kept = append(kept, part)
+			}
+		}
+		if len(kept) > 0 {
+			out = append(out, strings.Join(kept, "; "))
+		}
+	}
+	return out
 }

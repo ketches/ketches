@@ -215,8 +215,11 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
               size="icon-sm"
               title="Quick Access"
               onClick={() => {
+                // Set a short-lived cookie so the backend can authenticate the
+                // proxy request without exposing the JWT in the browser address bar.
+                document.cookie = `X-Ketches-Token=${accessToken}; path=/forward; SameSite=Strict`
                 window.open(
-                  `/forward/${row.original.id}/?token=${accessToken}`,
+                  `/forward/${row.original.id}/`,
                   '_blank'
                 )
               }}

@@ -45,6 +45,7 @@ func main() {
 	r.Use(middlewares.CORS())
 
 	routes.SetupV1Routes(r)
+	routes.SetupForwardRoutes(r)
 	openapi.RegisterRoutes(r, openapi.Config{
 		Title:       "Ketches API",
 		Description: "Auto-generated from Gin route table.",
