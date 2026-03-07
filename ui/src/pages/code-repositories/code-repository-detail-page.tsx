@@ -62,6 +62,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
+import { useProjectStore } from "@/stores/project"
 import type { AxiosError } from "axios"
 
 export function CodeRepositoryDetailPage() {
@@ -81,6 +82,8 @@ export function CodeRepositoryDetailPage() {
   const [deleteConfigDialogOpen, setDeleteConfigDialogOpen] = React.useState(false)
   const [deletingConfig, setDeletingConfig] = React.useState<CodeRepositoryBuildConfig | null>(null)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+  const { activeProjectId, setActiveProjectId } = useProjectStore()
+  const hasSyncedProjectFromRepoRef = React.useRef(false)
 
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
@@ -97,6 +100,19 @@ export function CodeRepositoryDetailPage() {
     queryFn: () => codeRepositoriesApi.get(repoId!),
     enabled: !!repoId,
   })
+
+  React.useEffect(() => {
+    hasSyncedProjectFromRepoRef.current = false
+  }, [repoId])
+
+  React.useEffect(() => {
+    if (!hasSyncedProjectFromRepoRef.current && repo?.project_id && activeProjectId !== repo.project_id) {
+      setActiveProjectId(repo.project_id)
+    }
+    if (repo?.project_id) {
+      hasSyncedProjectFromRepoRef.current = true
+    }
+  }, [repo?.project_id, activeProjectId, setActiveProjectId])
 
   const { data: repos = [] } = useQuery({
     queryKey: ["code-repositories-simple", repo?.project_id],

@@ -114,9 +114,22 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
       accessorKey: "image",
       header: "Image",
       cell: ({ row }) => (
-        <span className="max-w-50 truncate block text-muted-foreground font-mono">
-          {row.original.image}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="max-w-50 truncate block text-muted-foreground font-mono">
+            {row.original.image}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigator.clipboard.writeText(row.original.image)
+              toast.success("Image address copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
+        </div>
       ),
     },
     {

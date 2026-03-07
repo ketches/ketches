@@ -6,10 +6,12 @@ import {
   Blocks,
   Box,
   ChartLine,
+  FolderGit,
   GalleryVerticalEnd,
   LayoutDashboard,
   Loader2,
   Orbit,
+  Puzzle,
   ShipWheel,
   Users,
   Zap
@@ -296,7 +298,7 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-5">
         <StatCard
           title="Applications"
           value={stats?.application_count || 0}
@@ -311,6 +313,22 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
           description="Active environments"
           onClick={() => navigate("/environments")}
           color="green"
+        />
+        <StatCard
+          title="Code Repositories"
+          value={stats?.code_repository_count || 0}
+          icon={FolderGit}
+          description="Code repositories"
+          onClick={() => navigate("/code-repositories")}
+          color="indigo"
+        />
+        <StatCard
+          title="Plugins"
+          value={stats?.plugin_count || 0}
+          icon={Puzzle}
+          description="Plugins"
+          onClick={() => navigate("/plugins")}
+          color="amber"
         />
         <StatCard
           title="Members"

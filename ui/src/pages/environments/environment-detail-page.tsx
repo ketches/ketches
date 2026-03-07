@@ -56,7 +56,8 @@ export function EnvironmentDetailPage() {
   const activeTab = searchParams.get("tab") || "overview"
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const { activeProjectId } = useProjectStore()
+  const { activeProjectId, setActiveProjectId } = useProjectStore()
+  const hasSyncedProjectFromEnvRef = React.useRef(false)
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
@@ -81,6 +82,19 @@ export function EnvironmentDetailPage() {
     enabled: !!envId,
     retry: false,
   })
+
+  React.useEffect(() => {
+    hasSyncedProjectFromEnvRef.current = false
+  }, [envId])
+
+  React.useEffect(() => {
+    if (!hasSyncedProjectFromEnvRef.current && env?.project_id && activeProjectId !== env.project_id) {
+      setActiveProjectId(env.project_id)
+    }
+    if (env?.project_id) {
+      hasSyncedProjectFromEnvRef.current = true
+    }
+  }, [env?.project_id, activeProjectId, setActiveProjectId])
 
   const { data: appsResponse } = useQuery({
     queryKey: ["apps", envId],

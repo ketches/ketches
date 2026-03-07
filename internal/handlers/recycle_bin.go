@@ -32,7 +32,7 @@ func ListRecycleBinApps(c *gin.Context) {
 	}
 
 	// Convert RecycleBinAppRow to RecycleBinAppResponse
-	var apps []models.RecycleBinAppResponse
+	apps := []models.RecycleBinAppResponse{}
 	for _, row := range rows {
 		apps = append(apps, models.RecycleBinAppResponse{
 			ID:             row.ID,
@@ -152,7 +152,7 @@ func CheckEnvDeletionConflicts(c *gin.Context) {
 		return
 	}
 
-	var result []models.RecycleBinAppResponse
+	result := []models.RecycleBinAppResponse{}
 	for _, app := range apps {
 		result = append(result, models.RecycleBinAppResponse{
 			ID:             app.ID,

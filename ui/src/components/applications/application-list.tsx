@@ -328,9 +328,22 @@ export function ApplicationList({
       accessorKey: "container_image",
       header: "Image",
       cell: ({ row }) => (
-        <span className="max-w-50 truncate block text-muted-foreground font-mono">
-          {row.original.container_image}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="max-w-50 truncate block text-muted-foreground font-mono">
+            {row.original.container_image}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigator.clipboard.writeText(row.original.container_image)
+              toast.success("Image address copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
+        </div>
       ),
     },
     {

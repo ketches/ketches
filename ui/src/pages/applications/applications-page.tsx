@@ -29,7 +29,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
   const [createGroupDialogOpen, setCreateGroupDialogOpen] = React.useState(false)
   const [importDialogOpen, setImportDialogOpen] = React.useState(false)
 
-  const { activeProjectId: activeProjectIdFromStore, activeEnvId, setActiveEnvId } = useProjectStore()
+  const { hasHydrated, activeProjectId: activeProjectIdFromStore, activeEnvId, setActiveEnvId } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
@@ -41,7 +41,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
   // Local env selection state used only in embedded mode (projectIdProp set)
   const [embeddedEnvId, setEmbeddedEnvId] = React.useState<string | null>(null)
 
-  const { data: envsResponse, isLoading, refetch: refetchEnvs } = useQuery({
+  const { data: envsResponse, isLoading, isFetched, refetch: refetchEnvs } = useQuery({
     queryKey: ['envs', activeProjectId],
     queryFn: () => envsApi.list(activeProjectId!),
     enabled: !!activeProjectId,
@@ -64,6 +64,8 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
       }
       setActiveTab('all') // Default to "All" tab in embedded mode
     } else {
+      if (!hasHydrated) return
+      if (!isFetched) return
       // In standalone mode, sync global store
       if (safeEnvs.length > 0) {
         const currentEnvExists = safeEnvs.some(e => e.id === activeEnvId)
@@ -72,7 +74,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
         if (activeEnvId !== null) setActiveEnvId(null)
       }
     }
-  }, [safeEnvs, activeEnvId, setActiveEnvId, projectIdProp, embeddedEnvId])
+  }, [safeEnvs, activeEnvId, setActiveEnvId, projectIdProp, embeddedEnvId, hasHydrated, isFetched])
 
   const handleTabChange = (value: string) => {
     setActiveTab(value)

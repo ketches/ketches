@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
   Clock,
+  Copy,
   LayoutGrid,
   List as ListIcon,
   Orbit,
@@ -149,9 +150,22 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
       accessorKey: "cluster_namespace",
       header: "Namespace",
       cell: ({ row }) => (
-        <span className="font-mono text-xs text-muted-foreground px-1.5 py-0.5 rounded">
-          {row.original.cluster_namespace}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="max-w-50 truncate block text-muted-foreground font-mono">
+            {row.original.cluster_namespace}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigator.clipboard.writeText(row.original.cluster_namespace)
+              toast.success("Image address copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
+        </div>
       ),
     },
     {

@@ -73,7 +73,7 @@ func ListDeletedEnvs(projectID string, userID string, page, pageSize int, search
 	}
 
 	// Convert RecycleBinEnvRow to RecycleBinEnvResponse
-	var result []models.RecycleBinEnvResponse
+	result := []models.RecycleBinEnvResponse{}
 	for _, row := range rows {
 		result = append(result, models.RecycleBinEnvResponse{
 			ID:               row.ID,
@@ -154,7 +154,7 @@ func ListDeletedProjects(userID string, page, pageSize int, search string) (int6
 		return 0, nil, err
 	}
 
-	var result []models.RecycleBinProjectResponse
+	result := []models.RecycleBinProjectResponse{}
 	for _, p := range projects {
 		result = append(result, models.RecycleBinProjectResponse{
 			ID:          p.ID,

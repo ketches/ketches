@@ -42,6 +42,14 @@ func GetUserDashboardStats(projectID string) (*models.DashboardStatsResponse, er
 		return nil, err
 	}
 
+	if err := db.DB.Model(&entities.CodeRepository{}).Where("project_id = ?", projectID).Count(&stats.CodeRepositoryCount).Error; err != nil {
+		return nil, err
+	}
+
+	if err := db.DB.Model(&entities.Plugin{}).Where("project_id = ?", projectID).Count(&stats.PluginCount).Error; err != nil {
+		return nil, err
+	}
+
 	if err := db.DB.Model(&entities.ProjectMember{}).Where("project_id = ?", projectID).Count(&stats.MemberCount).Error; err != nil {
 		return nil, err
 	}

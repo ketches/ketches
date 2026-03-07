@@ -1,12 +1,14 @@
 package models
 
 type DashboardStatsResponse struct {
-	ClusterCount     int64 `json:"cluster_count,omitempty"`
-	ProjectCount     int64 `json:"project_count,omitempty"`
-	EnvironmentCount int64 `json:"environment_count,omitempty"`
-	ApplicationCount int64 `json:"application_count,omitempty"`
-	UserCount        int64 `json:"user_count,omitempty"`
-	MemberCount      int64 `json:"member_count,omitempty"`
+	ClusterCount        int64 `json:"cluster_count,omitempty"`
+	ProjectCount        int64 `json:"project_count,omitempty"`
+	EnvironmentCount    int64 `json:"environment_count,omitempty"`
+	ApplicationCount    int64 `json:"application_count,omitempty"`
+	CodeRepositoryCount int64 `json:"code_repository_count,omitempty"`
+	PluginCount         int64 `json:"plugin_count,omitempty"`
+	UserCount           int64 `json:"user_count,omitempty"`
+	MemberCount         int64 `json:"member_count,omitempty"`
 }
 
 type EnvironmentResourceUsage struct {

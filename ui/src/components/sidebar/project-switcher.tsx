@@ -94,7 +94,7 @@ export function ProjectSwitcher() {
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [selectedProject, setSelectedProject] = React.useState<SimpleResponse | null>(null)
-  const { activeProjectId, setActiveProjectId } = useProjectStore()
+  const { hasHydrated, activeProjectId, setActiveProjectId } = useProjectStore()
   const navigate = useNavigate()
 
   const { data: projects = [] } = useQuery({
@@ -106,13 +106,14 @@ export function ProjectSwitcher() {
   const activeProject = safeProjects.find(p => p.id === activeProjectId) || safeProjects[0]
 
   React.useEffect(() => {
+    if (!hasHydrated) return
     if (safeProjects.length > 0) {
       const currentProjectExists = safeProjects.some(p => p.id === activeProjectId)
       if (!currentProjectExists) {
         setActiveProjectId(safeProjects[0].id)
       }
     }
-  }, [safeProjects, activeProjectId, setActiveProjectId])
+  }, [safeProjects, activeProjectId, setActiveProjectId, hasHydrated])
 
   const deleteMutation = useMutation({
     mutationFn: (projectId: string) => projectsApi.delete(projectId),

@@ -5,6 +5,8 @@ export interface DashboardStats {
   project_count?: number
   environment_count?: number
   application_count?: number
+  code_repository_count?: number
+  plugin_count?: number
   user_count?: number
   member_count?: number
 }

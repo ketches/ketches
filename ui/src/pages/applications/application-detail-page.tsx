@@ -513,7 +513,7 @@ export function ApplicationDetailPage() {
 
   const currentTab = searchParams.get("tab") || "overview"
   const { openPanel } = useBottomPanel()
-  const { activeProjectId, setActiveEnvId } = useProjectStore()
+  const { activeProjectId, activeEnvId, setActiveContext, setActiveEnvId } = useProjectStore()
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
@@ -544,7 +544,7 @@ export function ApplicationDetailPage() {
     enabled: !!app?.env_id,
   })
 
-  const projectIdToUse = activeProjectId || currentEnv?.project_id
+  const projectIdToUse = currentEnv?.project_id || activeProjectId
 
   const { data: envs = [] } = useQuery({
     queryKey: ['envs-simple', projectIdToUse],
@@ -595,6 +595,20 @@ export function ApplicationDetailPage() {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = React.useState(false)
   const [selectedInstanceNames, setSelectedInstanceNames] = React.useState<string[]>([])
   const [metricsInstance, setMetricsInstance] = React.useState<string | null>(null)
+  const hasSyncedContextFromAppRef = React.useRef(false)
+
+  React.useEffect(() => {
+    hasSyncedContextFromAppRef.current = false
+  }, [appId])
+
+  React.useEffect(() => {
+    if (!hasSyncedContextFromAppRef.current && currentEnv && app?.env_id) {
+      if (activeProjectId !== currentEnv.project_id || activeEnvId !== app.env_id) {
+        setActiveContext(currentEnv.project_id, app.env_id)
+      }
+      hasSyncedContextFromAppRef.current = true
+    }
+  }, [currentEnv, app?.env_id, activeProjectId, activeEnvId, setActiveContext])
 
   React.useEffect(() => {
     localStorage.setItem(INSTANCES_VIEW_MODE_KEY, viewMode)
