@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 )
@@ -16,9 +17,9 @@ import (
 // projectRoleRank defines the hierarchy of project-level roles.
 // Higher rank means more permissions.
 var projectRoleRank = map[string]int{
-	"owner":     3,
-	"developer": 2,
-	"viewer":    1,
+	app.ProjectRoleOwner:     3,
+	app.ProjectRoleDeveloper: 2,
+	app.ProjectRoleViewer:    1,
 }
 
 // resolveProjectID attempts to extract the project ID from URL parameters.
@@ -181,7 +182,7 @@ func RequireProjectRole(minRole string) gin.HandlerFunc {
 		}
 
 		// Admin system role bypasses project role check
-		if claims.Role == "admin" {
+		if claims.Role == app.UserRoleAdmin {
 			c.Next()
 			return
 		}
@@ -223,5 +224,5 @@ func RequireProjectRole(minRole string) gin.HandlerFunc {
 // BlockViewer is a convenience middleware that blocks users with the "viewer"
 // project role. It requires at least "developer" level access.
 func BlockViewer() gin.HandlerFunc {
-	return RequireProjectRole("developer")
+	return RequireProjectRole(app.ProjectRoleDeveloper)
 }

@@ -445,7 +445,7 @@ export function ExtensionsPage() {
                 deleteTarget && deleteMutation.mutate(deleteTarget.id)
               }
               disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {deleteMutation.isPending ? "Removing..." : "Remove"}
             </AlertDialogAction>

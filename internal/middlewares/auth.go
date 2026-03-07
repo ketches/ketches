@@ -92,7 +92,7 @@ func AdminOnly() gin.HandlerFunc {
 			return
 		}
 
-		if claims.(*app.Claims).Role != "admin" {
+		if claims.(*app.Claims).Role != app.UserRoleAdmin {
 			api.Error(c, http.StatusForbidden, jwt.ErrTokenSignatureInvalid)
 			c.Abort()
 			return

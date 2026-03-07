@@ -107,13 +107,15 @@ export function AppActionButtons({ appId, actions, onDeleteSuccess }: AppActionB
         {primaryActions.map((action) => {
           const Icon = iconMap[action.icon] || RefreshCw
           const isLoading = executeMutation.isPending && executeMutation.variables === action.action
+          const isDestructive = action.variant === "destructive"
 
           return (
             <Button
               key={action.action}
-              variant={action.variant as any}
+              variant={isDestructive ? "outline" : action.variant as any}
               onClick={() => handleAction(action.action)}
               disabled={executeMutation.isPending}
+              className={isDestructive ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}
             >
               {isLoading ? (
                 <Loader2 className="animate-spin" />
@@ -143,7 +145,7 @@ export function AppActionButtons({ appId, actions, onDeleteSuccess }: AppActionB
                     key={action.action}
                     onClick={() => handleAction(action.action)}
                     disabled={executeMutation.isPending}
-                    className={isDestructive ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}
+                    variant={isDestructive ? "destructive" : "default"}
                   >
                     {isLoading ? (
                       <Loader2 className="animate-spin" />
@@ -171,7 +173,7 @@ export function AppActionButtons({ appId, actions, onDeleteSuccess }: AppActionB
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {executeMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>

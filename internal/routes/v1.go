@@ -71,10 +71,10 @@ func setupV1Routes(r *gin.Engine) {
 				projects.GET("/:projectID/plugins/:pluginID/installed-apps", handlers.GetPluginInstalledApps)
 
 				// Write (require at least developer role)
-				projectsWrite := projects.Group("", middlewares.RequireProjectRole("developer"))
+				projectsWrite := projects.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 				projectsWrite.PUT("/:projectID", handlers.UpdateProject)
 				projectsWrite.DELETE("/:projectID", handlers.DeleteProject)
-				projectsWrite.POST("/:projectID/members", handlers.AddProjectMember)
+				projectsWrite.POST("/:projectID/members", handlers.InviteProjectMembers)
 				projectsWrite.DELETE("/:projectID/members", handlers.RemoveProjectMember)
 				projectsWrite.POST("/:projectID/envs", handlers.CreateEnv)
 				projectsWrite.POST("/:projectID/container-registries", handlers.CreateProjectContainerRegistry)
@@ -100,7 +100,7 @@ func setupV1Routes(r *gin.Engine) {
 				codeRepos.GET("/:repoID/deployments", handlers.ListCodeRepositoryDeployments)
 
 				// Write (require at least developer role)
-				codeReposWrite := codeRepos.Group("", middlewares.RequireProjectRole("developer"))
+				codeReposWrite := codeRepos.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 				codeReposWrite.PUT("/:repoID", handlers.UpdateCodeRepository)
 				codeReposWrite.DELETE("/:repoID", handlers.DeleteCodeRepository)
 				codeReposWrite.POST("/:repoID/test-git", handlers.TestCodeRepositoryGit)
@@ -126,7 +126,7 @@ func setupV1Routes(r *gin.Engine) {
 				envs.GET("/:envID/apps/image-metadata", handlers.GetImageMetadata)
 				envs.GET("/:envID/certificates/:certID", handlers.GetCertificate)
 				// Write (require at least developer role)
-				envsWrite := envs.Group("", middlewares.RequireProjectRole("developer"))
+				envsWrite := envs.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 				envsWrite.PUT("/:envID", handlers.UpdateEnv)
 				envsWrite.PATCH("/:envID/basic", handlers.UpdateEnvBasic)
 				envsWrite.DELETE("/:envID", handlers.DeleteEnv)
@@ -183,7 +183,7 @@ func setupV1Routes(r *gin.Engine) {
 				appsExec.POST("/:appID/instances/:instanceName/files/compress-download", handlers.CompressAndDownloadFiles)
 
 				// Write (require at least developer role)
-				appsWrite := apps.Group("", middlewares.RequireProjectRole("developer"))
+				appsWrite := apps.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 				appsWrite.PATCH("/:appID/basic", handlers.UpdateAppBasic)
 				appsWrite.PATCH("/:appID/image", handlers.UpdateAppImage)
 				appsWrite.PATCH("/:appID/replicas", handlers.UpdateAppReplicas)
@@ -219,7 +219,7 @@ func setupV1Routes(r *gin.Engine) {
 
 			// Flat resource write routes — RequireProjectRole resolves project via resource→app→env chain.
 			// ── App Groups (flat write routes) ───────────────────────────────
-			appGroupsWrite := authorized.Group("/app-groups", middlewares.RequireProjectRole("developer"))
+			appGroupsWrite := authorized.Group("/app-groups", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 			{
 				appGroupsWrite.GET("/:groupID", handlers.GetAppGroup)
 				appGroupsWrite.GET("/:groupID/apps", handlers.ListSpecificGroupedApps)
@@ -229,7 +229,7 @@ func setupV1Routes(r *gin.Engine) {
 				appGroupsWrite.DELETE("/:groupID/apps/:appID", handlers.RemoveAppFromGroup)
 			}
 
-			flatResourcesWrite := authorized.Group("", middlewares.RequireProjectRole("developer"))
+			flatResourcesWrite := authorized.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 			{
 				flatResourcesWrite.PUT("/env-vars/:id", handlers.UpdateAppEnvVar)
 				flatResourcesWrite.DELETE("/env-vars/:id", handlers.DeleteAppEnvVar)
@@ -312,7 +312,7 @@ func setupV1Routes(r *gin.Engine) {
 			containerRegistries := authorized.Group("/container-registries")
 			{
 				containerRegistries.GET("/:registryID", handlers.GetContainerRegistry)
-				containerRegistriesWrite := containerRegistries.Group("", middlewares.RequireProjectRole("developer"))
+				containerRegistriesWrite := containerRegistries.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 				{
 					containerRegistriesWrite.PUT("/:registryID", handlers.UpdateContainerRegistry)
 					containerRegistriesWrite.DELETE("/:registryID", handlers.DeleteContainerRegistry)

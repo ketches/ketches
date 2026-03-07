@@ -105,7 +105,7 @@ export function ProjectDetailPage() {
               <Pencil />
               Edit
             </Button>
-            <Button variant="outline" onClick={() => setDeleteOpen(true)}>
+            <Button variant="outline" onClick={() => setDeleteOpen(true)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
               <Trash2 />
               Delete
             </Button>
@@ -198,7 +198,7 @@ export function ProjectDetailPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteMutation.mutate()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>

@@ -20,12 +20,12 @@ func TestRequireProjectRole_AdminBypasses(t *testing.T) {
 	router.Use(func(c *gin.Context) {
 		c.Set("claims", &app.Claims{
 			UserID: "admin-user-id",
-			Role:   "admin",
+			Role:   app.UserRoleAdmin,
 		})
 		c.Next()
 	})
 
-	router.Use(RequireProjectRole("owner"))
+	router.Use(RequireProjectRole(app.ProjectRoleOwner))
 	router.GET("/test/:projectID", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
@@ -47,7 +47,7 @@ func TestBlockViewer_AdminBypasses(t *testing.T) {
 	router.Use(func(c *gin.Context) {
 		c.Set("claims", &app.Claims{
 			UserID: "admin-user-id",
-			Role:   "admin",
+			Role:   app.UserRoleAdmin,
 		})
 		c.Next()
 	})
@@ -69,7 +69,7 @@ func TestBlockViewer_AdminBypasses(t *testing.T) {
 // the context results in a 401 Unauthorized response.
 func TestRequireProjectRole_NoClaims(t *testing.T) {
 	router := gin.New()
-	router.Use(RequireProjectRole("viewer"))
+	router.Use(RequireProjectRole(app.ProjectRoleViewer))
 	router.GET("/test/:projectID", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
@@ -89,12 +89,12 @@ func TestRequireProjectRole_NoProjectID(t *testing.T) {
 	router.Use(func(c *gin.Context) {
 		c.Set("claims", &app.Claims{
 			UserID: "user-123",
-			Role:   "user",
+			Role:   app.UserRoleUser,
 		})
 		c.Next()
 	})
 
-	router.Use(RequireProjectRole("viewer"))
+	router.Use(RequireProjectRole(app.ProjectRoleViewer))
 	// Route has no :projectID, :envID, or :appID params
 	router.GET("/test", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
@@ -119,12 +119,12 @@ func TestRequireProjectRole_NonMemberGetsForbidden(t *testing.T) {
 	router.Use(func(c *gin.Context) {
 		c.Set("claims", &app.Claims{
 			UserID: "non-member-user",
-			Role:   "user",
+			Role:   app.UserRoleUser,
 		})
 		c.Next()
 	})
 
-	router.Use(RequireProjectRole("viewer"))
+	router.Use(RequireProjectRole(app.ProjectRoleViewer))
 	router.GET("/test/:projectID", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
@@ -138,8 +138,8 @@ func TestRequireProjectRole_NonMemberGetsForbidden(t *testing.T) {
 
 // TestProjectRoleRank verifies the role ranking map has correct values.
 func TestProjectRoleRank(t *testing.T) {
-	assert.Equal(t, 3, projectRoleRank["owner"])
-	assert.Equal(t, 2, projectRoleRank["developer"])
-	assert.Equal(t, 1, projectRoleRank["viewer"])
+	assert.Equal(t, 3, projectRoleRank[app.ProjectRoleOwner])
+	assert.Equal(t, 2, projectRoleRank[app.ProjectRoleDeveloper])
+	assert.Equal(t, 1, projectRoleRank[app.ProjectRoleViewer])
 	assert.Equal(t, 0, projectRoleRank["nonexistent"])
 }

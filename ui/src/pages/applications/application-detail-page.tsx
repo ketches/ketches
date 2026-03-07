@@ -1616,7 +1616,7 @@ export function ApplicationDetailPage() {
                 setDeleteInstanceDialogOpen(false)
                 setDeletingInstanceName(null)
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>
@@ -1645,7 +1645,7 @@ export function ApplicationDetailPage() {
                 setBulkDeleteDialogOpen(false)
                 setSelectedInstanceNames([])
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>

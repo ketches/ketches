@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -38,7 +39,7 @@ func createDefaultProject(tx *gorm.DB, user *entities.User) error {
 		ID:          uuid.New(),
 		ProjectID:   project.ID,
 		UserID:      user.ID,
-		ProjectRole: "owner",
+		ProjectRole: app.ProjectRoleOwner,
 	}
 
 	return tx.Create(member).Error
@@ -56,7 +57,7 @@ func SignUp(req *models.SignUpRequest) (*entities.User, error) {
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Fullname: req.Fullname,
-		Role:     "user",
+		Role:     app.UserRoleUser,
 	}
 
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
@@ -141,7 +142,7 @@ func UpdateUser(userID string, fullname, email, phone string) (*entities.User, e
 // countAdmins returns the number of admin users in the system.
 func countAdmins() (int64, error) {
 	var count int64
-	if err := db.DB.Model(&entities.User{}).Where("role = ?", "admin").Count(&count).Error; err != nil {
+	if err := db.DB.Model(&entities.User{}).Where("role = ?", app.UserRoleAdmin).Count(&count).Error; err != nil {
 		return 0, err
 	}
 	return count, nil
@@ -154,7 +155,7 @@ func DeleteUser(userID string) error {
 	}
 
 	// Prevent deleting the last admin user.
-	if user.Role == "admin" {
+	if user.Role == app.UserRoleAdmin {
 		adminCount, err := countAdmins()
 		if err != nil {
 			return err
@@ -174,7 +175,7 @@ func ChangeUserRole(userID string, role string) error {
 	}
 
 	// Prevent demoting the last admin user to a non-admin role.
-	if user.Role == "admin" && role != "admin" {
+	if user.Role == app.UserRoleAdmin && role != app.UserRoleAdmin {
 		adminCount, err := countAdmins()
 		if err != nil {
 			return err
@@ -229,8 +230,8 @@ func BatchImportUsers(requests []models.CreateUserRequest) (*models.BatchImportR
 
 	for i, req := range requests {
 		// Validate role
-		if req.Role != "admin" && req.Role != "user" {
-			req.Role = "user"
+		if req.Role != app.UserRoleAdmin && req.Role != app.UserRoleUser {
+			req.Role = app.UserRoleUser
 		}
 
 		user, err := CreateUser(&req)

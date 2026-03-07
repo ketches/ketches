@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -19,7 +20,7 @@ func ListProjects(userID string, role string, req *models.PaginationRequest) (in
 
 	// Build count query depending on role
 	countQ := db.DB.Model(&entities.Project{})
-	if role != "admin" {
+	if role != app.UserRoleAdmin {
 		countQ = countQ.
 			Joins("JOIN project_members ON project_members.project_id = projects.id").
 			Where("project_members.user_id = ?", userID)
@@ -39,7 +40,7 @@ func ListProjects(userID string, role string, req *models.PaginationRequest) (in
 		Joins("LEFT JOIN project_members pm ON pm.project_id = projects.id AND pm.project_role = 'owner'").
 		Joins("LEFT JOIN users u ON u.id = pm.user_id").
 		Where("projects.deleted_at IS NULL")
-	if role != "admin" {
+	if role != app.UserRoleAdmin {
 		// Non-admin: must be a member of the project (use a subquery to avoid conflict with the owner join)
 		dataQ = dataQ.Where("projects.id IN (SELECT project_id FROM project_members WHERE user_id = ?)", userID)
 	}
@@ -57,7 +58,7 @@ func ListProjects(userID string, role string, req *models.PaginationRequest) (in
 func ListProjectsSimple(userID string, role string) ([]entities.Project, error) {
 	var projects []entities.Project
 	query := db.DB.Select("projects.id, projects.name, projects.slug, projects.description")
-	if role == "admin" {
+	if role == app.UserRoleAdmin {
 		if err := query.Order("name").Find(&projects).Error; err != nil {
 			return nil, err
 		}
@@ -95,7 +96,7 @@ func CreateProject(req *models.CreateProjectRequest, userID string) (*entities.P
 			ID:          uuid.New(),
 			ProjectID:   project.ID,
 			UserID:      userID,
-			ProjectRole: "owner",
+			ProjectRole: app.ProjectRoleOwner,
 		}
 
 		return tx.Create(member).Error
@@ -165,20 +166,29 @@ func RestoreProject(projectID string) error {
 	return db.DB.Unscoped().Model(&entities.Project{}).Where("id = ?", projectID).Update("deleted_at", nil).Error
 }
 
-func ListProjectMembers(projectID string, page, pageSize int, search string) (int64, []entities.ProjectMember, error) {
-	var members []entities.ProjectMember
+type ProjectMemberWithUser struct {
+	entities.ProjectMember
+	Username string `gorm:"column:username"`
+	Fullname string `gorm:"column:fullname"`
+	Email    string `gorm:"column:email"`
+}
+
+func listProjectMembersWithUsers(projectID string, page, pageSize int, search string) (int64, []ProjectMemberWithUser, error) {
+	var members []ProjectMemberWithUser
 	var total int64
-	query := db.DB.Model(&entities.ProjectMember{}).Where("project_id = ?", projectID)
+	query := db.DB.Table("project_members").
+		Joins("JOIN users ON users.id = project_members.user_id").
+		Where("project_members.project_id = ?", projectID)
 
 	if search != "" {
-		query = query.Joins("User").Where("\"User\".username LIKE ? OR \"User\".email LIKE ? OR \"User\".fullname LIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+		query = query.Where("users.username LIKE ? OR users.email LIKE ? OR users.fullname LIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
 
-	if err := query.Joins("User").
+	if err := query.Select("project_members.*, users.username AS username, users.fullname AS fullname, users.email AS email").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&members).Error; err != nil {
@@ -187,15 +197,19 @@ func ListProjectMembers(projectID string, page, pageSize int, search string) (in
 	return total, members, nil
 }
 
+func ListProjectMembers(projectID string, page, pageSize int, search string) (int64, []ProjectMemberWithUser, error) {
+	return listProjectMembersWithUsers(projectID, page, pageSize, search)
+}
+
 func UpdateProjectMemberRole(projectID, userID, role string) error {
 	var member entities.ProjectMember
 	if err := db.DB.Where("project_id = ? AND user_id = ?", projectID, userID).First(&member).Error; err != nil {
 		return err
 	}
 
-	if member.ProjectRole == "owner" && role != "owner" {
+	if member.ProjectRole == app.ProjectRoleOwner && role != app.ProjectRoleOwner {
 		var ownerCount int64
-		db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND project_role = ?", projectID, "owner").Count(&ownerCount)
+		db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND project_role = ?", projectID, app.ProjectRoleOwner).Count(&ownerCount)
 		if ownerCount <= 1 {
 			return errors.New("at least one owner is required")
 		}
@@ -204,20 +218,28 @@ func UpdateProjectMemberRole(projectID, userID, role string) error {
 	return db.DB.Model(&member).Update("project_role", role).Error
 }
 
-func AddProjectMember(projectID, userID, role string) error {
-	var count int64
-	db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND user_id = ?", projectID, userID).Count(&count)
-	if count > 0 {
-		return UpdateProjectMemberRole(projectID, userID, role)
-	}
+func InviteProjectMembers(projectID string, userIDs []string, role string) error {
+	for _, userID := range userIDs {
+		var count int64
+		db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND user_id = ?", projectID, userID).Count(&count)
+		if count > 0 {
+			if err := UpdateProjectMemberRole(projectID, userID, role); err != nil {
+				return err
+			}
+			continue
+		}
 
-	member := &entities.ProjectMember{
-		ID:          uuid.New(),
-		ProjectID:   projectID,
-		UserID:      userID,
-		ProjectRole: role,
+		member := &entities.ProjectMember{
+			ID:          uuid.New(),
+			ProjectID:   projectID,
+			UserID:      userID,
+			ProjectRole: role,
+		}
+		if err := db.DB.Create(member).Error; err != nil {
+			return err
+		}
 	}
-	return db.DB.Create(member).Error
+	return nil
 }
 
 func RemoveProjectMember(projectID, userID string) error {
@@ -226,9 +248,9 @@ func RemoveProjectMember(projectID, userID string) error {
 		return err
 	}
 
-	if member.ProjectRole == "owner" {
+	if member.ProjectRole == app.ProjectRoleOwner {
 		var ownerCount int64
-		db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND project_role = ?", projectID, "owner").Count(&ownerCount)
+		db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND project_role = ?", projectID, app.ProjectRoleOwner).Count(&ownerCount)
 		if ownerCount <= 1 {
 			return errors.New("at least one owner is required")
 		}

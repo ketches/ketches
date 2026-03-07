@@ -331,7 +331,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletingCert && deleteMutation.mutate(deletingCert.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>

@@ -42,7 +42,7 @@ func CreateAppGateway(c *gin.Context) {
 		return
 	}
 
-	gateway, err := services.CreateAppGateway(appID, &req)
+	gateway, err := services.CreateAppGateway(c.Request.Context(), appID, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			api.Error(c, http.StatusBadRequest, err)
@@ -69,7 +69,7 @@ func UpdateAppGateway(c *gin.Context) {
 		return
 	}
 
-	gateway, err := services.UpdateAppGateway(id, &req)
+	gateway, err := services.UpdateAppGateway(c.Request.Context(), id, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			api.Error(c, http.StatusNotFound, err)
@@ -84,7 +84,7 @@ func UpdateAppGateway(c *gin.Context) {
 // DeleteAppGateway deletes a gateway
 func DeleteAppGateway(c *gin.Context) {
 	id := c.Param("id")
-	if err := services.DeleteAppGateway(id); err != nil {
+	if err := services.DeleteAppGateway(c.Request.Context(), id); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			api.Error(c, http.StatusNotFound, err)
 			return
@@ -185,7 +185,7 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	proxyPath := c.Param("path") // e.g. "/", "/healthz"
 
 	// 1. Load gateway + app + cluster
-	gateway, application, err := services.GetGatewayWithApp(gatewayID)
+	gateway, application, err := services.GetGatewayWithApp(c.Request.Context(), gatewayID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			api.Error(c, http.StatusNotFound, err)
@@ -204,15 +204,15 @@ func ProxyGatewayHTTP(c *gin.Context) {
 
 	// 3. Get the cached HTTP client for this cluster from the global store.
 	// The client reuses TCP/TLS connections to the K8s apiserver across requests.
-	httpClient, err := kube.GlobalClusterStore.GetHTTPProxyClient(application.Cluster.ID)
+	httpClient, err := kube.GlobalClusterStore.GetHTTPProxyClient(application.EnvContext.Cluster.ID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
 	// 4. Construct target URL using the stored ApiServer address.
-	k8sHost := strings.TrimSuffix(application.Cluster.ApiServer, "/")
-	ns := application.Env.ClusterNamespace
+	k8sHost := strings.TrimSuffix(application.EnvContext.Cluster.ApiServer, "/")
+	ns := application.EnvContext.Env.ClusterNamespace
 	svcName := application.App.Slug
 	port := gateway.Port
 	// Ensure path starts with /.

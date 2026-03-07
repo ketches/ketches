@@ -377,7 +377,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
             <AlertDialogAction
               onClick={() => deletingEnv && deleteMutation.mutate(deletingEnv.id)}
               disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>

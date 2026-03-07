@@ -14,5 +14,5 @@ type Extension struct {
 	OCIUrl      string    `gorm:"type:varchar(512);not null"`
 	IconURL     string    `gorm:"type:varchar(512)"`
 	Builtin     bool      `gorm:"type:bool;default:false"`
-	CreatedBy   string    `gorm:"type:varchar(36)"`
+	CreatedBy   *string   `gorm:"type:varchar(36)"`
 }

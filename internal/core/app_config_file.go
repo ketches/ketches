@@ -12,11 +12,11 @@ import (
 
 // SyncConfigMapToK8s synchronizes config files to a Kubernetes ConfigMap
 func SyncConfigMapToK8s(ctx context.Context, appCtx *models.AppContext) error {
-	if appCtx.Env.ClusterID == "" {
+	if appCtx.EnvContext.Env.ClusterID == "" {
 		return fmt.Errorf("app environment has no cluster configured")
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return err
 	}
@@ -25,7 +25,7 @@ func SyncConfigMapToK8s(ctx context.Context, appCtx *models.AppContext) error {
 
 	// If no config files, delete the ConfigMap if it exists
 	if len(appCtx.ConfigFiles) == 0 {
-		err := client.CoreV1().ConfigMaps(appCtx.Env.ClusterNamespace).Delete(
+		err := client.CoreV1().ConfigMaps(appCtx.EnvContext.Env.ClusterNamespace).Delete(
 			ctx,
 			appCtx.App.Slug+"-config",
 			metav1.DeleteOptions{},

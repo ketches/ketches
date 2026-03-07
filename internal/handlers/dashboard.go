@@ -24,7 +24,7 @@ func GetDashboardStats(c *gin.Context) {
 	userRole := api.GetUserRole(c)
 	projectID := c.Query("project_id")
 
-	if userRole == "admin" {
+	if userRole == app.UserRoleAdmin {
 		stats, err := services.GetAdminDashboardStats()
 		if err != nil {
 			api.Error(c, http.StatusInternalServerError, err)
@@ -65,10 +65,11 @@ func GetDashboardEnvironments(c *gin.Context) {
 
 func getIntegrationEndpoint(integration *entities.ClusterIntegration) (string, error) {
 	if integration.ServiceName != "" {
-		if integration.Cluster == nil {
-			return "", fmt.Errorf("cluster information not loaded")
+		cluster, err := services.GetCluster(integration.ClusterID)
+		if err != nil {
+			return "", err
 		}
-		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(integration.Cluster.KubeConfig))
+		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
 		if err != nil {
 			return "", err
 		}
@@ -181,10 +182,11 @@ func executePrometheusRequest(urlStr string, integration *entities.ClusterIntegr
 	var err error
 
 	if integration.ServiceName != "" {
-		if integration.Cluster == nil {
-			return nil, fmt.Errorf("cluster information not loaded")
+		cluster, err := services.GetCluster(integration.ClusterID)
+		if err != nil {
+			return nil, err
 		}
-		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(integration.Cluster.KubeConfig))
+		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
 		if err != nil {
 			return nil, err
 		}

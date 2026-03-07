@@ -6,6 +6,7 @@ import (
 
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/models"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -68,7 +69,11 @@ func EnvGatewayName(envSlug string) string {
 // BuildEnvGateway constructs a Gateway resource for the given environment.
 // When TLS certificates are present an HTTPS listener is added; an HTTP
 // listener is always included.
-func BuildEnvGateway(env *entities.Env, certs []entities.Certificate) *gatewayv1.Gateway {
+// BuildEnvGateway creates the env-level Gateway object for a cluster. It adds
+// listeners for HTTP (80) and optionally HTTPS (443). The default "eg"
+// listener is always included.
+func BuildEnvGateway(envCtx *models.EnvContext, certs []entities.Certificate) *gatewayv1.Gateway {
+	env := envCtx.Env
 	gatewayClassName := gatewayv1.ObjectName(defaultGatewayClassName)
 
 	// HTTP listener is always present.
@@ -110,6 +115,13 @@ func BuildEnvGateway(env *entities.Env, certs []entities.Certificate) *gatewayv1
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      EnvGatewayName(env.Slug),
 			Namespace: env.ClusterNamespace,
+			Labels: map[string]string{
+				"ketches.cn/env-id":       env.ID,
+				"ketches.cn/env-slug":     env.Slug,
+				"ketches.cn/project-id":   envCtx.Project.ID,
+				"ketches.cn/project-slug": envCtx.Project.Slug,
+				"ketches.cn/managed":      "true",
+			},
 		},
 		Spec: gatewayv1.GatewaySpec{
 			GatewayClassName: gatewayClassName,
@@ -120,7 +132,8 @@ func BuildEnvGateway(env *entities.Env, certs []entities.Certificate) *gatewayv1
 
 // EnsureEnvGateway creates or updates the env-level Gateway resource in the
 // cluster. It is a no-op when the cluster does not have the Gateway API CRDs.
-func EnsureEnvGateway(ctx context.Context, env *entities.Env, certs []entities.Certificate) error {
+func EnsureEnvGateway(ctx context.Context, envCtx *models.EnvContext, certs []entities.Certificate) error {
+	env := envCtx.Env
 	hasGW, err := ClusterHasGatewayCRD(env.ClusterID)
 	if err != nil {
 		return fmt.Errorf("checking gateway CRD: %w", err)
@@ -135,7 +148,7 @@ func EnsureEnvGateway(ctx context.Context, env *entities.Env, certs []entities.C
 		return err
 	}
 
-	desired := BuildEnvGateway(env, certs)
+	desired := BuildEnvGateway(envCtx, certs)
 
 	existing, err := gwClient.GatewayV1().Gateways(env.ClusterNamespace).Get(ctx, desired.Name, metav1.GetOptions{})
 	if err != nil {

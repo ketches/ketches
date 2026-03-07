@@ -29,6 +29,6 @@ type ClusterExtension struct {
 	Values       string                 `gorm:"type:longtext"`
 	Status       ClusterExtensionStatus `gorm:"type:varchar(32);default:'pending'"`
 	ErrorMessage string                 `gorm:"type:text"`
-	InstalledBy  string                 `gorm:"type:varchar(36)"`
+	InstalledBy  *string                `gorm:"type:varchar(36)"`
 	Phase        string                 `gorm:"type:varchar(32)"` // Phase records the operation in progress when status is "failed": "installing", "upgrading", or "uninstalling"
 }

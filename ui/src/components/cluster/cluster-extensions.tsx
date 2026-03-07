@@ -425,7 +425,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
               onClick={() =>
                 deleteTarget && uninstallMutation.mutate(deleteTarget)
               }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {uninstallMutation.isPending ? "Uninstalling..." : "Uninstall"}
             </AlertDialogAction>

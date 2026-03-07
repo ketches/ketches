@@ -13,21 +13,21 @@ import (
 
 func CalculateAppStatus(ctx context.Context, appCtx *models.AppContext) (app.AppStatus, error) {
 	// If not deployed yet, return undeployed directly
-	if appCtx.App.DeployStatus == "undeployed" {
+	if appCtx.App.DeployStatus == app.AppStatusUndeployed {
 		return app.AppStatusUndeployed, nil
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return app.AppStatusUnknown, err
 	}
 
-	namespace := appCtx.Env.ClusterNamespace
+	namespace := appCtx.EnvContext.Env.ClusterNamespace
 	appName := appCtx.App.Slug
 
 	// Check if any pod has debugging label
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "app.ketches.cn/slug=" + appName,
+		LabelSelector: "ketches.cn/app-slug=" + appName,
 	})
 	if err != nil {
 		return app.AppStatusUnknown, err
@@ -35,14 +35,14 @@ func CalculateAppStatus(ctx context.Context, appCtx *models.AppContext) (app.App
 
 	isDebugging := false
 	for _, pod := range pods.Items {
-		if pod.Labels["app.ketches.cn/debugging"] == "true" {
+		if pod.Labels["ketches.cn/debugging"] == "true" {
 			isDebugging = true
 			break
 		}
 	}
 
 	switch appCtx.App.AppType {
-	case "Deployment":
+	case app.AppTypeDeployment:
 		deployment, err := client.AppsV1().Deployments(namespace).Get(ctx, appName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -79,7 +79,7 @@ func CalculateAppStatus(ctx context.Context, appCtx *models.AppContext) (app.App
 
 		return app.AppStatusAbnormal, nil
 
-	case "StatefulSet":
+	case app.AppTypeStatefulSet:
 		statefulSet, err := client.AppsV1().StatefulSets(namespace).Get(ctx, appName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -125,7 +125,7 @@ func CalculateAppStatus(ctx context.Context, appCtx *models.AppContext) (app.App
 func CalculateAppListStatus(ctx context.Context, client kubernetes.Interface, appID, appSlug, appType, namespace string, replicas int) (app.AppStatus, error) {
 	// Check if any pod has debugging label
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "app.ketches.cn/slug=" + appSlug,
+		LabelSelector: "ketches.cn/app-slug=" + appSlug,
 	})
 	if err != nil {
 		return app.AppStatusUnknown, err
@@ -133,7 +133,7 @@ func CalculateAppListStatus(ctx context.Context, client kubernetes.Interface, ap
 
 	isDebugging := false
 	for _, pod := range pods.Items {
-		if pod.Labels["app.ketches.cn/debugging"] == "true" {
+		if pod.Labels["ketches.cn/debugging"] == "true" {
 			isDebugging = true
 			break
 		}
@@ -177,7 +177,7 @@ func CalculateAppListStatus(ctx context.Context, client kubernetes.Interface, ap
 
 		return app.AppStatusAbnormal, nil
 
-	case "StatefulSet":
+	case app.AppTypeStatefulSet:
 		statefulSet, err := client.AppsV1().StatefulSets(namespace).Get(ctx, appSlug, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {

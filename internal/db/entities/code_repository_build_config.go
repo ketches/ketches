@@ -23,10 +23,7 @@ type CodeRepositoryBuildConfig struct {
 	AutoDeploy     bool `gorm:"type:bool;default:false"`
 	WebhookEnabled bool `gorm:"type:bool;default:false"` // when true, repo webhook triggers this config
 
-	CodeRepository CodeRepository    `gorm:"foreignKey:CodeRepositoryID"`
-	Registry       ContainerRegistry `gorm:"foreignKey:RegistryID"`
 }
-
 
 func (CodeRepositoryBuildConfig) TableName() string {
 	return "code_repository_build_configs"

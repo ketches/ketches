@@ -18,7 +18,7 @@ func ListAppVolumes(appID string) ([]entities.AppVolume, error) {
 	return volumes, err
 }
 
-func CreateAppVolume(appID string, req *models.CreateVolumeRequest) (*entities.AppVolume, error) {
+func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolumeRequest) (*entities.AppVolume, error) {
 	volumeMode := req.VolumeMode
 	if volumeMode == "" {
 		volumeMode = "Filesystem"
@@ -61,33 +61,15 @@ func CreateAppVolume(appID string, req *models.CreateVolumeRequest) (*entities.A
 		return nil, err
 	}
 
-	// Load app with environment for K8s sync
-	var app entities.App
-	if err := db.DB.First(&app, "id = ?", appID).Error; err != nil {
+	// Fetch full app context from DB
+	appCtx, err := GetApp(ctx, appID)
+	if err != nil {
 		return nil, err
-	}
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
-		return nil, err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
-		return nil, err
-	}
-	var volumes []entities.AppVolume
-	if err := db.DB.Where("app_id = ?", appID).Find(&volumes).Error; err != nil {
-		return nil, err
-	}
-	appCtx := &models.AppContext{
-		App:     app,
-		Env:     env,
-		Cluster: cluster,
-		Volumes: volumes,
 	}
 
 	// Sync PVC to Kubernetes if needed
 	if req.VolumeType == "pvc" {
-		if err := core.SyncVolumeToK8s(context.Background(), appCtx, entity); err != nil {
+		if err := core.SyncVolumeToK8s(ctx, appCtx, entity); err != nil {
 			return nil, err
 		}
 	}
@@ -95,7 +77,7 @@ func CreateAppVolume(appID string, req *models.CreateVolumeRequest) (*entities.A
 	return entity, nil
 }
 
-func UpdateAppVolume(id string, req *models.UpdateVolumeRequest) (*entities.AppVolume, error) {
+func UpdateAppVolume(ctx context.Context, id string, req *models.UpdateVolumeRequest) (*entities.AppVolume, error) {
 	var volume entities.AppVolume
 	err := db.DB.First(&volume, "id = ?", id).Error
 	if err != nil {
@@ -139,33 +121,15 @@ func UpdateAppVolume(id string, req *models.UpdateVolumeRequest) (*entities.AppV
 		return nil, err
 	}
 
-	// Load app with environment for K8s sync
-	var app entities.App
-	if err := db.DB.First(&app, "id = ?", volume.AppID).Error; err != nil {
+	// Fetch full app context from DB
+	appCtx, err := GetApp(ctx, volume.AppID)
+	if err != nil {
 		return nil, err
-	}
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
-		return nil, err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
-		return nil, err
-	}
-	var volumes []entities.AppVolume
-	if err := db.DB.Where("app_id = ?", volume.AppID).Find(&volumes).Error; err != nil {
-		return nil, err
-	}
-	appCtx := &models.AppContext{
-		App:     app,
-		Env:     env,
-		Cluster: cluster,
-		Volumes: volumes,
 	}
 
 	// Sync PVC to Kubernetes if needed
 	if volume.VolumeType == "pvc" {
-		if err := core.SyncVolumeToK8s(context.Background(), appCtx, &volume); err != nil {
+		if err := core.SyncVolumeToK8s(ctx, appCtx, &volume); err != nil {
 			return nil, err
 		}
 	}
@@ -173,7 +137,7 @@ func UpdateAppVolume(id string, req *models.UpdateVolumeRequest) (*entities.AppV
 	return &volume, nil
 }
 
-func DeleteAppVolume(id string) error {
+func DeleteAppVolume(ctx context.Context, id string) error {
 	var volume entities.AppVolume
 	err := db.DB.First(&volume, "id = ?", id).Error
 	if err != nil {
@@ -183,33 +147,15 @@ func DeleteAppVolume(id string) error {
 		return err
 	}
 
-	// Load app with environment for K8s sync
-	var app entities.App
-	if err := db.DB.First(&app, "id = ?", volume.AppID).Error; err != nil {
+	// Fetch full app context from DB
+	appCtx, err := GetApp(ctx, volume.AppID)
+	if err != nil {
 		return err
-	}
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
-		return err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
-		return err
-	}
-	var volumes []entities.AppVolume
-	if err := db.DB.Where("app_id = ?", volume.AppID).Find(&volumes).Error; err != nil {
-		return err
-	}
-	appCtx := &models.AppContext{
-		App:     app,
-		Env:     env,
-		Cluster: cluster,
-		Volumes: volumes,
 	}
 
 	// Delete PVC from Kubernetes if applicable
 	if volume.VolumeType == "pvc" {
-		if err := core.DeleteVolumeFromK8s(context.Background(), appCtx, &volume); err != nil {
+		if err := core.DeleteVolumeFromK8s(ctx, appCtx, &volume); err != nil {
 			return err
 		}
 	}

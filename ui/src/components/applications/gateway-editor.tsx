@@ -38,8 +38,6 @@ interface GatewayEditorProps {
   onSuccess?: () => void
 }
 
-
-
 export function GatewayEditor({
   app,
   gateway,
@@ -51,6 +49,13 @@ export function GatewayEditor({
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = setControlledOpen || setInternalOpen
   const queryClient = useQueryClient()
+
+  const protocolOptions = React.useMemo(() => [
+    { value: "http", label: "HTTP", description: "Plaintext HTTP routing" },
+    { value: "https", label: "HTTPS", description: "TLS-terminated HTTPS routing" },
+    { value: "tcp", label: "TCP", description: "Raw TCP passthrough" },
+    { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
+  ], [])
 
   const isEditing = gateway !== null && gateway !== undefined
 
@@ -68,7 +73,7 @@ export function GatewayEditor({
     domain: '',
     path: '/',
     gateway_port: undefined,
-    exposed: true,
+    exposed: false,
   })
 
   // Fetch environment to get cluster_id, then fetch both cluster and env certificates
@@ -116,7 +121,7 @@ export function GatewayEditor({
           domain: '',
           path: '/',
           gateway_port: undefined,
-          exposed: true,
+          exposed: false,
         })
       }
       setErrors({})
@@ -271,16 +276,12 @@ export function GatewayEditor({
                   <Combobox
                     value={formData.protocol}
                     onValueChange={(value: string | null) => value && setFormData((prev) => ({ ...prev, protocol: value }))}
+                    itemToStringLabel={(v) => protocolOptions.find((opt) => opt.value === v)?.label ?? v ?? ""}
                   >
                     <ComboboxInput />
                     <ComboboxContent>
                       <ComboboxList>
-                        {[
-                          { value: "http", label: "HTTP", description: "Plaintext HTTP routing" },
-                          { value: "https", label: "HTTPS", description: "TLS-terminated HTTPS routing" },
-                          { value: "tcp", label: "TCP", description: "Raw TCP passthrough" },
-                          { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
-                        ].map((option) => (
+                        {protocolOptions.map((option) => (
                           <ComboboxItem key={option.value} value={option.value}>
                             <Item size="xs" className="p-0">
                               <ItemContent>
@@ -362,9 +363,6 @@ export function GatewayEditor({
                             aria-invalid={!!errors.domain} />
                           <InputGroupAddon>
                             <InputGroupText>{formData.protocol}://</InputGroupText>
-                          </InputGroupAddon>
-                          <InputGroupAddon align="inline-end">
-                            <InfoIcon />
                           </InputGroupAddon>
                         </InputGroup>
                       </FieldContent>

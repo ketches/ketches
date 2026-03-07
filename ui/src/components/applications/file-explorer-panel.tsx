@@ -947,7 +947,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
@@ -968,7 +968,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>
@@ -1236,7 +1236,7 @@ function FileEditorView({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDiscardChanges}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Discard Changes
             </AlertDialogAction>

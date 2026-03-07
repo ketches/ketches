@@ -11,26 +11,29 @@ import (
 
 func TestConvertAppsToMetadata(t *testing.T) {
 	now := time.Now()
-	apps := []entities.App{
+	appCtxs := []*models.AppContext{
 		{
-			Name:             "test-app",
-			Slug:             "test-app",
-			AppType:          "Deployment",
-			Description:      "Test App",
-			ContainerImage:   "nginx:latest",
-			ContainerCommand: "nginx",
-			Replicas:         2,
-			RequestCPU:       100,
-			RequestMemory:    128,
-			LimitCPU:         200,
-			LimitMemory:      256,
-			RegistryUsername: "user",
-			RegistryPassword: "password",
+			App: entities.App{
+				Name:             "test-app",
+				Slug:             "test-app",
+				AppType:          "Deployment",
+				Description:      "Test App",
+				ContainerImage:   "nginx:latest",
+				ContainerCommand: "nginx",
+				Replicas:         2,
+				RequestCPU:       100,
+				RequestMemory:    128,
+				LimitCPU:         200,
+				LimitMemory:      256,
+				RegistryUsername: "user",
+				RegistryPassword: "password",
+				Base:             entities.Base{CreatedAt: now},
+			},
 			EnvVars: []entities.AppEnvVar{
 				{Key: "ENV_KEY", Value: "ENV_VALUE"},
 			},
 			Gateways: []entities.AppGateway{
-				{Port: 80, Protocol: "TCP", GatewayPort: 8080, Exposed: true, Domain: "example.com", Path: "/", CertID: "cert-id"},
+				{Port: 80, Protocol: "TCP", GatewayPort: 8080, Exposed: true, Domain: "example.com", Path: "/", CertID: strPtr("cert-id")},
 			},
 			ConfigFiles: []entities.AppConfigFile{
 				{Slug: "config", MountPath: "/config", Content: "data", FileMode: "0644"},
@@ -47,11 +50,10 @@ func TestConvertAppsToMetadata(t *testing.T) {
 			SchedulingRule: &entities.AppSchedulingRule{
 				RuleType: "nodeSelector", NodeSelector: "disktype=ssd",
 			},
-			Base: entities.Base{CreatedAt: now},
 		},
 	}
 
-	metadatas := convertAppsToMetadata(apps)
+	metadatas := convertAppContextsToMetadata(appCtxs)
 
 	assert.Len(t, metadatas, 1)
 	meta := metadatas[0]
@@ -97,6 +99,8 @@ func TestConvertAppsToMetadata(t *testing.T) {
 	assert.NotNil(t, meta.SchedulingRule)
 	assert.Equal(t, "nodeSelector", meta.SchedulingRule.RuleType)
 }
+
+func strPtr(v string) *string { return &v }
 
 func TestImportResultStruct(t *testing.T) {
 	// Verify ImportResult struct exists and has correct fields

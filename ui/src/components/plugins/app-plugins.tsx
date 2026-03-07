@@ -307,7 +307,7 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
               onClick={() => pluginToUninstall && uninstallMutation.mutate(pluginToUninstall)}
             >
               {uninstallMutation.isPending ? (

@@ -49,7 +49,7 @@ type Build struct {
 
 	// Execution info
 	TriggerType  BuildTriggerType `gorm:"type:varchar(32);not null"`
-	TriggeredBy  string           `gorm:"type:varchar(36)"`
+	TriggeredBy  *string          `gorm:"type:varchar(36)"`
 	JobName      string           `gorm:"type:varchar(256)"`
 	JobNamespace string           `gorm:"type:varchar(256)"`
 	StartedAt    *time.Time
@@ -57,19 +57,11 @@ type Build struct {
 	Duration     int    `gorm:"type:int"`
 	ErrorMessage string `gorm:"type:text"`
 
-	PendingDeployEnvID   string `gorm:"type:varchar(36)"`
-	PendingDeployAppID   string `gorm:"type:varchar(36)"`
-	PendingDeployAppName string `gorm:"type:varchar(128)"`
-	PendingDeployAppSlug string `gorm:"type:varchar(64)"`
-
-	// Relationships (no FK to App: build only produces image; deploy to app is a separate action)
-	CodeRepository      *CodeRepository            `gorm:"foreignKey:CodeRepositoryID"`
-	CodeRepoBuildConfig *CodeRepositoryBuildConfig `gorm:"foreignKey:CodeRepositoryBuildConfigID"`
-	App                 *App                       `gorm:"foreignKey:AppID;references:ID;constraint:false"`         // optional, no DB constraint
-	BuildConfig         *AppBuildConfig            `gorm:"foreignKey:BuildConfigID;references:ID;constraint:false"` // optional, no DB constraint
-	BuildEnv            Env                        `gorm:"foreignKey:BuildEnvID"`
+	PendingDeployEnvID   *string `gorm:"type:varchar(36)"`
+	PendingDeployAppID   *string `gorm:"type:varchar(36)"`
+	PendingDeployAppName string  `gorm:"type:varchar(128)"`
+	PendingDeployAppSlug string  `gorm:"type:varchar(64)"`
 }
-
 
 func (Build) TableName() string {
 	return "builds"

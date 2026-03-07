@@ -28,7 +28,7 @@ func CreateAppVolume(c *gin.Context) {
 		return
 	}
 
-	vol, err := services.CreateAppVolume(appID, &req)
+	vol, err := services.CreateAppVolume(c.Request.Context(), appID, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			api.Error(c, http.StatusBadRequest, err)
@@ -48,7 +48,7 @@ func UpdateAppVolume(c *gin.Context) {
 		return
 	}
 
-	vol, err := services.UpdateAppVolume(id, &req)
+	vol, err := services.UpdateAppVolume(c.Request.Context(), id, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			api.Error(c, http.StatusNotFound, err)
@@ -66,7 +66,7 @@ func UpdateAppVolume(c *gin.Context) {
 
 func DeleteAppVolume(c *gin.Context) {
 	id := c.Param("id")
-	if err := services.DeleteAppVolume(id); err != nil {
+	if err := services.DeleteAppVolume(c.Request.Context(), id); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

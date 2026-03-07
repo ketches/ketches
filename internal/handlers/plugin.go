@@ -193,8 +193,18 @@ func InstallPluginToApp(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-
-	api.Created(c, toAppPluginResponse(appPlugin))
+	rows, err := services.ListAppPlugins(appID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	for i := range rows {
+		if rows[i].ID == appPlugin.ID {
+			api.Created(c, toAppPluginResponse(&rows[i]))
+			return
+		}
+	}
+	api.Error(c, http.StatusInternalServerError, errors.New("failed to load installed plugin"))
 }
 
 func UninstallPluginFromApp(c *gin.Context) {
@@ -314,7 +324,7 @@ func toPluginResponse(plugin any) models.PluginResponse {
 	}
 }
 
-func toAppPluginResponse(appPlugin *entities.AppPlugin) models.AppPluginResponse {
+func toAppPluginResponse(appPlugin *services.AppPluginWithPlugin) models.AppPluginResponse {
 	var envVars []models.PluginEnvVar
 	if appPlugin.EnvVars != "" {
 		json.Unmarshal([]byte(appPlugin.EnvVars), &envVars)

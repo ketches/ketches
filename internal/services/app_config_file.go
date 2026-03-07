@@ -19,7 +19,7 @@ func ListAppConfigFiles(appID string) ([]entities.AppConfigFile, error) {
 	return configFiles, err
 }
 
-func CreateAppConfigFile(appID string, req *models.CreateConfigFileRequest) (*entities.AppConfigFile, error) {
+func CreateAppConfigFile(ctx context.Context, appID string, req *models.CreateConfigFileRequest) (*entities.AppConfigFile, error) {
 	fileMode := req.FileMode
 	if fileMode == "" {
 		fileMode = "0644"
@@ -54,38 +54,21 @@ func CreateAppConfigFile(appID string, req *models.CreateConfigFileRequest) (*en
 		return nil, err
 	}
 
-	var app entities.App
-	if err := db.DB.First(&app, "id = ?", appID).Error; err != nil {
+	// Fetch full app context from DB
+	appCtx, err := GetApp(ctx, appID)
+	if err != nil {
 		return nil, err
-	}
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
-		return nil, err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
-		return nil, err
-	}
-	var configFiles []entities.AppConfigFile
-	if err := db.DB.Where("app_id = ?", appID).Find(&configFiles).Error; err != nil {
-		return nil, err
-	}
-	appCtx := &models.AppContext{
-		App:         app,
-		Env:         env,
-		Cluster:     cluster,
-		ConfigFiles: configFiles,
 	}
 
 	// Sync ConfigMap to Kubernetes
-	if err := core.SyncConfigMapToK8s(context.Background(), appCtx); err != nil {
+	if err := core.SyncConfigMapToK8s(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
 	return entity, nil
 }
 
-func UpdateAppConfigFile(id string, req *models.UpdateConfigFileRequest) (*entities.AppConfigFile, error) {
+func UpdateAppConfigFile(ctx context.Context, id string, req *models.UpdateConfigFileRequest) (*entities.AppConfigFile, error) {
 	var configFile entities.AppConfigFile
 	err := db.DB.First(&configFile, "id = ?", id).Error
 	if err != nil {
@@ -127,38 +110,21 @@ func UpdateAppConfigFile(id string, req *models.UpdateConfigFileRequest) (*entit
 		return nil, err
 	}
 
-	var app entities.App
-	if err := db.DB.First(&app, "id = ?", configFile.AppID).Error; err != nil {
+	// Fetch full app context from DB
+	appCtx, err := GetApp(ctx, configFile.AppID)
+	if err != nil {
 		return nil, err
-	}
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
-		return nil, err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
-		return nil, err
-	}
-	var configFiles []entities.AppConfigFile
-	if err := db.DB.Where("app_id = ?", configFile.AppID).Find(&configFiles).Error; err != nil {
-		return nil, err
-	}
-	appCtx := &models.AppContext{
-		App:         app,
-		Env:         env,
-		Cluster:     cluster,
-		ConfigFiles: configFiles,
 	}
 
 	// Sync ConfigMap to Kubernetes
-	if err := core.SyncConfigMapToK8s(context.Background(), appCtx); err != nil {
+	if err := core.SyncConfigMapToK8s(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
 	return &configFile, nil
 }
 
-func DeleteAppConfigFile(id string) error {
+func DeleteAppConfigFile(ctx context.Context, id string) error {
 	var configFile entities.AppConfigFile
 	err := db.DB.First(&configFile, "id = ?", id).Error
 	if err != nil {
@@ -168,16 +134,9 @@ func DeleteAppConfigFile(id string) error {
 		return err
 	}
 
-	var app entities.App
-	if err := db.DB.First(&app, "id = ?", configFile.AppID).Error; err != nil {
-		return err
-	}
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
-		return err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+	// Fetch full app context from DB
+	appCtx, err := GetApp(ctx, configFile.AppID)
+	if err != nil {
 		return err
 	}
 
@@ -185,19 +144,9 @@ func DeleteAppConfigFile(id string) error {
 	if err := db.DB.Delete(&configFile).Error; err != nil {
 		return err
 	}
-	var configFiles []entities.AppConfigFile
-	if err := db.DB.Where("app_id = ?", configFile.AppID).Find(&configFiles).Error; err != nil {
-		return err
-	}
-	appCtx := &models.AppContext{
-		App:         app,
-		Env:         env,
-		Cluster:     cluster,
-		ConfigFiles: configFiles,
-	}
 
 	// Sync ConfigMap to Kubernetes (will remove deleted file)
-	if err := core.SyncConfigMapToK8s(context.Background(), appCtx); err != nil {
+	if err := core.SyncConfigMapToK8s(ctx, appCtx); err != nil {
 		return err
 	}
 

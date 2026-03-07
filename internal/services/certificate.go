@@ -94,9 +94,10 @@ func CreateEnvCertificate(envID string, req *models.CreateCertificateRequest) (*
 		Cert:        req.Cert,
 		Key:         req.Key,
 		Scope:       "env",
-		EnvID:       envID,
 		ClusterID:   env.ClusterID,
 	}
+	envIDCopy := envID
+	cert.EnvID = &envIDCopy
 
 	if err := db.DB.Select("id", "name", "description", "cert", "key", "scope", "cluster_id", "env_id").Create(cert).Error; err != nil {
 		return nil, err
@@ -170,14 +171,27 @@ func DeleteCertificate(id string) error {
 // is created, updated, or deleted. Only env-scoped certificates trigger a sync.
 // Errors are intentionally ignored to keep certificate operations non-blocking.
 func syncEnvGatewayForCert(cert *entities.Certificate) {
-	if cert.Scope != "env" || cert.EnvID == "" {
+	if cert.Scope != "env" || cert.EnvID == nil || *cert.EnvID == "" {
 		return
 	}
 	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", cert.EnvID).Error; err != nil {
+	if err := db.DB.First(&env, "id = ?", *cert.EnvID).Error; err != nil {
 		return
 	}
+	var project entities.Project
+	if err := db.DB.First(&project, "id = ?", env.ProjectID).Error; err != nil {
+		return
+	}
+	var cluster entities.Cluster
+	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+		return
+	}
+	envCtx := &models.EnvContext{
+		Env:     env,
+		Project: project,
+		Cluster: cluster,
+	}
 	var certs []entities.Certificate
-	db.DB.Where("env_id = ? AND scope = ?", cert.EnvID, "env").Find(&certs)
-	_ = core.EnsureEnvGateway(context.Background(), &env, certs)
+	db.DB.Where("env_id = ? AND scope = ?", *cert.EnvID, "env").Find(&certs)
+	_ = core.EnsureEnvGateway(context.Background(), envCtx, certs)
 }

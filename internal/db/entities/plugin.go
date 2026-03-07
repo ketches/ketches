@@ -16,8 +16,5 @@ type Plugin struct {
 	Command          string    `gorm:"type:text"`
 	EnvVars          string    `gorm:"type:text"`
 	PluginType       string    `gorm:"type:varchar(16);not null"`
-	InstallCount int `gorm:"->"` 
-
-	Project Project `gorm:"foreignKey:ProjectID"`
+	InstallCount     int       `gorm:"->"`
 }
-

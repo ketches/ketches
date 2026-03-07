@@ -33,9 +33,4 @@ type DeploymentHistory struct {
 
 	// Build reference (optional)
 	BuildID *string `gorm:"type:varchar(36);index"`
-
-	// Relations
-	App   App    `gorm:"foreignKey:AppID"`
-	Build *Build `gorm:"foreignKey:BuildID"`
 }
-

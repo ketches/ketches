@@ -7,8 +7,7 @@ import (
 // AppContext encapsulates an app and all its operational data for the core layer
 type AppContext struct {
 	App            entities.App
-	Env            entities.Env
-	Cluster        entities.Cluster
+	EnvContext     EnvContext
 	EnvVars        []entities.AppEnvVar
 	Volumes        []entities.AppVolume
 	Gateways       []entities.AppGateway
@@ -17,5 +16,6 @@ type AppContext struct {
 	SchedulingRule *entities.AppSchedulingRule
 	AutoScaling    *entities.AppAutoScaling
 	AppPlugins     []entities.AppPlugin
+	Plugins        map[string]entities.Plugin
 	BuildConfig    *entities.AppBuildConfig
 }

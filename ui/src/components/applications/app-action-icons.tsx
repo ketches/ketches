@@ -169,9 +169,9 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
                 return (
                   <DropdownMenuItem
                     key={action.action}
+                    variant={isDestructive ? "destructive" : "default"}
                     onClick={(e) => handleAction(e, action.action)}
                     disabled={executeMutation.isPending}
-                    className={isDestructive ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}
                   >
                     {isLoading ? (
                       <Loader2 className="animate-spin" />
@@ -230,7 +230,7 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {executeMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>

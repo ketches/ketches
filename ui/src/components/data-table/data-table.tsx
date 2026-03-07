@@ -329,7 +329,7 @@ export function DataTable<TData, TValue>({
                   }}
                 >
                   <ComboboxInput className="h-7 w-16" />
-                  <ComboboxContent>
+                  <ComboboxContent side="top">
                     <ComboboxList>
                       {(viewMode === "card" ? [9, 15, 30, 45, 60] : [10, 20, 30, 40, 50]).map((pageSize) => (
                         <ComboboxItem key={pageSize} value={`${pageSize}`}>

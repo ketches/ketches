@@ -582,7 +582,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletingIntegration && deleteMutation.mutate(deletingIntegration.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>

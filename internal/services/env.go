@@ -66,7 +66,18 @@ func CreateEnv(projectID string, req *models.CreateEnvRequest) (*entities.Env, e
 			Update("is_build_env", false)
 	}
 
-	if err := core.CreateNamespace(context.Background(), req.ClusterID, namespaceName); err != nil {
+	cluster, err := GetCluster(req.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	envCtx := &models.EnvContext{
+		Env:     *env,
+		Project: project,
+		Cluster: *cluster,
+	}
+
+	if err := core.CreateNamespace(context.Background(), req.ClusterID, namespaceName, envCtx); err != nil {
 		return nil, err
 	}
 
@@ -76,7 +87,7 @@ func CreateEnv(projectID string, req *models.CreateEnvRequest) (*entities.Env, e
 
 	// If the cluster has Gateway API CRDs, create the env-level Gateway resource.
 	// Failure is non-fatal — the env is created either way.
-	if gwErr := tryEnsureEnvGateway(context.Background(), env); gwErr != nil {
+	if gwErr := tryEnsureEnvGateway(context.Background(), envCtx); gwErr != nil {
 		_ = gwErr // best-effort
 	}
 
@@ -88,17 +99,30 @@ func GetEnv(envID string) (*entities.Env, error) {
 	if err := db.DB.First(&env, "id = ?", envID).Error; err != nil {
 		return nil, err
 	}
-	var project entities.Project
-	if err := db.DB.First(&project, "id = ?", env.ProjectID).Error; err != nil {
-		return nil, err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
-		return nil, err
-	}
-	env.Project = project
-	env.Cluster = cluster
 	return &env, nil
+}
+
+func GetEnvContext(envID string) (*models.EnvContext, error) {
+	env, err := GetEnv(envID)
+	if err != nil {
+		return nil, err
+	}
+
+	project, err := GetProject(env.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	cluster, err := GetCluster(env.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.EnvContext{
+		Env:     *env,
+		Project: *project,
+		Cluster: *cluster,
+	}, nil
 }
 
 func UpdateEnv(envID string, req *models.CreateEnvRequest) (*entities.Env, error) {
@@ -248,11 +272,6 @@ func GetProjectBuildEnv(projectID string) (*entities.Env, error) {
 		First(&env).Error; err != nil {
 		return nil, err
 	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
-		return nil, err
-	}
-	env.Cluster = cluster
 	return &env, nil
 }
 
@@ -272,8 +291,8 @@ func ToEnvResponse(e *entities.Env) models.EnvResponse {
 
 // tryEnsureEnvGateway loads the env's certificates and calls core.EnsureEnvGateway.
 // It is best-effort: errors are returned but must not block env lifecycle operations.
-func tryEnsureEnvGateway(ctx context.Context, env *entities.Env) error {
+func tryEnsureEnvGateway(ctx context.Context, envCtx *models.EnvContext) error {
 	var certs []entities.Certificate
-	db.DB.Where("env_id = ? AND scope = ?", env.ID, "env").Find(&certs)
-	return core.EnsureEnvGateway(ctx, env, certs)
+	db.DB.Where("env_id = ? AND scope = ?", envCtx.Env.ID, "env").Find(&certs)
+	return core.EnsureEnvGateway(ctx, envCtx, certs)
 }

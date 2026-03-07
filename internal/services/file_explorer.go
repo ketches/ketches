@@ -20,7 +20,7 @@ import (
 
 // execCommand executes a non-interactive command in a container and returns stdout/stderr
 func execCommand(appCtx *models.AppContext, instanceName, containerName string, command []string) (string, string, error) {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
 	if err != nil {
 		return "", "", err
 	}
@@ -33,7 +33,7 @@ func execCommand(appCtx *models.AppContext, instanceName, containerName string, 
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(appCtx.Env.ClusterNamespace).
+		Namespace(appCtx.EnvContext.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: containerName,
@@ -60,7 +60,7 @@ func execCommand(appCtx *models.AppContext, instanceName, containerName string, 
 
 // execCommandWithStdin executes a command in a container with stdin input
 func execCommandWithStdin(appCtx *models.AppContext, instanceName, containerName string, command []string, stdin io.Reader) (string, string, error) {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
 	if err != nil {
 		return "", "", err
 	}
@@ -73,7 +73,7 @@ func execCommandWithStdin(appCtx *models.AppContext, instanceName, containerName
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(appCtx.Env.ClusterNamespace).
+		Namespace(appCtx.EnvContext.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: containerName,
@@ -101,7 +101,7 @@ func execCommandWithStdin(appCtx *models.AppContext, instanceName, containerName
 
 // execCommandStreamStdout executes a command and streams stdout to the provided writer
 func execCommandStreamStdout(appCtx *models.AppContext, instanceName, containerName string, command []string, stdout io.Writer) error {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func execCommandStreamStdout(appCtx *models.AppContext, instanceName, containerN
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(appCtx.Env.ClusterNamespace).
+		Namespace(appCtx.EnvContext.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: containerName,
@@ -139,7 +139,7 @@ func execCommandStreamStdout(appCtx *models.AppContext, instanceName, containerN
 
 // execCommandWithStdinStream executes a command with stdin stream and stdout writer
 func execCommandWithStdinStream(appCtx *models.AppContext, instanceName, containerName string, command []string, stdin io.Reader, stdout io.Writer) error {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func execCommandWithStdinStream(appCtx *models.AppContext, instanceName, contain
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(appCtx.Env.ClusterNamespace).
+		Namespace(appCtx.EnvContext.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: containerName,

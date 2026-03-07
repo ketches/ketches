@@ -354,7 +354,7 @@ func parseCSVUsers(src interface{ Read([]byte) (int, error) }) ([]models.CreateU
 
 		// Default role to "user" if not specified
 		if req.Role == "" {
-			req.Role = "user"
+			req.Role = app.UserRoleUser
 		}
 
 		requests = append(requests, req)

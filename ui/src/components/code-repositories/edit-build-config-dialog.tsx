@@ -1,8 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
-import * as React from "react"
-import { toast } from "sonner"
-
 import { codeRepositoriesApi, type CodeRepositoryBuildConfig, type UpdateCodeRepositoryBuildConfigRequest } from "@/api/code-repositories"
 import { registryProviderLabels } from "@/api/container-registries"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
@@ -18,8 +13,12 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
+import { Loader2 } from "lucide-react"
+import * as React from "react"
+import { toast } from "sonner"
 
 interface EditBuildConfigDialogProps {
   open: boolean
@@ -153,7 +152,13 @@ export function EditBuildConfigDialog({ open, onOpenChange, repoId, config, onSu
                   <ComboboxList>
                     {registries?.map((r) => (
                       <ComboboxItem key={r.id} value={r.id}>
-                        {r.name} ({registryProviderLabels[r.provider]})
+                        {/* {r.name} ({registryProviderLabels[r.provider]}) */}
+                        <Item size="xs" className="p-0">
+                          <ItemContent>
+                            <ItemTitle>{r.name}</ItemTitle>
+                            <ItemDescription>{registryProviderLabels[r.provider]}</ItemDescription>
+                          </ItemContent>
+                        </Item>
                       </ComboboxItem>
                     ))}
                   </ComboboxList>

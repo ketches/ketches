@@ -625,7 +625,7 @@ export function ApplicationList({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => batchDeleteMutation.mutate(deleteAppIds)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {batchDeleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>

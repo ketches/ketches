@@ -706,7 +706,7 @@ export function RecycleBinPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction onClick={handleDelete} variant="destructive">
               Permanently Delete
             </AlertDialogAction>
           </AlertDialogFooter>

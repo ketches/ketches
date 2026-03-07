@@ -14,6 +14,7 @@ type CreateCodeRepositoryRequest struct {
 // UpdateCodeRepositoryRequest: name, slug, url, credentials, webhook only.
 type UpdateCodeRepositoryRequest struct {
 	Name           string `json:"name"`
+	Slug           string `json:"slug"`
 	GitRepoURL     string `json:"git_repo_url"`
 	GitUsername    string `json:"git_username"`
 	GitPassword    string `json:"git_password"`

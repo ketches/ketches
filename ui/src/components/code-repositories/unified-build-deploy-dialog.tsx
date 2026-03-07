@@ -21,6 +21,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import type { AxiosError } from "axios"
+import { ColorBadge } from "../shared/color-badge"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface UnifiedBuildDeployDialogProps {
   open: boolean
@@ -140,7 +142,7 @@ export function UnifiedBuildDeployDialog({
     } else {
       resetForm()
     }
-  }, [open, preSelectedConfigId, preSelectedBuildId, preSelectedDeployEnvId, preSelectedDeployAppId, buildConfigs, resetForm])
+  }, [open, preSelectedConfigId, preSelectedBuildId, preSelectedDeployEnvId, preSelectedDeployAppId, buildConfigs, resetForm, selectedConfigId])
 
   React.useEffect(() => {
     if (selectedConfig && !gitRef) {
@@ -366,12 +368,21 @@ export function UnifiedBuildDeployDialog({
                         onValueChange={(v) => v !== null && setBuildEnvId(v)}
                         itemToStringLabel={(id) => envs?.find((e: SimpleResponse) => e.id === id)?.name ?? id ?? ""}
                       >
-                        <ComboboxInput placeholder="Select build environment" />
+                        <ComboboxInput placeholder="Select build environment">
+                          {/* <InputGroupAddon>
+                            <Orbit />
+                          </InputGroupAddon> */}
+                        </ComboboxInput>
                         <ComboboxContent>
                           <ComboboxList>
                             {(envs || []).map((env: SimpleResponse) => (
                               <ComboboxItem key={env.id} value={env.id}>
-                                {`${env.name}${env.metadata?.is_build_env === "true" ? " (Build Env)" : ""}`}
+                                <Item size="xs" className="p-0">
+                                  <ItemContent>
+                                    <ItemTitle><>{env.name}{env.metadata?.is_build_env === "true" && <ColorBadge>Build</ColorBadge>}</></ItemTitle>
+                                    <ItemDescription>{env.slug}</ItemDescription>
+                                  </ItemContent>
+                                </Item>
                               </ComboboxItem>
                             ))}
                           </ComboboxList>
@@ -474,16 +485,15 @@ export function UnifiedBuildDeployDialog({
                             <FieldLabel>Create New Application</FieldLabel>
                             {existingRepoApps.length > 0 && (
                               <Button
-                                variant="ghost"
-                                size="sm"
+                                variant="destructive"
+                                size="icon-xs"
                                 onClick={() => {
                                   setShowCreateApp(false)
                                   setNewAppName("")
                                   setNewAppSlug("")
                                 }}
                               >
-                                <X className="h-3 w-3 mr-1" />
-                                Cancel
+                                <X />
                               </Button>
                             )}
                           </div>

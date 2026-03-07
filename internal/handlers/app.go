@@ -175,7 +175,7 @@ func ListAppsSimple(c *gin.Context) {
 				Description: a.Description,
 				Status:      a.DeployStatus,
 				Metadata: map[string]string{
-					"code_repository_id": a.CodeRepositoryID,
+					"code_repository_id": derefString(a.CodeRepositoryID),
 				},
 			}
 		}(i, a)
@@ -183,6 +183,13 @@ func ListAppsSimple(c *gin.Context) {
 	wg.Wait()
 
 	api.Success(c, res)
+}
+
+func derefString(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }
 
 func CreateApp(c *gin.Context) {

@@ -28,12 +28,7 @@ type AppBuildConfig struct {
 	// Webhook
 	WebhookSecret  string `gorm:"type:varchar(256)"`
 	WebhookEnabled bool   `gorm:"type:bool;default:false"`
-
-	// Relationships
-	App      App               `gorm:"foreignKey:AppID"`
-	Registry ContainerRegistry `gorm:"foreignKey:RegistryID"`
 }
-
 
 func (AppBuildConfig) TableName() string {
 	return "app_build_configs"

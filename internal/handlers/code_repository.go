@@ -69,7 +69,7 @@ func CreateCodeRepository(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Created(c, services.ToCodeRepositoryResponse(repo, getBaseURL(c)))
+	api.Created(c, services.ToCodeRepositoryRowResponse(repo, getBaseURL(c)))
 }
 
 func GetCodeRepository(c *gin.Context) {
@@ -79,7 +79,7 @@ func GetCodeRepository(c *gin.Context) {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
-	api.Success(c, services.ToCodeRepositoryResponse(repo, getBaseURL(c)))
+	api.Success(c, services.ToCodeRepositoryRowResponse(repo, getBaseURL(c)))
 }
 
 func UpdateCodeRepository(c *gin.Context) {
@@ -94,7 +94,7 @@ func UpdateCodeRepository(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Success(c, services.ToCodeRepositoryResponse(repo, getBaseURL(c)))
+	api.Success(c, services.ToCodeRepositoryRowResponse(repo, getBaseURL(c)))
 }
 
 func DeleteCodeRepository(c *gin.Context) {
@@ -187,7 +187,7 @@ func DeployCodeRepositoryBuild(c *gin.Context) {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-	build, appCtx, err := services.DeployCodeRepositoryBuild(repoID, buildID, &req)
+	build, appCtx, err := services.DeployCodeRepositoryBuild(c.Request.Context(), repoID, buildID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

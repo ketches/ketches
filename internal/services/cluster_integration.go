@@ -28,12 +28,6 @@ func GetClusterIntegrationByType(clusterID string, integrationType entities.Inte
 	if err := db.DB.Where("cluster_id = ? AND integration_type = ? AND enabled = ?", clusterID, integrationType, true).First(&integration).Error; err != nil {
 		return nil, err
 	}
-	// Explicit load: Cluster
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", integration.ClusterID).Error; err != nil {
-		return nil, err
-	}
-	integration.Cluster = &cluster
 	return &integration, nil
 }
 

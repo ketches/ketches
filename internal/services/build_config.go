@@ -14,22 +14,24 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
-func GetBuildConfig(appID string) (*entities.AppBuildConfig, error) {
-	var config entities.AppBuildConfig
-	if err := db.DB.Where("app_id = ?", appID).
+type AppBuildConfigWithRegistry struct {
+	entities.AppBuildConfig
+	Registry entities.ContainerRegistry `gorm:"embedded;embeddedPrefix:registry_"`
+}
+
+func GetBuildConfig(appID string) (*AppBuildConfigWithRegistry, error) {
+	var config AppBuildConfigWithRegistry
+	if err := db.DB.Table("app_build_configs").
+		Select("app_build_configs.*, container_registries.id AS registry_id, container_registries.created_at AS registry_created_at, container_registries.updated_at AS registry_updated_at, container_registries.name AS registry_name, container_registries.provider AS registry_provider, container_registries.endpoint AS registry_endpoint, container_registries.skip_tls_verify AS registry_skip_tls_verify, container_registries.namespace AS registry_namespace, container_registries.username AS registry_username, container_registries.password AS registry_password, container_registries.scope AS registry_scope, container_registries.cluster_id AS registry_cluster_id, container_registries.project_id AS registry_project_id, container_registries.is_default AS registry_is_default, container_registries.enabled AS registry_enabled, container_registries.description AS registry_description").
+		Joins("LEFT JOIN container_registries ON container_registries.id = app_build_configs.registry_id").
+		Where("app_build_configs.app_id = ?", appID).
 		First(&config).Error; err != nil {
 		return nil, err
 	}
-	// Explicit load: Registry
-	var registry entities.ContainerRegistry
-	if err := db.DB.First(&registry, "id = ?", config.RegistryID).Error; err != nil {
-		return nil, err
-	}
-	config.Registry = registry
 	return &config, nil
 }
 
-func UpsertBuildConfig(appID string, req *models.UpsertBuildConfigRequest) (*entities.AppBuildConfig, error) {
+func UpsertBuildConfig(appID string, req *models.UpsertBuildConfigRequest) (*AppBuildConfigWithRegistry, error) {
 	var config entities.AppBuildConfig
 	err := db.DB.Where("app_id = ?", appID).First(&config).Error
 
@@ -119,10 +121,10 @@ func ListAvailableRegistriesForApp(appID string) ([]entities.ContainerRegistry, 
 		return nil, err
 	}
 
-	return ListAvailableRegistries(appCtx.Env.ClusterID, appCtx.Env.ProjectID)
+	return ListAvailableRegistries(appCtx.EnvContext.Env.ClusterID, appCtx.EnvContext.Project.ID)
 }
 
-func ToBuildConfigResponse(config *entities.AppBuildConfig) models.BuildConfigResponse {
+func ToBuildConfigResponse(config *AppBuildConfigWithRegistry) models.BuildConfigResponse {
 	resp := models.BuildConfigResponse{
 		ID:             config.ID,
 		AppID:          config.AppID,

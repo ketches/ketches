@@ -10,7 +10,7 @@ type CertificateResponse struct {
 	Description string    `json:"description"`
 	Scope       string    `json:"scope"`
 	ClusterID   string    `json:"cluster_id"`
-	EnvID       string    `json:"env_id"`
+	EnvID       string    `json:"env_id,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 

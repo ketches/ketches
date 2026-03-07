@@ -28,8 +28,6 @@ type ClusterIntegration struct {
 	CACert          string          `gorm:"type:text"`
 	SkipTLSVerify   bool            `gorm:"type:bool;default:false"`
 	Enabled         bool            `gorm:"type:bool;default:true"`
-
-	Cluster *Cluster `gorm:"foreignKey:ClusterID"`
 }
 
 func (ClusterIntegration) TableName() string {

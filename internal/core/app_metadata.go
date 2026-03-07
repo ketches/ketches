@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	appsv1 "k8s.io/api/apps/v1"
@@ -24,7 +25,8 @@ type AppMetadata struct {
 func (m *AppMetadata) BuildNamespace() *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: m.AppContext.Env.ClusterNamespace,
+			Name:   m.AppContext.EnvContext.Env.ClusterNamespace,
+			Labels: m.getLabels(),
 		},
 	}
 }
@@ -34,13 +36,13 @@ func (m *AppMetadata) BuildDeployment() *appsv1.Deployment {
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.AppContext.App.Slug,
-			Namespace: m.AppContext.Env.ClusterNamespace,
+			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: m.getLabels(),
+				MatchLabels: m.getSelectorLabels(),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -98,7 +100,7 @@ func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.AppContext.App.Slug + "-registry",
-			Namespace: m.AppContext.Env.ClusterNamespace,
+			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Type: corev1.SecretTypeDockerConfigJson,
@@ -111,7 +113,7 @@ func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
 func (m *AppMetadata) buildVolumes() []corev1.Volume {
 	var volumes []corev1.Volume
 	for _, v := range m.AppContext.Volumes {
-		if v.VolumeType == "pvc" && m.AppContext.App.AppType != "StatefulSet" {
+		if v.VolumeType == app.VolumeTypePVC && m.AppContext.App.AppType != app.AppTypeStatefulSet {
 			volumes = append(volumes, corev1.Volume{
 				Name: v.Slug,
 				VolumeSource: corev1.VolumeSource{
@@ -147,7 +149,7 @@ func (m *AppMetadata) BuildConfigMap() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.AppContext.App.Slug + "-config",
-			Namespace: m.AppContext.Env.ClusterNamespace,
+			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Data: data,
@@ -159,7 +161,7 @@ func (m *AppMetadata) BuildPVC(v entities.AppVolume) *corev1.PersistentVolumeCla
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      v.Slug,
-			Namespace: m.AppContext.Env.ClusterNamespace,
+			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -178,13 +180,13 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 	statefulSet := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.AppContext.App.Slug,
-			Namespace: m.AppContext.Env.ClusterNamespace,
+			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: m.getLabels(),
+				MatchLabels: m.getSelectorLabels(),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -209,11 +211,11 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 	}
 
 	for _, v := range m.AppContext.Volumes {
-		if v.VolumeType == "pvc" {
+		if v.VolumeType == app.VolumeTypePVC {
 			statefulSet.Spec.VolumeClaimTemplates = append(statefulSet.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      v.Slug,
-					Namespace: m.AppContext.Env.ClusterNamespace,
+					Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
 					Labels:    m.getLabels(),
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -235,8 +237,20 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 
 func (m *AppMetadata) getLabels() map[string]string {
 	return map[string]string{
-		"app.ketches.cn/slug": m.AppContext.App.Slug,
-		"app":                 m.AppContext.App.Slug,
+		"ketches.cn/app-id":       m.AppContext.App.ID,
+		"ketches.cn/app-slug":     m.AppContext.App.Slug,
+		"ketches.cn/env-id":       m.AppContext.EnvContext.Env.ID,
+		"ketches.cn/env-slug":     m.AppContext.EnvContext.Env.Slug,
+		"ketches.cn/project-id":   m.AppContext.EnvContext.Project.ID,
+		"ketches.cn/project-slug": m.AppContext.EnvContext.Project.Slug,
+		"ketches.cn/managed":      "true",
+	}
+}
+
+func (m *AppMetadata) getSelectorLabels() map[string]string {
+	return map[string]string{
+		"ketches.cn/app-id":   m.AppContext.App.ID,
+		"ketches.cn/app-slug": m.AppContext.App.Slug,
 	}
 }
 
@@ -324,8 +338,9 @@ func (m *AppMetadata) buildContainer() corev1.Container {
 func (m *AppMetadata) buildInitContainers() []corev1.Container {
 	var containers []corev1.Container
 	for _, appPlugin := range m.AppContext.AppPlugins {
-		if appPlugin.Enabled && appPlugin.Plugin.PluginType == "init" {
-			containers = append(containers, m.buildPluginContainer(&appPlugin.Plugin))
+		plugin, ok := m.AppContext.Plugins[appPlugin.PluginID]
+		if appPlugin.Enabled && ok && plugin.PluginType == "init" {
+			containers = append(containers, m.buildPluginContainer(&plugin))
 		}
 	}
 	return containers
@@ -334,8 +349,9 @@ func (m *AppMetadata) buildInitContainers() []corev1.Container {
 func (m *AppMetadata) buildSidecarContainers() []corev1.Container {
 	var containers []corev1.Container
 	for _, appPlugin := range m.AppContext.AppPlugins {
-		if appPlugin.Enabled && appPlugin.Plugin.PluginType == "sidecar" {
-			containers = append(containers, m.buildPluginContainer(&appPlugin.Plugin))
+		plugin, ok := m.AppContext.Plugins[appPlugin.PluginID]
+		if appPlugin.Enabled && ok && plugin.PluginType == "sidecar" {
+			containers = append(containers, m.buildPluginContainer(&plugin))
 		}
 	}
 	return containers
@@ -446,7 +462,7 @@ func (m *AppMetadata) BuildHorizontalPodAutoscaler() *autoscalingv2.HorizontalPo
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.AppContext.App.Slug,
-			Namespace: m.AppContext.Env.ClusterNamespace,
+			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
@@ -500,14 +516,14 @@ func (m *AppMetadata) BuildHTTPRoute(gw entities.AppGateway) *gatewayv1.HTTPRout
 	route := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%d", m.AppContext.App.Slug, gw.Port),
-			Namespace: m.AppContext.Env.ClusterNamespace,
+			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
 		Spec: gatewayv1.HTTPRouteSpec{
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{
 				ParentRefs: []gatewayv1.ParentReference{
 					{
-						Name: gatewayv1.ObjectName(EnvGatewayName(m.AppContext.Env.Slug)),
+						Name: gatewayv1.ObjectName(EnvGatewayName(m.AppContext.EnvContext.Env.Slug)),
 					},
 				},
 			},

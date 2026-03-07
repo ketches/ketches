@@ -1,14 +1,9 @@
 import * as React from "react"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Copy, Trash2, Users } from "lucide-react"
-import { toast } from "sonner"
-
 import { PROJECT_ROLES, ProjectRole, ProjectRoleDescriptions, ProjectRoleLabels, projectsApi, type ProjectMember } from "@/api/projects"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
-import { AddMemberDialog } from "@/components/members/add-member-dialog"
+import { InviteMemberDialog } from "@/components/members/invite-member-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -17,11 +12,16 @@ import {
   ComboboxContent,
   ComboboxInput,
   ComboboxItem,
-  ComboboxList,
+  ComboboxList
 } from "@/components/ui/combobox"
+import { InputGroupAddon } from "@/components/ui/input-group"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
+import { Copy, Trash2, UserKey, Users } from "lucide-react"
+import { toast } from "sonner"
 
 const formatDate = (dateString: string) => {
   if (!dateString) return "-"
@@ -57,9 +57,23 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
   const members = response?.items ?? []
   const paginationInfo = response?.pagination
 
+  const inviteMembersMutation = useMutation({
+    mutationFn: ({ userIds, role }: { userIds: string[]; role: string }) =>
+      projectsApi.inviteProjectMembers(activeProjectId!, { user_ids: userIds, role }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-members', activeProjectId] })
+      toast.success("Members invited successfully")
+    },
+    onError: (error: any) => {
+      toast.error("Error", {
+        description: error.response?.data?.error || "Failed to invite members",
+      })
+    }
+  })
+
   const updateRoleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: string }) =>
-      projectsApi.addProjectMember(activeProjectId!, { user_id: userId, role }),
+      projectsApi.inviteProjectMembers(activeProjectId!, { user_ids: [userId], role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-members', activeProjectId] })
       toast.success("Member role updated")
@@ -138,7 +152,6 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       header: "Email",
       cell: ({ row }) => {
         const member = row.original
-        // return <span className="text-xs text-muted-foreground">{member.email}</span>
         return <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="font-mono">
             {member.email}
@@ -171,8 +184,12 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
             disabled={updateRoleMutation.isPending}
             itemToStringLabel={(v) => ProjectRoleLabels[v as ProjectRole] ?? v ?? ""}
           >
-            <ComboboxInput className="w-32" />
-            <ComboboxContent className="w-auto">
+            <ComboboxInput className="w-fit" >
+              <InputGroupAddon>
+                <UserKey />
+              </InputGroupAddon>
+            </ComboboxInput>
+            <ComboboxContent alignOffset={-24} className="w-full">
               <ComboboxList>
                 {PROJECT_ROLES.map((r) => (
                   <ComboboxItem key={r} value={r}>
@@ -273,9 +290,9 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
                   </Button>
                 )}
                 {!isViewer && (
-                  <AddMemberDialog
+                  <InviteMemberDialog
                     onAdd={(data) => {
-                      updateRoleMutation.mutate({ userId: data.userId, role: data.role })
+                      inviteMembersMutation.mutate(data)
                     }}
                   />
                 )}

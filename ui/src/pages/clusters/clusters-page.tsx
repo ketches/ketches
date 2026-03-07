@@ -353,7 +353,7 @@ export function ClustersPage() {
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon-xs"
+                    size="icon-sm"
                     onClick={(e) => {
                       e.stopPropagation()
                       setTestingClusterId(cluster.id)
@@ -370,7 +370,7 @@ export function ClustersPage() {
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon-xs"
+                    size="icon-sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={(e) => {
                       e.stopPropagation()
@@ -426,7 +426,7 @@ export function ClustersPage() {
             <AlertDialogAction
               onClick={() => deletingCluster && deleteMutation.mutate(deletingCluster.id)}
               disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>

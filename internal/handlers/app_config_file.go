@@ -28,7 +28,7 @@ func CreateAppConfigFile(c *gin.Context) {
 		return
 	}
 
-	cf, err := services.CreateAppConfigFile(appID, &req)
+	cf, err := services.CreateAppConfigFile(c.Request.Context(), appID, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			api.Error(c, http.StatusBadRequest, err)
@@ -48,7 +48,7 @@ func UpdateAppConfigFile(c *gin.Context) {
 		return
 	}
 
-	cf, err := services.UpdateAppConfigFile(id, &req)
+	cf, err := services.UpdateAppConfigFile(c.Request.Context(), id, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			api.Error(c, http.StatusNotFound, err)
@@ -66,7 +66,7 @@ func UpdateAppConfigFile(c *gin.Context) {
 
 func DeleteAppConfigFile(c *gin.Context) {
 	id := c.Param("id")
-	if err := services.DeleteAppConfigFile(id); err != nil {
+	if err := services.DeleteAppConfigFile(c.Request.Context(), id); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

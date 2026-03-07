@@ -10,6 +10,7 @@ import (
 
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/models"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -19,9 +20,9 @@ import (
 const (
 	KanikoImage   = "gcr.io/kaniko-project/executor:latest"
 	GitCloneImage = "alpine/git:latest"
-	BuildLabelKey = "app.ketches.cn/build"
-	BuildAppLabel = "app.ketches.cn/app-slug"
-	BuildIDLabel  = "app.ketches.cn/build-id"
+	BuildLabelKey = "ketches.cn/build"
+	BuildAppLabel = "ketches.cn/app-slug"
+	BuildIDLabel  = "ketches.cn/build-id"
 )
 
 // CreateBuildJob creates a Kubernetes Job to build a container image using Kaniko.
@@ -30,8 +31,9 @@ func CreateBuildJob(
 	config *entities.AppBuildConfig,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
-	appSlug string,
+	appCtx *models.AppContext,
 ) (*batchv1.Job, error) {
+	appSlug := appCtx.App.Slug
 	jobName := fmt.Sprintf("build-%s-%d", appSlug, build.BuildNumber)
 	namespace := buildEnv.ClusterNamespace
 
@@ -55,26 +57,30 @@ func CreateBuildJob(
 
 	gitCloneCmd := buildGitCloneCommand(config.GitRepoURL, gitRef, config.GitUsername, config.GitPassword)
 
+	labels := map[string]string{
+		"ketches.cn/app-id":       appCtx.App.ID,
+		"ketches.cn/env-id":       appCtx.EnvContext.Env.ID,
+		"ketches.cn/env-slug":     appCtx.EnvContext.Env.Slug,
+		"ketches.cn/project-id":   appCtx.EnvContext.Project.ID,
+		"ketches.cn/project-slug": appCtx.EnvContext.Project.Slug,
+		BuildLabelKey:             "true",
+		BuildAppLabel:             appSlug,
+		BuildIDLabel:              build.ID,
+		"ketches.cn/managed":      "true",
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
 			Namespace: namespace,
-			Labels: map[string]string{
-				BuildLabelKey: "true",
-				BuildAppLabel: appSlug,
-				BuildIDLabel:  build.ID,
-			},
+			Labels:    labels,
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoffLimit,
 			TTLSecondsAfterFinished: &ttl,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						BuildLabelKey: "true",
-						BuildAppLabel: appSlug,
-						BuildIDLabel:  build.ID,
-					},
+					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
@@ -116,13 +122,6 @@ func CreateBuildJob(
 									corev1.ResourceMemory: resource.MustParse("4Gi"),
 								},
 							},
-							// SecurityContext: &corev1.SecurityContext{
-							// 	Privileged: pointer.Bool(false),
-							// 	RunAsUser:  pointer.Int64(0),
-							// 	Capabilities: &corev1.Capabilities{
-							// 		Drop: []corev1.Capability{"ALL"},
-							// 	},
-							// },
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -168,6 +167,7 @@ func CreateBuildJobFromCodeRepo(
 	config *entities.CodeRepositoryBuildConfig,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
+	project *entities.Project,
 	jobSlug string,
 ) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("build-%s-%d", jobSlug, build.BuildNumber)
@@ -189,26 +189,29 @@ func CreateBuildJobFromCodeRepo(
 	}
 	gitCloneCmd := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, repo.GitPassword)
 
+	labels := map[string]string{
+		"ketches.cn/env-id":       buildEnv.ID,
+		"ketches.cn/env-slug":     buildEnv.Slug,
+		"ketches.cn/project-id":   project.ID,
+		"ketches.cn/project-slug": project.Slug,
+		BuildLabelKey:             "true",
+		BuildAppLabel:             jobSlug,
+		BuildIDLabel:              build.ID,
+		"ketches.cn/managed":      "true",
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
 			Namespace: namespace,
-			Labels: map[string]string{
-				BuildLabelKey: "true",
-				BuildAppLabel: jobSlug,
-				BuildIDLabel:  build.ID,
-			},
+			Labels:    labels,
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoffLimit,
 			TTLSecondsAfterFinished: &ttl,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						BuildLabelKey: "true",
-						BuildAppLabel: jobSlug,
-						BuildIDLabel:  build.ID,
-					},
+					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
@@ -241,10 +244,6 @@ func CreateBuildJobFromCodeRepo(
 									corev1.ResourceMemory: resource.MustParse("4Gi"),
 								},
 							},
-							// SecurityContext: &corev1.SecurityContext{
-							// 	RunAsUser:                pointer.Int64(0),
-							// 	AllowPrivilegeEscalation: pointer.Bool(false),
-							// },
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -273,12 +272,25 @@ func CreateBuildSecretsFromCodeRepo(
 	repo *entities.CodeRepository,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
+	project *entities.Project,
 	jobSlug string,
 ) error {
 	client, err := kube.GlobalClusterStore.GetClient(buildEnv.ClusterID)
 	if err != nil {
 		return fmt.Errorf("failed to get cluster client: %w", err)
 	}
+
+	labels := map[string]string{
+		"ketches.cn/env-id":       buildEnv.ID,
+		"ketches.cn/env-slug":     buildEnv.Slug,
+		"ketches.cn/project-id":   project.ID,
+		"ketches.cn/project-slug": project.Slug,
+		BuildLabelKey:             "true",
+		BuildAppLabel:             jobSlug,
+		BuildIDLabel:              build.ID,
+		"ketches.cn/managed":      "true",
+	}
+
 	jobName := fmt.Sprintf("build-%s-%d", jobSlug, build.BuildNumber)
 	namespace := buildEnv.ClusterNamespace
 
@@ -287,7 +299,7 @@ func CreateBuildSecretsFromCodeRepo(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-build-registry", jobName),
 			Namespace: namespace,
-			Labels:    map[string]string{BuildLabelKey: "true", BuildIDLabel: build.ID},
+			Labels:    labels,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{"config.json": dockerConfigJSON},
@@ -300,7 +312,7 @@ func CreateBuildSecretsFromCodeRepo(
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-git-cred", jobName),
 				Namespace: namespace,
-				Labels:    map[string]string{BuildLabelKey: "true", BuildIDLabel: build.ID},
+				Labels:    labels,
 			},
 			Type:       corev1.SecretTypeOpaque,
 			StringData: map[string]string{"username": repo.GitUsername, "password": repo.GitPassword},
@@ -320,16 +332,17 @@ func SubmitBuildJobFromCodeRepo(
 	config *entities.CodeRepositoryBuildConfig,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
+	project *entities.Project,
 	jobSlug string,
 ) (string, string, error) {
 	client, err := kube.GlobalClusterStore.GetClient(buildEnv.ClusterID)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get cluster client: %w", err)
 	}
-	if err := CreateBuildSecretsFromCodeRepo(ctx, build, repo, registry, buildEnv, jobSlug); err != nil {
+	if err := CreateBuildSecretsFromCodeRepo(ctx, build, repo, registry, buildEnv, project, jobSlug); err != nil {
 		return "", "", err
 	}
-	job, err := CreateBuildJobFromCodeRepo(build, repo, config, registry, buildEnv, jobSlug)
+	job, err := CreateBuildJobFromCodeRepo(build, repo, config, registry, buildEnv, project, jobSlug)
 	if err != nil {
 		return "", "", err
 	}
@@ -347,11 +360,24 @@ func CreateBuildSecrets(
 	config *entities.AppBuildConfig,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
-	appSlug string,
+	appCtx *models.AppContext,
 ) error {
+	appSlug := appCtx.App.Slug
 	client, err := kube.GlobalClusterStore.GetClient(buildEnv.ClusterID)
 	if err != nil {
 		return fmt.Errorf("failed to get cluster client: %w", err)
+	}
+
+	labels := map[string]string{
+		"ketches.cn/app-id":       appCtx.App.ID,
+		"ketches.cn/env-id":       appCtx.EnvContext.Env.ID,
+		"ketches.cn/env-slug":     appCtx.EnvContext.Env.Slug,
+		"ketches.cn/project-id":   appCtx.EnvContext.Project.ID,
+		"ketches.cn/project-slug": appCtx.EnvContext.Project.Slug,
+		BuildLabelKey:             "true",
+		BuildAppLabel:             appSlug,
+		BuildIDLabel:              build.ID,
+		"ketches.cn/managed":      "true",
 	}
 
 	jobName := fmt.Sprintf("build-%s-%d", appSlug, build.BuildNumber)
@@ -363,10 +389,7 @@ func CreateBuildSecrets(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-build-registry", jobName),
 			Namespace: namespace,
-			Labels: map[string]string{
-				BuildLabelKey: "true",
-				BuildIDLabel:  build.ID,
-			},
+			Labels:    labels,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
@@ -384,10 +407,7 @@ func CreateBuildSecrets(
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-git-cred", jobName),
 				Namespace: namespace,
-				Labels: map[string]string{
-					BuildLabelKey: "true",
-					BuildIDLabel:  build.ID,
-				},
+				Labels:    labels,
 			},
 			Type: corev1.SecretTypeOpaque,
 			StringData: map[string]string{
@@ -411,7 +431,7 @@ func SubmitBuildJob(
 	config *entities.AppBuildConfig,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
-	appSlug string,
+	appCtx *models.AppContext,
 ) (string, string, error) {
 	client, err := kube.GlobalClusterStore.GetClient(buildEnv.ClusterID)
 	if err != nil {
@@ -419,12 +439,12 @@ func SubmitBuildJob(
 	}
 
 	// Create secrets first
-	if err := CreateBuildSecrets(ctx, build, config, registry, buildEnv, appSlug); err != nil {
+	if err := CreateBuildSecrets(ctx, build, config, registry, buildEnv, appCtx); err != nil {
 		return "", "", err
 	}
 
 	// Create the job
-	job, err := CreateBuildJob(build, config, registry, buildEnv, appSlug)
+	job, err := CreateBuildJob(build, config, registry, buildEnv, appCtx)
 	if err != nil {
 		return "", "", err
 	}

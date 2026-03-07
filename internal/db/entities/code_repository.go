@@ -20,12 +20,7 @@ type CodeRepository struct {
 	// Webhook (one per repo; which build configs to trigger is per BuildConfig.WebhookEnabled)
 	WebhookSecret  string `gorm:"type:varchar(256)"`
 	WebhookEnabled bool   `gorm:"type:bool;default:false"`
-
-	Project      Project                     `gorm:"foreignKey:ProjectID"`
-	BuildConfigs []CodeRepositoryBuildConfig `gorm:"foreignKey:CodeRepositoryID"`
-	Builds       []Build                     `gorm:"foreignKey:CodeRepositoryID"`
 }
-
 
 func (CodeRepository) TableName() string {
 	return "code_repositories"

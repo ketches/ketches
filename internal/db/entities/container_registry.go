@@ -34,15 +34,11 @@ type ContainerRegistry struct {
 	Password      string           `gorm:"type:varchar(512)"`
 	Scope         RegistryScope    `gorm:"type:varchar(16);not null"`
 	ClusterID     *string          `gorm:"type:varchar(36);index"` // NULL for project-scoped registries
-	ProjectID string `gorm:"type:varchar(36);not null;index"`
+	ProjectID     string           `gorm:"type:varchar(36);not null;index"`
 	IsDefault     bool             `gorm:"type:bool;default:false"`
-	Enabled     bool   `gorm:"type:bool;default:true"`
-	Description string `gorm:"type:text"`
-
-	Cluster *Cluster `gorm:"foreignKey:ClusterID"`
-	Project *Project `gorm:"foreignKey:ProjectID"`
+	Enabled       bool             `gorm:"type:bool;default:true"`
+	Description   string           `gorm:"type:text"`
 }
-
 
 func (ContainerRegistry) TableName() string {
 	return "container_registries"

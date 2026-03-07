@@ -49,7 +49,7 @@ func TriggerBuild(c *gin.Context) {
 		req = models.TriggerBuildRequest{}
 	}
 
-	build, err := services.TriggerBuild(appID, userID, &req)
+	build, err := services.TriggerBuild(c.Request.Context(), appID, userID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -90,7 +90,7 @@ func CancelBuild(c *gin.Context) {
 func DeployBuild(c *gin.Context) {
 	buildID := c.Param("buildID")
 
-	build, err := services.DeployBuild(buildID)
+	build, err := services.DeployBuild(c.Request.Context(), buildID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -110,7 +110,7 @@ func RebuildBuild(c *gin.Context) {
 	var req models.RebuildRequest
 	_ = c.ShouldBindJSON(&req)
 
-	build, err := services.RebuildBuild(buildID, userID, &req)
+	build, err := services.RebuildBuild(c.Request.Context(), buildID, userID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

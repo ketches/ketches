@@ -153,9 +153,9 @@ func ListProjectMembers(c *gin.Context) {
 	for _, m := range members {
 		res = append(res, models.ProjectMemberResponse{
 			UserID:      m.UserID,
-			Username:    m.User.Username,
-			Fullname:    m.User.Fullname,
-			Email:       m.User.Email,
+			Username:    m.Username,
+			Fullname:    m.Fullname,
+			Email:       m.Email,
 			ProjectRole: m.ProjectRole,
 			JoinedAt:    m.CreatedAt,
 		})
@@ -166,18 +166,18 @@ func ListProjectMembers(c *gin.Context) {
 	})
 }
 
-func AddProjectMember(c *gin.Context) {
+func InviteProjectMembers(c *gin.Context) {
 	projectID := c.Param("projectID")
 	var req struct {
-		UserID string `json:"user_id" binding:"required"`
-		Role   string `json:"role" binding:"required"`
+		UserIDs []string `json:"user_ids" binding:"required"`
+		Role    string   `json:"role" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
 
-	if err := services.AddProjectMember(projectID, req.UserID, req.Role); err != nil {
+	if err := services.InviteProjectMembers(projectID, req.UserIDs, req.Role); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

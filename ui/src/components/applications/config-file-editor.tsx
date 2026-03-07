@@ -1,13 +1,14 @@
-import Editor from "@monaco-editor/react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
-import * as React from "react"
-import { toast } from "sonner"
-
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import { Button } from "@/components/ui/button"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -18,13 +19,12 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox"
+import { Item, ItemContent, ItemTitle } from "@/components/ui/item"
+import Editor from "@monaco-editor/react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { Loader2 } from "lucide-react"
+import * as React from "react"
+import { toast } from "sonner"
 
 export interface ConfigFileSpec {
   id?: string
@@ -222,12 +222,16 @@ export function ConfigFileEditor({
                     }
                     itemToStringLabel={(v) => FILE_MODE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
                   >
-                      <ComboboxInput />
+                    <ComboboxInput />
                     <ComboboxContent>
                       <ComboboxList>
                         {FILE_MODE_OPTIONS.map((option) => (
                           <ComboboxItem key={option.value} value={option.value}>
-                            {option.label}
+                            <Item size="xs" className="p-0">
+                              <ItemContent>
+                                <ItemTitle>{option.label}</ItemTitle>
+                              </ItemContent>
+                            </Item>
                           </ComboboxItem>
                         ))}
                       </ComboboxList>

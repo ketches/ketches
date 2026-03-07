@@ -251,15 +251,15 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
       </Card>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingCert ? "Edit Certificate" : "Add Certificate"}</DialogTitle>
-            <DialogDescription>
-              {editingCert
-                ? "Update the certificate details. Leave PEM fields blank to keep current values."
-                : "Add a TLS certificate to enable HTTPS gateways in this environment."}
-            </DialogDescription>
-          </DialogHeader>
           <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>{editingCert ? "Edit Certificate" : "Add Certificate"}</DialogTitle>
+              <DialogDescription>
+                {editingCert
+                  ? "Update the certificate details. Leave PEM fields blank to keep current values."
+                  : "Add a TLS certificate to enable HTTPS gateways in this environment."}
+              </DialogDescription>
+            </DialogHeader>
             <div className="grid gap-4 py-4">
               <Field>
                 <FieldLabel>Name *</FieldLabel>
@@ -335,7 +335,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletingCert && deleteMutation.mutate(deletingCert.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/models"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -37,18 +38,26 @@ func generateRandomString(length int) string {
 	return string(result)
 }
 
-func CreateNamespace(ctx context.Context, clusterID, namespaceName string) error {
+func CreateNamespace(ctx context.Context, clusterID, namespaceName string, envCtx *models.EnvContext) error {
 	client, err := kube.GlobalClusterStore.GetClient(clusterID)
 	if err != nil {
 		return err
 	}
 
+	labels := map[string]string{
+		"ketches.cn/managed": "true",
+	}
+	if envCtx != nil {
+		labels["ketches.cn/env-id"] = envCtx.Env.ID
+		labels["ketches.cn/env-slug"] = envCtx.Env.Slug
+		labels["ketches.cn/project-id"] = envCtx.Project.ID
+		labels["ketches.cn/project-slug"] = envCtx.Project.Slug
+	}
+
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespaceName,
-			Labels: map[string]string{
-				"managed-by": "ketches",
-			},
+			Name:   namespaceName,
+			Labels: labels,
 		},
 	}
 

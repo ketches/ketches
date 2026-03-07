@@ -105,7 +105,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 			for _, ev := range appMeta.EnvVars {
 				envVars = append(envVars, entities.AppEnvVar{
 					ID:    uuid.New(),
-				AppID: createdApp.App.ID,
+					AppID: createdApp.App.ID,
 					Key:   ev.Key,
 					Value: ev.Value,
 				})
@@ -118,16 +118,21 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 		// Add Gateways
 		if len(appMeta.Gateways) > 0 {
 			for _, gw := range appMeta.Gateways {
+				var certID *string
+				if gw.CertID != "" {
+					cid := gw.CertID
+					certID = &cid
+				}
 				gateway := &entities.AppGateway{
 					ID:          uuid.New(),
-				AppID:       createdApp.App.ID,
+					AppID:       createdApp.App.ID,
 					Port:        gw.Port,
 					Protocol:    gw.Protocol,
 					GatewayPort: gw.GatewayPort,
 					Exposed:     gw.Exposed,
 					Domain:      gw.Domain,
 					Path:        gw.Path,
-					CertID:      gw.CertID,
+					CertID:      certID,
 				}
 				if err := db.DB.Create(gateway).Error; err != nil {
 					return nil, err
@@ -140,7 +145,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 			for _, cf := range appMeta.ConfigFiles {
 				configFile := &entities.AppConfigFile{
 					ID:        uuid.New(),
-				AppID:     createdApp.App.ID,
+					AppID:     createdApp.App.ID,
 					Slug:      cf.Slug,
 					MountPath: cf.MountPath,
 					Content:   cf.Content,
@@ -160,7 +165,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 			for _, vol := range appMeta.Volumes {
 				volume := &entities.AppVolume{
 					ID:           uuid.New(),
-				AppID:        createdApp.App.ID,
+					AppID:        createdApp.App.ID,
 					Slug:         vol.Slug,
 					MountPath:    vol.MountPath,
 					SubPath:      vol.SubPath,
@@ -179,7 +184,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 			for _, p := range appMeta.Probes {
 				probe := &entities.AppProbe{
 					ID:                  uuid.New(),
-				AppID:               createdApp.App.ID,
+					AppID:               createdApp.App.ID,
 					Type:                p.Type,
 					ProbeMode:           p.ProbeMode,
 					Enabled:             p.Enabled,
@@ -325,7 +330,7 @@ func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMeta
 				Exposed:     gw.Exposed,
 				Domain:      gw.Domain,
 				Path:        gw.Path,
-				CertID:      gw.CertID,
+				CertID:      derefCertString(gw.CertID),
 			})
 		}
 
@@ -369,4 +374,11 @@ func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMeta
 		metadatas = append(metadatas, meta)
 	}
 	return metadatas
+}
+
+func derefCertString(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }

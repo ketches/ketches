@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,7 +16,7 @@ import (
 func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 	metadata := &AppMetadata{AppContext: appCtx}
 
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return err
 	}
@@ -66,9 +67,9 @@ func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 	}
 
 	for _, v := range appCtx.Volumes {
-		if v.VolumeType == "pvc" {
+		if v.VolumeType == app.VolumeTypePVC {
 			switch appCtx.App.AppType {
-			case "Deployment":
+			case app.AppTypeDeployment:
 				pvc := metadata.BuildPVC(v)
 				if _, err := client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(ctx, pvc.Name, metav1.GetOptions{}); err != nil {
 					if errors.IsNotFound(err) {
@@ -79,7 +80,7 @@ func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 						return err
 					}
 				}
-			case "StatefulSet":
+			case app.AppTypeStatefulSet:
 				// For StatefulSet, PVCs are created by the StatefulSet controller based on the volumeClaimTemplates
 				// So we don't need to create them here. Just ensure they are defined in the volumeClaimTemplates.
 			default:
@@ -88,7 +89,7 @@ func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 		}
 	}
 
-	if appCtx.App.AppType == "StatefulSet" {
+	if appCtx.App.AppType == app.AppTypeStatefulSet {
 		sts := metadata.BuildStatefulSet()
 		if _, err := client.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{}); err != nil {
 			if errors.IsNotFound(err) {

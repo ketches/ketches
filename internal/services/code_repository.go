@@ -14,6 +14,17 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
+type CodeRepositoryWithProject struct {
+	entities.CodeRepository
+	Project entities.Project `gorm:"embedded;embeddedPrefix:project_"`
+}
+
+type CodeRepositoryBuildConfigWithRegistry struct {
+	entities.CodeRepositoryBuildConfig
+	Registry       entities.ContainerRegistry `gorm:"embedded;embeddedPrefix:registry_"`
+	CodeRepository entities.CodeRepository    `gorm:"embedded;embeddedPrefix:code_repository_"`
+}
+
 // RepoNameFromURL derives a short name from git repo URL (e.g. last path segment without .git).
 func RepoNameFromURL(gitRepoURL string) string {
 	u, err := url.Parse(gitRepoURL)
@@ -87,21 +98,19 @@ func ListCodeRepositoriesSimple(projectID string) ([]entities.CodeRepository, er
 	return repos, nil
 }
 
-func GetCodeRepository(id string) (*entities.CodeRepository, error) {
-	var repo entities.CodeRepository
-	if err := db.DB.First(&repo, "id = ?", id).Error; err != nil {
+func GetCodeRepository(id string) (*CodeRepositoryWithProject, error) {
+	var repo CodeRepositoryWithProject
+	if err := db.DB.Table("code_repositories").
+		Select("code_repositories.*, projects.id AS project_id, projects.created_at AS project_created_at, projects.updated_at AS project_updated_at, projects.slug AS project_slug, projects.name AS project_name, projects.description AS project_description").
+		Joins("LEFT JOIN projects ON projects.id = code_repositories.project_id").
+		Where("code_repositories.id = ?", id).
+		First(&repo).Error; err != nil {
 		return nil, err
 	}
-	// Explicit load: Project
-	var project entities.Project
-	if err := db.DB.First(&project, "id = ?", repo.ProjectID).Error; err != nil {
-		return nil, err
-	}
-	repo.Project = project
 	return &repo, nil
 }
 
-func CreateCodeRepository(projectID string, req *models.CreateCodeRepositoryRequest) (*entities.CodeRepository, error) {
+func CreateCodeRepository(projectID string, req *models.CreateCodeRepositoryRequest) (*CodeRepositoryWithProject, error) {
 	secret, _ := generateWebhookSecret()
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
@@ -136,7 +145,7 @@ func CreateCodeRepository(projectID string, req *models.CreateCodeRepositoryRequ
 	return GetCodeRepository(repo.ID)
 }
 
-func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*entities.CodeRepository, error) {
+func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*CodeRepositoryWithProject, error) {
 	repo, err := GetCodeRepository(id)
 	if err != nil {
 		return nil, err
@@ -144,6 +153,9 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 
 	if req.Name != "" {
 		repo.Name = sanitizeRepoName(req.Name)
+	}
+	if req.Slug != "" {
+		repo.Slug = RepoSlugFromName(req.Slug)
 	}
 	if req.GitRepoURL != "" {
 		repo.GitRepoURL = req.GitRepoURL
@@ -153,7 +165,7 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 	if req.WebhookEnabled != nil {
 		repo.WebhookEnabled = *req.WebhookEnabled
 	}
-	if err := db.DB.Save(repo).Error; err != nil {
+	if err := db.DB.Save(&repo.CodeRepository).Error; err != nil {
 		return nil, err
 	}
 	return GetCodeRepository(id)
@@ -197,61 +209,39 @@ func ToCodeRepositoryResponse(r *entities.CodeRepository, baseURL string) models
 	return resp
 }
 
+func ToCodeRepositoryRowResponse(r *CodeRepositoryWithProject, baseURL string) models.CodeRepositoryResponse {
+	return ToCodeRepositoryResponse(&r.CodeRepository, baseURL)
+}
+
 // --- Build configs ---
 
-func ListCodeRepositoryBuildConfigs(repoID string) ([]entities.CodeRepositoryBuildConfig, error) {
-	var configs []entities.CodeRepositoryBuildConfig
-	if err := db.DB.Where("code_repository_id = ?", repoID).
-		Order("created_at").
+func ListCodeRepositoryBuildConfigs(repoID string) ([]CodeRepositoryBuildConfigWithRegistry, error) {
+	var configs []CodeRepositoryBuildConfigWithRegistry
+	if err := db.DB.Table("code_repository_build_configs").
+		Select("code_repository_build_configs.*, container_registries.id AS registry_id, container_registries.created_at AS registry_created_at, container_registries.updated_at AS registry_updated_at, container_registries.name AS registry_name, container_registries.provider AS registry_provider, container_registries.endpoint AS registry_endpoint, container_registries.skip_tls_verify AS registry_skip_tls_verify, container_registries.namespace AS registry_namespace, container_registries.username AS registry_username, container_registries.password AS registry_password, container_registries.scope AS registry_scope, container_registries.cluster_id AS registry_cluster_id, container_registries.project_id AS registry_project_id, container_registries.is_default AS registry_is_default, container_registries.enabled AS registry_enabled, container_registries.description AS registry_description").
+		Joins("LEFT JOIN container_registries ON container_registries.id = code_repository_build_configs.registry_id").
+		Where("code_repository_build_configs.code_repository_id = ?", repoID).
+		Order("code_repository_build_configs.created_at").
 		Find(&configs).Error; err != nil {
 		return nil, err
-	}
-	// Batch-fetch registries
-	regIDs := make(map[string]struct{})
-	for _, c := range configs {
-		regIDs[c.RegistryID] = struct{}{}
-	}
-	if len(regIDs) > 0 {
-		ids := make([]string, 0, len(regIDs))
-		for id := range regIDs {
-			ids = append(ids, id)
-		}
-		var registries []entities.ContainerRegistry
-		db.DB.Where("id IN ?", ids).Find(&registries)
-		regMap := make(map[string]entities.ContainerRegistry, len(registries))
-		for _, r := range registries {
-			regMap[r.ID] = r
-		}
-		for i := range configs {
-			if r, ok := regMap[configs[i].RegistryID]; ok {
-				configs[i].Registry = r
-			}
-		}
 	}
 	return configs, nil
 }
 
-func GetCodeRepositoryBuildConfig(configID string) (*entities.CodeRepositoryBuildConfig, error) {
-	var cfg entities.CodeRepositoryBuildConfig
-	if err := db.DB.First(&cfg, "id = ?", configID).Error; err != nil {
+func GetCodeRepositoryBuildConfig(configID string) (*CodeRepositoryBuildConfigWithRegistry, error) {
+	var cfg CodeRepositoryBuildConfigWithRegistry
+	if err := db.DB.Table("code_repository_build_configs").
+		Select("code_repository_build_configs.*, container_registries.id AS registry_id, container_registries.created_at AS registry_created_at, container_registries.updated_at AS registry_updated_at, container_registries.name AS registry_name, container_registries.provider AS registry_provider, container_registries.endpoint AS registry_endpoint, container_registries.skip_tls_verify AS registry_skip_tls_verify, container_registries.namespace AS registry_namespace, container_registries.username AS registry_username, container_registries.password AS registry_password, container_registries.scope AS registry_scope, container_registries.cluster_id AS registry_cluster_id, container_registries.project_id AS registry_project_id, container_registries.is_default AS registry_is_default, container_registries.enabled AS registry_enabled, container_registries.description AS registry_description, code_repositories.id AS code_repository_id, code_repositories.created_at AS code_repository_created_at, code_repositories.updated_at AS code_repository_updated_at, code_repositories.project_id AS code_repository_project_id, code_repositories.name AS code_repository_name, code_repositories.slug AS code_repository_slug, code_repositories.git_repo_url AS code_repository_git_repo_url, code_repositories.git_username AS code_repository_git_username, code_repositories.git_password AS code_repository_git_password, code_repositories.webhook_secret AS code_repository_webhook_secret, code_repositories.webhook_enabled AS code_repository_webhook_enabled").
+		Joins("LEFT JOIN container_registries ON container_registries.id = code_repository_build_configs.registry_id").
+		Joins("LEFT JOIN code_repositories ON code_repositories.id = code_repository_build_configs.code_repository_id").
+		Where("code_repository_build_configs.id = ?", configID).
+		First(&cfg).Error; err != nil {
 		return nil, err
 	}
-	// Explicit load: Registry
-	var registry entities.ContainerRegistry
-	if err := db.DB.First(&registry, "id = ?", cfg.RegistryID).Error; err != nil {
-		return nil, err
-	}
-	cfg.Registry = registry
-	// Explicit load: CodeRepository
-	var codeRepo entities.CodeRepository
-	if err := db.DB.First(&codeRepo, "id = ?", cfg.CodeRepositoryID).Error; err != nil {
-		return nil, err
-	}
-	cfg.CodeRepository = codeRepo
 	return &cfg, nil
 }
 
-func CreateCodeRepositoryBuildConfig(repoID string, req *models.CreateCodeRepositoryBuildConfigRequest) (*entities.CodeRepositoryBuildConfig, error) {
+func CreateCodeRepositoryBuildConfig(repoID string, req *models.CreateCodeRepositoryBuildConfigRequest) (*CodeRepositoryBuildConfigWithRegistry, error) {
 	repo, err := GetCodeRepository(repoID)
 	if err != nil {
 		return nil, err
@@ -277,7 +267,7 @@ func CreateCodeRepositoryBuildConfig(repoID string, req *models.CreateCodeReposi
 	return GetCodeRepositoryBuildConfig(cfg.ID)
 }
 
-func UpdateCodeRepositoryBuildConfig(configID string, req *models.UpdateCodeRepositoryBuildConfigRequest) (*entities.CodeRepositoryBuildConfig, error) {
+func UpdateCodeRepositoryBuildConfig(configID string, req *models.UpdateCodeRepositoryBuildConfigRequest) (*CodeRepositoryBuildConfigWithRegistry, error) {
 	cfg, err := GetCodeRepositoryBuildConfig(configID)
 	if err != nil {
 		return nil, err
@@ -329,7 +319,7 @@ func DeleteCodeRepositoryBuildConfig(configID string) error {
 	return db.DB.Delete(&entities.CodeRepositoryBuildConfig{}, "id = ?", configID).Error
 }
 
-func ToCodeRepositoryBuildConfigResponse(c *entities.CodeRepositoryBuildConfig) models.CodeRepositoryBuildConfigResponse {
+func ToCodeRepositoryBuildConfigResponse(c *CodeRepositoryBuildConfigWithRegistry) models.CodeRepositoryBuildConfigResponse {
 	resp := models.CodeRepositoryBuildConfigResponse{
 		ID:               c.ID,
 		CodeRepositoryID: c.CodeRepositoryID,

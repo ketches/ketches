@@ -225,7 +225,7 @@ export function ProjectSwitcher() {
             <AlertDialogAction
               onClick={() => selectedProject && deleteMutation.mutate(selectedProject.id)}
               disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>

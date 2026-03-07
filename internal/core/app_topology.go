@@ -14,7 +14,7 @@ import (
 )
 
 func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, appCtx *models.AppContext) (*models.AppTopologyResponse, error) {
-	ns := appCtx.Env.ClusterNamespace
+	ns := appCtx.EnvContext.Env.ClusterNamespace
 
 	var nodes []models.AppTopologyNode
 	var edges []models.AppTopologyEdge
@@ -42,7 +42,7 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, appCtx *m
 	})
 
 	pods, _ := client.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
-		LabelSelector: "app=" + appCtx.App.Slug,
+		LabelSelector: "ketches.cn/app-slug=" + appCtx.App.Slug,
 	})
 	for _, pod := range pods.Items {
 		podID := "pod-" + pod.Name
@@ -70,7 +70,7 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, appCtx *m
 			Target: svcID,
 		})
 
-		gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.Env.ClusterID)
+		gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID)
 		if err == nil {
 			routes, _ := gwClient.GatewayV1().HTTPRoutes(ns).List(ctx, metav1.ListOptions{})
 			for _, route := range routes.Items {
@@ -183,12 +183,12 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, appCtx *m
 }
 
 func GetAppTopologyResourceYaml(ctx context.Context, client *kubernetes.Clientset, appCtx *models.AppContext, nodeID string) (string, error) {
-	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(appCtx.Env.ClusterID)
+	dynClient, err := kube.GlobalClusterStore.GetDynamicClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return "", err
 	}
 
-	ns := appCtx.Env.ClusterNamespace
+	ns := appCtx.EnvContext.Env.ClusterNamespace
 
 	var gvr schema.GroupVersionResource
 	var name string

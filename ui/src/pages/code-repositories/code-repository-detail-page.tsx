@@ -823,7 +823,7 @@ export function CodeRepositoryDetailPage() {
                 setDeleteConfigDialogOpen(false)
                 setDeletingConfig(null)
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Remove
             </AlertDialogAction>

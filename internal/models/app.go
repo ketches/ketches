@@ -261,7 +261,7 @@ type AppListRow struct {
 	Description      string    `gorm:"column:description"`
 	EnvID            string    `gorm:"column:env_id"`
 	AppType          string    `gorm:"column:app_type"`
-	CodeRepositoryID string    `gorm:"column:code_repository_id"`
+	CodeRepositoryID *string   `gorm:"column:code_repository_id"`
 	ContainerImage   string    `gorm:"column:container_image"`
 	ContainerCommand string    `gorm:"column:container_command"`
 	RegistryUsername string    `gorm:"column:registry_username"`

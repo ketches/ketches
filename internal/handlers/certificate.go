@@ -34,7 +34,7 @@ func ListClusterCertificates(c *gin.Context) {
 			Description: cert.Description,
 			Scope:       cert.Scope,
 			ClusterID:   cert.ClusterID,
-			EnvID:       cert.EnvID,
+			EnvID:       derefCertString(cert.EnvID),
 			CreatedAt:   cert.CreatedAt,
 		})
 	}
@@ -70,7 +70,7 @@ func ListEnvCertificates(c *gin.Context) {
 			Description: cert.Description,
 			Scope:       cert.Scope,
 			ClusterID:   cert.ClusterID,
-			EnvID:       cert.EnvID,
+			EnvID:       derefCertString(cert.EnvID),
 			CreatedAt:   cert.CreatedAt,
 		})
 	}
@@ -97,7 +97,7 @@ func GetCertificate(c *gin.Context) {
 		Description: cert.Description,
 		Scope:       cert.Scope,
 		ClusterID:   cert.ClusterID,
-		EnvID:       cert.EnvID,
+		EnvID:       derefCertString(cert.EnvID),
 		CreatedAt:   cert.CreatedAt,
 	})
 }
@@ -124,7 +124,7 @@ func CreateClusterCertificate(c *gin.Context) {
 		Description: cert.Description,
 		Scope:       cert.Scope,
 		ClusterID:   cert.ClusterID,
-		EnvID:       cert.EnvID,
+		EnvID:       derefCertString(cert.EnvID),
 		CreatedAt:   cert.CreatedAt,
 	})
 }
@@ -151,7 +151,7 @@ func CreateEnvCertificate(c *gin.Context) {
 		Description: cert.Description,
 		Scope:       cert.Scope,
 		ClusterID:   cert.ClusterID,
-		EnvID:       cert.EnvID,
+		EnvID:       derefCertString(cert.EnvID),
 		CreatedAt:   cert.CreatedAt,
 	})
 }
@@ -178,7 +178,7 @@ func UpdateCertificate(c *gin.Context) {
 		Description: cert.Description,
 		Scope:       cert.Scope,
 		ClusterID:   cert.ClusterID,
-		EnvID:       cert.EnvID,
+		EnvID:       derefCertString(cert.EnvID),
 		CreatedAt:   cert.CreatedAt,
 	})
 }
@@ -193,4 +193,11 @@ func DeleteCertificate(c *gin.Context) {
 	}
 
 	api.NoContent(c)
+}
+
+func derefCertString(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }

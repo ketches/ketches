@@ -100,7 +100,7 @@ func CreateExtension(req *models.CreateExtensionRequest, createdBy string) (*mod
 		OCIUrl:      req.OCIUrl,
 		IconURL:     req.IconURL,
 		Builtin:     false,
-		CreatedBy:   createdBy,
+		CreatedBy:   toNullableString(createdBy),
 	}
 	if err := db.DB.Create(item).Error; err != nil {
 		return nil, fmt.Errorf("failed to create extension: %w", err)
@@ -347,7 +347,7 @@ func InstallClusterExtension(clusterID string, req *models.InstallExtensionReque
 		Values:      req.Values,
 		Status:      entities.ClusterExtensionStatusPending,
 		Phase:       "installing",
-		InstalledBy: installedBy,
+		InstalledBy: toNullableString(installedBy),
 	}
 	if err := db.DB.Create(record).Error; err != nil {
 		return nil, fmt.Errorf("failed to create cluster extension record: %w", err)
@@ -699,4 +699,12 @@ func toExtensionModel(e *entities.Extension) models.Extension {
 		Builtin:     e.Builtin,
 		CreatedAt:   e.CreatedAt,
 	}
+}
+
+func toNullableString(v string) *string {
+	if v == "" {
+		return nil
+	}
+	vv := v
+	return &vv
 }

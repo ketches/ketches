@@ -539,7 +539,7 @@ func SetupV1Routes(r *gin.RouterGroup) {
                 project.DELETE("", middlewares.ProjectOwner(), handlers.DeleteProject)
                 project.GET("/statistics", handlers.GetProjectStatistics)
                 project.GET("/members", handlers.ListProjectMembers)
-                project.POST("/members", middlewares.ProjectOwner(), handlers.AddProjectMembers)
+                project.POST("/members", middlewares.ProjectOwner(), handlers.InviteProjectMembers)
                 project.PUT("/members/:userID", middlewares.ProjectOwner(), handlers.UpdateProjectMember)
                 project.DELETE("/members", middlewares.ProjectOwner(), handlers.RemoveProjectMember)
                 

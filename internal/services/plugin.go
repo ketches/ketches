@@ -11,6 +11,11 @@ import (
 	"gorm.io/gorm"
 )
 
+type AppPluginWithPlugin struct {
+	entities.AppPlugin
+	Plugin entities.Plugin `gorm:"embedded;embeddedPrefix:plugin_"`
+}
+
 func CreatePlugin(req *models.CreatePluginRequest) (*entities.Plugin, error) {
 	var existing entities.Plugin
 	if err := db.DB.Where("project_id = ? AND slug = ?", req.ProjectID, req.Slug).First(&existing).Error; err == nil {
@@ -209,8 +214,7 @@ func InstallPluginToApp(appID string, req *models.InstallPluginRequest) (*entiti
 	if err := db.DB.Create(appPlugin).Error; err != nil {
 		return nil, err
 	}
-
-	appPlugin.Plugin = plugin
+	_ = plugin
 
 	return appPlugin, nil
 }
@@ -226,34 +230,16 @@ func UninstallPluginFromApp(appID, pluginID string) error {
 	return nil
 }
 
-func ListAppPlugins(appID string) ([]entities.AppPlugin, error) {
-	var appPlugins []entities.AppPlugin
-	if err := db.DB.Where("app_id = ?", appID).Find(&appPlugins).Error; err != nil {
+func ListAppPlugins(appID string) ([]AppPluginWithPlugin, error) {
+	var rows []AppPluginWithPlugin
+	if err := db.DB.Table("app_plugins").
+		Select("app_plugins.*, plugins.id AS plugin_id, plugins.created_at AS plugin_created_at, plugins.updated_at AS plugin_updated_at, plugins.project_id AS plugin_project_id, plugins.slug AS plugin_slug, plugins.name AS plugin_name, plugins.description AS plugin_description, plugins.image AS plugin_image, plugins.registry_username AS plugin_registry_username, plugins.registry_password AS plugin_registry_password, plugins.command AS plugin_command, plugins.env_vars AS plugin_env_vars, plugins.plugin_type AS plugin_plugin_type").
+		Joins("JOIN plugins ON plugins.id = app_plugins.plugin_id").
+		Where("app_plugins.app_id = ?", appID).
+		Find(&rows).Error; err != nil {
 		return nil, err
 	}
-	// Batch-fetch plugins
-	pluginIDs := make(map[string]struct{})
-	for _, ap := range appPlugins {
-		pluginIDs[ap.PluginID] = struct{}{}
-	}
-	if len(pluginIDs) > 0 {
-		ids := make([]string, 0, len(pluginIDs))
-		for id := range pluginIDs {
-			ids = append(ids, id)
-		}
-		var plugins []entities.Plugin
-		db.DB.Where("id IN ?", ids).Find(&plugins)
-		pMap := make(map[string]entities.Plugin, len(plugins))
-		for _, p := range plugins {
-			pMap[p.ID] = p
-		}
-		for i := range appPlugins {
-			if p, ok := pMap[appPlugins[i].PluginID]; ok {
-				appPlugins[i].Plugin = p
-			}
-		}
-	}
-	return appPlugins, nil
+	return rows, nil
 }
 
 func ToggleAppPlugin(appID, pluginID string, enabled bool) error {

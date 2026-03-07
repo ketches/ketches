@@ -432,7 +432,7 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
                 setDeleteDialogOpen(false)
                 setDeletingRegistry(null)
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>

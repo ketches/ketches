@@ -43,7 +43,7 @@ func HandleGitWebhook(c *gin.Context, appID, secret string) error {
 		GitRef: config.GitRef,
 	}
 
-	build, err := TriggerBuild(appID, "", triggerReq)
+	build, err := TriggerBuild(c.Request.Context(), appID, "", triggerReq)
 	if err != nil {
 		return fmt.Errorf("failed to trigger build: %w", err)
 	}
@@ -79,10 +79,10 @@ func HandleGitWebhookForCodeRepo(c *gin.Context, repoID, secret string) error {
 	if err != nil {
 		return fmt.Errorf("failed to list build configs: %w", err)
 	}
-	var toTrigger []*entities.CodeRepositoryBuildConfig
+	var toTrigger []CodeRepositoryBuildConfigWithRegistry
 	for i := range configs {
 		if configs[i].WebhookEnabled {
-			toTrigger = append(toTrigger, &configs[i])
+			toTrigger = append(toTrigger, configs[i])
 		}
 	}
 	if len(toTrigger) == 0 {

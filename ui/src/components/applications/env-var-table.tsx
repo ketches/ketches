@@ -309,7 +309,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
                 setDeleteDialogOpen(false)
                 setDeletingEnvVar(null)
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>
@@ -337,7 +337,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
                 setBulkDeleteDialogOpen(false)
                 setSelectedEnvVarIds([])
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>

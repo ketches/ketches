@@ -403,7 +403,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
                 setDeleteDialogOpen(false)
                 setDeletingRepo(null)
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>

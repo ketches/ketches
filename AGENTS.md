@@ -41,6 +41,14 @@ This document defines the specialized agents involved in the development and mai
   - Manage database migrations and ORM query encapsulations.
   - Optimize database interactions and ensure data integrity.
 
+### Foreign Key Policy (MANDATORY)
+
+- **Never create physical foreign keys** in database DDL/migrations.
+- Keep `gorm.Config{DisableForeignKeyConstraintWhenMigrating: true}` enabled.
+- **Do not use GORM association tags** in entity structs (e.g. `foreignKey`, `references`, `constraint`).
+- Entity structs must keep only scalar columns/IDs. Relationship data must be loaded via explicit query models (DTOs) + `JOIN`/manual queries.
+- For legacy databases, use DDL scripts to drop existing foreign keys and normalize nullable ID columns (empty string -> `NULL`).
+
 ## Security & Auth Agent
 
 - **Focus**: JWT, RBAC, Middlewares.
@@ -90,6 +98,7 @@ This document defines the specialized agents involved in the development and mai
 
 - Always use English code comments;
 - Use `any` rather than `interface{}` for generic types;
+- Never add physical foreign keys or GORM association tags in entities; use query-model + `JOIN` patterns instead;
 
 ### Frontend
 

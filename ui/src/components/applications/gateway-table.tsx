@@ -6,8 +6,6 @@ import { toast } from "sonner"
 
 import type { App, GatewaySpec } from "@/api/apps"
 import { appsApi } from "@/api/apps"
-import { useProjectRole } from "@/hooks/useProjectRole"
-import { useAuthStore } from "@/stores/auth"
 import { GatewayEditor } from "@/components/applications/gateway-editor"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -17,6 +15,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { useProjectRole } from "@/hooks/useProjectRole"
+import { useAuthStore } from "@/stores/auth"
 
 interface GatewayConfigProps {
   app: App
@@ -209,24 +209,24 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
         <div className="flex items-center justify-end gap-1">
           {/* Quick Access: visible when app is running/updating and protocol is http/https */}
           {(app.status === 'running' || app.status === 'updating') &&
-           (row.original.protocol === 'http' || row.original.protocol === 'https') && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              title="Quick Access"
-              onClick={() => {
-                // Set a short-lived cookie so the backend can authenticate the
-                // proxy request without exposing the JWT in the browser address bar.
-                document.cookie = `X-Ketches-Token=${accessToken}; path=/forward; SameSite=Strict; max-age=3600`
-                window.open(
-                  `/forward/${row.original.id}/`,
-                  '_blank'
-                )
-              }}
-            >
-              <ExternalLink className="h-4 w-4" />
-            </Button>
-          )}
+            (row.original.protocol === 'http' || row.original.protocol === 'https') && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                title="Quick Access"
+                onClick={() => {
+                  // Set a short-lived cookie so the backend can authenticate the
+                  // proxy request without exposing the JWT in the browser address bar.
+                  document.cookie = `X-Ketches-Token=${accessToken}; path=/forward; SameSite=Strict; max-age=3600`
+                  window.open(
+                    `/forward/${row.original.id}/`,
+                    '_blank'
+                  )
+                }}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            )}
           {!isViewer && (
             <>
               <Button
@@ -361,7 +361,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
                 setDeleteDialogOpen(false)
                 setDeletingGateway(null)
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>
@@ -389,7 +389,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
                 setBulkDeleteDialogOpen(false)
                 setSelectedGatewayIds([])
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>

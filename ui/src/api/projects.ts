@@ -59,7 +59,7 @@ export const projectsApi = {
     return client.get(`/v1/projects/${id}/members`, { params }) as Promise<{ items: ProjectMember[], pagination: PaginationResponse }>
   },
 
-  addProjectMember: async (projectId: string, data: { user_id: string; role: string }) => {
+  inviteProjectMembers: async (projectId: string, data: { user_ids: string[]; role: string }) => {
     return client.post(`/v1/projects/${projectId}/members`, data)
   },
 

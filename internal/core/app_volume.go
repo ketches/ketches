@@ -13,7 +13,7 @@ import (
 
 // SyncVolumeToK8s synchronizes a volume to Kubernetes (creates/updates PVC for persistent volumes)
 func SyncVolumeToK8s(ctx context.Context, appCtx *models.AppContext, volume *entities.AppVolume) error {
-	if appCtx.Env.ClusterID == "" {
+	if appCtx.EnvContext.Env.ClusterID == "" {
 		return fmt.Errorf("app environment has no cluster configured")
 	}
 
@@ -22,7 +22,7 @@ func SyncVolumeToK8s(ctx context.Context, appCtx *models.AppContext, volume *ent
 		return nil
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func SyncVolumeToK8s(ctx context.Context, appCtx *models.AppContext, volume *ent
 
 // DeleteVolumeFromK8s deletes a PVC from Kubernetes
 func DeleteVolumeFromK8s(ctx context.Context, appCtx *models.AppContext, volume *entities.AppVolume) error {
-	if appCtx.Env.ClusterID == "" {
+	if appCtx.EnvContext.Env.ClusterID == "" {
 		return fmt.Errorf("app environment has no cluster configured")
 	}
 
@@ -60,13 +60,13 @@ func DeleteVolumeFromK8s(ctx context.Context, appCtx *models.AppContext, volume 
 		return nil
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return err
 	}
 
 	// Delete PVC
-	err = client.CoreV1().PersistentVolumeClaims(appCtx.Env.ClusterNamespace).Delete(
+	err = client.CoreV1().PersistentVolumeClaims(appCtx.EnvContext.Env.ClusterNamespace).Delete(
 		ctx,
 		volume.Slug,
 		metav1.DeleteOptions{},

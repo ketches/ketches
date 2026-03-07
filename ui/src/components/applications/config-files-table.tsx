@@ -307,7 +307,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
                 setDeleteDialogOpen(false)
                 setDeletingConfigFile(null)
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>
@@ -335,7 +335,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
                 setBulkDeleteDialogOpen(false)
                 setSelectedConfigFileIds([])
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>

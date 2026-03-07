@@ -164,20 +164,15 @@ func CreateApp(ctx context.Context, envID string, req *models.CreateAppRequest) 
 		}
 	}
 
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", envID).Error; err != nil {
-		return nil, err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+	envCtx, err := GetEnvContext(envID)
+	if err != nil {
 		return nil, err
 	}
 
 	// Build AppContext for core layer
 	appCtx := &models.AppContext{
 		App:            *application,
-		Env:            env,
-		Cluster:        cluster,
+		EnvContext:     *envCtx,
 		AutoScaling:    autoScaling,
 		SchedulingRule: schedulingRule,
 	}
@@ -199,6 +194,7 @@ func CreateAppFromCodeRepositoryBuild(ctx context.Context, envID, slug, name, co
 		return nil, gorm.ErrDuplicatedKey
 	}
 
+	repoID := codeRepositoryID
 	application := &entities.App{
 		Base:             entities.Base{ID: uuid.New()},
 		Slug:             slug,
@@ -212,26 +208,21 @@ func CreateAppFromCodeRepositoryBuild(ctx context.Context, envID, slug, name, co
 		RequestMemory:    128,
 		LimitCPU:         1000,
 		LimitMemory:      512,
-		AppType:          "Deployment",
-		DeployStatus:     "undeployed",
-		CodeRepositoryID: codeRepositoryID,
+		AppType:          app.AppTypeDeployment,
+		DeployStatus:     app.AppStatusUndeployed,
+		CodeRepositoryID: &repoID,
 	}
 	if err := db.DB.Create(application).Error; err != nil {
 		return nil, err
 	}
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", envID).Error; err != nil {
-		return nil, err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+	envCtx, err := GetEnvContext(envID)
+	if err != nil {
 		return nil, err
 	}
 
 	return &models.AppContext{
-		App:     *application,
-		Env:     env,
-		Cluster: cluster,
+		App:        *application,
+		EnvContext: *envCtx,
 	}, nil
 }
 
@@ -241,13 +232,8 @@ func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
 		return nil, err
 	}
 
-	// Fetch Env + Cluster (N:1 chain)
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", application.EnvID).Error; err != nil {
-		return nil, err
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+	envCtx, err := GetEnvContext(application.EnvID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -278,10 +264,22 @@ func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
 	// Fetch AppPlugins with their Plugin (N:1)
 	var appPlugins []entities.AppPlugin
 	db.DB.Where("app_id = ?", appID).Find(&appPlugins)
+	plugins := make(map[string]entities.Plugin)
+	pluginIDs := make(map[string]struct{})
 	for i := range appPlugins {
-		var plugin entities.Plugin
-		if err := db.DB.First(&plugin, "id = ?", appPlugins[i].PluginID).Error; err == nil {
-			appPlugins[i].Plugin = plugin
+		if appPlugins[i].PluginID != "" {
+			pluginIDs[appPlugins[i].PluginID] = struct{}{}
+		}
+	}
+	if len(pluginIDs) > 0 {
+		ids := make([]string, 0, len(pluginIDs))
+		for id := range pluginIDs {
+			ids = append(ids, id)
+		}
+		var pluginRows []entities.Plugin
+		db.DB.Where("id IN ?", ids).Find(&pluginRows)
+		for _, p := range pluginRows {
+			plugins[p.ID] = p
 		}
 	}
 
@@ -294,8 +292,7 @@ func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
 
 	return &models.AppContext{
 		App:            application,
-		Env:            env,
-		Cluster:        cluster,
+		EnvContext:     *envCtx,
 		EnvVars:        envVars,
 		Volumes:        volumes,
 		Gateways:       gateways,
@@ -304,6 +301,7 @@ func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
 		SchedulingRule: schedulingRule,
 		AutoScaling:    autoScaling,
 		AppPlugins:     appPlugins,
+		Plugins:        plugins,
 		BuildConfig:    buildConfig,
 	}, nil
 }
@@ -550,8 +548,8 @@ func PermanentlyDeleteApp(ctx context.Context, appID string) error {
 	if err := db.DB.Unscoped().First(&env, "id = ?", application.EnvID).Error; err != nil {
 		return err
 	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
+	envCtx, err := GetEnvContext(env.ID)
+	if err != nil {
 		return err
 	}
 
@@ -563,8 +561,7 @@ func PermanentlyDeleteApp(ctx context.Context, appID string) error {
 
 	appCtx := &models.AppContext{
 		App:         application,
-		Env:         env,
-		Cluster:     cluster,
+		EnvContext:  *envCtx,
 		AutoScaling: autoScaling,
 	}
 
@@ -604,25 +601,25 @@ func PermanentlyDeleteApp(ctx context.Context, appID string) error {
 
 // deleteAppK8sResources deletes all Kubernetes resources created by an app
 func deleteAppK8sResources(ctx context.Context, appCtx *models.AppContext, keepStorageData bool) error {
-	if appCtx.Env.ClusterID == "" {
+	if appCtx.EnvContext.Env.ClusterID == "" {
 		return nil
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return err
 	}
 
-	ns := appCtx.Env.ClusterNamespace
-	appLabel := "app=" + appCtx.App.Slug
+	ns := appCtx.EnvContext.Env.ClusterNamespace
+	appLabel := "ketches.cn/app-slug=" + appCtx.App.Slug
 
 	// Delete Deployment or StatefulSet
 	switch appCtx.App.AppType {
-	case "Deployment":
+	case app.AppTypeDeployment:
 		if err := client.AppsV1().Deployments(ns).Delete(ctx, appCtx.App.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 			return err
 		}
-	case "StatefulSet":
+	case app.AppTypeStatefulSet:
 		if err := client.AppsV1().StatefulSets(ns).Delete(ctx, appCtx.App.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 			return err
 		}
@@ -665,7 +662,7 @@ func deleteAppK8sResources(ctx context.Context, appCtx *models.AppContext, keepS
 	}
 
 	// Delete Gateway API resources
-	if gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.Env.ClusterID); err == nil {
+	if gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID); err == nil {
 		if err := gwClient.GatewayV1().HTTPRoutes(ns).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: appLabel,
 		}); err != nil && !k8serrors.IsNotFound(err) {
@@ -686,13 +683,13 @@ func ListAppInstances(ctx context.Context, appID string) ([]models.AppInstanceRe
 		return nil, err
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	pods, err := client.CoreV1().Pods(appCtx.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "app=" + appCtx.App.Slug,
+	pods, err := client.CoreV1().Pods(appCtx.EnvContext.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "ketches.cn/app-slug=" + appCtx.App.Slug,
 	})
 	if err != nil {
 		return nil, err
@@ -706,12 +703,12 @@ func ListAppInstances(ctx context.Context, appID string) ([]models.AppInstanceRe
 }
 
 func ListAppInstanceEvents(ctx context.Context, appCtx *models.AppContext, instanceName string) ([]models.AppEventResponse, error) {
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	eventList, err := client.CoreV1().Events(appCtx.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
+	eventList, err := client.CoreV1().Events(appCtx.EnvContext.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
 		FieldSelector: "involvedObject.name=" + instanceName + ",involvedObject.kind=Pod",
 	})
 	if err != nil {
@@ -734,16 +731,16 @@ func ListAppInstanceEvents(ctx context.Context, appCtx *models.AppContext, insta
 }
 
 func DeleteAppInstance(ctx context.Context, appCtx *models.AppContext, instanceName string) error {
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return err
 	}
 
-	return client.CoreV1().Pods(appCtx.Env.ClusterNamespace).Delete(ctx, instanceName, metav1.DeleteOptions{})
+	return client.CoreV1().Pods(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, instanceName, metav1.DeleteOptions{})
 }
 
 func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName, containerName string, tailLines int64, timestamps bool) (io.ReadCloser, error) {
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -755,7 +752,7 @@ func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName,
 		Timestamps: timestamps,
 	}
 
-	req := client.CoreV1().Pods(appCtx.Env.ClusterNamespace).GetLogs(instanceName, podLogOptions)
+	req := client.CoreV1().Pods(appCtx.EnvContext.Env.ClusterNamespace).GetLogs(instanceName, podLogOptions)
 	stream, err := req.Stream(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open log stream: %w", err)
@@ -764,7 +761,7 @@ func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName,
 }
 
 func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName string, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.Cluster.KubeConfig))
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
 	if err != nil {
 		return err
 	}
@@ -777,7 +774,7 @@ func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName str
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(instanceName).
-		Namespace(appCtx.Env.ClusterNamespace).
+		Namespace(appCtx.EnvContext.Env.ClusterNamespace).
 		SubResource("exec").
 		VersionedParams(&metav1.GetOptions{}, scheme.ParameterCodec)
 
@@ -835,8 +832,8 @@ func executeDeployAction(ctx context.Context, appCtx *models.AppContext) (*model
 		return nil, err
 	}
 
-	appCtx.App.DeployStatus = "deployed"
-	if err := db.DB.Model(&appCtx.App).Update("deploy_status", "deployed").Error; err != nil {
+	appCtx.App.DeployStatus = app.AppStatusRunning
+	if err := db.DB.Model(&appCtx.App).Update("deploy_status", app.AppStatusRunning).Error; err != nil {
 		return nil, err
 	}
 
@@ -844,14 +841,14 @@ func executeDeployAction(ctx context.Context, appCtx *models.AppContext) (*model
 }
 
 func executeStartAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
 	switch appCtx.App.AppType {
-	case "Deployment":
-		deployment, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
+	case app.AppTypeDeployment:
+		deployment, err := client.AppsV1().Deployments(appCtx.EnvContext.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -859,11 +856,11 @@ func executeStartAction(ctx context.Context, appCtx *models.AppContext) (*models
 		replicas := int32(appCtx.App.Replicas)
 		deployment.Spec.Replicas = &replicas
 
-		if _, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Update(ctx, deployment, metav1.UpdateOptions{}); err != nil {
+		if _, err := client.AppsV1().Deployments(appCtx.EnvContext.Env.ClusterNamespace).Update(ctx, deployment, metav1.UpdateOptions{}); err != nil {
 			return nil, err
 		}
-	case "StatefulSet":
-		statefulSet, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
+	case app.AppTypeStatefulSet:
+		statefulSet, err := client.AppsV1().StatefulSets(appCtx.EnvContext.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -871,7 +868,7 @@ func executeStartAction(ctx context.Context, appCtx *models.AppContext) (*models
 		replicas := int32(appCtx.App.Replicas)
 		statefulSet.Spec.Replicas = &replicas
 
-		if _, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Update(ctx, statefulSet, metav1.UpdateOptions{}); err != nil {
+		if _, err := client.AppsV1().StatefulSets(appCtx.EnvContext.Env.ClusterNamespace).Update(ctx, statefulSet, metav1.UpdateOptions{}); err != nil {
 			return nil, err
 		}
 	}
@@ -880,7 +877,7 @@ func executeStartAction(ctx context.Context, appCtx *models.AppContext) (*models
 }
 
 func executeStopAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -888,26 +885,26 @@ func executeStopAction(ctx context.Context, appCtx *models.AppContext) (*models.
 	replicas := int32(0)
 
 	switch appCtx.App.AppType {
-	case "Deployment":
-		deployment, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
+	case app.AppTypeDeployment:
+		deployment, err := client.AppsV1().Deployments(appCtx.EnvContext.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
 		deployment.Spec.Replicas = &replicas
 
-		if _, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Update(ctx, deployment, metav1.UpdateOptions{}); err != nil {
+		if _, err := client.AppsV1().Deployments(appCtx.EnvContext.Env.ClusterNamespace).Update(ctx, deployment, metav1.UpdateOptions{}); err != nil {
 			return nil, err
 		}
-	case "StatefulSet":
-		statefulSet, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
+	case app.AppTypeStatefulSet:
+		statefulSet, err := client.AppsV1().StatefulSets(appCtx.EnvContext.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
 		statefulSet.Spec.Replicas = &replicas
 
-		if _, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Update(ctx, statefulSet, metav1.UpdateOptions{}); err != nil {
+		if _, err := client.AppsV1().StatefulSets(appCtx.EnvContext.Env.ClusterNamespace).Update(ctx, statefulSet, metav1.UpdateOptions{}); err != nil {
 			return nil, err
 		}
 	}
@@ -931,18 +928,18 @@ func executeRedeployAction(ctx context.Context, appCtx *models.AppContext) (*mod
 }
 
 func executeRollbackAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 	// TODO: Implement rollback logic, such as using Deployment's revision history or StatefulSet's update strategy to rollback to previous version
 	switch appCtx.App.AppType {
-	case "Deployment":
-		if _, err := client.AppsV1().Deployments(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{}); err != nil {
+	case app.AppTypeDeployment:
+		if _, err := client.AppsV1().Deployments(appCtx.EnvContext.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{}); err != nil {
 			return nil, err
 		}
-	case "StatefulSet":
-		if _, err := client.AppsV1().StatefulSets(appCtx.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{}); err != nil {
+	case app.AppTypeStatefulSet:
+		if _, err := client.AppsV1().StatefulSets(appCtx.EnvContext.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{}); err != nil {
 			return nil, err
 		}
 	}
@@ -951,15 +948,15 @@ func executeRollbackAction(ctx context.Context, appCtx *models.AppContext) (*mod
 }
 
 func executeDebugAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	ns := appCtx.Env.ClusterNamespace
+	ns := appCtx.EnvContext.Env.ClusterNamespace
 
 	switch appCtx.App.AppType {
-	case "Deployment":
+	case app.AppTypeDeployment:
 		deployment, err := client.AppsV1().Deployments(ns).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
@@ -968,7 +965,7 @@ func executeDebugAction(ctx context.Context, appCtx *models.AppContext) (*models
 		if deployment.Spec.Template.Labels == nil {
 			deployment.Spec.Template.Labels = make(map[string]string)
 		}
-		deployment.Spec.Template.Labels["app.ketches.cn/debugging"] = "true"
+		deployment.Spec.Template.Labels["ketches.cn/debugging"] = "true"
 
 		appContainerName := "app-" + appCtx.App.Slug
 		for i := range deployment.Spec.Template.Spec.Containers {
@@ -982,7 +979,7 @@ func executeDebugAction(ctx context.Context, appCtx *models.AppContext) (*models
 			return nil, err
 		}
 
-	case "StatefulSet":
+	case app.AppTypeStatefulSet:
 		statefulSet, err := client.AppsV1().StatefulSets(ns).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
@@ -991,7 +988,7 @@ func executeDebugAction(ctx context.Context, appCtx *models.AppContext) (*models
 		if statefulSet.Spec.Template.Labels == nil {
 			statefulSet.Spec.Template.Labels = make(map[string]string)
 		}
-		statefulSet.Spec.Template.Labels["app.ketches.cn/debugging"] = "true"
+		statefulSet.Spec.Template.Labels["ketches.cn/debugging"] = "true"
 
 		appContainerName := "app-" + appCtx.App.Slug
 		for i := range statefulSet.Spec.Template.Spec.Containers {
@@ -1010,22 +1007,22 @@ func executeDebugAction(ctx context.Context, appCtx *models.AppContext) (*models
 }
 
 func executeDebugOffAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	ns := appCtx.Env.ClusterNamespace
+	ns := appCtx.EnvContext.Env.ClusterNamespace
 
 	switch appCtx.App.AppType {
-	case "Deployment":
+	case app.AppTypeDeployment:
 		deployment, err := client.AppsV1().Deployments(ns).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
 		if deployment.Spec.Template.Labels != nil {
-			delete(deployment.Spec.Template.Labels, "app.ketches.cn/debugging")
+			delete(deployment.Spec.Template.Labels, "ketches.cn/debugging")
 		}
 
 		appContainerName := "app-" + appCtx.App.Slug
@@ -1044,14 +1041,14 @@ func executeDebugOffAction(ctx context.Context, appCtx *models.AppContext) (*mod
 			return nil, err
 		}
 
-	case "StatefulSet":
+	case app.AppTypeStatefulSet:
 		statefulSet, err := client.AppsV1().StatefulSets(ns).Get(ctx, appCtx.App.Slug, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
 		if statefulSet.Spec.Template.Labels != nil {
-			delete(statefulSet.Spec.Template.Labels, "app.ketches.cn/debugging")
+			delete(statefulSet.Spec.Template.Labels, "ketches.cn/debugging")
 		}
 
 		appContainerName := "app-" + appCtx.App.Slug
@@ -1088,7 +1085,7 @@ func ToAppResponse(c context.Context, appCtx *models.AppContext) models.AppRespo
 		Description:      a.Description,
 		EnvID:            a.EnvID,
 		AppType:          a.AppType,
-		CodeRepositoryID: a.CodeRepositoryID,
+		CodeRepositoryID: derefString(a.CodeRepositoryID),
 		ContainerImage:   a.ContainerImage,
 		ContainerCommand: a.ContainerCommand,
 		RegistryUsername: a.RegistryUsername,
@@ -1121,8 +1118,8 @@ func ToAppResponse(c context.Context, appCtx *models.AppContext) models.AppRespo
 		}
 	}
 
-	if appCtx.Env.ID != "" {
-		envResp := ToEnvResponse(&appCtx.Env)
+	if appCtx.EnvContext.Env.ID != "" {
+		envResp := ToEnvResponse(&appCtx.EnvContext.Env)
 		res.Env = &envResp
 	}
 
@@ -1170,7 +1167,7 @@ func ToAppListResponse(ctx context.Context, row *models.AppListRow) models.AppRe
 		Description:      row.Description,
 		EnvID:            row.EnvID,
 		AppType:          row.AppType,
-		CodeRepositoryID: row.CodeRepositoryID,
+		CodeRepositoryID: derefString(row.CodeRepositoryID),
 		ContainerImage:   row.ContainerImage,
 		ContainerCommand: row.ContainerCommand,
 		RegistryUsername: row.RegistryUsername,
@@ -1193,13 +1190,20 @@ func ToAppListResponse(ctx context.Context, row *models.AppListRow) models.AppRe
 	}
 }
 
+func derefString(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
+}
+
 func GetAppTopology(ctx context.Context, appID string) (*models.AppTopologyResponse, error) {
 	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -1213,7 +1217,7 @@ func GetAppTopologyResourceYaml(ctx context.Context, appID string, nodeID string
 		return "", err
 	}
 
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.Env.ClusterID)
+	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return "", err
 	}
@@ -1258,7 +1262,7 @@ func seedAppFromImageMetadata(ctx context.Context, application *entities.App) er
 			AppID:      application.ID,
 			Slug:       slug,
 			MountPath:  mountPath,
-			VolumeType: "pvc",
+			VolumeType: app.VolumeTypePVC,
 			Capacity:   1,
 		}
 		// Ignore duplicate mount path errors
@@ -1320,4 +1324,3 @@ func seedAppFromImageMetadata(ctx context.Context, application *entities.App) er
 
 	return nil
 }
-

@@ -14,10 +14,7 @@ type Certificate struct {
 	Key         string    `gorm:"type:text;not null"`
 	Scope       string    `gorm:"type:varchar(16);not null"`
 	ClusterID   string    `gorm:"type:varchar(36);index;not null"`
-	EnvID       string    `gorm:"type:varchar(36);index"`
-
-	Cluster     *Cluster  `gorm:"foreignKey:ClusterID"`
-	Env         *Env      `gorm:"foreignKey:EnvID"`
+	EnvID       *string   `gorm:"type:varchar(36);index"`
 }
 
 func (Certificate) TableName() string {

@@ -15,16 +15,14 @@ type App struct {
 	RegistryUsername string `gorm:"type:varchar(128)"`
 	RegistryPassword string `gorm:"type:varchar(256)"`
 
-	Replicas         int    `gorm:"type:int;default:1"`
-	RequestCPU       int    `gorm:"type:int;default:100"`
-	RequestMemory    int    `gorm:"type:int;default:128"`
-	LimitCPU         int    `gorm:"type:int;default:1000"`
-	LimitMemory      int    `gorm:"type:int;default:512"`
-	DeployStatus     string `gorm:"type:varchar(32);default:'undeployed'"`
-	CodeRepositoryID string `gorm:"type:varchar(36);index"`
-
+	Replicas         int     `gorm:"type:int;default:1"`
+	RequestCPU       int     `gorm:"type:int;default:100"`
+	RequestMemory    int     `gorm:"type:int;default:128"`
+	LimitCPU         int     `gorm:"type:int;default:1000"`
+	LimitMemory      int     `gorm:"type:int;default:512"`
+	DeployStatus     string  `gorm:"type:varchar(32);default:'undeployed'"`
+	CodeRepositoryID *string `gorm:"type:varchar(36);index"`
 }
-
 
 type AppEnvVar struct {
 	ID        string    `gorm:"type:varchar(36);primaryKey"`
@@ -61,7 +59,7 @@ type AppGateway struct {
 	Path        string    `gorm:"type:varchar(256);default:'/'"`
 	GatewayPort int       `gorm:"type:int"`
 	Exposed     bool      `gorm:"type:bool;default:false"`
-	CertID      string    `gorm:"type:varchar(36)"`
+	CertID      *string   `gorm:"type:varchar(36)"`
 }
 
 type AppProbe struct {
@@ -125,6 +123,4 @@ type AppPlugin struct {
 	PluginID  string    `gorm:"type:varchar(36);index;not null"`
 	Enabled   bool      `gorm:"type:bool;default:true"`
 	EnvVars   string    `gorm:"type:text"`
-	Plugin    Plugin    `gorm:"foreignKey:PluginID"`
-	App       App       `gorm:"foreignKey:AppID"`
 }

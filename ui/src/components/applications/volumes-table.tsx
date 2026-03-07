@@ -335,7 +335,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
                 setDeleteDialogOpen(false)
                 setDeletingVolume(null)
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>
@@ -363,7 +363,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
                 setBulkDeleteDialogOpen(false)
                 setSelectedVolumeIds([])
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               Delete
             </AlertDialogAction>

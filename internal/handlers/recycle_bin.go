@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
@@ -20,7 +21,7 @@ func ListRecycleBinApps(c *gin.Context) {
 	// For non-admin users, filter to their non-viewer projects
 	userID := ""
 	claims := api.GetClaims(c)
-	if claims != nil && claims.Role != "admin" {
+	if claims != nil && claims.Role != app.UserRoleAdmin {
 		userID = claims.UserID
 	}
 
@@ -66,7 +67,7 @@ func ListRecycleBinEnvs(c *gin.Context) {
 	// For non-admin users, filter to their non-viewer projects
 	userID := ""
 	claims := api.GetClaims(c)
-	if claims != nil && claims.Role != "admin" {
+	if claims != nil && claims.Role != app.UserRoleAdmin {
 		userID = claims.UserID
 	}
 

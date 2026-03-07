@@ -56,7 +56,7 @@ export function DeletePluginDialog({ plugin, projectId, open, onOpenChange }: De
           <AlertDialogAction
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            variant="destructive"
           >
             {deleteMutation.isPending ? "Deleting..." : "Delete Plugin"}
           </AlertDialogAction>
