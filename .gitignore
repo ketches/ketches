@@ -17,6 +17,12 @@ coverage.*
 *.coverprofile
 profile.cov
 bin/
+api
+ketches
+main
+!api/
+!ketches/
+!main/
 
 # env file
 .env

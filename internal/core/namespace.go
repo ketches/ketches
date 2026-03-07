@@ -45,13 +45,13 @@ func CreateNamespace(ctx context.Context, clusterID, namespaceName string, envCt
 	}
 
 	labels := map[string]string{
-		"ketches.cn/managed": "true",
+		kube.LabelManagedBy: "true",
 	}
 	if envCtx != nil {
-		labels["ketches.cn/env-id"] = envCtx.Env.ID
-		labels["ketches.cn/env-slug"] = envCtx.Env.Slug
-		labels["ketches.cn/project-id"] = envCtx.Project.ID
-		labels["ketches.cn/project-slug"] = envCtx.Project.Slug
+		labels[kube.LabelEnvID] = envCtx.Env.ID
+		labels[kube.LabelEnvSlug] = envCtx.Env.Slug
+		labels[kube.LabelProjectID] = envCtx.Project.ID
+		labels[kube.LabelProjectSlug] = envCtx.Project.Slug
 	}
 
 	namespace := &corev1.Namespace{

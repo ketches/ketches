@@ -116,11 +116,11 @@ func BuildEnvGateway(envCtx *models.EnvContext, certs []entities.Certificate) *g
 			Name:      EnvGatewayName(env.Slug),
 			Namespace: env.ClusterNamespace,
 			Labels: map[string]string{
-				"ketches.cn/env-id":       env.ID,
-				"ketches.cn/env-slug":     env.Slug,
-				"ketches.cn/project-id":   envCtx.Project.ID,
-				"ketches.cn/project-slug": envCtx.Project.Slug,
-				"ketches.cn/managed":      "true",
+				kube.LabelEnvID:       env.ID,
+				kube.LabelEnvSlug:     env.Slug,
+				kube.LabelProjectID:   envCtx.Project.ID,
+				kube.LabelProjectSlug: envCtx.Project.Slug,
+				kube.LabelManagedBy:      "true",
 			},
 		},
 		Spec: gatewayv1.GatewaySpec{

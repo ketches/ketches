@@ -8,6 +8,7 @@ import (
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -237,20 +238,20 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 
 func (m *AppMetadata) getLabels() map[string]string {
 	return map[string]string{
-		"ketches.cn/app-id":       m.AppContext.App.ID,
-		"ketches.cn/app-slug":     m.AppContext.App.Slug,
-		"ketches.cn/env-id":       m.AppContext.EnvContext.Env.ID,
-		"ketches.cn/env-slug":     m.AppContext.EnvContext.Env.Slug,
-		"ketches.cn/project-id":   m.AppContext.EnvContext.Project.ID,
-		"ketches.cn/project-slug": m.AppContext.EnvContext.Project.Slug,
-		"ketches.cn/managed":      "true",
+		kube.LabelAppID:       m.AppContext.App.ID,
+		kube.LabelAppSlug:     m.AppContext.App.Slug,
+		kube.LabelEnvID:       m.AppContext.EnvContext.Env.ID,
+		kube.LabelEnvSlug:     m.AppContext.EnvContext.Env.Slug,
+		kube.LabelProjectID:   m.AppContext.EnvContext.Project.ID,
+		kube.LabelProjectSlug: m.AppContext.EnvContext.Project.Slug,
+		kube.LabelManagedBy:   "true",
 	}
 }
 
 func (m *AppMetadata) getSelectorLabels() map[string]string {
 	return map[string]string{
-		"ketches.cn/app-id":   m.AppContext.App.ID,
-		"ketches.cn/app-slug": m.AppContext.App.Slug,
+		kube.LabelAppID:   m.AppContext.App.ID,
+		kube.LabelAppSlug: m.AppContext.App.Slug,
 	}
 }
 

@@ -35,7 +35,7 @@ func CalculateAppStatus(ctx context.Context, appCtx *models.AppContext) (app.App
 
 	isDebugging := false
 	for _, pod := range pods.Items {
-		if pod.Labels["ketches.cn/debugging"] == "true" {
+		if pod.Labels[kube.LabelDebugging] == "true" {
 			isDebugging = true
 			break
 		}
@@ -133,7 +133,7 @@ func CalculateAppListStatus(ctx context.Context, client kubernetes.Interface, ap
 
 	isDebugging := false
 	for _, pod := range pods.Items {
-		if pod.Labels["ketches.cn/debugging"] == "true" {
+		if pod.Labels[kube.LabelDebugging] == "true" {
 			isDebugging = true
 			break
 		}

@@ -965,7 +965,7 @@ func executeDebugAction(ctx context.Context, appCtx *models.AppContext) (*models
 		if deployment.Spec.Template.Labels == nil {
 			deployment.Spec.Template.Labels = make(map[string]string)
 		}
-		deployment.Spec.Template.Labels["ketches.cn/debugging"] = "true"
+		deployment.Spec.Template.Labels[kube.LabelDebugging] = "true"
 
 		appContainerName := "app-" + appCtx.App.Slug
 		for i := range deployment.Spec.Template.Spec.Containers {
@@ -988,7 +988,7 @@ func executeDebugAction(ctx context.Context, appCtx *models.AppContext) (*models
 		if statefulSet.Spec.Template.Labels == nil {
 			statefulSet.Spec.Template.Labels = make(map[string]string)
 		}
-		statefulSet.Spec.Template.Labels["ketches.cn/debugging"] = "true"
+		statefulSet.Spec.Template.Labels[kube.LabelDebugging] = "true"
 
 		appContainerName := "app-" + appCtx.App.Slug
 		for i := range statefulSet.Spec.Template.Spec.Containers {
@@ -1022,7 +1022,7 @@ func executeDebugOffAction(ctx context.Context, appCtx *models.AppContext) (*mod
 		}
 
 		if deployment.Spec.Template.Labels != nil {
-			delete(deployment.Spec.Template.Labels, "ketches.cn/debugging")
+			delete(deployment.Spec.Template.Labels, kube.LabelDebugging)
 		}
 
 		appContainerName := "app-" + appCtx.App.Slug
@@ -1048,7 +1048,7 @@ func executeDebugOffAction(ctx context.Context, appCtx *models.AppContext) (*mod
 		}
 
 		if statefulSet.Spec.Template.Labels != nil {
-			delete(statefulSet.Spec.Template.Labels, "ketches.cn/debugging")
+			delete(statefulSet.Spec.Template.Labels, kube.LabelDebugging)
 		}
 
 		appContainerName := "app-" + appCtx.App.Slug

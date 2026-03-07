@@ -20,9 +20,6 @@ import (
 const (
 	KanikoImage   = "gcr.io/kaniko-project/executor:latest"
 	GitCloneImage = "alpine/git:latest"
-	BuildLabelKey = "ketches.cn/build"
-	BuildAppLabel = "ketches.cn/app-slug"
-	BuildIDLabel  = "ketches.cn/build-id"
 )
 
 // CreateBuildJob creates a Kubernetes Job to build a container image using Kaniko.
@@ -58,15 +55,15 @@ func CreateBuildJob(
 	gitCloneCmd := buildGitCloneCommand(config.GitRepoURL, gitRef, config.GitUsername, config.GitPassword)
 
 	labels := map[string]string{
-		"ketches.cn/app-id":       appCtx.App.ID,
-		"ketches.cn/env-id":       appCtx.EnvContext.Env.ID,
-		"ketches.cn/env-slug":     appCtx.EnvContext.Env.Slug,
-		"ketches.cn/project-id":   appCtx.EnvContext.Project.ID,
-		"ketches.cn/project-slug": appCtx.EnvContext.Project.Slug,
-		BuildLabelKey:             "true",
-		BuildAppLabel:             appSlug,
-		BuildIDLabel:              build.ID,
-		"ketches.cn/managed":      "true",
+		kube.LabelAppID:       appCtx.App.ID,
+		kube.LabelEnvID:       appCtx.EnvContext.Env.ID,
+		kube.LabelEnvSlug:     appCtx.EnvContext.Env.Slug,
+		kube.LabelProjectID:   appCtx.EnvContext.Project.ID,
+		kube.LabelProjectSlug: appCtx.EnvContext.Project.Slug,
+		kube.LabelBuildKey:    "true",
+		kube.LabelAppSlug:     appSlug,
+		kube.LabelBuildID:     build.ID,
+		kube.LabelManagedBy:   "true",
 	}
 
 	job := &batchv1.Job{
@@ -190,14 +187,14 @@ func CreateBuildJobFromCodeRepo(
 	gitCloneCmd := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, repo.GitPassword)
 
 	labels := map[string]string{
-		"ketches.cn/env-id":       buildEnv.ID,
-		"ketches.cn/env-slug":     buildEnv.Slug,
-		"ketches.cn/project-id":   project.ID,
-		"ketches.cn/project-slug": project.Slug,
-		BuildLabelKey:             "true",
-		BuildAppLabel:             jobSlug,
-		BuildIDLabel:              build.ID,
-		"ketches.cn/managed":      "true",
+		kube.LabelEnvID:       buildEnv.ID,
+		kube.LabelEnvSlug:     buildEnv.Slug,
+		kube.LabelProjectID:   project.ID,
+		kube.LabelProjectSlug: project.Slug,
+		kube.LabelBuildKey:    "true",
+		kube.LabelAppSlug:     jobSlug,
+		kube.LabelBuildID:     build.ID,
+		kube.LabelManagedBy:   "true",
 	}
 
 	job := &batchv1.Job{
@@ -281,14 +278,14 @@ func CreateBuildSecretsFromCodeRepo(
 	}
 
 	labels := map[string]string{
-		"ketches.cn/env-id":       buildEnv.ID,
-		"ketches.cn/env-slug":     buildEnv.Slug,
-		"ketches.cn/project-id":   project.ID,
-		"ketches.cn/project-slug": project.Slug,
-		BuildLabelKey:             "true",
-		BuildAppLabel:             jobSlug,
-		BuildIDLabel:              build.ID,
-		"ketches.cn/managed":      "true",
+		kube.LabelEnvID:       buildEnv.ID,
+		kube.LabelEnvSlug:     buildEnv.Slug,
+		kube.LabelProjectID:   project.ID,
+		kube.LabelProjectSlug: project.Slug,
+		kube.LabelBuildKey:    "true",
+		kube.LabelAppSlug:     jobSlug,
+		kube.LabelBuildID:     build.ID,
+		kube.LabelManagedBy:   "true",
 	}
 
 	jobName := fmt.Sprintf("build-%s-%d", jobSlug, build.BuildNumber)
@@ -369,15 +366,15 @@ func CreateBuildSecrets(
 	}
 
 	labels := map[string]string{
-		"ketches.cn/app-id":       appCtx.App.ID,
-		"ketches.cn/env-id":       appCtx.EnvContext.Env.ID,
-		"ketches.cn/env-slug":     appCtx.EnvContext.Env.Slug,
-		"ketches.cn/project-id":   appCtx.EnvContext.Project.ID,
-		"ketches.cn/project-slug": appCtx.EnvContext.Project.Slug,
-		BuildLabelKey:             "true",
-		BuildAppLabel:             appSlug,
-		BuildIDLabel:              build.ID,
-		"ketches.cn/managed":      "true",
+		kube.LabelAppID:       appCtx.App.ID,
+		kube.LabelEnvID:       appCtx.EnvContext.Env.ID,
+		kube.LabelEnvSlug:     appCtx.EnvContext.Env.Slug,
+		kube.LabelProjectID:   appCtx.EnvContext.Project.ID,
+		kube.LabelProjectSlug: appCtx.EnvContext.Project.Slug,
+		kube.LabelBuildKey:    "true",
+		kube.LabelAppSlug:     appSlug,
+		kube.LabelBuildID:     build.ID,
+		kube.LabelManagedBy:   "true",
 	}
 
 	jobName := fmt.Sprintf("build-%s-%d", appSlug, build.BuildNumber)
@@ -478,7 +475,7 @@ func CleanupBuildSecrets(ctx context.Context, clusterID, buildID, namespace stri
 	}
 
 	secrets, err := client.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", BuildIDLabel, buildID),
+		LabelSelector: fmt.Sprintf("%s=%s", kube.LabelBuildID, buildID),
 	})
 	if err != nil {
 		return
