@@ -34,7 +34,7 @@ export interface ListUsersResponse {
 
 export interface ListUsersParams {
   page?: number
-  pageSize?: number
+  page_size?: number
   search?: string
 }
 
@@ -42,7 +42,7 @@ export const usersApi = {
   list: async (params: ListUsersParams = {}) => {
     const searchParams = new URLSearchParams()
     if (params.page) searchParams.set('page', params.page.toString())
-    if (params.pageSize) searchParams.set('page_size', params.pageSize.toString())
+    if (params.page_size) searchParams.set('page_size', params.page_size.toString())
     if (params.search) searchParams.set('search', params.search)
 
     const query = searchParams.toString()
