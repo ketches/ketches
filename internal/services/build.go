@@ -23,7 +23,9 @@ import (
 func ListBuilds(appID string, page, pageSize int) (int64, []entities.Build, error) {
 	var total int64
 	var builds []entities.Build
-	query := db.DB.Model(&entities.Build{}).Where("app_id = ?", appID)
+	query := db.DB.Model(&entities.Build{}).
+		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
+		Where("build_settings.app_id = ?", appID)
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
@@ -51,10 +53,9 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 		return nil, fmt.Errorf("app not found: %w", err)
 	}
 
-	// Get build config
-	config, err := GetBuildConfig(appID)
+	config, err := GetAppBuildSetting(appID)
 	if err != nil {
-		return nil, fmt.Errorf("build config not found: please configure build settings first")
+		return nil, fmt.Errorf("build setting not found: please configure build settings first")
 	}
 
 	// Get the registry
@@ -72,7 +73,8 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 	// Check for active builds
 	var activeCount int64
 	if err := db.DB.Model(&entities.Build{}).
-		Where("app_id = ? AND status IN ?", appID, []entities.BuildStatus{
+		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
+		Where("build_settings.app_id = ? AND builds.status IN ?", appID, []entities.BuildStatus{
 			entities.BuildStatusPending,
 			entities.BuildStatusCloning,
 			entities.BuildStatusBuilding,
@@ -86,7 +88,7 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 	// Get next build number
 	var lastBuild entities.Build
 	var buildNumber int
-	if err := db.DB.Where("app_id = ?", appID).Order("build_number DESC").First(&lastBuild).Error; err != nil {
+	if err := db.DB.Where("build_setting_id = ?", config.ID).Order("build_number DESC").First(&lastBuild).Error; err != nil {
 		buildNumber = 1
 	} else {
 		buildNumber = lastBuild.BuildNumber + 1
@@ -105,50 +107,52 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 
 	imageFullName := fmt.Sprintf("%s:%s", config.ImageName, imageTag)
 
-	// Determine auto deploy
-	autoDeploy := config.AutoDeploy
-	if req.AutoDeploy != nil {
-		autoDeploy = *req.AutoDeploy
-	}
-
-	// Temporarily store autoDeploy in config for the watcher
-	if autoDeploy != config.AutoDeploy {
-		// We use the build-level config snapshot
-	}
-
 	now := time.Now()
-	appIDPtr := appID
-	buildConfigID := config.ID
 	triggeredBy := userID
 	var triggeredByPtr *string
 	if triggeredBy != "" {
 		triggeredByPtr = &triggeredBy
 	}
 	build := &entities.Build{
-		ID:            uuid.New(),
-		AppID:         &appIDPtr,
-		BuildConfigID: &buildConfigID,
-		BuildNumber:   buildNumber,
-		Status:        entities.BuildStatusPending,
-		BuildEnvID:    buildEnv.ID,
-		GitRepoURL:    config.GitRepoURL,
-		GitRef:        gitRef,
-		ImageFullName: imageFullName,
-		TriggerType:   entities.BuildTriggerManual,
-		TriggeredBy:   triggeredByPtr,
-		StartedAt:     &now,
+		ID:             uuid.New(),
+		BuildSettingID: config.ID,
+		BuildNumber:    buildNumber,
+		Status:         entities.BuildStatusPending,
+		BuildEnvID:     buildEnv.ID,
+		GitRepoURL:     "",
+		GitRef:         gitRef,
+		ImageFullName:  imageFullName,
+		TriggerType:    entities.BuildTriggerManual,
+		TriggeredBy:    triggeredByPtr,
+		StartedAt:      &now,
 	}
 
 	if err := db.DB.Create(build).Error; err != nil {
 		return nil, err
 	}
 
+	deployedBy := userID
+	if deployedBy == "" {
+		deployedBy = "manual"
+	}
+	appIDCopy := appID
+	buildDeployment := &entities.BuildDeployment{
+		ID:         uuid.New(),
+		BuildID:    build.ID,
+		AppID:      &appIDCopy,
+		EnvID:      appCtx.EnvContext.Env.ID,
+		Status:     entities.BuildDeploymentStatusPending,
+		DeployedBy: deployedBy,
+	}
+	if err := db.DB.Create(buildDeployment).Error; err != nil {
+		log.Printf("TriggerBuild: failed to create build deployment record: %v", err)
+	}
+
 	// Submit the build job to Kubernetes
-	baseConfig := config.AppBuildConfig
 	jobName, jobNamespace, err := core.SubmitBuildJob(
 		ctx,
 		build,
-		&baseConfig,
+		&config.BuildSetting,
 		registry,
 		buildEnv,
 		appCtx,
@@ -241,24 +245,28 @@ func DeployBuild(ctx context.Context, buildID string) (*entities.Build, error) {
 		return nil, errors.New("build has no image")
 	}
 
-	// Get build config for registry credentials (app-bound builds only)
-	if build.BuildConfigID == nil || *build.BuildConfigID == "" {
-		return nil, errors.New("build has no app build config; use code repository deploy for this build")
+	if build.BuildSettingID == "" {
+		return nil, errors.New("build has no build setting")
 	}
-	var config entities.AppBuildConfig
-	if err := db.DB.First(&config, "id = ?", *build.BuildConfigID).Error; err != nil {
+	var setting entities.BuildSetting
+	if err := db.DB.First(&setting, "id = ?", build.BuildSettingID).Error; err != nil {
 		return nil, err
 	}
 	var registry entities.ContainerRegistry
-	if err := db.DB.First(&registry, "id = ?", config.RegistryID).Error; err != nil {
+	if err := db.DB.First(&registry, "id = ?", setting.RegistryID).Error; err != nil {
 		return nil, err
 	}
 
-	// Get the app (app-bound builds only)
-	if build.AppID == nil || *build.AppID == "" {
+	var bd entities.BuildDeployment
+	if err := db.DB.Where("build_id = ?", buildID).
+		Order("created_at DESC").
+		First(&bd).Error; err != nil {
 		return nil, errors.New("build has no associated app; use code repository deploy for this build")
 	}
-	appCtx, err := GetApp(ctx, *build.AppID)
+	if bd.AppID == nil || *bd.AppID == "" {
+		return nil, errors.New("build has no associated app; use code repository deploy for this build")
+	}
+	appCtx, err := GetApp(ctx, *bd.AppID)
 	if err != nil {
 		return nil, err
 	}
@@ -274,12 +282,24 @@ func DeployBuild(ctx context.Context, buildID string) (*entities.Build, error) {
 
 	// Apply the app
 	if err := core.ApplyApp(ctx, appCtx); err != nil {
+		now := time.Now()
+		db.DB.Model(&bd).Updates(map[string]any{
+			"status":        entities.BuildDeploymentStatusFailed,
+			"error_message": err.Error(),
+			"deployed_at":   &now,
+		})
 		return nil, fmt.Errorf("failed to deploy: %w", err)
 	}
 
 	// Update deploy status
 	appCtx.App.DeployStatus = "deployed"
 	db.DB.Model(&appCtx.App).Update("deploy_status", "deployed")
+
+	now := time.Now()
+	db.DB.Model(&bd).Updates(map[string]any{
+		"status":      entities.BuildDeploymentStatusDeployed,
+		"deployed_at": &now,
+	})
 	return build, nil
 }
 
@@ -288,7 +308,10 @@ func RebuildBuild(ctx context.Context, buildID, userID string, req *models.Rebui
 	if err != nil {
 		return nil, err
 	}
-	if originalBuild.AppID == nil || *originalBuild.AppID == "" {
+	var bd entities.BuildDeployment
+	if err := db.DB.Where("build_id = ?", buildID).
+		Order("created_at DESC").
+		First(&bd).Error; err != nil || bd.AppID == nil || *bd.AppID == "" {
 		return nil, errors.New("this build is not associated with an app; trigger a new build from the code repository instead")
 	}
 
@@ -297,7 +320,7 @@ func RebuildBuild(ctx context.Context, buildID, userID string, req *models.Rebui
 		ImageTag: req.ImageTag,
 	}
 
-	return TriggerBuild(ctx, *originalBuild.AppID, userID, triggerReq)
+	return TriggerBuild(ctx, *bd.AppID, userID, triggerReq)
 }
 
 func StreamBuildLogs(c *gin.Context, buildID string) {
@@ -392,50 +415,33 @@ func StreamBuildLogs(c *gin.Context, buildID string) {
 }
 
 func ToBuildResponse(c context.Context, b *entities.Build) models.BuildResponse {
-	codeRepoID := ""
-	if b.CodeRepositoryID != nil {
-		codeRepoID = *b.CodeRepositoryID
-	}
-	codeRepoConfigID := ""
-	if b.CodeRepositoryBuildConfigID != nil {
-		codeRepoConfigID = *b.CodeRepositoryBuildConfigID
-	}
-	appID := ""
-	if b.AppID != nil {
-		appID = *b.AppID
-	}
-	buildConfigID := ""
-	if b.BuildConfigID != nil {
-		buildConfigID = *b.BuildConfigID
-	}
-
 	resp := models.BuildResponse{
-		ID:                          b.ID,
-		CodeRepositoryID:            codeRepoID,
-		CodeRepositoryBuildConfigID: codeRepoConfigID,
-		AppID:                       appID,
-		BuildConfigID:               buildConfigID,
-		BuildNumber:                 b.BuildNumber,
-		Status:                      string(b.Status),
-		BuildEnvID:                  b.BuildEnvID,
-		GitRepoURL:                  b.GitRepoURL,
-		GitRef:                      b.GitRef,
-		GitCommitSHA:                b.GitCommitSHA,
-		GitCommitMsg:                b.GitCommitMsg,
-		ImageFullName:               b.ImageFullName,
-		TriggerType:                 string(b.TriggerType),
-		TriggeredBy:                 derefBuildString(b.TriggeredBy),
-		JobName:                     b.JobName,
-		JobNamespace:                b.JobNamespace,
-		StartedAt:                   b.StartedAt,
-		CompletedAt:                 b.CompletedAt,
-		Duration:                    b.Duration,
-		ErrorMessage:                b.ErrorMessage,
-		CreatedAt:                   b.CreatedAt,
+		ID:             b.ID,
+		BuildSettingID: b.BuildSettingID,
+		BuildNumber:    b.BuildNumber,
+		Status:         string(b.Status),
+		BuildEnvID:     b.BuildEnvID,
+		GitRepoURL:     b.GitRepoURL,
+		GitRef:         b.GitRef,
+		GitCommitSHA:   b.GitCommitSHA,
+		GitCommitMsg:   b.GitCommitMsg,
+		ImageFullName:  b.ImageFullName,
+		TriggerType:    string(b.TriggerType),
+		TriggeredBy:    derefBuildString(b.TriggeredBy),
+		JobName:        b.JobName,
+		JobNamespace:   b.JobNamespace,
+		StartedAt:      b.StartedAt,
+		CompletedAt:    b.CompletedAt,
+		Duration:       b.Duration,
+		ErrorMessage:   b.ErrorMessage,
+		CreatedAt:      b.CreatedAt,
 	}
 
-	if b.AppID != nil && *b.AppID != "" {
-		if appCtx, err := GetApp(c, *b.AppID); err == nil {
+	var bd entities.BuildDeployment
+	if err := db.DB.Where("build_id = ?", b.ID).
+		Order("created_at DESC").
+		First(&bd).Error; err == nil && bd.AppID != nil && *bd.AppID != "" {
+		if appCtx, err := GetApp(c, *bd.AppID); err == nil {
 			appResp := ToAppResponse(c, appCtx)
 			resp.App = &appResp
 		}
@@ -463,8 +469,10 @@ func sanitizeRef(ref string) string {
 // ListBuildsByCodeRepository returns builds for a code repository.
 func ListBuildsByCodeRepository(repoID string) ([]entities.Build, error) {
 	var builds []entities.Build
-	if err := db.DB.Where("code_repository_id = ?", repoID).
-		Order("build_number DESC").
+	if err := db.DB.
+		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
+		Where("build_settings.code_repository_id = ?", repoID).
+		Order("builds.build_number DESC").
 		Find(&builds).Error; err != nil {
 		return nil, err
 	}
@@ -473,43 +481,41 @@ func ListBuildsByCodeRepository(repoID string) ([]entities.Build, error) {
 
 func ListDeploymentsByCodeRepository(repoID string) ([]entities.Build, error) {
 	var builds []entities.Build
-	if err := db.DB.Where("code_repository_id = ? AND app_id IS NOT NULL", repoID).
-		Order("created_at DESC").
+	if err := db.DB.
+		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
+		Joins("JOIN build_deployments ON build_deployments.build_id = builds.id").
+		Where("build_settings.code_repository_id = ? AND build_deployments.status = ?",
+			repoID, entities.BuildDeploymentStatusDeployed).
+		Order("builds.created_at DESC").
 		Find(&builds).Error; err != nil {
 		return nil, err
 	}
-	appIDs := make(map[string]struct{})
-	for _, b := range builds {
-		if b.AppID != nil && *b.AppID != "" {
-			appIDs[*b.AppID] = struct{}{}
-		}
-	}
-	_ = appIDs
 	return builds, nil
 }
 
 // GetBuildByCodeRepository returns a build that belongs to the given code repository.
 func GetBuildByCodeRepository(repoID, buildID string) (*entities.Build, error) {
 	var build entities.Build
-	if err := db.DB.Where("id = ? AND code_repository_id = ?", buildID, repoID).
+	if err := db.DB.
+		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
+		Where("builds.id = ? AND build_settings.code_repository_id = ?", buildID, repoID).
 		First(&build).Error; err != nil {
 		return nil, err
 	}
 	return &build, nil
 }
 
-// TriggerCodeRepositoryBuild starts a build for a code repository build config (build_config_id + build_env_id required).
 func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRepositoryBuildRequest) (*entities.Build, error) {
 	repo, err := GetCodeRepository(repoID)
 	if err != nil {
 		return nil, fmt.Errorf("code repository not found: %w", err)
 	}
-	config, err := GetCodeRepositoryBuildConfig(req.BuildConfigID)
+	config, err := GetBuildSetting(req.BuildSettingID)
 	if err != nil {
-		return nil, fmt.Errorf("build config not found: %w", err)
+		return nil, fmt.Errorf("build setting not found: %w", err)
 	}
-	if config.CodeRepositoryID != repoID {
-		return nil, errors.New("build config does not belong to this code repository")
+	if config.CodeRepositoryID == nil || *config.CodeRepositoryID != repoID {
+		return nil, errors.New("build setting does not belong to this code repository")
 	}
 	registry, err := GetContainerRegistry(config.RegistryID)
 	if err != nil {
@@ -530,19 +536,23 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 
 	var activeCount int64
 	if err := db.DB.Model(&entities.Build{}).
-		Where("code_repository_id = ? AND code_repository_build_config_id = ? AND status IN ?",
-			repoID, config.ID, []entities.BuildStatus{
+		Where("build_setting_id = ? AND status IN ?",
+			config.ID, []entities.BuildStatus{
 				entities.BuildStatusPending, entities.BuildStatusCloning, entities.BuildStatusBuilding,
 			}).Count(&activeCount).Error; err != nil {
 		return nil, err
 	}
 	if activeCount > 0 {
-		return nil, errors.New("an active build already exists for this build config")
+		return nil, errors.New("an active build already exists for this build setting")
 	}
 
 	var lastBuild entities.Build
 	var buildNumber int
-	if err := db.DB.Where("code_repository_id = ?", repoID).Order("build_number DESC").First(&lastBuild).Error; err != nil {
+	if err := db.DB.
+		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
+		Where("build_settings.code_repository_id = ?", repoID).
+		Order("builds.build_number DESC").
+		First(&lastBuild).Error; err != nil {
 		buildNumber = 1
 	} else {
 		buildNumber = lastBuild.BuildNumber + 1
@@ -563,53 +573,56 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 	imageFullName := core.BuildImageFullName(registry, config.ImageName, imageTag)
 
 	now := time.Now()
-	cfgID := config.ID
 	triggeredBy := userID
 	var triggeredByPtr *string
 	if triggeredBy != "" {
 		triggeredByPtr = &triggeredBy
 	}
 	build := &entities.Build{
-		ID:                          uuid.New(),
-		CodeRepositoryID:            &repoID,
-		CodeRepositoryBuildConfigID: &cfgID,
-		AppID:                       nil,
-		BuildConfigID:               nil,
-		BuildNumber:                 buildNumber,
-		Status:                      entities.BuildStatusPending,
-		BuildEnvID:                  buildEnv.ID,
-		GitRepoURL:                  repo.GitRepoURL,
-		GitRef:                      gitRef,
-		ImageFullName:               imageFullName,
-		TriggerType:                 entities.BuildTriggerManual,
-		TriggeredBy:                 triggeredByPtr,
-		StartedAt:                   &now,
+		ID:             uuid.New(),
+		BuildSettingID: config.ID,
+		BuildNumber:    buildNumber,
+		Status:         entities.BuildStatusPending,
+		BuildEnvID:     buildEnv.ID,
+		GitRepoURL:     repo.GitRepoURL,
+		GitRef:         gitRef,
+		ImageFullName:  imageFullName,
+		TriggerType:    entities.BuildTriggerManual,
+		TriggeredBy:    triggeredByPtr,
+		StartedAt:      &now,
 	}
 
-	if req.AutoDeploy != nil && *req.AutoDeploy {
-		if req.DeployEnvID != "" {
-			deployEnvID := req.DeployEnvID
-			build.PendingDeployEnvID = &deployEnvID
-		}
-		if req.DeployAppID != "" {
-			deployAppID := req.DeployAppID
-			build.PendingDeployAppID = &deployAppID
-		}
-		build.PendingDeployAppName = req.DeployAppName
-		build.PendingDeployAppSlug = req.DeployAppSlug
-	}
 	if err := db.DB.Create(build).Error; err != nil {
 		return nil, err
 	}
 
+	if req.AutoDeploy != nil && *req.AutoDeploy && req.DeployEnvID != "" {
+		var appIDPtr *string
+		if req.DeployAppID != "" {
+			appIDPtr = &req.DeployAppID
+		}
+		buildDeployment := &entities.BuildDeployment{
+			ID:         uuid.New(),
+			BuildID:    build.ID,
+			AppID:      appIDPtr,
+			EnvID:      req.DeployEnvID,
+			AppName:    req.DeployAppName,
+			AppSlug:    req.DeployAppSlug,
+			Status:     entities.BuildDeploymentStatusPending,
+			DeployedBy: "auto",
+		}
+		if err := db.DB.Create(buildDeployment).Error; err != nil {
+			log.Printf("TriggerCodeRepositoryBuild: failed to create build deployment record: %v", err)
+		}
+	}
+
 	jobSlug := CodeRepositorySlugForJob(repo.Name, config.Name)
 	baseRepo := repo.CodeRepository
-	baseCfg := config.CodeRepositoryBuildConfig
 	jobName, jobNamespace, err := core.SubmitBuildJobFromCodeRepo(
 		context.Background(),
 		build,
 		&baseRepo,
-		&baseCfg,
+		&config.BuildSetting,
 		registry,
 		buildEnv,
 		project,
@@ -645,8 +658,8 @@ func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req 
 	if build.ImageFullName == "" {
 		return nil, nil, errors.New("build has no image")
 	}
-	if build.CodeRepositoryBuildConfigID == nil || *build.CodeRepositoryBuildConfigID == "" {
-		return nil, nil, errors.New("build has no build config (registry unknown)")
+	if build.BuildSettingID == "" {
+		return nil, nil, errors.New("build has no build setting (registry unknown)")
 	}
 
 	repo, err := GetCodeRepository(repoID)
@@ -661,9 +674,9 @@ func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req 
 		return nil, nil, errors.New("target environment must belong to the same project")
 	}
 
-	config, err := GetCodeRepositoryBuildConfig(*build.CodeRepositoryBuildConfigID)
+	config, err := GetBuildSetting(build.BuildSettingID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("build config not found: %w", err)
+		return nil, nil, fmt.Errorf("build setting not found: %w", err)
 	}
 	registry, err := GetContainerRegistry(config.RegistryID)
 	if err != nil {
@@ -703,9 +716,18 @@ func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req 
 	appCtx.App.DeployStatus = "deployed"
 	db.DB.Model(&appCtx.App).Update("deploy_status", "deployed")
 
-	appID := appCtx.App.ID
-	build.AppID = &appID
-	db.DB.Save(build)
+	now := time.Now()
+	appIDVal := appCtx.App.ID
+	bd := &entities.BuildDeployment{
+		ID:         uuid.New(),
+		BuildID:    build.ID,
+		AppID:      &appIDVal,
+		EnvID:      req.TargetEnvID,
+		Status:     entities.BuildDeploymentStatusDeployed,
+		DeployedBy: "manual",
+		DeployedAt: &now,
+	}
+	db.DB.Create(bd)
 
 	return build, appCtx, nil
 }
