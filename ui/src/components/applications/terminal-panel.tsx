@@ -51,11 +51,10 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
     <WorkloadPanelFrame
       toolbar={(
         <>
-          <div className="flex max-w-[70%] items-center gap-1 overflow-x-auto no-scrollbar">
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto no-scrollbar">
             {sessions.map(session => (
-              <>
+              <React.Fragment key={session.id}>
                 <div
-                  key={session.id}
                   onClick={() => setActiveSessionId(session.id)}
                   className={cn(
                     "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-[10px] transition-colors",
@@ -72,7 +71,7 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
                   )}
                 </div>
                 <Separator orientation="vertical" className="mt-1 mb-1 mx-1" />
-              </>
+              </React.Fragment>
             ))}
             <Tooltip>
               <TooltipTrigger
@@ -120,24 +119,28 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
         </>
       )}
     >
-      <div className="relative h-full overflow-hidden ">
+      <div className="relative h-full min-h-0 overflow-hidden bg-zinc-950">
         {sessions.map(session => (
           <div
             key={session.id}
             className={cn(
-              "absolute inset-0",
+              "absolute inset-0 min-h-0",
               activeSessionId === session.id ? "visible" : "invisible"
             )}
           >
-            <TerminalInstance
-              appId={appId}
-              instanceName={instanceName}
-              containerName={containerName}
-              targetType={targetType}
-              onConnectionChange={(connected) => {
-                setSessions(prev => prev.map(s => s.id === session.id ? { ...s, isConnected: connected } : s))
-              }}
-            />
+            <div className="h-full min-h-0 pl-1">
+              <div className="h-full min-h-0 rounded-md shadow-inner">
+                <TerminalInstance
+                  appId={appId}
+                  instanceName={instanceName}
+                  containerName={containerName}
+                  targetType={targetType}
+                  onConnectionChange={(connected) => {
+                    setSessions(prev => prev.map(s => s.id === session.id ? { ...s, isConnected: connected } : s))
+                  }}
+                />
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -177,29 +180,29 @@ function TerminalInstance({
       fontSize: 13,
       fontFamily: 'monospace',
       lineHeight: 1,
-      // theme: {
-      //   background: "#0a0a0a",
-      //   foreground: "#e4e4e7",
-      //   cursor: "#22c55e",
-      //   cursorAccent: "#0a0a0a",
-      //   selectionBackground: "#27272a",
-      //   black: "#18181b",
-      //   red: "#ef4444",
-      //   green: "#22c55e",
-      //   yellow: "#eab308",
-      //   blue: "#3b82f6",
-      //   magenta: "#a855f7",
-      //   cyan: "#06b6d4",
-      //   white: "#e4e4e7",
-      //   brightBlack: "#52525b",
-      //   brightRed: "#f87171",
-      //   brightGreen: "#4ade80",
-      //   brightYellow: "#facc15",
-      //   brightBlue: "#60a5fa",
-      //   brightMagenta: "#c084fc",
-      //   brightCyan: "#22d3ee",
-      //   brightWhite: "#fafafa",
-      // },
+      theme: {
+        background: "#09090b", // bg-zinc-950
+        // foreground: "#e4e4e7",
+        // cursor: "#22c55e",
+        // cursorAccent: "#0a0a0a",
+        // selectionBackground: "#27272a",
+        // black: "#18181b",
+        // red: "#ef4444",
+        // green: "#22c55e",
+        // yellow: "#eab308",
+        // blue: "#3b82f6",
+        // magenta: "#a855f7",
+        // cyan: "#06b6d4",
+        // white: "#e4e4e7",
+        // brightBlack: "#52525b",
+        // brightRed: "#f87171",
+        // brightGreen: "#4ade80",
+        // brightYellow: "#facc15",
+        // brightBlue: "#60a5fa",
+        // brightMagenta: "#c084fc",
+        // brightCyan: "#22d3ee",
+        // brightWhite: "#fafafa",
+      },
       disableStdin: false,
     })
 
@@ -401,5 +404,10 @@ function TerminalInstance({
     }
   }, [appId, instanceName, containerName, targetType])
 
-  return <div ref={terminalRef} className="h-full w-full overflow-hidden" />
+  return (
+    <div
+      ref={terminalRef}
+      className="h-full min-h-0 w-full overflow-hidden [&_.xterm]:h-full [&_.xterm]:w-full [&_.xterm-viewport]:overflow-y-auto!"
+    />
+  )
 }
