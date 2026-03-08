@@ -162,7 +162,7 @@ export function DataTable<TData, TValue>({
       <Checkbox
         checked={
           (table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() ? "mixed" : false)) as any
+            (table.getIsSomePageRowsSelected() ? "mixed" : false)) as boolean | undefined
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
       />
@@ -207,7 +207,6 @@ export function DataTable<TData, TValue>({
               <Button
                 variant="secondary"
                 onClick={onRefresh}
-                title="Refresh"
               >
                 <RefreshCw />
               </Button>

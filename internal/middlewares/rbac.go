@@ -110,6 +110,24 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 		return env.ProjectID, true
 	}
 
+	if gatewayID := c.Param("gatewayID"); gatewayID != "" {
+		var gateway entities.AppGateway
+		if err := db.DB.Select("app_id").Where("id = ?", gatewayID).First(&gateway).Error; err != nil {
+			log.Printf("resolveProjectID: DB lookup AppGateway %q failed: %v", gatewayID, err)
+			return "", false
+		}
+
+		var env entities.Env
+		if err := db.DB.Select("envs.project_id").
+			Joins("JOIN apps ON apps.env_id = envs.id").
+			Where("apps.id = ?", gateway.AppID).
+			First(&env).Error; err != nil {
+			log.Printf("resolveProjectID: DB lookup via gatewayID %q failed: %v", gatewayID, err)
+			return "", false
+		}
+		return env.ProjectID, true
+	}
+
 	// Resolve via container registry ID
 	if registryID := c.Param("registryID"); registryID != "" {
 		var registry entities.ContainerRegistry

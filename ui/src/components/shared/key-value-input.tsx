@@ -3,6 +3,11 @@ import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export interface KeyValuePair {
   key: string
@@ -66,16 +71,24 @@ export function KeyValueInput({
                 className="flex-1 font-mono text-sm"
                 placeholder={valuePlaceholder}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => handleRemove(index)}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 />
-                <span className="sr-only">Remove</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemove(index)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    />
+                  }
+                >
+                  <Trash2 />
+                  <span className="sr-only">Remove</span>
+                </TooltipTrigger>
+                <TooltipContent>Remove Entry</TooltipContent>
+              </Tooltip>
             </div>
           ))}
         </div>
@@ -96,16 +109,24 @@ export function KeyValueInput({
           onKeyDown={handleKeyDown}
           className="flex-1 font-mono text-sm"
         />
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={handleAdd}
-          disabled={!canAdd}
-          size="icon"
-          className="gap-1.5"
-        >
-          <Plus />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            delay={200}
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleAdd}
+                disabled={!canAdd}
+                size="icon"
+                className="gap-1.5"
+              />
+            }
+          >
+            <Plus />
+          </TooltipTrigger>
+          <TooltipContent>Add Entry</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )

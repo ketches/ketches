@@ -10,6 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldLabel, FieldTitle } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@/components/ui/tooltip"
 
 import {
   Combobox,
@@ -170,9 +175,26 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
                     value={form.git_repo_url}
                     onChange={(e) => setForm({ ...form, git_repo_url: e.target.value })}
                   />
-                  <Button variant="outline" size="icon" onClick={() => testGitMutation.mutate()} disabled={testGitMutation.isPending} title="Test connection">
-                    {testGitMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <TestTube2 />}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => testGitMutation.mutate()}
+                          disabled={testGitMutation.isPending}
+                        />
+                      }
+                    >
+                      {testGitMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <TestTube2 />
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent>Test connection</TooltipContent>
+                  </Tooltip>
                 </div>
               </FieldContent>
             </Field>
@@ -253,7 +275,7 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
                   onValueChange={(v) => v && setForm({ ...form, registry_id: v })}
                   itemToStringLabel={(id) => registries?.find((r: ContainerRegistry) => r.id === id)?.name ?? id ?? ""}
                 >
-                    <ComboboxInput placeholder="Select a registry" />
+                  <ComboboxInput placeholder="Select a registry" />
                   <ComboboxContent>
                     <ComboboxList>
                       {registries?.map((r: ContainerRegistry) => (

@@ -74,7 +74,7 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
       accessorKey: "endpoint",
       header: "Server",
       cell: ({ row }) => (
-        <span className="font-mono text-xs max-w-48 truncate block">{row.original.endpoint}</span>
+        <span className="font-mono text-xs truncate block">{row.original.endpoint}</span>
       ),
     },
     {

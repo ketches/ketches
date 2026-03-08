@@ -5,6 +5,7 @@ import {
   Copy,
   LayoutGrid,
   List as ListIcon,
+  Loader2,
   Orbit,
   Pencil,
   Plus,
@@ -29,6 +30,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
@@ -106,6 +112,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
       setDeleteDialogOpen(false)
       setDeletingEnv(null)
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       toast.error("Failed to delete environment", {
         description: error.response?.data?.error || "An unknown error occurred",
@@ -151,7 +158,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
       header: "Namespace",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <span className="max-w-50 truncate block text-muted-foreground font-mono">
+          <span className="truncate block text-muted-foreground font-mono">
             {row.original.cluster_namespace}
           </span>
           <Button
@@ -183,31 +190,51 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-2">
           {!isViewer && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                setEditingEnv(row.original)
-                setEditDialogOpen(true)
-              }}
-            >
-              <Pencil />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditingEnv(row.original)
+                      setEditDialogOpen(true)
+                    }}
+                  />
+                }
+              >
+                <Pencil />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Edit environment</p>
+              </TooltipContent>
+            </Tooltip>
           )}
           {!isViewer && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={(e) => {
-                e.stopPropagation()
-                setDeletingEnv(row.original)
-                setDeleteDialogOpen(true)
-              }}
-            >
-              <Trash2 />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDeletingEnv(row.original)
+                      setDeleteDialogOpen(true)
+                    }}
+                  />
+                }
+              >
+                <Trash2 />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Delete environment</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       ),
@@ -268,7 +295,12 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
           </div>
         </div>
       )}
-      {!isLoading && safeEnvs.length === 0 && !searchQuery ? (
+
+      {isLoading && !envsResponse ? (
+        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : !isLoading && safeEnvs.length === 0 && !searchQuery ? (
         <EmptyEnvironmentState onAction={!isViewer ? () => setCreateDialogOpen(true) : undefined} />
       ) : (
         <DataTable
@@ -316,31 +348,47 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
                   </div>
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {!isViewer && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditingEnv(env)
-                          setEditDialogOpen(true)
-                        }}
-                      >
-                        <Pencil />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          delay={200}
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingEnv(env)
+                                setEditDialogOpen(true)
+                              }}
+                            />
+                          }
+                        >
+                          <Pencil />
+                        </TooltipTrigger>
+                        <TooltipContent>Edit environment</TooltipContent>
+                      </Tooltip>
                     )}
                     {!isViewer && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setDeletingEnv(env)
-                          setDeleteDialogOpen(true)
-                        }}
-                      >
-                        <Trash2 />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          delay={200}
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeletingEnv(env)
+                                setDeleteDialogOpen(true)
+                              }}
+                            />
+                          }
+                        >
+                          <Trash2 />
+                        </TooltipTrigger>
+                        <TooltipContent>Delete environment</TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                 </div>

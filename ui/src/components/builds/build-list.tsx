@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Clock, FileClock, FolderGit2, Hash, Loader2, Package, Rocket, RotateCcw, Square, User } from "lucide-react"
+import { Clock, Copy, FileClock, FolderGit2, Hash, Loader2, Package, Rocket, RotateCcw, Square, User } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { AxiosError } from "axios"
 
 interface BuildListProps {
@@ -101,16 +101,22 @@ export function BuildList({ appId }: BuildListProps) {
       accessorKey: "image_full_name",
       header: "Image",
       cell: ({ row }) => (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>
-              <span className="text-xs font-mono truncate max-w-48 block">
-                {row.original.image_full_name || '-'}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>{row.original.image_full_name}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono truncate block">
+            {row.original.image_full_name || '-'}
+          </span>
+          <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (row.original.image_full_name) {
+                navigator.clipboard.writeText(row.original.image_full_name)
+                toast.success('Image name copied to clipboard')
+              }
+            }}
+          >
+            <Copy />
+          </Button>
+        </div>
       ),
     },
     {
@@ -160,34 +166,65 @@ export function BuildList({ appId }: BuildListProps) {
             onClick={(e) => e.stopPropagation()}
           >
             {(build.status === 'pending' || build.status === 'cloning' || build.status === 'building') && (
-              <Button variant="ghost" size="icon-sm" onClick={() => cancelMutation.mutate(build.id)} title="Cancel">
-                <Square />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => cancelMutation.mutate(build.id)}
+                    />
+                  }
+                >
+                  <Square />
+                </TooltipTrigger>
+                <TooltipContent>Cancel build</TooltipContent>
+              </Tooltip>
             )}
             {build.status === 'succeeded' && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => {
-                  setSelectedBuildId(build.id)
-                  setTriggerBuildDialogOpen(true)
-                }}
-                title="Deploy"
-              >
-                <Rocket />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => {
+                        setSelectedBuildId(build.id)
+                        setTriggerBuildDialogOpen(true)
+                      }}
+                    />
+                  }
+                >
+                  <Rocket />
+                </TooltipTrigger>
+                <TooltipContent>Deploy build</TooltipContent>
+              </Tooltip>
             )}
             {(build.status === 'failed' || build.status === 'succeeded') && (
-              <Button variant="ghost" size="icon-sm" onClick={() => {
-                buildsApi.rebuild(appId, build.id).then(() => {
-                  queryClient.invalidateQueries({ queryKey: ['builds', appId] })
-                  toast.success('Rebuild triggered')
-                }).catch((err) => {
-                  toast.error(err?.response?.data?.error || 'Failed to rebuild')
-                })
-              }} title="Rebuild">
-                <RotateCcw />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => {
+                        buildsApi.rebuild(appId, build.id).then(() => {
+                          queryClient.invalidateQueries({ queryKey: ['builds', appId] })
+                          toast.success('Rebuild triggered')
+                        }).catch((err) => {
+                          toast.error(err?.response?.data?.error || 'Failed to rebuild')
+                        })
+                      }}
+                    />
+                  }
+                >
+                  <RotateCcw />
+                </TooltipTrigger>
+                <TooltipContent>Rebuild</TooltipContent>
+              </Tooltip>
             )}
           </div>
         )

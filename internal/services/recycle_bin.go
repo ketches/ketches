@@ -11,7 +11,7 @@ import (
 func ListDeletedApps(projectID string, userID string, page, pageSize int, search string) (int64, []models.RecycleBinAppRow, error) {
 	var rows []models.RecycleBinAppRow
 	var total int64
-	query := db.DB.Table("apps").
+	query := db.DB.Unscoped().Table("apps").
 		Select("apps.*, envs.name as env_name, projects.name as project_name, projects.slug as project_slug").
 		Joins("JOIN envs ON apps.env_id = envs.id").
 		Joins("JOIN projects ON envs.project_id = projects.id").
@@ -45,7 +45,7 @@ func ListDeletedEnvs(projectID string, userID string, page, pageSize int, search
 	var rows []models.RecycleBinEnvRow
 	var total int64
 
-	query := db.DB.Table("envs").
+	query := db.DB.Unscoped().Table("envs").
 		Select("envs.*, projects.name as project_name, projects.slug as project_slug, clusters.name as cluster_name").
 		Joins("JOIN projects ON envs.project_id = projects.id").
 		Joins("JOIN clusters ON envs.cluster_id = clusters.id").

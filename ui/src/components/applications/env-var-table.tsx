@@ -23,6 +23,11 @@ import {
 } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface EnvVarTableProps {
   app: App
@@ -166,22 +171,38 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
         <div className="flex items-center justify-end gap-1">
           {!isViewer && (
             <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => handleEdit(row.original)}
-              >
-                <Edit2 />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => handleDelete(row.original)}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleEdit(row.original)}
+                    />
+                  }
+                >
+                  <Edit2 />
+                </TooltipTrigger>
+                <TooltipContent>Edit Variable</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDelete(row.original)}
+                      disabled={deleteMutation.isPending}
+                    />
+                  }
+                >
+                  <Trash2 />
+                </TooltipTrigger>
+                <TooltipContent>Delete Variable</TooltipContent>
+              </Tooltip>
             </>
           )}
         </div>
@@ -300,7 +321,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingEnvVar) {
@@ -327,7 +348,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (selectedEnvVarIds.length > 0) {

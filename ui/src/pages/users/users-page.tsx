@@ -10,7 +10,6 @@ import { PageHeader } from "@/components/layout/page-header"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
 import {
   Combobox,
   ComboboxContent,
@@ -18,7 +17,8 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
-import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item"
+import { Input } from "@/components/ui/input"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { AddUserDialog } from "@/components/users/add-user-dialog"
 import { EditPasswordDialog } from "@/components/users/edit-password-dialog"
 import { ImportUsersDialog } from "@/components/users/import-users-dialog"
@@ -227,16 +227,24 @@ export function UsersPage() {
               onSubmit={(password) => updatePasswordMutation.mutate({ userId: user.id, password })}
               isPending={updatePasswordMutation.isPending}
             />
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => deleteUserMutation.mutate(user.id)}
-              disabled={deleteUserMutation.isPending || user.role === 'admin'}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 />
-              <span className="sr-only">Delete</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => deleteUserMutation.mutate(user.id)}
+                    disabled={deleteUserMutation.isPending || user.role === 'admin'}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  />
+                }
+              >
+                <Trash2 />
+                <span className="sr-only">Delete</span>
+              </TooltipTrigger>
+              <TooltipContent>Delete user</TooltipContent>
+            </Tooltip>
           </div>
         )
       },

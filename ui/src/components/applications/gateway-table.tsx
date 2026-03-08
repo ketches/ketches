@@ -15,6 +15,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
 
@@ -210,41 +215,64 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
           {/* Quick Access: visible when app is running/updating and protocol is http/https */}
           {(app.status === 'running' || app.status === 'updating') &&
             (row.original.protocol === 'http' || row.original.protocol === 'https') && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                title="Quick Access"
-                onClick={() => {
-                  // Set a short-lived cookie so the backend can authenticate the
-                  // proxy request without exposing the JWT in the browser address bar.
-                  document.cookie = `X-Ketches-Token=${accessToken}; path=/forward; SameSite=Strict; max-age=3600`
-                  window.open(
-                    `/forward/${row.original.id}/`,
-                    '_blank'
-                  )
-                }}
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => {
+                        // Set a short-lived cookie so the backend can authenticate the
+                        // proxy request without exposing the JWT in the browser address bar.
+                        document.cookie = `X-Ketches-Token=${accessToken}; path=/forward; SameSite=Strict; max-age=3600`
+                        window.open(
+                          `/forward/${row.original.id}/`,
+                          '_blank'
+                        )
+                      }}
+                    />
+                  }
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </TooltipTrigger>
+                <TooltipContent>Quick Access</TooltipContent>
+              </Tooltip>
             )}
           {!isViewer && (
             <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => handleEdit(row.original)}
-              >
-                <Edit2 />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => handleDelete(row.original)}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleEdit(row.original)}
+                    />
+                  }
+                >
+                  <Edit2 />
+                </TooltipTrigger>
+                <TooltipContent>Edit Gateway</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDelete(row.original)}
+                      disabled={deleteMutation.isPending}
+                    />
+                  }
+                >
+                  <Trash2 />
+                </TooltipTrigger>
+                <TooltipContent>Delete Gateway</TooltipContent>
+              </Tooltip>
             </>
           )}
         </div>
@@ -352,7 +380,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingGateway) {
@@ -379,7 +407,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (selectedGatewayIds.length > 0) {

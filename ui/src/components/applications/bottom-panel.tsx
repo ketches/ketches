@@ -28,6 +28,11 @@ import {
 } from "@/components/ui/combobox"
 import { useSidebar } from "@/components/ui/sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useBottomPanel } from "@/contexts/bottom-panel-context"
 import { cn } from "@/lib/utils"
 
@@ -210,39 +215,62 @@ export function BottomPanel() {
         </div>
 
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={toggleMinimize}
-            title={isMinimized ? "Expand" : "Minimize"}
-          >
-            {isMinimized ? (
-              <ChevronUp />
-            ) : (
-              <ChevronDown />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleToggleMaximize}
-            title={isMaximized ? "Restore" : "Maximize"}
-            disabled={isMinimized}
-          >
-            {isMaximized ? (
-              <Minimize2 />
-            ) : (
-              <Maximize2 />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={closePanel}
-            title="Close"
-          >
-            <X />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={toggleMinimize}
+                />
+              }
+            >
+              {isMinimized ? (
+                <ChevronUp />
+              ) : (
+                <ChevronDown />
+              )}
+            </TooltipTrigger>
+            <TooltipContent>{isMinimized ? "Expand" : "Minimize"}</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleToggleMaximize}
+                  disabled={isMinimized}
+                />
+              }
+            >
+              {isMaximized ? (
+                <Minimize2 />
+              ) : (
+                <Maximize2 />
+              )}
+            </TooltipTrigger>
+            <TooltipContent>{isMaximized ? "Restore" : "Maximize"}</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={closePanel}
+                />
+              }
+            >
+              <X />
+            </TooltipTrigger>
+            <TooltipContent>Close</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 

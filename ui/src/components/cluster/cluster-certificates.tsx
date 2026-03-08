@@ -328,7 +328,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletingCert && deleteMutation.mutate(deletingCert.id)}
               variant="destructive"

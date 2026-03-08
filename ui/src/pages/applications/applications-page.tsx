@@ -20,7 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
 import { useQuery } from "@tanstack/react-query"
-import { Box, ChevronsUpDown, LayoutList, List, Orbit, Plus, Star, Upload } from "lucide-react"
+import { Box, ChevronsUpDown, LayoutList, List, Loader2, Orbit, Plus, Star, Upload } from "lucide-react"
 import * as React from "react"
 
 export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
@@ -48,7 +48,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
   })
 
   const envs = envsResponse?.items ?? []
-  const safeEnvs = Array.isArray(envs) ? envs : []
+  const safeEnvs = React.useMemo(() => (Array.isArray(envs) ? envs : []), [envs])
   const activeEnv = safeEnvs.find(e => e.id === activeEnvId) || safeEnvs[0]
 
   // In embedded mode, maintain local env selection defaulting to first env
@@ -88,7 +88,13 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
       icon: Orbit,
       dropdown: safeEnvs.length > 1 ? (
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
+          <DropdownMenuTrigger
+            render={
+              <Button variant="ghost" size="icon-sm">
+                <ChevronsUpDown />
+              </Button>
+            }
+          />
           <DropdownMenuContent align="start" className="w-fit">
             <DropdownMenuGroup>
               {safeEnvs.map(env => (
@@ -118,7 +124,11 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
         </div>
       )}
 
-      {!isLoading && safeEnvs.length === 0 ? (
+      {isLoading && envs.length === 0 ? (
+        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : !isLoading && safeEnvs.length === 0 ? (
         <EmptyEnvironmentState onAction={!isViewer ? () => setCreateEnvDialogOpen(true) : undefined} />
       ) : effectiveEnvId ? (
         <div className="flex flex-col flex-1">

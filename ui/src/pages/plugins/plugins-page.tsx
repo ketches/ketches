@@ -1,3 +1,26 @@
+import { pluginsApi, type Plugin } from "@/api/plugins"
+import { DataTable } from "@/components/data-table/data-table"
+import { PageHeader } from "@/components/layout/page-header"
+import { CreatePluginDialog } from "@/components/plugins/create-plugin-dialog"
+import { DeletePluginDialog } from "@/components/plugins/delete-plugin-dialog"
+import { EditPluginDialog } from "@/components/plugins/edit-plugin-dialog"
+import { InstalledAppsDialog } from "@/components/plugins/installed-apps-dialog"
+import { ColorBadge } from "@/components/shared/color-badge"
+import { EmptyState } from "@/components/shared/empty-state"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { useDebounce } from "@/hooks/use-debounce"
+import { useProjectRole } from "@/hooks/useProjectRole"
+import { formatDate } from "@/lib/utils"
+import { useProjectStore } from "@/stores/project"
 import { useQuery } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
@@ -13,25 +36,6 @@ import {
   Trash2
 } from "lucide-react"
 import * as React from "react"
-
-import { pluginsApi, type Plugin } from "@/api/plugins"
-import { DataTable } from "@/components/data-table/data-table"
-import { PageHeader } from "@/components/layout/page-header"
-import { CreatePluginDialog } from "@/components/plugins/create-plugin-dialog"
-import { DeletePluginDialog } from "@/components/plugins/delete-plugin-dialog"
-import { EditPluginDialog } from "@/components/plugins/edit-plugin-dialog"
-import { InstalledAppsDialog } from "@/components/plugins/installed-apps-dialog"
-import { ColorBadge } from "@/components/shared/color-badge"
-import { EmptyState } from "@/components/shared/empty-state"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useDebounce } from "@/hooks/use-debounce"
-import { useProjectRole } from "@/hooks/useProjectRole"
-import { formatDate } from "@/lib/utils"
-import { useProjectStore } from "@/stores/project"
 import { toast } from "sonner"
 
 const PLUGINS_VIEW_MODE_KEY = "plugins_view_mode"
@@ -115,7 +119,7 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
       header: "Image",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <span className="max-w-50 truncate block text-muted-foreground font-mono">
+          <span className="truncate block text-muted-foreground font-mono">
             {row.original.image}
           </span>
           <Button
@@ -166,29 +170,45 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={(e) => {
-              e.stopPropagation()
-              setEditingPlugin(row.original)
-              setEditDialogOpen(true)
-            }}
-          >
-            <Pencil />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={(e) => {
-              e.stopPropagation()
-              setDeletingPlugin(row.original)
-              setDeleteDialogOpen(true)
-            }}
-          >
-            <Trash2 />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingPlugin(row.original)
+                    setEditDialogOpen(true)
+                  }}
+                />
+              }
+            >
+              <Pencil />
+            </TooltipTrigger>
+            <TooltipContent>Edit plugin</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setDeletingPlugin(row.original)
+                    setDeleteDialogOpen(true)
+                  }}
+                />
+              }
+            >
+              <Trash2 />
+            </TooltipTrigger>
+            <TooltipContent>Delete plugin</TooltipContent>
+          </Tooltip>
         </div>
       ),
     })
@@ -309,30 +329,45 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
                     </div>
                     {!isViewer && (
                       <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingPlugin(plugin)
-                            setEditDialogOpen(true)
-                          }}
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeletingPlugin(plugin)
-                            setDeleteDialogOpen(true)
-                          }}
-                        >
-                          <Trash2 />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger
+                            delay={200}
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditingPlugin(plugin)
+                                  setEditDialogOpen(true)
+                                }}
+                              />
+                            }
+                          >
+                            <Pencil />
+                          </TooltipTrigger>
+                          <TooltipContent>Edit plugin</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger
+                            delay={200}
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setDeletingPlugin(plugin)
+                                  setDeleteDialogOpen(true)
+                                }}
+                              />
+                            }
+                          >
+                            <Trash2 />
+                          </TooltipTrigger>
+                          <TooltipContent>Delete plugin</TooltipContent>
+                        </Tooltip>
                       </div>
                     )}
                   </div>

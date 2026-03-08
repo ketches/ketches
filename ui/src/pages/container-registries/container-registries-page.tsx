@@ -140,16 +140,26 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
           <span className="text-xs text-muted-foreground font-mono truncate max-w-100">
             {row.original.endpoint}
           </span>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => {
-              navigator.clipboard.writeText(row.original.endpoint)
-              toast.success("Endpoint copied to clipboard")
-            }}
-          >
-            <Copy className="h-3 w-3" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(row.original.endpoint)
+                    toast.success("Endpoint copied to clipboard")
+                  }}
+                />
+              }
+            >
+              <Copy className="h-3 w-3" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Copy endpoint</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       ),
     },
@@ -186,7 +196,19 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
       cell: ({ row }: { row: import('@tanstack/react-table').Row<ContainerRegistry> }) => (
         <div className="flex items-center justify-end gap-2">
           <Tooltip>
-            <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={() => { setEditingRegistry(row.original); setEditDialogOpen(true) }} />}>
+            <TooltipTrigger
+              delay={200}
+              render={(
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    setEditingRegistry(row.original)
+                    setEditDialogOpen(true)
+                  }}
+                />
+              )}
+            >
               <Pencil />
             </TooltipTrigger>
             <TooltipContent>
@@ -194,7 +216,20 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
             </TooltipContent>
           </Tooltip>
           <Tooltip>
-            <TooltipTrigger render={<Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { setDeletingRegistry(row.original); setDeleteDialogOpen(true) }} />}>
+            <TooltipTrigger
+              delay={200}
+              render={(
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    setDeletingRegistry(row.original)
+                    setDeleteDialogOpen(true)
+                  }}
+                />
+              )}
+            >
               <Trash2 />
             </TooltipTrigger>
             <TooltipContent>
@@ -332,29 +367,51 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
                 </div>
                 <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {!isViewer && (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => {
-                        setEditingRegistry(reg)
-                        setEditDialogOpen(true)
-                      }}
-                    >
-                      <Pencil />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => {
+                              setEditingRegistry(reg)
+                              setEditDialogOpen(true)
+                            }}
+                          />
+                        }
+                      >
+                        <div className="flex items-center">
+                          <Pencil />
+                          <span className="sr-only">Edit</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit registry</TooltipContent>
+                    </Tooltip>
                   )}
                   {!isViewer && (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => {
-                        setDeletingRegistry(reg)
-                        setDeleteDialogOpen(true)
-                      }}
-                    >
-                      <Trash2 />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              setDeletingRegistry(reg)
+                              setDeleteDialogOpen(true)
+                            }}
+                          />
+                        }
+                      >
+                        <div className="flex items-center">
+                          <Trash2 />
+                          <span className="sr-only">Delete</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete registry</TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               </div>
@@ -366,18 +423,6 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
                   <span className="font-mono">
                     {reg.endpoint}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigator.clipboard.writeText(reg.endpoint)
-                      toast.success("Registry endpoint copied to clipboard")
-                    }}
-                  >
-                    <Copy />
-                  </Button>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Handbag className="h-3.5 w-3.5" />
@@ -423,7 +468,7 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingRegistry) {

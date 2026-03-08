@@ -52,7 +52,7 @@ export function DeletePluginDialog({ plugin, projectId, open, onOpenChange }: De
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={deleteMutation.isPending}

@@ -81,6 +81,7 @@ import { useTimeRange, type TimeRange } from "@/components/monitoring/use-time-r
 import { AppPlugins } from "@/components/plugins/app-plugins"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
+import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -93,6 +94,11 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useBottomPanel } from "@/contexts/bottom-panel-context"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
@@ -770,101 +776,136 @@ export function ApplicationDetailPage() {
         const defaultContainer = containers.includes(appContainerName) ? appContainerName : containers[0]
         return (
           <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                setMetricsInstance(instance.instanceName)
-              }}
-              title="View Metrics"
-            >
-              <ChartLine />
-            </Button>
-            {!isViewer && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (app) {
-                    openPanel({
-                      type: "logs",
-                      appId: app.id,
-                      appName: app.name,
-                      instanceName: instance.instanceName,
-                      containerName: defaultContainer,
-                      containers,
-                      initContainers: instance.initContainers,
-                    })
-                  }
-                }}
-                title="View Logs"
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setMetricsInstance(instance.instanceName)
+                    }}
+                  />
+                }
               >
-                <FileText />
-              </Button>
+                <ChartLine />
+              </TooltipTrigger>
+              <TooltipContent>View Metrics</TooltipContent>
+            </Tooltip>
+            {!isViewer && (
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (app) {
+                          openPanel({
+                            type: "logs",
+                            appId: app.id,
+                            appName: app.name,
+                            instanceName: instance.instanceName,
+                            containerName: defaultContainer,
+                            containers,
+                            initContainers: instance.initContainers,
+                          })
+                        }
+                      }}
+                    />
+                  }
+                >
+                  <FileText />
+                </TooltipTrigger>
+                <TooltipContent>View Logs</TooltipContent>
+              </Tooltip>
             )}
             {!isViewer && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (app) {
-                    openPanel({
-                      type: "terminal",
-                      appId: app.id,
-                      appName: app.name,
-                      instanceName: instance.instanceName,
-                      containerName: defaultContainer,
-                      containers,
-                      initContainers: instance.initContainers,
-                    })
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (app) {
+                          openPanel({
+                            type: "terminal",
+                            appId: app.id,
+                            appName: app.name,
+                            instanceName: instance.instanceName,
+                            containerName: defaultContainer,
+                            containers,
+                            initContainers: instance.initContainers,
+                          })
+                        }
+                      }}
+                    />
                   }
-                }}
-                title="Open Terminal"
-              >
-                <TerminalIcon />
-              </Button>
+                >
+                  <TerminalIcon />
+                </TooltipTrigger>
+                <TooltipContent>Open Terminal</TooltipContent>
+              </Tooltip>
             )}
             {!isViewer && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (app) {
-                    openPanel({
-                      type: "files",
-                      appId: app.id,
-                      appName: app.name,
-                      instanceName: instance.instanceName,
-                      containerName: defaultContainer,
-                      containers,
-                      initContainers: instance.initContainers,
-                    })
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (app) {
+                          openPanel({
+                            type: "files",
+                            appId: app.id,
+                            appName: app.name,
+                            instanceName: instance.instanceName,
+                            containerName: defaultContainer,
+                            containers,
+                            initContainers: instance.initContainers,
+                          })
+                        }
+                      }}
+                    />
                   }
-                }}
-                title="File Explorer"
-              >
-                <FolderOpen />
-              </Button>
+                >
+                  <FolderOpen />
+                </TooltipTrigger>
+                <TooltipContent>File Explorer</TooltipContent>
+              </Tooltip>
             )}
             {!isViewer && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setDeletingInstanceName(instance.instanceName)
-                  setDeleteInstanceDialogOpen(true)
-                }}
-                disabled={deleteInstanceMutation.isPending}
-                title="Delete Instance"
-              >
-                <Trash2 />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeletingInstanceName(instance.instanceName)
+                        setDeleteInstanceDialogOpen(true)
+                      }}
+                      disabled={deleteInstanceMutation.isPending}
+                    />
+                  }
+                >
+                  <Trash2 />
+                </TooltipTrigger>
+                <TooltipContent>Delete Instance</TooltipContent>
+              </Tooltip>
             )}
           </div>
         )
@@ -1024,14 +1065,26 @@ export function ApplicationDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             {!isViewer && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => toggleFavMutation.mutate()}
-                title={favoriteStatus?.is_favorite ? "Remove from favorites" : "Add to favorites"}
-              >
-                <Star className={`h-4 w-4 ${favoriteStatus?.is_favorite ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => toggleFavMutation.mutate()}
+                    />
+                  }
+                >
+                  <Star className={`h-4 w-4 ${favoriteStatus?.is_favorite ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
+                  <span className="sr-only">
+                    {favoriteStatus?.is_favorite ? "Remove from favorites" : "Add to favorites"}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {favoriteStatus?.is_favorite ? "Remove from favorites" : "Add to favorites"}
+                </TooltipContent>
+              </Tooltip>
             )}
             {!isViewer && (
               <Button
@@ -1085,12 +1138,13 @@ export function ApplicationDetailPage() {
                     <Button
                       variant="ghost"
                       size="icon-xs"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
                       onClick={() => {
                         navigator.clipboard.writeText(app.slug)
                         toast.success("Copied to clipboard")
                       }}
                     >
-                      <Copy className="h-3.5 w-3.5" />
+                      <Copy />
                     </Button>
                   </div>
                 </div>
@@ -1101,25 +1155,34 @@ export function ApplicationDetailPage() {
                     {app.registry_username && (
                       <Key className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     )}
+                    {!isViewer && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          delay={200}
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              onClick={() => setIsEditImageDialogOpen(true)}
+                            />
+                          }
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </TooltipTrigger>
+                        <TooltipContent>Edit Image</TooltipContent>
+                      </Tooltip>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon-xs"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
                       onClick={() => {
                         navigator.clipboard.writeText(app.container_image)
                         toast.success("Copied to clipboard")
                       }}
                     >
-                      <Copy className="h-3.5 w-3.5" />
+                      <Copy />
                     </Button>
-                    {!isViewer && (
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setIsEditImageDialogOpen(true)}
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
                   </div>
                 </div>
                 <div>
@@ -1131,61 +1194,36 @@ export function ApplicationDetailPage() {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  CPU
-                </CardTitle>
-                <Cpu className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{app.request_cpu} / {app.limit_cpu} m</div>
-                <p className="text-xs text-muted-foreground">
-                  Request/Limit
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Memory
-                </CardTitle>
-                <MemoryStick className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{app.request_memory} / {app.limit_memory} Mi</div>
-                <p className="text-xs text-muted-foreground">
-                  Request/Limit
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Deploy Type
-                </CardTitle>
-                <CloudCog className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{app.app_type}</div>
-                <p className="text-xs text-muted-foreground">
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Replicas
-                </CardTitle>
-                <Layers className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{app.replicas}{app.auto_scaling ? ` (AutoScaling: ${app.auto_scaling.min_replicas}-${app.auto_scaling.max_replicas})` : ""}</div>
-                <p className="text-xs text-muted-foreground">
-                  Desired
-                </p>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="CPU"
+              value={`${app.request_cpu} / ${app.limit_cpu} m`}
+              icon={Cpu}
+              color="amber"
+              description="Request / Limit"
+            />
+            <StatCard
+              title="Memory"
+              value={`${app.request_memory} / ${app.limit_memory} Mi`}
+              icon={MemoryStick}
+              color="amber"
+              description="Request / Limit"
+            />
+            <StatCard
+              title="Deploy Type"
+              value={app.app_type}
+              icon={CloudCog}
+            />
+            <StatCard
+              title="Replicas"
+              value={app.replicas}
+              icon={Layers}
+              color="sky"
+              description={
+                <>
+                  Desired {app.auto_scaling ? `(AS: ${app.auto_scaling.min_replicas}-${app.auto_scaling.max_replicas})` : ""}
+                </>
+              }
+            />
           </div>
 
           {currentEnv && (
@@ -1541,12 +1579,12 @@ export function ApplicationDetailPage() {
                 </CardHeader>
                 <CardContent className="flex items-center gap-2">
                   <Button variant="outline" render={<Link to={`/code-repositories/${app.code_repository_id}`} className="flex items-center whitespace-nowrap" />}>
-                    <ExternalLink className="h-4 w-4 mr-2" />
+                    <ExternalLink className="h-4 w-4" />
                     View in Code Repository
                   </Button>
                   {!isViewer && (
                     <Button onClick={() => setIsUnifiedBuildDialogOpen(true)} className="flex items-center">
-                      <Hammer className="h-4 w-4 mr-2" />
+                      <Hammer className="h-4 w-4" />
                       Build & Deploy
                     </Button>
                   )}
@@ -1621,7 +1659,7 @@ export function ApplicationDetailPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingInstanceName) {
@@ -1649,7 +1687,7 @@ export function ApplicationDetailPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (selectedInstanceNames.length > 0) {

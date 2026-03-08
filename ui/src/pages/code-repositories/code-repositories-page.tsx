@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   Link,
   List as ListIcon,
+  Loader2,
   Pencil,
   Plus,
   Trash2
@@ -82,7 +83,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
     pageSize: 10,
   })
 
-  const { data: reposResponse, refetch } = useQuery({
+  const { data: reposResponse, refetch, isLoading } = useQuery({
     queryKey: ["code-repositories", activeProjectId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
     queryFn: () => codeRepositoriesApi.list(activeProjectId!, {
       search: debouncedSearch,
@@ -172,22 +173,43 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
       cell: ({ row }) => (
         <div className="flex items-center justify-end">
           <Tooltip>
-            <TooltipTrigger>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setEditingRepo(row.original)
-                  setEditDialogOpen(true)
-                }}
-              >
-                <Pencil />
-              </Button>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingRepo(row.original)
+                    setEditDialogOpen(true)
+                  }}
+                />
+              }
+            >
+              <Pencil />
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Edit</p>
-            </TooltipContent>
+            <TooltipContent>Edit repository</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setDeletingRepo(row.original)
+                    setDeleteDialogOpen(true)
+                  }}
+                />
+              }
+            >
+              <Trash2 />
+            </TooltipTrigger>
+            <TooltipContent>Delete repository</TooltipContent>
           </Tooltip>
         </div>
       ),
@@ -224,150 +246,172 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
         </div>
       )}
 
-      <DataTable
-        columns={columns}
-        data={safeRepos}
-        viewMode={viewMode}
-        onRefresh={refetch}
-        manualPagination
-        totalCount={paginationInfo?.total || 0}
-        pagination={pagination}
-        onPaginationChange={setPagination}
-        leftActions={() => (
-          <Input
-            className="flex flex-1 max-w-sm min-w-75"
-            placeholder="Search repositories..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        )}
-        toolbarActions={() => (
-          <div className="flex items-center gap-2">
-            <Tabs value={viewMode} onValueChange={(v) => {
-              const newMode = v as "list" | "card"
-              setViewMode(newMode)
-              setPagination((prev) => ({
-                ...prev,
-                pageIndex: 0,
-                pageSize: newMode === "card" ? 9 : 10,
-              }))
-            }} className="w-auto h-7">
-              <TabsList>
-                <TabsTrigger value="list">
-                  <ListIcon />
-                </TabsTrigger>
-                <TabsTrigger value="card">
-                  <LayoutGrid />
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            {!isViewer && (
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus />
-                Add Repository
-              </Button>
-            )}
-          </div>
-        )}
-        renderCard={(repo) => (
-          <Card
-            key={repo.id}
-            className="group/card hover:shadow-md transition-shadow h-full"
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3 min-w-0">
-                  <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
-                    <AvatarFallback className="rounded-lg text-lg font-bold">
-                      {repo.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
-                        onClick={() => navigate(`/code-repositories/${repo.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>
-                        {repo.name}
-                      </CardTitle>
-                      {repo.webhook_enabled && (
-                        <span className="text-[10px] text-muted-foreground px-1.5 py-0 rounded-full bg-muted border shrink-0">
-                          Webhook enabled
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                      <span>{repo.slug}</span>
-                      <span>•</span>
-                      {repo.description ? (
-                        <span className="truncate">{repo.description}</span>
-                      ) : (
-                        <span className="italic">No description</span>
-                      )}
+      {isLoading && !reposResponse ? (
+        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={safeRepos}
+          viewMode={viewMode}
+          onRefresh={refetch}
+          manualPagination
+          totalCount={paginationInfo?.total || 0}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          leftActions={() => (
+            <Input
+              className="flex flex-1 max-w-sm min-w-75"
+              placeholder="Search repositories..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )}
+          toolbarActions={() => (
+            <div className="flex items-center gap-2">
+              <Tabs value={viewMode} onValueChange={(v) => {
+                const newMode = v as "list" | "card"
+                setViewMode(newMode)
+                setPagination((prev) => ({
+                  ...prev,
+                  pageIndex: 0,
+                  pageSize: newMode === "card" ? 9 : 10,
+                }))
+              }} className="w-auto h-7">
+                <TabsList>
+                  <TabsTrigger value="list">
+                    <ListIcon />
+                  </TabsTrigger>
+                  <TabsTrigger value="card">
+                    <LayoutGrid />
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              {!isViewer && (
+                <Button onClick={() => setCreateOpen(true)}>
+                  <Plus />
+                  Add Repository
+                </Button>
+              )}
+            </div>
+          )}
+          renderCard={(repo) => (
+            <Card
+              key={repo.id}
+              className="group/card hover:shadow-md transition-shadow h-full"
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
+                      <AvatarFallback className="rounded-lg text-lg font-bold">
+                        {repo.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => navigate(`/code-repositories/${repo.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>
+                          {repo.name}
+                        </CardTitle>
+                        {repo.webhook_enabled && (
+                          <span className="text-[10px] text-muted-foreground px-1.5 py-0 rounded-full bg-muted border shrink-0">
+                            Webhook enabled
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                        <span>{repo.slug}</span>
+                        <span>•</span>
+                        {repo.description ? (
+                          <span className="truncate">{repo.description}</span>
+                        ) : (
+                          <span className="italic">No description</span>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {!isViewer && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          delay={200}
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingRepo(repo)
+                                setEditDialogOpen(true)
+                              }}
+                            />
+                          }
+                        >
+                          <Pencil />
+                        </TooltipTrigger>
+                        <TooltipContent>Edit repository</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {!isViewer && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          delay={200}
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeletingRepo(repo)
+                                setDeleteDialogOpen(true)
+                              }}
+                            />
+                          }
+                        >
+                          <Trash2 />
+                        </TooltipTrigger>
+                        <TooltipContent>Delete repository</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  {!isViewer && (
+              </CardHeader>
+              <CardContent className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Link className="h-3.5 w-3.5" />
+                    <span className="font-mono">
+                      {repo.git_repo_url}
+                    </span>
                     <Button
                       variant="ghost"
                       size="icon-sm"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setEditingRepo(repo)
-                        setEditDialogOpen(true)
+                        navigator.clipboard.writeText(repo.git_repo_url)
+                        toast.success("Git repository URL copied to clipboard")
                       }}
                     >
-                      <Pencil />
+                      <Copy />
                     </Button>
-                  )}
-                  {!isViewer && (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setDeletingRepo(repo)
-                        setDeleteDialogOpen(true)
-                      }}
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Link className="h-3.5 w-3.5" />
-                  <span className="font-mono">
-                    {repo.git_repo_url}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigator.clipboard.writeText(repo.git_repo_url)
-                      toast.success("Git repository URL copied to clipboard")
-                    }}
-                  >
-                    <Copy />
-                  </Button>
-                </div>
-              </div>
 
-              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3 w-3" />
-                  <span>Created at {formatDate(repo.created_at)}</span>
+                <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" />
+                    <span>Created at {formatDate(repo.created_at)}</span>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      />
+              </CardContent>
+            </Card>
+          )}
+        />
+      )}
 
       <CreateCodeRepositoryDialog
         open={createOpen}
@@ -394,7 +438,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingRepo) {

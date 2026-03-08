@@ -40,16 +40,28 @@ export function EditPasswordDialog({ username, onSubmit, isPending }: EditPasswo
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="text-muted-foreground hover:text-foreground"
+      <Tooltip>
+        <TooltipTrigger
+          delay={200}
+          render={
+            <DialogTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-foreground"
+                />
+              }
+            />
+          }
         >
-          <Key />
-          <span className="sr-only">Edit password</span>
-        </Button>
-      </DialogTrigger>
+          <div className="flex items-center">
+            <Key />
+            <span className="sr-only">Edit password</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>Change password</TooltipContent>
+      </Tooltip>
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>

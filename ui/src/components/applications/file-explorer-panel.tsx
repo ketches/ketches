@@ -653,26 +653,34 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/20">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Navigation buttons */}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleGoHome}
-            title="Go to home directory"
-          >
-            <Home className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => {
-              const parent = pathSegments.slice(0, -1)
-              navigateTo(buildPath(parent))
-            }}
-            title="Go up"
-            disabled={currentPath === "/"}
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={<Button variant="ghost" size="icon-sm" onClick={handleGoHome} />}
+            >
+              <Home className="h-3.5 w-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>Go to home directory</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    const parent = pathSegments.slice(0, -1)
+                    navigateTo(buildPath(parent))
+                  }}
+                  disabled={currentPath === "/"}
+                />
+              }
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>Go up</TooltipContent>
+          </Tooltip>
 
           {/* Breadcrumb path */}
           <div className="flex items-center gap-0.5 text-xs min-w-0 overflow-x-auto no-scrollbar group/breadcrumb">
@@ -707,21 +715,14 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
               </React.Fragment>
             ))}
             {/* Copy current path button - visible on breadcrumb hover */}
-            <Tooltip>
-              <TooltipTrigger>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="opacity-0 group-hover/breadcrumb:opacity-100 transition-opacity shrink-0"
-                  onClick={() => copyToClipboard(currentPath)}
-                >
-                  <Clipboard className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-[10px]">
-                Copy current path
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="opacity-0 group-hover/breadcrumb:opacity-100 transition-opacity shrink-0"
+              onClick={() => copyToClipboard(currentPath)}
+            >
+              <Clipboard className="h-3.5 w-3.5" />
+            </Button>
           </div>
         </div>
 
@@ -730,57 +731,138 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
           {/* Multi-select actions */}
           {isMultiSelect && (
             <>
-              <Button variant="ghost" size="icon-sm" onClick={handleBatchMove} title="Move selected">
-                <FileOutput className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" onClick={handleBatchCopy} title="Copy selected">
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" onClick={handleCompressToContainer} title="Compress">
-                <Archive className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" onClick={handleCompressAndDownload} title="Compress & Download">
-                <FileArchive className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleBatchDelete} title="Delete selected">
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" onClick={clearSelection} title="Clear selection">
-                <X className="h-3.5 w-3.5" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={<Button variant="ghost" size="icon-sm" onClick={handleBatchMove} />}
+                >
+                  <FileOutput className="h-3.5 w-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>Move selected</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={<Button variant="ghost" size="icon-sm" onClick={handleBatchCopy} />}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>Copy selected</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={<Button variant="ghost" size="icon-sm" onClick={handleCompressToContainer} />}
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>Compress</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={<Button variant="ghost" size="icon-sm" onClick={handleCompressAndDownload} />}
+                >
+                  <FileArchive className="h-3.5 w-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>Compress & Download</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={handleBatchDelete}
+                    />
+                  }
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>Delete selected</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={<Button variant="ghost" size="icon-sm" onClick={clearSelection} />}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>Clear selection</TooltipContent>
+              </Tooltip>
               <div className="h-4 w-px bg-border mx-0.5" />
             </>
           )}
 
-          <Button variant="ghost" size="icon-sm" onClick={() => refetch()} title="Refresh" disabled={isLoading}>
+          <Button variant="ghost" size="icon-sm" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={handleUpload} title="Upload file">
-            <Upload className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => { setNewFolderName(""); setIsNewFolderDialogOpen(true) }} title="New folder">
-            <FolderPlus className="h-3.5 w-3.5" />
-          </Button>
+
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={<Button variant="ghost" size="icon-sm" onClick={handleUpload} />}
+            >
+              <Upload className="h-3.5 w-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>Upload file</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    setNewFolderName("")
+                    setIsNewFolderDialogOpen(true)
+                  }}
+                />
+              }
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>New folder</TooltipContent>
+          </Tooltip>
 
           <div className="h-4 w-px bg-border mx-0.5" />
 
           <div className="flex items-center bg-muted rounded-md">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className={cn("rounded-r-none", viewMode === "list" && "bg-background shadow-sm")}
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className={cn("rounded-l-none", viewMode === "grid" && "bg-background shadow-sm")}
-              onClick={() => setViewMode("grid")}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn("rounded-r-none", viewMode === "list" && "bg-background shadow-sm")}
+                    onClick={() => setViewMode("list")}
+                  />
+                }
+              >
+                <List className="h-3.5 w-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>List view</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn("rounded-l-none", viewMode === "grid" && "bg-background shadow-sm")}
+                    onClick={() => setViewMode("grid")}
+                  />
+                }
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Grid view</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>
@@ -944,7 +1026,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               variant="destructive"
@@ -965,7 +1047,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchDeleteConfirm}
               variant="destructive"
@@ -1233,7 +1315,7 @@ function FileEditorView({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDiscardChanges}
               variant="destructive"

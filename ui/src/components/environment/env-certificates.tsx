@@ -1,9 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
-import { Loader2, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react"
-import * as React from "react"
-import { toast } from "sonner"
-
 import { certificatesApi, type Certificate } from "@/api/certificates"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -30,6 +24,16 @@ import {
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef } from "@tanstack/react-table"
+import { Loader2, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react"
+import * as React from "react"
+import { toast } from "sonner"
 
 interface EnvCertificatesProps {
   envId: string
@@ -184,22 +188,38 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
           header: () => <div className="text-right">Actions</div>,
           cell: ({ row }: { row: { original: Certificate } }) => (
             <div className="flex items-center gap-1 justify-end">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleOpenEdit(row.original)}
-              >
-                <Pencil />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => handleOpenDelete(row.original)}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleOpenEdit(row.original)}
+                    />
+                  }
+                >
+                  <Pencil />
+                </TooltipTrigger>
+                <TooltipContent>Edit certificate</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleOpenDelete(row.original)}
+                      disabled={deleteMutation.isPending}
+                    />
+                  }
+                >
+                  <Trash2 />
+                </TooltipTrigger>
+                <TooltipContent>Delete certificate</TooltipContent>
+              </Tooltip>
             </div>
           ),
         } as ColumnDef<Certificate>,
@@ -332,7 +352,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletingCert && deleteMutation.mutate(deletingCert.id)}
               variant="destructive"

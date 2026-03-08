@@ -170,7 +170,7 @@ export function AppActionButtons({ appId, actions, onDeleteSuccess }: AppActionB
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               variant="destructive"

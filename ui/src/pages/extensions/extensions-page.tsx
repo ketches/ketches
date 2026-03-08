@@ -1,17 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import {
-  Blocks,
-  Download,
-  LayoutGrid,
-  List as ListIcon,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react"
-import * as React from "react"
-import { toast } from "sonner"
-
 import { clustersApi, type Extension } from "@/api/clusters"
 import { AddExtensionDialog } from "@/components/cluster/add-extension-dialog"
 import { EditExtensionDialog } from "@/components/cluster/edit-extension-dialog"
@@ -40,8 +26,26 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import type { AxiosError } from "axios"
+import {
+  Blocks,
+  Download,
+  LayoutGrid,
+  List as ListIcon,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react"
+import * as React from "react"
+import { toast } from "sonner"
 
 const EXTENSIONS_VIEW_MODE_KEY = "extensions_view_mode"
 
@@ -182,36 +186,69 @@ export function ExtensionsPage() {
         const item = row.original
         return (
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => {
-                setInstallTarget(item)
-                setInstallOpen(true)
-              }}
-            >
-              <Download />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      setInstallTarget(item)
+                      setInstallOpen(true)
+                    }}
+                  />
+                }
+              >
+                <div className="flex items-center">
+                  <Download />
+                  <span className="sr-only">Install</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Install extension</TooltipContent>
+            </Tooltip>
             {!item.builtin && (
               <>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => {
-                    setEditTarget(item)
-                    setEditOpen(true)
-                  }}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => setDeleteTarget(item)}
-                >
-                  <Trash2 />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    delay={200}
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => {
+                          setEditTarget(item)
+                          setEditOpen(true)
+                        }}
+                      />
+                    }
+                  >
+                    <div className="flex items-center">
+                      <Pencil />
+                      <span className="sr-only">Edit</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit extension</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    delay={200}
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setDeleteTarget(item)}
+                      />
+                    }
+                  >
+                    <div className="flex items-center">
+                      <Trash2 />
+                      <span className="sr-only">Delete</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete extension</TooltipContent>
+                </Tooltip>
               </>
             )}
           </div>
@@ -344,36 +381,69 @@ export function ExtensionsPage() {
                       className="flex items-center gap-1 shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => {
-                          setInstallTarget(item)
-                          setInstallOpen(true)
-                        }}
-                      >
-                        <Download />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          delay={200}
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => {
+                                setInstallTarget(item)
+                                setInstallOpen(true)
+                              }}
+                            />
+                          }
+                        >
+                          <div className="flex items-center">
+                            <Download />
+                            <span className="sr-only">Install</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>Install extension</TooltipContent>
+                      </Tooltip>
                       {!item.builtin && (
                         <>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => {
-                              setEditTarget(item)
-                              setEditOpen(true)
-                            }}
-                          >
-                            <Pencil />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setDeleteTarget(item)}
-                          >
-                            <Trash2 />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger
+                              delay={200}
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => {
+                                    setEditTarget(item)
+                                    setEditOpen(true)
+                                  }}
+                                />
+                              }
+                            >
+                              <div className="flex items-center">
+                                <Pencil />
+                                <span className="sr-only">Edit</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit extension</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger
+                              delay={200}
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => setDeleteTarget(item)}
+                                />
+                              }
+                            >
+                              <div className="flex items-center">
+                                <Trash2 />
+                                <span className="sr-only">Delete</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete extension</TooltipContent>
+                          </Tooltip>
                         </>
                       )}
                     </div>
@@ -398,7 +468,7 @@ export function ExtensionsPage() {
                     </Button>
                   </div>
                 </CardContent>
-              </Card>
+              </Card >
             )}
           />
         </>
@@ -452,7 +522,7 @@ export function ExtensionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div >
   )
 }
 

@@ -169,61 +169,93 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
 
         return (
           <div className="flex justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setEditEnvPlugin(ap)}
-              className="text-muted-foreground hover:text-foreground"
-              title="Edit Environment Variables"
-            >
-              <Key />
-              <span className="sr-only">Edit Env</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setEditEnvPlugin(ap)}
+                    className="text-muted-foreground hover:text-foreground"
+                  />
+                }
+              >
+                <>
+                  <Key />
+                  <span className="sr-only">Edit Env</span>
+                </>
+              </TooltipTrigger>
+              <TooltipContent>Edit Environment Variables</TooltipContent>
+            </Tooltip>
 
             <PluginResourcePopover appId={appId} appPlugin={ap}>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:text-foreground"
-                title="Edit Resources"
-              >
-                <Edit />
-                <span className="sr-only">Edit Resources</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:text-foreground"
+                    />
+                  }
+                >
+                  <div className="flex items-center">
+                    <Edit />
+                    <span className="sr-only">Edit Resources</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>Edit Resources</TooltipContent>
+              </Tooltip>
             </PluginResourcePopover>
 
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() =>
-                toggleMutation.mutate({
-                  pluginId: ap.plugin_id,
-                  enabled: !ap.enabled,
-                })
-              }
-              disabled={toggleMutation.isPending}
-              className="text-muted-foreground hover:text-foreground"
-              title={ap.enabled ? "Disable" : "Enable"}
-            >
-              {ap.enabled ? (
-                <CircleSlash />
-              ) : (
-                <CircleCheck />
-              )}
-              <span className="sr-only">{ap.enabled ? "Disable" : "Enable"}</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() =>
+                      toggleMutation.mutate({
+                        pluginId: ap.plugin_id,
+                        enabled: !ap.enabled,
+                      })
+                    }
+                    disabled={toggleMutation.isPending}
+                    className="text-muted-foreground hover:text-foreground"
+                  />
+                }
+              >
+                <div className="flex items-center">
+                  {ap.enabled ? <CircleSlash /> : <CircleCheck />}
+                  <span className="sr-only">{ap.enabled ? "Disable" : "Enable"}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>{ap.enabled ? "Disable" : "Enable"}</TooltipContent>
+            </Tooltip>
 
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setPluginToUninstall(ap.plugin_id)}
-              disabled={uninstallMutation.isPending}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              title="Uninstall"
-            >
-              <Trash2 />
-              <span className="sr-only">Uninstall</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setPluginToUninstall(ap.plugin_id)}
+                    disabled={uninstallMutation.isPending}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  />
+                }
+              >
+                <div className="flex items-center">
+                  <Trash2 />
+                  <span className="sr-only">Uninstall</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Uninstall</TooltipContent>
+            </Tooltip>
           </div>
         )
       },
@@ -305,7 +337,7 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => pluginToUninstall && uninstallMutation.mutate(pluginToUninstall)}

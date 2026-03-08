@@ -45,6 +45,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
@@ -155,6 +160,7 @@ export function ApplicationList({
       queryClient.invalidateQueries({ queryKey: ['apps', envId] })
       toast.success('Favorite updated')
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       toast.error('Failed to update favorite', {
         description: error.response?.data?.error || 'An error occurred'
@@ -170,6 +176,7 @@ export function ApplicationList({
       queryClient.invalidateQueries({ queryKey: ['apps', envId] })
       toast.success('Removed from group')
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       toast.error('Failed to remove from group', {
         description: error.response?.data?.error || 'An error occurred'
@@ -180,6 +187,7 @@ export function ApplicationList({
   const addToGroupMutation = useMutation({
     mutationFn: async ({ groupId, appId }: { groupId: string; appId: string }) => {
       // Find the current group this app belongs to
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const currentGroup = appGroups.find((g: any) => g.apps?.some((a: any) => a.id === appId))
       if (currentGroup && currentGroup.id !== groupId) {
         await appGroupsApi.removeApp(currentGroup.id, appId)
@@ -191,6 +199,7 @@ export function ApplicationList({
       queryClient.invalidateQueries({ queryKey: ['apps', envId] })
       toast.success('Moved to group')
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       toast.error('Failed to move to group', {
         description: error.response?.data?.error || 'An error occurred'
@@ -220,6 +229,7 @@ export function ApplicationList({
       setDeleteDialogOpen(false)
       setRowSelection({})
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       toast.error("Failed to delete applications", {
         description: error.response?.data?.error || "An error occurred while deleting applications",
@@ -266,7 +276,7 @@ export function ApplicationList({
           <Checkbox
             checked={
               (table.getIsAllPageRowsSelected() ||
-                (table.getIsSomePageRowsSelected() ? "mixed" : false)) as any
+                (table.getIsSomePageRowsSelected() ? "mixed" : false)) as boolean | undefined
             }
             onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
             aria-label="Select all"
@@ -329,19 +339,20 @@ export function ApplicationList({
       header: "Image",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <span className="max-w-50 truncate block text-muted-foreground font-mono">
+          <span className="truncate block text-muted-foreground font-mono">
             {row.original.container_image}
           </span>
           <Button
             variant="ghost"
             size="icon-sm"
+            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(row.original.container_image)
               toast.success("Image address copied to clipboard")
             }}
           >
-            <Copy />
+            <Copy className="h-4 w-4" />
           </Button>
         </div>
       ),
@@ -372,24 +383,42 @@ export function ApplicationList({
         <div className="flex items-center justify-end gap-2">
           {!isViewer && (
             <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setEditingApp(row.original)
-                  setEditDialogOpen(true)
-                }}
-              >
-                <Pencil />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => { toggleFavMutation.mutate(row.original) }}
-              >
-                <Star className={`${favoriteIds.has(row.original.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingApp(row.original)
+                        setEditDialogOpen(true)
+                      }}
+                    />
+                  }
+                >
+                  <Pencil />
+                </TooltipTrigger>
+                <TooltipContent>Edit Application</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => { toggleFavMutation.mutate(row.original) }}
+                    />
+                  }
+                >
+                  <Star className={`${favoriteIds.has(row.original.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
+                </TooltipTrigger>
+                <TooltipContent>
+                  {favoriteIds.has(row.original.id) ? "Remove from Favorites" : "Add to Favorites"}
+                </TooltipContent>
+              </Tooltip>
               <AppActionIconsWrapper
                 appId={row.original.id}
                 envId={envId}
@@ -499,24 +528,42 @@ export function ApplicationList({
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {!isViewer && (
                     <>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditingApp(app)
-                          setEditDialogOpen(true)
-                        }}
-                      >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => { toggleFavMutation.mutate(app) }}
-                      >
-                        <Star className={`${favoriteIds.has(app.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          delay={200}
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingApp(app)
+                                setEditDialogOpen(true)
+                              }}
+                            />
+                          }
+                        >
+                          <Pencil />
+                        </TooltipTrigger>
+                        <TooltipContent>Edit Application</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger
+                          delay={200}
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => { toggleFavMutation.mutate(app) }}
+                            />
+                          }
+                        >
+                          <Star className={`${favoriteIds.has(app.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {favoriteIds.has(app.id) ? "Remove from Favorites" : "Add to Favorites"}
+                        </TooltipContent>
+                      </Tooltip>
                       <AppActionIconsWrapper
                         appId={app.id}
                         envId={envId}
@@ -635,7 +682,7 @@ export function ApplicationList({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => batchDeleteMutation.mutate(deleteAppIds)}
               variant="destructive"

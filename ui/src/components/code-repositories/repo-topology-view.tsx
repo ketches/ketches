@@ -139,7 +139,6 @@ const CustomNode = ({ data }: { data: CustomNodeData }) => {
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           className="absolute top-1 right-1 flex h-6 w-6 z-10 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted"
-          title="Open application"
         >
           <ExternalLink className="h-3 w-3" />
         </Link>

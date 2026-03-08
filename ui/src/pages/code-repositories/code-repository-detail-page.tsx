@@ -1,30 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
-import {
-  CheckCircle,
-  ChevronsUpDown,
-  ExternalLink,
-  FileClock,
-  FileText,
-  FolderGit2,
-  GalleryVerticalEnd,
-  Hammer,
-  History,
-  Info,
-  Loader2,
-  Pencil,
-  Play,
-  Plus,
-  Rocket,
-  RotateCw,
-  Share2,
-  Telescope,
-  Trash2
-} from "lucide-react"
-import * as React from "react"
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { toast } from "sonner"
-
 import {
   codeRepositoriesApi,
   type CodeRepositoryBuildConfig,
@@ -60,10 +33,42 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef } from "@tanstack/react-table"
 import type { AxiosError } from "axios"
+import {
+  CheckCircle,
+  ChevronsUpDown,
+  Copy,
+  ExternalLink,
+  FileClock,
+  FileText,
+  FolderGit2,
+  GalleryVerticalEnd,
+  Hammer,
+  History,
+  Info,
+  Loader2,
+  Pencil,
+  Play,
+  Plus,
+  Rocket,
+  RotateCw,
+  Share2,
+  Telescope,
+  Trash2
+} from "lucide-react"
+import * as React from "react"
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 
 export function CodeRepositoryDetailPage() {
   const { repoId } = useParams<{ repoId: string }>()
@@ -239,16 +244,24 @@ export function CodeRepositoryDetailPage() {
             const cfg = row.original
             return (
               <div className="flex items-center justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => {
-                    setEditingConfig(cfg)
-                    setEditConfigOpen(true)
-                  }}
-                >
-                  <Pencil />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    delay={200}
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => {
+                          setEditingConfig(cfg)
+                          setEditConfigOpen(true)
+                        }}
+                      />
+                    }
+                  >
+                    <Pencil />
+                  </TooltipTrigger>
+                  <TooltipContent>Edit build configuration</TooltipContent>
+                </Tooltip>
                 <Button
                   variant="outline"
                   size="sm"
@@ -261,17 +274,25 @@ export function CodeRepositoryDetailPage() {
                   <Play />
                   Build
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    setDeletingConfig(cfg)
-                    setDeleteConfigDialogOpen(true)
-                  }}
-                >
-                  <Trash2 />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    delay={200}
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          setDeletingConfig(cfg)
+                          setDeleteConfigDialogOpen(true)
+                        }}
+                      />
+                    }
+                  >
+                    <Trash2 />
+                  </TooltipTrigger>
+                  <TooltipContent>Delete build configuration</TooltipContent>
+                </Tooltip>
               </div>
             )
           },
@@ -312,9 +333,23 @@ export function CodeRepositoryDetailPage() {
       accessorKey: "image_full_name",
       header: "Image",
       cell: ({ row }) => (
-        <span className="font-mono text-xs max-w-50 truncate block">
-          {row.original.image_full_name}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs truncate block">
+            {row.original.image_full_name}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigator.clipboard.writeText(row.original.image_full_name)
+              toast.success("Image address copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
+        </div>
       ),
     },
     {
@@ -338,44 +373,62 @@ export function CodeRepositoryDetailPage() {
         const b = row.original
         return (
           <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setLogBuildId(b.id)}
-              title="View Logs"
-            >
-              <FileText />
-            </Button>
-            {!isViewer && (b.status === "failed" || b.status === "cancelled") && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => retryBuildMutation.mutate(b)}
-                disabled={retryBuildMutation.isPending}
-                title="Retry Build"
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={<Button variant="ghost" size="icon-sm" onClick={() => setLogBuildId(b.id)} />}
               >
-                {retryBuildMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RotateCw />
-                )}
-                Retry
-              </Button>
+                <FileText />
+              </TooltipTrigger>
+              <TooltipContent>View Logs</TooltipContent>
+            </Tooltip>
+            {!isViewer && (b.status === "failed" || b.status === "cancelled") && (
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => retryBuildMutation.mutate(b)}
+                      disabled={retryBuildMutation.isPending}
+                    />
+                  }
+                >
+                  <>
+                    {retryBuildMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCw />
+                    )}
+                    Retry
+                  </>
+                </TooltipTrigger>
+                <TooltipContent>Retry Build</TooltipContent>
+              </Tooltip>
             )}
             {!isViewer && b.status === "succeeded" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedBuildId(b.id)
-                  setSelectedBuildConfigId(b.code_repository_build_config_id || undefined)
-                  setTriggerBuildDialogOpen(true)
-                }}
-                title="Deploy Build"
-              >
-                <Rocket />
-                Deploy
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedBuildId(b.id)
+                        setSelectedBuildConfigId(b.code_repository_build_config_id || undefined)
+                        setTriggerBuildDialogOpen(true)
+                      }}
+                    />
+                  }
+                >
+                  <>
+                    <Rocket />
+                    Deploy
+                  </>
+                </TooltipTrigger>
+              </Tooltip>
             )}
           </div>
         )
@@ -419,9 +472,23 @@ export function CodeRepositoryDetailPage() {
       accessorKey: "image_full_name",
       header: "Image",
       cell: ({ row }) => (
-        <span className="font-mono text-xs max-w-40 truncate block" title={row.original.image_full_name}>
-          {row.original.image_full_name}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="font-mono text-xs truncate block" title={row.original.image_full_name}>
+            {row.original.image_full_name}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigator.clipboard.writeText(row.original.image_full_name)
+              toast.success("Image address copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
+        </div>
       ),
     },
     {
@@ -611,7 +678,21 @@ export function CodeRepositoryDetailPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Git URL</p>
-                  <p className="text-sm font-mono break-all">{repo.git_repo_url}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-mono break-all">{repo.git_repo_url}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigator.clipboard.writeText(repo.git_repo_url)
+                        toast.success("Git URL copied to clipboard")
+                      }}
+                    >
+                      <Copy />
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Webhook</p>
@@ -830,7 +911,7 @@ export function CodeRepositoryDetailPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingConfig) {

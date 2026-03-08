@@ -45,7 +45,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ExportAppsDialog } from "./export-apps-dialog"
@@ -93,6 +92,7 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
         description: `${action} executed`,
       })
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any, action) => {
       toast.error("Failed", {
         description: error.response?.data?.error || `Failed to execute ${action}`,
@@ -121,7 +121,7 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
   ]
 
   return (
-    <TooltipProvider>
+    <>
       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
         {primaryActions.map((action) => {
           const Icon = iconMap[action.icon] || RefreshCw
@@ -130,6 +130,7 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
           return (
             <Tooltip key={action.action}>
               <TooltipTrigger
+                delay={200}
                 render={(
                   <Button
                     variant="ghost"
@@ -227,7 +228,7 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               variant="destructive"
@@ -249,6 +250,6 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
           setExportDialogOpen(false)
         }}
       />
-    </TooltipProvider>
+    </>
   )
 }

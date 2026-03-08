@@ -420,7 +420,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() =>
                 deleteTarget && uninstallMutation.mutate(deleteTarget)

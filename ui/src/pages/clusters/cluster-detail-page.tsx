@@ -53,6 +53,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useBottomPanel } from "@/contexts/bottom-panel-context"
 import type { ColumnDef } from "@tanstack/react-table"
 
@@ -309,26 +314,41 @@ export function ClusterDetailPage() {
 
         return (
           <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => {
-                openPanel({
-                  type: "terminal",
-                  targetType: "node",
-                  appId: clusterId!,
-                  appName: cluster?.name || "Cluster",
-                  instanceName: nodeName,
-                  containerName: "shell",
-                  containers: ["shell"],
-                })
-              }}
-              title="Terminal"
-            >
-              <Terminal />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      openPanel({
+                        type: "terminal",
+                        targetType: "node",
+                        appId: clusterId!,
+                        appName: cluster?.name || "Cluster",
+                        instanceName: nodeName,
+                        containerName: "shell",
+                        containers: ["shell"],
+                      })
+                    }}
+                  />
+                }
+              >
+                <Terminal />
+              </TooltipTrigger>
+              <TooltipContent>Terminal</TooltipContent>
+            </Tooltip>
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><MoreVertical /></Button>} />
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={<DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />} />}
+                >
+                  <MoreVertical />
+                </TooltipTrigger>
+                <TooltipContent>More actions</TooltipContent>
+              </Tooltip>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => cordonMutation.mutate({ nodeName, cordon: !isUnschedulable })}>
                   <CircleSlash />
@@ -721,7 +741,7 @@ export function ClusterDetailPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteMutation.mutate()}
               variant="destructive"

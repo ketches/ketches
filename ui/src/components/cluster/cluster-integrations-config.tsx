@@ -243,7 +243,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
         return (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <ExternalLink className="h-3 w-3 shrink-0" />
-            <span className="font-mono truncate max-w-48">
+            <span className="font-mono truncate">
               {integration.service_name
                 ? `${integration.namespace}/${integration.service_name}:${integration.service_port}`
                 : integration.endpoint}
@@ -579,7 +579,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletingIntegration && deleteMutation.mutate(deletingIntegration.id)}
               variant="destructive"

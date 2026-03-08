@@ -5,15 +5,19 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { useDebounce } from "@/hooks/use-debounce"
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type PaginationState } from "@tanstack/react-table"
 import { LayoutList, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Label } from '../ui/label'
 import { EditAppGroupDialog } from './edit-app-group-dialog'
-
-import { useDebounce } from "@/hooks/use-debounce"
-import { type PaginationState } from "@tanstack/react-table"
 interface Props { envId: string }
 
 function GroupAppList({ groupId, envId, currentGroupId }: { groupId: string; envId: string; currentGroupId: string }) {
@@ -76,10 +80,24 @@ export function AppGroupsView({ envId }: Props) {
         return (
           <div key={group.id}>
             <div className="group/header flex items-center gap-2 mb-3">
-              <Label className="text-sm text-muted-foreground"><LayoutList className="h-4 w-4" />{group.name}</Label>
+              <Label className="text-sm font-normal text-muted-foreground"><LayoutList className="h-4 w-4" />{group.name}</Label>
               <div className="opacity-0 group-hover/header:opacity-100 transition-opacity">
                 <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6"><MoreVertical className="h-3 w-3" /></Button>} />
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <DropdownMenuTrigger
+                          render={
+                            <Button variant="ghost" size="icon" className="h-6 w-6" />
+                          }
+                        />
+                      }
+                    >
+                      <MoreVertical className="h-3 w-3" />
+                    </TooltipTrigger>
+                    <TooltipContent>Group actions</TooltipContent>
+                  </Tooltip>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={() => setEditTarget(group)}>
                       <Pencil />

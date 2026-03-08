@@ -151,37 +151,48 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
         </div>
 
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleRefresh}
-            title="Clear & Refresh"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={handleRefresh}>
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            title={autoRefresh ? "Pause" : "Resume"}
-          >
-            {autoRefresh ? (
-              <Pause className="h-3.5 w-3.5" />
-            ) : (
-              <Play className="h-3.5 w-3.5" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleDownload}
-            title="Download logs"
-            disabled={logs.length === 0}
-          >
-            <Download className="h-3.5 w-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={<Button variant="ghost" size="icon-sm" onClick={() => setAutoRefresh(!autoRefresh)} />}
+            >
+              {autoRefresh ? (
+                <Pause className="h-3.5 w-3.5" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+            </TooltipTrigger>
+            <TooltipContent>{autoRefresh ? "Pause" : "Resume"}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleDownload}
+                  disabled={logs.length === 0}
+                />
+              }
+            >
+              <Download className="h-3.5 w-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>Download logs</TooltipContent>
+          </Tooltip>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><Settings2 className="h-3.5 w-3.5" /></Button>} />
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={<DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />} />}
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Log settings</TooltipContent>
+            </Tooltip>
             <DropdownMenuContent align="end" className="w-50">
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="text-xs">Settings</DropdownMenuLabel>

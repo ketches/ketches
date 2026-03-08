@@ -68,14 +68,22 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
               )}
             </div>
           ))}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={handleAddSession}
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={handleAddSession}
+                />
+              }
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>New terminal session</TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="flex items-center gap-2 pr-2">

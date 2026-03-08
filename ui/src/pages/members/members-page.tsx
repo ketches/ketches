@@ -16,6 +16,11 @@ import {
 } from "@/components/ui/combobox"
 import { InputGroupAddon } from "@/components/ui/input-group"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -222,16 +227,24 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
         return (
           <div className="flex justify-end gap-2">
             {!isViewer && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => removeMemberMutation.mutate(member.user_id)}
-                disabled={removeMemberMutation.isPending}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 />
-                <span className="sr-only">Remove</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => removeMemberMutation.mutate(member.user_id)}
+                      disabled={removeMemberMutation.isPending}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    />
+                  }
+                >
+                  <Trash2 />
+                  <span className="sr-only">Remove</span>
+                </TooltipTrigger>
+                <TooltipContent>Remove member</TooltipContent>
+              </Tooltip>
             )}
           </div>
         )

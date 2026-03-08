@@ -4,6 +4,7 @@ import {
   Box,
   ChartLine,
   ChevronsUpDown,
+  Copy,
   GalleryVerticalEnd,
   Hammer,
   Info,
@@ -33,6 +34,7 @@ import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
+import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -259,7 +261,7 @@ export function EnvironmentDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
-          <Card className="bg-linear-to-b/increasing from-blue/5 to-transparent data-[active=true]:bg-transparent">
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-4 w-4" />
@@ -270,11 +272,38 @@ export function EnvironmentDetailPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Slug</p>
-                  <p className="text-sm font-mono">{env.slug}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-mono">{env.slug}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                      onClick={() => {
+                        navigator.clipboard.writeText(env.slug)
+                        toast.success("Slug copied to clipboard")
+                      }}
+                    >
+                      <Copy />
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Namespace</p>
-                  <p className="text-sm font-mono">{env.cluster_namespace}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-mono">{env.cluster_namespace}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigator.clipboard.writeText(env.cluster_namespace)
+                        toast.success("Namespace copied to clipboard")
+                      }}
+                    >
+                      <Copy />
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Created At</p>
@@ -319,46 +348,38 @@ export function EnvironmentDetailPage() {
           </Card>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Applications</CardTitle>
-                <Box className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{safeApps.length}</div>
-                <p className="text-xs text-muted-foreground">
+            <StatCard
+              title="Applications"
+              value={safeApps.length}
+              icon={Box}
+              color="blue"
+              onClick={() => setSearchParams({ tab: "applications" }, { replace: true })}
+              description={
+                <>
                   {safeApps.filter(a => a.status === "running").length} running, {safeApps.filter(a => a.status === "undeployed").length} undeployed
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Builds</CardTitle>
-                <Wrench className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  404
-                </div>
-                <p className="text-xs text-muted-foreground">across repos</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Cluster</CardTitle>
-                <ShipWheel className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{cluster?.name || "Loading..."}</div>
-                <p className="text-xs text-muted-foreground">
-                  {cluster?.connection_status === "connected" ? (
-                    <span className="text-green-600">Connected</span>
-                  ) : (
-                    <span className="text-red-600">Disconnected</span>
-                  )}
-                </p>
-              </CardContent>
-            </Card>
+                </>
+              }
+            />
+            <StatCard
+              title="Total Builds"
+              value="404"
+              icon={Wrench}
+              color="blue"
+              description="across repos"
+            />
+            <StatCard
+              title="Cluster"
+              value={cluster?.name || "Loading..."}
+              icon={ShipWheel}
+              color="sky"
+              description={
+                cluster?.connection_status === "connected" ? (
+                  <span className="text-green-600">Connected</span>
+                ) : (
+                  <span className="text-red-600">Disconnected</span>
+                )
+              }
+            />
           </div>
 
           <Card>
@@ -418,7 +439,7 @@ export function EnvironmentDetailPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteMutation.mutate()}
               disabled={deleteMutation.isPending}

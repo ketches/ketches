@@ -24,6 +24,11 @@ import {
 } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface ConfigFilesTableProps {
   app: App
@@ -49,6 +54,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
     queryFn: async () => {
       const response = await appsApi.listConfigFiles(app.id)
       // Transform backend response to match ConfigFileSpec
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return response.map((cf: any) => ({
         id: cf.ID || cf.id,
         slug: cf.Slug || cf.slug,
@@ -174,22 +180,38 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
         <div className="flex items-center justify-end gap-1">
           {!isViewer && (
             <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => handleEdit(row.original)}
-              >
-                <Edit2 />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => handleDelete(row.original)}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleEdit(row.original)}
+                    />
+                  }
+                >
+                  <Edit2 />
+                </TooltipTrigger>
+                <TooltipContent>Edit Config File</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDelete(row.original)}
+                      disabled={deleteMutation.isPending}
+                    />
+                  }
+                >
+                  <Trash2 />
+                </TooltipTrigger>
+                <TooltipContent>Delete Config File</TooltipContent>
+              </Tooltip>
             </>
           )}
         </div>
@@ -298,7 +320,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingConfigFile) {
@@ -325,7 +347,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (selectedConfigFileIds.length > 0) {
