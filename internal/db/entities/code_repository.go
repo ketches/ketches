@@ -2,7 +2,7 @@ package entities
 
 // CodeRepository represents a Git repository managed in the system.
 // Step 1: only repo identity and credentials. Name defaults to repo name from URL, editable.
-// Build configs (branch, Dockerfile, image, registry, etc.) are managed per-repo in CodeRepositoryBuildConfig.
+// Build settings (branch, Dockerfile, image, registry, etc.) are managed per-repo in BuildSetting.
 type CodeRepository struct {
 	Base
 	ProjectID string `gorm:"type:varchar(36);not null;uniqueIndex:idx_project_code_repo_slug;index"`
@@ -17,7 +17,7 @@ type CodeRepository struct {
 	GitUsername string `gorm:"type:varchar(128)"`
 	GitPassword string `gorm:"type:varchar(512)"`
 
-	// Webhook (one per repo; which build configs to trigger is per BuildConfig.WebhookEnabled)
+	// Webhook (one per repo; which build settings to trigger is per BuildSetting.WebhookEnabled)
 	WebhookSecret  string `gorm:"type:varchar(256)"`
 	WebhookEnabled bool   `gorm:"type:bool;default:false"`
 }

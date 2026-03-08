@@ -19,12 +19,6 @@ type CodeRepositoryWithProject struct {
 	Project entities.Project `gorm:"embedded;embeddedPrefix:project_"`
 }
 
-type CodeRepositoryBuildConfigWithRegistry struct {
-	entities.CodeRepositoryBuildConfig
-	Registry       entities.ContainerRegistry `gorm:"embedded;embeddedPrefix:registry_"`
-	CodeRepository entities.CodeRepository    `gorm:"embedded;embeddedPrefix:code_repository_"`
-}
-
 // RepoNameFromURL derives a short name from git repo URL (e.g. last path segment without .git).
 func RepoNameFromURL(gitRepoURL string) string {
 	u, err := url.Parse(gitRepoURL)
@@ -172,15 +166,18 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 }
 
 func DeleteCodeRepository(id string) error {
-	var configCount int64
-	if err := db.DB.Model(&entities.CodeRepositoryBuildConfig{}).Where("code_repository_id = ?", id).Count(&configCount).Error; err != nil {
+	var buildSettingCount int64
+	if err := db.DB.Model(&entities.BuildSetting{}).Where("code_repository_id = ?", id).Count(&buildSettingCount).Error; err != nil {
 		return err
 	}
-	if configCount > 0 {
-		return fmt.Errorf("cannot delete code repository: remove %d build config(s) first", configCount)
+	if buildSettingCount > 0 {
+		return fmt.Errorf("cannot delete code repository: remove %d build setting(s) first", buildSettingCount)
 	}
 	var buildCount int64
-	if err := db.DB.Model(&entities.Build{}).Where("code_repository_id = ?", id).Count(&buildCount).Error; err != nil {
+	if err := db.DB.Model(&entities.Build{}).
+		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
+		Where("build_settings.code_repository_id = ?", id).
+		Count(&buildCount).Error; err != nil {
 		return err
 	}
 	if buildCount > 0 {
@@ -213,136 +210,6 @@ func ToCodeRepositoryRowResponse(r *CodeRepositoryWithProject, baseURL string) m
 	return ToCodeRepositoryResponse(&r.CodeRepository, baseURL)
 }
 
-// --- Build configs ---
-
-func ListCodeRepositoryBuildConfigs(repoID string) ([]CodeRepositoryBuildConfigWithRegistry, error) {
-	var configs []CodeRepositoryBuildConfigWithRegistry
-	if err := db.DB.Table("code_repository_build_configs").
-		Select("code_repository_build_configs.*, container_registries.id AS registry_id, container_registries.created_at AS registry_created_at, container_registries.updated_at AS registry_updated_at, container_registries.name AS registry_name, container_registries.provider AS registry_provider, container_registries.endpoint AS registry_endpoint, container_registries.skip_tls_verify AS registry_skip_tls_verify, container_registries.namespace AS registry_namespace, container_registries.username AS registry_username, container_registries.password AS registry_password, container_registries.scope AS registry_scope, container_registries.cluster_id AS registry_cluster_id, container_registries.project_id AS registry_project_id, container_registries.is_default AS registry_is_default, container_registries.enabled AS registry_enabled, container_registries.description AS registry_description").
-		Joins("LEFT JOIN container_registries ON container_registries.id = code_repository_build_configs.registry_id").
-		Where("code_repository_build_configs.code_repository_id = ?", repoID).
-		Order("code_repository_build_configs.created_at").
-		Find(&configs).Error; err != nil {
-		return nil, err
-	}
-	return configs, nil
-}
-
-func GetCodeRepositoryBuildConfig(configID string) (*CodeRepositoryBuildConfigWithRegistry, error) {
-	var cfg CodeRepositoryBuildConfigWithRegistry
-	if err := db.DB.Table("code_repository_build_configs").
-		Select("code_repository_build_configs.*, container_registries.id AS registry_id, container_registries.created_at AS registry_created_at, container_registries.updated_at AS registry_updated_at, container_registries.name AS registry_name, container_registries.provider AS registry_provider, container_registries.endpoint AS registry_endpoint, container_registries.skip_tls_verify AS registry_skip_tls_verify, container_registries.namespace AS registry_namespace, container_registries.username AS registry_username, container_registries.password AS registry_password, container_registries.scope AS registry_scope, container_registries.cluster_id AS registry_cluster_id, container_registries.project_id AS registry_project_id, container_registries.is_default AS registry_is_default, container_registries.enabled AS registry_enabled, container_registries.description AS registry_description, code_repositories.id AS code_repository_id, code_repositories.created_at AS code_repository_created_at, code_repositories.updated_at AS code_repository_updated_at, code_repositories.project_id AS code_repository_project_id, code_repositories.name AS code_repository_name, code_repositories.slug AS code_repository_slug, code_repositories.git_repo_url AS code_repository_git_repo_url, code_repositories.git_username AS code_repository_git_username, code_repositories.git_password AS code_repository_git_password, code_repositories.webhook_secret AS code_repository_webhook_secret, code_repositories.webhook_enabled AS code_repository_webhook_enabled").
-		Joins("LEFT JOIN container_registries ON container_registries.id = code_repository_build_configs.registry_id").
-		Joins("LEFT JOIN code_repositories ON code_repositories.id = code_repository_build_configs.code_repository_id").
-		Where("code_repository_build_configs.id = ?", configID).
-		First(&cfg).Error; err != nil {
-		return nil, err
-	}
-	return &cfg, nil
-}
-
-func CreateCodeRepositoryBuildConfig(repoID string, req *models.CreateCodeRepositoryBuildConfigRequest) (*CodeRepositoryBuildConfigWithRegistry, error) {
-	repo, err := GetCodeRepository(repoID)
-	if err != nil {
-		return nil, err
-	}
-	cfg := &entities.CodeRepositoryBuildConfig{
-		ID:               uuid.New(),
-		CodeRepositoryID: repoID,
-		Name:             req.Name,
-		GitRef:           defaultStr(req.GitRef, "main"),
-		DockerfilePath:   defaultStr(req.DockerfilePath, "Dockerfile"),
-		BuildContext:     defaultStr(req.BuildContext, "."),
-		ImageName:        req.ImageName,
-		RegistryID:       req.RegistryID,
-		BuildArgs:        req.BuildArgs,
-		AutoBuild:        req.AutoBuild,
-		AutoDeploy:       req.AutoDeploy,
-		WebhookEnabled:   req.WebhookEnabled,
-	}
-	if err := db.DB.Create(cfg).Error; err != nil {
-		return nil, err
-	}
-	_ = repo
-	return GetCodeRepositoryBuildConfig(cfg.ID)
-}
-
-func UpdateCodeRepositoryBuildConfig(configID string, req *models.UpdateCodeRepositoryBuildConfigRequest) (*CodeRepositoryBuildConfigWithRegistry, error) {
-	cfg, err := GetCodeRepositoryBuildConfig(configID)
-	if err != nil {
-		return nil, err
-	}
-	if req.Name != "" {
-		cfg.Name = req.Name
-	}
-	if req.GitRef != "" {
-		cfg.GitRef = req.GitRef
-	}
-	if req.DockerfilePath != "" {
-		cfg.DockerfilePath = req.DockerfilePath
-	}
-	if req.BuildContext != "" {
-		cfg.BuildContext = req.BuildContext
-	}
-	if req.ImageName != "" {
-		cfg.ImageName = req.ImageName
-	}
-	if req.RegistryID != "" {
-		cfg.RegistryID = req.RegistryID
-	}
-	if req.BuildArgs != "" {
-		cfg.BuildArgs = req.BuildArgs
-	}
-	if req.AutoBuild != nil {
-		cfg.AutoBuild = *req.AutoBuild
-	}
-	if req.AutoDeploy != nil {
-		cfg.AutoDeploy = *req.AutoDeploy
-	}
-	if req.WebhookEnabled != nil {
-		cfg.WebhookEnabled = *req.WebhookEnabled
-	}
-	if err := db.DB.Save(cfg).Error; err != nil {
-		return nil, err
-	}
-	return GetCodeRepositoryBuildConfig(configID)
-}
-
-func DeleteCodeRepositoryBuildConfig(configID string) error {
-	var count int64
-	if err := db.DB.Model(&entities.Build{}).Where("code_repository_build_config_id = ?", configID).Count(&count).Error; err != nil {
-		return err
-	}
-	if count > 0 {
-		return fmt.Errorf("cannot delete build config: it has %d build(s)", count)
-	}
-	return db.DB.Delete(&entities.CodeRepositoryBuildConfig{}, "id = ?", configID).Error
-}
-
-func ToCodeRepositoryBuildConfigResponse(c *CodeRepositoryBuildConfigWithRegistry) models.CodeRepositoryBuildConfigResponse {
-	resp := models.CodeRepositoryBuildConfigResponse{
-		ID:               c.ID,
-		CodeRepositoryID: c.CodeRepositoryID,
-		Name:             c.Name,
-		GitRef:           c.GitRef,
-		DockerfilePath:   c.DockerfilePath,
-		BuildContext:     c.BuildContext,
-		ImageName:        c.ImageName,
-		RegistryID:       c.RegistryID,
-		BuildArgs:        c.BuildArgs,
-		AutoBuild:        c.AutoBuild,
-		AutoDeploy:       c.AutoDeploy,
-		WebhookEnabled:   c.WebhookEnabled,
-		CreatedAt:        c.CreatedAt,
-		UpdatedAt:        c.UpdatedAt,
-	}
-	if c.Registry.ID != "" {
-		regResp := ToContainerRegistryResponse(&c.Registry)
-		resp.Registry = &regResp
-	}
-	return resp
-}
-
 func ListAvailableContainerRegistriesForCodeRepository(repoID string) ([]entities.ContainerRegistry, error) {
 	repo, err := GetCodeRepository(repoID)
 	if err != nil {
@@ -355,8 +222,8 @@ func ListAvailableContainerRegistriesForCodeRepository(repoID string) ([]entitie
 	return ListAvailableRegistries(env.ClusterID, repo.ProjectID)
 }
 
-func CodeRepositorySlugForJob(repoName, configName string) string {
-	slug := repoName + "-" + configName
+func CodeRepositorySlugForJob(repoName, buildSettingName string) string {
+	slug := repoName + "-" + buildSettingName
 	s := regexp.MustCompile(`[^a-z0-9-]`).ReplaceAllString(strings.ToLower(slug), "-")
 	s = regexp.MustCompile(`-+`).ReplaceAllString(s, "-")
 	s = strings.Trim(s, "-")
@@ -441,37 +308,33 @@ func GetCodeRepositoryTopology(repoID string) (*models.AppTopologyResponse, erro
 		})
 	}
 
-	// Get build configs
-	var buildConfigs []entities.CodeRepositoryBuildConfig
-	if err := db.DB.Where("code_repository_id = ?", repoID).Order("created_at").Find(&buildConfigs).Error; err == nil {
-		for _, bc := range buildConfigs {
-			bcNodeID := "bc-" + bc.ID
+	var buildSettings []entities.BuildSetting
+	if err := db.DB.Where("code_repository_id = ?", repoID).Order("created_at").Find(&buildSettings).Error; err == nil {
+		for _, bs := range buildSettings {
+			bsNodeID := "bs-" + bs.ID
 			nodes = append(nodes, models.AppTopologyNode{
-				ID:   bcNodeID,
-				Type: "BuildConfig",
-				Name: bc.Name,
+				ID:   bsNodeID,
+				Type: "BuildSetting",
+				Name: bs.Name,
 			})
 			edges = append(edges, models.AppTopologyEdge{
 				Source: repoNodeID,
-				Target: bcNodeID,
+				Target: bsNodeID,
 			})
 
-			// Relationship to Envs
-			// In Ketches, a BuildConfig produces an image that is usually intended for specific apps.
-			// Since apps are linked to the repo, we can connect build configs to envs where these apps exist.
 			for _, app := range apps {
 				env := envMap[app.EnvID]
 				envNodeID := "env-" + env.ID
 				edgeExists := false
 				for _, e := range edges {
-					if e.Source == bcNodeID && e.Target == envNodeID {
+					if e.Source == bsNodeID && e.Target == envNodeID {
 						edgeExists = true
 						break
 					}
 				}
 				if !edgeExists {
 					edges = append(edges, models.AppTopologyEdge{
-						Source: bcNodeID,
+						Source: bsNodeID,
 						Target: envNodeID,
 					})
 				}

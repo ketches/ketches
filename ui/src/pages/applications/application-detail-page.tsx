@@ -1089,10 +1089,10 @@ export function ApplicationDetailPage() {
             {!isViewer && (
               <Button
                 variant="outline"
+                size="icon"
                 onClick={() => setIsEditAppDialogOpen(true)}
               >
                 <Pencil />
-                Edit
               </Button>
             )}
             {!isViewer && availableActions && availableActions.actions && (
@@ -1121,7 +1121,7 @@ export function ApplicationDetailPage() {
           {!isViewer && <TabsTrigger value="advanced"><Cog />Advanced</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4 mt-2">
+        <TabsContent value="overview" className="group/card space-y-4 mt-2">
           <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
@@ -1567,7 +1567,7 @@ export function ApplicationDetailPage() {
         {!isViewer && (
           <TabsContent value="build" className="space-y-4 mt-2">
             {app.code_repository_id && (
-              <Card className="bg-linear-to-b/increasing from-blue/5 to-transparent">
+              <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2">
                     <FolderGit2 className="h-4 w-4" />

@@ -96,7 +96,7 @@ type AppSchedulingRule struct {
 	ID           string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt    time.Time `gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
-	AppID        string    `gorm:"type:varchar(36);uniqueIndex;not null;index"`
+	AppID        string    `gorm:"type:varchar(36);uniqueIndex;not null"`
 	RuleType     string    `gorm:"type:varchar(32)"`
 	NodeName     string    `gorm:"type:varchar(256)"`
 	NodeSelector string    `gorm:"type:text"`
@@ -108,7 +108,7 @@ type AppAutoScaling struct {
 	ID                      string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt               time.Time `gorm:"autoCreateTime"`
 	UpdatedAt               time.Time `gorm:"autoUpdateTime"`
-	AppID                   string    `gorm:"type:varchar(36);uniqueIndex;not null;index"`
+	AppID                   string    `gorm:"type:varchar(36);uniqueIndex;not null"`
 	MinReplicas             int       `gorm:"type:int;default:1"`
 	MaxReplicas             int       `gorm:"type:int;default:10"`
 	TargetCPUUtilization    int       `gorm:"type:int"`

@@ -1,5 +1,6 @@
+import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react"
+import { Clock, Loader2, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -171,9 +172,10 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
       accessorKey: "created_at",
       header: "Created At",
       cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {new Date(row.original.created_at).toLocaleString()}
-        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
     {

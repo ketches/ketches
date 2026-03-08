@@ -71,7 +71,7 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
           <DialogHeader>
             <DialogTitle>Edit Code Repository</DialogTitle>
             <DialogDescription>
-              Update name, URL, and credentials. Build configuration is managed in the build configs section below.
+              Update name, URL, and credentials.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

@@ -602,7 +602,7 @@
         ]
       }
     },
-    "/api/v1/apps/{appID}/build-config": {
+    "/api/v1/apps/{appID}/build-setting": {
       "delete": {
         "operationId": "delete_api_v1_apps_appid_build_config",
         "parameters": [
@@ -638,7 +638,7 @@
             "BearerAuth": []
           }
         ],
-        "summary": "DELETE /api/v1/apps/{appID}/build-config",
+        "summary": "DELETE /api/v1/apps/{appID}/build-setting",
         "tags": [
           "apps"
         ]
@@ -678,7 +678,7 @@
             "BearerAuth": []
           }
         ],
-        "summary": "GET /api/v1/apps/{appID}/build-config",
+        "summary": "GET /api/v1/apps/{appID}/build-setting",
         "tags": [
           "apps"
         ]
@@ -718,13 +718,13 @@
             "BearerAuth": []
           }
         ],
-        "summary": "POST /api/v1/apps/{appID}/build-config",
+        "summary": "POST /api/v1/apps/{appID}/build-setting",
         "tags": [
           "apps"
         ]
       }
     },
-    "/api/v1/apps/{appID}/build-config/container-registries": {
+    "/api/v1/apps/{appID}/build-setting/container-registries": {
       "get": {
         "operationId": "get_api_v1_apps_appid_build_config_container_registries",
         "parameters": [
@@ -760,13 +760,13 @@
             "BearerAuth": []
           }
         ],
-        "summary": "GET /api/v1/apps/{appID}/build-config/container-registries",
+        "summary": "GET /api/v1/apps/{appID}/build-setting/container-registries",
         "tags": [
           "apps"
         ]
       }
     },
-    "/api/v1/apps/{appID}/build-config/test-git": {
+    "/api/v1/apps/{appID}/build-setting/test-git": {
       "post": {
         "operationId": "post_api_v1_apps_appid_build_config_test_git",
         "parameters": [
@@ -802,7 +802,7 @@
             "BearerAuth": []
           }
         ],
-        "summary": "POST /api/v1/apps/{appID}/build-config/test-git",
+        "summary": "POST /api/v1/apps/{appID}/build-setting/test-git",
         "tags": [
           "apps"
         ]
@@ -5181,7 +5181,7 @@
         ]
       }
     },
-    "/api/v1/code-repositories/{repoID}/build-configs": {
+    "/api/v1/code-repositories/{repoID}/build-settings": {
       "get": {
         "operationId": "get_api_v1_code_repositories_repoid_build_configs",
         "parameters": [
@@ -5217,7 +5217,7 @@
             "BearerAuth": []
           }
         ],
-        "summary": "GET /api/v1/code-repositories/{repoID}/build-configs",
+        "summary": "GET /api/v1/code-repositories/{repoID}/build-settings",
         "tags": [
           "code-repositories"
         ]
@@ -5257,13 +5257,13 @@
             "BearerAuth": []
           }
         ],
-        "summary": "POST /api/v1/code-repositories/{repoID}/build-configs",
+        "summary": "POST /api/v1/code-repositories/{repoID}/build-settings",
         "tags": [
           "code-repositories"
         ]
       }
     },
-    "/api/v1/code-repositories/{repoID}/build-configs/{configID}": {
+    "/api/v1/code-repositories/{repoID}/build-settings/{settingID}": {
       "delete": {
         "operationId": "delete_api_v1_code_repositories_repoid_build_configs_configid",
         "parameters": [
@@ -5279,7 +5279,7 @@
           {
             "description": "Path parameter",
             "in": "path",
-            "name": "configID",
+            "name": "settingID",
             "required": true,
             "schema": {
               "type": "string"
@@ -5308,7 +5308,7 @@
             "BearerAuth": []
           }
         ],
-        "summary": "DELETE /api/v1/code-repositories/{repoID}/build-configs/{configID}",
+        "summary": "DELETE /api/v1/code-repositories/{repoID}/build-settings/{settingID}",
         "tags": [
           "code-repositories"
         ]
@@ -5328,7 +5328,7 @@
           {
             "description": "Path parameter",
             "in": "path",
-            "name": "configID",
+            "name": "settingID",
             "required": true,
             "schema": {
               "type": "string"
@@ -5357,7 +5357,7 @@
             "BearerAuth": []
           }
         ],
-        "summary": "GET /api/v1/code-repositories/{repoID}/build-configs/{configID}",
+        "summary": "GET /api/v1/code-repositories/{repoID}/build-settings/{settingID}",
         "tags": [
           "code-repositories"
         ]
@@ -5377,7 +5377,7 @@
           {
             "description": "Path parameter",
             "in": "path",
-            "name": "configID",
+            "name": "settingID",
             "required": true,
             "schema": {
               "type": "string"
@@ -5406,7 +5406,7 @@
             "BearerAuth": []
           }
         ],
-        "summary": "PUT /api/v1/code-repositories/{repoID}/build-configs/{configID}",
+        "summary": "PUT /api/v1/code-repositories/{repoID}/build-settings/{settingID}",
         "tags": [
           "code-repositories"
         ]

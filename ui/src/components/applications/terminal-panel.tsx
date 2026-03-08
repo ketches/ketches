@@ -6,6 +6,7 @@ import { WebLinksAddon } from "xterm-addon-web-links"
 import "xterm/css/xterm.css"
 
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 interface TerminalSession {
@@ -280,4 +281,3 @@ function TerminalInstance({
 
   return <div ref={terminalRef} className="h-full w-full rounded overflow-hidden" />
 }
-

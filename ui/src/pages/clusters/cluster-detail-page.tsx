@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios"
 import {
@@ -501,10 +502,10 @@ export function ClusterDetailPage() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
+              size="icon"
               onClick={() => setEditOpen(true)}
             >
               <Pencil />
-              Edit
             </Button>
             <Button
               variant="outline"
@@ -602,9 +603,7 @@ export function ClusterDetailPage() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Last Checked</p>
                   <p className="text-sm">
-                    {cluster.last_checked_at
-                      ? new Date(cluster.last_checked_at).toLocaleString()
-                      : "Never"}
+                    {cluster.last_checked_at ? formatDate(cluster.last_checked_at) : "Never"}
                   </p>
                 </div>
               </div>

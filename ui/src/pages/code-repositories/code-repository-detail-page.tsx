@@ -1,12 +1,12 @@
 import {
   codeRepositoriesApi,
-  type CodeRepositoryBuildConfig,
+  type BuildSetting,
 } from "@/api/code-repositories"
 import { envsApi } from "@/api/envs"
 import { BuildLogViewer } from "@/components/builds/build-log-viewer"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
-import { CreateBuildConfigDialog } from "@/components/code-repositories/create-build-config-dialog"
-import { EditBuildConfigDialog } from "@/components/code-repositories/edit-build-config-dialog"
+import { CreateBuildSettingDialog } from "@/components/code-repositories/create-build-setting-dialog"
+import { EditBuildSettingDialog } from "@/components/code-repositories/edit-build-setting-dialog"
 import { EditCodeRepositoryDialog } from "@/components/code-repositories/edit-code-repository-dialog"
 import { RepoTopologyView } from "@/components/code-repositories/repo-topology-view"
 import { UnifiedBuildDeployDialog } from "@/components/code-repositories/unified-build-deploy-dialog"
@@ -31,6 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -39,6 +40,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -47,6 +49,8 @@ import type { AxiosError } from "axios"
 import {
   CheckCircle,
   ChevronsUpDown,
+  CircleAlert,
+  Clock,
   Copy,
   ExternalLink,
   FileClock,
@@ -78,14 +82,14 @@ export function CodeRepositoryDetailPage() {
 
   const currentTab = searchParams.get("tab") || "overview"
   const [triggerBuildDialogOpen, setTriggerBuildDialogOpen] = React.useState(false)
-  const [selectedBuildConfigId, setSelectedBuildConfigId] = React.useState<string | undefined>(undefined)
+  const [selectedBuildSettingId, setSelectedBuildSettingId] = React.useState<string | undefined>(undefined)
   const [selectedBuildId, setSelectedBuildId] = React.useState<string | undefined>(undefined)
   const [logBuildId, setLogBuildId] = React.useState<string | null>(null)
   const [addConfigOpen, setAddConfigOpen] = React.useState(false)
   const [editConfigOpen, setEditConfigOpen] = React.useState(false)
-  const [editingConfig, setEditingConfig] = React.useState<CodeRepositoryBuildConfig | null>(null)
+  const [editingConfig, setEditingConfig] = React.useState<BuildSetting | null>(null)
   const [deleteConfigDialogOpen, setDeleteConfigDialogOpen] = React.useState(false)
-  const [deletingConfig, setDeletingConfig] = React.useState<CodeRepositoryBuildConfig | null>(null)
+  const [deletingConfig, setDeletingConfig] = React.useState<BuildSetting | null>(null)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const { activeProjectId, setActiveProjectId } = useProjectStore()
   const hasSyncedProjectFromRepoRef = React.useRef(false)
@@ -127,14 +131,14 @@ export function CodeRepositoryDetailPage() {
 
   const safeRepos = Array.isArray(repos) ? repos : []
 
-  const { data: buildConfigs = [] } = useQuery({
-    queryKey: ["code-repository-build-configs", repoId],
-    queryFn: () => codeRepositoriesApi.listBuildConfigs(repoId!),
+  const { data: buildSettings = [] } = useQuery({
+    queryKey: ["build-settings", repoId],
+    queryFn: () => codeRepositoriesApi.listBuildSettings(repoId!),
     enabled: !!repoId,
   })
 
   const { data: builds = [] } = useQuery({
-    queryKey: ["code-repository-builds", repoId],
+    queryKey: ["builds", repoId],
     queryFn: () => codeRepositoriesApi.listBuilds(repoId!),
     enabled: !!repoId,
     refetchInterval: 5000,
@@ -156,13 +160,13 @@ export function CodeRepositoryDetailPage() {
   const retryBuildMutation = useMutation({
     mutationFn: (b: any) => {
       return codeRepositoriesApi.triggerBuild(repoId!, {
-        build_config_id: b.code_repository_build_config_id,
+        build_setting_id: b.build_setting_id,
         build_env_id: b.build_env_id,
         git_ref: b.git_ref,
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["code-repository-builds", repoId] })
+      queryClient.invalidateQueries({ queryKey: ["builds", repoId] })
       toast.success("Build retry triggered")
     },
     onError: (err: AxiosError<{ error: string }>) => {
@@ -172,33 +176,33 @@ export function CodeRepositoryDetailPage() {
 
   React.useEffect(() => {
     if (!triggerBuildDialogOpen) {
-      setSelectedBuildConfigId(undefined)
+      setSelectedBuildSettingId(undefined)
       setSelectedBuildId(undefined)
     }
   }, [triggerBuildDialogOpen])
 
   const deleteConfigMutation = useMutation({
-    mutationFn: (configId: string) => codeRepositoriesApi.deleteBuildConfig(repoId!, configId),
+    mutationFn: (settingId: string) => codeRepositoriesApi.deleteBuildSetting(repoId!, settingId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["code-repository-build-configs", repoId] })
-      toast.success("Build config removed")
+      queryClient.invalidateQueries({ queryKey: ["build-settings", repoId] })
+      toast.success("Build setting removed")
     },
     onError: (err: unknown) => {
       const msg =
         err && typeof err === "object" && "response" in err
           ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
           : null
-      toast.error(msg || "Failed to remove build config")
+      toast.error(msg || "Failed to remove build setting")
     },
   })
 
   const formatDuration = (s: number) =>
     s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
-  const configNameById = (id: string) =>
-    buildConfigs.find((c) => c.id === id)?.name ?? id
+  const settingNameById = (id: string) =>
+    buildSettings.find((c) => c.id === id)?.name ?? id
 
-  // ColumnDef for Build Configs table
-  const buildConfigColumns: ColumnDef<CodeRepositoryBuildConfig>[] = [
+  // ColumnDef for Build Settings table
+  const buildSettingColumns: ColumnDef<BuildSetting>[] = [
     {
       accessorKey: "name",
       header: "Name",
@@ -240,7 +244,7 @@ export function CodeRepositoryDetailPage() {
         {
           id: "actions",
           header: () => <span className="flex justify-end">Actions</span>,
-          cell: ({ row }: { row: { original: CodeRepositoryBuildConfig } }) => {
+          cell: ({ row }: { row: { original: BuildSetting } }) => {
             const cfg = row.original
             return (
               <div className="flex items-center justify-end gap-1">
@@ -260,13 +264,13 @@ export function CodeRepositoryDetailPage() {
                   >
                     <Pencil />
                   </TooltipTrigger>
-                  <TooltipContent>Edit build configuration</TooltipContent>
+                  <TooltipContent>Edit build setting</TooltipContent>
                 </Tooltip>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setSelectedBuildConfigId(cfg.id)
+                    setSelectedBuildSettingId(cfg.id)
                     setSelectedBuildId(undefined)
                     setTriggerBuildDialogOpen(true)
                   }}
@@ -291,12 +295,12 @@ export function CodeRepositoryDetailPage() {
                   >
                     <Trash2 />
                   </TooltipTrigger>
-                  <TooltipContent>Delete build configuration</TooltipContent>
+                  <TooltipContent>Delete build setting</TooltipContent>
                 </Tooltip>
               </div>
             )
           },
-        } as ColumnDef<CodeRepositoryBuildConfig>,
+        } as ColumnDef<BuildSetting>,
       ]
       : []),
   ]
@@ -310,12 +314,12 @@ export function CodeRepositoryDetailPage() {
       cell: ({ row }) => row.original.build_number,
     },
     {
-      id: "config",
-      header: "Config",
+      id: "setting",
+      header: "Build Setting",
       cell: ({ row }) => (
         <span className="text-muted-foreground text-xs">
-          {row.original.code_repository_build_config_id
-            ? configNameById(row.original.code_repository_build_config_id)
+          {row.original.build_setting_id
+            ? settingNameById(row.original.build_setting_id)
             : "-"}
         </span>
       ),
@@ -359,11 +363,12 @@ export function CodeRepositoryDetailPage() {
     },
     {
       accessorKey: "created_at",
-      header: "Created",
+      header: "Created At",
       cell: ({ row }) => (
-        <span className="text-muted-foreground text-xs">
-          {new Date(row.original.created_at).toLocaleString()}
-        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
     {
@@ -417,7 +422,7 @@ export function CodeRepositoryDetailPage() {
                       size="sm"
                       onClick={() => {
                         setSelectedBuildId(b.id)
-                        setSelectedBuildConfigId(b.code_repository_build_config_id || undefined)
+                        setSelectedBuildSettingId(b.build_setting_id || undefined)
                         setTriggerBuildDialogOpen(true)
                       }}
                     />
@@ -497,12 +502,40 @@ export function CodeRepositoryDetailPage() {
       cell: ({ row }) => <span className="text-xs">{row.original.git_ref}</span>,
     },
     {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.original.status
+        const errorMessage = row.original.error_message
+
+        return (
+          <div className="flex items-center gap-1.5">
+            <BuildStatusBadge status={status} />
+            {status === "failed" && errorMessage ? (
+              <HoverCard>
+                <HoverCardTrigger render={<button type="button" className="inline-flex items-center justify-center" />}>
+                  <CircleAlert className="h-4 w-4 text-destructive" />
+                </HoverCardTrigger>
+                <HoverCardContent side="top" align="start" className="max-w-96">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-destructive">Deployment failed</p>
+                    <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">{errorMessage}</p>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+            ) : null}
+          </div>
+        )
+      },
+    },
+    {
       accessorKey: "created_at",
       header: "Deployed At",
       cell: ({ row }) => (
-        <span className="text-muted-foreground text-xs">
-          {new Date(row.original.created_at).toLocaleString()}
-        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
   ]
@@ -601,7 +634,7 @@ export function CodeRepositoryDetailPage() {
   const successfulBuilds = builds.filter((b) => b.status === "succeeded").length
   const successRate = totalBuilds > 0 ? (successfulBuilds / totalBuilds) * 100 : 0
   const totalDeployments = deployments.length
-  const totalBuildConfigs = buildConfigs.length
+  const totalBuildSettings = buildSettings.length
 
 
   return (
@@ -639,18 +672,17 @@ export function CodeRepositoryDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             {!isViewer && (
-              <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+              <Button variant="outline" size="icon" onClick={() => setEditDialogOpen(true)}>
                 <Pencil />
-                Edit
               </Button>
             )}
-            {buildConfigs.length > 0 && !isViewer && (
+            {buildSettings.length > 0 && !isViewer && (
               <Button onClick={() => {
-                setSelectedBuildConfigId(undefined)
+                setSelectedBuildSettingId(undefined)
                 setSelectedBuildId(undefined)
                 setTriggerBuildDialogOpen(true)
               }}>
-                <Hammer />
+                <Play />
                 Build
               </Button>
             )}
@@ -666,7 +698,7 @@ export function CodeRepositoryDetailPage() {
           <TabsTrigger value="deploy"><Rocket />Deploy</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4 mt-2">
+        <TabsContent value="overview" className="group/card space-y-4 mt-2">
           <Card className="bg-linear-to-b/increasing from-blue/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
@@ -703,8 +735,8 @@ export function CodeRepositoryDetailPage() {
           </Card>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
-              title="Build Configs"
-              value={totalBuildConfigs}
+              title="Build Settings"
+              value={totalBuildSettings}
               icon={Hammer}
               description="Configurations defined"
               color="purple"
@@ -753,32 +785,32 @@ export function CodeRepositoryDetailPage() {
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
                 <Hammer className="h-4 w-4" />
-                Build Configs
+                Build Settings
               </CardTitle>
               <CardDescription>
-                One repo can have multiple build configs (e.g. frontend, backend). Configure Dockerfile, context, image, and registry per config.
+                One repo can have multiple build settings (e.g. frontend, backend).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {buildConfigs.length > 0 && !isViewer ? (<div className="flex items-center justify-end">
+              {buildSettings.length > 0 && !isViewer ? (<div className="flex items-center justify-end">
                 <Button onClick={() => setAddConfigOpen(true)}>
                   <Plus />
                   Create
                 </Button>
               </div>) : null}
-              {buildConfigs.length === 0 ? (
+              {buildSettings.length === 0 ? (
                 <EmptyState
-                  title="No build configurations"
-                  description="Add a build configuration to start building images from this repository."
+                  title="No build settings"
+                  description="Add a build setting to start building images from this repository."
                   icon={Hammer}
-                  actionText={!isViewer ? "Create build config" : undefined}
+                  actionText={!isViewer ? "Create build setting" : undefined}
                   onAction={!isViewer ? () => setAddConfigOpen(true) : undefined}
                   actionIcon={!isViewer ? Plus : undefined}
                 />
               ) : (
                 <DataTable
-                  columns={buildConfigColumns}
-                  data={buildConfigs}
+                  columns={buildSettingColumns}
+                  data={buildSettings}
                 />
               )}
             </CardContent>
@@ -845,7 +877,7 @@ export function CodeRepositoryDetailPage() {
         onOpenChange={setTriggerBuildDialogOpen}
         repoId={repoId}
         projectId={repo.project_id}
-        preSelectedConfigId={selectedBuildConfigId}
+        preSelectedConfigId={selectedBuildSettingId}
         preSelectedBuildId={selectedBuildId}
       />
 
@@ -858,27 +890,27 @@ export function CodeRepositoryDetailPage() {
         }
       />
 
-      <EditBuildConfigDialog
+      <EditBuildSettingDialog
         open={editConfigOpen}
         onOpenChange={setEditConfigOpen}
         repoId={repoId}
-        config={editingConfig}
+        setting={editingConfig}
         onSuccess={() => {
           setEditingConfig(null)
           queryClient.invalidateQueries({
-            queryKey: ["code-repository-build-configs", repoId],
+            queryKey: ["build-settings", repoId],
           })
         }
         }
       />
 
-      <CreateBuildConfigDialog
+      <CreateBuildSettingDialog
         open={addConfigOpen}
         onOpenChange={setAddConfigOpen}
         repoId={repoId}
         onSuccess={() =>
           queryClient.invalidateQueries({
-            queryKey: ["code-repository-build-configs", repoId],
+            queryKey: ["build-settings", repoId],
           })
         }
       />
@@ -903,11 +935,11 @@ export function CodeRepositoryDetailPage() {
       <AlertDialog open={deleteConfigDialogOpen} onOpenChange={setDeleteConfigDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Build Config</AlertDialogTitle>
+            <AlertDialogTitle>Remove Build Setting</AlertDialogTitle>
             <AlertDialogDescription>
               {deletingConfig
-                ? `Remove build config "${deletingConfig.name}"? This action cannot be undone.`
-                : "Are you sure you want to remove this build config?"}
+                ? `Remove build setting "${deletingConfig.name}"? This action cannot be undone.`
+                : "Are you sure you want to remove this build setting?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

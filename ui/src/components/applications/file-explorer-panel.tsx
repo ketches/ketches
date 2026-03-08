@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Archive,
@@ -112,12 +113,7 @@ function formatSize(bytes: number): string {
 // Format timestamp to human-readable
 function formatTime(timestamp: number): string {
   if (timestamp === 0) return "-"
-  return new Date(timestamp * 1000).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  return formatDate(timestamp * 1000)
 }
 
 // Check if a file is likely text/editable

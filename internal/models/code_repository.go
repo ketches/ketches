@@ -42,60 +42,14 @@ type ListCodeRepositoryResponse struct {
 	Pagination PaginationResponse       `json:"pagination"`
 }
 
-// CreateCodeRepositoryBuildConfigRequest: used when adding a build config under a repo.
-type CreateCodeRepositoryBuildConfigRequest struct {
-	Name           string `json:"name" binding:"required"`
-	GitRef         string `json:"git_ref"`
-	DockerfilePath string `json:"dockerfile_path"`
-	BuildContext   string `json:"build_context"`
-	ImageName      string `json:"image_name" binding:"required"`
-	RegistryID     string `json:"registry_id" binding:"required"`
-	BuildArgs      string `json:"build_args"`
-	AutoBuild      bool   `json:"auto_build"`
-	AutoDeploy     bool   `json:"auto_deploy"`
-	WebhookEnabled bool   `json:"webhook_enabled"`
-}
 
-// UpdateCodeRepositoryBuildConfigRequest
-type UpdateCodeRepositoryBuildConfigRequest struct {
-	Name           string `json:"name"`
-	GitRef         string `json:"git_ref"`
-	DockerfilePath string `json:"dockerfile_path"`
-	BuildContext   string `json:"build_context"`
-	ImageName      string `json:"image_name"`
-	RegistryID     string `json:"registry_id"`
-	BuildArgs      string `json:"build_args"`
-	AutoBuild      *bool  `json:"auto_build"`
-	AutoDeploy     *bool  `json:"auto_deploy"`
-	WebhookEnabled *bool  `json:"webhook_enabled"`
-}
-
-// CodeRepositoryBuildConfigResponse
-type CodeRepositoryBuildConfigResponse struct {
-	ID               string                     `json:"id"`
-	CodeRepositoryID string                     `json:"code_repository_id"`
-	Name             string                     `json:"name"`
-	GitRef           string                     `json:"git_ref"`
-	DockerfilePath   string                     `json:"dockerfile_path"`
-	BuildContext     string                     `json:"build_context"`
-	ImageName        string                     `json:"image_name"`
-	RegistryID       string                     `json:"registry_id"`
-	Registry         *ContainerRegistryResponse `json:"registry,omitempty"`
-	BuildArgs        string                     `json:"build_args"`
-	AutoBuild        bool                       `json:"auto_build"`
-	AutoDeploy       bool                       `json:"auto_deploy"`
-	WebhookEnabled   bool                       `json:"webhook_enabled"`
-	CreatedAt        time.Time                  `json:"created_at"`
-	UpdatedAt        time.Time                  `json:"updated_at"`
-}
-
-// TriggerCodeRepositoryBuildRequest: build_config_id required; build runs in build_env_id.
+// TriggerCodeRepositoryBuildRequest: build_setting_id required; build runs in build_env_id.
 type TriggerCodeRepositoryBuildRequest struct {
-	BuildConfigID string `json:"build_config_id" binding:"required"`
-	BuildEnvID    string `json:"build_env_id" binding:"required"`
-	GitRef        string `json:"git_ref"`
-	ImageTag      string `json:"image_tag"`
-	AutoDeploy    *bool  `json:"auto_deploy"`
+	BuildSettingID string `json:"build_setting_id" binding:"required"`
+	BuildEnvID     string `json:"build_env_id" binding:"required"`
+	GitRef         string `json:"git_ref"`
+	ImageTag       string `json:"image_tag"`
+	AutoDeploy     *bool  `json:"auto_deploy"`
 
 	DeployEnvID   string `json:"deploy_env_id"`
 	DeployAppID   string `json:"deploy_app_id"`

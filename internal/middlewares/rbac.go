@@ -152,15 +152,15 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 		return repo.ProjectID, true
 	}
 
-	// Resolve via build config ID
-	if configID := c.Param("configID"); configID != "" {
+	// Resolve via build setting ID
+	if settingID := c.Param("settingID"); settingID != "" {
 		var repo entities.CodeRepository
 		if err := db.DB.Select("code_repositories.project_id").
-			Table("code_repository_build_configs").
-			Joins("JOIN code_repositories ON code_repositories.id = code_repository_build_configs.code_repository_id").
-			Where("code_repository_build_configs.id = ?", configID).
+			Table("build_settings").
+			Joins("JOIN code_repositories ON code_repositories.id = build_settings.code_repository_id").
+			Where("build_settings.id = ?", settingID).
 			First(&repo).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup via configID %q failed: %v", configID, err)
+			log.Printf("resolveProjectID: DB lookup via settingID %q failed: %v", settingID, err)
 			return "", false
 		}
 		return repo.ProjectID, true

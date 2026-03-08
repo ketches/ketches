@@ -122,16 +122,12 @@ func ListCodeRepositoryBuilds(c *gin.Context) {
 
 func ListCodeRepositoryDeployments(c *gin.Context) {
 	repoID := c.Param("repoID")
-	builds, err := services.ListDeploymentsByCodeRepository(repoID)
+	deployments, err := services.ListDeploymentsByCodeRepository(repoID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	res := make([]models.BuildResponse, 0, len(builds))
-	for i := range builds {
-		res = append(res, services.ToBuildResponse(c.Request.Context(), &builds[i]))
-	}
-	api.Success(c, res)
+	api.Success(c, deployments)
 }
 
 func TriggerCodeRepositoryBuild(c *gin.Context) {
@@ -212,90 +208,73 @@ func ListCodeRepositoryContainerRegistries(c *gin.Context) {
 	api.Success(c, res)
 }
 
-// Build configs under code repository
-
-func ListCodeRepositoryBuildConfigs(c *gin.Context) {
+func ListRepoBuildSettings(c *gin.Context) {
 	repoID := c.Param("repoID")
-	configs, err := services.ListCodeRepositoryBuildConfigs(repoID)
+	settings, err := services.ListRepoBuildSettings(repoID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	res := make([]models.CodeRepositoryBuildConfigResponse, 0, len(configs))
-	for i := range configs {
-		res = append(res, services.ToCodeRepositoryBuildConfigResponse(&configs[i]))
+	res := make([]models.BuildSettingResponse, 0, len(settings))
+	for i := range settings {
+		res = append(res, services.ToBuildSettingResponse(&settings[i]))
 	}
 	api.Success(c, res)
 }
 
-func CreateCodeRepositoryBuildConfig(c *gin.Context) {
+func CreateRepoBuildSetting(c *gin.Context) {
 	repoID := c.Param("repoID")
-	var req models.CreateCodeRepositoryBuildConfigRequest
+	var req models.CreateRepoBuildSettingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-	cfg, err := services.CreateCodeRepositoryBuildConfig(repoID, &req)
+	s, err := services.CreateRepoBuildSetting(repoID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Created(c, services.ToCodeRepositoryBuildConfigResponse(cfg))
+	api.Created(c, services.ToBuildSettingResponse(s))
 }
 
-func GetCodeRepositoryBuildConfig(c *gin.Context) {
-	repoID := c.Param("repoID")
-	configID := c.Param("configID")
-	cfg, err := services.GetCodeRepositoryBuildConfig(configID)
+func GetRepoBuildSetting(c *gin.Context) {
+	settingID := c.Param("settingID")
+	s, err := services.GetBuildSetting(settingID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
-	if cfg.CodeRepositoryID != repoID {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("build config not found"))
-		return
-	}
-	api.Success(c, services.ToCodeRepositoryBuildConfigResponse(cfg))
+	api.Success(c, services.ToBuildSettingResponse(s))
 }
 
-func UpdateCodeRepositoryBuildConfig(c *gin.Context) {
-	repoID := c.Param("repoID")
-	configID := c.Param("configID")
-	cfg, err := services.GetCodeRepositoryBuildConfig(configID)
-	if err != nil {
-		api.Error(c, http.StatusNotFound, err)
-		return
-	}
-	if cfg.CodeRepositoryID != repoID {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("build config not found"))
-		return
-	}
-	var req models.UpdateCodeRepositoryBuildConfigRequest
+func UpdateRepoBuildSetting(c *gin.Context) {
+	settingID := c.Param("settingID")
+	var req models.UpdateRepoBuildSettingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-	updated, err := services.UpdateCodeRepositoryBuildConfig(configID, &req)
+	s, err := services.UpdateRepoBuildSetting(settingID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Success(c, services.ToCodeRepositoryBuildConfigResponse(updated))
+	api.Success(c, services.ToBuildSettingResponse(s))
 }
 
-func DeleteCodeRepositoryBuildConfig(c *gin.Context) {
+func DeleteRepoBuildSetting(c *gin.Context) {
 	repoID := c.Param("repoID")
-	configID := c.Param("configID")
-	cfg, err := services.GetCodeRepositoryBuildConfig(configID)
+	settingID := c.Param("settingID")
+	s, err := services.GetBuildSetting(settingID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
-	if cfg.CodeRepositoryID != repoID {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("build config not found"))
+	if s.CodeRepositoryID == nil || *s.CodeRepositoryID != repoID {
+		api.Error(c, http.StatusForbidden, fmt.Errorf("setting does not belong to this repository"))
 		return
 	}
-	if err := services.DeleteCodeRepositoryBuildConfig(configID); err != nil {
+	if err := services.DeleteRepoBuildSetting(settingID); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

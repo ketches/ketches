@@ -16,31 +16,30 @@ import (
 )
 
 func HandleGitWebhook(c *gin.Context, appID, secret string) error {
-	// Get build config for this app
-	var config entities.AppBuildConfig
-	if err := db.DB.Where("app_id = ?", appID).First(&config).Error; err != nil {
-		return fmt.Errorf("build config not found for app %s", appID)
+	var setting entities.BuildSetting
+	if err := db.DB.Where("app_id = ? AND webhook_enabled = true", appID).First(&setting).Error; err != nil {
+		return fmt.Errorf("build setting not found or webhook not enabled for app %s", appID)
 	}
 
-	if !config.WebhookEnabled {
+	if !setting.WebhookEnabled {
 		return errors.New("webhook is not enabled for this app")
 	}
 
 	// Verify webhook secret
 	if secret != "" {
-		if secret != config.WebhookSecret {
+		if secret != setting.WebhookSecret {
 			return errors.New("invalid webhook secret")
 		}
 	} else {
 		// Try to verify via signature headers (GitHub, GitLab, Bitbucket)
-		if err := verifyWebhookSignature(c, config.WebhookSecret); err != nil {
+		if err := verifyWebhookSignature(c, setting.WebhookSecret); err != nil {
 			return fmt.Errorf("webhook signature verification failed: %w", err)
 		}
 	}
 
 	// Trigger a build
 	triggerReq := &models.TriggerBuildRequest{
-		GitRef: config.GitRef,
+		GitRef: setting.GitRef,
 	}
 
 	build, err := TriggerBuild(c.Request.Context(), appID, "", triggerReq)
@@ -56,7 +55,6 @@ func HandleGitWebhook(c *gin.Context, appID, secret string) error {
 	return nil
 }
 
-// HandleGitWebhookForCodeRepo handles webhook for a code repository. Triggers a build for each build config that has WebhookEnabled.
 func HandleGitWebhookForCodeRepo(c *gin.Context, repoID, secret string) error {
 	repo, err := GetCodeRepository(repoID)
 	if err != nil {
@@ -75,18 +73,18 @@ func HandleGitWebhookForCodeRepo(c *gin.Context, repoID, secret string) error {
 		}
 	}
 
-	configs, err := ListCodeRepositoryBuildConfigs(repoID)
+	settings, err := ListRepoBuildSettings(repoID)
 	if err != nil {
-		return fmt.Errorf("failed to list build configs: %w", err)
+		return fmt.Errorf("failed to list build settings: %w", err)
 	}
-	var toTrigger []CodeRepositoryBuildConfigWithRegistry
-	for i := range configs {
-		if configs[i].WebhookEnabled {
-			toTrigger = append(toTrigger, configs[i])
+	var toTrigger []BuildSettingWithRegistry
+	for i := range settings {
+		if settings[i].WebhookEnabled {
+			toTrigger = append(toTrigger, settings[i])
 		}
 	}
 	if len(toTrigger) == 0 {
-		log.Printf("Webhook for repo %s: no build configs with webhook enabled", repoID)
+		log.Printf("Webhook for repo %s: no build settings with webhook enabled", repoID)
 		return nil
 	}
 
@@ -97,16 +95,16 @@ func HandleGitWebhookForCodeRepo(c *gin.Context, repoID, secret string) error {
 
 	for _, cfg := range toTrigger {
 		build, err := TriggerCodeRepositoryBuild(repoID, "", &models.TriggerCodeRepositoryBuildRequest{
-			BuildConfigID: cfg.ID,
-			BuildEnvID:    buildEnv.ID,
+			BuildSettingID: cfg.ID,
+			BuildEnvID:     buildEnv.ID,
 		})
 		if err != nil {
-			log.Printf("Webhook: failed to trigger build for config %s: %v", cfg.Name, err)
+			log.Printf("Webhook: failed to trigger build for setting %s: %v", cfg.Name, err)
 			continue
 		}
 		build.TriggerType = entities.BuildTriggerWebhook
 		db.DB.Model(build).Update("trigger_type", entities.BuildTriggerWebhook)
-		log.Printf("Webhook triggered build #%d for code repository %s (config %s)", build.BuildNumber, repoID, cfg.Name)
+		log.Printf("Webhook triggered build #%d for code repository %s (setting %s)", build.BuildNumber, repoID, cfg.Name)
 		_ = build
 	}
 	return nil

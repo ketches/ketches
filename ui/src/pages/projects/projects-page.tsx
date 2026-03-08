@@ -153,7 +153,15 @@ export function ProjectsPage() {
           </Avatar>
           <div className="flex flex-col">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-foreground">{row.original.name}</span>
+              {isAdmin ? (
+                <span className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/projects/${row.original.id}`)}>
+                  {row.original.name}
+                </span>
+              ) : (
+                <span className="font-medium text-foreground">
+                  {row.original.name}
+                </span>
+              )}
               {row.original.id === activeProjectId && (
                 <ColorBadge color="green">
                   Active
@@ -190,7 +198,7 @@ export function ProjectsPage() {
         return (
           <div className="flex items-center justify-end gap-2">
             {/* Enter button: disabled if this is already the active project */}
-            <Button
+            {!isAdmin && <Button
               variant="outline"
               size="sm"
               onClick={() => handleEnterProject(row.original)}
@@ -199,7 +207,7 @@ export function ProjectsPage() {
             >
               <LogIn className="mr-1 h-3.5 w-3.5" />
               Enter
-            </Button>
+            </Button>}
             <Tooltip>
               <TooltipTrigger
                 delay={200}
@@ -389,6 +397,7 @@ export function ProjectsPage() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               onClick={() => openDeleteDialog(project)}
                             />
                           }

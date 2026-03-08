@@ -42,7 +42,7 @@ export interface UpdateCodeRepositoryRequest {
   webhook_enabled?: boolean
 }
 
-export interface CodeRepositoryBuildConfig {
+export interface BuildSetting {
   id: string
   code_repository_id: string
   name: string
@@ -60,7 +60,7 @@ export interface CodeRepositoryBuildConfig {
   updated_at: string
 }
 
-export interface CreateCodeRepositoryBuildConfigRequest {
+export interface CreateBuildSettingRequest {
   name: string
   git_ref?: string
   dockerfile_path?: string
@@ -73,7 +73,7 @@ export interface CreateCodeRepositoryBuildConfigRequest {
   webhook_enabled?: boolean
 }
 
-export interface UpdateCodeRepositoryBuildConfigRequest {
+export interface UpdateBuildSettingRequest {
   name?: string
   git_ref?: string
   dockerfile_path?: string
@@ -87,7 +87,7 @@ export interface UpdateCodeRepositoryBuildConfigRequest {
 }
 
 export interface TriggerCodeRepositoryBuildRequest {
-  build_config_id: string
+  build_setting_id: string
   build_env_id: string
   git_ref?: string
   auto_deploy?: boolean
@@ -129,20 +129,20 @@ export const codeRepositoriesApi = {
   listRefs: async (repoId: string) => {
     return client.get(`/v1/code-repositories/${repoId}/refs`) as Promise<{ refs: GitRef[] }>
   },
-  listBuildConfigs: async (repoId: string) => {
-    return client.get(`/v1/code-repositories/${repoId}/build-configs`) as Promise<CodeRepositoryBuildConfig[]>
+  listBuildSettings: async (repoId: string) => {
+    return client.get(`/v1/code-repositories/${repoId}/build-settings`) as Promise<BuildSetting[]>
   },
-  createBuildConfig: async (repoId: string, data: CreateCodeRepositoryBuildConfigRequest) => {
-    return client.post(`/v1/code-repositories/${repoId}/build-configs`, data) as Promise<CodeRepositoryBuildConfig>
+  createBuildSetting: async (repoId: string, data: CreateBuildSettingRequest) => {
+    return client.post(`/v1/code-repositories/${repoId}/build-settings`, data) as Promise<BuildSetting>
   },
-  getBuildConfig: async (repoId: string, configId: string) => {
-    return client.get(`/v1/code-repositories/${repoId}/build-configs/${configId}`) as Promise<CodeRepositoryBuildConfig>
+  getBuildSetting: async (repoId: string, settingId: string) => {
+    return client.get(`/v1/code-repositories/${repoId}/build-settings/${settingId}`) as Promise<BuildSetting>
   },
-  updateBuildConfig: async (repoId: string, configId: string, data: UpdateCodeRepositoryBuildConfigRequest) => {
-    return client.put(`/v1/code-repositories/${repoId}/build-configs/${configId}`, data) as Promise<CodeRepositoryBuildConfig>
+  updateBuildSetting: async (repoId: string, settingId: string, data: UpdateBuildSettingRequest) => {
+    return client.put(`/v1/code-repositories/${repoId}/build-settings/${settingId}`, data) as Promise<BuildSetting>
   },
-  deleteBuildConfig: async (repoId: string, configId: string) => {
-    return client.delete(`/v1/code-repositories/${repoId}/build-configs/${configId}`)
+  deleteBuildSetting: async (repoId: string, settingId: string) => {
+    return client.delete(`/v1/code-repositories/${repoId}/build-settings/${settingId}`)
   },
   testGit: async (repoId: string, data: { git_repo_url: string; git_ref?: string; git_username?: string; git_password?: string }) => {
     return client.post(`/v1/code-repositories/${repoId}/test-git`, data)

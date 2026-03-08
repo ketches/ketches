@@ -46,6 +46,14 @@ type ContainerRegistryResponse struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
+// RegistrySummaryResponse is a minimal registry view embedded in build-setting responses.
+// Only the fields actually rendered by the frontend are included.
+type RegistrySummaryResponse struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Provider string `json:"provider"`
+}
+
 type ListContainerRegistryResponse struct {
 	Items      []ContainerRegistryResponse `json:"items"`
 	Pagination PaginationResponse          `json:"pagination"`

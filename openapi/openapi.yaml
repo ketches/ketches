@@ -14,12 +14,12 @@ paths:
     delete:
       operationId: delete_api_v1_app_groups_groupid
       parameters:
-      - description: Path parameter
-        in: path
-        name: groupID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: groupID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -32,19 +32,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/app-groups/{groupID}
       tags:
-      - app-groups
+        - app-groups
     get:
       operationId: get_api_v1_app_groups_groupid
       parameters:
-      - description: Path parameter
-        in: path
-        name: groupID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: groupID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -57,19 +57,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/app-groups/{groupID}
       tags:
-      - app-groups
+        - app-groups
     put:
       operationId: put_api_v1_app_groups_groupid
       parameters:
-      - description: Path parameter
-        in: path
-        name: groupID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: groupID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -82,20 +82,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/app-groups/{groupID}
       tags:
-      - app-groups
+        - app-groups
   /api/v1/app-groups/{groupID}/apps:
     get:
       operationId: get_api_v1_app_groups_groupid_apps
       parameters:
-      - description: Path parameter
-        in: path
-        name: groupID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: groupID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -108,26 +108,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/app-groups/{groupID}/apps
       tags:
-      - app-groups
+        - app-groups
   /api/v1/app-groups/{groupID}/apps/{appID}:
     delete:
       operationId: delete_api_v1_app_groups_groupid_apps_appid
       parameters:
-      - description: Path parameter
-        in: path
-        name: groupID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: groupID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -140,25 +140,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/app-groups/{groupID}/apps/{appID}
       tags:
-      - app-groups
+        - app-groups
     post:
       operationId: post_api_v1_app_groups_groupid_apps_appid
       parameters:
-      - description: Path parameter
-        in: path
-        name: groupID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: groupID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -171,20 +171,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/app-groups/{groupID}/apps/{appID}
       tags:
-      - app-groups
+        - app-groups
   /api/v1/apps/{appID}:
     delete:
       operationId: delete_api_v1_apps_appid
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -197,19 +197,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/apps/{appID}
       tags:
-      - apps
+        - apps
     get:
       operationId: get_api_v1_apps_appid
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -222,20 +222,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/action:
     post:
       operationId: post_api_v1_apps_appid_action
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -248,20 +248,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/action
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/action/apply:
     post:
       operationId: post_api_v1_apps_appid_action_apply
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -274,20 +274,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/action/apply
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/auto-scaling:
     patch:
       operationId: patch_api_v1_apps_appid_auto_scaling
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -300,20 +300,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/auto-scaling
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/available-actions:
     get:
       operationId: get_api_v1_apps_appid_available_actions
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -326,20 +326,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/available-actions
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/basic:
     patch:
       operationId: patch_api_v1_apps_appid_basic
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -352,20 +352,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/basic
       tags:
-      - apps
-  /api/v1/apps/{appID}/build-config:
+        - apps
+  /api/v1/apps/{appID}/build-setting:
     delete:
       operationId: delete_api_v1_apps_appid_build_config
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -378,19 +378,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: DELETE /api/v1/apps/{appID}/build-config
+        - BearerAuth: []
+      summary: DELETE /api/v1/apps/{appID}/build-setting
       tags:
-      - apps
+        - apps
     get:
       operationId: get_api_v1_apps_appid_build_config
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -403,19 +403,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: GET /api/v1/apps/{appID}/build-config
+        - BearerAuth: []
+      summary: GET /api/v1/apps/{appID}/build-setting
       tags:
-      - apps
+        - apps
     post:
       operationId: post_api_v1_apps_appid_build_config
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -428,20 +428,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: POST /api/v1/apps/{appID}/build-config
+        - BearerAuth: []
+      summary: POST /api/v1/apps/{appID}/build-setting
       tags:
-      - apps
-  /api/v1/apps/{appID}/build-config/container-registries:
+        - apps
+  /api/v1/apps/{appID}/build-setting/container-registries:
     get:
       operationId: get_api_v1_apps_appid_build_config_container_registries
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -454,20 +454,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: GET /api/v1/apps/{appID}/build-config/container-registries
+        - BearerAuth: []
+      summary: GET /api/v1/apps/{appID}/build-setting/container-registries
       tags:
-      - apps
-  /api/v1/apps/{appID}/build-config/test-git:
+        - apps
+  /api/v1/apps/{appID}/build-setting/test-git:
     post:
       operationId: post_api_v1_apps_appid_build_config_test_git
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -480,20 +480,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: POST /api/v1/apps/{appID}/build-config/test-git
+        - BearerAuth: []
+      summary: POST /api/v1/apps/{appID}/build-setting/test-git
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/builds:
     get:
       operationId: get_api_v1_apps_appid_builds
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -506,19 +506,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/builds
       tags:
-      - apps
+        - apps
     post:
       operationId: post_api_v1_apps_appid_builds
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -531,26 +531,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/builds
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/builds/{buildID}:
     get:
       operationId: get_api_v1_apps_appid_builds_buildid
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: buildID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: buildID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -563,26 +563,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/builds/{buildID}
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/builds/{buildID}/cancel:
     post:
       operationId: post_api_v1_apps_appid_builds_buildid_cancel
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: buildID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: buildID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -595,26 +595,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/builds/{buildID}/cancel
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/builds/{buildID}/deploy:
     post:
       operationId: post_api_v1_apps_appid_builds_buildid_deploy
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: buildID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: buildID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -627,26 +627,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/builds/{buildID}/deploy
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/builds/{buildID}/logs:
     get:
       operationId: get_api_v1_apps_appid_builds_buildid_logs
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: buildID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: buildID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -659,26 +659,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/builds/{buildID}/logs
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/builds/{buildID}/rebuild:
     post:
       operationId: post_api_v1_apps_appid_builds_buildid_rebuild
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: buildID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: buildID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -691,20 +691,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/builds/{buildID}/rebuild
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/command:
     patch:
       operationId: patch_api_v1_apps_appid_command
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -717,20 +717,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/command
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/config-files:
     get:
       operationId: get_api_v1_apps_appid_config_files
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -743,19 +743,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/config-files
       tags:
-      - apps
+        - apps
     post:
       operationId: post_api_v1_apps_appid_config_files
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -768,20 +768,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/config-files
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/deployment-history:
     get:
       operationId: get_api_v1_apps_appid_deployment_history
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -794,20 +794,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/deployment-history
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/deployment-history/rollback:
     post:
       operationId: post_api_v1_apps_appid_deployment_history_rollback
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -820,20 +820,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/deployment-history/rollback
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/env-vars:
     get:
       operationId: get_api_v1_apps_appid_env_vars
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -846,19 +846,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/env-vars
       tags:
-      - apps
+        - apps
     post:
       operationId: post_api_v1_apps_appid_env_vars
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -871,20 +871,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/env-vars
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/export:
     get:
       operationId: get_api_v1_apps_appid_export
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -897,20 +897,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/export
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/favorite:
     delete:
       operationId: delete_api_v1_apps_appid_favorite
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -923,19 +923,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/apps/{appID}/favorite
       tags:
-      - apps
+        - apps
     get:
       operationId: get_api_v1_apps_appid_favorite
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -948,19 +948,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/favorite
       tags:
-      - apps
+        - apps
     post:
       operationId: post_api_v1_apps_appid_favorite
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -973,20 +973,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/favorite
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/gateways:
     get:
       operationId: get_api_v1_apps_appid_gateways
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -999,19 +999,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/gateways
       tags:
-      - apps
+        - apps
     post:
       operationId: post_api_v1_apps_appid_gateways
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1024,20 +1024,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/gateways
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/health:
     patch:
       operationId: patch_api_v1_apps_appid_health
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1050,20 +1050,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/health
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/image:
     patch:
       operationId: patch_api_v1_apps_appid_image
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1076,20 +1076,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/image
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances:
     get:
       operationId: get_api_v1_apps_appid_instances
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1102,26 +1102,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/instances
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}:
     delete:
       operationId: delete_api_v1_apps_appid_instances_instancename
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1134,26 +1134,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/apps/{appID}/instances/{instanceName}
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/events:
     get:
       operationId: get_api_v1_apps_appid_instances_instancename_events
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1166,26 +1166,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/instances/{instanceName}/events
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/exec:
     get:
       operationId: get_api_v1_apps_appid_instances_instancename_exec
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1198,26 +1198,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/instances/{instanceName}/exec
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files:
     get:
       operationId: get_api_v1_apps_appid_instances_instancename_files
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1230,26 +1230,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/instances/{instanceName}/files
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/compress:
     post:
       operationId: post_api_v1_apps_appid_instances_instancename_files_compress
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1262,26 +1262,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/instances/{instanceName}/files/compress
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/compress-download:
     post:
       operationId: post_api_v1_apps_appid_instances_instancename_files_compress_download
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1294,26 +1294,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/instances/{instanceName}/files/compress-download
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/copy:
     post:
       operationId: post_api_v1_apps_appid_instances_instancename_files_copy
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1326,26 +1326,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/instances/{instanceName}/files/copy
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/delete:
     post:
       operationId: post_api_v1_apps_appid_instances_instancename_files_delete
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1358,26 +1358,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/instances/{instanceName}/files/delete
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/download:
     get:
       operationId: get_api_v1_apps_appid_instances_instancename_files_download
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1390,26 +1390,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/instances/{instanceName}/files/download
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/download-dir:
     get:
       operationId: get_api_v1_apps_appid_instances_instancename_files_download_dir
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1422,26 +1422,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/instances/{instanceName}/files/download-dir
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/home:
     get:
       operationId: get_api_v1_apps_appid_instances_instancename_files_home
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1454,26 +1454,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/instances/{instanceName}/files/home
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/mkdir:
     post:
       operationId: post_api_v1_apps_appid_instances_instancename_files_mkdir
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1486,26 +1486,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/instances/{instanceName}/files/mkdir
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/move:
     post:
       operationId: post_api_v1_apps_appid_instances_instancename_files_move
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1518,26 +1518,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/instances/{instanceName}/files/move
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/read:
     get:
       operationId: get_api_v1_apps_appid_instances_instancename_files_read
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1550,26 +1550,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/instances/{instanceName}/files/read
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/upload:
     post:
       operationId: post_api_v1_apps_appid_instances_instancename_files_upload
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1582,26 +1582,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/instances/{instanceName}/files/upload
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/files/write:
     post:
       operationId: post_api_v1_apps_appid_instances_instancename_files_write
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1614,26 +1614,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/instances/{instanceName}/files/write
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/instances/{instanceName}/logs:
     get:
       operationId: get_api_v1_apps_appid_instances_instancename_logs
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: instanceName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: instanceName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1646,20 +1646,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/instances/{instanceName}/logs
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/plugins:
     get:
       operationId: get_api_v1_apps_appid_plugins
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1672,19 +1672,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/plugins
       tags:
-      - apps
+        - apps
     post:
       operationId: post_api_v1_apps_appid_plugins
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1697,26 +1697,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/plugins
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/plugins/{pluginID}:
     delete:
       operationId: delete_api_v1_apps_appid_plugins_pluginid
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: pluginID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: pluginID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1729,26 +1729,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/apps/{appID}/plugins/{pluginID}
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/plugins/{pluginID}/env:
     patch:
       operationId: patch_api_v1_apps_appid_plugins_pluginid_env
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: pluginID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: pluginID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1761,26 +1761,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/plugins/{pluginID}/env
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/plugins/{pluginID}/toggle:
     patch:
       operationId: patch_api_v1_apps_appid_plugins_pluginid_toggle
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: pluginID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: pluginID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1793,20 +1793,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/plugins/{pluginID}/toggle
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/replicas:
     patch:
       operationId: patch_api_v1_apps_appid_replicas
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1819,20 +1819,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/replicas
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/resources:
     patch:
       operationId: patch_api_v1_apps_appid_resources
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1845,20 +1845,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/resources
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/scheduling:
     patch:
       operationId: patch_api_v1_apps_appid_scheduling
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1871,20 +1871,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/apps/{appID}/scheduling
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/topology:
     get:
       operationId: get_api_v1_apps_appid_topology
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1897,26 +1897,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/topology
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/topology/nodes/{nodeID}/resource-yaml:
     get:
       operationId: get_api_v1_apps_appid_topology_nodes_nodeid_resource_yaml
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: nodeID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: nodeID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1929,20 +1929,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/topology/nodes/{nodeID}/resource-yaml
       tags:
-      - apps
+        - apps
   /api/v1/apps/{appID}/volumes:
     get:
       operationId: get_api_v1_apps_appid_volumes
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1955,19 +1955,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/apps/{appID}/volumes
       tags:
-      - apps
+        - apps
     post:
       operationId: post_api_v1_apps_appid_volumes
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -1980,10 +1980,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/{appID}/volumes
       tags:
-      - apps
+        - apps
   /api/v1/apps/batch-delete:
     post:
       operationId: post_api_v1_apps_batch_delete
@@ -1999,10 +1999,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/apps/batch-delete
       tags:
-      - apps
+        - apps
   /api/v1/clusters:
     get:
       operationId: get_api_v1_clusters
@@ -2018,10 +2018,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters
       tags:
-      - clusters
+        - clusters
     post:
       operationId: post_api_v1_clusters
       responses:
@@ -2036,20 +2036,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/clusters
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}:
     delete:
       operationId: delete_api_v1_clusters_clusterid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2062,19 +2062,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/clusters/{clusterID}
       tags:
-      - clusters
+        - clusters
     get:
       operationId: get_api_v1_clusters_clusterid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2087,19 +2087,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}
       tags:
-      - clusters
+        - clusters
     put:
       operationId: put_api_v1_clusters_clusterid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2112,20 +2112,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/clusters/{clusterID}
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/basic:
     patch:
       operationId: patch_api_v1_clusters_clusterid_basic
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2138,20 +2138,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/clusters/{clusterID}/basic
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/certificates:
     get:
       operationId: get_api_v1_clusters_clusterid_certificates
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2164,19 +2164,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/certificates
       tags:
-      - clusters
+        - clusters
     post:
       operationId: post_api_v1_clusters_clusterid_certificates
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2189,26 +2189,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/clusters/{clusterID}/certificates
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/certificates/{certID}:
     delete:
       operationId: delete_api_v1_clusters_clusterid_certificates_certid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: certID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: certID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2221,25 +2221,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/clusters/{clusterID}/certificates/{certID}
       tags:
-      - clusters
+        - clusters
     get:
       operationId: get_api_v1_clusters_clusterid_certificates_certid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: certID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: certID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2252,25 +2252,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/certificates/{certID}
       tags:
-      - clusters
+        - clusters
     put:
       operationId: put_api_v1_clusters_clusterid_certificates_certid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: certID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: certID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2283,20 +2283,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/clusters/{clusterID}/certificates/{certID}
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/check-connectivity:
     post:
       operationId: post_api_v1_clusters_clusterid_check_connectivity
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2309,20 +2309,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/clusters/{clusterID}/check-connectivity
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/container-registries:
     get:
       operationId: get_api_v1_clusters_clusterid_container_registries
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2335,19 +2335,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/container-registries
       tags:
-      - clusters
+        - clusters
     post:
       operationId: post_api_v1_clusters_clusterid_container_registries
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2360,20 +2360,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/clusters/{clusterID}/container-registries
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/credentials:
     patch:
       operationId: patch_api_v1_clusters_clusterid_credentials
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2386,20 +2386,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/clusters/{clusterID}/credentials
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/extensions:
     get:
       operationId: get_api_v1_clusters_clusterid_extensions
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2412,19 +2412,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/extensions
       tags:
-      - clusters
+        - clusters
     post:
       operationId: post_api_v1_clusters_clusterid_extensions
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2437,26 +2437,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/clusters/{clusterID}/extensions
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/extensions/{clusterExtensionID}:
     delete:
       operationId: delete_api_v1_clusters_clusterid_extensions_clusterextensionid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: clusterExtensionID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: clusterExtensionID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2469,25 +2469,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/clusters/{clusterID}/extensions/{clusterExtensionID}
       tags:
-      - clusters
+        - clusters
     get:
       operationId: get_api_v1_clusters_clusterid_extensions_clusterextensionid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: clusterExtensionID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: clusterExtensionID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2500,25 +2500,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/extensions/{clusterExtensionID}
       tags:
-      - clusters
+        - clusters
     put:
       operationId: put_api_v1_clusters_clusterid_extensions_clusterextensionid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: clusterExtensionID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: clusterExtensionID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2531,20 +2531,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/clusters/{clusterID}/extensions/{clusterExtensionID}
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/gateway-api-status:
     get:
       operationId: get_api_v1_clusters_clusterid_gateway_api_status
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2557,20 +2557,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/gateway-api-status
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/integrations:
     get:
       operationId: get_api_v1_clusters_clusterid_integrations
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2583,19 +2583,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/integrations
       tags:
-      - clusters
+        - clusters
     post:
       operationId: post_api_v1_clusters_clusterid_integrations
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2608,26 +2608,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/clusters/{clusterID}/integrations
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/integrations/{integrationID}:
     delete:
       operationId: delete_api_v1_clusters_clusterid_integrations_integrationid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: integrationID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: integrationID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2640,25 +2640,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/clusters/{clusterID}/integrations/{integrationID}
       tags:
-      - clusters
+        - clusters
     get:
       operationId: get_api_v1_clusters_clusterid_integrations_integrationid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: integrationID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: integrationID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2671,25 +2671,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/integrations/{integrationID}
       tags:
-      - clusters
+        - clusters
     put:
       operationId: put_api_v1_clusters_clusterid_integrations_integrationid
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: integrationID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: integrationID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2702,20 +2702,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/clusters/{clusterID}/integrations/{integrationID}
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/namespaces:
     get:
       operationId: get_api_v1_clusters_clusterid_namespaces
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2728,20 +2728,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/namespaces
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/nodes:
     get:
       operationId: get_api_v1_clusters_clusterid_nodes
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2754,26 +2754,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/nodes
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/nodes/{nodeName}:
     get:
       operationId: get_api_v1_clusters_clusterid_nodes_nodename
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: nodeName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: nodeName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2786,26 +2786,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/nodes/{nodeName}
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/nodes/{nodeName}/annotations:
     patch:
       operationId: patch_api_v1_clusters_clusterid_nodes_nodename_annotations
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: nodeName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: nodeName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2818,26 +2818,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/clusters/{clusterID}/nodes/{nodeName}/annotations
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/nodes/{nodeName}/cordon:
     patch:
       operationId: patch_api_v1_clusters_clusterid_nodes_nodename_cordon
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: nodeName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: nodeName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2850,26 +2850,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/clusters/{clusterID}/nodes/{nodeName}/cordon
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/nodes/{nodeName}/exec:
     get:
       operationId: get_api_v1_clusters_clusterid_nodes_nodename_exec
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: nodeName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: nodeName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2882,26 +2882,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/nodes/{nodeName}/exec
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/nodes/{nodeName}/labels:
     patch:
       operationId: patch_api_v1_clusters_clusterid_nodes_nodename_labels
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: nodeName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: nodeName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2914,26 +2914,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/clusters/{clusterID}/nodes/{nodeName}/labels
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/nodes/{nodeName}/taints:
     patch:
       operationId: patch_api_v1_clusters_clusterid_nodes_nodename_taints
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: nodeName
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: nodeName
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2946,20 +2946,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/clusters/{clusterID}/nodes/{nodeName}/taints
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/prometheus/query:
     get:
       operationId: get_api_v1_clusters_clusterid_prometheus_query
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2972,20 +2972,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/prometheus/query
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/prometheus/query_range:
     get:
       operationId: get_api_v1_clusters_clusterid_prometheus_query_range
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -2998,20 +2998,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/prometheus/query_range
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/public:
     get:
       operationId: get_api_v1_clusters_clusterid_public
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3024,20 +3024,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/public
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/services:
     get:
       operationId: get_api_v1_clusters_clusterid_services
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3050,20 +3050,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/services
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/{clusterID}/storage-classes:
     get:
       operationId: get_api_v1_clusters_clusterid_storage_classes
       parameters:
-      - description: Path parameter
-        in: path
-        name: clusterID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: clusterID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3076,10 +3076,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/{clusterID}/storage-classes
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/check-connectivity:
     post:
       operationId: post_api_v1_clusters_check_connectivity
@@ -3095,10 +3095,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/clusters/check-connectivity
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/ping:
     post:
       operationId: post_api_v1_clusters_ping
@@ -3114,10 +3114,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/clusters/ping
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/public:
     get:
       operationId: get_api_v1_clusters_public
@@ -3133,10 +3133,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/public
       tags:
-      - clusters
+        - clusters
   /api/v1/clusters/simple:
     get:
       operationId: get_api_v1_clusters_simple
@@ -3152,20 +3152,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/clusters/simple
       tags:
-      - clusters
+        - clusters
   /api/v1/code-repositories/{repoID}:
     delete:
       operationId: delete_api_v1_code_repositories_repoid
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3178,19 +3178,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/code-repositories/{repoID}
       tags:
-      - code-repositories
+        - code-repositories
     get:
       operationId: get_api_v1_code_repositories_repoid
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3203,19 +3203,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/code-repositories/{repoID}
       tags:
-      - code-repositories
+        - code-repositories
     put:
       operationId: put_api_v1_code_repositories_repoid
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3228,20 +3228,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/code-repositories/{repoID}
       tags:
-      - code-repositories
-  /api/v1/code-repositories/{repoID}/build-configs:
+        - code-repositories
+  /api/v1/code-repositories/{repoID}/build-settings:
     get:
       operationId: get_api_v1_code_repositories_repoid_build_configs
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3254,19 +3254,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: GET /api/v1/code-repositories/{repoID}/build-configs
+        - BearerAuth: []
+      summary: GET /api/v1/code-repositories/{repoID}/build-settings
       tags:
-      - code-repositories
+        - code-repositories
     post:
       operationId: post_api_v1_code_repositories_repoid_build_configs
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3279,26 +3279,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: POST /api/v1/code-repositories/{repoID}/build-configs
+        - BearerAuth: []
+      summary: POST /api/v1/code-repositories/{repoID}/build-settings
       tags:
-      - code-repositories
-  /api/v1/code-repositories/{repoID}/build-configs/{configID}:
+        - code-repositories
+  /api/v1/code-repositories/{repoID}/build-settings/{settingID}:
     delete:
       operationId: delete_api_v1_code_repositories_repoid_build_configs_configid
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: configID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: settingID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3311,25 +3311,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: DELETE /api/v1/code-repositories/{repoID}/build-configs/{configID}
+        - BearerAuth: []
+      summary: DELETE /api/v1/code-repositories/{repoID}/build-settings/{settingID}
       tags:
-      - code-repositories
+        - code-repositories
     get:
       operationId: get_api_v1_code_repositories_repoid_build_configs_configid
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: configID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: settingID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3342,25 +3342,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: GET /api/v1/code-repositories/{repoID}/build-configs/{configID}
+        - BearerAuth: []
+      summary: GET /api/v1/code-repositories/{repoID}/build-settings/{settingID}
       tags:
-      - code-repositories
+        - code-repositories
     put:
       operationId: put_api_v1_code_repositories_repoid_build_configs_configid
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: configID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: settingID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3373,20 +3373,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
-      summary: PUT /api/v1/code-repositories/{repoID}/build-configs/{configID}
+        - BearerAuth: []
+      summary: PUT /api/v1/code-repositories/{repoID}/build-settings/{settingID}
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/builds:
     get:
       operationId: get_api_v1_code_repositories_repoid_builds
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3399,19 +3399,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/code-repositories/{repoID}/builds
       tags:
-      - code-repositories
+        - code-repositories
     post:
       operationId: post_api_v1_code_repositories_repoid_builds
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3424,26 +3424,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/code-repositories/{repoID}/builds
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/builds/{buildID}:
     get:
       operationId: get_api_v1_code_repositories_repoid_builds_buildid
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: buildID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: buildID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3456,26 +3456,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/code-repositories/{repoID}/builds/{buildID}
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/builds/{buildID}/cancel:
     post:
       operationId: post_api_v1_code_repositories_repoid_builds_buildid_cancel
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: buildID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: buildID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3488,26 +3488,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/code-repositories/{repoID}/builds/{buildID}/cancel
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/builds/{buildID}/deploy:
     post:
       operationId: post_api_v1_code_repositories_repoid_builds_buildid_deploy
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: buildID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: buildID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3520,26 +3520,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/code-repositories/{repoID}/builds/{buildID}/deploy
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/builds/{buildID}/logs:
     get:
       operationId: get_api_v1_code_repositories_repoid_builds_buildid_logs
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: buildID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: buildID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3552,20 +3552,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/code-repositories/{repoID}/builds/{buildID}/logs
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/container-registries:
     get:
       operationId: get_api_v1_code_repositories_repoid_container_registries
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3578,20 +3578,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/code-repositories/{repoID}/container-registries
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/deployments:
     get:
       operationId: get_api_v1_code_repositories_repoid_deployments
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3604,20 +3604,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/code-repositories/{repoID}/deployments
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/refs:
     get:
       operationId: get_api_v1_code_repositories_repoid_refs
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3630,20 +3630,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/code-repositories/{repoID}/refs
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/test-git:
     post:
       operationId: post_api_v1_code_repositories_repoid_test_git
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3656,20 +3656,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/code-repositories/{repoID}/test-git
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/code-repositories/{repoID}/topology:
     get:
       operationId: get_api_v1_code_repositories_repoid_topology
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3682,20 +3682,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/code-repositories/{repoID}/topology
       tags:
-      - code-repositories
+        - code-repositories
   /api/v1/config-files/{id}:
     delete:
       operationId: delete_api_v1_config_files_id
       parameters:
-      - description: Path parameter
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3708,19 +3708,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/config-files/{id}
       tags:
-      - config-files
+        - config-files
     put:
       operationId: put_api_v1_config_files_id
       parameters:
-      - description: Path parameter
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3733,20 +3733,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/config-files/{id}
       tags:
-      - config-files
+        - config-files
   /api/v1/container-registries/{registryID}:
     delete:
       operationId: delete_api_v1_container_registries_registryid
       parameters:
-      - description: Path parameter
-        in: path
-        name: registryID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: registryID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3759,19 +3759,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/container-registries/{registryID}
       tags:
-      - container-registries
+        - container-registries
     get:
       operationId: get_api_v1_container_registries_registryid
       parameters:
-      - description: Path parameter
-        in: path
-        name: registryID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: registryID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3784,19 +3784,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/container-registries/{registryID}
       tags:
-      - container-registries
+        - container-registries
     put:
       operationId: put_api_v1_container_registries_registryid
       parameters:
-      - description: Path parameter
-        in: path
-        name: registryID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: registryID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3809,20 +3809,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/container-registries/{registryID}
       tags:
-      - container-registries
+        - container-registries
   /api/v1/container-registries/{registryID}/test:
     post:
       operationId: post_api_v1_container_registries_registryid_test
       parameters:
-      - description: Path parameter
-        in: path
-        name: registryID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: registryID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3835,10 +3835,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/container-registries/{registryID}/test
       tags:
-      - container-registries
+        - container-registries
   /api/v1/dashboard/environments:
     get:
       operationId: get_api_v1_dashboard_environments
@@ -3854,10 +3854,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/dashboard/environments
       tags:
-      - dashboard
+        - dashboard
   /api/v1/dashboard/stats:
     get:
       operationId: get_api_v1_dashboard_stats
@@ -3873,20 +3873,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/dashboard/stats
       tags:
-      - dashboard
+        - dashboard
   /api/v1/env-vars/{id}:
     delete:
       operationId: delete_api_v1_env_vars_id
       parameters:
-      - description: Path parameter
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3899,19 +3899,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/env-vars/{id}
       tags:
-      - env-vars
+        - env-vars
     put:
       operationId: put_api_v1_env_vars_id
       parameters:
-      - description: Path parameter
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3924,20 +3924,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/env-vars/{id}
       tags:
-      - env-vars
+        - env-vars
   /api/v1/envs/{envID}:
     delete:
       operationId: delete_api_v1_envs_envid
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3950,19 +3950,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/envs/{envID}
       tags:
-      - envs
+        - envs
     get:
       operationId: get_api_v1_envs_envid
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -3975,19 +3975,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/envs/{envID}
       tags:
-      - envs
+        - envs
     put:
       operationId: put_api_v1_envs_envid
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4000,20 +4000,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/envs/{envID}
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/app-groups:
     get:
       operationId: get_api_v1_envs_envid_app_groups
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4026,19 +4026,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/envs/{envID}/app-groups
       tags:
-      - envs
+        - envs
     post:
       operationId: post_api_v1_envs_envid_app_groups
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4051,20 +4051,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/envs/{envID}/app-groups
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/apps:
     get:
       operationId: get_api_v1_envs_envid_apps
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4077,19 +4077,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/envs/{envID}/apps
       tags:
-      - envs
+        - envs
     post:
       operationId: post_api_v1_envs_envid_apps
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4102,20 +4102,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/envs/{envID}/apps
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/apps/export:
     get:
       operationId: get_api_v1_envs_envid_apps_export
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4128,20 +4128,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/envs/{envID}/apps/export
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/apps/favorites:
     get:
       operationId: get_api_v1_envs_envid_apps_favorites
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4154,20 +4154,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/envs/{envID}/apps/favorites
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/apps/image-metadata:
     get:
       operationId: get_api_v1_envs_envid_apps_image_metadata
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4180,20 +4180,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/envs/{envID}/apps/image-metadata
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/apps/import:
     post:
       operationId: post_api_v1_envs_envid_apps_import
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4206,20 +4206,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/envs/{envID}/apps/import
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/apps/simple:
     get:
       operationId: get_api_v1_envs_envid_apps_simple
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4232,20 +4232,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/envs/{envID}/apps/simple
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/basic:
     patch:
       operationId: patch_api_v1_envs_envid_basic
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4258,20 +4258,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/envs/{envID}/basic
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/certificates:
     get:
       operationId: get_api_v1_envs_envid_certificates
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4284,19 +4284,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/envs/{envID}/certificates
       tags:
-      - envs
+        - envs
     post:
       operationId: post_api_v1_envs_envid_certificates
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4309,26 +4309,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/envs/{envID}/certificates
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/certificates/{certID}:
     delete:
       operationId: delete_api_v1_envs_envid_certificates_certid
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: certID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: certID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4341,25 +4341,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/envs/{envID}/certificates/{certID}
       tags:
-      - envs
+        - envs
     get:
       operationId: get_api_v1_envs_envid_certificates_certid
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: certID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: certID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4372,25 +4372,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/envs/{envID}/certificates/{certID}
       tags:
-      - envs
+        - envs
     put:
       operationId: put_api_v1_envs_envid_certificates_certid
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: certID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: certID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4403,20 +4403,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/envs/{envID}/certificates/{certID}
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/set-build-env:
     patch:
       operationId: patch_api_v1_envs_envid_set_build_env
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4429,20 +4429,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/envs/{envID}/set-build-env
       tags:
-      - envs
+        - envs
   /api/v1/envs/{envID}/unset-build-env:
     patch:
       operationId: patch_api_v1_envs_envid_unset_build_env
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4455,10 +4455,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/envs/{envID}/unset-build-env
       tags:
-      - envs
+        - envs
   /api/v1/extensions:
     get:
       operationId: get_api_v1_extensions
@@ -4474,10 +4474,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/extensions
       tags:
-      - extensions
+        - extensions
     post:
       operationId: post_api_v1_extensions
       responses:
@@ -4492,20 +4492,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/extensions
       tags:
-      - extensions
+        - extensions
   /api/v1/extensions/{extensionID}:
     delete:
       operationId: delete_api_v1_extensions_extensionid
       parameters:
-      - description: Path parameter
-        in: path
-        name: extensionID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: extensionID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4518,19 +4518,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/extensions/{extensionID}
       tags:
-      - extensions
+        - extensions
     put:
       operationId: put_api_v1_extensions_extensionid
       parameters:
-      - description: Path parameter
-        in: path
-        name: extensionID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: extensionID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4543,20 +4543,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/extensions/{extensionID}
       tags:
-      - extensions
+        - extensions
   /api/v1/extensions/{extensionID}/installed-clusters:
     get:
       operationId: get_api_v1_extensions_extensionid_installed_clusters
       parameters:
-      - description: Path parameter
-        in: path
-        name: extensionID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: extensionID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4569,20 +4569,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/extensions/{extensionID}/installed-clusters
       tags:
-      - extensions
+        - extensions
   /api/v1/extensions/{extensionID}/versions:
     get:
       operationId: get_api_v1_extensions_extensionid_versions
       parameters:
-      - description: Path parameter
-        in: path
-        name: extensionID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: extensionID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4595,26 +4595,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/extensions/{extensionID}/versions
       tags:
-      - extensions
+        - extensions
   /api/v1/extensions/{extensionID}/versions/{version}/values:
     get:
       operationId: get_api_v1_extensions_extensionid_versions_version_values
       parameters:
-      - description: Path parameter
-        in: path
-        name: extensionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: version
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: extensionID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: version
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4627,20 +4627,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/extensions/{extensionID}/versions/{version}/values
       tags:
-      - extensions
+        - extensions
   /api/v1/gateways/{id}:
     delete:
       operationId: delete_api_v1_gateways_id
       parameters:
-      - description: Path parameter
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4653,19 +4653,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/gateways/{id}
       tags:
-      - gateways
+        - gateways
     put:
       operationId: put_api_v1_gateways_id
       parameters:
-      - description: Path parameter
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4678,10 +4678,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/gateways/{id}
       tags:
-      - gateways
+        - gateways
   /api/v1/projects:
     get:
       operationId: get_api_v1_projects
@@ -4697,10 +4697,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects
       tags:
-      - projects
+        - projects
     post:
       operationId: post_api_v1_projects
       responses:
@@ -4715,20 +4715,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/projects
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}:
     delete:
       operationId: delete_api_v1_projects_projectid
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4741,19 +4741,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/projects/{projectID}
       tags:
-      - projects
+        - projects
     get:
       operationId: get_api_v1_projects_projectid
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4766,19 +4766,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}
       tags:
-      - projects
+        - projects
     put:
       operationId: put_api_v1_projects_projectid
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4791,20 +4791,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/projects/{projectID}
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/code-repositories:
     get:
       operationId: get_api_v1_projects_projectid_code_repositories
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4817,19 +4817,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/code-repositories
       tags:
-      - projects
+        - projects
     post:
       operationId: post_api_v1_projects_projectid_code_repositories
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4842,20 +4842,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/projects/{projectID}/code-repositories
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/code-repositories/simple:
     get:
       operationId: get_api_v1_projects_projectid_code_repositories_simple
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4868,20 +4868,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/code-repositories/simple
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/container-registries:
     get:
       operationId: get_api_v1_projects_projectid_container_registries
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4894,19 +4894,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/container-registries
       tags:
-      - projects
+        - projects
     post:
       operationId: post_api_v1_projects_projectid_container_registries
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4919,20 +4919,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/projects/{projectID}/container-registries
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/container-registries/simple:
     get:
       operationId: get_api_v1_projects_projectid_container_registries_simple
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4945,20 +4945,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/container-registries/simple
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/envs:
     get:
       operationId: get_api_v1_projects_projectid_envs
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4971,19 +4971,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/envs
       tags:
-      - projects
+        - projects
     post:
       operationId: post_api_v1_projects_projectid_envs
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -4996,20 +4996,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/projects/{projectID}/envs
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/envs/simple:
     get:
       operationId: get_api_v1_projects_projectid_envs_simple
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5022,20 +5022,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/envs/simple
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/members:
     delete:
       operationId: delete_api_v1_projects_projectid_members
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5048,19 +5048,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/projects/{projectID}/members
       tags:
-      - projects
+        - projects
     get:
       operationId: get_api_v1_projects_projectid_members
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5073,19 +5073,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/members
       tags:
-      - projects
+        - projects
     post:
       operationId: post_api_v1_projects_projectid_members
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5098,20 +5098,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/projects/{projectID}/members
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/plugins:
     get:
       operationId: get_api_v1_projects_projectid_plugins
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5124,19 +5124,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/plugins
       tags:
-      - projects
+        - projects
     post:
       operationId: post_api_v1_projects_projectid_plugins
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5149,26 +5149,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/projects/{projectID}/plugins
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/plugins/{pluginID}:
     delete:
       operationId: delete_api_v1_projects_projectid_plugins_pluginid
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: pluginID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: pluginID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5181,25 +5181,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/projects/{projectID}/plugins/{pluginID}
       tags:
-      - projects
+        - projects
     get:
       operationId: get_api_v1_projects_projectid_plugins_pluginid
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: pluginID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: pluginID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5212,25 +5212,25 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/plugins/{pluginID}
       tags:
-      - projects
+        - projects
     put:
       operationId: put_api_v1_projects_projectid_plugins_pluginid
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: pluginID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: pluginID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5243,26 +5243,26 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/projects/{projectID}/plugins/{pluginID}
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/plugins/{pluginID}/installed-apps:
     get:
       operationId: get_api_v1_projects_projectid_plugins_pluginid_installed_apps
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: pluginID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
+        - description: Path parameter
+          in: path
+          name: pluginID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5275,20 +5275,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/plugins/{pluginID}/installed-apps
       tags:
-      - projects
+        - projects
   /api/v1/projects/{projectID}/plugins/simple:
     get:
       operationId: get_api_v1_projects_projectid_plugins_simple
       parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: projectID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5301,10 +5301,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/plugins/simple
       tags:
-      - projects
+        - projects
   /api/v1/projects/simple:
     get:
       operationId: get_api_v1_projects_simple
@@ -5320,10 +5320,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/projects/simple
       tags:
-      - projects
+        - projects
   /api/v1/recycle-bin/apps:
     get:
       operationId: get_api_v1_recycle_bin_apps
@@ -5339,10 +5339,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/recycle-bin/apps
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/recycle-bin/apps/permanently-delete:
     post:
       operationId: post_api_v1_recycle_bin_apps_permanently_delete
@@ -5358,10 +5358,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/recycle-bin/apps/permanently-delete
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/recycle-bin/apps/restore:
     post:
       operationId: post_api_v1_recycle_bin_apps_restore
@@ -5377,10 +5377,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/recycle-bin/apps/restore
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/recycle-bin/envs:
     get:
       operationId: get_api_v1_recycle_bin_envs
@@ -5396,20 +5396,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/recycle-bin/envs
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/recycle-bin/envs/{envID}/deletion-conflicts:
     get:
       operationId: get_api_v1_recycle_bin_envs_envid_deletion_conflicts
       parameters:
-      - description: Path parameter
-        in: path
-        name: envID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: envID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5422,10 +5422,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/recycle-bin/envs/{envID}/deletion-conflicts
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/recycle-bin/envs/permanently-delete:
     post:
       operationId: post_api_v1_recycle_bin_envs_permanently_delete
@@ -5441,10 +5441,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/recycle-bin/envs/permanently-delete
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/recycle-bin/envs/restore:
     post:
       operationId: post_api_v1_recycle_bin_envs_restore
@@ -5460,10 +5460,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/recycle-bin/envs/restore
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/recycle-bin/projects:
     get:
       operationId: get_api_v1_recycle_bin_projects
@@ -5479,10 +5479,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/recycle-bin/projects
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/recycle-bin/projects/permanently-delete:
     post:
       operationId: post_api_v1_recycle_bin_projects_permanently_delete
@@ -5498,10 +5498,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/recycle-bin/projects/permanently-delete
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/recycle-bin/projects/restore:
     post:
       operationId: post_api_v1_recycle_bin_projects_restore
@@ -5517,10 +5517,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/recycle-bin/projects/restore
       tags:
-      - recycle-bin
+        - recycle-bin
   /api/v1/users:
     get:
       operationId: get_api_v1_users
@@ -5536,10 +5536,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: GET /api/v1/users
       tags:
-      - users
+        - users
     post:
       operationId: post_api_v1_users
       responses:
@@ -5554,20 +5554,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/users
       tags:
-      - users
+        - users
   /api/v1/users/{userID}:
     delete:
       operationId: delete_api_v1_users_userid
       parameters:
-      - description: Path parameter
-        in: path
-        name: userID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: userID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5580,19 +5580,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/users/{userID}
       tags:
-      - users
+        - users
     put:
       operationId: put_api_v1_users_userid
       parameters:
-      - description: Path parameter
-        in: path
-        name: userID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: userID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5605,20 +5605,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/users/{userID}
       tags:
-      - users
+        - users
   /api/v1/users/{userID}/change-role:
     put:
       operationId: put_api_v1_users_userid_change_role
       parameters:
-      - description: Path parameter
-        in: path
-        name: userID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: userID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5631,20 +5631,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/users/{userID}/change-role
       tags:
-      - users
+        - users
   /api/v1/users/{userID}/role:
     patch:
       operationId: patch_api_v1_users_userid_role
       parameters:
-      - description: Path parameter
-        in: path
-        name: userID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: userID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5657,10 +5657,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PATCH /api/v1/users/{userID}/role
       tags:
-      - users
+        - users
   /api/v1/users/import:
     post:
       operationId: post_api_v1_users_import
@@ -5676,10 +5676,10 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: POST /api/v1/users/import
       tags:
-      - users
+        - users
   /api/v1/users/sign-in:
     post:
       operationId: post_api_v1_users_sign_in
@@ -5696,7 +5696,7 @@ paths:
           description: Internal Server Error
       summary: POST /api/v1/users/sign-in
       tags:
-      - users
+        - users
   /api/v1/users/sign-up:
     post:
       operationId: post_api_v1_users_sign_up
@@ -5713,7 +5713,7 @@ paths:
           description: Internal Server Error
       summary: POST /api/v1/users/sign-up
       tags:
-      - users
+        - users
   /api/v1/version:
     get:
       operationId: get_api_v1_version
@@ -5730,17 +5730,17 @@ paths:
           description: Internal Server Error
       summary: GET /api/v1/version
       tags:
-      - version
+        - version
   /api/v1/volumes/{id}:
     delete:
       operationId: delete_api_v1_volumes_id
       parameters:
-      - description: Path parameter
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5753,19 +5753,19 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: DELETE /api/v1/volumes/{id}
       tags:
-      - volumes
+        - volumes
     put:
       operationId: put_api_v1_volumes_id
       parameters:
-      - description: Path parameter
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5778,20 +5778,20 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: PUT /api/v1/volumes/{id}
       tags:
-      - volumes
+        - volumes
   /api/v1/webhooks/git/{appID}:
     post:
       operationId: post_api_v1_webhooks_git_appid
       parameters:
-      - description: Path parameter
-        in: path
-        name: appID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: appID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5805,17 +5805,17 @@ paths:
           description: Internal Server Error
       summary: POST /api/v1/webhooks/git/{appID}
       tags:
-      - webhooks
+        - webhooks
   /api/v1/webhooks/git/repo/{repoID}:
     post:
       operationId: post_api_v1_webhooks_git_repo_repoid
       parameters:
-      - description: Path parameter
-        in: path
-        name: repoID
-        required: true
-        schema:
-          type: string
+        - description: Path parameter
+          in: path
+          name: repoID
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -5829,7 +5829,7 @@ paths:
           description: Internal Server Error
       summary: POST /api/v1/webhooks/git/repo/{repoID}
       tags:
-      - webhooks
+        - webhooks
   /openapi:
     get:
       operationId: get_openapi
@@ -5846,7 +5846,7 @@ paths:
           description: Internal Server Error
       summary: GET /openapi
       tags:
-      - openapi
+        - openapi
   /openapi/index.html:
     get:
       operationId: get_openapi_index_html
@@ -5863,7 +5863,7 @@ paths:
           description: Internal Server Error
       summary: GET /openapi/index.html
       tags:
-      - openapi
+        - openapi
   /openapi/openapi.json:
     get:
       operationId: get_openapi_openapi_json
@@ -5880,7 +5880,7 @@ paths:
           description: Internal Server Error
       summary: GET /openapi/openapi.json
       tags:
-      - openapi
+        - openapi
   /openapi/openapi.yaml:
     get:
       operationId: get_openapi_openapi_yaml
@@ -5897,6 +5897,6 @@ paths:
           description: Internal Server Error
       summary: GET /openapi/openapi.yaml
       tags:
-      - openapi
+        - openapi
 servers:
-- url: /
+  - url: /

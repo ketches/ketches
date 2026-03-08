@@ -10,6 +10,7 @@ import {
 import { Toaster } from "@/components/ui/sonner"
 import { BottomPanelProvider } from "@/contexts/bottom-panel-context"
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context"
+import { ActivitiesPage } from "@/pages/activities/activities-page"
 import { ApplicationDetailPage } from "@/pages/applications/application-detail-page"
 import { ApplicationsPage } from "@/pages/applications/applications-page"
 import { LoginPage } from "@/pages/auth/login-page"
@@ -23,14 +24,13 @@ import { ContainerRegistriesPage } from "@/pages/container-registries/container-
 import { DashboardPage } from "@/pages/dashboard/dashboard-page"
 import { EnvironmentDetailPage } from "@/pages/environments/environment-detail-page"
 import { EnvironmentsPage } from "@/pages/environments/environments-page"
+import { ExtensionsPage } from "@/pages/extensions/extensions-page"
 import { MembersPage } from "@/pages/members/members-page"
 import { PluginsPage } from "@/pages/plugins/plugins-page"
+import { ProjectDetailPage } from "@/pages/projects/project-detail-page"
+import { ProjectsPage } from "@/pages/projects/projects-page"
 import { RecycleBinPage } from "@/pages/recycle-bin/recycle-bin-page"
 import { UsersPage } from "@/pages/users/users-page"
-import { ExtensionsPage } from "@/pages/extensions/extensions-page"
-import { ProjectsPage } from "@/pages/projects/projects-page"
-import { ProjectDetailPage } from "@/pages/projects/project-detail-page"
-import { ActivityPage } from "@/pages/activity/activity-page"
 import { useAuthStore } from "@/stores/auth"
 import * as React from "react"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
@@ -117,9 +117,9 @@ export function App() {
                 <DashboardLayout><ProjectDetailPage /></DashboardLayout>
               </ProtectedRoute>
             } />
-            <Route path="/activity" element={
+            <Route path="/activities" element={
               <ProtectedRoute>
-                <DashboardLayout><ActivityPage /></DashboardLayout>
+                <DashboardLayout><ActivitiesPage /></DashboardLayout>
               </ProtectedRoute>
             } />
             <Route path="/environments" element={

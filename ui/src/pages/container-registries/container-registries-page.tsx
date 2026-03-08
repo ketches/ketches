@@ -35,20 +35,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
-import { cn } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return "-"
-  const date = new Date(dateString)
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
 
 const REGISTRIES_VIEW_MODE_KEY = "registries_view_mode"
 
@@ -140,26 +128,18 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
           <span className="text-xs text-muted-foreground font-mono truncate max-w-100">
             {row.original.endpoint}
           </span>
-          <Tooltip>
-            <TooltipTrigger
-              delay={200}
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => {
-                    navigator.clipboard.writeText(row.original.endpoint)
-                    toast.success("Endpoint copied to clipboard")
-                  }}
-                />
-              }
-            >
-              <Copy className="h-3 w-3" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Copy endpoint</p>
-            </TooltipContent>
-          </Tooltip>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigator.clipboard.writeText(row.original.endpoint)
+              toast.success("Endpoint copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
         </div>
       ),
     },
@@ -185,9 +165,10 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
       accessorKey: "created_at",
       header: "Created At",
       cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {formatDate(row.original.created_at)}
-        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
     ...(isViewer ? [] : [{
@@ -423,6 +404,13 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
                   <span className="font-mono">
                     {reg.endpoint}
                   </span>
+                  <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover/card:opacity-100 transition-opacity" onClick={() => {
+                    navigator.clipboard.writeText(reg.endpoint)
+                    toast.success("Endpoint copied to clipboard")
+                  }}
+                  >
+                    <Copy />
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Handbag className="h-3.5 w-3.5" />
@@ -463,7 +451,7 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
             <AlertDialogTitle>Delete Registry</AlertDialogTitle>
             <AlertDialogDescription>
               {deletingRegistry
-                ? `Delete registry "${deletingRegistry.name}"? This may affect build configs that use it.`
+                ? `Delete registry "${deletingRegistry.name}"? This may affect build settings that use it.`
                 : "Are you sure you want to delete this registry?"}
             </AlertDialogDescription>
           </AlertDialogHeader>

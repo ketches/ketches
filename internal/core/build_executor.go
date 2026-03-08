@@ -25,7 +25,7 @@ const (
 // CreateBuildJob creates a Kubernetes Job to build a container image using Kaniko.
 func CreateBuildJob(
 	build *entities.Build,
-	config *entities.AppBuildConfig,
+	setting *entities.BuildSetting,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
 	appCtx *models.AppContext,
@@ -35,7 +35,7 @@ func CreateBuildJob(
 	namespace := buildEnv.ClusterNamespace
 
 	// Build the full image destination (build.ImageFullName may be short "image:tag" or already full)
-	imageDestination := resolveImageDestination(registry, config.ImageName, build.ImageFullName)
+	imageDestination := resolveImageDestination(registry, setting.ImageName, build.ImageFullName)
 
 	// Docker config for registry auth
 	dockerConfigSecret := fmt.Sprintf("%s-build-registry", jobName)
@@ -44,7 +44,7 @@ func CreateBuildJob(
 	backoffLimit := int32(0)
 	ttl := int32(3600)
 
-	kanikoArgs := buildKanikoArgs(config.DockerfilePath, config.BuildContext, imageDestination, config.BuildArgs, registry)
+	kanikoArgs := buildKanikoArgs(setting.DockerfilePath, setting.BuildContext, imageDestination, setting.BuildArgs, registry)
 
 	// Git clone command
 	gitRef := build.GitRef
@@ -52,7 +52,7 @@ func CreateBuildJob(
 		gitRef = "main"
 	}
 
-	gitCloneCmd := buildGitCloneCommand(config.GitRepoURL, gitRef, config.GitUsername, config.GitPassword)
+	gitCloneCmd := buildGitCloneCommand(build.GitRepoURL, gitRef, setting.GitUsername, setting.GitPassword)
 
 	labels := map[string]string{
 		kube.LabelAppID:       appCtx.App.ID,
@@ -143,7 +143,7 @@ func CreateBuildJob(
 	}
 
 	// If git credentials use a secret, mount it
-	if config.GitUsername != "" && config.GitPassword != "" {
+	if setting.GitUsername != "" && setting.GitPassword != "" {
 		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
 			Name: "git-secret",
 			VolumeSource: corev1.VolumeSource{
@@ -157,11 +157,11 @@ func CreateBuildJob(
 	return job, nil
 }
 
-// CreateBuildJobFromCodeRepo creates a Kaniko Job using CodeRepository (git) + CodeRepositoryBuildConfig (dockerfile/image).
+// CreateBuildJobFromCodeRepo creates a Kaniko Job using CodeRepository (git) + BuildSetting (dockerfile/image).
 func CreateBuildJobFromCodeRepo(
 	build *entities.Build,
 	repo *entities.CodeRepository,
-	config *entities.CodeRepositoryBuildConfig,
+	setting *entities.BuildSetting,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
 	project *entities.Project,
@@ -169,17 +169,17 @@ func CreateBuildJobFromCodeRepo(
 ) (*batchv1.Job, error) {
 	jobName := fmt.Sprintf("build-%s-%d", jobSlug, build.BuildNumber)
 	namespace := buildEnv.ClusterNamespace
-	imageDestination := resolveImageDestination(registry, config.ImageName, build.ImageFullName)
+	imageDestination := resolveImageDestination(registry, setting.ImageName, build.ImageFullName)
 	dockerConfigSecret := fmt.Sprintf("%s-build-registry", jobName)
 	gitSecretName := fmt.Sprintf("%s-git-cred", jobName)
 	backoffLimit := int32(0)
 	ttl := int32(3600)
 
-	kanikoArgs := buildKanikoArgs(config.DockerfilePath, config.BuildContext, imageDestination, config.BuildArgs, registry)
+	kanikoArgs := buildKanikoArgs(setting.DockerfilePath, setting.BuildContext, imageDestination, setting.BuildArgs, registry)
 
 	gitRef := build.GitRef
 	if gitRef == "" {
-		gitRef = config.GitRef
+		gitRef = setting.GitRef
 	}
 	if gitRef == "" {
 		gitRef = "main"
@@ -326,7 +326,7 @@ func SubmitBuildJobFromCodeRepo(
 	ctx context.Context,
 	build *entities.Build,
 	repo *entities.CodeRepository,
-	config *entities.CodeRepositoryBuildConfig,
+	setting *entities.BuildSetting,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
 	project *entities.Project,
@@ -339,7 +339,7 @@ func SubmitBuildJobFromCodeRepo(
 	if err := CreateBuildSecretsFromCodeRepo(ctx, build, repo, registry, buildEnv, project, jobSlug); err != nil {
 		return "", "", err
 	}
-	job, err := CreateBuildJobFromCodeRepo(build, repo, config, registry, buildEnv, project, jobSlug)
+	job, err := CreateBuildJobFromCodeRepo(build, repo, setting, registry, buildEnv, project, jobSlug)
 	if err != nil {
 		return "", "", err
 	}
@@ -354,7 +354,7 @@ func SubmitBuildJobFromCodeRepo(
 func CreateBuildSecrets(
 	ctx context.Context,
 	build *entities.Build,
-	config *entities.AppBuildConfig,
+	setting *entities.BuildSetting,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
 	appCtx *models.AppContext,
@@ -399,7 +399,7 @@ func CreateBuildSecrets(
 	}
 
 	// Create git credentials secret if needed
-	if config.GitUsername != "" && config.GitPassword != "" {
+	if setting.GitUsername != "" && setting.GitPassword != "" {
 		gitSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-git-cred", jobName),
@@ -408,8 +408,8 @@ func CreateBuildSecrets(
 			},
 			Type: corev1.SecretTypeOpaque,
 			StringData: map[string]string{
-				"username": config.GitUsername,
-				"password": config.GitPassword,
+				"username": setting.GitUsername,
+				"password": setting.GitPassword,
 			},
 		}
 
@@ -425,7 +425,7 @@ func CreateBuildSecrets(
 func SubmitBuildJob(
 	ctx context.Context,
 	build *entities.Build,
-	config *entities.AppBuildConfig,
+	setting *entities.BuildSetting,
 	registry *entities.ContainerRegistry,
 	buildEnv *entities.Env,
 	appCtx *models.AppContext,
@@ -436,12 +436,12 @@ func SubmitBuildJob(
 	}
 
 	// Create secrets first
-	if err := CreateBuildSecrets(ctx, build, config, registry, buildEnv, appCtx); err != nil {
+	if err := CreateBuildSecrets(ctx, build, setting, registry, buildEnv, appCtx); err != nil {
 		return "", "", err
 	}
 
 	// Create the job
-	job, err := CreateBuildJob(build, config, registry, buildEnv, appCtx)
+	job, err := CreateBuildJob(build, setting, registry, buildEnv, appCtx)
 	if err != nil {
 		return "", "", err
 	}

@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import {
   Activity,
-  AlertCircle,
   ArrowRight,
   Blocks,
   Box,
@@ -71,7 +70,6 @@ function AdminDashboard() {
   })
 
   const connectedClusters = clusters.filter((c) => c.status === "connected").length
-  const disconnectedClusters = clusters.filter((c) => c.status === "disconnected").length
 
   if (isLoading) {
     return (
@@ -222,21 +220,18 @@ function AdminDashboard() {
         </Card>
       </div>
 
-      {disconnectedClusters > 0 && (
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              Cluster Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">
-              {disconnectedClusters} cluster(s) are disconnected. Check the cluster configuration and connectivity.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Activities
+          </CardTitle>
+          <CardDescription>Recent platform-wide events and actions</CardDescription>
+        </CardHeader>
+        <CardContent>
+
+        </CardContent>
+      </Card>
     </div>
   )
 }

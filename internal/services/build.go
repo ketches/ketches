@@ -53,13 +53,13 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 		return nil, fmt.Errorf("app not found: %w", err)
 	}
 
-	config, err := GetAppBuildSetting(appID)
+	setting, err := GetAppBuildSetting(appID)
 	if err != nil {
 		return nil, fmt.Errorf("build setting not found: please configure build settings first")
 	}
 
 	// Get the registry
-	registry, err := GetContainerRegistry(config.RegistryID)
+	registry, err := GetContainerRegistry(setting.RegistryID)
 	if err != nil {
 		return nil, fmt.Errorf("image registry not found: %w", err)
 	}
@@ -88,14 +88,14 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 	// Get next build number
 	var lastBuild entities.Build
 	var buildNumber int
-	if err := db.DB.Where("build_setting_id = ?", config.ID).Order("build_number DESC").First(&lastBuild).Error; err != nil {
+	if err := db.DB.Where("build_setting_id = ?", setting.ID).Order("build_number DESC").First(&lastBuild).Error; err != nil {
 		buildNumber = 1
 	} else {
 		buildNumber = lastBuild.BuildNumber + 1
 	}
 
 	// Determine git ref and image tag
-	gitRef := config.GitRef
+	gitRef := setting.GitRef
 	if req.GitRef != "" {
 		gitRef = req.GitRef
 	}
@@ -105,7 +105,7 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 		imageTag = req.ImageTag
 	}
 
-	imageFullName := fmt.Sprintf("%s:%s", config.ImageName, imageTag)
+	imageFullName := fmt.Sprintf("%s:%s", setting.ImageName, imageTag)
 
 	now := time.Now()
 	triggeredBy := userID
@@ -115,7 +115,7 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 	}
 	build := &entities.Build{
 		ID:             uuid.New(),
-		BuildSettingID: config.ID,
+		BuildSettingID: setting.ID,
 		BuildNumber:    buildNumber,
 		Status:         entities.BuildStatusPending,
 		BuildEnvID:     buildEnv.ID,
@@ -152,7 +152,7 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 	jobName, jobNamespace, err := core.SubmitBuildJob(
 		ctx,
 		build,
-		&config.BuildSetting,
+		&setting.BuildSetting,
 		registry,
 		buildEnv,
 		appCtx,
@@ -479,18 +479,85 @@ func ListBuildsByCodeRepository(repoID string) ([]entities.Build, error) {
 	return builds, nil
 }
 
-func ListDeploymentsByCodeRepository(repoID string) ([]entities.Build, error) {
-	var builds []entities.Build
-	if err := db.DB.
-		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
-		Joins("JOIN build_deployments ON build_deployments.build_id = builds.id").
-		Where("build_settings.code_repository_id = ? AND build_deployments.status = ?",
-			repoID, entities.BuildDeploymentStatusDeployed).
-		Order("builds.created_at DESC").
-		Find(&builds).Error; err != nil {
+type codeRepositoryDeploymentRow struct {
+	BuildID                string `gorm:"column:build_id"`
+	BuildSettingID         string `gorm:"column:build_setting_id"`
+	BuildNumber            int    `gorm:"column:build_number"`
+	GitRef                 string `gorm:"column:git_ref"`
+	ImageFullName          string `gorm:"column:image_full_name"`
+	BuildCreatedAt         time.Time
+	DeploymentID           string  `gorm:"column:deployment_id"`
+	DeploymentStatus       string  `gorm:"column:deployment_status"`
+	DeploymentErrorMessage string  `gorm:"column:deployment_error_message"`
+	AppID                  *string `gorm:"column:app_id"`
+	AppName                string  `gorm:"column:app_name"`
+	EnvID                  string  `gorm:"column:env_id"`
+	EnvName                string  `gorm:"column:env_name"`
+}
+
+func toCodeRepositoryDeploymentResponse(row *codeRepositoryDeploymentRow) models.CodeRepositoryDeploymentResponse {
+	resp := models.CodeRepositoryDeploymentResponse{
+		ID:             row.BuildID,
+		DeploymentID:   row.DeploymentID,
+		BuildSettingID: row.BuildSettingID,
+		BuildNumber:    row.BuildNumber,
+		Status:         row.DeploymentStatus,
+		GitRef:         row.GitRef,
+		ImageFullName:  row.ImageFullName,
+		ErrorMessage:   row.DeploymentErrorMessage,
+		CreatedAt:      row.BuildCreatedAt,
+	}
+
+	if row.AppID != nil && *row.AppID != "" {
+		resp.App = &models.DeploymentAppSimpleResponse{
+			ID:   *row.AppID,
+			Name: row.AppName,
+		}
+		if row.EnvID != "" || row.EnvName != "" {
+			resp.App.Env = &models.DeploymentAppEnvSimpleResponse{
+				ID:   row.EnvID,
+				Name: row.EnvName,
+			}
+		}
+	}
+
+	return resp
+}
+
+func ListDeploymentsByCodeRepository(repoID string) ([]models.CodeRepositoryDeploymentResponse, error) {
+	const deploymentListSelectCols = `
+		b.id AS build_id,
+		b.build_setting_id AS build_setting_id,
+		b.build_number AS build_number,
+		b.git_ref AS git_ref,
+		b.image_full_name AS image_full_name,
+		b.created_at AS build_created_at,
+		bd.id AS deployment_id,
+		bd.status AS deployment_status,
+		bd.error_message AS deployment_error_message,
+		bd.app_id AS app_id,
+		COALESCE(a.name, bd.app_name) AS app_name,
+		bd.env_id AS env_id,
+		COALESCE(e.name, '') AS env_name`
+
+	var rows []codeRepositoryDeploymentRow
+	if err := db.DB.Table("build_deployments bd").
+		Select(deploymentListSelectCols).
+		Joins("JOIN builds b ON b.id = bd.build_id").
+		Joins("JOIN build_settings bs ON bs.id = b.build_setting_id").
+		Joins("LEFT JOIN apps a ON a.id = bd.app_id").
+		Joins("LEFT JOIN envs e ON e.id = bd.env_id").
+		Where("bs.code_repository_id = ?", repoID).
+		Order("bd.created_at DESC").
+		Find(&rows).Error; err != nil {
 		return nil, err
 	}
-	return builds, nil
+
+	res := make([]models.CodeRepositoryDeploymentResponse, 0, len(rows))
+	for i := range rows {
+		res = append(res, toCodeRepositoryDeploymentResponse(&rows[i]))
+	}
+	return res, nil
 }
 
 // GetBuildByCodeRepository returns a build that belongs to the given code repository.
@@ -510,14 +577,14 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 	if err != nil {
 		return nil, fmt.Errorf("code repository not found: %w", err)
 	}
-	config, err := GetBuildSetting(req.BuildSettingID)
+	setting, err := GetBuildSetting(req.BuildSettingID)
 	if err != nil {
 		return nil, fmt.Errorf("build setting not found: %w", err)
 	}
-	if config.CodeRepositoryID == nil || *config.CodeRepositoryID != repoID {
+	if setting.CodeRepositoryID == nil || *setting.CodeRepositoryID != repoID {
 		return nil, errors.New("build setting does not belong to this code repository")
 	}
-	registry, err := GetContainerRegistry(config.RegistryID)
+	registry, err := GetContainerRegistry(setting.RegistryID)
 	if err != nil {
 		return nil, fmt.Errorf("container registry not found: %w", err)
 	}
@@ -537,7 +604,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 	var activeCount int64
 	if err := db.DB.Model(&entities.Build{}).
 		Where("build_setting_id = ? AND status IN ?",
-			config.ID, []entities.BuildStatus{
+			setting.ID, []entities.BuildStatus{
 				entities.BuildStatusPending, entities.BuildStatusCloning, entities.BuildStatusBuilding,
 			}).Count(&activeCount).Error; err != nil {
 		return nil, err
@@ -558,7 +625,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 		buildNumber = lastBuild.BuildNumber + 1
 	}
 
-	gitRef := config.GitRef
+	gitRef := setting.GitRef
 	if req.GitRef != "" {
 		gitRef = req.GitRef
 	}
@@ -570,7 +637,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 		imageTag = req.ImageTag
 	}
 	// Store full image reference (registry/namespace/image:tag; for Docker Hub omit URL) for deploy
-	imageFullName := core.BuildImageFullName(registry, config.ImageName, imageTag)
+	imageFullName := core.BuildImageFullName(registry, setting.ImageName, imageTag)
 
 	now := time.Now()
 	triggeredBy := userID
@@ -580,7 +647,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 	}
 	build := &entities.Build{
 		ID:             uuid.New(),
-		BuildSettingID: config.ID,
+		BuildSettingID: setting.ID,
 		BuildNumber:    buildNumber,
 		Status:         entities.BuildStatusPending,
 		BuildEnvID:     buildEnv.ID,
@@ -616,13 +683,13 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 		}
 	}
 
-	jobSlug := CodeRepositorySlugForJob(repo.Name, config.Name)
+	jobSlug := CodeRepositorySlugForJob(repo.Name, setting.Name)
 	baseRepo := repo.CodeRepository
 	jobName, jobNamespace, err := core.SubmitBuildJobFromCodeRepo(
 		context.Background(),
 		build,
 		&baseRepo,
-		&config.BuildSetting,
+		&setting.BuildSetting,
 		registry,
 		buildEnv,
 		project,
@@ -674,11 +741,11 @@ func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req 
 		return nil, nil, errors.New("target environment must belong to the same project")
 	}
 
-	config, err := GetBuildSetting(build.BuildSettingID)
+	setting, err := GetBuildSetting(build.BuildSettingID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("build setting not found: %w", err)
 	}
-	registry, err := GetContainerRegistry(config.RegistryID)
+	registry, err := GetContainerRegistry(setting.RegistryID)
 	if err != nil {
 		return nil, nil, err
 	}

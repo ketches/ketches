@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
 import {
@@ -57,17 +58,6 @@ import { getAppStatusColor } from "@/lib/app-status"
 import { appFavoritesApi } from "@/api/app-favorite"
 import { appGroupsApi } from "@/api/app-groups"
 import { Star } from 'lucide-react'
-const formatDate = (dateString: string) => {
-  if (!dateString) return "-"
-  const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 const APPLICATIONS_VIEW_MODE_KEY = "applications_view_mode"
 
@@ -352,7 +342,7 @@ export function ApplicationList({
               toast.success("Image address copied to clipboard")
             }}
           >
-            <Copy className="h-4 w-4" />
+            <Copy />
           </Button>
         </div>
       ),
@@ -371,9 +361,10 @@ export function ApplicationList({
       accessorKey: "created_at",
       header: "Created At",
       cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {formatDate(row.original.created_at)}
-        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
     {

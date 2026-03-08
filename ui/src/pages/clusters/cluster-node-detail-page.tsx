@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Bookmark,
@@ -311,7 +312,7 @@ export function ClusterNodeDetailPage() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Created At</p>
                   <p className="text-sm">
-                    {new Date(node.metadata.creationTimestamp).toLocaleString()}
+                    {formatDate(node.metadata.creationTimestamp)}
                   </p>
                 </div>
               </div>

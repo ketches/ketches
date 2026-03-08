@@ -59,12 +59,12 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
   const columns: ColumnDef<DeploymentHistory>[] = [
     {
       accessorKey: "created_at",
-      header: "Time",
+      header: "Deployed At",
       cell: ({ row }) => (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
           <Clock className="h-3 w-3" />
-          {formatDate(row.original.created_at)}
-        </span>
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
     {

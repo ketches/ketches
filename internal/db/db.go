@@ -28,9 +28,7 @@ func InitDB() error {
 		return fmt.Errorf("unsupported database driver: %s", app.Config.DBDriver)
 	}
 
-	DB, err = gorm.Open(dialector, &gorm.Config{
-		DisableForeignKeyConstraintWhenMigrating: true,
-	})
+	DB, err = gorm.Open(dialector)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}

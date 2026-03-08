@@ -101,9 +101,8 @@ export function ProjectDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Button variant="outline" size="icon" onClick={() => setEditOpen(true)}>
               <Pencil />
-              Edit
             </Button>
             <Button variant="outline" onClick={() => setDeleteOpen(true)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
               <Trash2 />

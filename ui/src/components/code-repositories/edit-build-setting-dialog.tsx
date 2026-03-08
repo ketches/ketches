@@ -1,4 +1,4 @@
-import { codeRepositoriesApi, type CodeRepositoryBuildConfig, type UpdateCodeRepositoryBuildConfigRequest } from "@/api/code-repositories"
+import { codeRepositoriesApi, type BuildSetting, type UpdateBuildSettingRequest } from "@/api/code-repositories"
 import { registryProviderLabels } from "@/api/container-registries"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
 import { Button } from "@/components/ui/button"
@@ -20,34 +20,34 @@ import { Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-interface EditBuildConfigDialogProps {
+interface EditBuildSettingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   repoId: string
-  config: CodeRepositoryBuildConfig | null
+  setting: BuildSetting | null
   onSuccess?: () => void
 }
 
-export function EditBuildConfigDialog({ open, onOpenChange, repoId, config, onSuccess }: EditBuildConfigDialogProps) {
+export function EditBuildSettingDialog({ open, onOpenChange, repoId, setting: setting, onSuccess }: EditBuildSettingDialogProps) {
   const queryClient = useQueryClient()
-  const [form, setForm] = React.useState<UpdateCodeRepositoryBuildConfigRequest>({})
+  const [form, setForm] = React.useState<UpdateBuildSettingRequest>({})
 
   React.useEffect(() => {
-    if (config) {
+    if (setting) {
       setForm({
-        name: config.name,
-        git_ref: config.git_ref,
-        dockerfile_path: config.dockerfile_path,
-        build_context: config.build_context,
-        image_name: config.image_name,
-        registry_id: config.registry_id,
-        build_args: config.build_args,
-        auto_build: config.auto_build,
-        auto_deploy: config.auto_deploy,
-        webhook_enabled: config.webhook_enabled,
+        name: setting.name,
+        git_ref: setting.git_ref,
+        dockerfile_path: setting.dockerfile_path,
+        build_context: setting.build_context,
+        image_name: setting.image_name,
+        registry_id: setting.registry_id,
+        build_args: setting.build_args,
+        auto_build: setting.auto_build,
+        auto_deploy: setting.auto_deploy,
+        webhook_enabled: setting.webhook_enabled,
       })
     }
-  }, [config, open])
+  }, [setting, open])
 
   const { data: registries } = useQuery({
     queryKey: ['code-repository-registries', repoId],
@@ -56,15 +56,15 @@ export function EditBuildConfigDialog({ open, onOpenChange, repoId, config, onSu
   })
 
   const updateMutation = useMutation({
-    mutationFn: () => codeRepositoriesApi.updateBuildConfig(repoId, config!.id, form),
+    mutationFn: () => codeRepositoriesApi.updateBuildSetting(repoId, setting!.id, form),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['code-repository-build-configs', repoId] })
-      toast.success('Build config updated')
+      queryClient.invalidateQueries({ queryKey: ['build-settings', repoId] })
+      toast.success('Build setting updated')
       onOpenChange(false)
       onSuccess?.()
     },
     onError: (err: AxiosError<{ error: string }>) => {
-      toast.error(err?.response?.data?.error || 'Failed to update build config')
+      toast.error(err?.response?.data?.error || 'Failed to update build setting')
     },
   })
 
@@ -76,15 +76,15 @@ export function EditBuildConfigDialog({ open, onOpenChange, repoId, config, onSu
     updateMutation.mutate()
   }
 
-  if (!config) return null
+  if (!setting) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto gap-0">
         <DialogHeader>
-          <DialogTitle>Edit Build Config</DialogTitle>
+          <DialogTitle>Edit Build Setting</DialogTitle>
           <DialogDescription>
-            Update build configuration for this repository.
+            Update build setting for this repository.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

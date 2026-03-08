@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { ArchiveRestore, Box, GalleryVerticalEnd, Loader2, Orbit, RotateCcw, Trash2 } from "lucide-react"
+import { ArchiveRestore, Box, Clock, GalleryVerticalEnd, Loader2, Orbit, RotateCcw, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -22,17 +22,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useProjectRole } from "@/hooks/useProjectRole"
-const formatDate = (dateString: string) => {
-  if (!dateString) return "-"
-  const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+import { formatDate } from "@/lib/utils"
 
 export function RecycleBinPage() {
   const queryClient = useQueryClient()
@@ -296,7 +286,14 @@ export function RecycleBinPage() {
     {
       accessorKey: "deleted_at",
       header: "Deleted At",
-      cell: ({ row }) => formatDate(row.original.deleted_at),
+      cell: ({ row }) => {
+        return (
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            <span>{formatDate(row.original.deleted_at)}</span>
+          </div>
+        )
+      },
     },
   ]
 
@@ -412,7 +409,12 @@ export function RecycleBinPage() {
     {
       accessorKey: "deleted_at",
       header: "Deleted At",
-      cell: ({ row }) => formatDate(row.original.deleted_at),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.deleted_at)}</span>
+        </div>
+      ),
     },
   ]
 
@@ -524,7 +526,12 @@ export function RecycleBinPage() {
     {
       accessorKey: "deleted_at",
       header: "Deleted At",
-      cell: ({ row }) => formatDate(row.original.deleted_at),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.deleted_at)}</span>
+        </div>
+      ),
     },
   ]
 

@@ -3,7 +3,7 @@ import { GitBranch, Loader2, Save, TestTube2, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { buildConfigsApi, type UpsertBuildConfigRequest } from "@/api/build-configs"
+import { buildSettingsApi, type UpsertBuildSettingRequest } from "@/api/build-settings"
 import { registryProviderLabels, type ContainerRegistry } from "@/api/container-registries"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,25 +26,25 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
 
-interface BuildConfigPanelProps {
+interface BuildSettingPanelProps {
   appId: string
 }
 
-export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
+export function BuildSettingPanel({ appId }: BuildSettingPanelProps) {
   const queryClient = useQueryClient()
 
-  const { data: config, isLoading } = useQuery({
-    queryKey: ['build-config', appId],
-    queryFn: () => buildConfigsApi.get(appId),
+  const { data: setting, isLoading } = useQuery({
+    queryKey: ['build-setting', appId],
+    queryFn: () => buildSettingsApi.get(appId),
     retry: false,
   })
 
   const { data: registries } = useQuery({
     queryKey: ['available-registries', appId],
-    queryFn: () => buildConfigsApi.listAvailableRegistries(appId),
+    queryFn: () => buildSettingsApi.listAvailableRegistries(appId),
   })
 
-  const [form, setForm] = React.useState<UpsertBuildConfigRequest>({
+  const [form, setForm] = React.useState<UpsertBuildSettingRequest>({
     git_repo_url: '',
     git_ref: 'main',
     git_username: '',
@@ -60,53 +60,53 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
   })
 
   React.useEffect(() => {
-    if (config) {
+    if (setting) {
       setForm({
-        git_repo_url: config.git_repo_url,
-        git_ref: config.git_ref || 'main',
-        git_username: config.git_username || '',
+        git_repo_url: setting.git_repo_url,
+        git_ref: setting.git_ref || 'main',
+        git_username: setting.git_username || '',
         git_password: '',
-        dockerfile_path: config.dockerfile_path || 'Dockerfile',
-        build_context: config.build_context || '.',
-        image_name: config.image_name,
-        registry_id: config.registry_id,
-        build_args: config.build_args || '',
-        auto_build: config.auto_build,
-        auto_deploy: config.auto_deploy,
-        webhook_enabled: config.webhook_enabled,
+        dockerfile_path: setting.dockerfile_path || 'Dockerfile',
+        build_context: setting.build_context || '.',
+        image_name: setting.image_name,
+        registry_id: setting.registry_id,
+        build_args: setting.build_args || '',
+        auto_build: setting.auto_build,
+        auto_deploy: setting.auto_deploy,
+        webhook_enabled: setting.webhook_enabled,
       })
     }
-  }, [config])
+  }, [setting])
 
   const saveMutation = useMutation({
-    mutationFn: (data: UpsertBuildConfigRequest) => buildConfigsApi.upsert(appId, data),
+    mutationFn: (data: UpsertBuildSettingRequest) => buildSettingsApi.upsert(appId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['build-config', appId] })
-      toast.success('Build configuration saved')
+      queryClient.invalidateQueries({ queryKey: ['build-setting', appId] })
+      toast.success('Build setting saved')
     },
     onError: (err: AxiosError<{ error: string }>) => {
-      toast.error(err?.response?.data?.error || 'Failed to save build configuration')
+      toast.error(err?.response?.data?.error || 'Failed to save build setting')
     },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: () => buildConfigsApi.delete(appId),
+    mutationFn: () => buildSettingsApi.delete(appId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['build-config', appId] })
+      queryClient.invalidateQueries({ queryKey: ['build-setting', appId] })
       setForm({
         git_repo_url: '', git_ref: 'main', git_username: '', git_password: '',
         dockerfile_path: 'Dockerfile', build_context: '.', image_name: '',
         registry_id: '', build_args: '', auto_build: false, auto_deploy: false, webhook_enabled: false,
       })
-      toast.success('Build configuration deleted')
+      toast.success('Build setting deleted')
     },
     onError: (err: AxiosError<{ error: string }>) => {
-      toast.error(err?.response?.data?.error || 'Failed to delete build configuration')
+      toast.error(err?.response?.data?.error || 'Failed to delete build setting')
     },
   })
 
   const testGitMutation = useMutation({
-    mutationFn: () => buildConfigsApi.testGit(appId, {
+    mutationFn: () => buildSettingsApi.testGit(appId, {
       git_repo_url: form.git_repo_url,
       git_ref: form.git_ref,
       git_username: form.git_username,
@@ -143,12 +143,12 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <GitBranch className="h-4 w-4" />
-              Build Configuration
+              Build Setting
             </CardTitle>
             <CardDescription>Configure Git source and build settings for this application</CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {config && (
+            {setting && (
               <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending}>
                 <Trash2 />
                 Delete
@@ -343,20 +343,20 @@ export function BuildConfigPanel({ appId }: BuildConfigPanelProps) {
         </div>
 
         {/* Webhook Info */}
-        {config?.webhook_enabled && config?.webhook_secret && (
+        {setting?.webhook_enabled && setting?.webhook_secret && (
           <div className="space-y-4">
             <h4 className="text-sm font-medium">Webhook Information</h4>
             <div className="rounded-lg border p-4 space-y-3 bg-muted/50">
               <div className="space-y-1">
                 <FieldTitle className="text-xs text-muted-foreground uppercase">Webhook URL</FieldTitle>
                 <code className="block text-xs bg-background p-2 rounded border break-all">
-                  {`${window.location.origin}/api/v1/webhooks/git/${appId}?secret=${config.webhook_secret}`}
+                  {`${window.location.origin}/api/v1/webhooks/git/${appId}?secret=${setting.webhook_secret}`}
                 </code>
               </div>
               <div className="space-y-1">
                 <FieldTitle className="text-xs text-muted-foreground uppercase">Secret</FieldTitle>
                 <code className="block text-xs bg-background p-2 rounded border break-all font-mono">
-                  {config.webhook_secret}
+                  {setting.webhook_secret}
                 </code>
               </div>
               <p className="text-xs text-muted-foreground">

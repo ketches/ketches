@@ -182,7 +182,7 @@ const nodeTypes = {
 const getTypeIcon = (type: string) => {
   switch (type) {
     case "CodeRepository": return FolderGit2
-    case "BuildConfig": return Hammer
+    case "BuildSetting": return Hammer
     case "Environment": return Orbit
     case "Application": return Box
     default: return Box

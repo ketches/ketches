@@ -1,9 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Trash2, User } from "lucide-react"
-import { useEffect, useState } from "react"
-import { toast } from "sonner"
-
 import { usersApi, type ListUsersResponse, type User as UserType } from "@/api/users"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
@@ -19,9 +13,20 @@ import {
 } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { AddUserDialog } from "@/components/users/add-user-dialog"
 import { EditPasswordDialog } from "@/components/users/edit-password-dialog"
 import { ImportUsersDialog } from "@/components/users/import-users-dialog"
+import { formatDate } from "@/lib/utils"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
+import { Clock, Trash2, User } from "lucide-react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 const USER_ROLES = ["admin", "user"] as const
 type UserRole = (typeof USER_ROLES)[number]
@@ -34,16 +39,6 @@ const UserRoleLabels: Record<UserRole, string> = {
 const UserRoleDescriptions: Record<UserRole, string> = {
   admin: "Full system access",
   user: "Regular user access",
-}
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return "-"
-  const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
 }
 
 export function UsersPage() {
@@ -208,11 +203,12 @@ export function UsersPage() {
       header: "Registered At",
       cell: ({ row }) => {
         return (
-          <span className="text-muted-foreground">
-            {formatDate(row.original.created_at ?? '')}
-          </span>
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            <span>{formatDate(row.original.created_at)}</span>
+          </div>
         )
-      },
+      }
     },
     {
       id: "actions",

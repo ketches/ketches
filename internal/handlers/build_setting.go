@@ -9,44 +9,37 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
-func GetBuildConfig(c *gin.Context) {
+func GetAppBuildSetting(c *gin.Context) {
 	appID := c.Param("appID")
-
-	config, err := services.GetBuildConfig(appID)
+	s, err := services.GetAppBuildSetting(appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
-
-	api.Success(c, services.ToBuildConfigResponse(config))
+	api.Success(c, services.ToBuildSettingResponse(s))
 }
 
-func UpsertBuildConfig(c *gin.Context) {
+func UpsertAppBuildSetting(c *gin.Context) {
 	appID := c.Param("appID")
-
-	var req models.UpsertBuildConfigRequest
+	var req models.UpsertAppBuildSettingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-
-	config, err := services.UpsertBuildConfig(appID, &req)
+	s, err := services.UpsertAppBuildSetting(appID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-
-	api.Success(c, services.ToBuildConfigResponse(config))
+	api.Success(c, services.ToBuildSettingResponse(s))
 }
 
-func DeleteBuildConfig(c *gin.Context) {
+func DeleteAppBuildSetting(c *gin.Context) {
 	appID := c.Param("appID")
-
-	if err := services.DeleteBuildConfig(appID); err != nil {
+	if err := services.DeleteAppBuildSetting(appID); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-
 	api.NoContent(c)
 }
 
@@ -56,20 +49,16 @@ func TestGitConnection(c *gin.Context) {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
-
-	result := services.TestGitConnection(&req)
-	api.Success(c, result)
+	api.Success(c, services.TestGitConnection(&req))
 }
 
 func ListAvailableContainerRegistries(c *gin.Context) {
 	appID := c.Param("appID")
-
 	registries, err := services.ListAvailableRegistriesForApp(appID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-
 	res := make([]models.ContainerRegistryResponse, 0, len(registries))
 	for _, r := range registries {
 		res = append(res, services.ToContainerRegistryResponse(&r))

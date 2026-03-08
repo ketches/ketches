@@ -5,7 +5,7 @@ import * as React from "react"
 import { toast } from "sonner"
 
 import { appsApi } from "@/api/apps"
-import { buildConfigsApi } from "@/api/build-configs"
+import { buildSettingsApi } from "@/api/build-settings"
 import { buildsApi, type Build } from "@/api/builds"
 import { BuildLogViewer } from "@/components/builds/build-log-viewer"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { formatDate } from "@/lib/utils"
 import type { AxiosError } from "axios"
 
 interface BuildListProps {
@@ -45,9 +46,9 @@ export function BuildList({ appId }: BuildListProps) {
   const builds = buildsResponse?.items ?? []
   const totalCount = buildsResponse?.pagination.total || 0
 
-  const { data: config } = useQuery({
-    queryKey: ['build-config', appId],
-    queryFn: () => buildConfigsApi.get(appId),
+  const { data: setting } = useQuery({
+    queryKey: ['build-setting', appId],
+    queryFn: () => buildSettingsApi.get(appId),
     retry: false,
   })
 
@@ -62,7 +63,7 @@ export function BuildList({ appId }: BuildListProps) {
     },
   })
 
-  const hasConfig = !!config
+  const hasConfig = !!setting
   const repoId = app?.code_repository_id
   const projectId = app?.env?.project_id
 
@@ -150,9 +151,10 @@ export function BuildList({ appId }: BuildListProps) {
       accessorKey: "created_at",
       header: "Time",
       cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {new Date(row.original.created_at).toLocaleString()}
-        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
     {

@@ -4,7 +4,7 @@ import * as React from "react"
 import { toast } from "sonner"
 
 import { appsApi } from "@/api/apps"
-import { codeRepositoriesApi, type CodeRepositoryBuildConfig } from "@/api/code-repositories"
+import { codeRepositoriesApi, type BuildSetting } from "@/api/code-repositories"
 import { envsApi } from "@/api/envs"
 import { type SimpleResponse } from "@/api/pagination"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
@@ -50,7 +50,7 @@ export function UnifiedBuildDeployDialog({
 }: UnifiedBuildDeployDialogProps) {
   const queryClient = useQueryClient()
 
-  const [selectedConfigId, setSelectedConfigId] = React.useState<string>("")
+  const [selectedBuildSettingId, setSelectedConfigId] = React.useState<string>("")
   const [gitRef, setGitRef] = React.useState<string>("")
   const [buildEnvId, setBuildEnvId] = React.useState<string>("")
   const [autoDeploy, setAutoDeploy] = React.useState<boolean>(false)
@@ -66,14 +66,14 @@ export function UnifiedBuildDeployDialog({
     enabled: !!repoId && open,
   })
 
-  const { data: buildConfigs = [] } = useQuery({
-    queryKey: ["code-repository-build-configs", repoId],
-    queryFn: () => codeRepositoriesApi.listBuildConfigs(repoId),
+  const { data: buildSettings = [] } = useQuery({
+    queryKey: ["build-settings", repoId],
+    queryFn: () => codeRepositoriesApi.listBuildSettings(repoId),
     enabled: !!repoId && open,
   })
 
   const { data: _builds = [] } = useQuery({
-    queryKey: ["code-repository-builds", repoId],
+    queryKey: ["builds", repoId],
     queryFn: () => codeRepositoriesApi.listBuilds(repoId),
     enabled: !!repoId && !!preSelectedBuildId && open,
   })
@@ -99,8 +99,8 @@ export function UnifiedBuildDeployDialog({
     (a: SimpleResponse) => a.metadata?.code_repository_id === repoId
   )
 
-  const selectedConfig = (buildConfigs as CodeRepositoryBuildConfig[]).find((c) => c.id === selectedConfigId)
-  const isBuildConfigMode = !!preSelectedConfigId && !preSelectedBuildId
+  const selectedConfig = (buildSettings as BuildSetting[]).find((c) => c.id === selectedBuildSettingId)
+  const isBuildSettingMode = !!preSelectedConfigId && !preSelectedBuildId
   const isCodeRepoMode = !preSelectedConfigId && !preSelectedBuildId
 
   const isCreatingApp = !isLoadingApps && (showCreateApp || (!!deployEnvId && existingRepoApps.length === 0)) && !preSelectedDeployAppId
@@ -123,8 +123,8 @@ export function UnifiedBuildDeployDialog({
     if (open) {
       if (preSelectedConfigId) {
         setSelectedConfigId(preSelectedConfigId)
-      } else if ((buildConfigs as CodeRepositoryBuildConfig[]).length > 0 && !selectedConfigId) {
-        setSelectedConfigId((buildConfigs as CodeRepositoryBuildConfig[])[0].id)
+      } else if ((buildSettings as BuildSetting[]).length > 0 && !selectedBuildSettingId) {
+        setSelectedConfigId((buildSettings as BuildSetting[])[0].id)
       }
 
       if (preSelectedBuildId) {
@@ -142,7 +142,7 @@ export function UnifiedBuildDeployDialog({
     } else {
       resetForm()
     }
-  }, [open, preSelectedConfigId, preSelectedBuildId, preSelectedDeployEnvId, preSelectedDeployAppId, buildConfigs, resetForm, selectedConfigId])
+  }, [open, preSelectedConfigId, preSelectedBuildId, preSelectedDeployEnvId, preSelectedDeployAppId, buildSettings, resetForm, selectedBuildSettingId])
 
   React.useEffect(() => {
     if (selectedConfig && !gitRef) {
@@ -190,7 +190,7 @@ export function UnifiedBuildDeployDialog({
       const finalDeployAppId = deployAppId || preSelectedDeployAppId
 
       const payload: any = {
-        build_config_id: selectedConfigId,
+        build_setting_id: selectedBuildSettingId,
         build_env_id: buildEnvId,
       }
 
@@ -211,7 +211,7 @@ export function UnifiedBuildDeployDialog({
       return codeRepositoriesApi.triggerBuild(repoId, payload)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["code-repository-builds", repoId] })
+      queryClient.invalidateQueries({ queryKey: ["builds", repoId] })
       onOpenChange(false)
       resetForm()
       toast.success(autoDeploy ? "Build triggered with auto-deploy" : "Build triggered")
@@ -240,7 +240,7 @@ export function UnifiedBuildDeployDialog({
       return codeRepositoriesApi.deployBuild(repoId, preSelectedBuildId!, payload)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["code-repository-builds", repoId] })
+      queryClient.invalidateQueries({ queryKey: ["builds", repoId] })
       queryClient.invalidateQueries({ queryKey: ["code-repository-deployments", repoId] })
       onOpenChange(false)
       resetForm()
@@ -271,8 +271,8 @@ export function UnifiedBuildDeployDialog({
       }
       deployBuildMutation.mutate()
     } else {
-      if (!selectedConfigId) {
-        toast.error("Please select a build config")
+      if (!selectedBuildSettingId) {
+        toast.error("Please select a build setting")
         return
       }
       if (!buildEnvId) {
@@ -301,19 +301,19 @@ export function UnifiedBuildDeployDialog({
 
   const getDialogTitle = () => {
     if (isDeployMode) return "Deploy Build"
-    if (isBuildConfigMode) return "Trigger Build"
+    if (isBuildSettingMode) return "Trigger Build"
     return "Build & Deploy"
   }
 
   const getDialogDescription = () => {
     if (isDeployMode) return "Deploy this build to an environment"
-    if (isBuildConfigMode) return "Trigger a new build with optional auto-deploy"
+    if (isBuildSettingMode) return "Trigger a new build with optional auto-deploy"
     return "Configure and trigger a new build for this repository"
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-140 max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-140 max-w-2xl max-h-[90vh] overflow-y-auto gap-0">
         <DialogHeader>
           <DialogTitle>{getDialogTitle()}</DialogTitle>
           <DialogDescription>{getDialogDescription()}</DialogDescription>
@@ -324,19 +324,19 @@ export function UnifiedBuildDeployDialog({
             <>
               {isCodeRepoMode && (
                 <Field>
-                  <FieldLabel>Build Config *</FieldLabel>
+                  <FieldLabel>Build Setting *</FieldLabel>
                   <FieldContent>
                     <Combobox
-                      value={selectedConfigId}
+                      value={selectedBuildSettingId}
                       onValueChange={(v) => v !== null && setSelectedConfigId(v)}
-                      itemToStringLabel={(id) => buildConfigs?.find((c: CodeRepositoryBuildConfig) => c.id === id)?.name ?? id ?? ""}
+                      itemToStringLabel={(id) => buildSettings?.find((c: BuildSetting) => c.id === id)?.name ?? id ?? ""}
                     >
-                      <ComboboxInput placeholder="Select build config" />
+                      <ComboboxInput placeholder="Select build setting" />
                       <ComboboxContent>
                         <ComboboxList>
-                          {(buildConfigs || []).map((config) => (
-                            <ComboboxItem key={config.id} value={config.id}>
-                              {config.name}
+                          {(buildSettings || []).map((setting) => (
+                            <ComboboxItem key={setting.id} value={setting.id}>
+                              {setting.name}
                             </ComboboxItem>
                           ))}
                         </ComboboxList>
@@ -346,7 +346,7 @@ export function UnifiedBuildDeployDialog({
                 </Field>
               )}
 
-              {selectedConfigId && (
+              {selectedBuildSettingId && (
                 <>
                   <Field>
                     <FieldLabel>Git Branch / Tag</FieldLabel>
@@ -368,11 +368,7 @@ export function UnifiedBuildDeployDialog({
                         onValueChange={(v) => v !== null && setBuildEnvId(v)}
                         itemToStringLabel={(id) => envs?.find((e: SimpleResponse) => e.id === id)?.name ?? id ?? ""}
                       >
-                        <ComboboxInput placeholder="Select build environment">
-                          {/* <InputGroupAddon>
-                            <Orbit />
-                          </InputGroupAddon> */}
-                        </ComboboxInput>
+                        <ComboboxInput placeholder="Select build environment" />
                         <ComboboxContent>
                           <ComboboxList>
                             {(envs || []).map((env: SimpleResponse) => (
@@ -424,7 +420,12 @@ export function UnifiedBuildDeployDialog({
                         <ComboboxList>
                           {(deployEnvs || []).map((env: SimpleResponse) => (
                             <ComboboxItem key={env.id} value={env.id}>
-                              {env.name}
+                              <Item size="xs" className="p-0">
+                                <ItemContent>
+                                  <ItemTitle>{env.name}</ItemTitle>
+                                  <ItemDescription>{env.slug}</ItemDescription>
+                                </ItemContent>
+                              </Item>
                             </ComboboxItem>
                           ))}
                         </ComboboxList>

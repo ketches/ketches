@@ -22,21 +22,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { formatDate } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Copy, Trash2, UserKey, Users } from "lucide-react"
+import { Clock, Copy, Trash2, UserKey, Users } from "lucide-react"
 import { toast } from "sonner"
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return "-"
-  const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
 
 export function MembersPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const queryClient = useQueryClient()
@@ -164,6 +155,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
           <Button
             variant="ghost"
             size="icon-sm"
+            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(member.email)
@@ -216,7 +208,10 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       accessorKey: "joined_at",
       header: "Joined At",
       cell: ({ row }) => {
-        return <span className="text-muted-foreground">{formatDate(row.original.joined_at)}</span>
+        return <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.joined_at)}</span>
+        </div>
       },
     },
     {

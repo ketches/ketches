@@ -1,7 +1,7 @@
 import client from './client'
 import type { ContainerRegistry } from './container-registries'
 
-export interface BuildConfig {
+export interface BuildSetting {
   id: string
   app_id: string
   git_repo_url: string
@@ -22,7 +22,7 @@ export interface BuildConfig {
   updated_at: string
 }
 
-export interface UpsertBuildConfigRequest {
+export interface UpsertBuildSettingRequest {
   git_repo_url: string
   git_ref?: string
   git_username?: string
@@ -42,20 +42,20 @@ export interface TestGitResponse {
   message: string
 }
 
-export const buildConfigsApi = {
+export const buildSettingsApi = {
   get: async (appId: string) => {
-    return client.get(`/v1/apps/${appId}/build-config`) as Promise<BuildConfig>
+    return client.get(`/v1/apps/${appId}/build-setting`) as Promise<BuildSetting>
   },
-  upsert: async (appId: string, data: UpsertBuildConfigRequest) => {
-    return client.post(`/v1/apps/${appId}/build-config`, data) as Promise<BuildConfig>
+  upsert: async (appId: string, data: UpsertBuildSettingRequest) => {
+    return client.post(`/v1/apps/${appId}/build-setting`, data) as Promise<BuildSetting>
   },
   delete: async (appId: string) => {
-    return client.delete(`/v1/apps/${appId}/build-config`)
+    return client.delete(`/v1/apps/${appId}/build-setting`)
   },
   testGit: async (appId: string, data: { git_repo_url: string; git_ref?: string; git_username?: string; git_password?: string }) => {
-    return client.post(`/v1/apps/${appId}/build-config/test-git`, data) as Promise<TestGitResponse>
+    return client.post(`/v1/apps/${appId}/build-setting/test-git`, data) as Promise<TestGitResponse>
   },
   listAvailableRegistries: async (appId: string) => {
-    return client.get(`/v1/apps/${appId}/build-config/container-registries`) as Promise<ContainerRegistry[]>
+    return client.get(`/v1/apps/${appId}/build-setting/container-registries`) as Promise<ContainerRegistry[]>
   },
 }

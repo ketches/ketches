@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
@@ -33,18 +34,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return "-"
-  const date = new Date(dateString)
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
 
 const CODE_REPOS_VIEW_MODE_KEY = "code_repositories_view_mode"
 
@@ -145,7 +134,9 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => {
+            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
               navigator.clipboard.writeText(row.original.git_repo_url)
               toast.success("Git repository URL copied to clipboard")
             }}
@@ -159,9 +150,10 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
       accessorKey: "created_at",
       header: "Created At",
       cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {formatDate(row.original.created_at)}
-        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
   ]
@@ -240,7 +232,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
           <div>
             <h1 className="text-2xl font-bold">Code Repositories</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage Git repositories, build configs, and deployments
+              Manage Git repositories, build settings, and deployments
             </p>
           </div>
         </div>

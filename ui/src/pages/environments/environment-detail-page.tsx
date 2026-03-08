@@ -1,4 +1,5 @@
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Box,
@@ -217,10 +218,10 @@ export function EnvironmentDetailPage() {
             {!isViewer && (
               <Button
                 variant="outline"
+                size="icon"
                 onClick={() => setEditOpen(true)}
               >
                 <Pencil />
-                Edit
               </Button>
             )}
             <Button
@@ -260,7 +261,7 @@ export function EnvironmentDetailPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4 mt-2">
+        <TabsContent value="overview" className="group/card space-y-4 mt-2">
           <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -308,9 +309,7 @@ export function EnvironmentDetailPage() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Created At</p>
                   <p className="text-sm">
-                    {env.created_at
-                      ? new Date(env.created_at).toLocaleString()
-                      : "N/A"}
+                    {formatDate(env.created_at)}
                   </p>
                 </div>
                 <div>

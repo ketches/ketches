@@ -5,14 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const formatDate = (dateString: string) => {
+export const formatDate = (dateString: string | number | Date) => {
   if (!dateString) return "-"
   const date = new Date(dateString)
+  if (isNaN(date.getTime())) return "-"
   return date.toLocaleString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: false
   })
 }

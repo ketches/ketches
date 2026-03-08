@@ -6,7 +6,7 @@ export interface User {
   email: string
   fullname?: string
   role: string
-  created_at?: string
+  created_at: string
 }
 
 export interface CreateUserRequest {
@@ -44,7 +44,7 @@ export const usersApi = {
     if (params.page) searchParams.set('page', params.page.toString())
     if (params.pageSize) searchParams.set('page_size', params.pageSize.toString())
     if (params.search) searchParams.set('search', params.search)
-    
+
     const query = searchParams.toString()
     const url = query ? `/v1/users?${query}` : '/v1/users'
     return client.get(url) as Promise<ListUsersResponse>

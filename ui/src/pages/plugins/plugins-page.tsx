@@ -125,6 +125,7 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
           <Button
             variant="ghost"
             size="icon-sm"
+            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(row.original.image)
@@ -157,9 +158,10 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
       accessorKey: "created_at",
       header: "Created At",
       cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {formatDate(row.original.created_at)}
-        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
   ]

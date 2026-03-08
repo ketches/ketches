@@ -32,21 +32,10 @@ import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
+import { formatDate } from "@/lib/utils"
 import type { AxiosError } from "axios"
 
 const CLUSTERS_VIEW_MODE_KEY = "clusters_view_mode"
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return "-"
-  const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 export function ClustersPage() {
   const navigate = useNavigate()

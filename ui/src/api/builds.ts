@@ -7,7 +7,6 @@ export type BuildTriggerType = 'manual' | 'webhook' | 'auto'
 export interface Build {
   id: string
   code_repository_id?: string
-  code_repository_build_config_id?: string
   app_id: string
   app?: {
     id: string
@@ -17,7 +16,7 @@ export interface Build {
       name: string
     }
   }
-  build_config_id: string
+  build_setting_id: string
   build_number: number
   status: BuildStatus
   build_env_id: string

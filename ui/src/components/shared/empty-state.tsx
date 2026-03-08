@@ -107,7 +107,7 @@ export function EmptyCodeRepositoryState({ onAction }: { onAction?: () => void }
   return (
     <EmptyState
       title="No code repositories"
-      description="Add a Git repository to manage build configs and deploy to environments."
+      description="Add a Git repository to manage build settings and deploy to environments."
       icon={FolderGit2}
       actionText="Add Repository"
       onAction={onAction}

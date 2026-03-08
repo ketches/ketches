@@ -35,6 +35,7 @@ main
 .opencode/*
 .cursor/*
 docs/plans/*
+ui/docs/plans/*
 
 # Database
 **/*.db

@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { codeRepositoriesApi, type CreateCodeRepositoryBuildConfigRequest } from "@/api/code-repositories"
+import { codeRepositoriesApi, type CreateBuildSettingRequest } from "@/api/code-repositories"
 import { registryProviderLabels } from "@/api/container-registries"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
 import { Button } from "@/components/ui/button"
@@ -22,16 +22,16 @@ import { Input } from "@/components/ui/input"
 
 import type { AxiosError } from "axios"
 
-interface CreateBuildConfigDialogProps {
+interface CreateBuildSettingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   repoId: string
   onSuccess?: () => void
 }
 
-const defaultForm: CreateCodeRepositoryBuildConfigRequest = {
+const defaultForm: CreateBuildSettingRequest = {
   name: 'Default',
-  git_ref: 'main',
+  git_ref: '',
   dockerfile_path: 'Dockerfile',
   build_context: '.',
   image_name: '',
@@ -42,9 +42,9 @@ const defaultForm: CreateCodeRepositoryBuildConfigRequest = {
   webhook_enabled: false,
 }
 
-export function CreateBuildConfigDialog({ open, onOpenChange, repoId, onSuccess }: CreateBuildConfigDialogProps) {
+export function CreateBuildSettingDialog({ open, onOpenChange, repoId, onSuccess }: CreateBuildSettingDialogProps) {
   const queryClient = useQueryClient()
-  const [form, setForm] = React.useState<CreateCodeRepositoryBuildConfigRequest>(defaultForm)
+  const [form, setForm] = React.useState<CreateBuildSettingRequest>(defaultForm)
 
   const { data: repo } = useQuery({
     queryKey: ['code-repository', repoId],
@@ -65,16 +65,16 @@ export function CreateBuildConfigDialog({ open, onOpenChange, repoId, onSuccess 
   }, [open, repo?.slug, form.image_name])
 
   const createMutation = useMutation({
-    mutationFn: () => codeRepositoriesApi.createBuildConfig(repoId, form),
+    mutationFn: () => codeRepositoriesApi.createBuildSetting(repoId, form),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['code-repository-build-configs', repoId] })
-      toast.success('Build config added')
+      queryClient.invalidateQueries({ queryKey: ['build-settings', repoId] })
+      toast.success('Build setting added')
       onOpenChange(false)
       setForm(defaultForm)
       onSuccess?.()
     },
     onError: (err: AxiosError<{ error: string }>) => {
-      toast.error(err?.response?.data?.error || 'Failed to add build config')
+      toast.error(err?.response?.data?.error || 'Failed to add build setting')
     },
   })
 
@@ -88,11 +88,11 @@ export function CreateBuildConfigDialog({ open, onOpenChange, repoId, onSuccess 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto gap-0">
         <DialogHeader>
-          <DialogTitle>Add Build Config</DialogTitle>
+          <DialogTitle>Add Build Setting</DialogTitle>
           <DialogDescription>
-            One repository can have multiple build configs (e.g. frontend, backend). Configure Dockerfile path, context, image name, and registry.
+            One repository can have multiple build settings (e.g. frontend, backend).
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -111,7 +111,7 @@ export function CreateBuildConfigDialog({ open, onOpenChange, repoId, onSuccess 
             <FieldContent>
               <GitRefSelect
                 repoId={repoId}
-                value={form.git_ref ?? 'main'}
+                value={form.git_ref ?? ''}
                 onValueChange={(v) => setForm({ ...form, git_ref: v ?? undefined })}
               />
             </FieldContent>

@@ -246,6 +246,7 @@ export function DataTable<TData, TValue>({
                         data-state={row.getIsSelected() && "selected"}
                         onClick={() => onRowClick?.(row.original)}
                         className={cn(
+                          "group/card",
                           onRowClick ? "cursor-pointer" : "",
                           getRowClassName?.(row.original)
                         )}

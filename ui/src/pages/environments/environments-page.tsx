@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
@@ -38,18 +39,6 @@ import {
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useProjectStore } from "@/stores/project"
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return "-"
-  const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 const ENVIRONMENTS_VIEW_MODE_KEY = "environments_view_mode"
 
@@ -164,6 +153,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
           <Button
             variant="ghost"
             size="icon-sm"
+            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(row.original.cluster_namespace)
@@ -179,9 +169,10 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
       accessorKey: "created_at",
       header: "Created At",
       cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {formatDate(row.original.created_at)}
-        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.created_at)}</span>
+        </div>
       ),
     },
     {

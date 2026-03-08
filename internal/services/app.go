@@ -283,11 +283,11 @@ func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
 		}
 	}
 
-	// Fetch BuildConfig (1:1 optional)
-	var buildConfig *entities.AppBuildConfig
-	var bc entities.AppBuildConfig
-	if err := db.DB.Where("app_id = ?", appID).First(&bc).Error; err == nil {
-		buildConfig = &bc
+	// Fetch BuildSetting (1:1 optional)
+	var buildSetting *entities.BuildSetting
+	var bs entities.BuildSetting
+	if err := db.DB.Where("app_id = ?", appID).First(&bs).Error; err == nil {
+		buildSetting = &bs
 	}
 
 	return &models.AppContext{
@@ -302,7 +302,7 @@ func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
 		AutoScaling:    autoScaling,
 		AppPlugins:     appPlugins,
 		Plugins:        plugins,
-		BuildConfig:    buildConfig,
+		BuildSetting:   buildSetting,
 	}, nil
 }
 

@@ -201,13 +201,13 @@ func UpdateContainerRegistry(id string, req *models.UpdateContainerRegistryReque
 }
 
 func DeleteContainerRegistry(id string) error {
-	// Check if any build config references this registry
+	// Check if any build setting references this registry
 	var count int64
-	if err := db.DB.Model(&entities.AppBuildConfig{}).Where("registry_id = ?", id).Count(&count).Error; err != nil {
+	if err := db.DB.Model(&entities.BuildSetting{}).Where("registry_id = ?", id).Count(&count).Error; err != nil {
 		return err
 	}
 	if count > 0 {
-		return errors.New("cannot delete registry: it is referenced by build configurations")
+		return errors.New("cannot delete registry: it is referenced by build settings")
 	}
 	return db.DB.Delete(&entities.ContainerRegistry{}, "id = ?", id).Error
 }

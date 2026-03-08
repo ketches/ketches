@@ -1,23 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
-import {
-  CircleCheck,
-  CircleSlash,
-  Clock,
-  Cpu,
-  Edit,
-  ExternalLink,
-  Key,
-  Loader2,
-  MemoryStick,
-  Plus,
-  Puzzle,
-  ScanSearch,
-  Trash2
-} from "lucide-react"
-import * as React from "react"
-import { toast } from "sonner"
-
 import { pluginsApi, type AppPlugin } from "@/api/plugins"
 import { DataTable } from "@/components/data-table/data-table"
 import { EditAppPluginEnvDialog } from "@/components/plugins/edit-app-plugin-env-dialog"
@@ -39,7 +19,32 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { formatDate } from "@/lib/utils"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef } from "@tanstack/react-table"
+import {
+  CircleCheck,
+  CircleSlash,
+  Clock,
+  Cpu,
+  Edit,
+  ExternalLink,
+  Key,
+  Loader2,
+  MemoryStick,
+  Plus,
+  Puzzle,
+  ScanSearch,
+  Trash2
+} from "lucide-react"
+import * as React from "react"
 import { Link } from "react-router-dom"
+import { toast } from "sonner"
 
 interface AppPluginsProps {
   appId: string
@@ -150,12 +155,12 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
     },
     {
       accessorKey: "created_at",
-      header: "Installed",
+      header: "Installed At",
       cell: ({ row }) => {
         return (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
-            {new Date(row.original.created_at).toLocaleDateString()}
+            {formatDate(row.original.created_at)}
           </div>
         )
       },
