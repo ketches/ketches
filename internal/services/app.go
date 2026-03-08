@@ -283,13 +283,6 @@ func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
 		}
 	}
 
-	// Fetch BuildSetting (1:1 optional)
-	var buildSetting *entities.BuildSetting
-	var bs entities.BuildSetting
-	if err := db.DB.Where("app_id = ?", appID).First(&bs).Error; err == nil {
-		buildSetting = &bs
-	}
-
 	return &models.AppContext{
 		App:            application,
 		EnvContext:     *envCtx,
@@ -302,7 +295,6 @@ func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
 		AutoScaling:    autoScaling,
 		AppPlugins:     appPlugins,
 		Plugins:        plugins,
-		BuildSetting:   buildSetting,
 	}, nil
 }
 
