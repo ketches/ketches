@@ -18,7 +18,7 @@ export function WorkloadPanelFrame({ toolbar, status, children, className }: Wor
             <div className="min-h-0 flex-1 overflow-hidden">
                 {children}
             </div>
-            <div className="flex h-8 min-h-8 items-center justify-between border-t bg-muted/20 px-3 text-[10px] text-muted-foreground">
+            <div className="flex h-7 min-h-7 items-center justify-between border-t bg-muted/20 px-3 text-[10px] text-muted-foreground">
                 {status}
             </div>
         </div>

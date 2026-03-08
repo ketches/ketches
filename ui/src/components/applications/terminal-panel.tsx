@@ -176,7 +176,7 @@ function TerminalInstance({
       cursorBlink: true,
       fontSize: 13,
       fontFamily: 'monospace',
-      lineHeight: 1.2,
+      lineHeight: 1,
       // theme: {
       //   background: "#0a0a0a",
       //   foreground: "#e4e4e7",
@@ -208,6 +208,7 @@ function TerminalInstance({
 
     xterm.loadAddon(fitAddon)
     xterm.loadAddon(webLinksAddon)
+    fitAddon.fit()
 
     const safeFit = () => {
       if (isDisposed || !isTerminalOpened) return

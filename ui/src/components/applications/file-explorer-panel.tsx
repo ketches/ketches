@@ -1072,7 +1072,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       </AlertDialog>
 
       {/* Status bar */}
-      <div className="flex h-8 min-h-8 items-center justify-between border-t bg-muted/20 px-3 text-[10px] text-muted-foreground">
+      <div className="flex h-7 min-h-7 items-center justify-between border-t bg-muted/20 px-3 text-[10px] text-muted-foreground">
         <div className="flex items-center gap-3">
           <span>{sortedFiles.length} items</span>
           {isMultiSelect && <span>{selectedFiles.size} selected</span>}
