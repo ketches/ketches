@@ -25,17 +25,15 @@ type Build struct {
 	ID        string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-	// CodeRepositoryID: build belongs to this code repo. Optional for backward compat with app-bound builds.
-	CodeRepositoryID *string `gorm:"type:varchar(36);index"`
-	// CodeRepositoryBuildConfigID: which repo build config was used (required when CodeRepositoryID is set).
-	CodeRepositoryBuildConfigID *string `gorm:"type:varchar(36);index"`
-	// AppID: optional deployment record only — "this build was deployed to this app". Build produces an image; deploy (to any env/app) is separate. No FK to apps.
-	AppID         *string     `gorm:"type:varchar(36);index"`
-	BuildConfigID *string     `gorm:"type:varchar(36);index"` // optional: app build config (legacy); NULL for code-repo builds
-	BuildNumber   int         `gorm:"type:int;not null"`
-	Status        BuildStatus `gorm:"type:varchar(32);default:'pending'"`
 
-	// Build environment (which env's cluster/namespace ran this build)
+	// BuildSettingID: the config used for this build (required).
+	BuildSettingID string  `gorm:"type:varchar(36);not null;index"`
+
+
+	BuildNumber int         `gorm:"type:int;not null"`
+	Status      BuildStatus `gorm:"type:varchar(32);default:'pending'"`
+
+	// Build environment
 	BuildEnvID string `gorm:"type:varchar(36);not null;index"`
 
 	// Git info (snapshot at build time)
@@ -44,7 +42,7 @@ type Build struct {
 	GitCommitSHA string `gorm:"type:varchar(64)"`
 	GitCommitMsg string `gorm:"type:text"`
 
-	// Image output
+	// Build artifact
 	ImageFullName string `gorm:"type:varchar(512)"`
 
 	// Execution info
@@ -57,10 +55,7 @@ type Build struct {
 	Duration     int    `gorm:"type:int"`
 	ErrorMessage string `gorm:"type:text"`
 
-	PendingDeployEnvID   *string `gorm:"type:varchar(36)"`
-	PendingDeployAppID   *string `gorm:"type:varchar(36)"`
-	PendingDeployAppName string  `gorm:"type:varchar(128)"`
-	PendingDeployAppSlug string  `gorm:"type:varchar(64)"`
+
 }
 
 func (Build) TableName() string {
