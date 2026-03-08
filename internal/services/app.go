@@ -755,12 +755,12 @@ func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName,
 func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName string, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
 	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to build kubeconfig: %w", err)
 	}
 
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 
 	req := client.CoreV1().RESTClient().Post().
@@ -768,14 +768,34 @@ func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName str
 		Name(instanceName).
 		Namespace(appCtx.EnvContext.Env.ClusterNamespace).
 		SubResource("exec").
-		VersionedParams(&metav1.GetOptions{}, scheme.ParameterCodec)
+		VersionedParams(&corev1.PodExecOptions{
+			Container: containerName,
+			Command:   []string{"sh", "-c", "clear; exec $(command -v bash || command -v ash || command -v sh)"},
+			Stdin:     stdin != nil,
+			Stdout:    stdout != nil,
+			Stderr:    stderr != nil,
+			TTY:       tty,
+		}, scheme.ParameterCodec)
 
 	executor, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create SPDY executor: %w", err)
 	}
 
-	_ = executor
+	streamOptions := remotecommand.StreamOptions{
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
+		Tty:    tty,
+	}
+	if tty {
+		streamOptions.TerminalSizeQueue = terminalSizeQueue
+	}
+
+	if err := executor.StreamWithContext(context.Background(), streamOptions); err != nil {
+		return fmt.Errorf("failed to stream exec session: %w", err)
+	}
+
 	return nil
 }
 

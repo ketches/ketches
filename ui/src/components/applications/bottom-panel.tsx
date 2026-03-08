@@ -120,23 +120,23 @@ export function BottomPanel() {
         left: sidebarWidth,
       }}
     >
-      <div className="flex items-center justify-between h-12 px-4 border-b bg-muted/30">
-        <div className="flex items-center gap-3">
-          <Tabs value={panelState.type} onValueChange={(v) => switchType(v as any)} className="w-auto">
-            <TabsList className="h-8">
+      <div className="flex items-center justify-between h-10 px-4 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <Tabs value={panelState.type} onValueChange={(v) => switchType(v as any)} className="w-auto h-7">
+            <TabsList className="h-7">
               {!isNode && (
-                <TabsTrigger value="logs" className="text-xs px-3">
-                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                <TabsTrigger value="logs" className="text-xs">
+                  <FileText className="h-3.5 w-3.5" />
                   Logs
                 </TabsTrigger>
               )}
-              <TabsTrigger value="terminal" className="text-xs px-3">
-                <Terminal className="h-3.5 w-3.5 mr-1.5" />
+              <TabsTrigger value="terminal" className="text-xs">
+                <Terminal className="h-3.5 w-3.5" />
                 Terminal
               </TabsTrigger>
               {!isNode && (
-                <TabsTrigger value="files" className="text-xs px-3">
-                  <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
+                <TabsTrigger value="files" className="text-xs">
+                  <FolderOpen className="h-3.5 w-3.5" />
                   Files
                 </TabsTrigger>
               )}
@@ -275,7 +275,7 @@ export function BottomPanel() {
       </div>
 
       {!isMinimized && (
-        <div className="h-[calc(100%-3rem)] overflow-hidden">
+        <div className="h-[calc(100%-2.5rem)] overflow-hidden">
           <Tabs value={panelState.type} className="w-full h-full">
             <TabsContent value="logs" className="h-full mt-0">
               <LogPanel

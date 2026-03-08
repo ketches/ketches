@@ -24,6 +24,8 @@ import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
+import { WorkloadPanelFrame } from "./workload-panel-frame"
+
 interface LogPanelProps {
   appId: string
   instanceName: string
@@ -135,102 +137,129 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/20">
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Search logs..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="h-7 w-50 text-xs"
-          />
-          {searchText && (
-            <span className="text-xs text-muted-foreground">
-              {filteredLogs.length} / {logs.length} lines
-            </span>
-          )}
-        </div>
+    <WorkloadPanelFrame
+      toolbar={(
+        <>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Search logs..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="h-6 w-50 text-xs"
+            />
+            {searchText && (
+              <span className="text-xs text-muted-foreground">
+                {filteredLogs.length} / {logs.length} lines
+              </span>
+            )}
+          </div>
 
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon-sm" onClick={handleRefresh}>
-            <RefreshCw className="h-3.5 w-3.5" />
-          </Button>
-          <Tooltip>
-            <TooltipTrigger
-              delay={200}
-              render={<Button variant="ghost" size="icon-sm" onClick={() => setAutoRefresh(!autoRefresh)} />}
-            >
-              {autoRefresh ? (
-                <Pause className="h-3.5 w-3.5" />
-              ) : (
-                <Play className="h-3.5 w-3.5" />
-              )}
-            </TooltipTrigger>
-            <TooltipContent>{autoRefresh ? "Pause" : "Resume"}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              delay={200}
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleDownload}
-                  disabled={logs.length === 0}
-                />
-              }
-            >
-              <Download className="h-3.5 w-3.5" />
-            </TooltipTrigger>
-            <TooltipContent>Download logs</TooltipContent>
-          </Tooltip>
-          <DropdownMenu>
+          <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger
                 delay={200}
-                render={<DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />} />}
+                render={<Button variant="ghost" size="icon-sm" onClick={handleRefresh} />}
               >
-                <Settings2 className="h-3.5 w-3.5" />
+                <RefreshCw className="h-3.5 w-3.5" />
               </TooltipTrigger>
-              <TooltipContent>Log settings</TooltipContent>
+              <TooltipContent>Refresh</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-50">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-xs">Settings</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <div className="p-2">
-                  <Field>
-                    <FieldLabel htmlFor="tailLines" className="text-xs">Initial Lines</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="tailLines"
-                        type="number"
-                        value={tailLines}
-                        onChange={(e) => setTailLines(parseInt(e.target.value) || 500)}
-                        min={100}
-                        max={5000}
-                        step={100}
-                        className="h-7 text-xs"
-                      />
-                    </FieldContent>
-                  </Field>
-                </div>
-                <DropdownMenuCheckboxItem
-                  checked={showTimestamp}
-                  onCheckedChange={setShowTimestamp}
-                  className="text-xs"
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={<Button variant="ghost" size="icon-sm" onClick={() => setAutoRefresh(!autoRefresh)} />}
+              >
+                {autoRefresh ? (
+                  <Pause className="h-3.5 w-3.5" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
+              </TooltipTrigger>
+              <TooltipContent>{autoRefresh ? "Pause" : "Resume"}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleDownload}
+                    disabled={logs.length === 0}
+                  />
+                }
+              >
+                <Download className="h-3.5 w-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Download logs</TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={200}
+                  render={<DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />} />}
                 >
-                  Show Timestamp
-                </DropdownMenuCheckboxItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+                  <Settings2 className="h-3.5 w-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>Log settings</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-50">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-xs">Settings</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <div className="p-2">
+                    <Field>
+                      <FieldLabel htmlFor="tailLines" className="text-xs">Initial Lines</FieldLabel>
+                      <FieldContent>
+                        <Input
+                          id="tailLines"
+                          type="number"
+                          value={tailLines}
+                          onChange={(e) => setTailLines(parseInt(e.target.value) || 500)}
+                          min={100}
+                          max={5000}
+                          step={100}
+                          className="h-7 text-xs"
+                        />
+                      </FieldContent>
+                    </Field>
+                  </div>
+                  <DropdownMenuCheckboxItem
+                    checked={showTimestamp}
+                    onCheckedChange={setShowTimestamp}
+                    className="text-xs"
+                  >
+                    Show Timestamp
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </>
+      )}
+      status={(
+        <>
+          <div className="flex items-center gap-4">
+            <span>Lines: {logs.length}</span>
+            <span className={cn(
+              "flex items-center gap-1.5",
+              autoRefresh ? "text-emerald-500" : "text-amber-500"
+            )}>
+              <span className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+              )} />
+              {autoRefresh ? "Live" : "Paused"}
+            </span>
+          </div>
+          <div>Container: {containerName}</div>
+        </>
+      )}
+    >
 
       <div
         ref={logContainerRef}
-        className="flex-1 bg-zinc-950 text-zinc-100 font-mono text-xs overflow-y-auto p-3"
+        className="h-full overflow-y-auto bg-zinc-950 p-3 font-mono text-xs text-zinc-100"
       >
         {filteredLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-zinc-500">
@@ -263,25 +292,6 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
           </>
         )}
       </div>
-
-      <div className="flex items-center justify-between px-4 py-1.5 border-t bg-muted/30 text-xs text-muted-foreground">
-        <div className="flex items-center gap-4">
-          <span>Lines: {logs.length}</span>
-          <span className={cn(
-            "flex items-center gap-1.5",
-            autoRefresh ? "text-emerald-500" : "text-amber-500"
-          )}>
-            <span className={cn(
-              "w-1.5 h-1.5 rounded-full",
-              autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
-            )} />
-            {autoRefresh ? "Live" : "Paused"}
-          </span>
-        </div>
-        <div className="text-xs text-muted-foreground">
-          Container: {containerName}
-        </div>
-      </div>
-    </div>
+    </WorkloadPanelFrame>
   )
 }

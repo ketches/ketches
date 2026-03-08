@@ -27,7 +27,7 @@ import {
   Save,
   Trash2,
   Upload,
-  X,
+  X
 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { AxiosError } from "axios"
+import { Separator } from "../ui/separator"
 
 // Copy text to clipboard with toast feedback
 function copyToClipboard(text: string) {
@@ -644,9 +645,9 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/20">
+      <div className="flex h-8 min-h-8 items-center justify-between border-b bg-muted/20 px-3">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Navigation buttons */}
           <Tooltip>
@@ -680,15 +681,22 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
 
           {/* Breadcrumb path */}
           <div className="flex items-center gap-0.5 text-xs min-w-0 overflow-x-auto no-scrollbar group/breadcrumb">
-            <button
-              onClick={() => navigateTo("/")}
-              className={cn(
-                "px-1.5 py-0.5 rounded hover:bg-muted transition-colors font-mono shrink-0",
-                currentPath === "/" ? "text-foreground font-medium" : "text-muted-foreground"
-              )}
-            >
-              /
-            </button>
+            <Tooltip>
+              <TooltipTrigger>
+                <button
+                  onClick={() => navigateTo("/")}
+                  className={cn(
+                    "px-1.5 py-0.5 rounded hover:bg-muted transition-colors font-mono shrink-0",
+                    currentPath === "/" ? "text-foreground font-medium" : "text-muted-foreground"
+                  )}
+                >
+                  /
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="text-[10px]">
+                Go to root directory
+              </TooltipContent>
+            </Tooltip>
             {pathSegments.map((segment, index) => (
               <React.Fragment key={index}>
                 <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -704,21 +712,29 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
                       {segment}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-[10px]">
+                  <TooltipContent className="text-[10px]">
                     {buildPath(pathSegments.slice(0, index + 1))}
                   </TooltipContent>
                 </Tooltip>
               </React.Fragment>
             ))}
             {/* Copy current path button - visible on breadcrumb hover */}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="opacity-0 group-hover/breadcrumb:opacity-100 transition-opacity shrink-0"
-              onClick={() => copyToClipboard(currentPath)}
-            >
-              <Clipboard className="h-3.5 w-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="opacity-0 group-hover/breadcrumb:opacity-100 transition-opacity shrink-0"
+                    onClick={() => copyToClipboard(currentPath)}
+                  />
+                }
+              >
+                <Clipboard className="h-3.5 w-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Copy current path</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -824,7 +840,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
             <TooltipContent>New folder</TooltipContent>
           </Tooltip>
 
-          <div className="h-4 w-px bg-border mx-0.5" />
+          <Separator orientation="vertical" className="mt-1 mb-1 mx-2" />
 
           <div className="flex items-center bg-muted rounded-md">
             <Tooltip>
@@ -863,6 +879,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
         </div>
       </div>
 
+
       {/* Hidden file input for upload */}
       <input
         ref={fileInputRef}
@@ -872,7 +889,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       />
 
       {/* File list content */}
-      <div className="flex-1 overflow-auto relative">
+      <div className="relative min-h-0 flex-1 overflow-auto">
         {isOpeningFile && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/60 z-10">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1055,7 +1072,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
       </AlertDialog>
 
       {/* Status bar */}
-      <div className="flex items-center justify-between px-3 py-1 border-t bg-muted/20 text-[10px] text-muted-foreground">
+      <div className="flex h-8 min-h-8 items-center justify-between border-t bg-muted/20 px-3 text-[10px] text-muted-foreground">
         <div className="flex items-center gap-3">
           <span>{sortedFiles.length} items</span>
           {isMultiSelect && <span>{selectedFiles.size} selected</span>}
@@ -1171,7 +1188,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 }
 
@@ -1232,7 +1249,7 @@ function FileEditorView({
             <TooltipTrigger>
               <span className="text-xs font-mono truncate cursor-default">{editingFile.path}</span>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-[10px] font-mono">{editingFile.path}</TooltipContent>
+            <TooltipContent className="text-[10px] font-mono">{editingFile.path}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger>
@@ -1245,7 +1262,7 @@ function FileEditorView({
                 <Clipboard className="h-3 w-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-[10px]">Copy file path</TooltipContent>
+            <TooltipContent className="text-[10px]">Copy file path</TooltipContent>
           </Tooltip>
           {hasChanges && (
             <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded shrink-0">Modified</span>

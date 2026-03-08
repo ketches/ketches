@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
+import { Separator } from "../ui/separator"
+import { WorkloadPanelFrame } from "./workload-panel-frame"
+
 interface TerminalSession {
   id: string
   name: string
@@ -45,69 +48,79 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-2 py-1 border-b bg-muted/20">
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[70%]">
-          {sessions.map(session => (
-            <div
-              key={session.id}
-              onClick={() => setActiveSessionId(session.id)}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-t-sm text-[10px] cursor-pointer transition-colors",
-                activeSessionId === session.id
-                  ? "bg-secondary"
-                  : ""
-              )}
-            >
-              <Terminal className="h-3 w-3" />
-              <span className="truncate max-w-20">{session.name}</span>
-              {sessions.length > 1 && (
-                <X
-                  className="h-3 w-3 ml-1 hover:text-red-400"
-                  onClick={(e) => handleRemoveSession(session.id, e)}
-                />
-              )}
-            </div>
-          ))}
-          <Tooltip>
-            <TooltipTrigger
-              delay={200}
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={handleAddSession}
-                />
-              }
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </TooltipTrigger>
-            <TooltipContent>New terminal session</TooltipContent>
-          </Tooltip>
-        </div>
-
-        <div className="flex items-center gap-2 pr-2">
-          <div
-            className={cn(
-              "flex items-center gap-1.5 px-2 py-1 rounded text-[10px]",
-              sessions.find(s => s.id === activeSessionId)?.isConnected
-                ? "bg-green-500/10 text-green-400"
-                : "bg-red-500/10 text-red-400"
-            )}
-          >
-            <span
-              className={cn(
-                "w-1 h-1 rounded-full",
-                sessions.find(s => s.id === activeSessionId)?.isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
-              )}
-            />
-            {sessions.find(s => s.id === activeSessionId)?.isConnected ? "Connected" : "Disconnected"}
+    <WorkloadPanelFrame
+      toolbar={(
+        <>
+          <div className="flex max-w-[70%] items-center gap-1 overflow-x-auto no-scrollbar">
+            {sessions.map(session => (
+              <>
+                <div
+                  key={session.id}
+                  onClick={() => setActiveSessionId(session.id)}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-[10px] transition-colors",
+                    activeSessionId === session.id ? "bg-secondary" : "",
+                  )}
+                >
+                  <Terminal className="h-3 w-3" />
+                  <span className="max-w-20 truncate">{session.name}</span>
+                  {sessions.length > 1 && (
+                    <X
+                      className="ml-1 h-3 w-3 hover:text-red-500"
+                      onClick={(e) => handleRemoveSession(session.id, e)}
+                    />
+                  )}
+                </div>
+                <Separator orientation="vertical" className="mt-1 mb-1 mx-1" />
+              </>
+            ))}
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleAddSession}
+                  />
+                }
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>New terminal session</TooltipContent>
+            </Tooltip>
           </div>
-        </div>
-      </div>
-
-      <div className="flex-1 relative overflow-hidden">
+          <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "flex items-center gap-1.5 rounded px-2 py-1 text-[10px]",
+                sessions.find(s => s.id === activeSessionId)?.isConnected
+                  ? "bg-green-500/10 text-green-500"
+                  : "bg-red-500/10 text-red-500"
+              )}
+            >
+              <span
+                className={cn(
+                  "h-1 w-1 rounded-full",
+                  sessions.find(s => s.id === activeSessionId)?.isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+                )}
+              />
+              {sessions.find(s => s.id === activeSessionId)?.isConnected ? "Connected" : "Disconnected"}
+            </div>
+          </div>
+        </>
+      )}
+      status={(
+        <>
+          <div>{targetType === "node" ? `Node: ${instanceName}` : `Container: ${containerName}`}</div>
+          <div className="flex items-center gap-2 font-mono">
+            <kbd className="rounded px-1 py-0.5 text-[9px]">Ctrl+C</kbd>
+            <span>to interrupt</span>
+          </div>
+        </>
+      )}
+    >
+      <div className="relative h-full overflow-hidden ">
         {sessions.map(session => (
           <div
             key={session.id}
@@ -128,17 +141,7 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
           </div>
         ))}
       </div>
-
-      <div className="flex items-center justify-between px-4 py-1.5 border-t text-[10px]">
-        <div className="flex items-center gap-3">
-          <span>{targetType === "node" ? `Node: ${instanceName}` : `Container: ${containerName}`}</span>
-        </div>
-        <div className="flex items-center gap-2 font-mono">
-          <kbd className="px-1 py-0.5 rounded text-[9px]">Ctrl+C</kbd>
-          <span>to interrupt</span>
-        </div>
-      </div>
-    </div>
+    </WorkloadPanelFrame>
   )
 }
 
@@ -152,9 +155,22 @@ function TerminalInstance({
   const terminalRef = React.useRef<HTMLDivElement>(null)
   const xtermRef = React.useRef<XTerm | null>(null)
   const wsRef = React.useRef<WebSocket | null>(null)
+  const onConnectionChangeRef = React.useRef(onConnectionChange)
+
+  React.useEffect(() => {
+    onConnectionChangeRef.current = onConnectionChange
+  }, [onConnectionChange])
 
   React.useEffect(() => {
     if (!terminalRef.current) return
+
+    let isDisposed = false
+    let isIntentionalSocketClose = false
+    let isTerminalOpened = false
+    let initialFitTimer: ReturnType<typeof window.setTimeout> | null = null
+    let connectTimer: ReturnType<typeof window.setTimeout> | null = null
+    let openRetryTimer: ReturnType<typeof window.setTimeout> | null = null
+    let openRaf: number | null = null
 
     const xterm = new XTerm({
       cursorBlink: true,
@@ -192,13 +208,54 @@ function TerminalInstance({
 
     xterm.loadAddon(fitAddon)
     xterm.loadAddon(webLinksAddon)
-    xterm.open(terminalRef.current)
 
-    xtermRef.current = xterm
+    const safeFit = () => {
+      if (isDisposed || !isTerminalOpened) return
+      try {
+        fitAddon.fit()
+      } catch {
+        // xterm can throw during teardown races in development strict mode.
+      }
+    }
+
+    const tryOpenTerminal = () => {
+      if (isDisposed || isTerminalOpened) return
+
+      const mountNode = terminalRef.current
+      if (!mountNode || !mountNode.isConnected) return
+
+      const rect = mountNode.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return
+
+      try {
+        xterm.open(mountNode)
+        isTerminalOpened = true
+        xtermRef.current = xterm
+      } catch {
+        // Retry open on the next frame if DOM/layout isn't stable yet.
+      }
+    }
+
+    const scheduleOpenTerminal = () => {
+      if (isDisposed || isTerminalOpened) return
+      openRaf = window.requestAnimationFrame(() => {
+        openRaf = null
+        tryOpenTerminal()
+        if (!isTerminalOpened && !isDisposed) {
+          openRetryTimer = window.setTimeout(scheduleOpenTerminal, 50)
+          return
+        }
+
+        safeFit()
+        xterm.focus()
+      })
+    }
+
+    scheduleOpenTerminal()
 
     // Defer initial fit to ensure container is fully rendered
-    setTimeout(() => {
-      fitAddon.fit()
+    initialFitTimer = window.setTimeout(() => {
+      safeFit()
     }, 0)
 
     const authData = localStorage.getItem('auth-storage')
@@ -212,72 +269,136 @@ function TerminalInstance({
 
     if (!token) {
       xterm.writeln("\r\n\x1b[38;5;196m● Authentication required\x1b[0m")
-      return
+      return () => {
+        isDisposed = true
+        if (initialFitTimer !== null) {
+          window.clearTimeout(initialFitTimer)
+        }
+        xterm.dispose()
+        xtermRef.current = null
+        wsRef.current = null
+      }
     }
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
     const wsHost = import.meta.env.DEV ? "localhost:8080" : window.location.host
     const path = targetType === "node"
-      ? `/api/v1/clusters/${appId}/nodes/${instanceName}/exec?token=${token}`
-      : `/api/v1/apps/${appId}/instances/${instanceName}/exec?container=${containerName}&token=${token}`
+      ? `/api/v1/clusters/${encodeURIComponent(appId)}/nodes/${encodeURIComponent(instanceName)}/exec?${new URLSearchParams({ token }).toString()}`
+      : `/api/v1/apps/${encodeURIComponent(appId)}/instances/${encodeURIComponent(instanceName)}/exec?${new URLSearchParams({ container: containerName, token }).toString()}`
+    const wsUrl = `${protocol}//${wsHost}${path}`
 
-    const ws = new WebSocket(`${protocol}//${wsHost}${path}`)
-    ws.binaryType = 'arraybuffer'
-    wsRef.current = ws
-
-    ws.onopen = () => {
-      onConnectionChange(true)
-      console.log("WebSocket connected in terminal session")
-    }
-
-    ws.onmessage = (event) => {
-      if (event.data instanceof ArrayBuffer) {
-        const text = new TextDecoder().decode(event.data)
-        xterm.write(text)
-      } else if (typeof event.data === 'string') {
-        xterm.write(event.data)
-      }
-    }
-
-    ws.onerror = () => {
-      onConnectionChange(false)
-      console.error("WebSocket error in terminal session")
-    }
-
-    ws.onclose = () => {
-      onConnectionChange(false)
-      console.log("WebSocket closed in terminal session")
-    }
-
-    xterm.onData((data) => {
-      if (ws.readyState === WebSocket.OPEN) {
+    const dataDisposable = xterm.onData((data) => {
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(data)
       }
     })
 
     const handleResize = () => {
-      fitAddon.fit()
-      if (ws.readyState === WebSocket.OPEN) {
+      safeFit()
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "resize", cols: xterm.cols, rows: xterm.rows }))
       }
     }
 
     window.addEventListener("resize", handleResize)
     const resizeObserver = new ResizeObserver(() => {
-      fitAddon.fit()
-      if (ws.readyState === WebSocket.OPEN) {
+      safeFit()
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "resize", cols: xterm.cols, rows: xterm.rows }))
       }
     })
     resizeObserver.observe(terminalRef.current)
 
+    // Delay connect slightly so StrictMode's test mount/unmount cycle can be cancelled cleanly.
+    connectTimer = window.setTimeout(() => {
+      if (isDisposed) return
+
+      const ws = new WebSocket(wsUrl)
+      ws.binaryType = "arraybuffer"
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        if (isDisposed) {
+          ws.close(1000, "Terminal instance disposed before open")
+          return
+        }
+        safeFit()
+        if (xterm.cols > 0 && xterm.rows > 0) {
+          ws.send(JSON.stringify({ type: "resize", cols: xterm.cols, rows: xterm.rows }))
+        }
+        xterm.focus()
+        onConnectionChangeRef.current(true)
+        console.log("WebSocket connected in terminal session")
+      }
+
+      ws.onmessage = (event) => {
+        if (isDisposed) return
+        if (event.data instanceof ArrayBuffer) {
+          const text = new TextDecoder().decode(event.data)
+          xterm.write(text)
+        } else if (typeof event.data === "string") {
+          xterm.write(event.data)
+        }
+      }
+
+      ws.onerror = () => {
+        if (isDisposed || isIntentionalSocketClose) {
+          return
+        }
+        onConnectionChangeRef.current(false)
+        console.error("WebSocket error in terminal session")
+      }
+
+      ws.onclose = (event) => {
+        onConnectionChangeRef.current(false)
+        if (!isDisposed && !isIntentionalSocketClose) {
+          console.warn("WebSocket closed in terminal session", {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+          })
+        }
+      }
+    }, 120)
+
     return () => {
+      isDisposed = true
       window.removeEventListener("resize", handleResize)
       resizeObserver.disconnect()
-      ws.close()
+      dataDisposable.dispose()
+      if (initialFitTimer !== null) {
+        window.clearTimeout(initialFitTimer)
+      }
+      if (connectTimer !== null) {
+        window.clearTimeout(connectTimer)
+      }
+      if (openRetryTimer !== null) {
+        window.clearTimeout(openRetryTimer)
+      }
+      if (openRaf !== null) {
+        window.cancelAnimationFrame(openRaf)
+      }
+      isIntentionalSocketClose = true
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close(1000, "Terminal instance disposed")
+      } else if (ws && ws.readyState === WebSocket.CONNECTING) {
+        ws.onopen = () => {
+          ws.close(1000, "Terminal instance disposed before open")
+        }
+        ws.onmessage = null
+        ws.onerror = null
+        ws.onclose = null
+      }
       xterm.dispose()
+      isTerminalOpened = false
+      xtermRef.current = null
+      wsRef.current = null
     }
-  }, [appId, instanceName, containerName])
+  }, [appId, instanceName, containerName, targetType])
 
-  return <div ref={terminalRef} className="h-full w-full rounded overflow-hidden" />
+  return <div ref={terminalRef} className="h-full w-full overflow-hidden" />
 }
