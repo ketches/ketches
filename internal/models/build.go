@@ -9,8 +9,9 @@ type TriggerBuildRequest struct {
 }
 
 type BuildResponse struct {
-	ID             string `json:"id"`
-	BuildSettingID string `json:"build_setting_id"`
+	ID               string `json:"id"`
+	BuildSettingName string `json:"build_setting_name"`
+	BuildSettingID   string `json:"build_setting_id"`
 
 	App           *AppResponse `json:"app,omitempty"`
 	BuildNumber   int          `json:"build_number"`

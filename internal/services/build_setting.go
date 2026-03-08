@@ -81,40 +81,25 @@ func UpsertAppBuildSetting(appID string, req *models.UpsertAppBuildSettingReques
 	err := db.DB.Where("app_id = ?", appID).First(&s).Error
 	if err != nil {
 		// Create
-		webhookSecret, _ := generateWebhookSecret()
 		s = entities.BuildSetting{
 			ID:             uuid.New(),
-			AppID:          &appID,
 			GitRef:         defaultStr(req.GitRef, "main"),
-			GitUsername:    req.GitUsername,
-			GitPassword:    req.GitPassword,
 			DockerfilePath: defaultStr(req.DockerfilePath, "Dockerfile"),
 			BuildContext:   defaultStr(req.BuildContext, "."),
 			BuildArgs:      req.BuildArgs,
 			ImageName:      req.ImageName,
 			RegistryID:     req.RegistryID,
-			AutoBuild:      req.AutoBuild,
-			AutoDeploy:     req.AutoDeploy,
-			WebhookEnabled: req.WebhookEnabled,
-			WebhookSecret:  webhookSecret,
 		}
 		if err := db.DB.Create(&s).Error; err != nil {
 			return nil, err
 		}
 	} else {
 		s.GitRef = defaultStr(req.GitRef, "main")
-		s.GitUsername = req.GitUsername
-		if req.GitPassword != "" {
-			s.GitPassword = req.GitPassword
-		}
 		s.DockerfilePath = defaultStr(req.DockerfilePath, "Dockerfile")
 		s.BuildContext = defaultStr(req.BuildContext, ".")
 		s.BuildArgs = req.BuildArgs
 		s.ImageName = req.ImageName
 		s.RegistryID = req.RegistryID
-		s.AutoBuild = req.AutoBuild
-		s.AutoDeploy = req.AutoDeploy
-		s.WebhookEnabled = req.WebhookEnabled
 		if err := db.DB.Save(&s).Error; err != nil {
 			return nil, err
 		}
@@ -124,7 +109,6 @@ func UpsertAppBuildSetting(appID string, req *models.UpsertAppBuildSettingReques
 
 // CreateRepoBuildSetting creates a new build setting under a code repository.
 func CreateRepoBuildSetting(repoID string, req *models.CreateRepoBuildSettingRequest) (*BuildSettingWithRegistry, error) {
-	webhookSecret, _ := generateWebhookSecret()
 	s := entities.BuildSetting{
 		ID:               uuid.New(),
 		CodeRepositoryID: &repoID,
@@ -135,10 +119,6 @@ func CreateRepoBuildSetting(repoID string, req *models.CreateRepoBuildSettingReq
 		BuildArgs:        req.BuildArgs,
 		ImageName:        req.ImageName,
 		RegistryID:       req.RegistryID,
-		AutoBuild:        req.AutoBuild,
-		AutoDeploy:       req.AutoDeploy,
-		WebhookEnabled:   req.WebhookEnabled,
-		WebhookSecret:    webhookSecret,
 	}
 	if err := db.DB.Create(&s).Error; err != nil {
 		return nil, err
@@ -172,9 +152,6 @@ func UpdateRepoBuildSetting(id string, req *models.UpdateRepoBuildSettingRequest
 		s.RegistryID = req.RegistryID
 	}
 	s.BuildArgs = req.BuildArgs
-	s.AutoBuild = req.AutoBuild
-	s.AutoDeploy = req.AutoDeploy
-	s.WebhookEnabled = req.WebhookEnabled
 	if err := db.DB.Save(&s).Error; err != nil {
 		return nil, err
 	}
@@ -207,21 +184,13 @@ func ToBuildSettingResponse(s *BuildSettingWithRegistry) models.BuildSettingResp
 		ID:             s.ID,
 		Name:           s.Name,
 		GitRef:         s.GitRef,
-		GitUsername:    s.GitUsername,
 		DockerfilePath: s.DockerfilePath,
 		BuildContext:   s.BuildContext,
 		ImageName:      s.ImageName,
 		RegistryID:     s.RegistryID,
 		BuildArgs:      s.BuildArgs,
-		AutoBuild:      s.AutoBuild,
-		AutoDeploy:     s.AutoDeploy,
-		WebhookEnabled: s.WebhookEnabled,
-		WebhookSecret:  s.WebhookSecret,
 		CreatedAt:      s.CreatedAt,
 		UpdatedAt:      s.UpdatedAt,
-	}
-	if s.AppID != nil {
-		resp.AppID = *s.AppID
 	}
 	if s.CodeRepositoryID != nil {
 		resp.CodeRepositoryID = *s.CodeRepositoryID

@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ketches/ketches/internal/core/exporter"
 	"github.com/ketches/ketches/internal/core/importer"
@@ -293,7 +292,6 @@ func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMeta
 			LimitMemory:      app.LimitMemory,
 			RegistryUsername: app.RegistryUsername,
 			RegistryPassword: app.RegistryPassword,
-			ImportedAt:       time.Now(),
 		}
 
 		if appCtx.AutoScaling != nil {

@@ -25,9 +25,6 @@ func SetupRoutes(r *gin.Engine) {
 func setupV1Routes(r *gin.Engine) {
 	v1 := r.Group("/api/v1")
 	{
-		// Webhooks (public, no auth)
-		v1.POST("/webhooks/git/:appID", handlers.HandleGitWebhook)
-		v1.POST("/webhooks/git/repo/:repoID", handlers.HandleGitWebhookForCodeRepo)
 		v1.GET("/version", handlers.GetVersion)
 
 		users := v1.Group("/users")
@@ -98,7 +95,7 @@ func setupV1Routes(r *gin.Engine) {
 				codeReposRead.GET("/:repoID/builds", handlers.ListCodeRepositoryBuilds)
 				codeReposRead.GET("/:repoID/builds/:buildID", handlers.GetCodeRepositoryBuild)
 				codeReposRead.GET("/:repoID/builds/:buildID/logs", handlers.StreamCodeRepositoryBuildLogs)
-				codeReposRead.GET("/:repoID/deployments", handlers.ListCodeRepositoryDeployments)
+				codeReposRead.GET("/:repoID/deployments", handlers.ListBuildDeployments)
 
 				// Write (require at least developer role)
 				codeReposWrite := codeRepos.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
@@ -158,7 +155,7 @@ func setupV1Routes(r *gin.Engine) {
 				appsRead.GET("/:appID/plugins", handlers.ListAppPlugins)
 				appsRead.GET("/:appID/build-setting", handlers.GetAppBuildSetting)
 				appsRead.GET("/:appID/build-setting/container-registries", handlers.ListAvailableContainerRegistries)
-				appsRead.GET("/:appID/builds", handlers.ListBuilds)
+				appsRead.GET("/:appID/builds", handlers.ListAppBuilds)
 				appsRead.GET("/:appID/builds/:buildID", handlers.GetBuild)
 				appsRead.GET("/:appID/builds/:buildID/logs", handlers.StreamBuildLogs)
 				appsRead.GET("/:appID/deployment-history", handlers.ListDeploymentHistory)
@@ -209,7 +206,7 @@ func setupV1Routes(r *gin.Engine) {
 				appsWrite.POST("/:appID/build-setting", handlers.UpsertAppBuildSetting)
 				appsWrite.DELETE("/:appID/build-setting", handlers.DeleteAppBuildSetting)
 				appsWrite.POST("/:appID/build-setting/test-git", handlers.TestGitConnection)
-				appsWrite.POST("/:appID/builds", handlers.TriggerBuild)
+				appsWrite.POST("/:appID/builds", handlers.TriggerAppBuild)
 				appsWrite.POST("/:appID/builds/:buildID/cancel", handlers.CancelBuild)
 				appsWrite.POST("/:appID/builds/:buildID/deploy", handlers.DeployBuild)
 				appsWrite.POST("/:appID/builds/:buildID/rebuild", handlers.RebuildBuild)

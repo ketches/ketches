@@ -242,10 +242,6 @@ func handleAutoDeploy(build *entities.Build) {
 		return
 	}
 
-	if !setting.AutoDeploy {
-		return
-	}
-
 	// Find the BuildDeployment for this app-scoped build
 	var appBD entities.BuildDeployment
 	if err := db.DB.Where("build_id = ? AND status = ?", build.ID, entities.BuildDeploymentStatusPending).

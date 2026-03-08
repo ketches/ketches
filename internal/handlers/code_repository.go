@@ -120,9 +120,9 @@ func ListCodeRepositoryBuilds(c *gin.Context) {
 	api.Success(c, res)
 }
 
-func ListCodeRepositoryDeployments(c *gin.Context) {
+func ListBuildDeployments(c *gin.Context) {
 	repoID := c.Param("repoID")
-	deployments, err := services.ListDeploymentsByCodeRepository(repoID)
+	deployments, err := services.ListDeployments(repoID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

@@ -53,11 +53,6 @@ export interface BuildSetting {
   registry_id: string
   registry?: ContainerRegistry
   build_args: string
-  auto_build: boolean
-  auto_deploy: boolean
-  webhook_enabled: boolean
-  created_at: string
-  updated_at: string
 }
 
 export interface CreateBuildSettingRequest {
@@ -68,9 +63,6 @@ export interface CreateBuildSettingRequest {
   image_name: string
   registry_id: string
   build_args?: string
-  auto_build?: boolean
-  auto_deploy?: boolean
-  webhook_enabled?: boolean
 }
 
 export interface UpdateBuildSettingRequest {
@@ -81,12 +73,9 @@ export interface UpdateBuildSettingRequest {
   image_name?: string
   registry_id?: string
   build_args?: string
-  auto_build?: boolean
-  auto_deploy?: boolean
-  webhook_enabled?: boolean
 }
 
-export interface TriggerCodeRepositoryBuildRequest {
+export interface TriggerBuildRequest {
   build_setting_id: string
   build_env_id: string
   git_ref?: string
@@ -97,7 +86,7 @@ export interface TriggerCodeRepositoryBuildRequest {
   deploy_app_slug?: string
 }
 
-export interface DeployCodeRepositoryBuildRequest {
+export interface DeployBuildRequest {
   target_env_id: string
   app_id?: string
   name?: string
@@ -153,7 +142,7 @@ export const codeRepositoriesApi = {
   listDeployments: async (repoId: string) => {
     return client.get(`/v1/code-repositories/${repoId}/deployments`) as Promise<Build[]>
   },
-  triggerBuild: async (repoId: string, data: TriggerCodeRepositoryBuildRequest) => {
+  triggerBuild: async (repoId: string, data: TriggerBuildRequest) => {
     return client.post(`/v1/code-repositories/${repoId}/builds`, data) as Promise<Build>
   },
   getBuild: async (repoId: string, buildId: string) => {
@@ -162,7 +151,7 @@ export const codeRepositoriesApi = {
   cancelBuild: async (repoId: string, buildId: string) => {
     return client.post(`/v1/code-repositories/${repoId}/builds/${buildId}/cancel`) as Promise<Build>
   },
-  deployBuild: async (repoId: string, buildId: string, data: DeployCodeRepositoryBuildRequest) => {
+  deployBuild: async (repoId: string, buildId: string, data: DeployBuildRequest) => {
     return client.post(`/v1/code-repositories/${repoId}/builds/${buildId}/deploy`, data) as Promise<{ build: Build; app: App }>
   },
   getTopology: async (id: string) => {

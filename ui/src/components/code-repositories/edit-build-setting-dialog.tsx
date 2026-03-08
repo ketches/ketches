@@ -2,7 +2,6 @@ import { codeRepositoriesApi, type BuildSetting, type UpdateBuildSettingRequest 
 import { registryProviderLabels } from "@/api/container-registries"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Combobox,
   ComboboxContent,
@@ -42,9 +41,6 @@ export function EditBuildSettingDialog({ open, onOpenChange, repoId, setting: se
         image_name: setting.image_name,
         registry_id: setting.registry_id,
         build_args: setting.build_args,
-        auto_build: setting.auto_build,
-        auto_deploy: setting.auto_deploy,
-        webhook_enabled: setting.webhook_enabled,
       })
     }
   }, [setting, open])
@@ -176,26 +172,6 @@ export function EditBuildSettingDialog({ open, onOpenChange, repoId, setting: se
               />
             </FieldContent>
           </Field>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="edit-webhook-enabled"
-              checked={form.webhook_enabled ?? false}
-              onCheckedChange={(v) => setForm({ ...form, webhook_enabled: v === true })}
-            />
-            <label htmlFor="edit-webhook-enabled" className="cursor-pointer">
-              Auto build on webhook
-            </label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="edit-auto-deploy"
-              checked={form.auto_deploy ?? false}
-              onCheckedChange={(v) => setForm({ ...form, auto_deploy: v === true })}
-            />
-            <label htmlFor="edit-auto-deploy" className="cursor-pointer">
-              Auto deploy after build
-            </label>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -205,6 +181,6 @@ export function EditBuildSettingDialog({ open, onOpenChange, repoId, setting: se
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }

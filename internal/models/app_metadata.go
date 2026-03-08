@@ -24,8 +24,6 @@ type AppMetadata struct {
 	Probes           []ProbeMetadata      `json:"probes"`
 	SchedulingRule   *SchedulingMetadata  `json:"scheduling_rule,omitempty"`
 	AutoScaling      *AutoScalingMetadata `json:"auto_scaling,omitempty"`
-	Source           string               `json:"source,omitempty"`
-	ImportedAt       time.Time            `json:"imported_at"`
 }
 
 // EnvVarMetadata represents environment variable metadata.

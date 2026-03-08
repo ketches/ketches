@@ -17,5 +17,5 @@ type AppContext struct {
 	AutoScaling    *entities.AppAutoScaling
 	AppPlugins     []entities.AppPlugin
 	Plugins        map[string]entities.Plugin
-	BuildSetting    *entities.BuildSetting
+	BuildSetting   *entities.BuildSetting
 }

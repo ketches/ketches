@@ -9,7 +9,7 @@ import (
 	"github.com/ketches/ketches/internal/services"
 )
 
-func ListBuilds(c *gin.Context) {
+func ListAppBuilds(c *gin.Context) {
 	appID := c.Param("appID")
 	var req models.PaginationRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -18,7 +18,7 @@ func ListBuilds(c *gin.Context) {
 	}
 	req.Validate()
 
-	total, builds, err := services.ListBuilds(appID, req.Page, req.PageSize)
+	total, builds, err := services.ListAppBuilds(appID, req.Page, req.PageSize)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -35,7 +35,7 @@ func ListBuilds(c *gin.Context) {
 	})
 }
 
-func TriggerBuild(c *gin.Context) {
+func TriggerAppBuild(c *gin.Context) {
 	appID := c.Param("appID")
 	claims := api.GetClaims(c)
 	userID := ""
@@ -49,7 +49,7 @@ func TriggerBuild(c *gin.Context) {
 		req = models.TriggerBuildRequest{}
 	}
 
-	build, err := services.TriggerBuild(c.Request.Context(), appID, userID, &req)
+	build, err := services.TriggerAppBuild(c.Request.Context(), appID, userID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

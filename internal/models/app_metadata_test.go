@@ -9,9 +9,6 @@ import (
 )
 
 func TestAppMetadata_Serialization(t *testing.T) {
-	// Define a fully populated AppMetadata struct
-	now := time.Now().UTC()
-
 	// Create sub-structs first
 	envVars := []EnvVarMetadata{
 		{Key: "ENV_KEY", Value: "ENV_VALUE"},
@@ -66,8 +63,6 @@ func TestAppMetadata_Serialization(t *testing.T) {
 		Probes:           probes,
 		SchedulingRule:   scheduling,
 		AutoScaling:      autoScaling,
-		Source:           "import",
-		ImportedAt:       now,
 	}
 
 	// Serialize to JSON
@@ -100,7 +95,6 @@ func TestAppMetadata_Serialization(t *testing.T) {
 		RequestMemory:  100,
 		LimitCPU:       100,
 		LimitMemory:    100,
-		ImportedAt:     now,
 	}
 
 	minData, err := json.Marshal(minimalApp)

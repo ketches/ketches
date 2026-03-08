@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Clock, Copy, FileClock, FolderGit2, Hash, Loader2, Package, Rocket, RotateCcw, Square, User } from "lucide-react"
+import { Clock, Copy, FileClock, FolderGit2, Loader2, Package, Rocket, RotateCcw, Square, User } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -80,7 +80,7 @@ export function BuildList({ appId }: BuildListProps) {
       header: "#",
       cell: ({ row }) => (
         <span className="flex items-center gap-1 text-muted-foreground">
-          <Hash className="h-3 w-3" />{row.original.build_number}
+          {row.original.build_number}
         </span>
       ),
     },
@@ -93,7 +93,7 @@ export function BuildList({ appId }: BuildListProps) {
       accessorKey: "git_ref",
       header: "Git Ref",
       cell: ({ row }) => (
-        <span className="flex items-center gap-1 text-sm">
+        <span className="flex items-center text-muted-foreground gap-1 text-sm">
           <FolderGit2 className="h-3 w-3" />{row.original.git_ref}
         </span>
       ),
@@ -127,7 +127,7 @@ export function BuildList({ appId }: BuildListProps) {
         const build = row.original
         if (build.duration > 0) {
           return (
-            <span className="flex items-center gap-1 text-sm">
+            <span className="flex items-center gap-1 text-xs">
               <Clock className="h-3 w-3" />{formatDuration(build.duration)}
             </span>
           )
@@ -142,7 +142,7 @@ export function BuildList({ appId }: BuildListProps) {
       accessorKey: "trigger_type",
       header: "Trigger",
       cell: ({ row }) => (
-        <span className="flex items-center gap-1 text-sm capitalize">
+        <span className="flex items-center gap-1 text-xs capitalize">
           <User className="h-3 w-3" />{row.original.trigger_type}
         </span>
       ),
@@ -151,7 +151,7 @@ export function BuildList({ appId }: BuildListProps) {
       accessorKey: "created_at",
       header: "Time",
       cell: ({ row }) => (
-        <div className="flex items-center gap-1.5 text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
           <Clock className="h-3 w-3" />
           <span>{formatDate(row.original.created_at)}</span>
         </div>
@@ -167,6 +167,21 @@ export function BuildList({ appId }: BuildListProps) {
             className="flex items-center gap-1 justify-end"
             onClick={(e) => e.stopPropagation()}
           >
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setShowLogDialog(build.id)}
+                  />
+                }
+              >
+                <FileClock />
+              </TooltipTrigger>
+              <TooltipContent>View logs</TooltipContent>
+            </Tooltip>
             {(build.status === 'pending' || build.status === 'cloning' || build.status === 'building') && (
               <Tooltip>
                 <TooltipTrigger
@@ -240,7 +255,7 @@ export function BuildList({ appId }: BuildListProps) {
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <FileClock className="h-4 w-4" />
-            Deploy History
+            Build & Deploy History
           </CardTitle>
           <CardDescription>View and manage builds for this application</CardDescription>
         </CardHeader>
@@ -261,8 +276,6 @@ export function BuildList({ appId }: BuildListProps) {
             <DataTable
               columns={columns}
               data={builds}
-              onRowClick={(build) => setShowLogDialog(build.id)}
-              getRowClassName={() => "cursor-pointer hover:bg-muted/50"}
               onRefresh={refetch}
               manualPagination
               pagination={pagination}
@@ -288,9 +301,9 @@ export function BuildList({ appId }: BuildListProps) {
       {/* Build Log Dialog */}
       {showLogDialog && (
         <Dialog open={!!showLogDialog} onOpenChange={() => setShowLogDialog(null)}>
-          <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogContent className="sm:max-w-[90vw] w-full sm:max-h-[90vh] flex flex-col">
             <DialogHeader>
-              <DialogTitle>Build Logs</DialogTitle>
+              <DialogTitle>Build logs</DialogTitle>
             </DialogHeader>
             <BuildLogViewer appId={appId} buildId={showLogDialog} />
           </DialogContent>

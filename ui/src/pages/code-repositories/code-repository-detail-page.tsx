@@ -229,7 +229,7 @@ export function CodeRepositoryDetailPage() {
     },
     {
       accessorKey: "image_name",
-      header: "Image",
+      header: "Image Name",
       cell: ({ row }) => (
         <span className="font-mono text-xs">{row.original.image_name}</span>
       ),

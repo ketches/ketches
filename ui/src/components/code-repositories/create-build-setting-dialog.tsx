@@ -7,7 +7,6 @@ import { codeRepositoriesApi, type CreateBuildSettingRequest } from "@/api/code-
 import { registryProviderLabels } from "@/api/container-registries"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Combobox,
   ComboboxContent,
@@ -37,9 +36,6 @@ const defaultForm: CreateBuildSettingRequest = {
   image_name: '',
   registry_id: '',
   build_args: '',
-  auto_build: false,
-  auto_deploy: false,
-  webhook_enabled: false,
 }
 
 export function CreateBuildSettingDialog({ open, onOpenChange, repoId, onSuccess }: CreateBuildSettingDialogProps) {
@@ -177,26 +173,6 @@ export function CreateBuildSettingDialog({ open, onOpenChange, repoId, onSuccess
               />
             </FieldContent>
           </Field>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="webhook-enabled"
-              checked={form.webhook_enabled ?? false}
-              onCheckedChange={(v) => setForm({ ...form, webhook_enabled: v === true })}
-            />
-            <label htmlFor="webhook-enabled" className="cursor-pointer">
-              Auto build on webhook
-            </label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="auto-deploy"
-              checked={form.auto_deploy ?? false}
-              onCheckedChange={(v) => setForm({ ...form, auto_deploy: v === true })}
-            />
-            <label htmlFor="auto-deploy" className="cursor-pointer">
-              Auto deploy after build
-            </label>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

@@ -20,12 +20,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func ListBuilds(appID string, page, pageSize int) (int64, []entities.Build, error) {
+func ListAppBuilds(appID string, page, pageSize int) (int64, []entities.Build, error) {
 	var total int64
 	var builds []entities.Build
 	query := db.DB.Model(&entities.Build{}).
-		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
-		Where("build_settings.app_id = ?", appID)
+		Joins("JOIN build_deployments ON build_deployments.build_id = builds.id").
+		Where("build_deployments.app_id = ?", appID)
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
@@ -46,7 +46,7 @@ func GetBuild(buildID string) (*entities.Build, error) {
 	return &build, nil
 }
 
-func TriggerBuild(ctx context.Context, appID, userID string, req *models.TriggerBuildRequest) (*entities.Build, error) {
+func TriggerAppBuild(ctx context.Context, appID, userID string, req *models.TriggerBuildRequest) (*entities.Build, error) {
 	// Get app with env/project info
 	appCtx, err := GetApp(ctx, appID)
 	if err != nil {
@@ -56,6 +56,11 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 	setting, err := GetAppBuildSetting(appID)
 	if err != nil {
 		return nil, fmt.Errorf("build setting not found: please configure build settings first")
+	}
+
+	repo, err := GetCodeRepository(*setting.CodeRepositoryID)
+	if err != nil {
+		return nil, fmt.Errorf("code repository not found: %w", err)
 	}
 
 	// Get the registry
@@ -152,6 +157,7 @@ func TriggerBuild(ctx context.Context, appID, userID string, req *models.Trigger
 	jobName, jobNamespace, err := core.SubmitBuildJob(
 		ctx,
 		build,
+		&repo.CodeRepository,
 		&setting.BuildSetting,
 		registry,
 		buildEnv,
@@ -320,7 +326,7 @@ func RebuildBuild(ctx context.Context, buildID, userID string, req *models.Rebui
 		ImageTag: req.ImageTag,
 	}
 
-	return TriggerBuild(ctx, *bd.AppID, userID, triggerReq)
+	return TriggerAppBuild(ctx, *bd.AppID, userID, triggerReq)
 }
 
 func StreamBuildLogs(c *gin.Context, buildID string) {
@@ -524,7 +530,7 @@ func toCodeRepositoryDeploymentResponse(row *codeRepositoryDeploymentRow) models
 	return resp
 }
 
-func ListDeploymentsByCodeRepository(repoID string) ([]models.CodeRepositoryDeploymentResponse, error) {
+func ListDeployments(repoID string) ([]models.CodeRepositoryDeploymentResponse, error) {
 	const deploymentListSelectCols = `
 		b.id AS build_id,
 		b.build_setting_id AS build_setting_id,
