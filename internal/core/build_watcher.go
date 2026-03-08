@@ -216,60 +216,76 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 }
 
 func handleAutoDeploy(build *entities.Build) {
-	if build.PendingDeployEnvID != nil && *build.PendingDeployEnvID != "" {
-		handleCodeRepoBuildDeploy(build)
+	// Check for a pending build deployment record (code-repo auto-deploy)
+	var bd entities.BuildDeployment
+	pendingDeployErr := db.DB.Where("build_id = ? AND status = ?",
+		build.ID, entities.BuildDeploymentStatusPending).First(&bd).Error
+
+	if pendingDeployErr == nil && bd.EnvID != "" {
+		// This build has a pending deployment — it was a code-repo build with auto-deploy
+		handleCodeRepoBuildDeploy(build, &bd)
 		return
 	}
 
-	if build.BuildConfigID == nil || *build.BuildConfigID == "" {
+	// App-scoped build: check if build setting has auto_deploy enabled
+	if build.BuildSettingID == "" {
 		return
 	}
-	var config entities.AppBuildConfig
-	if err := db.DB.First(&config, "id = ?", *build.BuildConfigID).Error; err != nil {
-		log.Printf("Auto deploy: failed to get build config: %v", err)
+	var setting entities.BuildSetting
+	if err := db.DB.First(&setting, "id = ?", build.BuildSettingID).Error; err != nil {
+		log.Printf("Auto deploy: failed to get build setting: %v", err)
 		return
 	}
 	var registry entities.ContainerRegistry
-	if err := db.DB.First(&registry, "id = ?", config.RegistryID).Error; err != nil {
+	if err := db.DB.First(&registry, "id = ?", setting.RegistryID).Error; err != nil {
 		log.Printf("Auto deploy: failed to get registry: %v", err)
 		return
 	}
 
-	if !config.AutoDeploy {
+	if !setting.AutoDeploy {
 		return
 	}
-	if build.AppID == nil || *build.AppID == "" {
+
+	// Find the BuildDeployment for this app-scoped build
+	var appBD entities.BuildDeployment
+	if err := db.DB.Where("build_id = ? AND status = ?", build.ID, entities.BuildDeploymentStatusPending).
+		Order("created_at DESC").
+		First(&appBD).Error; err != nil || appBD.AppID == nil || *appBD.AppID == "" {
 		return
 	}
 
 	var app entities.App
-	if err := db.DB.First(&app, "id = ?", *build.AppID).Error; err != nil {
+	if err := db.DB.First(&app, "id = ?", *appBD.AppID).Error; err != nil {
 		log.Printf("Auto deploy: failed to get app: %v", err)
+		markBuildDeploymentFailed(&appBD, "failed to get app")
 		return
 	}
 	var env entities.Env
 	if err := db.DB.First(&env, "id = ?", app.EnvID).Error; err != nil {
 		log.Printf("Auto deploy: failed to get env: %v", err)
+		markBuildDeploymentFailed(&appBD, "failed to get env")
 		return
 	}
 	var cluster entities.Cluster
 	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
 		log.Printf("Auto deploy: failed to get cluster: %v", err)
+		markBuildDeploymentFailed(&appBD, "failed to get cluster")
 		return
 	}
 
 	app.ContainerImage = build.ImageFullName
 	app.RegistryUsername = registry.Username
 	app.RegistryPassword = registry.Password
-
 	if err := db.DB.Save(&app).Error; err != nil {
 		log.Printf("Auto deploy: failed to update app image: %v", err)
+		markBuildDeploymentFailed(&appBD, "failed to update app image")
 		return
 	}
 
 	var project entities.Project
 	if err := db.DB.First(&project, "id = ?", env.ProjectID).Error; err != nil {
 		log.Printf("Auto deploy: failed to get project: %v", err)
+		markBuildDeploymentFailed(&appBD, "failed to get project")
 		return
 	}
 
@@ -281,59 +297,72 @@ func handleAutoDeploy(build *entities.Build) {
 			Cluster: cluster,
 		},
 	}
+	now := time.Now()
 	if err := ApplyApp(context.Background(), &appCtx); err != nil {
 		log.Printf("Auto deploy: failed to apply app: %v", err)
+		db.DB.Model(&appBD).Updates(map[string]any{
+			"status":        entities.BuildDeploymentStatusFailed,
+			"error_message": err.Error(),
+			"deployed_at":   &now,
+		})
 		return
 	}
 
 	app.DeployStatus = "deployed"
 	db.DB.Model(&app).Update("deploy_status", "deployed")
 
+	db.DB.Model(&appBD).Updates(map[string]any{
+		"status":      entities.BuildDeploymentStatusDeployed,
+		"deployed_at": &now,
+	})
 	log.Printf("Auto deploy: successfully deployed build %s to app %s", build.ID, app.ID)
 }
 
-func handleCodeRepoBuildDeploy(build *entities.Build) {
+func handleCodeRepoBuildDeploy(build *entities.Build, bd *entities.BuildDeployment) {
 	var deployEnv entities.Env
-	if build.PendingDeployEnvID == nil {
-		log.Printf("Code repo auto-deploy: missing deploy env id")
-		return
-	}
-	if err := db.DB.First(&deployEnv, "id = ?", *build.PendingDeployEnvID).Error; err != nil {
+	if err := db.DB.First(&deployEnv, "id = ?", bd.EnvID).Error; err != nil {
 		log.Printf("Code repo auto-deploy: failed to get deploy env: %v", err)
+		markBuildDeploymentFailed(bd, "failed to get deploy environment")
 		return
 	}
 	var deployCluster entities.Cluster
 	if err := db.DB.First(&deployCluster, "id = ?", deployEnv.ClusterID).Error; err != nil {
 		log.Printf("Code repo auto-deploy: failed to get cluster: %v", err)
+		markBuildDeploymentFailed(bd, "failed to get deploy cluster")
 		return
 	}
 
-	var config entities.CodeRepositoryBuildConfig
-	if err := db.DB.First(&config, "id = ?", *build.CodeRepositoryBuildConfigID).Error; err != nil {
-		log.Printf("Code repo auto-deploy: failed to get build config: %v", err)
+	var setting entities.BuildSetting
+	if err := db.DB.First(&setting, "id = ?", build.BuildSettingID).Error; err != nil {
+		log.Printf("Code repo auto-deploy: failed to get build setting: %v", err)
+		markBuildDeploymentFailed(bd, "failed to get build setting")
 		return
 	}
 	var repoRegistry entities.ContainerRegistry
-	if err := db.DB.First(&repoRegistry, "id = ?", config.RegistryID).Error; err != nil {
+	if err := db.DB.First(&repoRegistry, "id = ?", setting.RegistryID).Error; err != nil {
 		log.Printf("Code repo auto-deploy: failed to get registry: %v", err)
+		markBuildDeploymentFailed(bd, "failed to get registry")
 		return
 	}
 
 	var app *entities.App
-	if build.PendingDeployAppID != nil && *build.PendingDeployAppID != "" {
+	if bd.AppID != nil && *bd.AppID != "" {
 		var existingApp entities.App
-		if err := db.DB.First(&existingApp, "id = ?", *build.PendingDeployAppID).Error; err != nil {
+		if err := db.DB.First(&existingApp, "id = ?", *bd.AppID).Error; err != nil {
 			log.Printf("Code repo auto-deploy: failed to get app: %v", err)
+			markBuildDeploymentFailed(bd, "failed to get app")
 			return
 		}
 		var appEnv entities.Env
 		if err := db.DB.First(&appEnv, "id = ?", existingApp.EnvID).Error; err != nil {
 			log.Printf("Code repo auto-deploy: failed to get app env: %v", err)
+			markBuildDeploymentFailed(bd, "failed to get app env")
 			return
 		}
 		var appCluster entities.Cluster
 		if err := db.DB.First(&appCluster, "id = ?", appEnv.ClusterID).Error; err != nil {
 			log.Printf("Code repo auto-deploy: failed to get app cluster: %v", err)
+			markBuildDeploymentFailed(bd, "failed to get app cluster")
 			return
 		}
 		app = &existingApp
@@ -341,15 +370,16 @@ func handleCodeRepoBuildDeploy(build *entities.Build) {
 		app.ContainerImage = build.ImageFullName
 		app.RegistryUsername = repoRegistry.Username
 		app.RegistryPassword = repoRegistry.Password
-
 		if err := db.DB.Save(app).Error; err != nil {
 			log.Printf("Code repo auto-deploy: failed to update app: %v", err)
+			markBuildDeploymentFailed(bd, "failed to update app image")
 			return
 		}
 
 		var project entities.Project
 		if err := db.DB.First(&project, "id = ?", appEnv.ProjectID).Error; err != nil {
 			log.Printf("Code repo auto-deploy: failed to get project: %v", err)
+			markBuildDeploymentFailed(bd, "failed to get project")
 			return
 		}
 
@@ -363,17 +393,19 @@ func handleCodeRepoBuildDeploy(build *entities.Build) {
 		}
 		if err := ApplyApp(context.Background(), &appCtx); err != nil {
 			log.Printf("Code repo auto-deploy: failed to apply app: %v", err)
+			markBuildDeploymentFailed(bd, err.Error())
 			return
 		}
 
 		app.DeployStatus = "deployed"
 		db.DB.Model(app).Update("deploy_status", "deployed")
-	} else if build.PendingDeployAppName != "" && build.PendingDeployAppSlug != "" {
-		repoID := build.CodeRepositoryID
+
+	} else if bd.AppName != "" && bd.AppSlug != "" {
+		repoID := setting.CodeRepositoryID
 		newApp := &entities.App{
 			Base:             entities.Base{ID: uuid.New()},
-			Slug:             build.PendingDeployAppSlug,
-			Name:             build.PendingDeployAppName,
+			Slug:             bd.AppSlug,
+			Name:             bd.AppName,
 			EnvID:            deployEnv.ID,
 			ContainerImage:   build.ImageFullName,
 			RegistryUsername: repoRegistry.Username,
@@ -389,12 +421,14 @@ func handleCodeRepoBuildDeploy(build *entities.Build) {
 		}
 		if err := db.DB.Create(newApp).Error; err != nil {
 			log.Printf("Code repo auto-deploy: failed to create app: %v", err)
+			markBuildDeploymentFailed(bd, "failed to create app")
 			return
 		}
 
 		var project entities.Project
 		if err := db.DB.First(&project, "id = ?", deployEnv.ProjectID).Error; err != nil {
 			log.Printf("Code repo auto-deploy: failed to get project: %v", err)
+			markBuildDeploymentFailed(bd, "failed to get project")
 			return
 		}
 
@@ -408,22 +442,37 @@ func handleCodeRepoBuildDeploy(build *entities.Build) {
 		}
 		if err := ApplyApp(context.Background(), &appCtx); err != nil {
 			log.Printf("Code repo auto-deploy: failed to apply new app: %v", err)
+			markBuildDeploymentFailed(bd, err.Error())
 			return
 		}
 
 		newApp.DeployStatus = "deployed"
 		db.DB.Model(newApp).Update("deploy_status", "deployed")
-
 		app = newApp
+
+		// Update the BuildDeployment with the newly created app ID
+		db.DB.Model(bd).Update("app_id", newApp.ID)
 	} else {
-		log.Printf("Code repo auto-deploy: missing app deployment info")
+		log.Printf("Code repo auto-deploy: missing app deployment info in build deployment record")
+		markBuildDeploymentFailed(bd, "missing app deployment info")
 		return
 	}
 
-	build.AppID = &app.ID
-	db.DB.Model(build).Update("app_id", app.ID)
-
+	now := time.Now()
+	db.DB.Model(bd).Updates(map[string]any{
+		"status":      entities.BuildDeploymentStatusDeployed,
+		"deployed_at": &now,
+	})
 	log.Printf("Code repo auto-deploy: successfully deployed build %s to app %s", build.ID, app.ID)
+}
+
+func markBuildDeploymentFailed(bd *entities.BuildDeployment, errMsg string) {
+	now := time.Now()
+	db.DB.Model(bd).Updates(map[string]any{
+		"status":        entities.BuildDeploymentStatusFailed,
+		"error_message": errMsg,
+		"deployed_at":   &now,
+	})
 }
 
 func updateBuildFailed(buildID, errMsg string) {
