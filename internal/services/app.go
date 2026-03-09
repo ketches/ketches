@@ -1116,6 +1116,7 @@ func ToAppResponse(c context.Context, appCtx *models.AppContext) models.AppRespo
 		LimitCPU:         a.LimitCPU,
 		LimitMemory:      a.LimitMemory,
 		Status:           status,
+		AvailableActions: core.GetAvailableActions(app.AppStatus(status)),
 		CreatedAt:        a.CreatedAt,
 	}
 
