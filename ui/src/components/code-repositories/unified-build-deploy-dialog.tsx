@@ -3,7 +3,7 @@ import { Loader2, Plus, X } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { appsApi, type SimpleApp } from "@/api/apps"
+import type { SimpleApp } from "@/api/apps"
 import { codeRepositoriesApi, type BuildSetting } from "@/api/code-repositories"
 import { envsApi, type Env } from "@/api/envs"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
@@ -88,14 +88,28 @@ export function UnifiedBuildDeployDialog({
 
   const isDeployMode = !!preSelectedBuildId
 
-  const { data: appsInDeployEnv = [], isLoading: isLoadingApps } = useQuery({
-    queryKey: ["apps-simple", deployEnvId],
-    queryFn: () => appsApi.listSimple(deployEnvId!),
-    enabled: !!deployEnvId && (autoDeploy || isDeployMode) && open,
+  const effectiveBuildSettingId = React.useMemo(() => {
+    if (!isDeployMode) return selectedBuildSettingId
+    const currentBuild = _builds.find((build) => build.id === preSelectedBuildId)
+    return currentBuild?.build_setting_id || ""
+  }, [_builds, isDeployMode, preSelectedBuildId, selectedBuildSettingId])
+
+  const { data: deployedAppsInEnv = [], isLoading: isLoadingApps } = useQuery({
+    queryKey: ["deployed-apps-by-env", repoId, deployEnvId, effectiveBuildSettingId],
+    queryFn: () => codeRepositoriesApi.listDeployedAppsByEnv(repoId, deployEnvId!, effectiveBuildSettingId),
+    enabled: !!deployEnvId && !!effectiveBuildSettingId && (autoDeploy || isDeployMode) && open,
   })
 
-  const existingRepoApps = appsInDeployEnv.filter(
-    (a: SimpleApp) => a.code_repository_id === repoId
+  const existingRepoApps: SimpleApp[] = React.useMemo(
+    () => deployedAppsInEnv.map((app) => ({
+      id: app.id,
+      name: app.name,
+      slug: "",
+      description: "",
+      status: "",
+      code_repository_id: repoId,
+    })),
+    [deployedAppsInEnv, repoId]
   )
 
   const selectedConfig = (buildSettings as BuildSetting[]).find((c) => c.id === selectedBuildSettingId)

@@ -120,6 +120,34 @@ func ListBuildDeployments(c *gin.Context) {
 	api.Success(c, deployments)
 }
 
+func ListDeployedAppsByEnvironment(c *gin.Context) {
+	repoID := c.Param("repoID")
+	buildSettingID := c.Param("settingID")
+	envID := c.Query("env_id")
+	if envID == "" {
+		api.Error(c, http.StatusBadRequest, fmt.Errorf("env_id is required"))
+		return
+	}
+
+	setting, err := services.GetBuildSetting(buildSettingID)
+	if err != nil {
+		api.Error(c, http.StatusNotFound, fmt.Errorf("build setting not found"))
+		return
+	}
+	if setting.CodeRepositoryID == nil || *setting.CodeRepositoryID != repoID {
+		api.Error(c, http.StatusForbidden, fmt.Errorf("build setting does not belong to this code repository"))
+		return
+	}
+
+	apps, err := services.ListDeployedAppsByEnvironmentAndBuildSetting(envID, buildSettingID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, apps)
+}
+
 func TriggerCodeRepositoryBuild(c *gin.Context) {
 	repoID := c.Param("repoID")
 	userID := ""

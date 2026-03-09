@@ -1,4 +1,4 @@
-import type { App } from './apps'
+import type { App, SimpleApp } from './apps'
 import type { Build, BuildDeployment } from './builds'
 import client from './client'
 import type { ContainerRegistry } from './container-registries'
@@ -137,6 +137,11 @@ export const codeRepositoriesApi = {
   },
   listDeployments: async (repoId: string) => {
     return client.get(`/v1/code-repositories/${repoId}/deployments`) as Promise<BuildDeployment[]>
+  },
+  listDeployedAppsByEnv: async (repoId: string, envId: string, buildSettingId: string) => {
+    return client.get(`/v1/code-repositories/${repoId}/build-settings/${buildSettingId}/deployed-apps`, {
+      params: { env_id: envId },
+    }) as Promise<SimpleApp[]>
   },
   triggerBuild: async (repoId: string, data: TriggerBuildRequest) => {
     return client.post(`/v1/code-repositories/${repoId}/builds`, data) as Promise<Build>

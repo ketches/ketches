@@ -96,6 +96,7 @@ func setupV1Routes(r *gin.Engine) {
 				codeReposRead.GET("/:repoID/builds/:buildID", handlers.GetCodeRepositoryBuild)
 				codeReposRead.GET("/:repoID/builds/:buildID/logs", handlers.StreamCodeRepositoryBuildLogs)
 				codeReposRead.GET("/:repoID/deployments", handlers.ListBuildDeployments)
+				codeReposRead.GET("/:repoID/build-settings/:settingID/deployed-apps", handlers.ListDeployedAppsByEnvironment)
 
 				// Write (require at least developer role)
 				codeReposWrite := codeRepos.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))

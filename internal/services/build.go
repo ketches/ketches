@@ -546,6 +546,24 @@ func ListDeployments(repoID string) ([]models.CodeRepositoryDeploymentResponse, 
 	return res, nil
 }
 
+func ListDeployedAppsByEnvironmentAndBuildSetting(envID, buildSettingID string) ([]models.SimpleApp, error) {
+	var apps []models.SimpleApp
+	if err := db.DB.Table("build_deployments bd").
+		Select("a.id AS id, a.name AS name").
+		Joins("JOIN apps a ON a.id = bd.app_id").
+		Joins("JOIN builds b ON b.id = bd.build_id").
+		Where("b.build_setting_id = ?", buildSettingID).
+		Where("bd.env_id = ?", envID).
+		Where("bd.app_id IS NOT NULL").
+		Order("a.created_at DESC").
+		Group("a.id, a.name, a.created_at").
+		Find(&apps).Error; err != nil {
+		return nil, err
+	}
+
+	return apps, nil
+}
+
 // GetBuildByCodeRepository returns a build that belongs to the given code repository.
 func GetBuildByCodeRepository(repoID, buildID string) (*entities.Build, error) {
 	var build entities.Build
