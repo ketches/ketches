@@ -36,9 +36,9 @@ func ListClusters(page, pageSize int, search string) (int64, []entities.Cluster,
 	return total, clusters, nil
 }
 
-func ListClustersSimple() ([]entities.Cluster, error) {
-	var clusters []entities.Cluster
-	if err := db.DB.Select("id, slug, name, description, connection_status, enabled").Order("created_at").Find(&clusters).Error; err != nil {
+func ListClustersSimple() ([]models.SimpleCluster, error) {
+	var clusters []models.SimpleCluster
+	if err := db.DB.Model(&entities.Cluster{}).Select("id, slug, name, description, connection_status, enabled").Order("created_at").Find(&clusters).Error; err != nil {
 		return nil, err
 	}
 	return clusters, nil
@@ -69,6 +69,14 @@ func CreateCluster(req *models.CreateClusterRequest) (*entities.Cluster, error) 
 	}
 
 	return cluster, nil
+}
+
+func GetSimpleCluster(clusterID string) (*models.SimpleCluster, error) {
+	var cluster models.SimpleCluster
+	if err := db.DB.Model(&entities.Cluster{}).Select("id, slug, name, description, connection_status, enabled").Where("id = ?", clusterID).First(&cluster).Error; err != nil {
+		return nil, err
+	}
+	return &cluster, nil
 }
 
 func GetCluster(clusterID string) (*entities.Cluster, error) {

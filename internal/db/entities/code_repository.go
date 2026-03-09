@@ -16,10 +16,6 @@ type CodeRepository struct {
 	GitRepoURL  string `gorm:"type:varchar(512);not null"`
 	GitUsername string `gorm:"type:varchar(128)"`
 	GitPassword string `gorm:"type:varchar(512)"`
-
-	// Webhook (one per repo; which build settings to trigger is per BuildSetting.WebhookEnabled)
-	WebhookSecret  string `gorm:"type:varchar(256)"`
-	WebhookEnabled bool   `gorm:"type:bool;default:false"`
 }
 
 func (CodeRepository) TableName() string {

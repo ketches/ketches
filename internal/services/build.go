@@ -48,7 +48,7 @@ func GetBuild(buildID string) (*entities.Build, error) {
 
 func TriggerAppBuild(ctx context.Context, appID, userID string, req *models.TriggerBuildRequest) (*entities.Build, error) {
 	// Get app with env/project info
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, fmt.Errorf("app not found: %w", err)
 	}
@@ -272,7 +272,7 @@ func DeployBuild(ctx context.Context, buildID string) (*entities.Build, error) {
 	if bd.AppID == nil || *bd.AppID == "" {
 		return nil, errors.New("build has no associated app; use code repository deploy for this build")
 	}
-	appCtx, err := GetApp(ctx, *bd.AppID)
+	appCtx, err := GetAppContext(ctx, *bd.AppID)
 	if err != nil {
 		return nil, err
 	}
@@ -443,16 +443,6 @@ func ToBuildResponse(c context.Context, b *entities.Build) models.BuildResponse 
 		CreatedAt:      b.CreatedAt,
 	}
 
-	var bd entities.BuildDeployment
-	if err := db.DB.Where("build_id = ?", b.ID).
-		Order("created_at DESC").
-		First(&bd).Error; err == nil && bd.AppID != nil && *bd.AppID != "" {
-		if appCtx, err := GetApp(c, *bd.AppID); err == nil {
-			appResp := ToAppResponse(c, appCtx)
-			resp.App = &appResp
-		}
-	}
-
 	return resp
 }
 
@@ -512,19 +502,9 @@ func toCodeRepositoryDeploymentResponse(row *codeRepositoryDeploymentRow) models
 		ImageFullName:  row.ImageFullName,
 		ErrorMessage:   row.DeploymentErrorMessage,
 		CreatedAt:      row.BuildCreatedAt,
-	}
-
-	if row.AppID != nil && *row.AppID != "" {
-		resp.App = &models.DeploymentAppSimpleResponse{
-			ID:   *row.AppID,
-			Name: row.AppName,
-		}
-		if row.EnvID != "" || row.EnvName != "" {
-			resp.App.Env = &models.DeploymentAppEnvSimpleResponse{
-				ID:   row.EnvID,
-				Name: row.EnvName,
-			}
-		}
+		AppID:          *row.AppID,
+		AppName:        row.AppName,
+		EnvName:        row.EnvName,
 	}
 
 	return resp
@@ -758,7 +738,7 @@ func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req 
 
 	var appCtx *models.AppContext
 	if req.AppID != "" {
-		appCtx, err = GetApp(ctx, req.AppID)
+		appCtx, err = GetAppContext(ctx, req.AppID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("app not found: %w", err)
 		}

@@ -5,7 +5,6 @@ import { toast } from "sonner"
 
 import { codeRepositoriesApi, type CodeRepository, type UpdateCodeRepositoryRequest } from "@/api/code-repositories"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -28,7 +27,6 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
         git_repo_url: repo.git_repo_url,
         git_username: repo.git_username ?? '',
         git_password: repo.git_password ?? '',
-        webhook_enabled: repo.webhook_enabled,
       })
     }
   }, [repo, open])
@@ -129,16 +127,6 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
                   />
                 </FieldContent>
               </Field>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="webhook-enabled-checkbox"
-                checked={form.webhook_enabled ?? false}
-                onCheckedChange={(v) => setForm({ ...form, webhook_enabled: v === true })}
-              />
-              <label htmlFor="webhook-enabled-checkbox" className="cursor-pointer">
-                Webhook enabled
-              </label>
             </div>
           </div>
           <DialogFooter>

@@ -19,8 +19,7 @@ import { useNavigate } from "react-router-dom"
 
 import { clustersApi } from "@/api/clusters"
 import { dashboardApi } from "@/api/dashboard"
-import { envsApi } from "@/api/envs"
-import { type SimpleResponse } from "@/api/pagination"
+import { envsApi, type Env } from "@/api/envs"
 import { projectsApi } from "@/api/projects"
 import { PageHeader } from "@/components/layout/page-header"
 import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-resource-metrics"
@@ -34,20 +33,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 
-function EnvironmentMetricsPanel({ env }: { env: SimpleResponse }) {
+function EnvironmentMetricsPanel({ env }: { env: Env }) {
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
   return (
     <div className="p-4 border rounded-lg">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h4 className="font-medium">{env.name}</h4>
-          <p className="text-xs text-muted-foreground font-mono">{env.metadata?.cluster_namespace}</p>
+          <p className="text-xs text-muted-foreground font-mono">{env.cluster_namespace}</p>
         </div>
         <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
       </div>
       <EnvironmentResourceMetrics
-        clusterId={env.metadata?.cluster_id || ""}
-        namespace={env.metadata?.cluster_namespace || ""}
+        clusterId={env.cluster_id || ""}
+        namespace={env.cluster_namespace || ""}
         timeRange={timeRange}
         rangeSeconds={rangeSeconds}
         step={step}

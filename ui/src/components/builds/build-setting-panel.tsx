@@ -7,8 +7,7 @@ import { buildSettingsApi, type UpsertBuildSettingRequest } from "@/api/build-se
 import { registryProviderLabels, type ContainerRegistry } from "@/api/container-registries"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Field, FieldContent, FieldLabel, FieldTitle } from "@/components/ui/field"
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Tooltip,
@@ -54,9 +53,6 @@ export function BuildSettingPanel({ appId }: BuildSettingPanelProps) {
     image_name: '',
     registry_id: '',
     build_args: '',
-    auto_build: false,
-    auto_deploy: false,
-    webhook_enabled: false,
   })
 
   React.useEffect(() => {
@@ -71,9 +67,6 @@ export function BuildSettingPanel({ appId }: BuildSettingPanelProps) {
         image_name: setting.image_name,
         registry_id: setting.registry_id,
         build_args: setting.build_args || '',
-        auto_build: setting.auto_build,
-        auto_deploy: setting.auto_deploy,
-        webhook_enabled: setting.webhook_enabled,
       })
     }
   }, [setting])
@@ -96,7 +89,7 @@ export function BuildSettingPanel({ appId }: BuildSettingPanelProps) {
       setForm({
         git_repo_url: '', git_ref: 'main', git_username: '', git_password: '',
         dockerfile_path: 'Dockerfile', build_context: '.', image_name: '',
-        registry_id: '', build_args: '', auto_build: false, auto_deploy: false, webhook_enabled: false,
+        registry_id: '', build_args: '',
       })
       toast.success('Build setting deleted')
     },
@@ -301,70 +294,6 @@ export function BuildSettingPanel({ appId }: BuildSettingPanelProps) {
             </FieldContent>
           </Field>
         </div>
-
-        {/* Behavior */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium">Behavior</h4>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="auto-build"
-                checked={form.auto_build}
-                onCheckedChange={(v) => setForm({ ...form, auto_build: v === true })}
-              />
-              <div className="grid gap-0.5">
-                <label htmlFor="auto-build" className="text-sm font-medium leading-none cursor-pointer">Auto Build</label>
-                <p className="text-[11px] text-muted-foreground">Automatically build when webhook is triggered</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="auto-deploy"
-                checked={form.auto_deploy}
-                onCheckedChange={(v) => setForm({ ...form, auto_deploy: v === true })}
-              />
-              <div className="grid gap-0.5">
-                <label htmlFor="auto-deploy" className="text-sm font-medium leading-none cursor-pointer">Auto Deploy</label>
-                <p className="text-[11px] text-muted-foreground">Automatically deploy after a successful build</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="webhook-enabled-switch"
-                checked={form.webhook_enabled}
-                onCheckedChange={(v) => setForm({ ...form, webhook_enabled: v === true })}
-              />
-              <div className="grid gap-0.5">
-                <label htmlFor="webhook-enabled-switch" className="text-sm font-medium leading-none cursor-pointer">Webhook</label>
-                <p className="text-[11px] text-muted-foreground">Enable webhook trigger for automated builds</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Webhook Info */}
-        {setting?.webhook_enabled && setting?.webhook_secret && (
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium">Webhook Information</h4>
-            <div className="rounded-lg border p-4 space-y-3 bg-muted/50">
-              <div className="space-y-1">
-                <FieldTitle className="text-xs text-muted-foreground uppercase">Webhook URL</FieldTitle>
-                <code className="block text-xs bg-background p-2 rounded border break-all">
-                  {`${window.location.origin}/api/v1/webhooks/git/${appId}?secret=${setting.webhook_secret}`}
-                </code>
-              </div>
-              <div className="space-y-1">
-                <FieldTitle className="text-xs text-muted-foreground uppercase">Secret</FieldTitle>
-                <code className="block text-xs bg-background p-2 rounded border break-all font-mono">
-                  {setting.webhook_secret}
-                </code>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Add this URL as a webhook in your Git provider. Supports GitHub (X-Hub-Signature-256) and GitLab (X-Gitlab-Token) signature verification.
-              </p>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   )

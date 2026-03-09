@@ -175,8 +175,5 @@ func requiresAuth(path string) bool {
 	if publicPaths[path] {
 		return false
 	}
-	if strings.HasPrefix(path, "/api/v1/webhooks/") {
-		return false
-	}
 	return true
 }

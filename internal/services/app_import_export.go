@@ -217,7 +217,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 func ExportApps(appIDs []string, format exporter.ExportFormat) (string, error) {
 	var appCtxs []*models.AppContext
 	for _, id := range appIDs {
-		appCtx, err := GetApp(context.Background(), id)
+		appCtx, err := GetAppContext(context.Background(), id)
 		if err != nil {
 			return "", err
 		}
@@ -244,7 +244,7 @@ func ExportEnvApps(envID string, appIDs []string, format exporter.ExportFormat) 
 
 	var appCtxs []*models.AppContext
 	for _, a := range apps {
-		appCtx, err := GetApp(context.Background(), a.ID)
+		appCtx, err := GetAppContext(context.Background(), a.ID)
 		if err != nil {
 			return "", err
 		}

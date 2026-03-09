@@ -2,8 +2,6 @@ package services
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -108,7 +106,7 @@ func UpsertAppBuildSetting(appID string, req *models.UpsertAppBuildSettingReques
 }
 
 // CreateRepoBuildSetting creates a new build setting under a code repository.
-func CreateRepoBuildSetting(repoID string, req *models.CreateRepoBuildSettingRequest) (*BuildSettingWithRegistry, error) {
+func CreateRepoBuildSetting(repoID string, req *models.CreateBuildSettingRequest) (*BuildSettingWithRegistry, error) {
 	s := entities.BuildSetting{
 		ID:               uuid.New(),
 		CodeRepositoryID: &repoID,
@@ -207,7 +205,7 @@ func ToBuildSettingResponse(s *BuildSettingWithRegistry) models.BuildSettingResp
 
 // ListAvailableRegistriesForApp lists container registries available to an app's cluster/project.
 func ListAvailableRegistriesForApp(appID string) ([]entities.ContainerRegistry, error) {
-	appCtx, err := GetApp(context.Background(), appID)
+	appCtx, err := GetAppContext(context.Background(), appID)
 	if err != nil {
 		return nil, err
 	}
@@ -238,14 +236,6 @@ func TestGitConnection(req *models.TestGitConnectionRequest) *models.TestGitConn
 		Success: true,
 		Message: "Git repository is accessible",
 	}
-}
-
-func generateWebhookSecret() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
 }
 
 func defaultStr(val, def string) string {

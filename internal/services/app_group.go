@@ -102,7 +102,7 @@ func ListGroupedApps(envID string) ([]models.AppGroupWithApps, error) {
 				Description: g.Description,
 				CreatedAt:   g.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 			},
-			Apps: []models.AppSimpleResponse{},
+			Apps: []models.SimpleApp{},
 		})
 		groupIndexByID[g.ID] = len(result) - 1
 		groupIDs = append(groupIDs, g.ID)
@@ -122,7 +122,7 @@ func ListGroupedApps(envID string) ([]models.AppGroupWithApps, error) {
 
 	var rows []groupAppRow
 	if err := db.DB.Model(&entities.AppGroupMember{}).
-		Select("app_group_members.group_id, apps.id, apps.slug, apps.name, apps.deploy_status").
+		Select("app_group_members.group_id, apps.id, apps.slug, apps.name").
 		Joins("JOIN apps ON apps.id = app_group_members.app_id").
 		Where("app_group_members.group_id IN ? AND apps.env_id = ?", groupIDs, envID).
 		Order("app_group_members.created_at ASC").
@@ -135,11 +135,10 @@ func ListGroupedApps(envID string) ([]models.AppGroupWithApps, error) {
 		if !ok {
 			continue
 		}
-		result[idx].Apps = append(result[idx].Apps, models.AppSimpleResponse{
-			ID:     row.ID,
-			Slug:   row.Slug,
-			Name:   row.Name,
-			Status: row.DeployStatus,
+		result[idx].Apps = append(result[idx].Apps, models.SimpleApp{
+			ID:   row.ID,
+			Slug: row.Slug,
+			Name: row.Name,
 		})
 	}
 
@@ -180,7 +179,7 @@ func ListSpecificGroupedApps(c context.Context, groupID string, page, pageSize i
 	if search != "" {
 		dataQ = dataQ.Where("apps.name LIKE ? OR apps.slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
-	if err := dataQ.Offset((page-1)*pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
+	if err := dataQ.Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
 		return 0, nil, err
 	}
 

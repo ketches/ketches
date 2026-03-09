@@ -25,10 +25,9 @@ func ListCodeRepositories(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	baseURL := getBaseURL(c)
 	res := make([]models.CodeRepositoryResponse, 0, len(repos))
 	for i := range repos {
-		res = append(res, services.ToCodeRepositoryResponse(&repos[i], baseURL))
+		res = append(res, services.ToCodeRepositoryResponse(&repos[i]))
 	}
 
 	api.Success(c, models.ListCodeRepositoryResponse{
@@ -45,16 +44,7 @@ func ListCodeRepositoriesSimple(c *gin.Context) {
 		return
 	}
 
-	res := []models.SimpleResponse{}
-	for _, repo := range repos {
-		res = append(res, models.SimpleResponse{
-			ID:   repo.ID,
-			Slug: repo.Slug,
-			Name: repo.Name,
-		})
-	}
-
-	api.Success(c, res)
+	api.Success(c, repos)
 }
 
 func CreateCodeRepository(c *gin.Context) {
@@ -69,7 +59,7 @@ func CreateCodeRepository(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Created(c, services.ToCodeRepositoryRowResponse(repo, getBaseURL(c)))
+	api.Created(c, services.ToCodeRepositoryRowResponse(repo))
 }
 
 func GetCodeRepository(c *gin.Context) {
@@ -79,7 +69,7 @@ func GetCodeRepository(c *gin.Context) {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
-	api.Success(c, services.ToCodeRepositoryRowResponse(repo, getBaseURL(c)))
+	api.Success(c, services.ToCodeRepositoryRowResponse(repo))
 }
 
 func UpdateCodeRepository(c *gin.Context) {
@@ -94,7 +84,7 @@ func UpdateCodeRepository(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Success(c, services.ToCodeRepositoryRowResponse(repo, getBaseURL(c)))
+	api.Success(c, services.ToCodeRepositoryRowResponse(repo))
 }
 
 func DeleteCodeRepository(c *gin.Context) {
@@ -224,7 +214,7 @@ func ListRepoBuildSettings(c *gin.Context) {
 
 func CreateRepoBuildSetting(c *gin.Context) {
 	repoID := c.Param("repoID")
-	var req models.CreateRepoBuildSettingRequest
+	var req models.CreateBuildSettingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
@@ -309,20 +299,4 @@ func ListCodeRepositoryRefs(c *gin.Context) {
 		return
 	}
 	api.Success(c, models.ListGitRefsResponse{Refs: refs})
-}
-
-func getBaseURL(c *gin.Context) string {
-	// Prefer X-Forwarded-Proto/Host for webhook URL
-	scheme := c.GetHeader("X-Forwarded-Proto")
-	if scheme == "" {
-		scheme = "https"
-		if c.Request.TLS == nil {
-			scheme = "http"
-		}
-	}
-	host := c.GetHeader("X-Forwarded-Host")
-	if host == "" {
-		host = c.Request.Host
-	}
-	return scheme + "://" + host
 }

@@ -1,8 +1,8 @@
 import type { App } from './apps'
-import type { Build } from './builds'
+import type { Build, BuildDeployment } from './builds'
 import client from './client'
 import type { ContainerRegistry } from './container-registries'
-import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
+import { type PaginationParams, type PaginationResponse } from './pagination'
 
 export interface CodeRepository {
   id: string
@@ -14,9 +14,6 @@ export interface CodeRepository {
   git_username: string
   git_password: string
   has_git_password: boolean
-  webhook_secret: string
-  webhook_enabled: boolean
-  webhook_url: string
   created_at: string
   updated_at: string
 }
@@ -39,7 +36,6 @@ export interface UpdateCodeRepositoryRequest {
   git_repo_url?: string
   git_username?: string
   git_password?: string
-  webhook_enabled?: boolean
 }
 
 export interface BuildSetting {
@@ -98,7 +94,7 @@ export const codeRepositoriesApi = {
     return client.get(`/v1/projects/${projectId}/code-repositories`, { params }) as Promise<{ items: CodeRepository[], pagination: PaginationResponse }>
   },
   listSimple: async (projectId: string) => {
-    return client.get(`/v1/projects/${projectId}/code-repositories/simple`) as Promise<SimpleResponse[]>
+    return client.get(`/v1/projects/${projectId}/code-repositories/simple`) as Promise<CodeRepository[]>
   },
   create: async (projectId: string, data: CreateCodeRepositoryRequest) => {
     return client.post(`/v1/projects/${projectId}/code-repositories`, data) as Promise<CodeRepository>
@@ -140,7 +136,7 @@ export const codeRepositoriesApi = {
     return client.get(`/v1/code-repositories/${repoId}/builds`) as Promise<Build[]>
   },
   listDeployments: async (repoId: string) => {
-    return client.get(`/v1/code-repositories/${repoId}/deployments`) as Promise<Build[]>
+    return client.get(`/v1/code-repositories/${repoId}/deployments`) as Promise<BuildDeployment[]>
   },
   triggerBuild: async (repoId: string, data: TriggerBuildRequest) => {
     return client.post(`/v1/code-repositories/${repoId}/builds`, data) as Promise<Build>

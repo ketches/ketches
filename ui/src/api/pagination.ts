@@ -14,12 +14,3 @@ export interface PaginationResponse {
   page_size: number
   total_pages: number
 }
-
-export interface SimpleResponse {
-  id: string
-  slug: string
-  name: string
-  description?: string
-  status?: string
-  metadata?: Record<string, string>
-}

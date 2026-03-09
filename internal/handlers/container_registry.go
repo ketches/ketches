@@ -87,17 +87,7 @@ func ListProjectContainerRegistriesSimple(c *gin.Context) {
 		return
 	}
 
-	res := []models.SimpleResponse{}
-	for _, r := range registries {
-		res = append(res, models.SimpleResponse{
-			ID:          r.ID,
-			Name:        r.Name,
-			Description: r.Endpoint, // endpoint as description for registries
-			Status:      string(r.Provider),
-		})
-	}
-
-	api.Success(c, res)
+	api.Success(c, registries)
 }
 
 func CreateProjectContainerRegistry(c *gin.Context) {

@@ -2,39 +2,38 @@ package models
 
 import "time"
 
-// CreateCodeRepositoryRequest: step 1 - only repo URL and credentials. Name/slug optional (derived from URL).
+type SimpleCodeRepository struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
 type CreateCodeRepositoryRequest struct {
-	Name        string `json:"name"` // optional; derived from git_repo_url if empty
-	Slug        string `json:"slug"` // optional; derived from name if empty
+	Name        string `json:"name"`
+	Slug        string `json:"slug"`
 	GitRepoURL  string `json:"git_repo_url" binding:"required"`
 	GitUsername string `json:"git_username"`
 	GitPassword string `json:"git_password"`
 }
 
-// UpdateCodeRepositoryRequest: name, slug, url, credentials, webhook only.
 type UpdateCodeRepositoryRequest struct {
-	Name           string `json:"name"`
-	Slug           string `json:"slug"`
-	GitRepoURL     string `json:"git_repo_url"`
-	GitUsername    string `json:"git_username"`
-	GitPassword    string `json:"git_password"`
-	WebhookEnabled *bool  `json:"webhook_enabled"`
+	Name        string `json:"name"`
+	Slug        string `json:"slug"`
+	GitRepoURL  string `json:"git_repo_url"`
+	GitUsername string `json:"git_username"`
+	GitPassword string `json:"git_password"`
 }
 
-// CodeRepositoryResponse: repo identity and webhook; no build fields.
 type CodeRepositoryResponse struct {
-	ID             string    `json:"id"`
-	ProjectID      string    `json:"project_id"`
-	Name           string    `json:"name"`
-	Slug           string    `json:"slug"`
-	GitRepoURL     string    `json:"git_repo_url"`
-	GitUsername    string    `json:"git_username"`
-	GitPassword    string    `json:"git_password"`
-	WebhookSecret  string    `json:"webhook_secret"`
-	WebhookEnabled bool      `json:"webhook_enabled"`
-	WebhookURL     string    `json:"webhook_url"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID          string    `json:"id"`
+	ProjectID   string    `json:"project_id"`
+	Name        string    `json:"name"`
+	Slug        string    `json:"slug"`
+	GitRepoURL  string    `json:"git_repo_url"`
+	GitUsername string    `json:"git_username"`
+	GitPassword string    `json:"git_password"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type ListCodeRepositoryResponse struct {
@@ -42,8 +41,6 @@ type ListCodeRepositoryResponse struct {
 	Pagination PaginationResponse       `json:"pagination"`
 }
 
-
-// TriggerCodeRepositoryBuildRequest: build_setting_id required; build runs in build_env_id.
 type TriggerCodeRepositoryBuildRequest struct {
 	BuildSettingID string `json:"build_setting_id" binding:"required"`
 	BuildEnvID     string `json:"build_env_id" binding:"required"`
@@ -57,7 +54,6 @@ type TriggerCodeRepositoryBuildRequest struct {
 	DeployAppSlug string `json:"deploy_app_slug"`
 }
 
-// DeployCodeRepositoryBuildRequest unchanged
 type DeployCodeRepositoryBuildRequest struct {
 	TargetEnvID string `json:"target_env_id" binding:"required"`
 	AppID       string `json:"app_id"`

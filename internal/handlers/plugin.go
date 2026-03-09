@@ -121,23 +121,7 @@ func ListPluginsSimple(c *gin.Context) {
 		return
 	}
 
-	var envVars []models.PluginEnvVar
-	res := []models.SimplePluginResponse{}
-	for _, p := range plugins {
-		if p.EnvVars != "" {
-			json.Unmarshal([]byte(p.EnvVars), &envVars)
-		}
-		res = append(res, models.SimplePluginResponse{
-			ID:          p.ID,
-			Slug:        p.Slug,
-			Name:        p.Name,
-			Description: p.Description,
-			PluginType:  p.PluginType,
-			EnvVars:     envVars,
-		})
-	}
-
-	api.Success(c, res)
+	api.Success(c, plugins)
 }
 
 func UpdatePlugin(c *gin.Context) {
@@ -290,7 +274,7 @@ func GetPluginInstalledApps(c *gin.Context) {
 
 	responses := make([]models.AppResponse, 0, len(apps))
 	for _, app := range apps {
-		appCtx, err := services.GetApp(c.Request.Context(), app.ID)
+		appCtx, err := services.GetAppContext(c.Request.Context(), app.ID)
 		if err != nil {
 			continue
 		}

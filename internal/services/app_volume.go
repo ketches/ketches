@@ -62,7 +62,7 @@ func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolume
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func UpdateAppVolume(ctx context.Context, id string, req *models.UpdateVolumeReq
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, volume.AppID)
+	appCtx, err := GetAppContext(ctx, volume.AppID)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func DeleteAppVolume(ctx context.Context, id string) error {
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, volume.AppID)
+	appCtx, err := GetAppContext(ctx, volume.AppID)
 	if err != nil {
 		return err
 	}

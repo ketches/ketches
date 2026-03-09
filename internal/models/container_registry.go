@@ -2,8 +2,15 @@ package models
 
 import "time"
 
+type SimpleContainerRepository struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
 type CreateContainerRegistryRequest struct {
 	Name          string `json:"name" binding:"required"`
+	Slug          string `json:"slug" binding:"required"`
 	Provider      string `json:"provider" binding:"required,oneof=dockerhub harbor ghcr acr ecr aliyun custom"`
 	Endpoint      string `json:"endpoint" binding:"required"`
 	SkipTLSVerify *bool  `json:"skip_tls_verify"`
@@ -31,6 +38,7 @@ type UpdateContainerRegistryRequest struct {
 type ContainerRegistryResponse struct {
 	ID            string    `json:"id"`
 	Name          string    `json:"name"`
+	Slug          string    `json:"slug"`
 	Provider      string    `json:"provider"`
 	Endpoint      string    `json:"endpoint"`
 	SkipTLSVerify bool      `json:"skip_tls_verify"`

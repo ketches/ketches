@@ -6,6 +6,14 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 )
 
+type SimpleApp struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Slug        string `json:"slug"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+}
+
 type CreateAppRequest struct {
 	Slug             string `json:"slug"`
 	Name             string `json:"name" binding:"required"`

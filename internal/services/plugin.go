@@ -89,9 +89,9 @@ func ListPluginsSimple() ([]entities.Plugin, error) {
 	return plugins, nil
 }
 
-func ListProjectPluginsSimple(projectID string) ([]entities.Plugin, error) {
-	var plugins []entities.Plugin
-	if err := db.DB.Select("id, slug, name, description, plugin_type, env_vars").Where("project_id = ?", projectID).Order("name").Find(&plugins).Error; err != nil {
+func ListProjectPluginsSimple(projectID string) ([]models.SimplePlugin, error) {
+	var plugins []models.SimplePlugin
+	if err := db.DB.Model(&entities.Plugin{}).Select("id, slug, name, description, plugin_type").Where("project_id = ?", projectID).Order("name").Find(&plugins).Error; err != nil {
 		return nil, err
 	}
 	return plugins, nil

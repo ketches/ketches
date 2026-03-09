@@ -307,11 +307,6 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
                           onClick={() => navigate(`/code-repositories/${repo.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>
                           {repo.name}
                         </CardTitle>
-                        {repo.webhook_enabled && (
-                          <span className="text-[10px] text-muted-foreground px-1.5 py-0 rounded-full bg-muted border shrink-0">
-                            Webhook enabled
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
                         <span>{repo.slug}</span>

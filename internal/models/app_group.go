@@ -21,16 +21,8 @@ type AppGroupResponse struct {
 	CreatedAt   string `json:"created_at"`
 }
 
-// AppSimpleResponse is a simplified app response used inside group listings.
-type AppSimpleResponse struct {
-	ID     string `json:"id"`
-	Slug   string `json:"slug"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
-}
-
 // AppGroupWithApps includes the group metadata and its apps for a given env.
 type AppGroupWithApps struct {
 	AppGroupResponse
-	Apps []AppSimpleResponse `json:"apps"`
+	Apps []SimpleApp `json:"apps"`
 }

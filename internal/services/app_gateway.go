@@ -51,7 +51,7 @@ func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatew
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, gateway.AppID)
+	appCtx, err := GetAppContext(ctx, gateway.AppID)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func DeleteAppGateway(ctx context.Context, id string) error {
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, gateway.AppID)
+	appCtx, err := GetAppContext(ctx, gateway.AppID)
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func GetGatewayWithApp(ctx context.Context, gatewayID string) (*entities.AppGate
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, gateway.AppID)
+	appCtx, err := GetAppContext(ctx, gateway.AppID)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -23,7 +23,6 @@ import { DataTable } from "@/components/data-table/data-table"
 import { CreateEnvironmentDialog } from "@/components/environment/create-environment-dialog"
 import { EditEnvironmentDialog } from "@/components/environment/edit-environment-dialog"
 import { PageHeader } from "@/components/layout/page-header"
-import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyEnvironmentState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -131,15 +130,6 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
             </p>
           </div>
         </div >
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <ColorBadge color="green">
-          {row.original.status || "Active"}
-        </ColorBadge>
       ),
     },
     {
@@ -322,9 +312,6 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
                       <div className="flex items-center gap-2 flex-wrap">
                         <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
                           onClick={() => navigate(`/environments/${env.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>{env.name}</CardTitle>
-                        <ColorBadge color="green">
-                          {env.status || "Active"}
-                        </ColorBadge>
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
                         <span>{env.slug}</span>

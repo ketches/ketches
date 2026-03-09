@@ -62,7 +62,7 @@ func RollbackDeployment(appID, historyID string) (*entities.App, error) {
 		return nil, err
 	}
 
-	appCtx, err := GetApp(context.Background(), appID)
+	appCtx, err := GetAppContext(context.Background(), appID)
 	if err != nil {
 		return nil, err
 	}

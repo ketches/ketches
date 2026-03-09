@@ -3,10 +3,9 @@ import { Loader2, Plus, X } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { appsApi } from "@/api/apps"
+import { appsApi, type SimpleApp } from "@/api/apps"
 import { codeRepositoriesApi, type BuildSetting } from "@/api/code-repositories"
-import { envsApi } from "@/api/envs"
-import { type SimpleResponse } from "@/api/pagination"
+import { envsApi, type Env } from "@/api/envs"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -84,7 +83,7 @@ export function UnifiedBuildDeployDialog({
     enabled: !!projectId && open,
   })
 
-  const buildEnvs = envs.filter((e: SimpleResponse) => e.metadata?.is_build_env === "true")
+  const buildEnvs = envs.filter((e: Env) => e.is_build_env)
   const deployEnvs = envs
 
   const isDeployMode = !!preSelectedBuildId
@@ -96,7 +95,7 @@ export function UnifiedBuildDeployDialog({
   })
 
   const existingRepoApps = appsInDeployEnv.filter(
-    (a: SimpleResponse) => a.metadata?.code_repository_id === repoId
+    (a: SimpleApp) => a.code_repository_id === repoId
   )
 
   const selectedConfig = (buildSettings as BuildSetting[]).find((c) => c.id === selectedBuildSettingId)
@@ -366,16 +365,16 @@ export function UnifiedBuildDeployDialog({
                       <Combobox
                         value={buildEnvId}
                         onValueChange={(v) => v !== null && setBuildEnvId(v)}
-                        itemToStringLabel={(id) => envs?.find((e: SimpleResponse) => e.id === id)?.name ?? id ?? ""}
+                        itemToStringLabel={(id) => envs?.find((e: Env) => e.id === id)?.name ?? id ?? ""}
                       >
                         <ComboboxInput placeholder="Select build environment" />
                         <ComboboxContent>
                           <ComboboxList>
-                            {(envs || []).map((env: SimpleResponse) => (
+                            {(envs || []).map((env: Env) => (
                               <ComboboxItem key={env.id} value={env.id}>
                                 <Item size="xs" className="p-0">
                                   <ItemContent>
-                                    <ItemTitle><>{env.name}{env.metadata?.is_build_env === "true" && <ColorBadge>Build</ColorBadge>}</></ItemTitle>
+                                    <ItemTitle><>{env.name}{env.is_build_env && <ColorBadge>Build</ColorBadge>}</></ItemTitle>
                                     <ItemDescription>{env.slug}</ItemDescription>
                                   </ItemContent>
                                 </Item>
@@ -413,12 +412,12 @@ export function UnifiedBuildDeployDialog({
                     <Combobox
                       value={deployEnvId}
                       onValueChange={(v) => v !== null && setDeployEnvId(v)}
-                      itemToStringLabel={(id) => deployEnvs?.find((e: SimpleResponse) => e.id === id)?.name ?? id ?? ""}
+                      itemToStringLabel={(id) => deployEnvs?.find((e: Env) => e.id === id)?.name ?? id ?? ""}
                     >
                       <ComboboxInput placeholder="Select deploy environment" />
                       <ComboboxContent>
                         <ComboboxList>
-                          {(deployEnvs || []).map((env: SimpleResponse) => (
+                          {(deployEnvs || []).map((env: Env) => (
                             <ComboboxItem key={env.id} value={env.id}>
                               <Item size="xs" className="p-0">
                                 <ItemContent>
@@ -451,7 +450,7 @@ export function UnifiedBuildDeployDialog({
                               <Combobox
                                 value={deployAppId}
                                 onValueChange={(v) => v !== null && setDeployAppId(v)}
-                                itemToStringLabel={(id) => existingRepoApps?.find((a: SimpleResponse) => a.id === id)?.name ?? id ?? ""}
+                                itemToStringLabel={(id) => existingRepoApps?.find((a: SimpleApp) => a.id === id)?.name ?? id ?? ""}
                               >
                                 <ComboboxInput placeholder="Select application" className="flex-1" />
                                 <ComboboxContent>

@@ -84,9 +84,9 @@ func ListCodeRepositories(projectID string, page, pageSize int, search string) (
 	return total, repos, nil
 }
 
-func ListCodeRepositoriesSimple(projectID string) ([]entities.CodeRepository, error) {
-	var repos []entities.CodeRepository
-	if err := db.DB.Select("id, slug, name").Where("project_id = ?", projectID).Order("created_at").Find(&repos).Error; err != nil {
+func ListCodeRepositoriesSimple(projectID string) ([]models.SimpleCodeRepository, error) {
+	var repos []models.SimpleCodeRepository
+	if err := db.DB.Model(&entities.CodeRepository{}).Select("id, slug, name").Where("project_id = ?", projectID).Order("created_at").Find(&repos).Error; err != nil {
 		return nil, err
 	}
 	return repos, nil
@@ -105,7 +105,6 @@ func GetCodeRepository(id string) (*CodeRepositoryWithProject, error) {
 }
 
 func CreateCodeRepository(projectID string, req *models.CreateCodeRepositoryRequest) (*CodeRepositoryWithProject, error) {
-	secret, _ := generateWebhookSecret()
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		name = RepoNameFromURL(req.GitRepoURL)
@@ -123,15 +122,13 @@ func CreateCodeRepository(projectID string, req *models.CreateCodeRepositoryRequ
 	}
 
 	repo := &entities.CodeRepository{
-		Base:           entities.Base{ID: uuid.New()},
-		ProjectID:      projectID,
-		Name:           name,
-		Slug:           slug,
-		GitRepoURL:     req.GitRepoURL,
-		GitUsername:    req.GitUsername,
-		GitPassword:    req.GitPassword,
-		WebhookSecret:  secret,
-		WebhookEnabled: false,
+		Base:        entities.Base{ID: uuid.New()},
+		ProjectID:   projectID,
+		Name:        name,
+		Slug:        slug,
+		GitRepoURL:  req.GitRepoURL,
+		GitUsername: req.GitUsername,
+		GitPassword: req.GitPassword,
 	}
 	if err := db.DB.Create(repo).Error; err != nil {
 		return nil, err
@@ -156,9 +153,6 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 	}
 	repo.GitUsername = req.GitUsername
 	repo.GitPassword = req.GitPassword
-	if req.WebhookEnabled != nil {
-		repo.WebhookEnabled = *req.WebhookEnabled
-	}
 	if err := db.DB.Save(&repo.CodeRepository).Error; err != nil {
 		return nil, err
 	}
@@ -186,28 +180,23 @@ func DeleteCodeRepository(id string) error {
 	return db.DB.Delete(&entities.CodeRepository{}, "id = ?", id).Error
 }
 
-func ToCodeRepositoryResponse(r *entities.CodeRepository, baseURL string) models.CodeRepositoryResponse {
+func ToCodeRepositoryResponse(r *entities.CodeRepository) models.CodeRepositoryResponse {
 	resp := models.CodeRepositoryResponse{
-		ID:             r.ID,
-		ProjectID:      r.ProjectID,
-		Name:           r.Name,
-		Slug:           r.Slug,
-		GitRepoURL:     r.GitRepoURL,
-		GitUsername:    r.GitUsername,
-		GitPassword:    r.GitPassword,
-		WebhookSecret:  r.WebhookSecret,
-		WebhookEnabled: r.WebhookEnabled,
-		CreatedAt:      r.CreatedAt,
-		UpdatedAt:      r.UpdatedAt,
-	}
-	if baseURL != "" && r.WebhookSecret != "" {
-		resp.WebhookURL = fmt.Sprintf("%s/api/v1/webhooks/git/repo/%s?secret=%s", baseURL, r.ID, r.WebhookSecret)
+		ID:          r.ID,
+		ProjectID:   r.ProjectID,
+		Name:        r.Name,
+		Slug:        r.Slug,
+		GitRepoURL:  r.GitRepoURL,
+		GitUsername: r.GitUsername,
+		GitPassword: r.GitPassword,
+		CreatedAt:   r.CreatedAt,
+		UpdatedAt:   r.UpdatedAt,
 	}
 	return resp
 }
 
-func ToCodeRepositoryRowResponse(r *CodeRepositoryWithProject, baseURL string) models.CodeRepositoryResponse {
-	return ToCodeRepositoryResponse(&r.CodeRepository, baseURL)
+func ToCodeRepositoryRowResponse(r *CodeRepositoryWithProject) models.CodeRepositoryResponse {
+	return ToCodeRepositoryResponse(&r.CodeRepository)
 }
 
 func ListAvailableContainerRegistriesForCodeRepository(repoID string) ([]entities.ContainerRegistry, error) {

@@ -36,7 +36,6 @@ func ListEnvs(c *gin.Context) {
 			ClusterID:        e.ClusterID,
 			ClusterNamespace: e.ClusterNamespace,
 			IsBuildEnv:       e.IsBuildEnv,
-			Status:           "Active",
 			CreatedAt:        e.CreatedAt,
 		})
 	}
@@ -55,27 +54,7 @@ func ListEnvsSimple(c *gin.Context) {
 		return
 	}
 
-	res := []models.SimpleResponse{}
-	for _, e := range envs {
-		isBuildEnv := "false"
-		if e.IsBuildEnv {
-			isBuildEnv = "true"
-		}
-		res = append(res, models.SimpleResponse{
-			ID:          e.ID,
-			Slug:        e.Slug,
-			Name:        e.Name,
-			Description: e.Description,
-			Status:      "Active",
-			Metadata: map[string]string{
-				"cluster_id":        e.ClusterID,
-				"cluster_namespace": e.ClusterNamespace,
-				"is_build_env":      isBuildEnv,
-			},
-		})
-	}
-
-	api.Success(c, res)
+	api.Success(c, envs)
 }
 
 func CreateEnv(c *gin.Context) {

@@ -1,8 +1,8 @@
 import client from './client'
 import { type PaginationResponse } from './pagination'
 
-export type BuildStatus = 'pending' | 'cloning' | 'building' | 'succeeded' | 'failed' | 'cancelled' | 'unknown'
-export type BuildTriggerType = 'manual' | 'webhook' | 'auto'
+export type BuildStatus = 'pending' | 'cloning' | 'building' | 'succeeded' | 'deployed' | 'failed' | 'cancelled' | 'unknown'
+export type BuildTriggerType = 'manual' | 'auto'
 
 export interface Build {
   id: string
@@ -32,6 +32,33 @@ export interface Build {
   started_at: string | null
   completed_at: string | null
   duration: number
+  error_message: string
+  created_at: string
+}
+
+export interface BuildDeployment {
+  id: string
+  code_repository_id?: string
+  app_id: string
+  app_name: string
+  env_id: string
+  env_name: string
+  build_setting_id: string
+  build_number: number
+  status: BuildStatus
+  build_env_id: string
+  git_repo_url: string
+  git_ref: string
+  // git_commit_sha: string
+  // git_commit_msg: string
+  image_full_name: string
+  // trigger_type: BuildTriggerType
+  // triggered_by: string
+  // job_name: string
+  // job_namespace: string
+  // started_at: string | null
+  // completed_at: string | null
+  // duration: number
   error_message: string
   created_at: string
 }
@@ -70,6 +97,7 @@ export const buildStatusLabels: Record<BuildStatus, string> = {
   cloning: 'Cloning',
   building: 'Building',
   succeeded: 'Succeeded',
+  deployed: 'Deployed',
   failed: 'Failed',
   cancelled: 'Cancelled',
   unknown: 'Unknown',
@@ -80,6 +108,7 @@ export const buildStatusColors: Record<BuildStatus, string> = {
   cloning: 'bg-blue-100 text-blue-800',
   building: 'bg-blue-100 text-blue-800',
   succeeded: 'bg-green-100 text-green-800',
+  deployed: 'bg-green-100 text-green-800',
   failed: 'bg-red-100 text-red-800',
   cancelled: 'bg-gray-100 text-gray-800',
   unknown: 'bg-gray-100 text-gray-800',

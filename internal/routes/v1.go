@@ -143,6 +143,7 @@ func setupV1Routes(r *gin.Engine) {
 			{
 				appsRead := apps.Group("", middlewares.RequireProjectRole(app.ProjectRoleViewer))
 				appsRead.GET("/:appID", handlers.GetApp)
+				appsRead.GET("/:appID/simple", handlers.GetAppSimple)
 				appsRead.GET("/:appID/export", handlers.ExportApps)
 				appsRead.GET("/:appID/available-actions", handlers.GetAppAvailableActions)
 				appsRead.GET("/:appID/topology", handlers.GetAppTopology)

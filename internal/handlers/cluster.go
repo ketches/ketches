@@ -59,18 +59,7 @@ func ListClustersSimple(c *gin.Context) {
 		return
 	}
 
-	res := []models.SimpleResponse{}
-	for _, cluster := range clusters {
-		res = append(res, models.SimpleResponse{
-			ID:          cluster.ID,
-			Slug:        cluster.Slug,
-			Name:        cluster.Name,
-			Description: cluster.Description,
-			Status:      cluster.ConnectionStatus,
-		})
-	}
-
-	api.Success(c, res)
+	api.Success(c, clusters)
 }
 
 func ListPublicClusters(c *gin.Context) {
@@ -80,20 +69,14 @@ func ListPublicClusters(c *gin.Context) {
 		return
 	}
 
-	res := []models.ClusterPublicResponse{}
+	var result []models.SimpleCluster
 	for _, cl := range clusters {
-		if !cl.Enabled {
-			continue
+		if cl.Enabled {
+			result = append(result, cl)
 		}
-		res = append(res, models.ClusterPublicResponse{
-			ID:               cl.ID,
-			Slug:             cl.Slug,
-			Name:             cl.Name,
-			ConnectionStatus: cl.ConnectionStatus,
-		})
 	}
 
-	api.Success(c, res)
+	api.Success(c, result)
 }
 
 func CreateCluster(c *gin.Context) {
@@ -148,7 +131,7 @@ func GetCluster(c *gin.Context) {
 
 func GetPublicCluster(c *gin.Context) {
 	clusterID := c.Param("clusterID")
-	cluster, err := services.GetCluster(clusterID)
+	cluster, err := services.GetSimpleCluster(clusterID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -159,12 +142,7 @@ func GetPublicCluster(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, models.ClusterPublicResponse{
-		ID:               cluster.ID,
-		Slug:             cluster.Slug,
-		Name:             cluster.Name,
-		ConnectionStatus: cluster.ConnectionStatus,
-	})
+	api.Success(c, cluster)
 }
 
 func UpdateCluster(c *gin.Context) {

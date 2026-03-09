@@ -51,17 +51,7 @@ func ListProjectsSimple(c *gin.Context) {
 		return
 	}
 
-	res := []models.SimpleResponse{}
-	for _, p := range projects {
-		res = append(res, models.SimpleResponse{
-			ID:          p.ID,
-			Slug:        p.Slug,
-			Name:        p.Name,
-			Description: p.Description,
-		})
-	}
-
-	api.Success(c, res)
+	api.Success(c, projects)
 }
 
 func CreateProject(c *gin.Context) {

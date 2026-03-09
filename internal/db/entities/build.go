@@ -16,9 +16,8 @@ const (
 type BuildTriggerType string
 
 const (
-	BuildTriggerManual  BuildTriggerType = "manual"
-	BuildTriggerWebhook BuildTriggerType = "webhook"
-	BuildTriggerAuto    BuildTriggerType = "auto"
+	BuildTriggerManual BuildTriggerType = "manual"
+	BuildTriggerAuto   BuildTriggerType = "auto"
 )
 
 type Build struct {
@@ -27,8 +26,7 @@ type Build struct {
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 
 	// BuildSettingID: the config used for this build (required).
-	BuildSettingID string  `gorm:"type:varchar(36);not null;index"`
-
+	BuildSettingID string `gorm:"type:varchar(36);not null;index"`
 
 	BuildNumber int         `gorm:"type:int;not null"`
 	Status      BuildStatus `gorm:"type:varchar(32);default:'pending'"`
@@ -54,8 +52,6 @@ type Build struct {
 	CompletedAt  *time.Time
 	Duration     int    `gorm:"type:int"`
 	ErrorMessage string `gorm:"type:text"`
-
-
 }
 
 func (Build) TableName() string {

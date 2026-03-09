@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/core"
-	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 	"github.com/ketches/ketches/pkg/containerregistry"
@@ -40,7 +39,7 @@ func StreamAppLogs(c *gin.Context) {
 		timestamps = true
 	}
 
-	app, err := services.GetApp(c.Request.Context(), appID)
+	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
 		return
@@ -90,7 +89,7 @@ func ExecAppContainerTerminal(c *gin.Context) {
 	instanceName := c.Param("instanceName")
 	containerName := c.Query("container")
 
-	app, err := services.GetApp(c.Request.Context(), appID)
+	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -156,40 +155,13 @@ func ListApps(c *gin.Context) {
 
 func ListAppsSimple(c *gin.Context) {
 	envID := c.Param("envID")
-	apps, err := services.ListAppsSimple(envID)
+	apps, err := services.ListAppsSimple(c.Request.Context(), envID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	res := make([]models.SimpleResponse, len(apps))
-	var wg sync.WaitGroup
-	for i, a := range apps {
-		wg.Add(1)
-		go func(i int, a entities.App) {
-			defer wg.Done()
-			res[i] = models.SimpleResponse{
-				ID:          a.ID,
-				Slug:        a.Slug,
-				Name:        a.Name,
-				Description: a.Description,
-				Status:      a.DeployStatus,
-				Metadata: map[string]string{
-					"code_repository_id": derefString(a.CodeRepositoryID),
-				},
-			}
-		}(i, a)
-	}
-	wg.Wait()
-
-	api.Success(c, res)
-}
-
-func derefString(v *string) string {
-	if v == nil {
-		return ""
-	}
-	return *v
+	api.Success(c, apps)
 }
 
 func CreateApp(c *gin.Context) {
@@ -209,9 +181,20 @@ func CreateApp(c *gin.Context) {
 	api.Created(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
+func GetAppSimple(c *gin.Context) {
+	appID := c.Param("appID")
+	app, err := services.GetAppSimple(c.Request.Context(), appID)
+	if err != nil {
+		api.Error(c, http.StatusNotFound, err)
+		return
+	}
+
+	api.Success(c, app)
+}
+
 func GetApp(c *gin.Context) {
 	appID := c.Param("appID")
-	app, err := services.GetApp(c.Request.Context(), appID)
+	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -395,7 +378,7 @@ func ListAppInstanceEvents(c *gin.Context) {
 	appID := c.Param("appID")
 	instanceName := c.Param("instanceName")
 
-	app, err := services.GetApp(c.Request.Context(), appID)
+	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -414,7 +397,7 @@ func DeleteAppInstance(c *gin.Context) {
 	appID := c.Param("appID")
 	instanceName := c.Param("instanceName")
 
-	app, err := services.GetApp(c.Request.Context(), appID)
+	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -430,7 +413,7 @@ func DeleteAppInstance(c *gin.Context) {
 
 func ApplyApp(c *gin.Context) {
 	appID := c.Param("appID")
-	app, err := services.GetApp(c.Request.Context(), appID)
+	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -457,7 +440,7 @@ func AppAction(c *gin.Context) {
 		return
 	}
 
-	app, err := services.GetApp(c.Request.Context(), appID)
+	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -472,7 +455,7 @@ func AppAction(c *gin.Context) {
 
 func GetAppAvailableActions(c *gin.Context) {
 	appID := c.Param("appID")
-	app, err := services.GetApp(c.Request.Context(), appID)
+	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return

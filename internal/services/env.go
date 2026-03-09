@@ -28,9 +28,9 @@ func ListEnvs(projectID string, page, pageSize int, search string) (int64, []ent
 	return total, envs, nil
 }
 
-func ListEnvsSimple(projectID string) ([]entities.Env, error) {
-	var envs []entities.Env
-	if err := db.DB.Select("id, slug, name, description, cluster_id, cluster_namespace, is_build_env").Where("project_id = ?", projectID).Order("created_at").Find(&envs).Error; err != nil {
+func ListEnvsSimple(projectID string) ([]models.EnvResponse, error) {
+	var envs []models.EnvResponse
+	if err := db.DB.Model(&entities.Env{}).Select("id, slug, name, description, cluster_id, cluster_namespace, is_build_env").Where("project_id = ?", projectID).Order("created_at").Find(&envs).Error; err != nil {
 		return nil, err
 	}
 	return envs, nil

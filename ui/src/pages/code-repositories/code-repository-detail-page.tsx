@@ -74,6 +74,84 @@ import * as React from "react"
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
+function DeploymentErrorHoverCard({ errorMessage }: { errorMessage: string }) {
+  const [open, setOpen] = React.useState(false)
+  const isPointerOnTriggerRef = React.useRef(false)
+  const isPointerOnContentRef = React.useRef(false)
+  const closeTimerRef = React.useRef<number | null>(null)
+
+  const clearCloseTimer = React.useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [])
+
+  const scheduleClose = React.useCallback(() => {
+    clearCloseTimer()
+    closeTimerRef.current = window.setTimeout(() => {
+      if (!isPointerOnTriggerRef.current && !isPointerOnContentRef.current) {
+        setOpen(false)
+      }
+    }, 120)
+  }, [clearCloseTimer])
+
+  React.useEffect(() => {
+    return () => {
+      clearCloseTimer()
+    }
+  }, [clearCloseTimer])
+
+  return (
+    <HoverCard
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          setOpen(true)
+          return
+        }
+        if (isPointerOnTriggerRef.current || isPointerOnContentRef.current) {
+          return
+        }
+        setOpen(false)
+      }}
+    >
+      <HoverCardTrigger
+        render={<span className="inline-flex items-center justify-center" />}
+        onMouseEnter={() => {
+          isPointerOnTriggerRef.current = true
+          clearCloseTimer()
+          setOpen(true)
+        }}
+        onMouseLeave={() => {
+          isPointerOnTriggerRef.current = false
+          scheduleClose()
+        }}
+      >
+        <CircleAlert className="h-4 w-4 text-destructive" />
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="start"
+        className="max-w-96"
+        onMouseEnter={() => {
+          isPointerOnContentRef.current = true
+          clearCloseTimer()
+        }}
+        onMouseLeave={() => {
+          isPointerOnContentRef.current = false
+          scheduleClose()
+        }}
+      >
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-destructive">Deployment failed</p>
+          <p className="text-xs text-muted-foreground wrap-break-word whitespace-pre-wrap">{errorMessage}</p>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  )
+}
+
 export function CodeRepositoryDetailPage() {
   const { repoId } = useParams<{ repoId: string }>()
   const navigate = useNavigate()
@@ -452,24 +530,22 @@ export function CodeRepositoryDetailPage() {
     {
       id: "environment",
       header: "Environment",
-      cell: ({ row }) => row.original.app?.env?.name ?? "-",
+      cell: ({ row }) => row.original.env_name ?? "-",
     },
     {
       id: "application",
       header: "Application",
       cell: ({ row }) => {
         const d = row.original
-        return d.app ? (
+        return (
           <Button
             variant="link"
             className="p-0 h-auto text-xs"
-            onClick={() => navigate(`/applications/${d.app?.id}`)}
+            onClick={() => navigate(`/applications/${d.app_id}`)}
           >
             <ExternalLink />
-            {d.app.name}
+            {d.app_name}
           </Button>
-        ) : (
-          "-"
         )
       },
     },
@@ -512,17 +588,7 @@ export function CodeRepositoryDetailPage() {
           <div className="flex items-center gap-1.5">
             <BuildStatusBadge status={status} />
             {status === "failed" && errorMessage ? (
-              <HoverCard>
-                <HoverCardTrigger render={<button type="button" className="inline-flex items-center justify-center" />}>
-                  <CircleAlert className="h-4 w-4 text-destructive" />
-                </HoverCardTrigger>
-                <HoverCardContent side="top" align="start" className="max-w-96">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-destructive">Deployment failed</p>
-                    <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">{errorMessage}</p>
-                  </div>
-                </HoverCardContent>
-              </HoverCard>
+              <DeploymentErrorHoverCard errorMessage={errorMessage} />
             ) : null}
           </div>
         )
@@ -652,12 +718,6 @@ export function CodeRepositoryDetailPage() {
                 <h1 className="text-2xl font-bold tracking-tight truncate">
                   {repo.name}
                 </h1>
-
-                {repo.webhook_enabled && (
-                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted border">
-                    Webhook enabled
-                  </span>
-                )}
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="font-mono">{repo.slug}</span>
@@ -725,10 +785,6 @@ export function CodeRepositoryDetailPage() {
                       <Copy />
                     </Button>
                   </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Webhook</p>
-                  <p className="text-sm">{repo.webhook_enabled ? "Enabled" : "Disabled"}</p>
                 </div>
               </div>
             </CardContent>

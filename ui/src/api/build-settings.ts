@@ -13,11 +13,6 @@ export interface BuildSetting {
   registry_id: string
   registry?: ContainerRegistry
   build_args: string
-  auto_build: boolean
-  auto_deploy: boolean
-  webhook_secret: string
-  webhook_enabled: boolean
-  webhook_url: string
   created_at: string
   updated_at: string
 }
@@ -32,9 +27,6 @@ export interface UpsertBuildSettingRequest {
   image_name: string
   registry_id: string
   build_args?: string
-  auto_build?: boolean
-  auto_deploy?: boolean
-  webhook_enabled?: boolean
 }
 
 export interface TestGitResponse {

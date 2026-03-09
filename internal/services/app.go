@@ -82,9 +82,9 @@ func ListApps(envID string, page, pageSize int, search string) (int64, []models.
 	return total, rows, nil
 }
 
-func ListAppsSimple(envID string) ([]entities.App, error) {
-	var apps []entities.App
-	if err := db.DB.Select("id, slug, name, description, code_repository_id, deploy_status").Where("env_id = ?", envID).Order("created_at DESC").Find(&apps).Error; err != nil {
+func ListAppsSimple(c context.Context, envID string) ([]models.SimpleApp, error) {
+	var apps []models.SimpleApp
+	if err := db.DB.Model(&entities.App{}).Select("id, slug, name, description, code_repository_id").Where("env_id = ?", envID).Order("created_at DESC").Find(&apps).Error; err != nil {
 		return nil, err
 	}
 	return apps, nil
@@ -226,7 +226,15 @@ func CreateAppFromCodeRepositoryBuild(ctx context.Context, envID, slug, name, co
 	}, nil
 }
 
-func GetApp(ctx context.Context, appID string) (*models.AppContext, error) {
+func GetAppSimple(ctx context.Context, appID string) (*models.SimpleApp, error) {
+	var app models.SimpleApp
+	if err := db.DB.Model(&entities.App{}).Select("id, slug, name, description").First(&app, "id = ?", appID).Error; err != nil {
+		return nil, err
+	}
+	return &app, nil
+}
+
+func GetAppContext(ctx context.Context, appID string) (*models.AppContext, error) {
 	var application entities.App
 	if err := db.DB.First(&application, "id = ?", appID).Error; err != nil {
 		return nil, err
@@ -303,7 +311,7 @@ func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 }
 
 func UpdateAppBasic(ctx context.Context, appID string, req *models.UpdateBasicInfoRequest) (*models.AppContext, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +327,7 @@ func UpdateAppBasic(ctx context.Context, appID string, req *models.UpdateBasicIn
 }
 
 func UpdateAppImage(ctx context.Context, appID string, req *models.UpdateAppImageRequest) (*models.AppContext, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +350,7 @@ func UpdateAppImage(ctx context.Context, appID string, req *models.UpdateAppImag
 }
 
 func UpdateAppReplicas(ctx context.Context, appID string, req *models.UpdateAppReplicasRequest) (*models.AppContext, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +369,7 @@ func UpdateAppReplicas(ctx context.Context, appID string, req *models.UpdateAppR
 }
 
 func UpdateAppResources(ctx context.Context, appID string, req *models.UpdateAppResourcesRequest) (*models.AppContext, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +391,7 @@ func UpdateAppResources(ctx context.Context, appID string, req *models.UpdateApp
 }
 
 func UpdateAppAutoScaling(ctx context.Context, appID string, req *models.UpdateAppAutoScalingRequest) (*models.AppContext, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +422,7 @@ func UpdateAppAutoScaling(ctx context.Context, appID string, req *models.UpdateA
 }
 
 func UpdateAppHealth(ctx context.Context, appID string, req *models.UpdateAppHealthRequest) (*models.AppContext, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -448,11 +456,11 @@ func UpdateAppHealth(ctx context.Context, appID string, req *models.UpdateAppHea
 	}
 
 	// Re-fetch to get updated probes
-	return GetApp(ctx, appCtx.App.ID)
+	return GetAppContext(ctx, appCtx.App.ID)
 }
 
 func UpdateAppScheduling(ctx context.Context, appID string, req *models.UpdateAppSchedulingRequest) (*models.AppContext, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +492,7 @@ func UpdateAppScheduling(ctx context.Context, appID string, req *models.UpdateAp
 }
 
 func UpdateAppCommand(ctx context.Context, appID string, req *models.UpdateAppCommandRequest) (*models.AppContext, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -503,7 +511,7 @@ func UpdateAppCommand(ctx context.Context, appID string, req *models.UpdateAppCo
 }
 
 func DeleteApp(ctx context.Context, appID string) error {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return err
 	}
@@ -670,7 +678,7 @@ func RestoreApp(ctx context.Context, appID string) error {
 }
 
 func ListAppInstances(ctx context.Context, appID string) ([]models.AppInstanceResponse, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -800,7 +808,7 @@ func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName str
 }
 
 func AppAction(ctx context.Context, appID string, action app.AppAction) (*models.AppContext, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -1210,7 +1218,7 @@ func derefString(v *string) string {
 }
 
 func GetAppTopology(ctx context.Context, appID string) (*models.AppTopologyResponse, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -1224,7 +1232,7 @@ func GetAppTopology(ctx context.Context, appID string) (*models.AppTopologyRespo
 }
 
 func GetAppTopologyResourceYaml(ctx context.Context, appID string, nodeID string) (string, error) {
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return "", err
 	}

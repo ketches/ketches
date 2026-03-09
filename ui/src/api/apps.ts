@@ -1,5 +1,14 @@
 import client from './client'
-import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
+import { type PaginationParams, type PaginationResponse } from './pagination'
+
+export interface SimpleApp {
+  id: string
+  name: string
+  slug: string
+  description: string
+  status: string
+  code_repository_id: string
+}
 
 export interface AutoScalingSpec {
   min_replicas: number
@@ -116,7 +125,7 @@ export const appsApi = {
     }) as Promise<{ items: App[], pagination: PaginationResponse }>
   },
   listSimple: async (envId: string) => {
-    return client.get(`/v1/envs/${envId}/apps/simple`) as Promise<SimpleResponse[]>
+    return client.get(`/v1/envs/${envId}/apps/simple`) as Promise<SimpleApp[]>
   },
   create: async (envId: string, data: any) => {
     return client.post(`/v1/envs/${envId}/apps`, data) as Promise<App>

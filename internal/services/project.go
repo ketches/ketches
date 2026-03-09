@@ -55,9 +55,9 @@ func ListProjects(userID string, role string, req *models.PaginationRequest) (in
 	return total, rows, nil
 }
 
-func ListProjectsSimple(userID string, role string) ([]entities.Project, error) {
-	var projects []entities.Project
-	query := db.DB.Select("projects.id, projects.name, projects.slug, projects.description")
+func ListProjectsSimple(userID string, role string) ([]models.ProjectResponse, error) {
+	var projects []models.ProjectResponse
+	query := db.DB.Model(&entities.Project{}).Select("projects.id, projects.name, projects.slug, projects.description")
 	if role == app.UserRoleAdmin {
 		if err := query.Order("name").Find(&projects).Error; err != nil {
 			return nil, err

@@ -55,7 +55,7 @@ func CreateAppConfigFile(ctx context.Context, appID string, req *models.CreateCo
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, appID)
+	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func UpdateAppConfigFile(ctx context.Context, id string, req *models.UpdateConfi
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, configFile.AppID)
+	appCtx, err := GetAppContext(ctx, configFile.AppID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func DeleteAppConfigFile(ctx context.Context, id string) error {
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetApp(ctx, configFile.AppID)
+	appCtx, err := GetAppContext(ctx, configFile.AppID)
 	if err != nil {
 		return err
 	}

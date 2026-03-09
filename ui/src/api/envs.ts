@@ -1,5 +1,5 @@
 import client from './client'
-import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
+import { type PaginationParams, type PaginationResponse } from './pagination'
 
 export interface Env {
   id: string
@@ -10,7 +10,6 @@ export interface Env {
   cluster_id: string
   cluster_namespace: string
   is_build_env: boolean
-  status: string
   created_at: string
 }
 
@@ -30,7 +29,7 @@ export const envsApi = {
     }) as Promise<{ items: Env[], pagination: PaginationResponse }>
   },
   listSimpleByProject: async (projectId: string) => {
-    return client.get(`/v1/projects/${projectId}/envs/simple`) as Promise<SimpleResponse[]>
+    return client.get(`/v1/projects/${projectId}/envs/simple`) as Promise<Env[]>
   },
   create: async (projectId: string, data: CreateEnvRequest) => {
     return client.post(`/v1/projects/${projectId}/envs`, data) as Promise<Env>

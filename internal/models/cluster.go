@@ -2,6 +2,15 @@ package models
 
 import "time"
 
+type SimpleCluster struct {
+	ID               string `json:"id"`
+	Slug             string `json:"slug"`
+	Name             string `json:"name"`
+	Description      string `json:"description"`
+	Enabled          bool   `json:"enabled"`
+	ConnectionStatus string `json:"connection_status"`
+}
+
 type ClusterResponse struct {
 	ID                     string     `json:"id"`
 	Slug                   string     `json:"slug"`
@@ -19,13 +28,6 @@ type ClusterResponse struct {
 type ListClusterResponse struct {
 	Items      []ClusterResponse  `json:"items"`
 	Pagination PaginationResponse `json:"pagination"`
-}
-
-type ClusterPublicResponse struct {
-	ID               string `json:"id"`
-	Slug             string `json:"slug"`
-	Name             string `json:"name"`
-	ConnectionStatus string `json:"connection_status"`
 }
 
 type CreateClusterRequest struct {

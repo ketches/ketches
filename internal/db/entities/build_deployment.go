@@ -33,7 +33,7 @@ type BuildDeployment struct {
 	// Status tracks whether the deployment is pending, deployed, or failed.
 	Status BuildDeploymentStatus `gorm:"type:varchar(32);default:'pending'"`
 
-	// DeployedBy is the user ID who triggered the deploy, or "auto" / "webhook".
+	// DeployedBy is the user ID who triggered the deploy, or "auto".
 	DeployedBy string `gorm:"type:varchar(64)"`
 
 	DeployedAt   *time.Time
