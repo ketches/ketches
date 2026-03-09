@@ -25,23 +25,8 @@ func ListEnvs(c *gin.Context) {
 		return
 	}
 
-	res := []models.EnvResponse{}
-	for _, e := range envs {
-		res = append(res, models.EnvResponse{
-			ID:               e.ID,
-			Slug:             e.Slug,
-			Name:             e.Name,
-			Description:      e.Description,
-			ProjectID:        e.ProjectID,
-			ClusterID:        e.ClusterID,
-			ClusterNamespace: e.ClusterNamespace,
-			IsBuildEnv:       e.IsBuildEnv,
-			CreatedAt:        e.CreatedAt,
-		})
-	}
-
 	api.Success(c, models.ListEnvResponse{
-		Items:      res,
+		Items:      envs,
 		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
 	})
 }

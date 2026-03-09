@@ -23,6 +23,7 @@ type EnvResponse struct {
 	Description      string    `json:"description"`
 	ProjectID        string    `json:"project_id"`
 	ClusterID        string    `json:"cluster_id"`
+	ClusterName      string    `json:"cluster_name"`
 	ClusterNamespace string    `json:"cluster_namespace"`
 	IsBuildEnv       bool      `json:"is_build_env"`
 	CreatedAt        time.Time `json:"created_at"`

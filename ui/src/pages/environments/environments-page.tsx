@@ -2,6 +2,7 @@ import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
+  BrickWall,
   Clock,
   Copy,
   LayoutGrid,
@@ -277,16 +278,17 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
         </div>
       )}
 
-      {isLoading && !envsResponse ? (
+      {isLoading && safeEnvs.length === 0 ? (
         <div className="flex flex-col flex-1 items-center justify-center min-h-100">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : !isLoading && safeEnvs.length === 0 && !searchQuery ? (
+      ) : !isLoading && safeEnvs.length === 0 && !searchQuery.trim() ? (
         <EmptyEnvironmentState onAction={!isViewer ? () => setCreateDialogOpen(true) : undefined} />
       ) : (
         <DataTable
           columns={columns}
           data={safeEnvs}
+          isLoading={isLoading}
           viewMode={viewMode}
           onRefresh={refetch}
           manualPagination
@@ -376,11 +378,24 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <ShipWheel className="h-3.5 w-3.5" />
                     <span className="font-mono">
-                      {env.cluster_id}
+                      {env.cluster_name}
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    <span>Namespace: <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{env.cluster_namespace}</span></span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <BrickWall className="h-3.5 w-3.5" />
+                    <span className="font-mono">{env.cluster_namespace}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigator.clipboard.writeText(env.cluster_namespace)
+                        toast.success("Namespace copied to clipboard")
+                      }}
+                    >
+                      <Copy />
+                    </Button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">

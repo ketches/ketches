@@ -251,16 +251,6 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
     navigateTo(newPath)
   }, [pathSegments, navigateTo])
 
-  // Handle file/folder double click
-  const handleOpen = React.useCallback((file: FileInfo) => {
-    if (file.type === "dir") {
-      const newPath = currentPath === "/" ? `/${file.name}` : `${currentPath}/${file.name}`
-      navigateTo(newPath)
-    } else if (isTextFile(file.name)) {
-      openFileEditor(file)
-    }
-  }, [currentPath, navigateTo])
-
   // Open file editor
   const openFileEditor = React.useCallback((file: FileInfo) => {
     const filePath = currentPath === "/" ? `/${file.name}` : `${currentPath}/${file.name}`
@@ -282,6 +272,16 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
         setIsOpeningFile(false)
       })
   }, [appId, instanceName, containerName, currentPath])
+
+  // Handle file/folder double click
+  const handleOpen = React.useCallback((file: FileInfo) => {
+    if (file.type === "dir") {
+      const newPath = currentPath === "/" ? `/${file.name}` : `${currentPath}/${file.name}`
+      navigateTo(newPath)
+    } else if (isTextFile(file.name)) {
+      openFileEditor(file)
+    }
+  }, [currentPath, navigateTo, openFileEditor])
 
   // Mutations
   const writeFileMutation = useMutation({

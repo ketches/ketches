@@ -247,14 +247,6 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
     },
   ]
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <span className="text-muted-foreground animate-pulse">Loading members...</span>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-6">
       {!projectIdProp && <PageHeader items={[{ label: "Members", icon: Users }]} />}
@@ -273,6 +265,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
         <DataTable
           columns={columns}
           data={members}
+          isLoading={isLoading}
           onRefresh={refetch}
           manualPagination
           totalCount={paginationInfo?.total || 0}

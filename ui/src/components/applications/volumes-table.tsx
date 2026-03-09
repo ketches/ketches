@@ -246,23 +246,6 @@ export function VolumesTable({ app }: VolumesTableProps) {
     },
   ]
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <HardDrive className="h-4 w-4" /> Storage Volumes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            Loading storage volumes...
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -274,7 +257,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {volumes.length === 0 ? (
+        {!isLoading && volumes.length === 0 ? (
           <EmptyState
             title="No volumes configured"
             description="Add storage volumes for your application."
@@ -321,6 +304,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
             <DataTable
               columns={volumeColumns}
               data={filteredVolumes}
+              isLoading={isLoading}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
               hidePagination

@@ -148,20 +148,20 @@ export function CodeRepositoryDetailPage() {
 
   const safeRepos = Array.isArray(repos) ? repos : []
 
-  const { data: buildSettings = [] } = useQuery({
+  const { data: buildSettings = [], isLoading: buildSettingsLoading } = useQuery({
     queryKey: ["build-settings", repoId],
     queryFn: () => codeRepositoriesApi.listBuildSettings(repoId!),
     enabled: !!repoId,
   })
 
-  const { data: builds = [] } = useQuery({
+  const { data: builds = [], isLoading: buildsLoading } = useQuery({
     queryKey: ["builds", repoId],
     queryFn: () => codeRepositoriesApi.listBuilds(repoId!),
     enabled: !!repoId,
     refetchInterval: 5000,
   })
 
-  const { data: deployments = [] } = useQuery({
+  const { data: deployments = [], isLoading: deploymentsLoading } = useQuery({
     queryKey: ["code-repository-deployments", repoId],
     queryFn: () => codeRepositoriesApi.listDeployments(repoId!),
     enabled: !!repoId,
@@ -705,7 +705,7 @@ export function CodeRepositoryDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="group/card space-y-4 mt-2">
-          <Card className="bg-linear-to-b/increasing from-blue/5 to-transparent data-[active=true]:bg-transparent">
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
                 <Info className="h-4 w-4" />
@@ -813,6 +813,7 @@ export function CodeRepositoryDetailPage() {
                 <DataTable
                   columns={buildSettingColumns}
                   data={buildSettings}
+                  isLoading={buildSettingsLoading}
                 />
               )}
             </CardContent>
@@ -839,6 +840,7 @@ export function CodeRepositoryDetailPage() {
                 <DataTable
                   columns={buildHistoryColumns}
                   data={builds}
+                  isLoading={buildsLoading}
                 />
               )}
             </CardContent>
@@ -867,6 +869,7 @@ export function CodeRepositoryDetailPage() {
                 <DataTable
                   columns={deploymentColumns}
                   data={deployments as DeploymentItem[]}
+                  isLoading={deploymentsLoading}
                 />
               )}
             </CardContent>

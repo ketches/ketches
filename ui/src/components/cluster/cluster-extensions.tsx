@@ -339,6 +339,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             <DataTable
               columns={columns}
               data={safeClusterExtensions}
+              isLoading={isLoading}
               searchKey="release_name"
               searchPlaceholder="Filter extensions..."
               leftActions={() => (
@@ -378,6 +379,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             <DataTable
               columns={extensionColumns}
               data={availableExtensions}
+              isLoading={loading}
               searchKey="name"
               searchPlaceholder="Filter available extensions..."
             />
@@ -476,4 +478,3 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
     </>
   )
 }
-

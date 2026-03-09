@@ -70,14 +70,6 @@ function AdminDashboard() {
 
   const connectedClusters = clusters.filter((c) => c.status === "connected").length
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col flex-1 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={[{ label: "Dashboard", icon: LayoutDashboard }]} />
@@ -89,7 +81,13 @@ function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      {isLoading ? (
+        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
           title="Clusters"
           value={stats?.cluster_count || 0}
@@ -126,9 +124,9 @@ function AdminDashboard() {
           onClick={() => navigate("/users")}
           color="red"
         />
-      </div>
+          </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -217,9 +215,9 @@ function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
+          </div>
 
-      <Card className="border-destructive">
+          <Card className="border-destructive">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
@@ -230,7 +228,9 @@ function AdminDashboard() {
         <CardContent>
 
         </CardContent>
-      </Card>
+          </Card>
+        </>
+      )}
     </div>
   )
 }
@@ -271,14 +271,6 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
     )
   }
 
-  if (statsLoading) {
-    return (
-      <div className="flex flex-col flex-1 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col flex-1 gap-6">
       {!projectIdProp && <PageHeader items={[{ label: "Dashboard", icon: LayoutDashboard }]} />}
@@ -292,7 +284,13 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-5">
+      {statsLoading ? (
+        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-5">
         <StatCard
           title="Applications"
           value={stats?.application_count || 0}
@@ -332,9 +330,9 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
           onClick={() => navigate("/members")}
           color="red"
         />
-      </div>
+          </div>
 
-      <Card>
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ChartLine className="h-4 w-4" />
@@ -355,7 +353,9 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
             </div>
           )}
         </CardContent>
-      </Card>
+          </Card>
+        </>
+      )}
     </div>
   )
 }
@@ -368,4 +368,3 @@ export function DashboardPage() {
 }
 
 export default DashboardPage
-

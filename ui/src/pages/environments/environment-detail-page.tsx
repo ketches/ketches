@@ -4,9 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAxiosError } from "axios"
 import {
   Box,
-  CircleAlert,
   ChartLine,
   ChevronsUpDown,
+  CircleAlert,
   Copy,
   GalleryVerticalEnd,
   Hammer,
@@ -36,7 +36,6 @@ import { PageHeader } from "@/components/layout/page-header"
 import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-resource-metrics"
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
-import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -212,9 +211,6 @@ export function EnvironmentDetailPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold tracking-tight">{env.name}</h1>
-                <ColorBadge color="green">
-                  {env.status || "Active"}
-                </ColorBadge>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="font-mono">{env.slug}</span>

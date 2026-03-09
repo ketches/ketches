@@ -264,6 +264,7 @@ export function UsersPage() {
       <DataTable
         columns={columns}
         data={users}
+        isLoading={!data}
         onRefresh={refetch}
         manualPagination
         totalCount={total}

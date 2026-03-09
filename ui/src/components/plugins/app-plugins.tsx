@@ -18,7 +18,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
   TooltipContent,
@@ -267,23 +266,6 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
     },
   ]
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div className="space-y-1">
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-          <Skeleton className="h-9 w-28" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-64 w-full" />
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -303,7 +285,7 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
         )}
       </CardHeader>
       <CardContent>
-        {appPlugins.length === 0 ? (
+        {!isLoading && appPlugins.length === 0 ? (
           <EmptyState
             title="No plugins installed"
             description="Browse available plugins to extend your application capabilities."
@@ -313,7 +295,7 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
             actionIcon={ScanSearch}
           />
         ) : (
-          <DataTable columns={columns} data={appPlugins} />
+          <DataTable columns={columns} data={appPlugins} isLoading={isLoading} />
         )}
       </CardContent>
 

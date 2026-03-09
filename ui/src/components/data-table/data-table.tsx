@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Info, RefreshCw } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Info, Loader2, RefreshCw } from "lucide-react"
 
 import {
   Combobox,
@@ -54,6 +54,7 @@ interface DataTableProps<TData, TValue> {
   renderCard?: (data: TData, table: TanstackTable<TData>) => React.ReactNode
   viewMode?: "list" | "card"
   borderless?: boolean
+  isLoading?: boolean
   // Custom empty state rendered in place of "No results." when data is empty
   emptyContent?: React.ReactNode
   // Pagination
@@ -84,6 +85,7 @@ export function DataTable<TData, TValue>({
   renderCard,
   viewMode = "list",
   borderless = true,
+  isLoading = false,
   emptyContent,
   pagination: paginationProp,
   onPaginationChange: onPaginationChangeProp,
@@ -92,6 +94,7 @@ export function DataTable<TData, TValue>({
   rowSelection: controlledRowSelection,
   onRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
+  const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -179,6 +182,41 @@ export function DataTable<TData, TValue>({
 
   // Determine whether toolbar should be rendered
   const hasToolbar = searchKey || toolbarActions || batchActions || leftActions || viewMode === "card"
+  const visibleColumnCount = Math.max(table.getVisibleLeafColumns().length, 1)
+
+  const listLoadingRow = (
+    <TableRow>
+      <TableCell colSpan={visibleColumnCount}>
+        <div className="h-24 flex flex-col items-center justify-center text-muted-foreground space-y-2">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="text-xs">Loading...</span>
+        </div>
+      </TableCell>
+    </TableRow>
+  )
+
+  const showRefreshOverlay = isRefreshing && !isLoading
+
+  const handleRefresh = async () => {
+    if (!onRefresh || isRefreshing) {
+      return
+    }
+
+    try {
+      setIsRefreshing(true)
+      await Promise.resolve(onRefresh())
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const listEmptyRow = (
+    <TableRow>
+      <TableCell colSpan={visibleColumnCount}>
+        {emptyContent ?? <EmptyState title="" description="No results." icon={Info} border={false} />}
+      </TableCell>
+    </TableRow>
+  )
 
   return (
     <div className="group/datatable space-y-4">
@@ -206,9 +244,10 @@ export function DataTable<TData, TValue>({
             {onRefresh && (
               <Button
                 variant="secondary"
-                onClick={onRefresh}
+                onClick={handleRefresh}
+                disabled={isRefreshing || isLoading}
               >
-                <RefreshCw />
+                <RefreshCw className={cn(isRefreshing && "animate-spin")} />
               </Button>
             )}
             {toolbarActions?.(table)}
@@ -217,30 +256,31 @@ export function DataTable<TData, TValue>({
       )}
       {viewMode === "list" ? (
         <>
-          {table.getRowModel().rows?.length ? (
-            <div className={cn("rounded-md border", borderless && "border-x-0 rounded-none")}>
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => {
-                        return (
-                          <TableHead key={header.id}>
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                          </TableHead>
-                        )
-                      })}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {
-                    table.getRowModel().rows.map((row) => (
+          <div className={cn("relative rounded-md border", borderless && "border-x-0 rounded-none")}>
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                        </TableHead>
+                      )
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {isLoading
+                  ? listLoadingRow
+                  : table.getRowModel().rows?.length
+                    ? table.getRowModel().rows.map((row) => (
                       <TableRow
                         key={row.id}
                         data-state={row.getIsSelected() && "selected"}
@@ -260,47 +300,60 @@ export function DataTable<TData, TValue>({
                           </TableCell>
                         ))}
                       </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="col-span-full flex items-center">
-              <EmptyState title="" description="No results." icon={Info} />
-            </div>
-          )
-          }
+                    ))
+                    : listEmptyRow}
+              </TableBody>
+            </Table>
+            {showRefreshOverlay && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/55 backdrop-blur-[1px]">
+                <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Refreshing...</span>
+                </div>
+              </div>
+            )}
+          </div>
         </>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <div key={row.id} className="relative group">
-                <div className={cn(
-                  "absolute top-2 left-2 z-10 transition-opacity",
-                  row.getIsSelected() ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                  table.getFilteredSelectedRowModel().rows.length > 0 ? "opacity-100" : ""
-                )}>
-                  <Checkbox
-                    checked={row.getIsSelected()}
-                    onCheckedChange={(value) => row.toggleSelected(!!value)}
-                    aria-label="Select row"
-                    className="bg-background"
-                  />
+        <div className="relative">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <div key={row.id} className="relative group">
+                  <div className={cn(
+                    "absolute top-2 left-2 z-10 transition-opacity",
+                    row.getIsSelected() ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                    table.getFilteredSelectedRowModel().rows.length > 0 ? "opacity-100" : ""
+                  )}>
+                    <Checkbox
+                      checked={row.getIsSelected()}
+                      onCheckedChange={(value) => row.toggleSelected(!!value)}
+                      aria-label="Select row"
+                      className="bg-background"
+                    />
+                  </div>
+                  {renderCard?.(row.original, table)}
                 </div>
-                {renderCard?.(row.original, table)}
-              </div>
-            ))
-          ) : (
-            emptyContent ? (
-              <div className="col-span-full">
-                {emptyContent}
-              </div>
+              ))
             ) : (
-              <div className="col-span-full flex items-center">
-                <EmptyState title="" description="No results." icon={Info} />
+              emptyContent ? (
+                <div className="col-span-full">
+                  {emptyContent}
+                </div>
+              ) : (
+                <div className="col-span-full flex items-center">
+                  <EmptyState title="" description="No results." icon={Info} />
+                </div>
+              )
+            )}
+          </div>
+          {showRefreshOverlay && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md bg-background/55 backdrop-blur-[1px]">
+              <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Refreshing...</span>
               </div>
-            )
+            </div>
           )}
         </div>
       )}

@@ -219,23 +219,6 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
     },
   ]
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileCog className="h-4 w-4" /> Config Files
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            Loading configuration files...
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -247,7 +230,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {configFiles.length === 0 ? (
+        {!isLoading && configFiles.length === 0 ? (
           <EmptyState
             title="No config files configured"
             description="Add configuration files to mount into your application."
@@ -294,6 +277,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
             <DataTable
               columns={configFileColumns}
               data={filteredConfigFiles}
+              isLoading={isLoading}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
               hidePagination

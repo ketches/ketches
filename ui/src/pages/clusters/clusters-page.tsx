@@ -4,6 +4,7 @@ import { EditClusterDialog } from "@/components/cluster/edit-cluster-dialog"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { ColorBadge } from "@/components/shared/color-badge"
+import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -294,6 +295,162 @@ export function ClustersPage() {
     </div>
   )
 
+  const isEmptyClusters = !isLoading && safeClusters.length === 0 && !searchQuery.trim()
+
+  const renderClustersTable = (loading: boolean) => (
+    <DataTable
+      columns={columns}
+      data={safeClusters}
+      isLoading={loading}
+      viewMode={viewMode}
+      onRefresh={refetch}
+      manualPagination
+      totalCount={paginationInfo?.total || 0}
+      pagination={pagination}
+      onPaginationChange={setPagination}
+      leftActions={() => toolbarLeft}
+      toolbarActions={() => toolbarRight}
+      renderCard={(cluster) => (
+        <Card
+          key={cluster.id}
+          className="group/card hover:shadow-md transition-shadow h-full"
+        >
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 min-w-0">
+                <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
+                  <AvatarFallback className="rounded-lg text-lg font-bold">
+                    {cluster.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => navigate(`/clusters/${cluster.id}`)}>{cluster.name}</CardTitle>
+                    <ColorBadge
+                      color={cluster.enabled ? "green" : "gray"}
+                    >
+                      {cluster.enabled ? (
+                        <>
+                          Active
+                        </>
+                      ) : (
+                        <>
+                          Disabled
+                        </>
+                      )}
+                    </ColorBadge>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                    <span>{cluster.slug}</span>
+                    <span>•</span>
+                    {cluster.description ? (
+                      <span className="truncate">{cluster.description}</span>
+                    ) : (
+                      <span className="italic">No description</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <Tooltip>
+                  <TooltipTrigger
+                    delay={200}
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingCluster(cluster)
+                          setEditDialogOpen(true)
+                        }}
+                      />
+                    }
+                  >
+                    <div className="flex items-center">
+                      <Pencil />
+                      <span className="sr-only">Edit</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit cluster</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    delay={200}
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setTestingClusterId(cluster.id)
+                          testConnectionMutation.mutate(cluster.id)
+                        }}
+                        disabled={testingClusterId === cluster.id}
+                      />
+                    }
+                  >
+                    <div className="flex items-center">
+                      {testingClusterId === cluster.id ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Link2 />
+                      )}
+                      <span className="sr-only">Test Connection</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Test connection</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    delay={200}
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeletingCluster(cluster)
+                          setDeleteDialogOpen(true)
+                        }}
+                        disabled={deleteMutation.isPending}
+                      />
+                    }
+                  >
+                    <div className="flex items-center">
+                      <Trash2 />
+                      <span className="sr-only">Delete</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete cluster</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-2">
+            <div className="space-y-2">
+              {cluster.gateway_ip && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Network className="h-3.5 w-3.5" />
+                  <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{cluster.gateway_ip}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-3 w-3" />
+                <span>Added at {formatDate(cluster.created_at || "")}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card >
+      )}
+    />
+  )
+
 
 
   return (
@@ -309,162 +466,20 @@ export function ClustersPage() {
         </div>
       </div>
 
-      {isLoading && !clustersResponse ? (
+      {isLoading && safeClusters.length === 0 ? (
         <div className="flex flex-col flex-1 items-center justify-center min-h-100">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={safeClusters}
-          viewMode={viewMode}
-          onRefresh={refetch}
-          manualPagination
-          totalCount={paginationInfo?.total || 0}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          leftActions={() => toolbarLeft}
-          toolbarActions={() => toolbarRight}
-          renderCard={(cluster) => (
-            <Card
-              key={cluster.id}
-              className="group/card hover:shadow-md transition-shadow h-full"
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
-                      <AvatarFallback className="rounded-lg text-lg font-bold">
-                        {cluster.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => navigate(`/clusters/${cluster.id}`)}>{cluster.name}</CardTitle>
-                        <ColorBadge
-                          color={cluster.enabled ? "green" : "gray"}
-                        >
-                          {cluster.enabled ? (
-                            <>
-                              Active
-                            </>
-                          ) : (
-                            <>
-                              Disabled
-                            </>
-                          )}
-                        </ColorBadge>
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                        <span>{cluster.slug}</span>
-                        <span>•</span>
-                        {cluster.description ? (
-                          <span className="truncate">{cluster.description}</span>
-                        ) : (
-                          <span className="italic">No description</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <Tooltip>
-                      <TooltipTrigger
-                        delay={200}
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setEditingCluster(cluster)
-                              setEditDialogOpen(true)
-                            }}
-                          />
-                        }
-                      >
-                        <div className="flex items-center">
-                          <Pencil />
-                          <span className="sr-only">Edit</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>Edit cluster</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger
-                        delay={200}
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setTestingClusterId(cluster.id)
-                              testConnectionMutation.mutate(cluster.id)
-                            }}
-                            disabled={testingClusterId === cluster.id}
-                          />
-                        }
-                      >
-                        <div className="flex items-center">
-                          {testingClusterId === cluster.id ? (
-                            <Loader2 className="animate-spin" />
-                          ) : (
-                            <Link2 />
-                          )}
-                          <span className="sr-only">Test Connection</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>Test connection</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger
-                        delay={200}
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDeletingCluster(cluster)
-                              setDeleteDialogOpen(true)
-                            }}
-                            disabled={deleteMutation.isPending}
-                          />
-                        }
-                      >
-                        <div className="flex items-center">
-                          <Trash2 />
-                          <span className="sr-only">Delete</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>Delete cluster</TooltipContent>
-                    </Tooltip>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-2">
-                <div className="space-y-2">
-                  {cluster.gateway_ip && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Network className="h-3.5 w-3.5" />
-                      <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{cluster.gateway_ip}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="h-3 w-3" />
-                    <span>Added at {formatDate(cluster.created_at || "")}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card >
-          )}
+      ) : isEmptyClusters ? (
+        <EmptyState
+          title="No clusters yet"
+          description="Add your first cluster to start deploying workloads."
+          icon={ShipWheel}
+          actionText="Add Cluster"
+          onAction={() => setCreateDialogOpen(true)}
+          actionIcon={Plus}
         />
-      )}
+      ) : renderClustersTable(false)}
 
       <CreateClusterDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
       <EditClusterDialog

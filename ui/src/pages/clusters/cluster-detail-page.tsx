@@ -579,7 +579,7 @@ export function ClusterDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
-          <Card className="bg-linear-to-b/increasing from-blue/5 to-transparent data-[active=true]:bg-transparent">
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-4 w-4" />
@@ -686,6 +686,7 @@ export function ClusterDetailPage() {
               {safeNodes && safeNodes.length > 0 ? (<DataTable
                 columns={columns}
                 data={safeNodes}
+                isLoading={clusterLoading}
                 searchKey="name"
                 searchPlaceholder="Filter nodes..."
               />) : (

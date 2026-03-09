@@ -59,7 +59,7 @@ export function RecycleBinPage() {
     pageSize: 10,
   })
 
-  const { data: appsResponse, isLoading: appsLoading, refetch: refetchApps } = useQuery({
+  const { data: appsResponse, isLoading: appsLoading, isFetching: appsFetching, refetch: refetchApps } = useQuery({
     queryKey: ['recycle-bin-apps', debouncedSearch, appsPagination.pageIndex, appsPagination.pageSize],
     queryFn: () => recycleBinApi.listApps(undefined, {
       search: debouncedSearch,
@@ -71,7 +71,7 @@ export function RecycleBinPage() {
   const apps = React.useMemo(() => appsResponse?.items ?? [], [appsResponse])
   const appsPaginationInfo = appsResponse?.pagination
 
-  const { data: envsResponse, isLoading: envsLoading, refetch: refetchEnvs } = useQuery({
+  const { data: envsResponse, isLoading: envsLoading, isFetching: envsFetching, refetch: refetchEnvs } = useQuery({
     queryKey: ['recycle-bin-envs', debouncedSearch, envsPagination.pageIndex, envsPagination.pageSize],
     queryFn: () => recycleBinApi.listEnvs(undefined, {
       search: debouncedSearch,
@@ -83,7 +83,7 @@ export function RecycleBinPage() {
   const envs = React.useMemo(() => envsResponse?.items ?? [], [envsResponse])
   const envsPaginationInfo = envsResponse?.pagination
 
-  const { data: projectsResponse, isLoading: projectsLoading, refetch: refetchProjects } = useQuery({
+  const { data: projectsResponse, isLoading: projectsLoading, isFetching: projectsFetching, refetch: refetchProjects } = useQuery({
     queryKey: ['recycle-bin-projects', debouncedSearch, projectsPagination.pageIndex, projectsPagination.pageSize],
     queryFn: () => recycleBinApi.listProjects({
       search: debouncedSearch,
@@ -659,17 +659,17 @@ export function RecycleBinPage() {
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "projects" | "apps" | "envs")}>
         <TabsList>
-          <TabsTrigger value="projects">Projects ({projectsPaginationInfo?.total || 0})</TabsTrigger>
-          <TabsTrigger value="apps">Applications ({appsPaginationInfo?.total || 0})</TabsTrigger>
-          <TabsTrigger value="envs">Environments ({envsPaginationInfo?.total || 0})</TabsTrigger>
+          <TabsTrigger value="projects">Projects {projectsPaginationInfo?.total || 0 > 0 ? `(${projectsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          <TabsTrigger value="apps">Applications {appsPaginationInfo?.total || 0 > 0 ? `(${appsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          <TabsTrigger value="envs">Environments {envsPaginationInfo?.total || 0 > 0 ? `(${envsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="projects" className="mt-2">
-          {projectsLoading && !projectsResponse ? (
-            <div className="flex flex-col items-center justify-center min-h-100">
+          {projectsLoading && projects.length === 0 ? (
+            <div className="flex flex-col flex-1 items-center justify-center min-h-100">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : projects.length === 0 ? (
+          ) : !projectsLoading && projects.length === 0 ? (
             <EmptyState
               title="No deleted projects"
               description="Deleted projects will appear here. You can restore or permanently delete them."
@@ -679,6 +679,7 @@ export function RecycleBinPage() {
             <DataTable
               columns={projectColumns}
               data={projects}
+              isLoading={projectsLoading || projectsFetching}
               leftActions={() => toolbarLeft}
               batchActions={!isViewer ? batchActions : undefined}
               rowSelection={selectedProjectRows}
@@ -693,11 +694,11 @@ export function RecycleBinPage() {
         </TabsContent>
 
         <TabsContent value="apps" className="mt-2">
-          {appsLoading && !appsResponse ? (
-            <div className="flex flex-col items-center justify-center min-h-100">
+          {appsLoading && apps.length === 0 ? (
+            <div className="flex flex-col flex-1 items-center justify-center min-h-100">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : apps.length === 0 ? (
+          ) : !appsLoading && apps.length === 0 ? (
             <EmptyState
               title="No deleted applications"
               description="Deleted applications will appear here. You can restore or permanently delete them."
@@ -707,6 +708,7 @@ export function RecycleBinPage() {
             <DataTable
               columns={appColumns}
               data={apps}
+              isLoading={appsLoading || appsFetching}
               leftActions={() => toolbarLeft}
               batchActions={!isViewer ? batchActions : undefined}
               rowSelection={selectedAppRows}
@@ -721,11 +723,11 @@ export function RecycleBinPage() {
         </TabsContent>
 
         <TabsContent value="envs" className="mt-2">
-          {envsLoading && !envsResponse ? (
-            <div className="flex flex-col items-center justify-center min-h-100">
+          {envsLoading && envs.length === 0 ? (
+            <div className="flex flex-col flex-1 items-center justify-center min-h-100">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : envs.length === 0 ? (
+          ) : !envsLoading && envs.length === 0 ? (
             <EmptyState
               title="No deleted environments"
               description="Deleted environments will appear here. You can restore or permanently delete them."
@@ -735,6 +737,7 @@ export function RecycleBinPage() {
             <DataTable
               columns={envColumns}
               data={envs}
+              isLoading={envsLoading || envsFetching}
               leftActions={() => toolbarLeft}
               batchActions={!isViewer ? batchActions : undefined}
               rowSelection={selectedEnvRows}

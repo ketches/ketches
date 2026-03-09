@@ -29,6 +29,7 @@ import { EditAppDialog } from "@/components/applications/edit-app-dialog"
 import { ExportAppsDialog } from "@/components/applications/export-apps-dialog"
 import { ImportAppsDialog } from "@/components/applications/import-apps-dialog"
 import { DataTable } from "@/components/data-table/data-table"
+import { EmptyState } from "@/components/shared/empty-state"
 import { ColorBadge } from "@/components/shared/color-badge"
 import {
   AlertDialog,
@@ -76,6 +77,7 @@ interface ApplicationListProps {
   externalTotalCount?: number
   externalSearchQuery?: string
   onExternalSearchChange?: (query: string) => void
+  externalLoading?: boolean
 }
 
 export function ApplicationList({
@@ -90,7 +92,8 @@ export function ApplicationList({
   onExternalPaginationChange,
   externalTotalCount,
   externalSearchQuery,
-  onExternalSearchChange
+  onExternalSearchChange,
+  externalLoading = false,
 }: ApplicationListProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -125,7 +128,7 @@ export function ApplicationList({
     pageIndex: 0,
     pageSize: viewMode === "card" ? 9 : 10,
   })
-  const { data: favorites = [], refetch: refetchFavorites } = useQuery({
+  const { data: favorites = [], isLoading: favoritesLoading, isFetching: favoritesFetching, refetch: refetchFavorites } = useQuery({
     queryKey: ['app-favorites', envId],
     queryFn: () => appFavoritesApi.listFavorites(envId),
     enabled: !!envId,
@@ -197,7 +200,7 @@ export function ApplicationList({
     }
   })
 
-  const { data: appsResponse, refetch } = useQuery({
+  const { data: appsResponse, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['apps', envId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
     queryFn: () => appsApi.list(envId, {
       search: debouncedSearch,
@@ -236,6 +239,10 @@ export function ApplicationList({
     if (allowedAppIds) result = result.filter(a => allowedAppIds.has(a.id))
     return result
   })()
+  const favoritesEffectiveLoading = favoritesOnly ? (favoritesLoading || favoritesFetching) : false
+  const appsEffectiveLoading = externalApps ? externalLoading : (isLoading || isFetching)
+  const effectiveLoading = favoritesOnly ? favoritesEffectiveLoading : appsEffectiveLoading
+  const showEmptyState = !effectiveLoading && safeApps.length === 0 && !searchQuery.trim()
 
   const handleRefresh = React.useCallback(async () => {
     if (externalApps && currentGroupId) {
@@ -471,20 +478,31 @@ export function ApplicationList({
 
   return (
     <>
-      <DataTable
-        columns={columns}
-        data={safeApps}
-        viewMode={viewMode}
-        onRefresh={handleRefresh}
-        manualPagination={favoritesOnly ? false : externalApps ? false : true}
-        totalCount={favoritesOnly ? favorites.length : externalApps ? (externalTotalCount ?? 0) : (paginationInfo?.total || 0)}
-        pagination={externalPagination ?? pagination}
-        onPaginationChange={onExternalPaginationChange ?? setPagination}
-        rowSelection={rowSelection}
-        onRowSelectionChange={setRowSelection}
-        leftActions={() => toolbarLeft}
-        toolbarActions={() => toolbarRight}
-        renderCard={(app) => (
+      {showEmptyState ? (
+        <EmptyState
+          title="No applications found"
+          description="Create your first application to start deploying workloads."
+          icon={Box}
+          actionText={!isViewer && !hideToolbarActions ? "Create Application" : undefined}
+          onAction={!isViewer && !hideToolbarActions ? () => setCreateDialogOpen(true) : undefined}
+          actionIcon={!isViewer && !hideToolbarActions ? Plus : undefined}
+        />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={safeApps}
+          isLoading={effectiveLoading}
+          viewMode={viewMode}
+          onRefresh={handleRefresh}
+          manualPagination={favoritesOnly ? false : externalApps ? false : true}
+          totalCount={favoritesOnly ? favorites.length : externalApps ? (externalTotalCount ?? 0) : (paginationInfo?.total || 0)}
+          pagination={externalPagination ?? pagination}
+          onPaginationChange={onExternalPaginationChange ?? setPagination}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          leftActions={() => toolbarLeft}
+          toolbarActions={() => toolbarRight}
+          renderCard={(app) => (
           <Card
             key={app.id}
             className="group/card hover:shadow-md transition-shadow h-full"
@@ -608,37 +626,38 @@ export function ApplicationList({
             </CardContent>
           </Card>
         )}
-        batchActions={(table) => {
-          if (isViewer) return null
-          const selectedRows = table.getFilteredSelectedRowModel().rows
-          if (selectedRows.length === 0) return null
-          return (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => toast.info("Restarting applications...")}>
-                <RefreshCw />
-                Restart
-              </Button>
-              <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
-                const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.id)
-                setDeleteAppIds(selectedIds)
-                setDeleteDialogOpen(true)
-              }}>
-                <Trash2 />
-                Delete
-              </Button>
-              <Button variant="outline" onClick={() => {
-                const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.id)
-                setExportAppIds(selectedIds)
-                setExportAppId(undefined)
-                setExportDialogOpen(true)
-              }}>
-                <Download />
-                Export
-              </Button>
-            </div>
-          )
-        }}
-      />
+          batchActions={(table) => {
+            if (isViewer) return null
+            const selectedRows = table.getFilteredSelectedRowModel().rows
+            if (selectedRows.length === 0) return null
+            return (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => toast.info("Restarting applications...")}>
+                  <RefreshCw />
+                  Restart
+                </Button>
+                <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
+                  const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.id)
+                  setDeleteAppIds(selectedIds)
+                  setDeleteDialogOpen(true)
+                }}>
+                  <Trash2 />
+                  Delete
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.id)
+                  setExportAppIds(selectedIds)
+                  setExportAppId(undefined)
+                  setExportDialogOpen(true)
+                }}>
+                  <Download />
+                  Export
+                </Button>
+              </div>
+            )
+          }}
+        />
+      )}
 
       <CreateAppDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
       <EditAppDialog

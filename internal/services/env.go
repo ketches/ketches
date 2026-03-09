@@ -12,10 +12,10 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-func ListEnvs(projectID string, page, pageSize int, search string) (int64, []entities.Env, error) {
-	var envs []entities.Env
+func ListEnvs(projectID string, page, pageSize int, search string) (int64, []models.EnvResponse, error) {
+	var envs []models.EnvResponse
 	var total int64
-	query := db.DB.Model(&entities.Env{}).Where("project_id = ?", projectID).Order("created_at")
+	query := db.DB.Model(&entities.Env{}).Select("envs.id, envs.name, envs.slug, envs.description, envs.project_id, envs.cluster_id, clusters.name as cluster_name, envs.cluster_namespace, envs.is_build_env, envs.created_at").Where("project_id = ?", projectID).Joins("JOIN clusters ON clusters.id = envs.cluster_id").Order("created_at")
 	if search != "" {
 		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}

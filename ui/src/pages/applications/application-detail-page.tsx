@@ -492,20 +492,17 @@ function InstanceEventsDialog({ appId, instanceName, open, onOpenChange }: { app
               }
             ]}
             data={events}
+            isLoading={isLoading}
             hidePagination
+            emptyContent={
+              <EmptyState
+                title="No Events"
+                description="No events found for this instance."
+                icon={Activity}
+                border={false}
+              />
+            }
           />
-          {isLoading && (
-            <div className="flex items-center justify-center h-32">
-              <Skeleton className="h-full w-full" />
-            </div>
-          )}
-          {!isLoading && (!events || events.length === 0) && (
-            <EmptyState
-              title="No Events"
-              description="No events found for this instance."
-              icon={Activity}
-            />
-          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -643,7 +640,7 @@ export function ApplicationDetailPage() {
     refetchInterval: 5000,
   })
 
-  const safeInstances = Array.isArray(instances) ? instances : []
+  const safeInstances = React.useMemo(() => (Array.isArray(instances) ? instances : []), [instances])
 
   const filteredInstances = React.useMemo(() => {
     if (!searchQuery) return safeInstances
@@ -1353,6 +1350,7 @@ export function ApplicationDetailPage() {
                 <DataTable
                   columns={instanceColumns}
                   data={filteredInstances}
+                  isLoading={isLoading}
                   rowSelection={rowSelection}
                   onRowSelectionChange={setRowSelection}
                   pagination={instancePagination}
@@ -1525,7 +1523,7 @@ export function ApplicationDetailPage() {
                                   setSelectedInstanceForEvents(instance.instanceName)
                                 }}
                               >
-                                Events: {instance.eventCount || 0}
+                                <ClockCheck className="h-3 w-3" />Events
                               </Button>
                             </div>
                           </div>
@@ -1534,7 +1532,6 @@ export function ApplicationDetailPage() {
                               <Clock className="h-3 w-3" />
                               <span>{instance.runningDuration}</span>
                             </div>
-
                           </div>
                         </CardContent>
                       </Card>

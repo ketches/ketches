@@ -8,6 +8,7 @@ export interface Env {
   description: string
   project_id: string
   cluster_id: string
+  cluster_name: string
   cluster_namespace: string
   is_build_env: boolean
   created_at: string

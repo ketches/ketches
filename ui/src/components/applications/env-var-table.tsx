@@ -210,23 +210,6 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
     },
   ]
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Key className="h-4 w-4" /> Environment Variables
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            Loading environment variables...
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -238,7 +221,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {envVars.length === 0 ? (
+        {!isLoading && envVars.length === 0 ? (
           <EmptyState
             title="No environment variables configured"
             description="Add environment variables for your application."
@@ -295,6 +278,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
             <DataTable
               columns={envVarColumns}
               data={filteredEnvVars}
+              isLoading={isLoading}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
               hidePagination

@@ -223,6 +223,167 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
     )
   }
 
+  const isEmptyRepositories = !isLoading && safeRepos.length === 0 && !searchQuery.trim()
+
+  const renderRepositoriesTable = (loading: boolean) => (
+    <DataTable
+      columns={columns}
+      data={safeRepos}
+      isLoading={loading}
+      viewMode={viewMode}
+      onRefresh={refetch}
+      manualPagination
+      totalCount={paginationInfo?.total || 0}
+      pagination={pagination}
+      onPaginationChange={setPagination}
+      leftActions={() => (
+        <Input
+          className="flex flex-1 max-w-sm min-w-75"
+          placeholder="Search repositories..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      )}
+      toolbarActions={() => (
+        <div className="flex items-center gap-2">
+          <Tabs value={viewMode} onValueChange={(v) => {
+            const newMode = v as "list" | "card"
+            setViewMode(newMode)
+            setPagination((prev) => ({
+              ...prev,
+              pageIndex: 0,
+              pageSize: newMode === "card" ? 9 : 10,
+            }))
+          }} className="w-auto h-7">
+            <TabsList>
+              <TabsTrigger value="list">
+                <ListIcon />
+              </TabsTrigger>
+              <TabsTrigger value="card">
+                <LayoutGrid />
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {!isViewer && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus />
+              Add Repository
+            </Button>
+          )}
+        </div>
+      )}
+      renderCard={(repo) => (
+        <Card
+          key={repo.id}
+          className="group/card hover:shadow-md transition-shadow h-full"
+        >
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 min-w-0">
+                <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
+                  <AvatarFallback className="rounded-lg text-lg font-bold">
+                    {repo.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => navigate(`/code-repositories/${repo.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>
+                      {repo.name}
+                    </CardTitle>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                    <span>{repo.slug}</span>
+                    <span>•</span>
+                    {repo.description ? (
+                      <span className="truncate">{repo.description}</span>
+                    ) : (
+                      <span className="italic">No description</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                {!isViewer && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingRepo(repo)
+                            setEditDialogOpen(true)
+                          }}
+                        />
+                      }
+                    >
+                      <Pencil />
+                    </TooltipTrigger>
+                    <TooltipContent>Edit repository</TooltipContent>
+                  </Tooltip>
+                )}
+                {!isViewer && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeletingRepo(repo)
+                            setDeleteDialogOpen(true)
+                          }}
+                        />
+                      }
+                    >
+                      <Trash2 />
+                    </TooltipTrigger>
+                    <TooltipContent>Delete repository</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Link className="h-3.5 w-3.5" />
+                <span className="font-mono">
+                  {repo.git_repo_url}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigator.clipboard.writeText(repo.git_repo_url)
+                    toast.success("Git repository URL copied to clipboard")
+                  }}
+                >
+                  <Copy />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-3 w-3" />
+                <span>Created at {formatDate(repo.created_at)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    />
+  )
+
   return (
     <div className="flex flex-col flex-1 gap-6">
       {!projectIdProp && <PageHeader items={breadcrumbs} />}
@@ -238,167 +399,20 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
         </div>
       )}
 
-      {isLoading && !reposResponse ? (
+      {isLoading && safeRepos.length === 0 ? (
         <div className="flex flex-col flex-1 items-center justify-center min-h-100">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={safeRepos}
-          viewMode={viewMode}
-          onRefresh={refetch}
-          manualPagination
-          totalCount={paginationInfo?.total || 0}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          leftActions={() => (
-            <Input
-              className="flex flex-1 max-w-sm min-w-75"
-              placeholder="Search repositories..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          )}
-          toolbarActions={() => (
-            <div className="flex items-center gap-2">
-              <Tabs value={viewMode} onValueChange={(v) => {
-                const newMode = v as "list" | "card"
-                setViewMode(newMode)
-                setPagination((prev) => ({
-                  ...prev,
-                  pageIndex: 0,
-                  pageSize: newMode === "card" ? 9 : 10,
-                }))
-              }} className="w-auto h-7">
-                <TabsList>
-                  <TabsTrigger value="list">
-                    <ListIcon />
-                  </TabsTrigger>
-                  <TabsTrigger value="card">
-                    <LayoutGrid />
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              {!isViewer && (
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus />
-                  Add Repository
-                </Button>
-              )}
-            </div>
-          )}
-          renderCard={(repo) => (
-            <Card
-              key={repo.id}
-              className="group/card hover:shadow-md transition-shadow h-full"
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
-                      <AvatarFallback className="rounded-lg text-lg font-bold">
-                        {repo.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => navigate(`/code-repositories/${repo.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>
-                          {repo.name}
-                        </CardTitle>
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                        <span>{repo.slug}</span>
-                        <span>•</span>
-                        {repo.description ? (
-                          <span className="truncate">{repo.description}</span>
-                        ) : (
-                          <span className="italic">No description</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {!isViewer && (
-                      <Tooltip>
-                        <TooltipTrigger
-                          delay={200}
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setEditingRepo(repo)
-                                setEditDialogOpen(true)
-                              }}
-                            />
-                          }
-                        >
-                          <Pencil />
-                        </TooltipTrigger>
-                        <TooltipContent>Edit repository</TooltipContent>
-                      </Tooltip>
-                    )}
-                    {!isViewer && (
-                      <Tooltip>
-                        <TooltipTrigger
-                          delay={200}
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setDeletingRepo(repo)
-                                setDeleteDialogOpen(true)
-                              }}
-                            />
-                          }
-                        >
-                          <Trash2 />
-                        </TooltipTrigger>
-                        <TooltipContent>Delete repository</TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-2">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Link className="h-3.5 w-3.5" />
-                    <span className="font-mono">
-                      {repo.git_repo_url}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigator.clipboard.writeText(repo.git_repo_url)
-                        toast.success("Git repository URL copied to clipboard")
-                      }}
-                    >
-                      <Copy />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="h-3 w-3" />
-                    <span>Created at {formatDate(repo.created_at)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+      ) : isEmptyRepositories ? (
+        <EmptyState
+          title="No code repositories yet"
+          description="Add your first repository to configure builds and deployments."
+          icon={FolderGit2}
+          actionText={!isViewer ? "Add Repository" : undefined}
+          onAction={!isViewer ? () => setCreateOpen(true) : undefined}
+          actionIcon={!isViewer ? Plus : undefined}
         />
-      )}
+      ) : renderRepositoriesTable(false)}
 
       <CreateCodeRepositoryDialog
         open={createOpen}

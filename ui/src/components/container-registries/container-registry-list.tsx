@@ -29,7 +29,7 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
   const [showDialog, setShowDialog] = React.useState(false)
   const [editRegistry, setEditRegistry] = React.useState<ContainerRegistry | null>(null)
 
-  const { data: containerRegistries = [] } = useQuery({
+  const { data: containerRegistries = [], isLoading } = useQuery({
     queryKey: ["registries", scope, scopeId],
     queryFn: async () => {
       const res = await (scope === "cluster"
@@ -143,6 +143,7 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
             <DataTable
               columns={columns}
               data={containerRegistries}
+              isLoading={isLoading}
               searchKey="name"
               searchPlaceholder="Filter registries..."
               toolbarActions={() => (

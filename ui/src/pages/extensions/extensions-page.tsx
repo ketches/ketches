@@ -299,19 +299,6 @@ export function ExtensionsPage() {
     </div>
   )
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col flex-1 gap-6">
-        <PageHeader items={breadcrumbs} />
-        <div className="flex items-center justify-center flex-1">
-          <div className="text-muted-foreground animate-pulse">
-            Loading extensions...
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
@@ -338,6 +325,7 @@ export function ExtensionsPage() {
           <DataTable
             columns={columns}
             data={filteredItems}
+            isLoading={isLoading}
             viewMode={viewMode}
             onRefresh={refetch}
             manualPagination

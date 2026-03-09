@@ -242,11 +242,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          ) : !certificates || certificates.length === 0 ? (
+          {!isLoading && (!certificates || certificates.length === 0) ? (
             <EmptyState
               title="No certificates configured"
               description="Add a TLS certificate to enable HTTPS gateways"
@@ -259,6 +255,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
             <DataTable
               columns={columns}
               data={certificates}
+              isLoading={isLoading}
               searchKey="name"
               searchPlaceholder="Filter certificates..."
               toolbarActions={!isViewer ? () => (

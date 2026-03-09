@@ -313,6 +313,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
             <DataTable
               columns={columns}
               data={integrations}
+              isLoading={isLoading}
               searchKey="name"
               searchPlaceholder="Filter integrations..."
               toolbarActions={() => (

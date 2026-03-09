@@ -15,6 +15,7 @@ interface EmptyStateProps {
   title: string
   description?: string | React.ReactNode
   icon?: LucideIcon
+  border?: boolean
   actionText?: string
   onAction?: () => void
   actionDisabled?: boolean
@@ -26,6 +27,7 @@ export function EmptyState({
   title,
   description,
   icon: Icon,
+  border = true,
   actionText,
   onAction,
   actionDisabled,
@@ -33,7 +35,7 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <Empty className={cn("border border-dashed bg-muted/10", className)}>
+    <Empty className={cn("bg-muted/10", border && "border border-dashed", className)}>
       <EmptyHeader>
         {Icon && (
           <EmptyMedia variant="icon">

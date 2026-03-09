@@ -280,23 +280,6 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
     },
   ]
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Network className="h-4 w-4" /> Port Gateways
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            Loading gateways...
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -307,7 +290,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       </CardHeader>
       <CardContent className="space-y-4">
 
-        {gateways.length === 0 ? (
+        {!isLoading && gateways.length === 0 ? (
           <EmptyState
             title="No gateways configured"
             description="Add a gateway to expose your application to the network."
@@ -354,6 +337,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
             <DataTable
               columns={gatewayColumns}
               data={filteredGateways}
+              isLoading={isLoading}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
               hidePagination

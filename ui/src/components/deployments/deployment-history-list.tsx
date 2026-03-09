@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Clock, History, Package, RotateCcw } from "lucide-react"
+import { Clock, History, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 
 import { deploymentHistoryApi, type DeploymentHistory } from "@/api/deployment-history"
@@ -137,11 +137,7 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
           <CardDescription>Track all deployment changes and rollback when needed</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Package className="h-6 w-6 animate-spin" />
-            </div>
-          ) : (histories || []).length === 0 ? (
+          {(histories || []).length === 0 ? (
             <EmptyState
               title="No deployment history yet"
               description="Deployment history will appear here when you update the application"
@@ -151,6 +147,7 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
             <DataTable
               columns={columns}
               data={histories}
+              isLoading={isLoading}
               manualPagination
               pagination={pagination}
               onPaginationChange={setPagination}

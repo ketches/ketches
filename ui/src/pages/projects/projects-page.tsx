@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import CreateProjectDialog from "@/components/project/create-project-dialog"
 import EditProjectDialog from "@/components/project/edit-project-dialog"
 import { ColorBadge } from "@/components/shared/color-badge"
+import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -292,8 +293,139 @@ export function ProjectsPage() {
     </div>
   )
 
+  const isEmptyProjects = !isLoading && projects.length === 0 && !search.trim()
+
+  const renderProjectsTable = (loading: boolean) => (
+    <DataTable
+      columns={columns}
+      data={projects}
+      isLoading={loading}
+      viewMode={viewMode}
+      onRefresh={refetch}
+      manualPagination
+      totalCount={paginationInfo?.total ?? 0}
+      pagination={pagination}
+      onPaginationChange={setPagination}
+      leftActions={() => toolbarLeft}
+      toolbarActions={() => toolbarRight}
+      renderCard={(project) => {
+        const isActive = project.id === activeProjectId
+        return (
+          <Card className="group/card hover:shadow-md transition-shadow h-full">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
+                    <AvatarFallback className="rounded-lg text-lg font-bold">
+                      {project.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isAdmin ? (
+                        <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/projects/${project.id}`)}>
+                          {project.name}
+                        </CardTitle>
+                      ) : (
+                        <CardTitle className="text-base font-semibold truncate">
+                          {project.name}
+                        </CardTitle>
+                      )}
+                      {project.id === activeProjectId && (
+                        <ColorBadge color="green">
+                          Active
+                        </ColorBadge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                      <span>{project.slug}</span>
+                      <span>•</span>
+                      {project.description ? (
+                        <span className="truncate">{project.description}</span>
+                      ) : (
+                        <span className="italic">No description</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Card action buttons, visible on hover */}
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {!isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEnterProject(project)}
+                      disabled={isActive}
+                    >
+                      <LogIn />
+                      Enter
+                    </Button>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => openEditDialog(project)}
+                        />
+                      }
+                    >
+                      <div className="flex items-center">
+                        <Pencil />
+                        <span className="sr-only">Edit</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit project</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => openDeleteDialog(project)}
+                        />
+                      }
+                    >
+                      <div className="flex items-center">
+                        <Trash2 />
+                        <span className="sr-only">Delete</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete project</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2 space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <UserCog className="h-3.5 w-3.5" />
+                  <span className="font-mono">
+                    {project.owner_name}
+                  </span>
+                </div>
+
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  <span>Created at {formatDate(project.created_at)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }}
+    />
+  )
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col flex-1  gap-6">
       <PageHeader items={[{ label: "Projects", icon: GalleryVerticalEnd }]} />
 
       <div>
@@ -303,137 +435,20 @@ export function ProjectsPage() {
         </p>
       </div>
 
-      {isLoading && !projectsResponse ? (
+      {isLoading && projects.length === 0 ? (
         <div className="flex flex-col flex-1 items-center justify-center min-h-100">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={projects}
-          viewMode={viewMode}
-          onRefresh={refetch}
-          manualPagination
-          totalCount={paginationInfo?.total ?? 0}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          leftActions={() => toolbarLeft}
-          toolbarActions={() => toolbarRight}
-          renderCard={(project) => {
-            const isActive = project.id === activeProjectId
-            return (
-              <Card className="group/card hover:shadow-md transition-shadow h-full">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
-                        <AvatarFallback className="rounded-lg text-lg font-bold">
-                          {project.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {isAdmin ? (
-                            <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/projects/${project.id}`)}>
-                              {project.name}
-                            </CardTitle>
-                          ) : (
-                            <CardTitle className="text-base font-semibold truncate">
-                              {project.name}
-                            </CardTitle>
-                          )}
-                          {project.id === activeProjectId && (
-                            <ColorBadge color="green">
-                              Active
-                            </ColorBadge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                          <span>{project.slug}</span>
-                          <span>•</span>
-                          {project.description ? (
-                            <span className="truncate">{project.description}</span>
-                          ) : (
-                            <span className="italic">No description</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {/* Card action buttons, visible on hover */}
-                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {!isAdmin && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEnterProject(project)}
-                          disabled={isActive}
-                        >
-                          <LogIn />
-                          Enter
-                        </Button>
-                      )}
-                      <Tooltip>
-                        <TooltipTrigger
-                          delay={200}
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => openEditDialog(project)}
-                            />
-                          }
-                        >
-                          <div className="flex items-center">
-                            <Pencil />
-                            <span className="sr-only">Edit</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>Edit project</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger
-                          delay={200}
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => openDeleteDialog(project)}
-                            />
-                          }
-                        >
-                          <div className="flex items-center">
-                            <Trash2 />
-                            <span className="sr-only">Delete</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>Delete project</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-2 space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <UserCog className="h-3.5 w-3.5" />
-                      <span className="font-mono">
-                        {project.owner_name}
-                      </span>
-                    </div>
-
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3 w-3" />
-                      <span>Created at {formatDate(project.created_at)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          }}
+      ) : isEmptyProjects ? (
+        <EmptyState
+          title="No projects yet"
+          description="Create your first project to organize environments and applications."
+          icon={GalleryVerticalEnd}
+          actionText="Create Project"
+          onAction={() => { resetForm(); setCreateDialogOpen(true) }}
+          actionIcon={Plus}
         />
-      )}
+      ) : renderProjectsTable(false)}
 
       <CreateProjectDialog
         open={createDialogOpen}

@@ -28,7 +28,7 @@ function GroupAppList({ groupId, envId, currentGroupId }: { groupId: string; env
   const [searchQuery, setSearchQuery] = useState("")
   const debouncedSearch = useDebounce(searchQuery, 300)
 
-  const { data: groupAppsResponse } = useQuery({
+  const { data: groupAppsResponse, isLoading, isFetching } = useQuery({
     queryKey: ['group-apps', groupId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
     queryFn: () => appGroupsApi.listGroupApps(groupId, {
       page: pagination.pageIndex + 1,
@@ -50,6 +50,7 @@ function GroupAppList({ groupId, envId, currentGroupId }: { groupId: string; env
       externalTotalCount={groupAppsResponse?.pagination?.total || 0}
       externalSearchQuery={searchQuery}
       onExternalSearchChange={setSearchQuery}
+      externalLoading={isLoading || isFetching}
     />
   )
 }
@@ -80,7 +81,7 @@ export function AppGroupsView({ envId }: Props) {
         return (
           <div key={group.id}>
             <div className="group/header flex items-center gap-2 mb-3">
-              <Label className="text-sm font-normal text-muted-foreground"><LayoutList className="h-4 w-4" />{group.name}</Label>
+              <Label className="text-xs text-muted-foreground"><LayoutList className="h-4 w-4" />{group.name}</Label>
               <div className="opacity-0 group-hover/header:opacity-100 transition-opacity">
                 <DropdownMenu>
                   <Tooltip>

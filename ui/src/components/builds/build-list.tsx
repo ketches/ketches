@@ -260,11 +260,7 @@ export function BuildList({ appId }: BuildListProps) {
           <CardDescription>View and manage builds for this application</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          ) : !builds || builds.length === 0 ? (
+          {!isLoading && (!builds || builds.length === 0) ? (
             <EmptyState
               title="No builds yet"
               description={hasConfig || repoId
@@ -276,6 +272,7 @@ export function BuildList({ appId }: BuildListProps) {
             <DataTable
               columns={columns}
               data={builds}
+              isLoading={isLoading}
               onRefresh={refetch}
               manualPagination
               pagination={pagination}

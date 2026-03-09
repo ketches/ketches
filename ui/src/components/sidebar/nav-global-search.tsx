@@ -13,7 +13,7 @@ export function NavGlobalSearch({ onOpenSearch }: NavGlobalSearchProps) {
   return (
     <SidebarGroup>
       <SidebarMenu>
-        <SidebarMenuItem key="global-search">
+        <SidebarMenuItem key="global-search" className="border rounded-lg">
           <SidebarMenuButton onClick={onOpenSearch}>
             <Search />
             <span>Search</span>
