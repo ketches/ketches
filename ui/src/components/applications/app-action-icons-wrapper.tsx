@@ -1,4 +1,4 @@
-import { ActionMetadata } from "@/api/apps"
+import { type ActionMetadata } from "@/api/apps"
 import { AppActionIcons } from "@/components/applications/app-action-icons"
 
 interface AppActionIconsWrapperProps {
