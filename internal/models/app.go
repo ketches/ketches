@@ -151,7 +151,8 @@ type AppResponse struct {
 	RequestMemory    int              `json:"request_memory"`
 	LimitCPU         int              `json:"limit_cpu"`
 	LimitMemory      int              `json:"limit_memory"`
-	Status           string           `json:"status"`
+Status           string           `json:"status"`
+	AvailableActions []ActionMetadata `json:"available_actions"`
 	AutoScaling      *AutoScalingSpec `json:"auto_scaling"`
 	SchedulingRule   *SchedulingSpec  `json:"scheduling_rule"`
 	CreatedAt        time.Time        `json:"created_at"`
@@ -163,18 +164,18 @@ type ListAppResponse struct {
 }
 
 type AppInstanceResponse struct {
-	InstanceName       string    `json:"instanceName"`
+	InstanceName       string    `json:"instance_name"`
 	Status             string    `json:"status"`
 	IP                 string    `json:"ip"`
-	InitContainerCount int       `json:"initContainerCount"`
-	InitContainers     []string  `json:"initContainers"`
-	ContainerCount     int       `json:"containerCount"`
+	InitContainerCount int       `json:"init_container_count"`
+	InitContainers     []string  `json:"init_containers"`
+	ContainerCount     int       `json:"container_count"`
 	Containers         []string  `json:"containers"`
-	NodeName           string    `json:"nodeName"`
-	NodeIP             string    `json:"nodeIP"`
-	RestartCount       int       `json:"restartCount"`
-	RunningDuration    string    `json:"runningDuration"`
-	CreatedAt          time.Time `json:"createdAt"`
+	NodeName           string    `json:"node_name"`
+	NodeIP             string    `json:"node_ip"`
+	RestartCount       int       `json:"restart_count"`
+	RunningDuration    string    `json:"running_duration"`
+	CreatedAt          time.Time `json:"created_at"`
 }
 
 type AppInstanceEventResponse struct {
@@ -183,7 +184,56 @@ type AppInstanceEventResponse struct {
 	Message   string    `json:"message"`
 	From      string    `json:"from"`
 	Count     int32     `json:"count"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type AppEnvVarResponse struct {
+	ID        string    `json:"id"`
+	AppID     string    `json:"app_id"`
+	Key       string    `json:"key"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type AppConfigFileResponse struct {
+	ID        string    `json:"id"`
+	AppID     string    `json:"app_id"`
+	Slug      string    `json:"slug"`
+	MountPath string    `json:"mount_path"`
+	Content   string    `json:"content"`
+	FileMode  string    `json:"file_mode"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type AppVolumeResponse struct {
+	ID           string    `json:"id"`
+	AppID        string    `json:"app_id"`
+	Slug         string    `json:"slug"`
+	MountPath    string    `json:"mount_path"`
+	SubPath      string    `json:"sub_path"`
+	VolumeType   string    `json:"volume_type"`
+	Capacity     int       `json:"capacity"`
+	StorageClass string    `json:"storage_class"`
+	VolumeMode   string    `json:"volume_mode"`
+	AccessModes  string    `json:"access_modes"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type AppGatewayResponse struct {
+	ID          string    `json:"id"`
+	AppID       string    `json:"app_id"`
+	Port        int       `json:"port"`
+	Protocol    string    `json:"protocol"`
+	Domain      string    `json:"domain"`
+	Path        string    `json:"path"`
+	GatewayPort int       `json:"gateway_port"`
+	Exposed     bool      `json:"exposed"`
+	CertID      *string   `json:"cert_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type AppActionRequest struct {
