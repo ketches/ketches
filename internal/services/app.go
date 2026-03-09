@@ -1199,6 +1199,7 @@ func ToAppListResponse(ctx context.Context, row *models.AppListRow) models.AppRe
 		LimitCPU:         row.LimitCPU,
 		LimitMemory:      row.LimitMemory,
 		Status:           status,
+		AvailableActions: core.GetAvailableActions(app.AppStatus(status)),
 		CreatedAt:        row.CreatedAt,
 		Env: &models.EnvResponse{
 			ID:               row.EnvID,
