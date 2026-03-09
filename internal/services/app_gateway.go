@@ -13,14 +13,21 @@ import (
 )
 
 // ListAppGateways returns all gateways for a given app
-func ListAppGateways(appID string) ([]entities.AppGateway, error) {
+func ListAppGateways(appID string) ([]models.AppGatewayResponse, error) {
 	var gateways []entities.AppGateway
 	err := db.DB.Where("app_id = ?", appID).Find(&gateways).Error
-	return gateways, err
+	if err != nil {
+		return nil, err
+	}
+	result := make([]models.AppGatewayResponse, 0, len(gateways))
+	for _, gw := range gateways {
+		result = append(result, toAppGatewayResponse(&gw))
+	}
+	return result, nil
 }
 
 // CreateAppGateway creates a new gateway for an app
-func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatewayRequest) (*entities.AppGateway, error) {
+func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatewayRequest) (*models.AppGatewayResponse, error) {
 	entity := &entities.AppGateway{
 		ID:          uuid.New(),
 		AppID:       appID,
@@ -61,11 +68,12 @@ func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatew
 		return nil, err
 	}
 
-	return entity, nil
+	res := toAppGatewayResponse(entity)
+	return &res, nil
 }
 
 // UpdateAppGateway updates an existing gateway
-func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayRequest) (*entities.AppGateway, error) {
+func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayRequest) (*models.AppGatewayResponse, error) {
 	var gateway entities.AppGateway
 	err := db.DB.First(&gateway, "id = ?", id).Error
 	if err != nil {
@@ -116,7 +124,8 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 		return nil, err
 	}
 
-	return &gateway, nil
+	res := toAppGatewayResponse(&gateway)
+	return &res, nil
 }
 
 // DeleteAppGateway deletes a gateway
@@ -146,6 +155,23 @@ func DeleteAppGateway(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+// toAppGatewayResponse converts an AppGateway entity to a response model with snake_case JSON fields.
+func toAppGatewayResponse(gw *entities.AppGateway) models.AppGatewayResponse {
+	return models.AppGatewayResponse{
+		ID:          gw.ID,
+		AppID:       gw.AppID,
+		Port:        gw.Port,
+		Protocol:    gw.Protocol,
+		Domain:      gw.Domain,
+		Path:        gw.Path,
+		GatewayPort: gw.GatewayPort,
+		Exposed:     gw.Exposed,
+		CertID:      gw.CertID,
+		CreatedAt:   gw.CreatedAt,
+		UpdatedAt:   gw.UpdatedAt,
+	}
 }
 
 // GetGatewayWithApp loads a gateway along with its parent App, Env, and Cluster.

@@ -75,21 +75,6 @@ export const buildsApi = {
       params: { page, page_size: pageSize }
     }) as Promise<{ items: Build[], pagination: PaginationResponse }>
   },
-  trigger: async (appId: string, data?: TriggerBuildRequest) => {
-    return client.post(`/v1/apps/${appId}/builds`, data || {}) as Promise<Build>
-  },
-  get: async (appId: string, buildId: string) => {
-    return client.get(`/v1/apps/${appId}/builds/${buildId}`) as Promise<Build>
-  },
-  cancel: async (appId: string, buildId: string) => {
-    return client.post(`/v1/apps/${appId}/builds/${buildId}/cancel`) as Promise<Build>
-  },
-  deploy: async (appId: string, buildId: string) => {
-    return client.post(`/v1/apps/${appId}/builds/${buildId}/deploy`) as Promise<Build>
-  },
-  rebuild: async (appId: string, buildId: string, data?: { image_tag?: string }) => {
-    return client.post(`/v1/apps/${appId}/builds/${buildId}/rebuild`, data || {}) as Promise<Build>
-  },
 }
 
 export const buildStatusLabels: Record<BuildStatus, string> = {

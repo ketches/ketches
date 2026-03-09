@@ -9,6 +9,7 @@ type BuildSetting struct {
 	CreatedAt        time.Time `gorm:"autoCreateTime"`
 	UpdatedAt        time.Time `gorm:"autoUpdateTime"`
 	Name             string    `gorm:"type:varchar(128)"`
+	AppID            *string   `gorm:"type:varchar(36);index"`
 	CodeRepositoryID *string   `gorm:"type:varchar(36);index"`
 
 	// Git source

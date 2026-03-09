@@ -12,13 +12,20 @@ import (
 	"gorm.io/gorm"
 )
 
-func ListAppVolumes(appID string) ([]entities.AppVolume, error) {
+func ListAppVolumes(appID string) ([]models.AppVolumeResponse, error) {
 	var volumes []entities.AppVolume
 	err := db.DB.Where("app_id = ?", appID).Find(&volumes).Error
-	return volumes, err
+	if err != nil {
+		return nil, err
+	}
+	result := make([]models.AppVolumeResponse, 0, len(volumes))
+	for _, vol := range volumes {
+		result = append(result, toAppVolumeResponse(&vol))
+	}
+	return result, nil
 }
 
-func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolumeRequest) (*entities.AppVolume, error) {
+func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolumeRequest) (*models.AppVolumeResponse, error) {
 	volumeMode := req.VolumeMode
 	if volumeMode == "" {
 		volumeMode = "Filesystem"
@@ -74,10 +81,11 @@ func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolume
 		}
 	}
 
-	return entity, nil
+	res := toAppVolumeResponse(entity)
+	return &res, nil
 }
 
-func UpdateAppVolume(ctx context.Context, id string, req *models.UpdateVolumeRequest) (*entities.AppVolume, error) {
+func UpdateAppVolume(ctx context.Context, id string, req *models.UpdateVolumeRequest) (*models.AppVolumeResponse, error) {
 	var volume entities.AppVolume
 	err := db.DB.First(&volume, "id = ?", id).Error
 	if err != nil {
@@ -134,7 +142,8 @@ func UpdateAppVolume(ctx context.Context, id string, req *models.UpdateVolumeReq
 		}
 	}
 
-	return &volume, nil
+	res := toAppVolumeResponse(&volume)
+	return &res, nil
 }
 
 func DeleteAppVolume(ctx context.Context, id string) error {
@@ -166,6 +175,24 @@ func DeleteAppVolume(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+// toAppVolumeResponse converts an AppVolume entity to a response model with snake_case JSON fields.
+func toAppVolumeResponse(vol *entities.AppVolume) models.AppVolumeResponse {
+	return models.AppVolumeResponse{
+		ID:           vol.ID,
+		AppID:        vol.AppID,
+		Slug:         vol.Slug,
+		MountPath:    vol.MountPath,
+		SubPath:      vol.SubPath,
+		VolumeType:   vol.VolumeType,
+		Capacity:     vol.Capacity,
+		StorageClass: vol.StorageClass,
+		VolumeMode:   vol.VolumeMode,
+		AccessModes:  vol.AccessModes,
+		CreatedAt:    vol.CreatedAt,
+		UpdatedAt:    vol.UpdatedAt,
+	}
 }
 
 // checkVolumeMountPathConflicts checks if the mount path conflicts with existing volumes or config files

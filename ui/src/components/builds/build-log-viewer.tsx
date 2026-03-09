@@ -1,20 +1,17 @@
-import Editor from "@monaco-editor/react"
-import { useQuery } from "@tanstack/react-query"
-import * as React from "react"
-
-import { buildsApi } from "@/api/builds"
 import { codeRepositoriesApi } from "@/api/code-repositories"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
 import { useTheme } from "@/components/theme-provider/theme-provider"
+import Editor from "@monaco-editor/react"
+import { useQuery } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
+import * as React from "react"
 
 interface BuildLogViewerProps {
-  appId?: string
   buildId: string
-  repoId?: string
+  repoId: string
 }
 
-export function BuildLogViewer({ appId, buildId, repoId }: BuildLogViewerProps) {
+export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   const [logs, setLogs] = React.useState<string[]>([])
   const editorRef = React.useRef<any>(null)
 
@@ -50,17 +47,14 @@ export function BuildLogViewer({ appId, buildId, repoId }: BuildLogViewerProps) 
   }, [logs])
 
   const { data: build } = useQuery({
-    queryKey: ['build', buildId, repoId ?? appId],
-    queryFn: () =>
-      repoId
-        ? codeRepositoriesApi.getBuild(repoId, buildId)
-        : buildsApi.get(appId!, buildId),
+    queryKey: ['build', buildId, repoId],
+    queryFn: () => codeRepositoriesApi.getBuild(repoId, buildId),
     refetchInterval: 3000,
-    enabled: !!(repoId || appId),
+    enabled: !!repoId,
   })
 
   React.useEffect(() => {
-    if (!buildId || (!repoId && !appId)) return
+    if (!buildId || !repoId) return
     setLogs([])
 
     const authData = localStorage.getItem('auth-storage')
@@ -73,9 +67,7 @@ export function BuildLogViewer({ appId, buildId, repoId }: BuildLogViewerProps) 
     }
 
     const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
-    const url = repoId
-      ? `${apiBase}/v1/code-repositories/${repoId}/builds/${buildId}/logs?token=${encodeURIComponent(token)}`
-      : `${apiBase}/v1/apps/${appId}/builds/${buildId}/logs?token=${encodeURIComponent(token)}`
+    const url = `${apiBase}/v1/code-repositories/${repoId}/builds/${buildId}/logs?token=${encodeURIComponent(token)}`
 
     const eventSource = new EventSource(url)
 
@@ -94,7 +86,7 @@ export function BuildLogViewer({ appId, buildId, repoId }: BuildLogViewerProps) 
     return () => {
       eventSource.close()
     }
-  }, [appId, buildId, repoId])
+  }, [buildId, repoId])
 
   return (
     <div className="space-y-4">

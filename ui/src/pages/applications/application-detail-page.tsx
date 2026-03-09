@@ -486,9 +486,9 @@ function InstanceEventsDialog({ appId, instanceName, open, onOpenChange }: { app
                 cell: ({ row }) => <span className="text-xs font-mono">{row.original.count}</span>
               },
               {
-                accessorKey: "createdAt",
+                accessorKey: "created_at",
                 header: "Last Seen",
-                cell: ({ row }) => <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(row.original.createdAt)}</span>
+                cell: ({ row }) => <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(row.original.created_at)}</span>
               }
             ]}
             data={events}
@@ -646,9 +646,9 @@ export function ApplicationDetailPage() {
     if (!searchQuery) return safeInstances
     const lowQuery = searchQuery.toLowerCase()
     return safeInstances.filter(i =>
-      i.instanceName.toLowerCase().includes(lowQuery) ||
+      i.instance_name.toLowerCase().includes(lowQuery) ||
       i.ip?.toLowerCase().includes(lowQuery) ||
-      i.nodeName?.toLowerCase().includes(lowQuery)
+      i.node_name?.toLowerCase().includes(lowQuery)
     )
   }, [safeInstances, searchQuery])
 
@@ -673,11 +673,11 @@ export function ApplicationDetailPage() {
       enableHiding: false,
     },
     {
-      accessorKey: "instanceName",
+      accessorKey: "instance_name",
       header: "Instance",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-mono text-xs font-medium">{row.original.instanceName}</span>
+          <span className="font-mono text-xs font-medium">{row.original.instance_name}</span>
           {row.original.ip && (
             <span className="font-mono text-[10px] text-muted-foreground">{row.original.ip}</span>
           )}
@@ -701,8 +701,8 @@ export function ApplicationDetailPage() {
       id: "containers",
       header: "Containers",
       cell: ({ row }) => {
-        const initCount = row.original.initContainerCount
-        const containerCount = row.original.containerCount
+        const initCount = row.original.init_container_count
+        const containerCount = row.original.container_count
         return (
           <div className="flex items-center gap-3">
             {initCount > 0 && (
@@ -720,11 +720,11 @@ export function ApplicationDetailPage() {
       },
     },
     {
-      accessorKey: "restartCount",
+      accessorKey: "restart_count",
       header: "Restarts",
       cell: ({ row }) => (
-        <span className={`text-xs font-mono ${row.original.restartCount > 0 ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
-          {row.original.restartCount || 0}
+        <span className={`text-xs font-mono ${row.original.restart_count > 0 ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+          {row.original.restart_count || 0}
         </span>
       ),
     },
@@ -738,7 +738,7 @@ export function ApplicationDetailPage() {
           className="text-primary"
           onClick={(e) => {
             e.stopPropagation()
-            setSelectedInstanceForEvents(row.original.instanceName)
+            setSelectedInstanceForEvents(row.original.instance_name)
           }}
         >
           <ClockCheck />
@@ -746,24 +746,24 @@ export function ApplicationDetailPage() {
       ),
     },
     {
-      accessorKey: "nodeName",
+      accessorKey: "node_name",
       header: "Node",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground">{row.original.nodeName}</span>
-          {row.original.nodeIP && (
-            <span className="font-mono text-[10px] text-muted-foreground/60">{row.original.nodeIP}</span>
+          <span className="text-xs text-muted-foreground">{row.original.node_name}</span>
+          {row.original.node_ip && (
+            <span className="font-mono text-[10px] text-muted-foreground/60">{row.original.node_ip}</span>
           )}
         </div>
       ),
     },
     {
-      accessorKey: "runningDuration",
+      accessorKey: "running_duration",
       header: "Age",
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
-          <span className="text-xs">{row.original.runningDuration}</span>
+          <span className="text-xs">{row.original.running_duration}</span>
         </div>
       ),
     },
@@ -786,7 +786,7 @@ export function ApplicationDetailPage() {
                     size="icon-sm"
                     onClick={(e) => {
                       e.stopPropagation()
-                      setMetricsInstance(instance.instanceName)
+                      setMetricsInstance(instance.instance_name)
                     }}
                   />
                 }
@@ -810,10 +810,10 @@ export function ApplicationDetailPage() {
                             type: "logs",
                             appId: app.id,
                             appName: app.name,
-                            instanceName: instance.instanceName,
+                            instanceName: instance.instance_name,
                             containerName: defaultContainer,
                             containers,
-                            initContainers: instance.initContainers,
+                            initContainers: instance.init_containers,
                           })
                         }
                       }}
@@ -840,10 +840,10 @@ export function ApplicationDetailPage() {
                             type: "terminal",
                             appId: app.id,
                             appName: app.name,
-                            instanceName: instance.instanceName,
+                            instanceName: instance.instance_name,
                             containerName: defaultContainer,
                             containers,
-                            initContainers: instance.initContainers,
+                            initContainers: instance.init_containers,
                           })
                         }
                       }}
@@ -870,10 +870,10 @@ export function ApplicationDetailPage() {
                             type: "files",
                             appId: app.id,
                             appName: app.name,
-                            instanceName: instance.instanceName,
+                            instanceName: instance.instance_name,
                             containerName: defaultContainer,
                             containers,
-                            initContainers: instance.initContainers,
+                            initContainers: instance.init_containers,
                           })
                         }
                       }}
@@ -896,7 +896,7 @@ export function ApplicationDetailPage() {
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setDeletingInstanceName(instance.instanceName)
+                        setDeletingInstanceName(instance.instance_name)
                         setDeleteInstanceDialogOpen(true)
                       }}
                       disabled={deleteInstanceMutation.isPending}
@@ -1302,7 +1302,7 @@ export function ApplicationDetailPage() {
                       variant="destructive"
                       onClick={() => {
                         const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
-                        const selectedNames = selectedIndices.map(idx => filteredInstances[parseInt(idx)]?.instanceName).filter(Boolean) as string[]
+                        const selectedNames = selectedIndices.map(idx => filteredInstances[parseInt(idx)]?.instance_name).filter(Boolean) as string[]
 
                         setSelectedInstanceNames(selectedNames)
                         setBulkDeleteDialogOpen(true)
@@ -1367,19 +1367,19 @@ export function ApplicationDetailPage() {
                     const defaultContainer = containers.includes(appContainerName) ? appContainerName : containers[0]
 
                     return (
-                      <Card key={instance.instanceName} className="group/card hover:shadow-md transition-shadow cursor-pointer">
+                      <Card key={instance.instance_name} className="group/card hover:shadow-md transition-shadow cursor-pointer">
                         <CardHeader className="pb-2">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex items-start gap-3 min-w-0">
                               <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
                                 <AvatarFallback className="rounded-lg text-lg font-bold">
-                                  {instance.instanceName.charAt(0).toUpperCase()}
+                                  {instance.instance_name.charAt(0).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <CardTitle className="font-mono text-xs font-semibold truncate" title={instance.instanceName}>
-                                    {instance.instanceName}
+                                  <CardTitle className="font-mono text-xs font-semibold truncate" title={instance.instance_name}>
+                                    {instance.instance_name}
                                   </CardTitle>
                                   <ColorBadge color={isRunning ? "green" : "gray"} className="text-[10px] px-1.5 py-0 shrink-0">
                                     {instance.status.toUpperCase()}
@@ -1396,7 +1396,7 @@ export function ApplicationDetailPage() {
                                 size="icon-sm"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setMetricsInstance(instance.instanceName)
+                                  setMetricsInstance(instance.instance_name)
                                 }}
                                 title="View Metrics"
                               >
@@ -1413,10 +1413,10 @@ export function ApplicationDetailPage() {
                                         type: "logs",
                                         appId: app.id,
                                         appName: app.name,
-                                        instanceName: instance.instanceName,
+                                        instanceName: instance.instance_name,
                                         containerName: defaultContainer,
                                         containers,
-                                        initContainers: instance.initContainers,
+                                        initContainers: instance.init_containers,
                                       })
                                     }
                                   }}
@@ -1436,10 +1436,10 @@ export function ApplicationDetailPage() {
                                         type: "terminal",
                                         appId: app.id,
                                         appName: app.name,
-                                        instanceName: instance.instanceName,
+                                        instanceName: instance.instance_name,
                                         containerName: defaultContainer,
                                         containers,
-                                        initContainers: instance.initContainers,
+                                        initContainers: instance.init_containers,
                                       })
                                     }
                                   }}
@@ -1459,10 +1459,10 @@ export function ApplicationDetailPage() {
                                         type: "files",
                                         appId: app.id,
                                         appName: app.name,
-                                        instanceName: instance.instanceName,
+                                        instanceName: instance.instance_name,
                                         containerName: defaultContainer,
                                         containers,
-                                        initContainers: instance.initContainers,
+                                        initContainers: instance.init_containers,
                                       })
                                     }
                                   }}
@@ -1478,7 +1478,7 @@ export function ApplicationDetailPage() {
                                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    setDeletingInstanceName(instance.instanceName)
+                                    setDeletingInstanceName(instance.instance_name)
                                     setDeleteInstanceDialogOpen(true)
                                   }}
                                   disabled={deleteInstanceMutation.isPending}
@@ -1495,24 +1495,24 @@ export function ApplicationDetailPage() {
                             <div className="flex items-center justify-between text-xs text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <Server className="h-3.5 w-3.5" />
-                                <span className="truncate" title={instance.nodeName}>{instance.nodeName}</span>
+                                <span className="truncate" title={instance.node_name}>{instance.node_name}</span>
                               </div>
                             </div>
                             <div className="flex items-center justify-between text-xs text-muted-foreground">
                               <div className="flex items-center gap-3">
-                                {instance.initContainerCount > 0 && (
+                                {instance.init_container_count > 0 && (
                                   <div className="flex items-center gap-1.5" title="Init Containers">
                                     <Zap className="h-3.5 w-3.5" />
-                                    <span>{instance.initContainerCount}</span>
+                                    <span>{instance.init_container_count}</span>
                                   </div>
                                 )}
                                 <div className="flex items-center gap-1.5" title="Containers">
                                   <Layers2 className="h-3.5 w-3.5" />
-                                  <span>{instance.containerCount}</span>
+                                  <span>{instance.container_count}</span>
                                 </div>
-                                <div className={`flex items-center gap-1.5 ${instance.restartCount > 0 ? 'text-destructive font-bold' : ''}`} title="Restarts">
+                                <div className={`flex items-center gap-1.5 ${instance.restart_count > 0 ? 'text-destructive font-bold' : ''}`} title="Restarts">
                                   <RotateCw className="h-3 w-3" />
-                                  <span>{instance.restartCount || 0}</span>
+                                  <span>{instance.restart_count || 0}</span>
                                 </div>
                               </div>
                               <Button
@@ -1520,7 +1520,7 @@ export function ApplicationDetailPage() {
                                 className="p-0 h-auto text-xs"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setSelectedInstanceForEvents(instance.instanceName)
+                                  setSelectedInstanceForEvents(instance.instance_name)
                                 }}
                               >
                                 <ClockCheck className="h-3 w-3" />Events
@@ -1530,7 +1530,7 @@ export function ApplicationDetailPage() {
                           <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
                             <div className="flex items-center gap-1.5">
                               <Clock className="h-3 w-3" />
-                              <span>{instance.runningDuration}</span>
+                              <span>{instance.running_duration}</span>
                             </div>
                           </div>
                         </CardContent>

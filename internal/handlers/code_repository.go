@@ -168,9 +168,8 @@ func TriggerCodeRepositoryBuild(c *gin.Context) {
 }
 
 func GetCodeRepositoryBuild(c *gin.Context) {
-	repoID := c.Param("repoID")
 	buildID := c.Param("buildID")
-	build, err := services.GetBuildByCodeRepository(repoID, buildID)
+	build, err := services.GetBuild(buildID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return

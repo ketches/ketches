@@ -2,12 +2,6 @@ package models
 
 import "time"
 
-type TriggerBuildRequest struct {
-	GitRef     string `json:"git_ref"`
-	ImageTag   string `json:"image_tag"`
-	AutoDeploy *bool  `json:"auto_deploy"`
-}
-
 type BuildResponse struct {
 	ID               string     `json:"id"`
 	BuildSettingName string     `json:"build_setting_name"`
@@ -29,7 +23,6 @@ type BuildResponse struct {
 	Duration         int        `json:"duration"`
 	ErrorMessage     string     `json:"error_message"`
 	CreatedAt        time.Time  `json:"created_at"`
-	// AppID            *string    `json:"app_id,omitempty"`
 }
 
 type CodeRepositoryDeploymentResponse struct {
@@ -45,8 +38,4 @@ type CodeRepositoryDeploymentResponse struct {
 	AppID          string    `json:"app_id"`
 	AppName        string    `json:"app_name"`
 	EnvName        string    `json:"env_name"`
-}
-
-type RebuildRequest struct {
-	ImageTag string `json:"image_tag"`
 }

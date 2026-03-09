@@ -5,7 +5,7 @@ type FileInfo struct {
 	Name        string `json:"name"`
 	Type        string `json:"type"` // "file", "dir", "link"
 	Size        int64  `json:"size"`
-	ModTime     int64  `json:"modTime"`
+	ModTime     int64  `json:"mod_time"`
 	Permissions string `json:"permissions"`
 }
 
@@ -52,14 +52,14 @@ type CopyFileRequest struct {
 
 // CompressFilesRequest is the request for compressing files inside the container
 type CompressFilesRequest struct {
-	BaseDir   string   `json:"baseDir" binding:"required"`
-	FileNames []string `json:"fileNames" binding:"required"`
-	DestPath  string   `json:"destPath" binding:"required"`
+	BaseDir   string   `json:"base_dir" binding:"required"`
+	FileNames []string `json:"file_names" binding:"required"`
+	DestPath  string   `json:"dest_path" binding:"required"`
 }
 
 // CompressAndDownloadRequest is the request for compressing files and downloading
 type CompressAndDownloadRequest struct {
-	BaseDir     string   `json:"baseDir" binding:"required"`
-	FileNames   []string `json:"fileNames" binding:"required"`
-	ArchiveName string   `json:"archiveName"`
+	BaseDir     string   `json:"base_dir" binding:"required"`
+	FileNames   []string `json:"file_names" binding:"required"`
+	ArchiveName string   `json:"archive_name"`
 }

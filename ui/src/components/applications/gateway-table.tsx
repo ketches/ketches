@@ -47,14 +47,14 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       const response = await appsApi.listGateways(app.id)
       // Transform backend response to match GatewaySpec
       return response.map((gw: any) => ({
-        id: gw.ID || gw.id,
-        port: gw.Port || gw.port,
-        protocol: gw.Protocol || gw.protocol,
-        domain: gw.Domain || gw.domain,
-        path: gw.Path || gw.path,
-        gateway_port: gw.GatewayPort || gw.gateway_port,
-        exposed: gw.Exposed ?? gw.exposed ?? false,
-        cert_id: gw.CertID || gw.cert_id,
+        id: gw.id,
+        port: gw.port,
+        protocol: gw.protocol,
+        domain: gw.domain,
+        path: gw.path,
+        gateway_port: gw.gateway_port,
+        exposed: gw.exposed ?? false,
+        cert_id: gw.cert_id,
       }))
     }
   })

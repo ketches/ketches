@@ -59,15 +59,15 @@ export function VolumesTable({ app }: VolumesTableProps) {
       const response = await appsApi.listVolumes(app.id)
       // Transform backend response to match VolumeSpec
       return response.map((vol: any) => ({
-        id: vol.ID || vol.id,
-        slug: vol.Slug || vol.slug,
-        volume_type: vol.VolumeType || vol.volume_type || "pvc",
-        mount_path: vol.MountPath || vol.mount_path,
-        sub_path: vol.SubPath || vol.sub_path,
-        storage_class: vol.StorageClass || vol.storage_class,
-        capacity: vol.Capacity || vol.capacity || 1,
-        access_modes: vol.AccessModes || vol.access_modes || "ReadWriteOnce",
-        volume_mode: vol.VolumeMode || vol.volume_mode || "Filesystem",
+        id: vol.id,
+        slug: vol.slug,
+        volume_type: vol.volume_type || "pvc",
+        mount_path: vol.mount_path,
+        sub_path: vol.sub_path,
+        storage_class: vol.storage_class,
+        capacity: vol.capacity || 1,
+        access_modes: vol.access_modes || "ReadWriteOnce",
+        volume_mode: vol.volume_mode || "Filesystem",
       }))
     },
   })

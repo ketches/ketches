@@ -1,11 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Clock, Copy, FileClock, FolderGit2, Loader2, Package, Rocket, RotateCcw, Square, User } from "lucide-react"
+import { Clock, Copy, FileClock, FolderGit2, Loader2, Package, User } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { appsApi } from "@/api/apps"
-import { buildSettingsApi } from "@/api/build-settings"
 import { buildsApi, type Build } from "@/api/builds"
 import { BuildLogViewer } from "@/components/builds/build-log-viewer"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
@@ -17,17 +16,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatDate } from "@/lib/utils"
-import type { AxiosError } from "axios"
 
 interface BuildListProps {
   appId: string
 }
 
 export function BuildList({ appId }: BuildListProps) {
-  const queryClient = useQueryClient()
   const [showLogDialog, setShowLogDialog] = React.useState<string | null>(null)
   const [triggerBuildDialogOpen, setTriggerBuildDialogOpen] = React.useState(false)
-  const [selectedBuildId, setSelectedBuildId] = React.useState<string | undefined>(undefined)
+  const [selectedBuildId] = React.useState<string | undefined>(undefined)
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -46,24 +43,7 @@ export function BuildList({ appId }: BuildListProps) {
   const builds = buildsResponse?.items ?? []
   const totalCount = buildsResponse?.pagination.total || 0
 
-  const { data: setting } = useQuery({
-    queryKey: ['build-setting', appId],
-    queryFn: () => buildSettingsApi.get(appId),
-    retry: false,
-  })
 
-  const cancelMutation = useMutation({
-    mutationFn: (buildId: string) => buildsApi.cancel(appId, buildId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['builds', appId] })
-      toast.success('Build cancelled')
-    },
-    onError: (err: AxiosError<{ error: string }>) => {
-      toast.error(err?.response?.data?.error || 'Failed to cancel build')
-    },
-  })
-
-  const hasConfig = !!setting
   const repoId = app?.code_repository_id
   const projectId = app?.env?.project_id
 
@@ -180,69 +160,8 @@ export function BuildList({ appId }: BuildListProps) {
               >
                 <FileClock />
               </TooltipTrigger>
-              <TooltipContent>View logs</TooltipContent>
+              <TooltipContent>Build logs</TooltipContent>
             </Tooltip>
-            {(build.status === 'pending' || build.status === 'cloning' || build.status === 'building') && (
-              <Tooltip>
-                <TooltipTrigger
-                  delay={200}
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => cancelMutation.mutate(build.id)}
-                    />
-                  }
-                >
-                  <Square />
-                </TooltipTrigger>
-                <TooltipContent>Cancel build</TooltipContent>
-              </Tooltip>
-            )}
-            {build.status === 'succeeded' && (
-              <Tooltip>
-                <TooltipTrigger
-                  delay={200}
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => {
-                        setSelectedBuildId(build.id)
-                        setTriggerBuildDialogOpen(true)
-                      }}
-                    />
-                  }
-                >
-                  <Rocket />
-                </TooltipTrigger>
-                <TooltipContent>Deploy build</TooltipContent>
-              </Tooltip>
-            )}
-            {(build.status === 'failed' || build.status === 'succeeded') && (
-              <Tooltip>
-                <TooltipTrigger
-                  delay={200}
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => {
-                        buildsApi.rebuild(appId, build.id).then(() => {
-                          queryClient.invalidateQueries({ queryKey: ['builds', appId] })
-                          toast.success('Rebuild triggered')
-                        }).catch((err) => {
-                          toast.error(err?.response?.data?.error || 'Failed to rebuild')
-                        })
-                      }}
-                    />
-                  }
-                >
-                  <RotateCcw />
-                </TooltipTrigger>
-                <TooltipContent>Rebuild</TooltipContent>
-              </Tooltip>
-            )}
           </div>
         )
       },
@@ -263,7 +182,7 @@ export function BuildList({ appId }: BuildListProps) {
           {!isLoading && (!builds || builds.length === 0) ? (
             <EmptyState
               title="No builds yet"
-              description={hasConfig || repoId
+              description={repoId
                 ? "Click \"Build\" to trigger the first build"
                 : "Configure build settings above to get started"}
               icon={Package}
@@ -296,13 +215,13 @@ export function BuildList({ appId }: BuildListProps) {
       )}
 
       {/* Build Log Dialog */}
-      {showLogDialog && (
+      {repoId && showLogDialog && (
         <Dialog open={!!showLogDialog} onOpenChange={() => setShowLogDialog(null)}>
           <DialogContent className="sm:max-w-[90vw] w-full sm:max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Build logs</DialogTitle>
             </DialogHeader>
-            <BuildLogViewer appId={appId} buildId={showLogDialog} />
+            <BuildLogViewer buildId={showLogDialog} repoId={repoId} />
           </DialogContent>
         </Dialog>
       )}

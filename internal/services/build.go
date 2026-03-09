@@ -46,146 +46,6 @@ func GetBuild(buildID string) (*entities.Build, error) {
 	return &build, nil
 }
 
-func TriggerAppBuild(ctx context.Context, appID, userID string, req *models.TriggerBuildRequest) (*entities.Build, error) {
-	// Get app with env/project info
-	appCtx, err := GetAppContext(ctx, appID)
-	if err != nil {
-		return nil, fmt.Errorf("app not found: %w", err)
-	}
-
-	setting, err := GetAppBuildSetting(appID)
-	if err != nil {
-		return nil, fmt.Errorf("build setting not found: please configure build settings first")
-	}
-
-	repo, err := GetCodeRepository(*setting.CodeRepositoryID)
-	if err != nil {
-		return nil, fmt.Errorf("code repository not found: %w", err)
-	}
-
-	// Get the registry
-	registry, err := GetContainerRegistry(setting.RegistryID)
-	if err != nil {
-		return nil, fmt.Errorf("image registry not found: %w", err)
-	}
-
-	// Get the build environment for this project
-	buildEnv, err := GetProjectBuildEnv(appCtx.EnvContext.Project.ID)
-	if err != nil {
-		return nil, fmt.Errorf("no build environment configured for this project: please set a build environment first")
-	}
-
-	// Check for active builds
-	var activeCount int64
-	if err := db.DB.Model(&entities.Build{}).
-		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
-		Where("build_settings.app_id = ? AND builds.status IN ?", appID, []entities.BuildStatus{
-			entities.BuildStatusPending,
-			entities.BuildStatusCloning,
-			entities.BuildStatusBuilding,
-		}).Count(&activeCount).Error; err != nil {
-		return nil, err
-	}
-	if activeCount > 0 {
-		return nil, errors.New("an active build already exists for this app")
-	}
-
-	// Get next build number
-	var lastBuild entities.Build
-	var buildNumber int
-	if err := db.DB.Where("build_setting_id = ?", setting.ID).Order("build_number DESC").First(&lastBuild).Error; err != nil {
-		buildNumber = 1
-	} else {
-		buildNumber = lastBuild.BuildNumber + 1
-	}
-
-	// Determine git ref and image tag
-	gitRef := setting.GitRef
-	if req.GitRef != "" {
-		gitRef = req.GitRef
-	}
-
-	imageTag := fmt.Sprintf("%s-%d", sanitizeRef(gitRef), buildNumber)
-	if req.ImageTag != "" {
-		imageTag = req.ImageTag
-	}
-
-	imageFullName := fmt.Sprintf("%s:%s", setting.ImageName, imageTag)
-
-	now := time.Now()
-	triggeredBy := userID
-	var triggeredByPtr *string
-	if triggeredBy != "" {
-		triggeredByPtr = &triggeredBy
-	}
-	build := &entities.Build{
-		ID:             uuid.New(),
-		BuildSettingID: setting.ID,
-		BuildNumber:    buildNumber,
-		Status:         entities.BuildStatusPending,
-		BuildEnvID:     buildEnv.ID,
-		GitRepoURL:     "",
-		GitRef:         gitRef,
-		ImageFullName:  imageFullName,
-		TriggerType:    entities.BuildTriggerManual,
-		TriggeredBy:    triggeredByPtr,
-		StartedAt:      &now,
-	}
-
-	if err := db.DB.Create(build).Error; err != nil {
-		return nil, err
-	}
-
-	deployedBy := userID
-	if deployedBy == "" {
-		deployedBy = "manual"
-	}
-	appIDCopy := appID
-	buildDeployment := &entities.BuildDeployment{
-		ID:         uuid.New(),
-		BuildID:    build.ID,
-		AppID:      &appIDCopy,
-		EnvID:      appCtx.EnvContext.Env.ID,
-		Status:     entities.BuildDeploymentStatusPending,
-		DeployedBy: deployedBy,
-	}
-	if err := db.DB.Create(buildDeployment).Error; err != nil {
-		log.Printf("TriggerBuild: failed to create build deployment record: %v", err)
-	}
-
-	// Submit the build job to Kubernetes
-	jobName, jobNamespace, err := core.SubmitBuildJob(
-		ctx,
-		build,
-		&repo.CodeRepository,
-		&setting.BuildSetting,
-		registry,
-		buildEnv,
-		appCtx,
-	)
-	if err != nil {
-		// Update build as failed
-		build.Status = entities.BuildStatusFailed
-		build.ErrorMessage = err.Error()
-		completedAt := time.Now()
-		build.CompletedAt = &completedAt
-		db.DB.Save(build)
-		return nil, fmt.Errorf("failed to submit build job: %w", err)
-	}
-
-	// Update build with job info
-	build.JobName = jobName
-	build.JobNamespace = jobNamespace
-	if err := db.DB.Save(build).Error; err != nil {
-		return nil, err
-	}
-
-	// Start watching the build
-	core.GlobalBuildWatcher.StartWatching(build)
-
-	return build, nil
-}
-
 func CancelBuild(buildID string) (*entities.Build, error) {
 	build, err := GetBuild(buildID)
 	if err != nil {
@@ -307,26 +167,6 @@ func DeployBuild(ctx context.Context, buildID string) (*entities.Build, error) {
 		"deployed_at": &now,
 	})
 	return build, nil
-}
-
-func RebuildBuild(ctx context.Context, buildID, userID string, req *models.RebuildRequest) (*entities.Build, error) {
-	originalBuild, err := GetBuild(buildID)
-	if err != nil {
-		return nil, err
-	}
-	var bd entities.BuildDeployment
-	if err := db.DB.Where("build_id = ?", buildID).
-		Order("created_at DESC").
-		First(&bd).Error; err != nil || bd.AppID == nil || *bd.AppID == "" {
-		return nil, errors.New("this build is not associated with an app; trigger a new build from the code repository instead")
-	}
-
-	triggerReq := &models.TriggerBuildRequest{
-		GitRef:   originalBuild.GitRef,
-		ImageTag: req.ImageTag,
-	}
-
-	return TriggerAppBuild(ctx, *bd.AppID, userID, triggerReq)
 }
 
 func StreamBuildLogs(c *gin.Context, buildID string) {
@@ -564,18 +404,6 @@ func ListDeployedAppsByEnvironmentAndBuildSetting(envID, buildSettingID string) 
 	return apps, nil
 }
 
-// GetBuildByCodeRepository returns a build that belongs to the given code repository.
-func GetBuildByCodeRepository(repoID, buildID string) (*entities.Build, error) {
-	var build entities.Build
-	if err := db.DB.
-		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
-		Where("builds.id = ? AND build_settings.code_repository_id = ?", buildID, repoID).
-		First(&build).Error; err != nil {
-		return nil, err
-	}
-	return &build, nil
-}
-
 func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRepositoryBuildRequest) (*entities.Build, error) {
 	repo, err := GetCodeRepository(repoID)
 	if err != nil {
@@ -719,7 +547,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 
 // DeployCodeRepositoryBuild deploys a successful build to a target environment (create or update app).
 func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req *models.DeployCodeRepositoryBuildRequest) (*entities.Build, *models.AppContext, error) {
-	build, err := GetBuildByCodeRepository(repoID, buildID)
+	build, err := GetBuild(buildID)
 	if err != nil {
 		return nil, nil, err
 	}

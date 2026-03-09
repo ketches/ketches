@@ -88,9 +88,9 @@ export function BottomPanel() {
     }
 
     const safeInstances = Array.isArray(instances) ? instances : []
-    const instance = safeInstances.find(i => i.instanceName === value)
+    const instance = safeInstances.find(i => i.instance_name === value)
     if (instance) {
-      switchInstance(value, instance.containers || [panelState.containerName], instance.initContainers)
+      switchInstance(value, instance.containers || [panelState.containerName], instance.init_containers)
     }
   }, [panelState, instances, switchInstance])
 
@@ -103,7 +103,7 @@ export function BottomPanel() {
 
   const items = isNode
     ? safeNodes.map(n => ({ name: n.metadata.name }))
-    : safeInstances.map(i => ({ name: i.instanceName }))
+    : safeInstances.map(i => ({ name: i.instance_name }))
 
   const panelHeight = isMinimized ? "h-12" : isMaximized ? "h-[100vh]" : "h-[45vh]"
   const sidebarWidth = isMobile ? "0rem" : sidebarState === "collapsed" ? "3rem" : "16rem"

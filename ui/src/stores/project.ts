@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+import { useAuthStore } from './auth'
+
 interface ProjectState {
   hasHydrated: boolean
   activeProjectId: string | null
@@ -26,7 +28,7 @@ export const useProjectStore = create<ProjectState>()(
       setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
     }),
     {
-      name: 'project-storage',
+      name: `project-storage-${useAuthStore.getState().user?.username ?? 'guest'}`,
       partialize: (state) => ({
         activeProjectId: state.activeProjectId,
         activeEnvId: state.activeEnvId,

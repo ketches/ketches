@@ -53,14 +53,12 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
     queryKey: ["app-config-files", app.id],
     queryFn: async () => {
       const response = await appsApi.listConfigFiles(app.id)
-      // Transform backend response to match ConfigFileSpec
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return response.map((cf: any) => ({
-        id: cf.ID || cf.id,
-        slug: cf.Slug || cf.slug,
-        mount_path: cf.MountPath || cf.mount_path,
-        file_mode: cf.FileMode || cf.file_mode || "0644",
-        content: cf.Content || cf.content,
+        id: cf.id,
+        slug: cf.slug,
+        mount_path: cf.mount_path,
+        file_mode: cf.file_mode || "0644",
+        content: cf.content,
       }))
     },
   })

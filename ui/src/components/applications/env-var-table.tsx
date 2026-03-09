@@ -52,9 +52,9 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
       const response = await appsApi.listEnvVars(app.id)
       // Transform backend response to match EnvVarSpec
       return response.map((ev: any) => ({
-        id: ev.ID || ev.id,
-        key: ev.Key || ev.key,
-        value: ev.Value || ev.value,
+        id: ev.id,
+        key: ev.key,
+        value: ev.value,
       }))
     },
   })

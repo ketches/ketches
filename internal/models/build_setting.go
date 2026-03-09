@@ -2,17 +2,6 @@ package models
 
 import "time"
 
-type UpsertAppBuildSettingRequest struct {
-	GitRef         string `json:"git_ref"`
-	GitUsername    string `json:"git_username"`
-	GitPassword    string `json:"git_password"`
-	DockerfilePath string `json:"dockerfile_path"`
-	BuildContext   string `json:"build_context"`
-	ImageName      string `json:"image_name" binding:"required"`
-	RegistryID     string `json:"registry_id" binding:"required"`
-	BuildArgs      string `json:"build_args"`
-}
-
 type CreateBuildSettingRequest struct {
 	Name           string `json:"name" binding:"required"`
 	GitRef         string `json:"git_ref"`
@@ -35,7 +24,6 @@ type UpdateRepoBuildSettingRequest struct {
 
 type BuildSettingResponse struct {
 	ID               string                   `json:"id"`
-	AppID            string                   `json:"app_id,omitempty"`
 	CodeRepositoryID string                   `json:"code_repository_id,omitempty"`
 	Name             string                   `json:"name"`
 	GitRef           string                   `json:"git_ref"`

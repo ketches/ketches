@@ -13,13 +13,20 @@ import (
 	"gorm.io/gorm"
 )
 
-func ListAppConfigFiles(appID string) ([]entities.AppConfigFile, error) {
+func ListAppConfigFiles(appID string) ([]models.AppConfigFileResponse, error) {
 	var configFiles []entities.AppConfigFile
 	err := db.DB.Where("app_id = ?", appID).Find(&configFiles).Error
-	return configFiles, err
+	if err != nil {
+		return nil, err
+	}
+	result := make([]models.AppConfigFileResponse, 0, len(configFiles))
+	for _, cf := range configFiles {
+		result = append(result, toAppConfigFileResponse(&cf))
+	}
+	return result, nil
 }
 
-func CreateAppConfigFile(ctx context.Context, appID string, req *models.CreateConfigFileRequest) (*entities.AppConfigFile, error) {
+func CreateAppConfigFile(ctx context.Context, appID string, req *models.CreateConfigFileRequest) (*models.AppConfigFileResponse, error) {
 	fileMode := req.FileMode
 	if fileMode == "" {
 		fileMode = "0644"
@@ -65,10 +72,11 @@ func CreateAppConfigFile(ctx context.Context, appID string, req *models.CreateCo
 		return nil, err
 	}
 
-	return entity, nil
+	res := toAppConfigFileResponse(entity)
+	return &res, nil
 }
 
-func UpdateAppConfigFile(ctx context.Context, id string, req *models.UpdateConfigFileRequest) (*entities.AppConfigFile, error) {
+func UpdateAppConfigFile(ctx context.Context, id string, req *models.UpdateConfigFileRequest) (*models.AppConfigFileResponse, error) {
 	var configFile entities.AppConfigFile
 	err := db.DB.First(&configFile, "id = ?", id).Error
 	if err != nil {
@@ -121,7 +129,8 @@ func UpdateAppConfigFile(ctx context.Context, id string, req *models.UpdateConfi
 		return nil, err
 	}
 
-	return &configFile, nil
+	res := toAppConfigFileResponse(&configFile)
+	return &res, nil
 }
 
 func DeleteAppConfigFile(ctx context.Context, id string) error {
@@ -151,6 +160,20 @@ func DeleteAppConfigFile(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+// toAppConfigFileResponse converts an AppConfigFile entity to a response model with snake_case JSON fields.
+func toAppConfigFileResponse(cf *entities.AppConfigFile) models.AppConfigFileResponse {
+	return models.AppConfigFileResponse{
+		ID:        cf.ID,
+		AppID:     cf.AppID,
+		Slug:      cf.Slug,
+		MountPath: cf.MountPath,
+		Content:   cf.Content,
+		FileMode:  cf.FileMode,
+		CreatedAt: cf.CreatedAt,
+		UpdatedAt: cf.UpdatedAt,
+	}
 }
 
 // checkMountPathConflicts checks if the mount path conflicts with existing config files or volumes

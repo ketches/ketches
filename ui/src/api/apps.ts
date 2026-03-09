@@ -82,18 +82,18 @@ export interface App {
 }
 
 export interface AppInstance {
-  instanceName: string
+  instance_name: string
   status: string
   ip: string
-  initContainerCount: number
-  initContainers: string[]
-  containerCount: number
+  init_container_count: number
+  init_containers: string[]
+  container_count: number
   containers: string[]
-  nodeName: string
-  nodeIP: string
-  restartCount: number
-  runningDuration: string
-  createdAt: string
+  node_name: string
+  node_ip: string
+  restart_count: number
+  running_duration: string
+  created_at: string
 }
 
 export interface AppEvent {
@@ -102,7 +102,7 @@ export interface AppEvent {
   message: string
   from: string
   count: number
-  createdAt: string
+  created_at: string
 }
 
 export interface ActionMetadata {

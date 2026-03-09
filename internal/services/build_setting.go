@@ -1,7 +1,6 @@
 package services
 
 import (
-	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -39,17 +38,6 @@ func buildSettingQuery() *gorm.DB {
 		Joins("LEFT JOIN container_registries cr ON cr.id = build_settings.registry_id")
 }
 
-// GetAppBuildSetting returns the build setting for an app (scope=app).
-func GetAppBuildSetting(appID string) (*BuildSettingWithRegistry, error) {
-	var s BuildSettingWithRegistry
-	if err := buildSettingQuery().
-		Where("build_settings.app_id = ?", appID).
-		First(&s).Error; err != nil {
-		return nil, err
-	}
-	return &s, nil
-}
-
 // GetBuildSetting returns a build setting by ID.
 func GetBuildSetting(id string) (*BuildSettingWithRegistry, error) {
 	var s BuildSettingWithRegistry
@@ -71,38 +59,6 @@ func ListRepoBuildSettings(repoID string) ([]BuildSettingWithRegistry, error) {
 		return nil, err
 	}
 	return settings, nil
-}
-
-// UpsertAppBuildSetting creates or updates the build setting for an app.
-func UpsertAppBuildSetting(appID string, req *models.UpsertAppBuildSettingRequest) (*BuildSettingWithRegistry, error) {
-	var s entities.BuildSetting
-	err := db.DB.Where("app_id = ?", appID).First(&s).Error
-	if err != nil {
-		// Create
-		s = entities.BuildSetting{
-			ID:             uuid.New(),
-			GitRef:         defaultStr(req.GitRef, "main"),
-			DockerfilePath: defaultStr(req.DockerfilePath, "Dockerfile"),
-			BuildContext:   defaultStr(req.BuildContext, "."),
-			BuildArgs:      req.BuildArgs,
-			ImageName:      req.ImageName,
-			RegistryID:     req.RegistryID,
-		}
-		if err := db.DB.Create(&s).Error; err != nil {
-			return nil, err
-		}
-	} else {
-		s.GitRef = defaultStr(req.GitRef, "main")
-		s.DockerfilePath = defaultStr(req.DockerfilePath, "Dockerfile")
-		s.BuildContext = defaultStr(req.BuildContext, ".")
-		s.BuildArgs = req.BuildArgs
-		s.ImageName = req.ImageName
-		s.RegistryID = req.RegistryID
-		if err := db.DB.Save(&s).Error; err != nil {
-			return nil, err
-		}
-	}
-	return GetAppBuildSetting(appID)
 }
 
 // CreateRepoBuildSetting creates a new build setting under a code repository.
@@ -156,11 +112,6 @@ func UpdateRepoBuildSetting(id string, req *models.UpdateRepoBuildSettingRequest
 	return GetBuildSetting(id)
 }
 
-// DeleteAppBuildSetting deletes the build setting for an app.
-func DeleteAppBuildSetting(appID string) error {
-	return db.DB.Where("app_id = ?", appID).Delete(&entities.BuildSetting{}).Error
-}
-
 // DeleteRepoBuildSetting deletes a repo build setting by ID.
 func DeleteRepoBuildSetting(id string) error {
 	// Prevent deletion if active builds reference this setting.
@@ -201,15 +152,6 @@ func ToBuildSettingResponse(s *BuildSettingWithRegistry) models.BuildSettingResp
 		}
 	}
 	return resp
-}
-
-// ListAvailableRegistriesForApp lists container registries available to an app's cluster/project.
-func ListAvailableRegistriesForApp(appID string) ([]entities.ContainerRegistry, error) {
-	appCtx, err := GetAppContext(context.Background(), appID)
-	if err != nil {
-		return nil, err
-	}
-	return ListAvailableRegistries(appCtx.EnvContext.Env.ClusterID, appCtx.EnvContext.Project.ID)
 }
 
 func TestGitConnection(req *models.TestGitConnectionRequest) *models.TestGitConnectionResponse {
