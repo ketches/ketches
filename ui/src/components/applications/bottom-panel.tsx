@@ -2,14 +2,14 @@ import { useQuery } from "@tanstack/react-query"
 import {
   ChevronDown,
   ChevronUp,
-  FileText,
+  FileClock,
   FolderOpen,
   Layers2,
   Maximize2,
   Minimize2,
   Terminal,
   X,
-  Zap,
+  Zap
 } from "lucide-react"
 import * as React from "react"
 
@@ -126,7 +126,7 @@ export function BottomPanel() {
             <TabsList className="h-7">
               {!isNode && (
                 <TabsTrigger value="logs" className="text-xs">
-                  <FileText className="h-3.5 w-3.5" />
+                  <FileClock className="h-3.5 w-3.5" />
                   Logs
                 </TabsTrigger>
               )}

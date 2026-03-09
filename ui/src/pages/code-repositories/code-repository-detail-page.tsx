@@ -31,7 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -45,7 +45,7 @@ import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
-import type { AxiosError } from "axios"
+import { isAxiosError, type AxiosError } from "axios"
 import {
   CheckCircle,
   ChevronsUpDown,
@@ -54,7 +54,6 @@ import {
   Copy,
   ExternalLink,
   FileClock,
-  FileText,
   FolderGit2,
   GalleryVerticalEnd,
   Hammer,
@@ -74,81 +73,21 @@ import * as React from "react"
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
-function DeploymentErrorHoverCard({ errorMessage }: { errorMessage: string }) {
+function DeploymentErrorPopover({ errorMessage }: { errorMessage: string }) {
   const [open, setOpen] = React.useState(false)
-  const isPointerOnTriggerRef = React.useRef(false)
-  const isPointerOnContentRef = React.useRef(false)
-  const closeTimerRef = React.useRef<number | null>(null)
-
-  const clearCloseTimer = React.useCallback(() => {
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current)
-      closeTimerRef.current = null
-    }
-  }, [])
-
-  const scheduleClose = React.useCallback(() => {
-    clearCloseTimer()
-    closeTimerRef.current = window.setTimeout(() => {
-      if (!isPointerOnTriggerRef.current && !isPointerOnContentRef.current) {
-        setOpen(false)
-      }
-    }, 120)
-  }, [clearCloseTimer])
-
-  React.useEffect(() => {
-    return () => {
-      clearCloseTimer()
-    }
-  }, [clearCloseTimer])
 
   return (
-    <HoverCard
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (nextOpen) {
-          setOpen(true)
-          return
-        }
-        if (isPointerOnTriggerRef.current || isPointerOnContentRef.current) {
-          return
-        }
-        setOpen(false)
-      }}
-    >
-      <HoverCardTrigger
-        render={<span className="inline-flex items-center justify-center" />}
-        onMouseEnter={() => {
-          isPointerOnTriggerRef.current = true
-          clearCloseTimer()
-          setOpen(true)
-        }}
-        onMouseLeave={() => {
-          isPointerOnTriggerRef.current = false
-          scheduleClose()
-        }}
+    < Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={<button type="button" className="inline-flex items-center" />}
       >
-        <CircleAlert className="h-4 w-4 text-destructive" />
-      </HoverCardTrigger>
-      <HoverCardContent
-        side="top"
-        align="start"
-        className="max-w-96"
-        onMouseEnter={() => {
-          isPointerOnContentRef.current = true
-          clearCloseTimer()
-        }}
-        onMouseLeave={() => {
-          isPointerOnContentRef.current = false
-          scheduleClose()
-        }}
-      >
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-destructive">Deployment failed</p>
-          <p className="text-xs text-muted-foreground wrap-break-word whitespace-pre-wrap">{errorMessage}</p>
-        </div>
-      </HoverCardContent>
-    </HoverCard>
+        <BuildStatusBadge status="failed" />
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" className="w-md max-w-[calc(100vw-2rem)] gap-2">
+        <p className="text-xs font-medium text-destructive">Deployment failed</p>
+        <p className="text-xs text-muted-foreground wrap-break-word whitespace-pre-wrap">{errorMessage}</p>
+      </PopoverContent>
+    </Popover >
   )
 }
 
@@ -182,7 +121,7 @@ export function CodeRepositoryDetailPage() {
     ? (location.state as { fromProjectId?: string; fromProjectName?: string } | null)
     : null
 
-  const { data: repo, isLoading } = useQuery({
+  const { data: repo, isLoading, error: repoError } = useQuery({
     queryKey: ["code-repository", repoId],
     queryFn: () => codeRepositoriesApi.get(repoId!),
     enabled: !!repoId,
@@ -461,7 +400,7 @@ export function CodeRepositoryDetailPage() {
                 delay={200}
                 render={<Button variant="ghost" size="icon-sm" onClick={() => setLogBuildId(b.id)} />}
               >
-                <FileText />
+                <FileClock />
               </TooltipTrigger>
               <TooltipContent>View Logs</TooltipContent>
             </Tooltip>
@@ -584,14 +523,11 @@ export function CodeRepositoryDetailPage() {
         const status = row.original.status
         const errorMessage = row.original.error_message
 
-        return (
-          <div className="flex items-center gap-1.5">
-            <BuildStatusBadge status={status} />
-            {status === "failed" && errorMessage ? (
-              <DeploymentErrorHoverCard errorMessage={errorMessage} />
-            ) : null}
-          </div>
-        )
+        if (status === "failed" && errorMessage) {
+          return <DeploymentErrorPopover errorMessage={errorMessage} />
+        }
+
+        return <BuildStatusBadge status={status} className={status === "failed" ? "cursor-pointer" : ""} />
       },
     },
     {
@@ -640,6 +576,16 @@ export function CodeRepositoryDetailPage() {
   }
 
   if (!repo) {
+    if (isAxiosError(repoError) && repoError.response?.status === 403) {
+      return (
+        <EmptyState
+          title="No permission"
+          description="You do not have permission to view this code repository."
+          icon={CircleAlert}
+        />
+      )
+    }
+
     return (
       <NotFoundPage
         resourceType="Code Repository"

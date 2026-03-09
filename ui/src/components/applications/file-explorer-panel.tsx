@@ -9,10 +9,10 @@ import {
   Download,
   File,
   FileArchive,
+  FileClock,
   FileCode,
   FileImage,
   FileOutput,
-  FileText,
   Folder,
   FolderOpen,
   FolderPlus,
@@ -99,7 +99,7 @@ function getFileIcon(name: string, type: string) {
 
   if (codeExts.includes(ext)) return <FileCode className="h-4 w-4 text-emerald-400" />
   if (imageExts.includes(ext)) return <FileImage className="h-4 w-4 text-orange-400" />
-  if (textExts.includes(ext)) return <FileText className="h-4 w-4 text-yellow-400" />
+  if (textExts.includes(ext)) return <FileClock className="h-4 w-4 text-yellow-400" />
   return <File className="h-4 w-4 text-muted-foreground" />
 }
 

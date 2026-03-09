@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { isAxiosError } from "axios"
 import {
   Box,
+  CircleAlert,
   FolderGit2,
   GalleryVerticalEnd,
   LayoutDashboard,
@@ -17,8 +19,10 @@ import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { projectsApi } from "@/api/projects"
+import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EditProjectDialog } from "@/components/project/edit-project-dialog"
+import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,7 +51,7 @@ export function ProjectDetailPage() {
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
 
-  const { data: project, isLoading } = useQuery({
+  const { data: project, isLoading, error: projectError } = useQuery({
     queryKey: ["project", projectId],
     queryFn: () => projectsApi.get(projectId!),
     enabled: !!projectId,
@@ -79,6 +83,26 @@ export function ProjectDetailPage() {
       <div className="flex flex-col flex-1 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
+    )
+  }
+
+  if (!project) {
+    if (isAxiosError(projectError) && projectError.response?.status === 403) {
+      return (
+        <EmptyState
+          title="No permission"
+          description="You do not have permission to view this project."
+          icon={CircleAlert}
+        />
+      )
+    }
+
+    return (
+      <NotFoundPage
+        resourceType="Project"
+        backHref="/projects"
+        backLabel="Back to Projects"
+      />
     )
   }
 

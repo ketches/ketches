@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
+import { isAxiosError } from "axios"
 import {
   Activity,
   ArrowDown,
@@ -7,15 +8,17 @@ import {
   Box,
   ChartLine,
   ChevronsUpDown,
+  CircleAlert,
   Clock,
+  ClockCheck,
   CloudCog,
   Cog,
   Copy,
   Cpu,
   Edit2,
   ExternalLink,
+  FileClock,
   FileCog,
-  FileText,
   FolderGit2,
   FolderOpen,
   GalleryVerticalEnd,
@@ -448,7 +451,7 @@ function InstanceEventsDialog({ appId, instanceName, open, onOpenChange }: { app
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-180 max-h-[80vh] flex flex-col">
+      <DialogContent className="sm:max-w-240 max-h-[80vh] max-h[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Instance Events: {instanceName}</DialogTitle>
           <DialogDescription>
@@ -493,7 +496,7 @@ function InstanceEventsDialog({ appId, instanceName, open, onOpenChange }: { app
           />
           {isLoading && (
             <div className="flex items-center justify-center h-32">
-              <Skeleton className="" />
+              <Skeleton className="h-full w-full" />
             </div>
           )}
           {!isLoading && (!events || events.length === 0) && (
@@ -734,13 +737,14 @@ export function ApplicationDetailPage() {
       cell: ({ row }) => (
         <Button
           variant="link"
-          className="p-0 h-auto font-mono text-xs text-muted-foreground hover:text-primary"
+          size="icon-sm"
+          className="text-primary"
           onClick={(e) => {
             e.stopPropagation()
             setSelectedInstanceForEvents(row.original.instanceName)
           }}
         >
-          {row.original.eventCount || 0}
+          <ClockCheck />
         </Button>
       ),
     },
@@ -819,7 +823,7 @@ export function ApplicationDetailPage() {
                     />
                   }
                 >
-                  <FileText />
+                  <FileClock />
                 </TooltipTrigger>
                 <TooltipContent>View Logs</TooltipContent>
               </Tooltip>
@@ -965,6 +969,16 @@ export function ApplicationDetailPage() {
   }
 
   if (error || !app) {
+    if (isAxiosError(error) && error.response?.status === 403) {
+      return (
+        <EmptyState
+          title="No permission"
+          description="You do not have permission to view this application."
+          icon={CircleAlert}
+        />
+      )
+    }
+
     return (
       <NotFoundPage
         resourceType="Application"
@@ -1410,7 +1424,7 @@ export function ApplicationDetailPage() {
                                   }}
                                   title="View Logs"
                                 >
-                                  <FileText />
+                                  <FileClock />
                                 </Button>
                               )}
                               {!isViewer && (

@@ -91,7 +91,6 @@ export interface AppInstance {
   containers: string[]
   nodeName: string
   nodeIP: string
-  eventCount: number
   restartCount: number
   runningDuration: string
   createdAt: string

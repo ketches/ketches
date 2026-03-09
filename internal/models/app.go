@@ -172,13 +172,12 @@ type AppInstanceResponse struct {
 	Containers         []string  `json:"containers"`
 	NodeName           string    `json:"nodeName"`
 	NodeIP             string    `json:"nodeIP"`
-	EventCount         int       `json:"eventCount"`
 	RestartCount       int       `json:"restartCount"`
 	RunningDuration    string    `json:"runningDuration"`
 	CreatedAt          time.Time `json:"createdAt"`
 }
 
-type AppEventResponse struct {
+type AppInstanceEventResponse struct {
 	Type      string    `json:"type"`
 	Reason    string    `json:"reason"`
 	Message   string    `json:"message"`

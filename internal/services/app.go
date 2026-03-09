@@ -702,7 +702,7 @@ func ListAppInstances(ctx context.Context, appID string) ([]models.AppInstanceRe
 	return res, nil
 }
 
-func ListAppInstanceEvents(ctx context.Context, appCtx *models.AppContext, instanceName string) ([]models.AppEventResponse, error) {
+func ListAppInstanceEvents(ctx context.Context, appCtx *models.AppContext, instanceName string) ([]models.AppInstanceEventResponse, error) {
 	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return nil, err
@@ -715,9 +715,9 @@ func ListAppInstanceEvents(ctx context.Context, appCtx *models.AppContext, insta
 		return nil, err
 	}
 
-	var events []models.AppEventResponse
+	var events []models.AppInstanceEventResponse
 	for _, e := range eventList.Items {
-		events = append(events, models.AppEventResponse{
+		events = append(events, models.AppInstanceEventResponse{
 			Type:      e.Type,
 			Reason:    e.Reason,
 			Message:   e.Message,

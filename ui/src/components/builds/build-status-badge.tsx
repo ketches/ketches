@@ -14,13 +14,13 @@ const statusBuildSetting: Record<BuildStatus, { icon: React.ElementType; color: 
   unknown: { icon: Ban, color: "gray" },
 }
 
-export function BuildStatusBadge({ status }: { status: BuildStatus }) {
+export function BuildStatusBadge({ status, className }: { status: BuildStatus, className?: string }) {
   const setting = statusBuildSetting[status] || statusBuildSetting.pending
   const Icon = setting.icon
   const isAnimated = status === 'cloning' || status === 'building' || status === 'pending'
 
   return (
-    <ColorBadge color={setting.color} className="gap-1">
+    <ColorBadge color={setting.color} className={`gap-1 ${className || ''}`}>
       <Icon className={`h-3 w-3 ${isAnimated ? 'animate-spin' : ''}`} />
       {buildStatusLabels[status] || status}
     </ColorBadge>

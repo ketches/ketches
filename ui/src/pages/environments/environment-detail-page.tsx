@@ -1,8 +1,10 @@
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { isAxiosError } from "axios"
 import {
   Box,
+  CircleAlert,
   ChartLine,
   ChevronsUpDown,
   Copy,
@@ -35,6 +37,7 @@ import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
+import { EmptyState } from "@/components/shared/empty-state"
 import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -140,6 +143,16 @@ export function EnvironmentDetailPage() {
   }
 
   if (envError || !env) {
+    if (isAxiosError(envError) && envError.response?.status === 403) {
+      return (
+        <EmptyState
+          title="No permission"
+          description="You do not have permission to view this environment."
+          icon={CircleAlert}
+        />
+      )
+    }
+
     return (
       <NotFoundPage
         resourceType="Environment"

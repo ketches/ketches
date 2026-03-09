@@ -1,6 +1,6 @@
 import {
   Download,
-  FileText,
+  FileClock,
   Pause,
   Play,
   RefreshCw,
@@ -263,7 +263,7 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
       >
         {filteredLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-zinc-500">
-            <FileText className="h-10 w-10 mb-3 opacity-40" />
+            <FileClock className="h-10 w-10 mb-3 opacity-40" />
             <p className="text-sm">Waiting for logs...</p>
             {!autoRefresh && (
               <p className="text-xs mt-1.5 text-zinc-600">
