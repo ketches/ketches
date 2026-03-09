@@ -42,6 +42,18 @@ export interface RecycleBinProject {
   deleted_at: string
 }
 
+export interface RecycleBinCodeRepo {
+  id: string
+  slug: string
+  name: string
+  description: string
+  project_id: string
+  project_name: string
+  project_slug: string
+  git_repo_url: string
+  deleted_at: string
+}
+
 export const recycleBinApi = {
   listApps: async (projectId?: string, params?: PaginationParams) => {
     return client.get('/v1/recycle-bin/apps', {
@@ -83,7 +95,21 @@ export const recycleBinApi = {
     return client.post('/v1/recycle-bin/projects/restore', { ids })
   },
 
-  permanentlyDeleteProjects: async (ids: string[]) => {
-    return client.post('/v1/recycle-bin/projects/permanently-delete', { ids })
-  },
+	permanentlyDeleteProjects: async (ids: string[]) => {
+		return client.post('/v1/recycle-bin/projects/permanently-delete', { ids })
+	},
+
+	listCodeRepos: async (projectId?: string, params?: PaginationParams) => {
+		return client.get('/v1/recycle-bin/code-repositories', {
+			params: { ...params, project_id: projectId }
+		}) as Promise<{ items: RecycleBinCodeRepo[], pagination: PaginationResponse }>
+	},
+
+	restoreCodeRepos: async (ids: string[]) => {
+		return client.post('/v1/recycle-bin/code-repositories/restore', { ids })
+	},
+
+	permanentlyDeleteCodeRepos: async (ids: string[]) => {
+		return client.post('/v1/recycle-bin/code-repositories/permanently-delete', { ids })
+	},
 }

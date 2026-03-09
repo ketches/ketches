@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { ArchiveRestore, Box, Clock, GalleryVerticalEnd, Loader2, Orbit, RotateCcw, Trash2 } from "lucide-react"
+import { ArchiveRestore, Box, Clock, FolderGit2, GalleryVerticalEnd, Loader2, Orbit, RotateCcw, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { recycleBinApi, type RecycleBinApp, type RecycleBinEnv, type RecycleBinProject } from "@/api/recycle-bin"
+import { recycleBinApi, type RecycleBinApp, type RecycleBinCodeRepo, type RecycleBinEnv, type RecycleBinProject } from "@/api/recycle-bin"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -34,13 +34,14 @@ export function RecycleBinPage() {
   const [selectedAppRows, setSelectedAppRows] = React.useState({})
   const [selectedEnvRows, setSelectedEnvRows] = React.useState({})
   const [selectedProjectRows, setSelectedProjectRows] = React.useState({})
+  const [selectedCodeRepoRows, setSelectedCodeRepoRows] = React.useState({})
 
   const [restoreDialogOpen, setRestoreDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [conflictDialogOpen, setConflictDialogOpen] = React.useState(false)
   const [conflictApps, setConflictApps] = React.useState<RecycleBinApp[]>([])
 
-  const [activeTab, setActiveTab] = React.useState<"projects" | "apps" | "envs">("projects")
+  const [activeTab, setActiveTab] = React.useState<"projects" | "apps" | "envs" | "code-repos">("projects")
   const [restoringItemId, setRestoringItemId] = React.useState<string | null>(null)
   const [deletingItemId, setDeletingItemId] = React.useState<string | null>(null)
 
@@ -55,6 +56,10 @@ export function RecycleBinPage() {
   })
 
   const [projectsPagination, setProjectsPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+  const [codeReposPagination, setCodeReposPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   })
@@ -95,6 +100,18 @@ export function RecycleBinPage() {
   const projects = React.useMemo(() => projectsResponse?.items ?? [], [projectsResponse])
   const projectsPaginationInfo = projectsResponse?.pagination
 
+  const { data: codeReposResponse, isLoading: codeReposLoading, isFetching: codeReposFetching, refetch: refetchCodeRepos } = useQuery({
+    queryKey: ['recycle-bin-code-repos', debouncedSearch, codeReposPagination.pageIndex, codeReposPagination.pageSize],
+    queryFn: () => recycleBinApi.listCodeRepos(undefined, {
+      search: debouncedSearch,
+      page: codeReposPagination.pageIndex + 1,
+      page_size: codeReposPagination.pageSize
+    }),
+  })
+
+  const codeRepos = React.useMemo(() => codeReposResponse?.items ?? [], [codeReposResponse])
+  const codeReposPaginationInfo = codeReposResponse?.pagination
+
   const selectedAppIds = React.useMemo(() => {
     return Object.keys(selectedAppRows).filter(key => (selectedAppRows as Record<string, boolean>)[key]).map(index => apps[parseInt(index)]?.id).filter(Boolean)
   }, [selectedAppRows, apps])
@@ -106,6 +123,9 @@ export function RecycleBinPage() {
   const selectedProjectIds = React.useMemo(() => {
     return Object.keys(selectedProjectRows).filter(key => (selectedProjectRows as Record<string, boolean>)[key]).map(index => projects[parseInt(index)]?.id).filter(Boolean)
   }, [selectedProjectRows, projects])
+  const selectedCodeRepoIds = React.useMemo(() => {
+    return Object.keys(selectedCodeRepoRows).filter(key => (selectedCodeRepoRows as Record<string, boolean>)[key]).map(index => codeRepos[parseInt(index)]?.id).filter(Boolean)
+  }, [selectedCodeRepoRows, codeRepos])
 
   const restoreAppsMutation = useMutation({
     mutationFn: (ids: string[]) => recycleBinApi.restoreApps(ids),
@@ -218,6 +238,39 @@ export function RecycleBinPage() {
       setDeletingItemId(null)
     },
   })
+  const restoreCodeReposMutation = useMutation({
+    mutationFn: (ids: string[]) => recycleBinApi.restoreCodeRepos(ids),
+    onSuccess: () => {
+      toast.success("Code repositories restored")
+      queryClient.invalidateQueries({ queryKey: ['recycle-bin-code-repos'] })
+      setSelectedCodeRepoRows({})
+      setRestoreDialogOpen(false)
+      setRestoringItemId(null)
+    },
+    onError: (error: any) => {
+      toast.error("Failed to restore code repositories", {
+        description: error.response?.data?.error || "An unknown error occurred",
+      })
+      setRestoringItemId(null)
+    },
+  })
+
+  const deleteCodeReposMutation = useMutation({
+    mutationFn: (ids: string[]) => recycleBinApi.permanentlyDeleteCodeRepos(ids),
+    onSuccess: () => {
+      toast.success("Code repositories permanently deleted")
+      queryClient.invalidateQueries({ queryKey: ['recycle-bin-code-repos'] })
+      setSelectedCodeRepoRows({})
+      setDeleteDialogOpen(false)
+      setDeletingItemId(null)
+    },
+    onError: (error: any) => {
+      toast.error("Failed to delete code repositories", {
+        description: error.response?.data?.error || "An unknown error occurred",
+      })
+      setDeletingItemId(null)
+    },
+  })
 
   const handleRestore = () => {
     if (activeTab === "projects" && selectedProjectIds.length > 0) {
@@ -226,6 +279,8 @@ export function RecycleBinPage() {
       restoreAppsMutation.mutate(selectedAppIds)
     } else if (activeTab === "envs" && selectedEnvIds.length > 0) {
       restoreEnvsMutation.mutate(selectedEnvIds)
+    } else if (activeTab === "code-repos" && selectedCodeRepoIds.length > 0) {
+      restoreCodeReposMutation.mutate(selectedCodeRepoIds)
     }
   }
 
@@ -236,28 +291,34 @@ export function RecycleBinPage() {
       deleteAppsMutation.mutate(selectedAppIds)
     } else if (activeTab === "envs" && selectedEnvIds.length > 0) {
       deleteEnvsMutation.mutate(selectedEnvIds)
+    } else if (activeTab === "code-repos" && selectedCodeRepoIds.length > 0) {
+      deleteCodeReposMutation.mutate(selectedCodeRepoIds)
     }
   }
 
-  const handleRestoreSingle = (id: string, type: "project" | "app" | "env") => {
+  const handleRestoreSingle = (id: string, type: "project" | "app" | "env" | "code-repo") => {
     setRestoringItemId(id)
     if (type === "project") {
       restoreProjectsMutation.mutate([id])
     } else if (type === "app") {
       restoreAppsMutation.mutate([id])
-    } else {
+    } else if (type === "env") {
       restoreEnvsMutation.mutate([id])
+    } else if (type === "code-repo") {
+      restoreCodeReposMutation.mutate([id])
     }
   }
 
-  const handleDeleteSingle = (id: string, type: "project" | "app" | "env") => {
+  const handleDeleteSingle = (id: string, type: "project" | "app" | "env" | "code-repo") => {
     setDeletingItemId(id)
     if (type === "project") {
       deleteProjectsMutation.mutate([id])
     } else if (type === "app") {
       deleteAppsMutation.mutate([id])
-    } else {
+    } else if (type === "env") {
       deleteEnvsMutation.mutate([id])
+    } else if (type === "code-repo") {
+      deleteCodeReposMutation.mutate([id])
     }
   }
 
@@ -605,7 +666,135 @@ export function RecycleBinPage() {
       enableHiding: false,
     })
   }
-  const selectedCount = activeTab === "projects" ? selectedProjectIds.length : activeTab === "apps" ? selectedAppIds.length : selectedEnvIds.length
+
+  const codeRepoColumns: ColumnDef<RecycleBinCodeRepo>[] = [
+    {
+      accessorKey: "name",
+      header: "Code Repository",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-purple-500/10 rounded-md text-purple-600 shrink-0">
+            <FolderGit2 className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-xs truncate">
+              {row.original.name}
+            </p>
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {row.original.slug}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "project_name",
+      header: "Project",
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.project_name}</div>
+          <div className="text-sm text-muted-foreground">{row.original.project_slug}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "git_repo_url",
+      header: "Repository URL",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground font-mono truncate max-w-48 block">
+          {row.original.git_repo_url}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "deleted_at",
+      header: "Deleted At",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.deleted_at)}</span>
+        </div>
+      ),
+    },
+  ]
+
+  if (!isViewer) {
+    codeRepoColumns.unshift({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    })
+    codeRepoColumns.push({
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-2">
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRestoreSingle(row.original.id, "code-repo")
+                  }}
+                  disabled={restoringItemId === row.original.id}
+                />
+              }
+            >
+              <ArchiveRestore />
+            </TooltipTrigger>
+            <TooltipContent>Restore code repository</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteSingle(row.original.id, "code-repo")
+                  }}
+                  disabled={deletingItemId === row.original.id}
+                />
+              }
+            >
+              <Trash2 />
+            </TooltipTrigger>
+            <TooltipContent>Permanently delete</TooltipContent>
+          </Tooltip>
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    })
+  }
+  const selectedCount = activeTab === "projects"
+    ? selectedProjectIds.length
+    : activeTab === "apps"
+      ? selectedAppIds.length
+      : activeTab === "envs"
+        ? selectedEnvIds.length
+        : selectedCodeRepoIds.length
 
   const breadcrumbs = [
     { label: "Recycle Bin", icon: Trash2 }
@@ -657,11 +846,12 @@ export function RecycleBinPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "projects" | "apps" | "envs")}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "projects" | "apps" | "envs" | "code-repos")}>
         <TabsList>
           <TabsTrigger value="projects">Projects {projectsPaginationInfo?.total || 0 > 0 ? `(${projectsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
           <TabsTrigger value="apps">Applications {appsPaginationInfo?.total || 0 > 0 ? `(${appsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
           <TabsTrigger value="envs">Environments {envsPaginationInfo?.total || 0 > 0 ? `(${envsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          <TabsTrigger value="code-repos">Code Repositories {codeReposPaginationInfo?.total || 0 > 0 ? `(${codeReposPaginationInfo?.total || 0})` : ''}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="projects" className="mt-2">
@@ -750,6 +940,35 @@ export function RecycleBinPage() {
             />
           )}
         </TabsContent>
+
+        <TabsContent value="code-repos" className="mt-2">
+          {codeReposLoading && codeRepos.length === 0 ? (
+            <div className="flex flex-col flex-1 items-center justify-center min-h-100">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : !codeReposLoading && codeRepos.length === 0 ? (
+            <EmptyState
+              title="No deleted code repositories"
+              description="Deleted code repositories will appear here. You can restore or permanently delete them."
+              icon={FolderGit2}
+            />
+          ) : (
+            <DataTable
+              columns={codeRepoColumns}
+              data={codeRepos}
+              isLoading={codeReposLoading || codeReposFetching}
+              leftActions={() => toolbarLeft}
+              batchActions={!isViewer ? batchActions : undefined}
+              rowSelection={selectedCodeRepoRows}
+              onRowSelectionChange={setSelectedCodeRepoRows}
+              onRefresh={refetchCodeRepos}
+              manualPagination
+              totalCount={codeReposPaginationInfo?.total || 0}
+              pagination={codeReposPagination}
+              onPaginationChange={setCodeReposPagination}
+            />
+          )}
+        </TabsContent>
       </Tabs>
 
       <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
@@ -757,7 +976,7 @@ export function RecycleBinPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Restore Resources</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to restore {selectedCount} {activeTab === "projects" ? "project(s)" : activeTab === "apps" ? "application(s)" : "environment(s)"}?
+              Are you sure you want to restore {selectedCount} {activeTab === "projects" ? "project(s)" : activeTab === "apps" ? "application(s)" : activeTab === "envs" ? "environment(s)" : "code repositor(ies)"}?
               This will make them visible and usable again.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -773,7 +992,7 @@ export function RecycleBinPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Permanently Delete Resources</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete {selectedCount} {activeTab === "projects" ? "project(s)" : activeTab === "apps" ? "application(s)" : "environment(s)"}?
+              Are you sure you want to permanently delete {selectedCount} {activeTab === "projects" ? "project(s)" : activeTab === "apps" ? "application(s)" : activeTab === "envs" ? "environment(s)" : "code repositor(ies)"}?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
