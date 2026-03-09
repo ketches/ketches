@@ -423,9 +423,10 @@ export function ApplicationList({
                   {favoriteIds.has(row.original.id) ? "Remove from Favorites" : "Add to Favorites"}
                 </TooltipContent>
               </Tooltip>
-              <AppActionIconsWrapper
+<AppActionIconsWrapper
                 appId={row.original.id}
                 envId={envId}
+                actions={row.original.available_actions}
                 appGroups={appGroups}
                 currentGroupId={currentGroupId}
                 onMoveToGroup={(groupId) => addToGroupMutation.mutate({ groupId, appId: row.original.id })}
@@ -579,9 +580,10 @@ export function ApplicationList({
                           {favoriteIds.has(app.id) ? "Remove from Favorites" : "Add to Favorites"}
                         </TooltipContent>
                       </Tooltip>
-                      <AppActionIconsWrapper
+<AppActionIconsWrapper
                         appId={app.id}
                         envId={envId}
+                        actions={app.available_actions}
                         appGroups={appGroups}
                         currentGroupId={currentGroupId}
                         onMoveToGroup={(groupId) => addToGroupMutation.mutate({ groupId, appId: app.id })}

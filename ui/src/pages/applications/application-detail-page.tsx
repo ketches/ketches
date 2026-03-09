@@ -538,12 +538,6 @@ export function ApplicationDetailPage() {
     refetchInterval: 5000,
   })
 
-  const { data: availableActions } = useQuery({
-    queryKey: ['app-actions', appId],
-    queryFn: () => appsApi.getAvailableActions(appId!),
-    enabled: !!appId,
-  })
-
   const { data: currentEnv } = useQuery({
     queryKey: ['env', app?.env_id],
     queryFn: () => envsApi.get(app!.env_id!),
@@ -1106,10 +1100,10 @@ export function ApplicationDetailPage() {
                 <Pencil />
               </Button>
             )}
-            {!isViewer && availableActions && availableActions.actions && (
+            {!isViewer && app?.available_actions && app.available_actions.length > 0 && (
               <AppActionButtons
                 appId={app.id}
-                actions={availableActions.actions}
+                actions={app.available_actions}
                 onDeleteSuccess={() => navigate('/applications')}
               />
             )}

@@ -1,25 +1,18 @@
-import { useQuery } from "@tanstack/react-query"
-
-import { appsApi } from "@/api/apps"
+import { ActionMetadata } from "@/api/apps"
 import { AppActionIcons } from "@/components/applications/app-action-icons"
 
 interface AppActionIconsWrapperProps {
   appId: string
   envId: string
+  actions: ActionMetadata[]
   appGroups?: Array<{ id: string; name: string }>
   currentGroupId?: string
   onMoveToGroup?: (groupId: string) => void
   onRemoveFromGroup?: () => void
 }
 
-export function AppActionIconsWrapper({ appId, envId, appGroups, currentGroupId, onMoveToGroup, onRemoveFromGroup }: AppActionIconsWrapperProps) {
-  const { data: availableActions } = useQuery({
-    queryKey: ['app-actions', appId],
-    queryFn: () => appsApi.getAvailableActions(appId),
-    staleTime: 30000,
-  })
-
-  if (!availableActions || !availableActions.actions || availableActions.actions.length === 0) {
+export function AppActionIconsWrapper({ appId, envId, actions, appGroups, currentGroupId, onMoveToGroup, onRemoveFromGroup }: AppActionIconsWrapperProps) {
+  if (!actions || actions.length === 0) {
     return null
   }
 
@@ -27,7 +20,7 @@ export function AppActionIconsWrapper({ appId, envId, appGroups, currentGroupId,
     <AppActionIcons
       appId={appId}
       envId={envId}
-      actions={availableActions.actions}
+      actions={actions}
       appGroups={appGroups}
       currentGroupId={currentGroupId}
       onMoveToGroup={onMoveToGroup}

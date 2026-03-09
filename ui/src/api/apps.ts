@@ -69,6 +69,7 @@ export interface App {
   limit_cpu: number
   limit_memory: number
   status: string
+  available_actions: ActionMetadata[]
   auto_scaling?: AutoScalingSpec
   scheduling_rule?: SchedulingSpec
   probes?: ProbeSpec[]
