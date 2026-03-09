@@ -345,6 +345,9 @@ func setupV1Routes(r *gin.Engine) {
 				recycleBin.GET("/projects", handlers.ListRecycleBinProjects)
 				recycleBin.POST("/projects/restore", handlers.RestoreProjects)
 				recycleBin.POST("/projects/permanently-delete", handlers.PermanentlyDeleteProjects)
+				recycleBin.GET("/code-repositories", handlers.ListRecycleBinCodeRepositories)
+				recycleBin.POST("/code-repositories/restore", handlers.RestoreCodeRepositories)
+				recycleBin.POST("/code-repositories/permanently-delete", handlers.PermanentlyDeleteCodeRepositories)
 			}
 
 			authorized.GET("/gateways/:gatewayID/proxy/*path", middlewares.RequireProjectRole(app.ProjectRoleViewer), handlers.ProxyGatewayHTTP)

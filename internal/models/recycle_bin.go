@@ -64,3 +64,20 @@ type PermanentlyDeleteResourceRequest struct {
 type EnvDeletionConflictResponse struct {
 	Apps []RecycleBinAppResponse `json:"apps"`
 }
+
+type RecycleBinCodeRepositoryResponse struct {
+	ID          string    `json:"id"`
+	Slug        string    `json:"slug"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	ProjectID   string    `json:"project_id"`
+	ProjectName string    `json:"project_name"`
+	ProjectSlug string    `json:"project_slug"`
+	GitRepoURL  string    `json:"git_repo_url"`
+	DeletedAt   time.Time `json:"deleted_at"`
+}
+
+type ListRecycleBinCodeRepositoryResponse struct {
+	Items      []RecycleBinCodeRepositoryResponse `json:"items"`
+	Pagination PaginationResponse                 `json:"pagination"`
+}

@@ -160,23 +160,6 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 }
 
 func DeleteCodeRepository(id string) error {
-	var buildSettingCount int64
-	if err := db.DB.Model(&entities.BuildSetting{}).Where("code_repository_id = ?", id).Count(&buildSettingCount).Error; err != nil {
-		return err
-	}
-	if buildSettingCount > 0 {
-		return fmt.Errorf("cannot delete code repository: remove %d build setting(s) first", buildSettingCount)
-	}
-	var buildCount int64
-	if err := db.DB.Model(&entities.Build{}).
-		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
-		Where("build_settings.code_repository_id = ?", id).
-		Count(&buildCount).Error; err != nil {
-		return err
-	}
-	if buildCount > 0 {
-		return fmt.Errorf("cannot delete code repository: it has %d build(s)", buildCount)
-	}
 	return db.DB.Delete(&entities.CodeRepository{}, "id = ?", id).Error
 }
 
@@ -379,4 +362,124 @@ func ListCodeRepositoryRefs(repoID string) ([]models.GitRef, error) {
 	}
 
 	return refs, nil
+}
+
+// ListDeletedCodeRepositories returns paginated soft-deleted code repositories.
+// If projectID is non-empty, scoped to that project.
+// If userID is non-empty, scoped to projects where the user has owner/developer role.
+func ListDeletedCodeRepositories(projectID string, userID string, page, pageSize int, search string) (int64, []models.RecycleBinCodeRepositoryResponse, error) {
+	var total int64
+	query := db.DB.Unscoped().Table("code_repositories").
+		Select("code_repositories.*, projects.name as project_name, projects.slug as project_slug").
+		Joins("JOIN projects ON code_repositories.project_id = projects.id").
+		Where("code_repositories.deleted_at IS NOT NULL").
+		Order("code_repositories.deleted_at DESC")
+
+	if projectID != "" {
+		query = query.Where("code_repositories.project_id = ?", projectID)
+	} else if userID != "" {
+		query = query.Joins("JOIN project_members ON project_members.project_id = code_repositories.project_id").
+			Where("project_members.user_id = ? AND project_members.project_role IN ('owner', 'developer')", userID)
+	}
+
+	if search != "" {
+		query = query.Where("code_repositories.name LIKE ? OR code_repositories.slug LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	type row struct {
+		entities.CodeRepository
+		ProjectName string `gorm:"column:project_name"`
+		ProjectSlug string `gorm:"column:project_slug"`
+	}
+	var rows []row
+	if err := query.Offset((page - 1) * pageSize).Limit(pageSize).Scan(&rows).Error; err != nil {
+		return 0, nil, err
+	}
+
+	result := make([]models.RecycleBinCodeRepositoryResponse, 0, len(rows))
+	for _, r := range rows {
+		result = append(result, models.RecycleBinCodeRepositoryResponse{
+			ID:          r.ID,
+			Slug:        r.Slug,
+			Name:        r.Name,
+			Description: "",
+			ProjectID:   r.ProjectID,
+			ProjectName: r.ProjectName,
+			ProjectSlug: r.ProjectSlug,
+			GitRepoURL:  r.GitRepoURL,
+			DeletedAt:   r.DeletedAt.Time,
+		})
+	}
+	return total, result, nil
+}
+
+// RestoreCodeRepository un-deletes a soft-deleted code repository.
+func RestoreCodeRepository(id string) error {
+	return db.DB.Unscoped().Model(&entities.CodeRepository{}).Where("id = ?", id).Update("deleted_at", nil).Error
+}
+
+// BatchRestoreCodeRepositories restores multiple soft-deleted code repositories.
+func BatchRestoreCodeRepositories(ids []string) error {
+	for _, id := range ids {
+		if err := RestoreCodeRepository(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// PermanentlyDeleteCodeRepository hard-deletes a code repository and all associated data.
+// Cascade order:
+//  1. build_deployments (via build → build_setting → repo)
+//  2. builds (via build_setting → repo)
+//  3. build_settings (by repo)
+//  4. apps.code_repository_id → NULL
+//  5. code_repositories (hard delete)
+func PermanentlyDeleteCodeRepository(id string) error {
+	// 1. Delete build_deployments
+	if err := db.DB.Exec(`
+		DELETE FROM build_deployments
+		WHERE build_id IN (
+			SELECT b.id FROM builds b
+			JOIN build_settings bs ON bs.id = b.build_setting_id
+			WHERE bs.code_repository_id = ?
+		)`, id).Error; err != nil {
+		return err
+	}
+
+	// 2. Delete builds
+	if err := db.DB.Exec(`
+		DELETE FROM builds
+		WHERE build_setting_id IN (
+			SELECT id FROM build_settings WHERE code_repository_id = ?
+		)`, id).Error; err != nil {
+		return err
+	}
+
+	// 3. Delete build_settings
+	if err := db.DB.Exec("DELETE FROM build_settings WHERE code_repository_id = ?", id).Error; err != nil {
+		return err
+	}
+
+	// 4. Detach apps (set code_repository_id to NULL)
+	if err := db.DB.Exec("UPDATE apps SET code_repository_id = NULL WHERE code_repository_id = ?", id).Error; err != nil {
+		return err
+	}
+
+	// 5. Hard-delete the repo
+	return db.DB.Unscoped().Delete(&entities.CodeRepository{}, "id = ?", id).Error
+}
+
+// BatchPermanentlyDeleteCodeRepositories hard-deletes multiple code repositories.
+func BatchPermanentlyDeleteCodeRepositories(ids []string) error {
+	for _, id := range ids {
+		if err := PermanentlyDeleteCodeRepository(id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

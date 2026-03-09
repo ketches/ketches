@@ -229,3 +229,63 @@ func PermanentlyDeleteProjects(c *gin.Context) {
 
 	api.NoContent(c)
 }
+
+// ListRecycleBinCodeRepositories lists soft-deleted code repositories.
+func ListRecycleBinCodeRepositories(c *gin.Context) {
+	projectID := c.Query("project_id")
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	userID := ""
+	claims := api.GetClaims(c)
+	if claims != nil && claims.Role != app.UserRoleAdmin {
+		userID = claims.UserID
+	}
+
+	total, repos, err := services.ListDeletedCodeRepositories(projectID, userID, req.Page, req.PageSize, req.Search)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, models.ListRecycleBinCodeRepositoryResponse{
+		Items:      repos,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
+}
+
+// RestoreCodeRepositories restores soft-deleted code repositories.
+func RestoreCodeRepositories(c *gin.Context) {
+	var req models.RestoreResourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.BatchRestoreCodeRepositories(req.IDs); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.NoContent(c)
+}
+
+// PermanentlyDeleteCodeRepositories permanently deletes soft-deleted code repositories and all associated data.
+func PermanentlyDeleteCodeRepositories(c *gin.Context) {
+	var req models.PermanentlyDeleteResourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.BatchPermanentlyDeleteCodeRepositories(req.IDs); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.NoContent(c)
+}
