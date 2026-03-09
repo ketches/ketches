@@ -55,6 +55,7 @@ import {
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
+import { selectLoadingState } from "@/lib/loading-state"
 
 import { appFavoritesApi } from "@/api/app-favorite"
 import { appGroupsApi } from "@/api/app-groups"
@@ -239,9 +240,14 @@ export function ApplicationList({
     if (allowedAppIds) result = result.filter(a => allowedAppIds.has(a.id))
     return result
   })()
-  const favoritesEffectiveLoading = favoritesOnly ? (favoritesLoading || favoritesFetching) : false
-  const appsEffectiveLoading = externalApps ? externalLoading : (isLoading || isFetching)
-  const effectiveLoading = favoritesOnly ? favoritesEffectiveLoading : appsEffectiveLoading
+  const effectiveLoading = selectLoadingState({
+    favoritesOnly,
+    hasExternalDataSource: Boolean(externalApps),
+    favoritesSource: { isLoading: favoritesLoading, isFetching: favoritesFetching },
+    externalSource: { isLoading: externalLoading, isFetching: false },
+    defaultSource: { isLoading, isFetching },
+  })
+  const tableLoading = effectiveLoading && safeApps.length === 0
   const showEmptyState = !effectiveLoading && safeApps.length === 0 && !searchQuery.trim()
 
   const handleRefresh = React.useCallback(async () => {
@@ -491,7 +497,7 @@ export function ApplicationList({
         <DataTable
           columns={columns}
           data={safeApps}
-          isLoading={effectiveLoading}
+          isLoading={tableLoading}
           viewMode={viewMode}
           onRefresh={handleRefresh}
           manualPagination={favoritesOnly ? false : externalApps ? false : true}

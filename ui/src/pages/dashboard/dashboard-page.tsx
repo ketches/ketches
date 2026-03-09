@@ -88,146 +88,146 @@ function AdminDashboard() {
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <StatCard
-          title="Clusters"
-          value={stats?.cluster_count || 0}
-          icon={ShipWheel}
-          description={`${connectedClusters} connected`}
-          onClick={() => navigate("/clusters")}
-          color="sky"
-        />
-        <StatCard
-          title="Projects"
-          value={stats?.project_count || 0}
-          icon={GalleryVerticalEnd}
-          description="Active projects"
-          color="indigo"
-        />
-        <StatCard
-          title="Applications"
-          value={stats?.application_count || 0}
-          icon={Box}
-          description="Total applications"
-        />
-        <StatCard
-          title="Environments"
-          value={stats?.environment_count || 0}
-          icon={Orbit}
-          description="Across all projects"
-          color="green"
-        />
-        <StatCard
-          title="Users"
-          value={stats?.user_count || 0}
-          icon={Users}
-          description="Registered users"
-          onClick={() => navigate("/users")}
-          color="red"
-        />
+            <StatCard
+              title="Clusters"
+              value={stats?.cluster_count || 0}
+              icon={ShipWheel}
+              description={`${connectedClusters} connected`}
+              onClick={() => navigate("/clusters")}
+              color="sky"
+            />
+            <StatCard
+              title="Projects"
+              value={stats?.project_count || 0}
+              icon={GalleryVerticalEnd}
+              description="Active projects"
+              color="indigo"
+            />
+            <StatCard
+              title="Applications"
+              value={stats?.application_count || 0}
+              icon={Box}
+              description="Total applications"
+            />
+            <StatCard
+              title="Environments"
+              value={stats?.environment_count || 0}
+              icon={Orbit}
+              description="Across all projects"
+              color="green"
+            />
+            <StatCard
+              title="Users"
+              value={stats?.user_count || 0}
+              icon={Users}
+              description="Registered users"
+              onClick={() => navigate("/users")}
+              color="red"
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Cluster Health
-            </CardTitle>
-            <CardDescription>Connection status of all clusters</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {clusters.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <ShipWheel className="h-12 w-12 text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">No clusters configured</p>
-                <Button variant="outline" className="mt-4" onClick={() => navigate("/clusters")}>
-                  Add Cluster
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {clusters.slice(0, 5).map((cluster) => (
-                  <div
-                    key={cluster.id}
-                    className="flex items-center justify-between cursor-pointer bg-muted hover:bg-sky-500/10 p-2 px-4 rounded-md -mx-2"
-                    onClick={() => navigate(`/clusters/${cluster.id}`)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <ShipWheel className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">{cluster.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{cluster.slug}</p>
-                      </div>
-                    </div>
-                    <ColorBadge color={cluster.status === "connected" ? "green" : cluster.status === "disconnected" ? "red" : "gray"}>
-                      {cluster.status || "unknown"}
-                    </ColorBadge>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  Cluster Health
+                </CardTitle>
+                <CardDescription>Connection status of all clusters</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clusters.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <ShipWheel className="h-12 w-12 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">No clusters configured</p>
+                    <Button variant="outline" className="mt-4" onClick={() => navigate("/clusters")}>
+                      Add Cluster
+                    </Button>
                   </div>
-                ))}
-                {clusters.length > 5 && (
-                  <Button variant="ghost" className="w-full" onClick={() => navigate("/clusters")}>
-                    View all {clusters.length} clusters
-                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    {clusters.slice(0, 5).map((cluster) => (
+                      <div
+                        key={cluster.id}
+                        className="flex items-center justify-between cursor-pointer bg-muted hover:bg-sky-500/10 p-2 px-4 rounded-md -mx-2"
+                        onClick={() => navigate(`/clusters/${cluster.id}`)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <ShipWheel className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">{cluster.name}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{cluster.slug}</p>
+                          </div>
+                        </div>
+                        <ColorBadge color={cluster.status === "connected" ? "green" : cluster.status === "disconnected" ? "red" : "gray"}>
+                          {cluster.status || "unknown"}
+                        </ColorBadge>
+                      </div>
+                    ))}
+                    {clusters.length > 5 && (
+                      <Button variant="ghost" className="w-full" onClick={() => navigate("/clusters")}>
+                        View all {clusters.length} clusters
+                      </Button>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Quick Actions
-            </CardTitle>
-            <CardDescription>Common administrative tasks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2">
-              <Button variant="outline" className="justify-between" onClick={() => navigate("/clusters")}>
-                <div className="flex items-center gap-2">
-                  <ShipWheel className="text-sky-600" />
-                  Manage Clusters
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  Quick Actions
+                </CardTitle>
+                <CardDescription>Common administrative tasks</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2">
+                  <Button variant="outline" className="justify-between" onClick={() => navigate("/clusters")}>
+                    <div className="flex items-center gap-2">
+                      <ShipWheel className="text-sky-600" />
+                      Manage Clusters
+                    </div>
+                    <ArrowRight />
+                  </Button>
+                  <Button variant="outline" className="justify-between" onClick={() => navigate("/extensions")}>
+                    <div className="flex items-center gap-2">
+                      <Blocks className="text-purple-600" />
+                      Manage Extensions
+                    </div>
+                    <ArrowRight />
+                  </Button>
+                  <Button variant="outline" className="justify-between" onClick={() => navigate("/users")}>
+                    <div className="flex items-center gap-2">
+                      <Users className="text-red-600" />
+                      Manage Users
+                    </div>
+                    <ArrowRight />
+                  </Button>
+                  <Button variant="outline" className="justify-between" onClick={() => navigate("/projects")}>
+                    <div className="flex items-center gap-2">
+                      <GalleryVerticalEnd className="text-indigo-600" />
+                      Manage Projects
+                    </div>
+                    <ArrowRight />
+                  </Button>
                 </div>
-                <ArrowRight />
-              </Button>
-              <Button variant="outline" className="justify-between" onClick={() => navigate("/extensions")}>
-                <div className="flex items-center gap-2">
-                  <Blocks className="text-purple-600" />
-                  Manage Extensions
-                </div>
-                <ArrowRight />
-              </Button>
-              <Button variant="outline" className="justify-between" onClick={() => navigate("/users")}>
-                <div className="flex items-center gap-2">
-                  <Users className="text-red-600" />
-                  Manage Users
-                </div>
-                <ArrowRight />
-              </Button>
-              <Button variant="outline" className="justify-between" onClick={() => navigate("/projects")}>
-                <div className="flex items-center gap-2">
-                  <GalleryVerticalEnd className="text-indigo-600" />
-                  Manage Projects
-                </div>
-                <ArrowRight />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
           </div>
 
           <Card className="border-destructive">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Activities
-          </CardTitle>
-          <CardDescription>Recent platform-wide events and actions</CardDescription>
-        </CardHeader>
-        <CardContent>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Activities
+              </CardTitle>
+              <CardDescription>Recent platform-wide events and actions</CardDescription>
+            </CardHeader>
+            <CardContent>
 
-        </CardContent>
+            </CardContent>
           </Card>
         </>
       )}
@@ -278,7 +278,7 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
       {!projectIdProp && (
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{project?.name || "Project Dashboard"}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{project?.name || (statsLoading ? "Loading..." : "No Project Selected")}</h1>
             <p className="text-sm text-muted-foreground mt-1">Overview of your project resources</p>
           </div>
         </div>
@@ -291,68 +291,68 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-5">
-        <StatCard
-          title="Applications"
-          value={stats?.application_count || 0}
-          icon={Box}
-          description="Deployed applications"
-          onClick={() => navigate("/applications")}
-        />
-        <StatCard
-          title="Environments"
-          value={stats?.environment_count || 0}
-          icon={Orbit}
-          description="Active environments"
-          onClick={() => navigate("/environments")}
-          color="green"
-        />
-        <StatCard
-          title="Code Repositories"
-          value={stats?.code_repository_count || 0}
-          icon={FolderGit}
-          description="Code repositories"
-          onClick={() => navigate("/code-repositories")}
-          color="indigo"
-        />
-        <StatCard
-          title="Plugins"
-          value={stats?.plugin_count || 0}
-          icon={Puzzle}
-          description="Plugins"
-          onClick={() => navigate("/plugins")}
-          color="amber"
-        />
-        <StatCard
-          title="Members"
-          value={stats?.member_count || 0}
-          icon={Users}
-          description="Project members"
-          onClick={() => navigate("/members")}
-          color="red"
-        />
+            <StatCard
+              title="Applications"
+              value={stats?.application_count || 0}
+              icon={Box}
+              description="Deployed applications"
+              onClick={() => navigate("/applications")}
+            />
+            <StatCard
+              title="Environments"
+              value={stats?.environment_count || 0}
+              icon={Orbit}
+              description="Active environments"
+              onClick={() => navigate("/environments")}
+              color="green"
+            />
+            <StatCard
+              title="Code Repositories"
+              value={stats?.code_repository_count || 0}
+              icon={FolderGit}
+              description="Code repositories"
+              onClick={() => navigate("/code-repositories")}
+              color="indigo"
+            />
+            <StatCard
+              title="Plugins"
+              value={stats?.plugin_count || 0}
+              icon={Puzzle}
+              description="Plugins"
+              onClick={() => navigate("/plugins")}
+              color="amber"
+            />
+            <StatCard
+              title="Members"
+              value={stats?.member_count || 0}
+              icon={Users}
+              description="Project members"
+              onClick={() => navigate("/members")}
+              color="red"
+            />
           </div>
 
           <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ChartLine className="h-4 w-4" />
-            Environment Resource Usage
-          </CardTitle>
-          <CardDescription>
-            Real-time resource consumption across your environments
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {environments.length === 0 ? (
-            <EmptyEnvironmentState />
-          ) : (
-            <div className="space-y-6">
-              {environments.map((env) => (
-                <EnvironmentMetricsPanel key={env.id} env={env} />
-              ))}
-            </div>
-          )}
-        </CardContent>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ChartLine className="h-4 w-4" />
+                Environment Resource Usage
+              </CardTitle>
+              <CardDescription>
+                Real-time resource consumption across your environments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {environments.length === 0 ? (
+                <EmptyEnvironmentState />
+              ) : (
+                <div className="space-y-6">
+                  {environments.map((env) => (
+                    <EnvironmentMetricsPanel key={env.id} env={env} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
           </Card>
         </>
       )}
