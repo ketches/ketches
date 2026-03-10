@@ -232,6 +232,7 @@ func setupV1Routes(r *gin.Engine) {
 
 			authorized.GET("/clusters/public", handlers.ListPublicClusters)
 			authorized.GET("/clusters/:clusterID/public", handlers.GetPublicCluster)
+			authorized.GET("/clusters/:clusterID/integrations", handlers.ListClusterIntegrations)
 			authorized.GET("/clusters/:clusterID/storage-classes", handlers.ListStorageClasses)
 			authorized.GET("/clusters/:clusterID/gateway-api-status", handlers.GetClusterGatewayAPIStatus)
 
@@ -269,7 +270,6 @@ func setupV1Routes(r *gin.Engine) {
 				clusters.PATCH("/:clusterID/nodes/:nodeName/taints", handlers.UpdateClusterNodeTaints)
 				clusters.GET("/:clusterID/nodes/:nodeName/exec", handlers.ExecClusterNodeTerminal)
 
-				clusters.GET("/:clusterID/integrations", handlers.ListClusterIntegrations)
 				clusters.POST("/:clusterID/integrations", handlers.CreateClusterIntegration)
 				clusters.GET("/:clusterID/integrations/:integrationID", handlers.GetClusterIntegration)
 				clusters.PUT("/:clusterID/integrations/:integrationID", handlers.UpdateClusterIntegration)

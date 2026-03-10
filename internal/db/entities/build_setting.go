@@ -2,14 +2,12 @@ package entities
 
 import "time"
 
-// BuildSetting stores build setting for either an App or a CodeRepository.
-// Exactly one of AppID or CodeRepositoryID will be set.
+// BuildSetting stores build setting for a CodeRepository.
 type BuildSetting struct {
 	ID               string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt        time.Time `gorm:"autoCreateTime"`
 	UpdatedAt        time.Time `gorm:"autoUpdateTime"`
 	Name             string    `gorm:"type:varchar(128)"`
-	AppID            *string   `gorm:"type:varchar(36);index"`
 	CodeRepositoryID *string   `gorm:"type:varchar(36);index"`
 
 	// Git source
