@@ -141,7 +141,11 @@ export function EditBuildSettingDialog({ open, onOpenChange, repoId, setting: se
               <Combobox
                 value={form.registry_id}
                 onValueChange={(v) => setForm({ ...form, registry_id: v ?? undefined })}
-                itemToStringLabel={(id) => registries?.find((r) => r.id === id)?.name ?? id ?? ""}
+                itemToStringLabel={(id) => {
+                  if (!id) return ""
+                  if (setting.registry?.id === id && setting.registry.name) return setting.registry.name
+                  return registries?.find((r) => r.id === id)?.name ?? id
+                }}
               >
                 <ComboboxInput placeholder="Select registry" />
                 <ComboboxContent>

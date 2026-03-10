@@ -531,7 +531,7 @@ export function CodeRepositoryDetailPage() {
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Deploy Status",
       cell: ({ row }) => {
         const status = row.original.status
         const errorMessage = row.original.error_message

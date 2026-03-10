@@ -177,7 +177,7 @@ export function EnvironmentDetailPage() {
                 <DropdownMenuItem
                   key={e.id}
                   onClick={() => {
-                    setActiveContextWithNames(activeProjectId, activeProjectName, env.id, env.name)
+                    setActiveContextWithNames(activeProjectId, activeProjectName, e.id, e.name)
                     navigate(`/environments/${e.id}`)
                   }}
                 >

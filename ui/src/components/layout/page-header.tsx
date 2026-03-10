@@ -7,7 +7,6 @@ export function PageHeader({ items }: { items: BreadcrumbItem[] }) {
 
   useEffect(() => {
     setBreadcrumbs(Array.isArray(items) ? items : [])
-    return () => setBreadcrumbs([])
   }, [items, setBreadcrumbs])
 
   return null
