@@ -6,21 +6,44 @@ import (
 	"github.com/ketches/ketches/internal/models"
 )
 
-func GetAdminDashboardStats() (*models.DashboardStatsResponse, error) {
+func GetAdminDashboardStats(projectID string) (*models.DashboardStatsResponse, error) {
 	var stats models.DashboardStatsResponse
 
 	if err := db.DB.Model(&entities.Cluster{}).Count(&stats.ClusterCount).Error; err != nil {
 		return nil, err
 	}
-	if err := db.DB.Model(&entities.Project{}).Count(&stats.ProjectCount).Error; err != nil {
-		return nil, err
+	if projectID != "" {
+		if err := db.DB.Model(&entities.CodeRepository{}).Where("project_id = ?", projectID).Count(&stats.CodeRepositoryCount).Error; err != nil {
+			return nil, err
+		}
+		if err := db.DB.Model(&entities.Env{}).Where("project_id = ?", projectID).Count(&stats.EnvironmentCount).Error; err != nil {
+			return nil, err
+		}
+		if err := db.DB.Model(&entities.App{}).Joins("JOIN envs on envs.id = apps.env_id").Where("envs.project_id = ?", projectID).Count(&stats.ApplicationCount).Error; err != nil {
+			return nil, err
+		}
+		if err := db.DB.Model(&entities.CodeRepository{}).Where("project_id = ?", projectID).Count(&stats.CodeRepositoryCount).Error; err != nil {
+			return nil, err
+		}
+
+		if err := db.DB.Model(&entities.Plugin{}).Where("project_id = ?", projectID).Count(&stats.PluginCount).Error; err != nil {
+			return nil, err
+		}
+		if err := db.DB.Model(&entities.ProjectMember{}).Where("project_id = ?", projectID).Count(&stats.ProjectMemberCount).Error; err != nil {
+			return nil, err
+		}
+	} else {
+		if err := db.DB.Model(&entities.Project{}).Count(&stats.ProjectCount).Error; err != nil {
+			return nil, err
+		}
+		if err := db.DB.Model(&entities.Env{}).Count(&stats.EnvironmentCount).Error; err != nil {
+			return nil, err
+		}
+		if err := db.DB.Model(&entities.App{}).Count(&stats.ApplicationCount).Error; err != nil {
+			return nil, err
+		}
 	}
-	if err := db.DB.Model(&entities.Env{}).Count(&stats.EnvironmentCount).Error; err != nil {
-		return nil, err
-	}
-	if err := db.DB.Model(&entities.App{}).Count(&stats.ApplicationCount).Error; err != nil {
-		return nil, err
-	}
+
 	if err := db.DB.Model(&entities.User{}).Count(&stats.UserCount).Error; err != nil {
 		return nil, err
 	}
@@ -50,7 +73,7 @@ func GetUserDashboardStats(projectID string) (*models.DashboardStatsResponse, er
 		return nil, err
 	}
 
-	if err := db.DB.Model(&entities.ProjectMember{}).Where("project_id = ?", projectID).Count(&stats.MemberCount).Error; err != nil {
+	if err := db.DB.Model(&entities.ProjectMember{}).Where("project_id = ?", projectID).Count(&stats.ProjectMemberCount).Error; err != nil {
 		return nil, err
 	}
 

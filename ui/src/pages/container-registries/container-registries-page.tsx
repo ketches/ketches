@@ -3,6 +3,7 @@ import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import {
   Clock,
   Copy,
+  GalleryVerticalEnd,
   Handbag,
   LayoutGrid,
   Link,
@@ -34,19 +35,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { cn, formatDate } from "@/lib/utils"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 
 const REGISTRIES_VIEW_MODE_KEY = "registries_view_mode"
 
 export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const queryClient = useQueryClient()
-  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore, activeProjectName } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
+  const projectNameToUse = activeProjectName
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin")
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingRegistry, setEditingRegistry] = React.useState<ContainerRegistry | null>(null)
@@ -223,7 +228,11 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
     }]),
   ]
 
-  const breadcrumbs = [{ label: "Container Registries", icon: Warehouse }]
+  const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
+    { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+    { label: projectNameToUse || "Projects", icon: GalleryVerticalEnd, href: `/projects/${activeProjectId}` },
+  ] : []
+  breadcrumbs.push({ label: "Container Registries", icon: Warehouse })
 
   const toolbarLeft = (
     <Input

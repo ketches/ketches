@@ -324,7 +324,7 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
             />
             <StatCard
               title="Members"
-              value={stats?.member_count || 0}
+              value={stats?.project_member_count || 0}
               icon={Users}
               description="Project members"
               onClick={() => navigate("/members")}

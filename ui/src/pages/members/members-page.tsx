@@ -21,20 +21,24 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { formatDate } from "@/lib/utils"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Clock, Copy, Trash2, UserKey, Users } from "lucide-react"
+import { Clock, Copy, GalleryVerticalEnd, Trash2, UserKey, Users } from "lucide-react"
 import { toast } from "sonner"
 
 export function MembersPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const queryClient = useQueryClient()
-  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore, activeProjectName } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
+  const projectNameToUse = activeProjectName
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -247,9 +251,15 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
     },
   ]
 
+  const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
+    { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+    { label: projectNameToUse || "Projects", icon: GalleryVerticalEnd, href: `/projects/${activeProjectId}` },
+  ] : []
+  breadcrumbs.push({ label: "Members", icon: Users })
+
   return (
     <div className="flex flex-col gap-6">
-      {!projectIdProp && <PageHeader items={[{ label: "Members", icon: Users }]} />}
+      {!projectIdProp && <PageHeader items={breadcrumbs} />}
       <div className="flex flex-col gap-6">
         {!projectIdProp && (
           <div className="flex items-center justify-between">

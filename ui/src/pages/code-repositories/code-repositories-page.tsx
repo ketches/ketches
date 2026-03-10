@@ -43,7 +43,7 @@ const CODE_REPOS_VIEW_MODE_KEY = "code_repositories_view_mode"
 export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore, activeProjectName } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
@@ -209,7 +209,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
 
   const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
     { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
-    { label: `Project ${activeProjectId}`, icon: GalleryVerticalEnd, href: `/projects/${activeProjectId}` },
+    { label: activeProjectName ?? "Project", icon: GalleryVerticalEnd, href: `/projects/${activeProjectId}` },
     { label: "Code Repositories", icon: FolderGit2 }
   ] : [{ label: "Code Repositories", icon: FolderGit2 }]
 

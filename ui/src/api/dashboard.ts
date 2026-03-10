@@ -8,7 +8,7 @@ export interface DashboardStats {
   code_repository_count?: number
   plugin_count?: number
   user_count?: number
-  member_count?: number
+  project_member_count?: number
 }
 
 export interface EnvironmentResourceUsage {

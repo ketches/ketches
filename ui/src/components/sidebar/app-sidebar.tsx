@@ -43,8 +43,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const adminNavItems = [
     { title: "Clusters", url: "/clusters", icon: ShipWheel },
     { title: "Extensions", url: "/extensions", icon: Blocks },
-    { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
+    // { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
     { title: "Users", url: "/users", icon: User },
+  ]
+
+  const adminUserNavItems = [
+    { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
+    { title: "Recycle Bin", url: "/recycle-bin", icon: Trash2 },
   ]
 
   // Project group: project-scoped modules (Dashboard rendered separately); some hidden for viewers
@@ -79,9 +84,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavGlobalSearch onOpenSearch={() => setSearchOpen(true)} />
         <NavMain
           dashboardItem={{ title: "Dashboard", url: "/", icon: LayoutDashboard }}
-          projectItems={isAdmin ? adminNavItems : projectItems}
-          projectGroupLabel={isAdmin ? "Admin" : "Project"}
+          projectItems={isAdmin ? [] : projectItems}
           globalItems={isAdmin ? [] : globalItems}
+          adminNavItems={isAdmin ? adminNavItems : []}
+          adminUserNavItems={isAdmin ? adminUserNavItems : []}
         />
       </SidebarContent>
       <SidebarFooter>

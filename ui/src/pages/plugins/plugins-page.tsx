@@ -17,9 +17,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { formatDate } from "@/lib/utils"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useQuery } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
@@ -27,6 +29,7 @@ import {
   Clock,
   Copy,
   Download,
+  GalleryVerticalEnd,
   Image,
   LayoutGrid,
   List as ListIcon,
@@ -42,10 +45,12 @@ import { toast } from "sonner"
 const PLUGINS_VIEW_MODE_KEY = "plugins_view_mode"
 
 export function PluginsPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
-  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore, activeProjectName } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
+  const projectNameToUse = activeProjectName
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin")
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
@@ -217,12 +222,11 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
     })
   }
 
-  const breadcrumbs = [
-    {
-      label: "Plugins",
-      icon: Puzzle,
-    }
-  ]
+  const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
+    { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+    { label: projectNameToUse || "Projects", icon: GalleryVerticalEnd, href: `/projects/${activeProjectId}` },
+  ] : []
+  breadcrumbs.push({ label: "Plugins", icon: Puzzle, })
 
   const toolbarLeft = (
     <Input

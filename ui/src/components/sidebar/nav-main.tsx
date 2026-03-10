@@ -40,13 +40,15 @@ export function NavMenuItem({ item }: { item: NavItem }) {
 export function NavMain({
   dashboardItem,
   projectItems,
-  projectGroupLabel = "Project",
   globalItems,
+  adminNavItems,
+  adminUserNavItems,
 }: {
   dashboardItem?: NavItem
   projectItems: NavItem[]
-  projectGroupLabel?: string
   globalItems: NavItem[]
+  adminNavItems: NavItem[]
+  adminUserNavItems: NavItem[]
 }) {
   const visibleProjectItems = projectItems.filter((item) => !item.hidden)
   const visibleGlobalItems = globalItems.filter((item) => !item.hidden)
@@ -63,7 +65,7 @@ export function NavMain({
       )}
       {visibleProjectItems.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">{projectGroupLabel}</SidebarGroupLabel>
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Project</SidebarGroupLabel>
           <SidebarMenu>
             {visibleProjectItems.map((item) => (
               <NavMenuItem key={item.title} item={item} />
@@ -76,6 +78,28 @@ export function NavMain({
           <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Global</SidebarGroupLabel>
           <SidebarMenu>
             {visibleGlobalItems.map((item) => (
+              <NavMenuItem key={item.title} item={item} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
+      {
+        adminNavItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Admin</SidebarGroupLabel>
+            <SidebarMenu>
+              {adminNavItems.map((item) => (
+                <NavMenuItem key={item.title} item={item} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )
+      }
+      {adminUserNavItems.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">User</SidebarGroupLabel>
+          <SidebarMenu>
+            {adminUserNavItems.map((item) => (
               <NavMenuItem key={item.title} item={item} />
             ))}
           </SidebarMenu>

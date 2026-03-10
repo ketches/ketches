@@ -25,7 +25,7 @@ func GetDashboardStats(c *gin.Context) {
 	projectID := c.Query("project_id")
 
 	if userRole == app.UserRoleAdmin {
-		stats, err := services.GetAdminDashboardStats()
+		stats, err := services.GetAdminDashboardStats(projectID)
 		if err != nil {
 			api.Error(c, http.StatusInternalServerError, err)
 			return

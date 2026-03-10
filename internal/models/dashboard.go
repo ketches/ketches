@@ -8,7 +8,7 @@ type DashboardStatsResponse struct {
 	CodeRepositoryCount int64 `json:"code_repository_count,omitempty"`
 	PluginCount         int64 `json:"plugin_count,omitempty"`
 	UserCount           int64 `json:"user_count,omitempty"`
-	MemberCount         int64 `json:"member_count,omitempty"`
+	ProjectMemberCount  int64 `json:"project_member_count,omitempty"`
 }
 
 type EnvironmentResourceUsage struct {
