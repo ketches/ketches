@@ -134,7 +134,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
           <Button
             variant="ghost"
             size="icon-sm"
-            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            className="opacity-0 group-hover/row:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(row.original.git_repo_url)

@@ -38,11 +38,33 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
   const [autoRefresh, setAutoRefresh] = React.useState(true)
   const [showTimestamp, setShowTimestamp] = React.useState(false)
   const [searchText, setSearchText] = React.useState("")
-  const logEndRef = React.useRef<HTMLDivElement>(null)
   const logContainerRef = React.useRef<HTMLDivElement>(null)
+  const followTailRef = React.useRef(true)
+
+  const isNearBottom = React.useCallback((container: HTMLDivElement) => {
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    return distanceToBottom <= 24
+  }, [])
+
+  const scheduleScrollToBottom = React.useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const container = logContainerRef.current
+        if (!container || !autoRefresh || !followTailRef.current) return
+        container.scrollTop = container.scrollHeight
+      })
+    })
+  }, [autoRefresh])
+
+  const handleContainerScroll = React.useCallback(() => {
+    const container = logContainerRef.current
+    if (!container) return
+    followTailRef.current = isNearBottom(container)
+  }, [isNearBottom])
 
   React.useEffect(() => {
     if (!appId || !instanceName || !containerName) return
+    followTailRef.current = true
 
     const authData = localStorage.getItem('auth-storage')
     let token = ''
@@ -66,6 +88,8 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
 
     eventSource.onopen = () => {
       setLogs([])
+      followTailRef.current = true
+      scheduleScrollToBottom()
     }
 
     eventSource.onmessage = (event) => {
@@ -86,13 +110,26 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
     }
 
     return () => eventSource.close()
-  }, [appId, instanceName, containerName, tailLines, showTimestamp, autoRefresh])
+  }, [appId, instanceName, containerName, tailLines, showTimestamp, autoRefresh, isNearBottom, scheduleScrollToBottom])
+
+  React.useLayoutEffect(() => {
+    if (!autoRefresh || !followTailRef.current) return
+
+    scheduleScrollToBottom()
+  }, [logs, autoRefresh, scheduleScrollToBottom])
 
   React.useEffect(() => {
-    if (autoRefresh && logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: "smooth" })
-    }
-  }, [logs, autoRefresh])
+    const container = logContainerRef.current
+    if (!container) return
+
+    const observer = new ResizeObserver(() => {
+      if (!autoRefresh || !followTailRef.current || logs.length === 0) return
+      scheduleScrollToBottom()
+    })
+    observer.observe(container)
+
+    return () => observer.disconnect()
+  }, [autoRefresh, logs.length, scheduleScrollToBottom])
 
   const formatLogLine = (line: string) => {
     return line
@@ -259,6 +296,7 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
 
       <div
         ref={logContainerRef}
+        onScroll={handleContainerScroll}
         className="h-full overflow-y-auto bg-zinc-950 p-3 font-mono text-xs text-zinc-100"
       >
         {filteredLogs.length === 0 ? (
@@ -288,7 +326,6 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
                 {highlightSearch(log)}
               </div>
             ))}
-            <div ref={logEndRef} />
           </>
         )}
       </div>

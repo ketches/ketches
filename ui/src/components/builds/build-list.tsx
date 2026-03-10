@@ -86,7 +86,7 @@ export function BuildList({ appId }: BuildListProps) {
           <span className="text-xs font-mono truncate block">
             {row.original.image_full_name || '-'}
           </span>
-          <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+          <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover/row:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               if (row.original.image_full_name) {

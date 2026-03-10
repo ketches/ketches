@@ -101,6 +101,7 @@ export function CodeRepositoryDetailPage() {
   const [triggerBuildDialogOpen, setTriggerBuildDialogOpen] = React.useState(false)
   const [selectedBuildSettingId, setSelectedBuildSettingId] = React.useState<string | undefined>(undefined)
   const [selectedBuildId, setSelectedBuildId] = React.useState<string | undefined>(undefined)
+  const [retryingBuildId, setRetryingBuildId] = React.useState<string | null>(null)
   const [logBuildId, setLogBuildId] = React.useState<string | null>(null)
   const [addConfigOpen, setAddConfigOpen] = React.useState(false)
   const [editConfigOpen, setEditConfigOpen] = React.useState(false)
@@ -174,13 +175,23 @@ export function CodeRepositoryDetailPage() {
     enabled: !!repo?.project_id,
   })
 
+  type RetryBuildPayload = {
+    id: string
+    build_setting_id: string
+    build_env_id: string
+    git_ref?: string
+  }
+
   const retryBuildMutation = useMutation({
-    mutationFn: (b: any) => {
+    mutationFn: (b: RetryBuildPayload) => {
       return codeRepositoriesApi.triggerBuild(repoId!, {
         build_setting_id: b.build_setting_id,
         build_env_id: b.build_env_id,
         git_ref: b.git_ref,
       })
+    },
+    onMutate: (b: RetryBuildPayload) => {
+      setRetryingBuildId(b?.id ?? null)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["builds", repoId] })
@@ -188,6 +199,9 @@ export function CodeRepositoryDetailPage() {
     },
     onError: (err: AxiosError<{ error: string }>) => {
       toast.error(err?.response?.data?.error || "Failed to retry build")
+    },
+    onSettled: () => {
+      setRetryingBuildId(null)
     },
   })
 
@@ -361,7 +375,7 @@ export function CodeRepositoryDetailPage() {
           <Button
             variant="ghost"
             size="icon-sm"
-            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            className="opacity-0 group-hover/row:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(row.original.image_full_name)
@@ -393,6 +407,7 @@ export function CodeRepositoryDetailPage() {
       header: () => <span className="flex justify-end">Actions</span>,
       cell: ({ row }) => {
         const b = row.original
+        const isRetryingCurrentBuild = retryBuildMutation.isPending && retryingBuildId === b.id
         return (
           <div className="flex items-center justify-end gap-1">
             <Tooltip>
@@ -413,12 +428,12 @@ export function CodeRepositoryDetailPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => retryBuildMutation.mutate(b)}
-                      disabled={retryBuildMutation.isPending}
+                      disabled={isRetryingCurrentBuild}
                     />
                   }
                 >
                   <>
-                    {retryBuildMutation.isPending ? (
+                    {isRetryingCurrentBuild ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <RotateCw />
@@ -499,7 +514,7 @@ export function CodeRepositoryDetailPage() {
           <Button
             variant="ghost"
             size="icon-sm"
-            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            className="opacity-0 group-hover/row:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(row.original.image_full_name)

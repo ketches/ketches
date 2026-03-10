@@ -11,12 +11,39 @@ interface BuildLogViewerProps {
   repoId: string
 }
 
+type MonacoEditor = {
+  getLayoutInfo: () => { height: number }
+  getScrollTop: () => number
+  getScrollHeight: () => number
+  setScrollTop: (value: number) => void
+  onDidScrollChange: (listener: (event: { scrollTopChanged: boolean }) => void) => void
+  onDidLayoutChange?: (listener: () => void) => { dispose: () => void }
+  onDidContentSizeChange?: (listener: () => void) => { dispose: () => void }
+}
+
 export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   const [logs, setLogs] = React.useState<string[]>([])
-  const editorRef = React.useRef<any>(null)
+  const [editorReady, setEditorReady] = React.useState(false)
+  const editorRef = React.useRef<MonacoEditor | null>(null)
+  const containerRef = React.useRef<HTMLDivElement>(null)
   const autoFollowRef = React.useRef(true)
+  const hasInitializedTailRef = React.useRef(false)
 
-  const isNearBottom = React.useCallback((editor: any) => {
+  const scheduleScrollToBottom = React.useCallback((force = false) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!editorRef.current) return
+        if (!force && !autoFollowRef.current) return
+        editorRef.current.setScrollTop(editorRef.current.getScrollHeight())
+        if (force) {
+          hasInitializedTailRef.current = true
+          autoFollowRef.current = true
+        }
+      })
+    })
+  }, [])
+
+  const isNearBottom = React.useCallback((editor: MonacoEditor) => {
     const viewportHeight = editor.getLayoutInfo()?.height ?? 0
     const scrollTop = editor.getScrollTop?.() ?? 0
     const scrollHeight = editor.getScrollHeight?.() ?? 0
@@ -24,11 +51,26 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
     return scrollTop + viewportHeight >= scrollHeight - 24
   }, [])
 
-  const handleEditorDidMount = (editor: any) => {
+  const handleEditorDidMount = (editor: MonacoEditor) => {
     editorRef.current = editor
+    setEditorReady(true)
     autoFollowRef.current = true
-    editor.onDidScrollChange(() => {
+    hasInitializedTailRef.current = false
+    editor.onDidScrollChange((e: { scrollTopChanged: boolean }) => {
+      // Ignore non-user-like scroll changes (e.g. content height changes on new logs).
+      if (!e?.scrollTopChanged) return
+      if (!hasInitializedTailRef.current) return
       autoFollowRef.current = isNearBottom(editor)
+    })
+
+    editor.onDidLayoutChange?.(() => {
+      if (!autoFollowRef.current) return
+      scheduleScrollToBottom()
+    })
+
+    editor.onDidContentSizeChange?.(() => {
+      if (!autoFollowRef.current) return
+      scheduleScrollToBottom()
     })
   }
 
@@ -53,11 +95,30 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   }, [theme])
 
   React.useEffect(() => {
-    if (editorRef.current && logs.length > 0 && autoFollowRef.current) {
-      const lineCount = editorRef.current.getModel()?.getLineCount() || 1
-      editorRef.current.revealLine(lineCount)
+    if (!editorReady || logs.length === 0) return
+
+    if (!hasInitializedTailRef.current) {
+      scheduleScrollToBottom(true)
+      return
     }
-  }, [logs])
+
+    if (autoFollowRef.current) {
+      scheduleScrollToBottom()
+    }
+  }, [logs, editorReady, scheduleScrollToBottom])
+
+  React.useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const observer = new ResizeObserver(() => {
+      if (!autoFollowRef.current || logs.length === 0) return
+      scheduleScrollToBottom()
+    })
+    observer.observe(container)
+
+    return () => observer.disconnect()
+  }, [logs.length, scheduleScrollToBottom])
 
   const { data: build } = useQuery({
     queryKey: ['build', buildId, repoId],
@@ -70,6 +131,7 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
     if (!buildId || !repoId) return
     setLogs([])
     autoFollowRef.current = true
+    hasInitializedTailRef.current = false
 
     const authData = localStorage.getItem('auth-storage')
     let token = ''
@@ -113,7 +175,7 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
         {build?.error_message && <span className="text-destructive text-xs">{build?.error_message}</span>}
       </div>
       {/* )} */}
-      <div className="border rounded-lg overflow-hidden h-[70vh]">
+      <div ref={containerRef} className="border rounded-lg overflow-hidden h-[70vh]">
         <Editor
           height="100%"
           language="text"

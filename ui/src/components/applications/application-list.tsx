@@ -29,8 +29,8 @@ import { EditAppDialog } from "@/components/applications/edit-app-dialog"
 import { ExportAppsDialog } from "@/components/applications/export-apps-dialog"
 import { ImportAppsDialog } from "@/components/applications/import-apps-dialog"
 import { DataTable } from "@/components/data-table/data-table"
-import { EmptyState } from "@/components/shared/empty-state"
 import { ColorBadge } from "@/components/shared/color-badge"
+import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -348,7 +348,7 @@ export function ApplicationList({
           <Button
             variant="ghost"
             size="icon-sm"
-            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            className="opacity-0 group-hover/row:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(row.original.container_image)
@@ -423,7 +423,7 @@ export function ApplicationList({
                   {favoriteIds.has(row.original.id) ? "Remove from Favorites" : "Add to Favorites"}
                 </TooltipContent>
               </Tooltip>
-<AppActionIconsWrapper
+              <AppActionIconsWrapper
                 appId={row.original.id}
                 envId={envId}
                 actions={row.original.available_actions}
@@ -510,130 +510,130 @@ export function ApplicationList({
           leftActions={() => toolbarLeft}
           toolbarActions={() => toolbarRight}
           renderCard={(app) => (
-          <Card
-            key={app.id}
-            className="group/card hover:shadow-md transition-shadow h-full"
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3 min-w-0">
-                  <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
-                    <AvatarFallback className="rounded-lg text-lg font-bold">
-                      {app.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
-                        onClick={() => navigate(`/applications/${app.id}`)}>{app.name}</CardTitle>
-                      <ColorBadge color={getAppStatusColor(app.status)} className="text-[10px] px-1.5 py-0 shrink-0">
-                        {(app.status ?? "unknown").toUpperCase()}
-                      </ColorBadge>
+            <Card
+              key={app.id}
+              className="group/card hover:shadow-md transition-shadow h-full"
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
+                      <AvatarFallback className="rounded-lg text-lg font-bold">
+                        {app.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => navigate(`/applications/${app.id}`)}>{app.name}</CardTitle>
+                        <ColorBadge color={getAppStatusColor(app.status)} className="text-[10px] px-1.5 py-0 shrink-0">
+                          {(app.status ?? "unknown").toUpperCase()}
+                        </ColorBadge>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                        <span>{app.slug}</span>
+                        <span>•</span>
+                        {app.description ? (
+                          <span className="truncate">{app.description}</span>
+                        ) : (
+                          <span className="italic">No description</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                      <span>{app.slug}</span>
-                      <span>•</span>
-                      {app.description ? (
-                        <span className="truncate">{app.description}</span>
-                      ) : (
-                        <span className="italic">No description</span>
-                      )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {!isViewer && (
+                      <>
+                        <Tooltip>
+                          <TooltipTrigger
+                            delay={200}
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditingApp(app)
+                                  setEditDialogOpen(true)
+                                }}
+                              />
+                            }
+                          >
+                            <Pencil />
+                          </TooltipTrigger>
+                          <TooltipContent>Edit Application</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger
+                            delay={200}
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => { toggleFavMutation.mutate(app) }}
+                              />
+                            }
+                          >
+                            <Star className={`${favoriteIds.has(app.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {favoriteIds.has(app.id) ? "Remove from Favorites" : "Add to Favorites"}
+                          </TooltipContent>
+                        </Tooltip>
+                        <AppActionIconsWrapper
+                          appId={app.id}
+                          envId={envId}
+                          actions={app.available_actions}
+                          appGroups={appGroups}
+                          currentGroupId={currentGroupId}
+                          onMoveToGroup={(groupId) => addToGroupMutation.mutate({ groupId, appId: app.id })}
+                          onRemoveFromGroup={currentGroupId ? () => removeFromGroupMutation.mutate({ groupId: currentGroupId, appId: app.id }) : undefined}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Image className="h-3.5 w-3.5" />
+                    <span className="font-mono">
+                      {app.container_image}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigator.clipboard.writeText(app.container_image)
+                        toast.success("Image address copied to clipboard")
+                      }}
+                    >
+                      <Copy />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <CloudCog className="h-3.5 w-3.5" />
+                      <span>{app.app_type || "Deployment"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Cpu className="h-3.5 w-3.5" />
+                      <span>{app.replicas} Replicas</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  {!isViewer && (
-                    <>
-                      <Tooltip>
-                        <TooltipTrigger
-                          delay={200}
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setEditingApp(app)
-                                setEditDialogOpen(true)
-                              }}
-                            />
-                          }
-                        >
-                          <Pencil />
-                        </TooltipTrigger>
-                        <TooltipContent>Edit Application</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger
-                          delay={200}
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => { toggleFavMutation.mutate(app) }}
-                            />
-                          }
-                        >
-                          <Star className={`${favoriteIds.has(app.id) ? "fill-yellow-400 text-yellow-400" : ""}`} />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {favoriteIds.has(app.id) ? "Remove from Favorites" : "Add to Favorites"}
-                        </TooltipContent>
-                      </Tooltip>
-<AppActionIconsWrapper
-                        appId={app.id}
-                        envId={envId}
-                        actions={app.available_actions}
-                        appGroups={appGroups}
-                        currentGroupId={currentGroupId}
-                        onMoveToGroup={(groupId) => addToGroupMutation.mutate({ groupId, appId: app.id })}
-                        onRemoveFromGroup={currentGroupId ? () => removeFromGroupMutation.mutate({ groupId: currentGroupId, appId: app.id }) : undefined}
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Image className="h-3.5 w-3.5" />
-                  <span className="font-mono">
-                    {app.container_image}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigator.clipboard.writeText(app.container_image)
-                      toast.success("Image address copied to clipboard")
-                    }}
-                  >
-                    <Copy />
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <CloudCog className="h-3.5 w-3.5" />
-                    <span>{app.app_type || "Deployment"}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Cpu className="h-3.5 w-3.5" />
-                    <span>{app.replicas} Replicas</span>
+                <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" />
+                    <span>Created at {formatDate(app.created_at)}</span>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3 w-3" />
-                  <span>Created at {formatDate(app.created_at)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          )}
           batchActions={(table) => {
             if (isViewer) return null
             const selectedRows = table.getFilteredSelectedRowModel().rows

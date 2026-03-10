@@ -134,6 +134,16 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
       ),
     },
     {
+      accessorKey: "cluster",
+      header: "Cluster",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <ShipWheel className="h-3 w-3" />
+          <span>{row.original.cluster_name}</span>
+        </div>
+      ),
+    },
+    {
       accessorKey: "cluster_namespace",
       header: "Namespace",
       cell: ({ row }) => (
@@ -144,7 +154,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
           <Button
             variant="ghost"
             size="icon-sm"
-            className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+            className="opacity-0 group-hover/row:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(row.original.cluster_namespace)

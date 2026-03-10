@@ -1,10 +1,11 @@
-import { Plus, Terminal, X } from "lucide-react"
+import { Plus, RefreshCw, Terminal, X } from "lucide-react"
 import * as React from "react"
 import { Terminal as XTerm } from "xterm"
 import { FitAddon } from "xterm-addon-fit"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import "xterm/css/xterm.css"
 
+import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -15,7 +16,8 @@ import { WorkloadPanelFrame } from "./workload-panel-frame"
 interface TerminalSession {
   id: string
   name: string
-  isConnected: boolean
+  connectionState: "connecting" | "connected" | "disconnected"
+  reconnectNonce: number
 }
 
 interface TerminalPanelProps {
@@ -27,15 +29,23 @@ interface TerminalPanelProps {
 
 export function TerminalPanel({ appId, instanceName, containerName, targetType = "pod" }: TerminalPanelProps) {
   const [sessions, setSessions] = React.useState<TerminalSession[]>([
-    { id: "1", name: "Session 1", isConnected: false }
+    { id: "1", name: "Session 1", connectionState: "connecting", reconnectNonce: 0 }
   ])
   const [activeSessionId, setActiveSessionId] = React.useState("1")
 
   const handleAddSession = () => {
     const newId = (sessions.length + 1).toString()
-    setSessions([...sessions, { id: newId, name: `Session ${newId}`, isConnected: false }])
+    setSessions([...sessions, { id: newId, name: `Session ${newId}`, connectionState: "connecting", reconnectNonce: 0 }])
     setActiveSessionId(newId)
   }
+
+  const handleReconnectSession = React.useCallback((id: string) => {
+    setSessions(prev => prev.map(session => (
+      session.id === id
+        ? { ...session, connectionState: "connecting", reconnectNonce: session.reconnectNonce + 1 }
+        : session
+    )))
+  }, [])
 
   const handleRemoveSession = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -63,6 +73,15 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
                 >
                   <Terminal className="h-3 w-3" />
                   <span className="max-w-20 truncate">{session.name}</span>
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      session.connectionState === "connected" && "bg-green-500",
+                      session.connectionState === "connecting" && "bg-amber-500 animate-pulse",
+                      session.connectionState === "disconnected" && "bg-red-500"
+                    )}
+                    title={session.connectionState}
+                  />
                   {sessions.length > 1 && (
                     <X
                       className="ml-1 h-3 w-3 hover:text-red-500"
@@ -89,24 +108,6 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
               <TooltipContent>New terminal session</TooltipContent>
             </Tooltip>
           </div>
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "flex items-center gap-1.5 rounded px-2 py-1 text-[10px]",
-                sessions.find(s => s.id === activeSessionId)?.isConnected
-                  ? "bg-green-500/10 text-green-500"
-                  : "bg-red-500/10 text-red-500"
-              )}
-            >
-              <span
-                className={cn(
-                  "h-1 w-1 rounded-full",
-                  sessions.find(s => s.id === activeSessionId)?.isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
-                )}
-              />
-              {sessions.find(s => s.id === activeSessionId)?.isConnected ? "Connected" : "Disconnected"}
-            </div>
-          </div>
         </>
       )}
       status={(
@@ -129,16 +130,31 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
             )}
           >
             <div className="h-full min-h-0 pl-1">
-              <div className="h-full min-h-0 rounded-md shadow-inner">
+              <div className="relative h-full min-h-0 rounded-md shadow-inner">
                 <TerminalInstance
+                  key={`${session.id}-${session.reconnectNonce}`}
                   appId={appId}
                   instanceName={instanceName}
                   containerName={containerName}
                   targetType={targetType}
-                  onConnectionChange={(connected) => {
-                    setSessions(prev => prev.map(s => s.id === session.id ? { ...s, isConnected: connected } : s))
+                  onConnectionStateChange={(state) => {
+                    setSessions(prev => prev.map(s => s.id === session.id ? { ...s, connectionState: state } : s))
                   }}
                 />
+                {activeSessionId === session.id && session.connectionState === "disconnected" && (
+                  <div className="absolute inset-0 z-10 p-4 bg-zinc-950">
+                    <EmptyState
+                      title="Terminal disconnected"
+                      description="The terminal connection was closed. Reconnect to open a new shell session."
+                      icon={Terminal}
+                      actionText="Reconnect"
+                      actionIcon={RefreshCw}
+                      onAction={() => handleReconnectSession(session.id)}
+                      border={false}
+                      className="h-full"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -153,19 +169,22 @@ function TerminalInstance({
   instanceName,
   containerName,
   targetType,
-  onConnectionChange
-}: TerminalPanelProps & { onConnectionChange: (connected: boolean) => void }) {
+  onConnectionStateChange
+}: TerminalPanelProps & { onConnectionStateChange: (state: "connecting" | "connected" | "disconnected") => void }) {
   const terminalRef = React.useRef<HTMLDivElement>(null)
   const xtermRef = React.useRef<XTerm | null>(null)
   const wsRef = React.useRef<WebSocket | null>(null)
-  const onConnectionChangeRef = React.useRef(onConnectionChange)
+  const onConnectionStateChangeRef = React.useRef(onConnectionStateChange)
 
   React.useEffect(() => {
-    onConnectionChangeRef.current = onConnectionChange
-  }, [onConnectionChange])
+    onConnectionStateChangeRef.current = onConnectionStateChange
+  }, [onConnectionStateChange])
 
   React.useEffect(() => {
     if (!terminalRef.current) return
+
+    onConnectionStateChangeRef.current("connecting")
+
 
     let isDisposed = false
     let isIntentionalSocketClose = false
@@ -273,6 +292,7 @@ function TerminalInstance({
 
     if (!token) {
       xterm.writeln("\r\n\x1b[38;5;196m● Authentication required\x1b[0m")
+      onConnectionStateChangeRef.current("disconnected")
       return () => {
         isDisposed = true
         if (initialFitTimer !== null) {
@@ -334,7 +354,7 @@ function TerminalInstance({
           ws.send(JSON.stringify({ type: "resize", cols: xterm.cols, rows: xterm.rows }))
         }
         xterm.focus()
-        onConnectionChangeRef.current(true)
+        onConnectionStateChangeRef.current("connected")
         console.log("WebSocket connected in terminal session")
       }
 
@@ -352,12 +372,12 @@ function TerminalInstance({
         if (isDisposed || isIntentionalSocketClose) {
           return
         }
-        onConnectionChangeRef.current(false)
+        onConnectionStateChangeRef.current("disconnected")
         console.error("WebSocket error in terminal session")
       }
 
       ws.onclose = (event) => {
-        onConnectionChangeRef.current(false)
+        onConnectionStateChangeRef.current("disconnected")
         if (!isDisposed && !isIntentionalSocketClose) {
           console.warn("WebSocket closed in terminal session", {
             code: event.code,

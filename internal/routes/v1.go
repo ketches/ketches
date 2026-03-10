@@ -232,6 +232,7 @@ func setupV1Routes(r *gin.Engine) {
 
 			authorized.GET("/clusters/public", handlers.ListPublicClusters)
 			authorized.GET("/clusters/:clusterID/public", handlers.GetPublicCluster)
+			authorized.GET("/clusters/:clusterID/certificates", handlers.ListClusterCertificates)
 			authorized.GET("/clusters/:clusterID/integrations", handlers.ListClusterIntegrations)
 			authorized.GET("/clusters/:clusterID/storage-classes", handlers.ListStorageClasses)
 			authorized.GET("/clusters/:clusterID/gateway-api-status", handlers.GetClusterGatewayAPIStatus)
@@ -290,7 +291,6 @@ func setupV1Routes(r *gin.Engine) {
 				clusters.POST("/:clusterID/container-registries", handlers.CreateClusterRegistry)
 
 				// Certificates (cluster scope)
-				clusters.GET("/:clusterID/certificates", handlers.ListClusterCertificates)
 				clusters.POST("/:clusterID/certificates", handlers.CreateClusterCertificate)
 				clusters.GET("/:clusterID/certificates/:certID", handlers.GetCertificate)
 				clusters.PUT("/:clusterID/certificates/:certID", handlers.UpdateCertificate)
