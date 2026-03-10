@@ -7,6 +7,7 @@ export interface Env {
   name: string
   description: string
   project_id: string
+  project_name: string
   cluster_id: string
   cluster_name: string
   cluster_namespace: string

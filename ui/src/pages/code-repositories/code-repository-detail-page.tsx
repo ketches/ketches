@@ -1,7 +1,5 @@
-import {
-  codeRepositoriesApi,
-  type BuildSetting,
-} from "@/api/code-repositories"
+import { codeRepositoriesApi, type BuildSetting } from "@/api/code-repositories"
+import { projectsApi } from "@/api/projects"
 import { envsApi } from "@/api/envs"
 import { BuildLogViewer } from "@/components/builds/build-log-viewer"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
@@ -70,7 +68,7 @@ import {
   Trash2
 } from "lucide-react"
 import * as React from "react"
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 function DeploymentErrorPopover({ errorMessage }: { errorMessage: string }) {
@@ -109,18 +107,13 @@ export function CodeRepositoryDetailPage() {
   const [deleteConfigDialogOpen, setDeleteConfigDialogOpen] = React.useState(false)
   const [deletingConfig, setDeletingConfig] = React.useState<BuildSetting | null>(null)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
-  const { activeProjectId, setActiveProjectId } = useProjectStore()
+  const { activeProjectId, activeProjectName, setActiveContextWithNames } = useProjectStore()
   const hasSyncedProjectFromRepoRef = React.useRef(false)
 
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
 
-  // Read project context from navigation state (set when navigating from admin project detail page)
-  const location = useLocation()
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
-  const fromProject = isAdmin
-    ? (location.state as { fromProjectId?: string; fromProjectName?: string } | null)
-    : null
 
   const { data: repo, isLoading, error: repoError } = useQuery({
     queryKey: ["code-repository", repoId],
@@ -133,13 +126,18 @@ export function CodeRepositoryDetailPage() {
   }, [repoId])
 
   React.useEffect(() => {
-    if (!hasSyncedProjectFromRepoRef.current && repo?.project_id && activeProjectId !== repo.project_id) {
-      setActiveProjectId(repo.project_id)
-    }
-    if (repo?.project_id) {
+    if (!hasSyncedProjectFromRepoRef.current && repo?.project_id) {
+      if (activeProjectId !== repo.project_id) {
+        // Fetch project name and set context with names
+        projectsApi.get(repo.project_id).then(project => {
+          setActiveContextWithNames(repo.project_id, project.name, null, null)
+        }).catch(() => {
+          setActiveContextWithNames(repo.project_id, null, null, null)
+        })
+      }
       hasSyncedProjectFromRepoRef.current = true
     }
-  }, [repo?.project_id, activeProjectId, setActiveProjectId])
+  }, [repo?.project_id, activeProjectId, setActiveContextWithNames])
 
   const { data: repos = [] } = useQuery({
     queryKey: ["code-repositories-simple", repo?.project_id],
@@ -609,15 +607,14 @@ export function CodeRepositoryDetailPage() {
       />
     )
   }
-
   const breadcrumbs = [
-    // Prepend project layer when navigating from admin project detail page
-    ...(fromProject?.fromProjectId ? [
+    // Show project layer for admin users when activeProjectId is set
+    ...(isAdmin && activeProjectId ? [
       { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
       {
-        label: fromProject.fromProjectName ?? "Project",
+        label: activeProjectName ?? "Project",
         icon: GalleryVerticalEnd,
-        href: `/projects/${fromProject.fromProjectId}`,
+        href: `/projects/${activeProjectId}`,
       },
     ] : []),
     {

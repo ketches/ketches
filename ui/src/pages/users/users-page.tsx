@@ -63,7 +63,7 @@ export function UsersPage() {
 
   const { data, refetch } = useQuery<ListUsersResponse>({
     queryKey: ['users', pagination.pageIndex, pagination.pageSize, search],
-    queryFn: () => usersApi.list({ page: pagination.pageIndex + 1, pageSize: pagination.pageSize, search }),
+    queryFn: () => usersApi.list({ page: pagination.pageIndex + 1, page_size: pagination.pageSize, search }),
     placeholderData: (previousData) => previousData,
   })
 

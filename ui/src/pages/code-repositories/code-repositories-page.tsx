@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
 import { codeRepositoriesApi, type CodeRepository } from "@/api/code-repositories"
-import { projectsApi } from "@/api/projects"
+
 import { CreateCodeRepositoryDialog } from "@/components/code-repositories/create-code-repository-dialog"
 import { EditCodeRepositoryDialog } from "@/components/code-repositories/edit-code-repository-dialog"
 import { DataTable } from "@/components/data-table/data-table"
@@ -45,12 +45,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
 
-  // Fetch project info when embedded in a project detail tab (for breadcrumb state)
-  const { data: project } = useQuery({
-    queryKey: ["project", projectIdProp],
-    queryFn: () => projectsApi.get(projectIdProp!),
-    enabled: !!projectIdProp,
-  })
+  // const { data: project } = useQuery({
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingRepo, setEditingRepo] = React.useState<CodeRepository | null>(null)
@@ -115,7 +110,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
           </div>
           <div className="min-w-0">
             <span className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
-              onClick={() => navigate(`/code-repositories/${row.original.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>{row.original.name}</span>
+              onClick={() => navigate(`/code-repositories/${row.original.id}`)}>{row.original.name}</span>
             <p className="text-xs text-muted-foreground font-mono truncate">
               {row.original.slug}
             </p>
@@ -288,7 +283,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
                 <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
-                      onClick={() => navigate(`/code-repositories/${repo.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>
+                      onClick={() => navigate(`/code-repositories/${repo.id}`)}>
                       {repo.name}
                     </CardTitle>
                   </div>

@@ -70,22 +70,13 @@ func CreateEnv(c *gin.Context) {
 
 func GetEnv(c *gin.Context) {
 	envID := c.Param("envID")
-	env, err := services.GetEnv(envID)
+	env, err := services.GetEnvWithProjectName(envID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
 
-	api.Success(c, models.EnvResponse{
-		ID:               env.ID,
-		Slug:             env.Slug,
-		Name:             env.Name,
-		Description:      env.Description,
-		ProjectID:        env.ProjectID,
-		ClusterID:        env.ClusterID,
-		ClusterNamespace: env.ClusterNamespace,
-		IsBuildEnv:       env.IsBuildEnv,
-	})
+	api.Success(c, env)
 }
 
 func UpdateEnv(c *gin.Context) {

@@ -22,7 +22,7 @@ import {
   Wrench
 } from "lucide-react"
 import * as React from "react"
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { appsApi } from "@/api/apps"
@@ -61,25 +61,20 @@ export function EnvironmentDetailPage() {
   const activeTab = searchParams.get("tab") || "overview"
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const { activeProjectId, setActiveProjectId } = useProjectStore()
+  const { activeProjectId, activeProjectName, setActiveContextWithNames } = useProjectStore()
   const hasSyncedProjectFromEnvRef = React.useRef(false)
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
 
-  // Read project context from navigation state (set when navigating from admin project detail page)
-  const location = useLocation()
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
-  const fromProject = isAdmin
-    ? (location.state as { fromProjectId?: string; fromProjectName?: string } | null)
-    : null
-
   const { data: envsResponse } = useQuery({
     queryKey: ['envs', activeProjectId],
     queryFn: () => envsApi.list(activeProjectId!),
     enabled: !!activeProjectId,
   })
   const envs = envsResponse?.items ?? []
+  const safeEnvs = Array.isArray(envs) ? envs : []
 
   const { data: env, isLoading: envLoading, error: envError } = useQuery({
     queryKey: ["env", envId],
@@ -93,13 +88,13 @@ export function EnvironmentDetailPage() {
   }, [envId])
 
   React.useEffect(() => {
-    if (!hasSyncedProjectFromEnvRef.current && env?.project_id && activeProjectId !== env.project_id) {
-      setActiveProjectId(env.project_id)
-    }
-    if (env?.project_id) {
+    if (!hasSyncedProjectFromEnvRef.current && env?.project_id) {
+      if (activeProjectId !== env.project_id) {
+        setActiveContextWithNames(env.project_id, env.project_name, null, null)
+      }
       hasSyncedProjectFromEnvRef.current = true
     }
-  }, [env?.project_id, activeProjectId, setActiveProjectId])
+  }, [env?.project_id, env?.project_name, activeProjectId, setActiveContextWithNames])
 
   const { data: appsResponse } = useQuery({
     queryKey: ["apps", envId],
@@ -161,16 +156,14 @@ export function EnvironmentDetailPage() {
     )
   }
 
-  const safeEnvs = Array.isArray(envs) ? envs : []
-
   const breadcrumbs = [
-    // Prepend project layer when navigating from admin project detail page
-    ...(fromProject?.fromProjectId ? [
+    // Show project layer for admin users when activeProjectId is set
+    ...(isAdmin && activeProjectId ? [
       { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
       {
-        label: fromProject.fromProjectName ?? "Project",
+        label: activeProjectName ?? "Project",
         icon: GalleryVerticalEnd,
-        href: `/projects/${fromProject.fromProjectId}`,
+        href: `/projects/${activeProjectId}`,
       },
     ] : []),
     { label: "Environments", icon: Orbit, href: "/environments" },

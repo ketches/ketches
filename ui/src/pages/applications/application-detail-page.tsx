@@ -1,59 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
-import { isAxiosError } from "axios"
-import {
-  Activity,
-  ArrowDown,
-  ArrowUp,
-  Box,
-  ChartLine,
-  ChevronsUpDown,
-  CircleAlert,
-  Clock,
-  ClockCheck,
-  CloudCog,
-  Cog,
-  Copy,
-  Cpu,
-  Edit2,
-  ExternalLink,
-  FileClock,
-  FileCog,
-  FolderGit2,
-  FolderOpen,
-  GalleryVerticalEnd,
-  Hammer,
-  HardDrive,
-  Info,
-  Key,
-  Layers,
-  Layers2,
-  LayoutGrid,
-  List,
-  Loader2,
-  MemoryStick,
-  MoveVertical,
-  Network,
-  Orbit,
-  Pencil,
-  Puzzle,
-  RotateCw,
-  Ruler,
-  Search,
-  Server,
-  Shapes,
-  Share2,
-  Star,
-  Telescope,
-  Terminal as TerminalIcon,
-  Trash2,
-  Zap
-} from "lucide-react"
-import * as React from "react"
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
-import { toast } from "sonner"
-
 import { appFavoritesApi } from "@/api/app-favorite"
 import { appsApi, type App } from "@/api/apps"
 import { clustersApi } from "@/api/clusters"
@@ -108,6 +52,61 @@ import { getAppStatusColor } from "@/lib/app-status"
 import { formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef } from "@tanstack/react-table"
+import { isAxiosError } from "axios"
+import {
+  Activity,
+  ArrowDown,
+  ArrowUp,
+  Box,
+  ChartLine,
+  ChevronsUpDown,
+  CircleAlert,
+  Clock,
+  ClockCheck,
+  CloudCog,
+  Cog,
+  Copy,
+  Cpu,
+  Edit2,
+  ExternalLink,
+  FileClock,
+  FileCog,
+  FolderGit2,
+  FolderOpen,
+  GalleryVerticalEnd,
+  Hammer,
+  HardDrive,
+  Info,
+  Key,
+  Layers,
+  Layers2,
+  LayoutGrid,
+  List,
+  Loader2,
+  MemoryStick,
+  MoveVertical,
+  Network,
+  Orbit,
+  Pencil,
+  Puzzle,
+  RotateCw,
+  Ruler,
+  Search,
+  Server,
+  Shapes,
+  Share2,
+  Star,
+  Telescope,
+  Terminal as TerminalIcon,
+  Trash2,
+  Zap
+} from "lucide-react"
+import * as React from "react"
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import { toast } from "sonner"
 
 
 function ScaleAppPopover({ app }: { app: App }) {
@@ -519,17 +518,12 @@ export function ApplicationDetailPage() {
 
   const currentTab = searchParams.get("tab") || "overview"
   const { openPanel } = useBottomPanel()
-  const { activeProjectId, activeEnvId, setActiveContext, setActiveEnvId } = useProjectStore()
+  const { activeProjectId, activeEnvId, activeProjectName, setActiveContextWithNames } = useProjectStore()
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
 
-  // Read project context from navigation state (set when navigating from admin project detail page)
-  const location = useLocation()
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
-  const fromProject = isAdmin
-    ? (location.state as { fromProjectId?: string; fromProjectName?: string } | null)
-    : null
 
   const { data: app, isLoading, error } = useQuery<App>({
     queryKey: ['app', appId],
@@ -545,6 +539,7 @@ export function ApplicationDetailPage() {
   })
 
   const projectIdToUse = currentEnv?.project_id || activeProjectId
+  const projectNameToUse = currentEnv?.project_name || activeProjectName
 
   const { data: envs = [] } = useQuery({
     queryKey: ['envs-simple', projectIdToUse],
@@ -604,11 +599,11 @@ export function ApplicationDetailPage() {
   React.useEffect(() => {
     if (!hasSyncedContextFromAppRef.current && currentEnv && app?.env_id) {
       if (activeProjectId !== currentEnv.project_id || activeEnvId !== app.env_id) {
-        setActiveContext(currentEnv.project_id, app.env_id)
+        setActiveContextWithNames(currentEnv.project_id, currentEnv.project_name, app.env_id, currentEnv.name)
       }
       hasSyncedContextFromAppRef.current = true
     }
-  }, [currentEnv, app?.env_id, activeProjectId, activeEnvId, setActiveContext])
+  }, [currentEnv, app?.env_id, activeProjectId, activeEnvId, setActiveContextWithNames])
 
   React.useEffect(() => {
     localStorage.setItem(INSTANCES_VIEW_MODE_KEY, viewMode)
@@ -979,18 +974,13 @@ export function ApplicationDetailPage() {
     )
   }
 
-  const breadcrumbs = [
-    // Prepend project layer when navigating from admin project detail page
-    ...(fromProject?.fromProjectId ? [
-      { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
-      {
-        label: fromProject.fromProjectName ?? "Project",
-        icon: GalleryVerticalEnd,
-        href: `/projects/${fromProject.fromProjectId}`,
-      },
-    ] : []),
-    { label: "Applications", icon: Box },
+  const breadcrumbs = isAdmin ? [
+    { label: "Projects", icon: GalleryVerticalEnd },
     {
+      label: projectNameToUse || "Project",
+      icon: GalleryVerticalEnd,
+      href: `/projects/${projectIdToUse}`,
+    }, {
       label: currentEnv?.name || "Environment",
       icon: Orbit,
       href: '/applications',
@@ -1003,7 +993,54 @@ export function ApplicationDetailPage() {
                 <DropdownMenuItem
                   key={env.id}
                   onClick={() => {
-                    setActiveEnvId(env.id)
+                    setActiveContextWithNames(activeProjectId, activeProjectName, env.id, env.name)
+                    navigate('/applications')
+                  }}
+                >
+                  <Orbit className="h-4 w-4" />
+                  {env.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : undefined
+    },
+    {
+      label: app.name,
+      icon: Box,
+      dropdown: safeApps.length > 1 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
+          <DropdownMenuContent align="start" className="w-fit">
+            <DropdownMenuGroup>
+              {safeApps.map(appItem => (
+                <DropdownMenuItem
+                  key={appItem.id}
+                  onClick={() => navigate(`/applications/${appItem.id}`)}
+                >
+                  <Box className="h-4 w-4" />
+                  {appItem.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : undefined
+    }] : [{ label: "Applications", icon: Box }, {
+      label: currentEnv?.name || "Environment",
+      icon: Orbit,
+      href: '/applications',
+      dropdown: safeEnvs.length > 1 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
+          <DropdownMenuContent align="start" className="w-fit">
+            <DropdownMenuGroup>
+              {safeEnvs.map(env => (
+                <DropdownMenuItem
+                  key={env.id}
+                  onClick={() => {
+                    setActiveContextWithNames(activeProjectId, activeProjectName, env.id, env.name)
                     navigate('/applications')
                   }}
                 >

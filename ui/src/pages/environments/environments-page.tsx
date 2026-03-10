@@ -19,7 +19,7 @@ import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
 import { envsApi, type Env } from "@/api/envs"
-import { projectsApi } from "@/api/projects"
+
 import { DataTable } from "@/components/data-table/data-table"
 import { CreateEnvironmentDialog } from "@/components/environment/create-environment-dialog"
 import { EditEnvironmentDialog } from "@/components/environment/edit-environment-dialog"
@@ -62,12 +62,11 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
 
-  // Fetch project info when embedded in a project detail tab (for breadcrumb state)
-  const { data: project } = useQuery({
-    queryKey: ["project", projectIdProp],
-    queryFn: () => projectsApi.get(projectIdProp!),
-    enabled: !!projectIdProp,
-  })
+  // const { data: project } = useQuery({
+  //   queryKey: ["project", projectIdProp],
+  //   queryFn: () => projectsApi.get(projectIdProp!),
+  //   enabled: !!projectIdProp,
+  // })
 
   React.useEffect(() => {
     localStorage.setItem(ENVIRONMENTS_VIEW_MODE_KEY, viewMode)
@@ -123,7 +122,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
             <Orbit className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="font-medium text-xs truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/environments/${row.original.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>
+            <p className="font-medium text-xs truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/environments/${row.original.id}`)}>
               {row.original.name}
             </p>
             <p className="text-xs text-muted-foreground font-mono truncate">
@@ -323,7 +322,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
                     <div className="flex flex-col flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => navigate(`/environments/${env.id}`, { state: projectIdProp && project ? { fromProjectId: projectIdProp, fromProjectName: project.name } : undefined })}>{env.name}</CardTitle>
+                          onClick={() => navigate(`/environments/${env.id}`)}>{env.name}</CardTitle>
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
                         <span>{env.slug}</span>

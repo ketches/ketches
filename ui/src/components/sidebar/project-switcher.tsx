@@ -92,7 +92,7 @@ export function ProjectSwitcher() {
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [selectedProject, setSelectedProject] = React.useState<Project | null>(null)
-  const { hasHydrated, activeProjectId, setActiveProjectId } = useProjectStore()
+  const { hasHydrated, activeProjectId, setActiveContextWithNames } = useProjectStore()
   const navigate = useNavigate()
 
   const { data: projects = [] } = useQuery({
@@ -108,10 +108,10 @@ export function ProjectSwitcher() {
     if (safeProjects.length > 0) {
       const currentProjectExists = safeProjects.some(p => p.id === activeProjectId)
       if (!currentProjectExists) {
-        setActiveProjectId(safeProjects[0].id)
+        setActiveContextWithNames(safeProjects[0].id, safeProjects[0].name, null, null)
       }
     }
-  }, [safeProjects, activeProjectId, setActiveProjectId, hasHydrated])
+  }, [safeProjects, activeProjectId, setActiveContextWithNames, hasHydrated])
 
   const deleteMutation = useMutation({
     mutationFn: (projectId: string) => projectsApi.delete(projectId),
@@ -177,7 +177,7 @@ export function ProjectSwitcher() {
                   key={project.id}
                   project={project}
                   isActive={project.id === activeProjectId}
-                  onSelect={() => { setActiveProjectId(project.id); navigate("/") }}
+                  onSelect={() => { setActiveContextWithNames(project.id, project.name, null, null); navigate("/") }}
                   onEdit={() => handleEdit(project)}
                   onDelete={() => handleDelete(project)}
                 />

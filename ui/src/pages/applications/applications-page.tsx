@@ -18,9 +18,10 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useQuery } from "@tanstack/react-query"
-import { Box, ChevronsUpDown, LayoutList, List, Loader2, Orbit, Plus, Star, Upload } from "lucide-react"
+import { Box, ChevronsUpDown, GalleryVerticalEnd, LayoutList, List, Loader2, Orbit, Plus, Star, Upload } from "lucide-react"
 import * as React from "react"
 
 export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
@@ -29,10 +30,14 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
   const [createGroupDialogOpen, setCreateGroupDialogOpen] = React.useState(false)
   const [importDialogOpen, setImportDialogOpen] = React.useState(false)
 
-  const { hasHydrated, activeProjectId: activeProjectIdFromStore, activeEnvId, setActiveEnvId } = useProjectStore()
+  const { hasHydrated, activeProjectId: activeProjectIdFromStore, activeProjectName, activeEnvId, setActiveContextWithNames } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
+  const projectIdToUse = activeProjectId
+  const projectNameToUse = activeProjectName
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+  const userRole = useAuthStore((state) => state.user?.role)
+  const isAdmin = userRole === 'admin'
 
   const [activeTab, setActiveTab] = React.useState(() => {
     return localStorage.getItem('applications-active-tab') ?? 'all'
@@ -56,6 +61,11 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
   const effectiveEnvId = projectIdProp ? (embeddedEnv?.id ?? null) : activeEnvId
   const effectiveEnv = projectIdProp ? embeddedEnv : activeEnv
 
+  // Helper to set env with name
+  const setActiveEnvWithName = (envId: string | null, envName: string | null) => {
+    setActiveContextWithNames(activeProjectId, activeProjectName, envId, envName)
+  }
+
   React.useEffect(() => {
     if (projectIdProp) {
       // In embedded mode, sync local state when envs load
@@ -69,19 +79,50 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
       // In standalone mode, sync global store
       if (safeEnvs.length > 0) {
         const currentEnvExists = safeEnvs.some(e => e.id === activeEnvId)
-        if (!currentEnvExists) setActiveEnvId(safeEnvs[0].id)
+        if (!currentEnvExists) {
+          const firstEnv = safeEnvs[0]
+          setActiveEnvWithName(firstEnv.id, firstEnv.name)
+        }
       } else {
-        if (activeEnvId !== null) setActiveEnvId(null)
+        if (activeEnvId !== null) setActiveEnvWithName(null, null)
       }
     }
-  }, [safeEnvs, activeEnvId, setActiveEnvId, projectIdProp, embeddedEnvId, hasHydrated, isFetched])
+  }, [safeEnvs, activeEnvId, activeProjectId, activeProjectName, setActiveContextWithNames, projectIdProp, embeddedEnvId, hasHydrated, isFetched])
 
   const handleTabChange = (value: string) => {
     setActiveTab(value)
     localStorage.setItem('applications-active-tab', value)
   }
 
-  const breadcrumbs = [
+  const breadcrumbs = isAdmin ? [
+    { label: "Projects", icon: GalleryVerticalEnd },
+    { label: projectNameToUse || "Projects", icon: GalleryVerticalEnd, href: `/projects/${projectIdToUse}` },
+    {
+      label: activeEnv?.name || "Select Environment",
+      icon: Orbit,
+      dropdown: safeEnvs.length > 1 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="ghost" size="icon-sm">
+                <ChevronsUpDown />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="start" className="w-fit">
+            <DropdownMenuGroup>
+              {safeEnvs.map(env => (
+                <DropdownMenuItem key={env.id} onClick={() => setActiveEnvWithName(env.id, env.name)}>
+                  <Orbit className="h-4 w-4" />
+                  {env.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : undefined
+    }
+  ] : [
     { label: "Applications", icon: Box },
     {
       label: activeEnv?.name || "Select Environment",
@@ -98,7 +139,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
           <DropdownMenuContent align="start" className="w-fit">
             <DropdownMenuGroup>
               {safeEnvs.map(env => (
-                <DropdownMenuItem key={env.id} onClick={() => setActiveEnvId(env.id)}>
+                <DropdownMenuItem key={env.id} onClick={() => setActiveEnvWithName(env.id, env.name)}>
                   <Orbit className="h-4 w-4" />
                   {env.name}
                 </DropdownMenuItem>
@@ -207,7 +248,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
       <CreateEnvironmentDialog
         open={createEnvDialogOpen}
         onOpenChange={setCreateEnvDialogOpen}
-        onSuccess={(env) => { setActiveEnvId(env.id) }}
+        onSuccess={(env) => { setActiveEnvWithName(env.id, env.name) }}
       />
 
       <CreateAppDialog
@@ -230,4 +271,5 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
     </div>
   )
 }
+
 export default ApplicationsPage

@@ -102,6 +102,18 @@ func GetEnv(envID string) (*entities.Env, error) {
 	return &env, nil
 }
 
+func GetEnvWithProjectName(envID string) (*models.EnvResponse, error) {
+	var resp models.EnvResponse
+	if err := db.DB.Model(&entities.Env{}).
+		Select("envs.id, envs.slug, envs.name, envs.description, envs.project_id, envs.cluster_id, envs.cluster_namespace, envs.is_build_env, envs.created_at, projects.name as project_name").
+		Joins("JOIN projects ON projects.id = envs.project_id").
+		Where("envs.id = ?", envID).
+		First(&resp).Error; err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 func GetEnvContext(envID string) (*models.EnvContext, error) {
 	env, err := GetEnv(envID)
 	if err != nil {

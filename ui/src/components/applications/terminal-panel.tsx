@@ -1,15 +1,13 @@
-import { Plus, RefreshCw, Terminal, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
+import { Plus, Terminal, X } from "lucide-react"
 import * as React from "react"
 import { Terminal as XTerm } from "xterm"
 import { FitAddon } from "xterm-addon-fit"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import "xterm/css/xterm.css"
-
-import { EmptyState } from "@/components/shared/empty-state"
-import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
-
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty"
 import { Separator } from "../ui/separator"
 import { WorkloadPanelFrame } from "./workload-panel-frame"
 
@@ -71,8 +69,6 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
                     activeSessionId === session.id ? "bg-secondary" : "",
                   )}
                 >
-                  <Terminal className="h-3 w-3" />
-                  <span className="max-w-20 truncate">{session.name}</span>
                   <span
                     className={cn(
                       "h-1.5 w-1.5 rounded-full",
@@ -82,6 +78,8 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
                     )}
                     title={session.connectionState}
                   />
+                  <Terminal className="h-3 w-3" />
+                  <span className="max-w-20 truncate">{session.name}</span>
                   {sessions.length > 1 && (
                     <X
                       className="ml-1 h-3 w-3 hover:text-red-500"
@@ -143,16 +141,28 @@ export function TerminalPanel({ appId, instanceName, containerName, targetType =
                 />
                 {activeSessionId === session.id && session.connectionState === "disconnected" && (
                   <div className="absolute inset-0 z-10 p-4 bg-zinc-950">
-                    <EmptyState
+                    {/* <EmptyState
                       title="Terminal disconnected"
                       description="The terminal connection was closed. Reconnect to open a new shell session."
-                      icon={Terminal}
+                      // icon={Terminal}
                       actionText="Reconnect"
                       actionIcon={RefreshCw}
                       onAction={() => handleReconnectSession(session.id)}
                       border={false}
                       className="h-full"
-                    />
+                    /> */}
+                    <Empty className="h-full border border-dashed border-amber-500/50 bg-amber-500/10">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon" className="bg-gray-500/20">
+                          <Terminal className="text-gray-500 " />
+                        </EmptyMedia>
+                        <EmptyTitle className="text-amber-500">Terminal disconnected</EmptyTitle>
+                        <EmptyDescription>The terminal connection was closed. Reconnect to open a new shell session.</EmptyDescription>
+                      </EmptyHeader>
+                      <EmptyContent>
+                        <Button onClick={() => handleReconnectSession(session.id)}>Reconnect</Button>
+                      </EmptyContent>
+                    </Empty>
                   </div>
                 )}
               </div>
