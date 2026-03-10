@@ -1,5 +1,5 @@
 import client from './client'
-import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
+import { type PaginationParams, type PaginationResponse } from './pagination'
 
 export interface Project {
   id: string
@@ -46,7 +46,7 @@ export const projectsApi = {
     return client.get('/v1/projects', { params }) as Promise<{ items: Project[], pagination: PaginationResponse }>
   },
   listSimple: async () => {
-    return client.get('/v1/projects/simple') as Promise<SimpleResponse[]>
+    return client.get('/v1/projects/simple') as Promise<Project[]>
   },
   create: async (data: any) => {
     return client.post('/v1/projects', data) as Promise<Project>

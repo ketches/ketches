@@ -57,9 +57,9 @@ func ListProjectContainerRegistries(projectID string, page, pageSize int, search
 	return total, registries, nil
 }
 
-func ListProjectContainerRegistriesSimple(projectID string) ([]models.SimpleContainerRepository, error) {
-	var registries []models.SimpleContainerRepository
-	if err := db.DB.Model(&entities.ContainerRegistry{}).Select("id, name").Where("project_id = ? AND scope = ?", projectID, entities.RegistryScopeProject).Order("created_at").Find(&registries).Error; err != nil {
+func ListProjectContainerRegistriesSimple(projectID string) ([]models.SimpleContainerRegistry, error) {
+	var registries []models.SimpleContainerRegistry
+	if err := db.DB.Model(&entities.ContainerRegistry{}).Select("id, name, provider, endpoint").Where("project_id = ? AND scope = ?", projectID, entities.RegistryScopeProject).Order("created_at").Find(&registries).Error; err != nil {
 		return nil, err
 	}
 	return registries, nil

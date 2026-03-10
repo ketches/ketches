@@ -402,7 +402,7 @@ export function CodeRepositoryDetailPage() {
               >
                 <FileClock />
               </TooltipTrigger>
-              <TooltipContent>View Logs</TooltipContent>
+              <TooltipContent>View Build Logs</TooltipContent>
             </Tooltip>
             {!isViewer && (b.status === "failed" || b.status === "cancelled") && (
               <Tooltip>

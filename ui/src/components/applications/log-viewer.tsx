@@ -9,10 +9,20 @@ interface LogViewerProps {
 
 export function LogViewer({ appId, instanceName, containerName }: LogViewerProps) {
   const [logs, setLogs] = React.useState<string[]>([])
-  const logEndRef = React.useRef<HTMLDivElement>(null)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const autoFollowRef = React.useRef(true)
   const token = useAuthStore((state) => state.accessToken)
 
+  const updateAutoFollowState = React.useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    autoFollowRef.current = distanceToBottom <= 24
+  }, [])
+
   React.useEffect(() => {
+    autoFollowRef.current = true
     if (!token) return
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -27,15 +37,21 @@ export function LogViewer({ appId, instanceName, containerName }: LogViewerProps
   }, [appId, instanceName, containerName, token])
 
   React.useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    const container = containerRef.current
+    if (!container || !autoFollowRef.current) return
+
+    container.scrollTop = container.scrollHeight
   }, [logs])
 
   return (
-    <div className="bg-black text-white p-4 font-mono text-sm h-[400px] overflow-y-auto rounded-lg">
+    <div
+      ref={containerRef}
+      onScroll={updateAutoFollowState}
+      className="bg-black text-white p-4 font-mono text-sm h-100 overflow-y-auto rounded-lg"
+    >
       {logs.map((log, i) => (
         <div key={i}>{log}</div>
       ))}
-      <div ref={logEndRef} />
     </div>
   )
 }

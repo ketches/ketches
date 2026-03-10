@@ -68,7 +68,7 @@ function AdminDashboard() {
     queryFn: () => clustersApi.listSimple(),
   })
 
-  const connectedClusters = clusters.filter((c) => c.status === "connected").length
+  const connectedClusters = clusters.filter((c) => c.connection_status === "connected").length
 
   return (
     <div className="flex flex-col flex-1 gap-6">
@@ -159,8 +159,8 @@ function AdminDashboard() {
                             <p className="text-xs text-muted-foreground font-mono">{cluster.slug}</p>
                           </div>
                         </div>
-                        <ColorBadge color={cluster.status === "connected" ? "green" : cluster.status === "disconnected" ? "red" : "gray"}>
-                          {cluster.status || "unknown"}
+                        <ColorBadge color={cluster.connection_status === "connected" ? "green" : cluster.connection_status === "disconnected" ? "red" : "gray"}>
+                          {cluster.connection_status || "unknown"}
                         </ColorBadge>
                       </div>
                     ))}

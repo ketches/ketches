@@ -1,10 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronsUpDown, GalleryVerticalEnd, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
-import * as React from "react"
-import { useNavigate } from "react-router-dom"
-import { toast } from "sonner"
-
-import { type SimpleResponse } from "@/api/pagination"
 import { projectsApi, type Project } from "@/api/projects"
 import { CreateProjectDialog } from "@/components/project/create-project-dialog"
 import { EditProjectDialog } from "@/components/project/edit-project-dialog"
@@ -34,7 +27,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useProjectStore } from "@/stores/project"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
+import { ChevronsUpDown, GalleryVerticalEnd, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
+import * as React from "react"
+import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 
 function ProjectItem({
   project,
@@ -43,7 +41,7 @@ function ProjectItem({
   onEdit,
   onDelete,
 }: {
-  project: SimpleResponse
+  project: Project
   isActive: boolean
   onSelect: () => void
   onEdit: () => void
@@ -93,7 +91,7 @@ export function ProjectSwitcher() {
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
-  const [selectedProject, setSelectedProject] = React.useState<SimpleResponse | null>(null)
+  const [selectedProject, setSelectedProject] = React.useState<Project | null>(null)
   const { hasHydrated, activeProjectId, setActiveProjectId } = useProjectStore()
   const navigate = useNavigate()
 
@@ -129,12 +127,12 @@ export function ProjectSwitcher() {
     }
   })
 
-  const handleEdit = (project: SimpleResponse) => {
+  const handleEdit = (project: Project) => {
     setSelectedProject(project)
     setEditDialogOpen(true)
   }
 
-  const handleDelete = (project: SimpleResponse) => {
+  const handleDelete = (project: Project) => {
     setSelectedProject(project)
     setDeleteDialogOpen(true)
   }

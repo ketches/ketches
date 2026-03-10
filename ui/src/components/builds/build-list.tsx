@@ -160,7 +160,7 @@ export function BuildList({ appId }: BuildListProps) {
               >
                 <FileClock />
               </TooltipTrigger>
-              <TooltipContent>Build logs</TooltipContent>
+              <TooltipContent>View Build Logs</TooltipContent>
             </Tooltip>
           </div>
         )

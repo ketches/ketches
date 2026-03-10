@@ -1,8 +1,15 @@
 import client from './client'
-import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
+import { type PaginationParams, type PaginationResponse } from './pagination'
 
 export type RegistryProvider = 'dockerhub' | 'harbor' | 'ghcr' | 'acr' | 'ecr' | 'aliyun' | 'custom'
 export type RegistryScope = 'cluster' | 'project'
+
+export interface SimpleContainerRegistry {
+  id: string
+  name: string
+  provider: string
+  endpoint: string
+}
 
 export interface ContainerRegistry {
   id: string
@@ -67,7 +74,7 @@ export const containerRegistriesApi = {
     return client.get(`/v1/projects/${projectId}/container-registries`, { params }) as Promise<{ items: ContainerRegistry[], pagination: PaginationResponse }>
   },
   listSimpleByProject: async (projectId: string) => {
-    return client.get(`/v1/projects/${projectId}/container-registries/simple`) as Promise<SimpleResponse[]>
+    return client.get(`/v1/projects/${projectId}/container-registries/simple`) as Promise<SimpleContainerRegistry[]>
   },
   createForProject: async (projectId: string, data: CreateContainerRegistryRequest) => {
     return client.post(`/v1/projects/${projectId}/container-registries`, data) as Promise<ContainerRegistry>

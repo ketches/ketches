@@ -14,9 +14,22 @@ interface BuildLogViewerProps {
 export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   const [logs, setLogs] = React.useState<string[]>([])
   const editorRef = React.useRef<any>(null)
+  const autoFollowRef = React.useRef(true)
+
+  const isNearBottom = React.useCallback((editor: any) => {
+    const viewportHeight = editor.getLayoutInfo()?.height ?? 0
+    const scrollTop = editor.getScrollTop?.() ?? 0
+    const scrollHeight = editor.getScrollHeight?.() ?? 0
+    // Keep following when user is within a small threshold from the tail.
+    return scrollTop + viewportHeight >= scrollHeight - 24
+  }, [])
 
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor
+    autoFollowRef.current = true
+    editor.onDidScrollChange(() => {
+      autoFollowRef.current = isNearBottom(editor)
+    })
   }
 
   const { theme } = useTheme()
@@ -40,7 +53,7 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   }, [theme])
 
   React.useEffect(() => {
-    if (editorRef.current && logs.length > 0) {
+    if (editorRef.current && logs.length > 0 && autoFollowRef.current) {
       const lineCount = editorRef.current.getModel()?.getLineCount() || 1
       editorRef.current.revealLine(lineCount)
     }
@@ -56,6 +69,7 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   React.useEffect(() => {
     if (!buildId || !repoId) return
     setLogs([])
+    autoFollowRef.current = true
 
     const authData = localStorage.getItem('auth-storage')
     let token = ''

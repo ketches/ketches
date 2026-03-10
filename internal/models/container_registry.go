@@ -2,10 +2,11 @@ package models
 
 import "time"
 
-type SimpleContainerRepository struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+type SimpleContainerRegistry struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Provider string `json:"provider"`
+	Endpoint string `json:"endpoint"`
 }
 
 type CreateContainerRegistryRequest struct {

@@ -1,5 +1,14 @@
 import client from './client'
-import { type PaginationParams, type PaginationResponse, type SimpleResponse } from './pagination'
+import { type PaginationParams, type PaginationResponse } from './pagination'
+
+export interface SimpleCluster {
+  id: string
+  name: string
+  slug: string
+  description: string
+  connection_status?: string
+  enabled: boolean
+}
 
 export interface Cluster {
   id: string
@@ -95,7 +104,7 @@ export const clustersApi = {
   },
 
   listSimple: async () => {
-    return client.get('/v1/clusters/simple') as Promise<SimpleResponse[]>
+    return client.get('/v1/clusters/simple') as Promise<SimpleCluster[]>
   },
 
   listPublic: async () => {
