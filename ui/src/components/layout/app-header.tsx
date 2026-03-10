@@ -5,7 +5,7 @@ import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { useBreadcrumbs } from "@/contexts/breadcrumb-context"
+import { useBreadcrumbs } from "@/contexts/use-breadcrumbs"
 
 export function AppHeader() {
   const { breadcrumbs } = useBreadcrumbs()
@@ -16,7 +16,7 @@ export function AppHeader() {
         <SidebarTrigger className="-ml-1 text-muted-foreground" />
         <Separator
           orientation="vertical"
-          className="mr-2 data-[orientation=vertical]:h-4 !self-center"
+          className="mr-2 data-[orientation=vertical]:h-4 self-center!"
         />
         <div className="flex items-center gap-2">
           {(breadcrumbs ?? []).map((item, index) => (

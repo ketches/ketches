@@ -1,6 +1,6 @@
 import { codeRepositoriesApi, type BuildSetting } from "@/api/code-repositories"
-import { projectsApi } from "@/api/projects"
 import { envsApi } from "@/api/envs"
+import { projectsApi } from "@/api/projects"
 import { BuildLogViewer } from "@/components/builds/build-log-viewer"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
 import { CreateBuildSettingDialog } from "@/components/code-repositories/create-build-setting-dialog"
@@ -37,6 +37,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
@@ -112,7 +113,6 @@ export function CodeRepositoryDetailPage() {
 
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
-
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 
   const { data: repo, isLoading, error: repoError } = useQuery({
@@ -607,21 +607,17 @@ export function CodeRepositoryDetailPage() {
       />
     )
   }
-  const breadcrumbs = [
-    // Show project layer for admin users when activeProjectId is set
-    ...(isAdmin && activeProjectId ? [
-      { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
-      {
-        label: activeProjectName ?? "Project",
-        icon: GalleryVerticalEnd,
-        href: `/projects/${activeProjectId}`,
-      },
-    ] : []),
-    {
-      label: "Code Repositories",
-      href: "/code-repositories",
-      icon: FolderGit2,
-    },
+  const breadcrumbs: BreadcrumbItem[] = isAdmin ? [{ label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+  {
+    label: activeProjectName ?? "Project",
+    icon: GalleryVerticalEnd,
+    href: `/projects/${activeProjectId}`,
+  }] : [{
+    label: "Code Repositories",
+    href: "/code-repositories",
+    icon: FolderGit2,
+  }]
+  breadcrumbs.push(
     {
       label: repo.name,
       icon: FolderGit2,
@@ -650,9 +646,7 @@ export function CodeRepositoryDetailPage() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : undefined,
-    },
-  ]
-
+    })
 
   const totalBuilds = builds.length
   const successfulBuilds = builds.filter((b) => b.status === "succeeded").length

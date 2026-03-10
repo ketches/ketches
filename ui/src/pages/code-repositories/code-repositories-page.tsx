@@ -5,6 +5,7 @@ import {
   Clock,
   Copy,
   FolderGit2,
+  GalleryVerticalEnd,
   LayoutGrid,
   Link,
   List as ListIcon,
@@ -31,8 +32,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 
 const CODE_REPOS_VIEW_MODE_KEY = "code_repositories_view_mode"
@@ -44,6 +47,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 
   // const { data: project } = useQuery({
   const [createOpen, setCreateOpen] = React.useState(false)
@@ -203,7 +207,11 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
     })
   }
 
-  const breadcrumbs = [{ label: "Code Repositories", icon: FolderGit2 }]
+  const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
+    { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+    { label: `Project ${activeProjectId}`, icon: GalleryVerticalEnd, href: `/projects/${activeProjectId}` },
+    { label: "Code Repositories", icon: FolderGit2 }
+  ] : [{ label: "Code Repositories", icon: FolderGit2 }]
 
   if (!activeProjectId) {
     return (

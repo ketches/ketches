@@ -47,6 +47,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useBottomPanel } from "@/contexts/bottom-panel-context"
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { getAppStatusColor } from "@/lib/app-status"
 import { formatDate } from "@/lib/utils"
@@ -974,108 +975,63 @@ export function ApplicationDetailPage() {
     )
   }
 
-  const breadcrumbs = isAdmin ? [
+  const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
     { label: "Projects", icon: GalleryVerticalEnd },
     {
       label: projectNameToUse || "Project",
       icon: GalleryVerticalEnd,
       href: `/projects/${projectIdToUse}`,
-    }, {
-      label: currentEnv?.name || "Environment",
-      icon: Orbit,
-      href: '/applications',
-      dropdown: safeEnvs.length > 1 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-fit">
-            <DropdownMenuGroup>
-              {safeEnvs.map(env => (
-                <DropdownMenuItem
-                  key={env.id}
-                  onClick={() => {
-                    setActiveContextWithNames(activeProjectId, activeProjectName, env.id, env.name)
-                    navigate('/applications')
-                  }}
-                >
-                  <Orbit className="h-4 w-4" />
-                  {env.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : undefined
-    },
-    {
-      label: app.name,
-      icon: Box,
-      dropdown: safeApps.length > 1 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-fit">
-            <DropdownMenuGroup>
-              {safeApps.map(appItem => (
-                <DropdownMenuItem
-                  key={appItem.id}
-                  onClick={() => navigate(`/applications/${appItem.id}`)}
-                >
-                  <Box className="h-4 w-4" />
-                  {appItem.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : undefined
-    }] : [{ label: "Applications", icon: Box }, {
-      label: currentEnv?.name || "Environment",
-      icon: Orbit,
-      href: '/applications',
-      dropdown: safeEnvs.length > 1 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-fit">
-            <DropdownMenuGroup>
-              {safeEnvs.map(env => (
-                <DropdownMenuItem
-                  key={env.id}
-                  onClick={() => {
-                    setActiveContextWithNames(activeProjectId, activeProjectName, env.id, env.name)
-                    navigate('/applications')
-                  }}
-                >
-                  <Orbit className="h-4 w-4" />
-                  {env.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : undefined
-    },
-    {
-      label: app.name,
-      icon: Box,
-      dropdown: safeApps.length > 1 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
-          <DropdownMenuContent align="start" className="w-fit">
-            <DropdownMenuGroup>
-              {safeApps.map(appItem => (
-                <DropdownMenuItem
-                  key={appItem.id}
-                  onClick={() => navigate(`/applications/${appItem.id}`)}
-                >
-                  <Box className="h-4 w-4" />
-                  {appItem.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : undefined
-    }
+    }] : [{ label: "Applications", icon: Box }
   ]
+
+  breadcrumbs.push({
+    label: currentEnv?.name || "Environment",
+    icon: Orbit,
+    href: '/applications',
+    dropdown: safeEnvs.length > 1 ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
+        <DropdownMenuContent align="start" className="w-fit">
+          <DropdownMenuGroup>
+            {safeEnvs.map(env => (
+              <DropdownMenuItem
+                key={env.id}
+                onClick={() => {
+                  setActiveContextWithNames(activeProjectId, activeProjectName, env.id, env.name)
+                  navigate('/applications')
+                }}
+              >
+                <Orbit className="h-4 w-4" />
+                {env.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : undefined
+  },
+    {
+      label: app.name,
+      icon: Box,
+      dropdown: safeApps.length > 1 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
+          <DropdownMenuContent align="start" className="w-fit">
+            <DropdownMenuGroup>
+              {safeApps.map(appItem => (
+                <DropdownMenuItem
+                  key={appItem.id}
+                  onClick={() => navigate(`/applications/${appItem.id}`)}
+                >
+                  <Box className="h-4 w-4" />
+                  {appItem.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : undefined
+    })
 
   return (
     <div className="flex flex-col flex-1 gap-6">

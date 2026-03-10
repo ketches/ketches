@@ -5,6 +5,7 @@ import {
   BrickWall,
   Clock,
   Copy,
+  GalleryVerticalEnd,
   LayoutGrid,
   List as ListIcon,
   Loader2,
@@ -36,8 +37,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 
 const ENVIRONMENTS_VIEW_MODE_KEY = "environments_view_mode"
@@ -57,16 +60,12 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
   const [searchQuery, setSearchQuery] = React.useState("")
   const debouncedSearch = useDebounce(searchQuery, 300)
 
-  const { activeProjectId: activeProjectIdFromStore } = useProjectStore()
+  const { activeProjectId: activeProjectIdFromStore, activeProjectName } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
+  const projectNameToUse = activeProjectName
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
-
-  // const { data: project } = useQuery({
-  //   queryKey: ["project", projectIdProp],
-  //   queryFn: () => projectsApi.get(projectIdProp!),
-  //   enabled: !!projectIdProp,
-  // })
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 
   React.useEffect(() => {
     localStorage.setItem(ENVIRONMENTS_VIEW_MODE_KEY, viewMode)
@@ -231,10 +230,12 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
       ),
     },
   ]
+  const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
+    { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+    { label: projectNameToUse || "Projects", icon: GalleryVerticalEnd, href: `/projects/${activeProjectId}` },
+  ] : []
+  breadcrumbs.push({ label: "Environments", icon: Orbit })
 
-  const breadcrumbs = [
-    { label: "Environments", icon: Orbit }
-  ]
 
   const toolbarLeft = (
     <Input className="flex flex-1 max-w-sm min-w-75"

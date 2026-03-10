@@ -1,5 +1,6 @@
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
+import { useBreadcrumbs } from "@/contexts/use-breadcrumbs"
 import { useEffect } from "react"
-import { useBreadcrumbs, type BreadcrumbItem } from "@/contexts/breadcrumb-context"
 
 export function PageHeader({ items }: { items: BreadcrumbItem[] }) {
   const { setBreadcrumbs } = useBreadcrumbs()

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/combobox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
@@ -94,62 +95,37 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
     localStorage.setItem('applications-active-tab', value)
   }
 
-  const breadcrumbs = isAdmin ? [
-    { label: "Projects", icon: GalleryVerticalEnd },
+  const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
+    { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
     { label: projectNameToUse || "Projects", icon: GalleryVerticalEnd, href: `/projects/${projectIdToUse}` },
-    {
-      label: activeEnv?.name || "Select Environment",
-      icon: Orbit,
-      dropdown: safeEnvs.length > 1 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="icon-sm">
-                <ChevronsUpDown />
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="start" className="w-fit">
-            <DropdownMenuGroup>
-              {safeEnvs.map(env => (
-                <DropdownMenuItem key={env.id} onClick={() => setActiveEnvWithName(env.id, env.name)}>
-                  <Orbit className="h-4 w-4" />
-                  {env.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : undefined
-    }
   ] : [
     { label: "Applications", icon: Box },
-    {
-      label: activeEnv?.name || "Select Environment",
-      icon: Orbit,
-      dropdown: safeEnvs.length > 1 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="icon-sm">
-                <ChevronsUpDown />
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="start" className="w-fit">
-            <DropdownMenuGroup>
-              {safeEnvs.map(env => (
-                <DropdownMenuItem key={env.id} onClick={() => setActiveEnvWithName(env.id, env.name)}>
-                  <Orbit className="h-4 w-4" />
-                  {env.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : undefined
-    }
   ]
+  breadcrumbs.push({
+    label: activeEnv?.name || "Select Environment",
+    icon: Orbit,
+    dropdown: safeEnvs.length > 1 ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button variant="ghost" size="icon-sm">
+              <ChevronsUpDown />
+            </Button>
+          }
+        />
+        <DropdownMenuContent align="start" className="w-fit">
+          <DropdownMenuGroup>
+            {safeEnvs.map(env => (
+              <DropdownMenuItem key={env.id} onClick={() => setActiveEnvWithName(env.id, env.name)}>
+                <Orbit className="h-4 w-4" />
+                {env.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : undefined,
+  })
 
   return (
     <div className="flex flex-col flex-1 gap-6">

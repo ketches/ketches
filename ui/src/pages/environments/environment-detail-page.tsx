@@ -50,6 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 
@@ -61,13 +62,12 @@ export function EnvironmentDetailPage() {
   const activeTab = searchParams.get("tab") || "overview"
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const { activeProjectId, activeProjectName, setActiveContextWithNames } = useProjectStore()
+  const { activeProjectId, activeProjectName, activeEnvId, setActiveContextWithNames } = useProjectStore()
   const hasSyncedProjectFromEnvRef = React.useRef(false)
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
-  const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
-
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
+  const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
   const { data: envsResponse } = useQuery({
     queryKey: ['envs', activeProjectId],
     queryFn: () => envsApi.list(activeProjectId!),
@@ -89,8 +89,8 @@ export function EnvironmentDetailPage() {
 
   React.useEffect(() => {
     if (!hasSyncedProjectFromEnvRef.current && env?.project_id) {
-      if (activeProjectId !== env.project_id) {
-        setActiveContextWithNames(env.project_id, env.project_name, null, null)
+      if (activeProjectId !== env.project_id || activeEnvId !== env.id) {
+        setActiveContextWithNames(env.project_id, env.project_name, env.id, env.name)
       }
       hasSyncedProjectFromEnvRef.current = true
     }
@@ -156,17 +156,15 @@ export function EnvironmentDetailPage() {
     )
   }
 
-  const breadcrumbs = [
-    // Show project layer for admin users when activeProjectId is set
-    ...(isAdmin && activeProjectId ? [
-      { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
-      {
-        label: activeProjectName ?? "Project",
-        icon: GalleryVerticalEnd,
-        href: `/projects/${activeProjectId}`,
-      },
-    ] : []),
-    { label: "Environments", icon: Orbit, href: "/environments" },
+  const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
+    { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
+    {
+      label: activeProjectName ?? "Project",
+      icon: GalleryVerticalEnd,
+      href: `/projects/${activeProjectId}`,
+    },
+  ] : [{ label: "Environments", icon: Orbit, href: "/environments" }]
+  breadcrumbs.push(
     {
       label: env.name,
       icon: Orbit,
@@ -178,7 +176,10 @@ export function EnvironmentDetailPage() {
               {safeEnvs.map(e => (
                 <DropdownMenuItem
                   key={e.id}
-                  onClick={() => navigate(`/environments/${e.id}`)}
+                  onClick={() => {
+                    setActiveContextWithNames(activeProjectId, activeProjectName, env.id, env.name)
+                    navigate(`/environments/${e.id}`)
+                  }}
                 >
                   <Orbit className="h-4 w-4" />
                   {e.name}
@@ -188,8 +189,7 @@ export function EnvironmentDetailPage() {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : undefined
-    },
-  ]
+    })
 
   return (
     <div className="flex flex-col flex-1 gap-6">
