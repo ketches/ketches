@@ -24,13 +24,8 @@ func ListAppBuilds(c *gin.Context) {
 		return
 	}
 
-	res := make([]models.BuildResponse, 0, len(builds))
-	for _, b := range builds {
-		res = append(res, services.ToBuildResponse(c.Request.Context(), &b))
-	}
-
 	api.Success(c, gin.H{
-		"items":      res,
+		"items":      builds,
 		"pagination": models.BuildPaginationResponse(total, req.Page, req.PageSize),
 	})
 }

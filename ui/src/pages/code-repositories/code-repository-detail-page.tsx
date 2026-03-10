@@ -55,6 +55,7 @@ import {
   FileClock,
   FolderGit2,
   GalleryVerticalEnd,
+  GitBranch,
   Hammer,
   History,
   Info,
@@ -240,7 +241,9 @@ export function CodeRepositoryDetailPage() {
     {
       accessorKey: "git_ref",
       header: "Ref",
-      cell: ({ row }) => row.original.git_ref || "main",
+      cell: ({ row }) => <span className="flex items-center text-muted-foreground gap-1.5 text-sm">
+        <GitBranch className="h-3 w-3" />{row.original.git_ref}
+      </span>,
     },
     {
       accessorKey: "dockerfile_path",
@@ -354,13 +357,12 @@ export function CodeRepositoryDetailPage() {
       ),
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => <BuildStatusBadge status={row.original.status} />,
-    },
-    {
       accessorKey: "git_ref",
       header: "Ref",
+      cell: ({ row }) =>
+        <span className="flex items-center text-muted-foreground gap-1.5 text-sm">
+          <GitBranch className="h-3 w-3" />{row.original.git_ref}
+        </span>
     },
     {
       accessorKey: "image_full_name",
@@ -389,6 +391,11 @@ export function CodeRepositoryDetailPage() {
       accessorKey: "duration",
       header: "Duration",
       cell: ({ row }) => row.original.duration ? formatDuration(row.original.duration) : "-",
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => <BuildStatusBadge status={row.original.status} />,
     },
     {
       accessorKey: "created_at",
@@ -480,26 +487,11 @@ export function CodeRepositoryDetailPage() {
       cell: ({ row }) => <span className="font-medium">{row.original.build_number}</span>,
     },
     {
-      id: "environment",
-      header: "Environment",
-      cell: ({ row }) => row.original.env_name ?? "-",
-    },
-    {
-      id: "application",
-      header: "Application",
-      cell: ({ row }) => {
-        const d = row.original
-        return (
-          <Button
-            variant="link"
-            className="p-0 h-auto text-xs"
-            onClick={() => navigate(`/applications/${d.app_id}`)}
-          >
-            <ExternalLink />
-            {d.app_name}
-          </Button>
-        )
-      },
+      accessorKey: "git_ref",
+      header: "Ref",
+      cell: ({ row }) => <span className="flex items-center text-muted-foreground gap-1.5 text-sm">
+        <GitBranch className="h-3 w-3" />{row.original.git_ref}
+      </span>,
     },
     {
       accessorKey: "image_full_name",
@@ -525,9 +517,26 @@ export function CodeRepositoryDetailPage() {
       ),
     },
     {
-      accessorKey: "git_ref",
-      header: "Ref",
-      cell: ({ row }) => <span className="text-xs">{row.original.git_ref}</span>,
+      id: "environment",
+      header: "Environment",
+      cell: ({ row }) => row.original.env_name ?? "-",
+    },
+    {
+      id: "application",
+      header: "Application",
+      cell: ({ row }) => {
+        const d = row.original
+        return (
+          <Button
+            variant="link"
+            className="p-0 h-auto text-xs"
+            onClick={() => navigate(`/applications/${d.app_id}`)}
+          >
+            <ExternalLink />
+            {d.app_name}
+          </Button>
+        )
+      },
     },
     {
       accessorKey: "status",

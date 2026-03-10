@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { Clock, Copy, FileClock, FolderGit2, Loader2, Package, User } from "lucide-react"
+import { Clock, Copy, FileClock, GitBranch, Loader2, Package, User } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -14,11 +14,30 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatDate } from "@/lib/utils"
 
 interface BuildListProps {
   appId: string
+}
+
+function DeploymentErrorPopover({ errorMessage }: { errorMessage: string }) {
+  const [open, setOpen] = React.useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={<button type="button" className="inline-flex items-center" />}
+      >
+        <BuildStatusBadge status="failed" />
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" className="w-md max-w-[calc(100vw-2rem)] gap-2">
+        <p className="text-xs font-medium text-destructive">Deployment failed</p>
+        <p className="text-xs text-muted-foreground wrap-break-word whitespace-pre-wrap">{errorMessage}</p>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 export function BuildList({ appId }: BuildListProps) {
@@ -59,22 +78,17 @@ export function BuildList({ appId }: BuildListProps) {
       id: "build_number",
       header: "#",
       cell: ({ row }) => (
-        <span className="flex items-center gap-1 text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-muted-foreground">
           {row.original.build_number}
         </span>
       ),
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => <BuildStatusBadge status={row.original.status} />,
-    },
-    {
       accessorKey: "git_ref",
       header: "Git Ref",
       cell: ({ row }) => (
-        <span className="flex items-center text-muted-foreground gap-1 text-sm">
-          <FolderGit2 className="h-3 w-3" />{row.original.git_ref}
+        <span className="flex items-center text-muted-foreground gap-1.5 text-sm">
+          <GitBranch className="h-3 w-3" />{row.original.git_ref}
         </span>
       ),
     },
@@ -107,7 +121,7 @@ export function BuildList({ appId }: BuildListProps) {
         const build = row.original
         if (build.duration > 0) {
           return (
-            <span className="flex items-center gap-1 text-xs">
+            <span className="flex items-center gap-1.5 text-xs">
               <Clock className="h-3 w-3" />{formatDuration(build.duration)}
             </span>
           )
@@ -126,6 +140,29 @@ export function BuildList({ appId }: BuildListProps) {
           <User className="h-3 w-3" />{row.original.trigger_type}
         </span>
       ),
+    },
+    {
+      accessorKey: "status",
+      header: "Build Status",
+      cell: ({ row }) => <BuildStatusBadge status={row.original.status} />,
+    },
+    {
+      id: "deploy_status",
+      header: "Deploy Status",
+      cell: ({ row }) => {
+        const deployStatus = row.original.deploy_status
+        const deployErrorMessage = row.original.deployment_error_message
+
+        if (!deployStatus) {
+          return "-"
+        }
+
+        if (deployStatus === "failed" && deployErrorMessage) {
+          return <DeploymentErrorPopover errorMessage={deployErrorMessage} />
+        }
+
+        return <BuildStatusBadge status={deployStatus} className={deployStatus === "failed" ? "cursor-pointer" : ""} />
+      },
     },
     {
       accessorKey: "created_at",

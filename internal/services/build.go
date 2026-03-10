@@ -20,16 +20,56 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func ListAppBuilds(appID string, page, pageSize int) (int64, []entities.Build, error) {
+func ListAppBuilds(appID string, page, pageSize int) (int64, []models.AppBuildResponse, error) {
 	var total int64
-	var builds []entities.Build
+	var builds []models.AppBuildResponse
 	query := db.DB.Model(&entities.Build{}).
-		Joins("JOIN build_deployments ON build_deployments.build_id = builds.id").
-		Where("build_deployments.app_id = ?", appID)
+		Where(`
+			EXISTS (
+				SELECT 1
+				FROM build_deployments bd
+				WHERE bd.build_id = builds.id
+				  AND bd.app_id = ?
+			)
+		`, appID)
 	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, err
 	}
-	if err := query.Order("build_number DESC").
+	if err := query.
+		Select(`
+			builds.id AS id,
+			'' AS build_setting_name,
+			builds.build_setting_id AS build_setting_id,
+			builds.build_number AS build_number,
+			builds.status AS status,
+			COALESCE(latest_bd.status, '') AS deploy_status,
+			builds.build_env_id AS build_env_id,
+			COALESCE(builds.git_repo_url, '') AS git_repo_url,
+			COALESCE(builds.git_ref, '') AS git_ref,
+			COALESCE(builds.git_commit_sha, '') AS git_commit_sha,
+			COALESCE(builds.git_commit_msg, '') AS git_commit_msg,
+			COALESCE(builds.image_full_name, '') AS image_full_name,
+			COALESCE(builds.trigger_type, '') AS trigger_type,
+			COALESCE(builds.triggered_by, '') AS triggered_by,
+			COALESCE(builds.job_name, '') AS job_name,
+			COALESCE(builds.job_namespace, '') AS job_namespace,
+			builds.started_at AS started_at,
+			builds.completed_at AS completed_at,
+			builds.duration AS duration,
+			COALESCE(builds.error_message, '') AS error_message,
+			COALESCE(latest_bd.error_message, '') AS deployment_error_message,
+			builds.created_at AS created_at
+		`).
+		Joins(`
+			LEFT JOIN build_deployments latest_bd ON latest_bd.id = (
+				SELECT bd2.id
+				FROM build_deployments bd2
+				WHERE bd2.build_id = builds.id AND bd2.app_id = ?
+				ORDER BY bd2.created_at DESC
+				LIMIT 1
+			)
+		`, appID).
+		Order("builds.build_number DESC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&builds).Error; err != nil {

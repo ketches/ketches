@@ -19,6 +19,7 @@ export interface Build {
   build_setting_id: string
   build_number: number
   status: BuildStatus
+  deploy_status?: BuildStatus | ''
   build_env_id: string
   git_repo_url: string
   git_ref: string
@@ -33,6 +34,7 @@ export interface Build {
   completed_at: string | null
   duration: number
   error_message: string
+  deployment_error_message?: string
   created_at: string
 }
 
