@@ -9,6 +9,7 @@ import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Combobox,
@@ -18,14 +19,17 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useDebounce } from "@/hooks/use-debounce"
-import { formatDate } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { format, subDays } from "date-fns"
+import { format, parseISO, subDays } from "date-fns"
+import type { DateRange } from "react-day-picker"
 import {
   Activity,
+  CalendarIcon,
   CheckCircle2,
   Download,
   Loader2,
@@ -120,6 +124,10 @@ export function ActivitiesPage() {
   const sevenDaysAgo = subDays(now, 7)
   const [start, setStart] = React.useState(format(sevenDaysAgo, "yyyy-MM-dd'T'HH:mm"))
   const [end, setEnd] = React.useState(format(now, "yyyy-MM-dd'T'HH:mm"))
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: parseISO(format(sevenDaysAgo, "yyyy-MM-dd'T'HH:mm")),
+    to: parseISO(format(now, "yyyy-MM-dd'T'HH:mm")),
+  })
   const [sensitivity, setSensitivity] = React.useState<"all" | OperationLogSensitivity>("all")
   const [status, setStatus] = React.useState<"all" | OperationLogStatus>("all")
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
@@ -138,6 +146,16 @@ export function ActivitiesPage() {
       setRetentionDays(String(settings.retention_days))
     }
   }, [settings])
+
+  React.useEffect(() => {
+    if (dateRange?.from) {
+      setStart(format(dateRange.from, "yyyy-MM-dd'T'HH:mm"))
+    }
+    if (dateRange?.to) {
+      setEnd(format(dateRange.to, "yyyy-MM-dd'T'HH:mm"))
+    }
+    setPagination((p) => ({ ...p, pageIndex: 0 }))
+  }, [dateRange])
 
   const { data: response, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -358,25 +376,41 @@ export function ActivitiesPage() {
               </ComboboxContent>
             </Combobox>
 
-            <Input
-              className="w-full sm:w-52"
-              type="datetime-local"
-              value={start}
-              onChange={(e) => {
-                setStart(e.target.value)
-                setPagination((p) => ({ ...p, pageIndex: 0 }))
-              }}
-            />
-
-            <Input
-              className="w-full sm:w-52"
-              type="datetime-local"
-              value={end}
-              onChange={(e) => {
-                setEnd(e.target.value)
-                setPagination((p) => ({ ...p, pageIndex: 0 }))
-              }}
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[260px] justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "LLL dd, y")} -{" "}
+                        {format(dateRange.to, "LLL dd, y")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pick a date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
 
             <Combobox
               value={sensitivity}
