@@ -1,4 +1,77 @@
 components:
+  schemas:
+    AppBuildListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/AppBuildResponse'
+          type: array
+        pagination:
+          $ref: '#/components/schemas/PaginationResponse'
+      type: object
+    AppBuildResponse:
+      properties:
+        build_env_id:
+          type: string
+        build_number:
+          type: integer
+        build_setting_id:
+          type: string
+        build_setting_name:
+          type: string
+        completed_at:
+          format: date-time
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        deploy_status:
+          type: string
+        deployment_error_message:
+          type: string
+        duration:
+          type: integer
+        error_message:
+          type: string
+        git_commit_msg:
+          type: string
+        git_commit_sha:
+          type: string
+        git_ref:
+          type: string
+        git_repo_url:
+          type: string
+        id:
+          type: string
+        image_full_name:
+          type: string
+        job_name:
+          type: string
+        job_namespace:
+          type: string
+        started_at:
+          format: date-time
+          nullable: true
+          type: string
+        status:
+          type: string
+        trigger_type:
+          type: string
+        triggered_by:
+          type: string
+      type: object
+    PaginationResponse:
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+      type: object
   securitySchemes:
     BearerAuth:
       bearerFormat: JWT
@@ -497,6 +570,10 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppBuildListResponse'
         "400":
           description: Bad Request
         "401":

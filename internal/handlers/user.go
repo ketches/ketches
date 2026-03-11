@@ -46,7 +46,7 @@ func SignIn(c *gin.Context) {
 		return
 	}
 
-	user, err := services.SignIn(&req)
+	user, mustChangePassword, err := services.SignIn(&req)
 	if err != nil {
 		api.Error(c, http.StatusUnauthorized, err)
 		return
@@ -73,8 +73,15 @@ func SignIn(c *gin.Context) {
 			Role:      user.Role,
 			CreatedAt: user.CreatedAt,
 		},
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		AccessToken:        accessToken,
+		RefreshToken:       refreshToken,
+		MustChangePassword: mustChangePassword,
+		DefaultPasswordNotice: func() string {
+			if mustChangePassword {
+				return "You are using the default administrator credentials. Please change the password as soon as possible."
+			}
+			return ""
+		}(),
 	})
 }
 

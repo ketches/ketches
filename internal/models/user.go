@@ -26,9 +26,11 @@ type SignInRequest struct {
 }
 
 type SignInResponse struct {
-	User         UserResponse `json:"user"`
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
+	User                  UserResponse `json:"user"`
+	AccessToken           string       `json:"access_token"`
+	RefreshToken          string       `json:"refresh_token"`
+	MustChangePassword    bool         `json:"must_change_password"`
+	DefaultPasswordNotice string       `json:"default_password_notice"`
 }
 
 type UserResponse struct {

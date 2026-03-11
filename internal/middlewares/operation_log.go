@@ -1,0 +1,163 @@
+package middlewares
+
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/services"
+)
+
+const maxOperationLogBodySize = 4096
+
+func OperationLog() gin.HandlerFunc {
+	rules := operationLogRouteRules()
+	return func(c *gin.Context) {
+		if shouldSkipOperationLog(c) {
+			c.Next()
+			return
+		}
+
+		bodySummary, bodyAction, bodyUsername := captureRequestBody(c)
+		c.Next()
+
+		fullPath := c.FullPath()
+		if fullPath == "" {
+			return
+		}
+		rule, ok := rules[c.Request.Method+" "+fullPath]
+		if !ok {
+			return
+		}
+
+		action := rule.Action
+		sensitivity := rule.Sensitivity
+		if rule.BodyActionField != "" && bodyAction != "" {
+			if mapped, exists := rule.BodyActionToAction[bodyAction]; exists {
+				action = mapped
+			}
+			if mapped, exists := rule.BodyActionSensitive[bodyAction]; exists {
+				sensitivity = mapped
+			}
+		}
+
+		status := entities.OperationLogStatusSuccess
+		if c.Writer.Status() >= http.StatusBadRequest {
+			status = entities.OperationLogStatusFailure
+		}
+
+		claims := api.GetClaims(c)
+		resourceID := c.Param(rule.ResourceIDParam)
+		projectID, envID, appID, repoID := resolveOperationContextIDs(c)
+		if rule.ResourceIDParam == "appID" && appID == "" {
+			appID = resourceID
+		}
+		if rule.ResourceIDParam == "repoID" && repoID == "" {
+			repoID = resourceID
+		}
+
+		input := services.CreateOperationLogInput{
+			Action:         action,
+			ResourceType:   rule.ResourceType,
+			ResourceID:     resourceID,
+			Status:         status,
+			StatusCode:     c.Writer.Status(),
+			Sensitivity:    sensitivity,
+			RequestSummary: bodySummary,
+			ClientIP:       c.ClientIP(),
+			ProjectID:      projectID,
+			EnvID:          envID,
+			AppID:          appID,
+			RepoID:         repoID,
+		}
+		if claims != nil {
+			input.UserID = claims.UserID
+			input.Username = claims.Username
+		} else if bodyUsername != "" {
+			input.Username = bodyUsername
+		}
+		if input.Username == "" {
+			input.Username = "anonymous"
+		}
+		_ = services.CreateOperationLog(input)
+	}
+}
+
+func shouldSkipOperationLog(c *gin.Context) bool {
+	if c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead || c.Request.Method == http.MethodOptions {
+		return false
+	}
+	path := c.Request.URL.Path
+	return strings.Contains(path, "/logs") ||
+		strings.Contains(path, "/exec") ||
+		strings.Contains(path, "/proxy/") ||
+		strings.Contains(path, "/upload") ||
+		strings.Contains(path, "/download") ||
+		strings.Contains(path, "/files")
+}
+
+func captureRequestBody(c *gin.Context) (string, string, string) {
+	if c.Request.Body == nil {
+		return "", "", ""
+	}
+	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxOperationLogBodySize+1))
+	if err != nil {
+		return "", "", ""
+	}
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+	if len(body) == 0 {
+		return "", "", ""
+	}
+	if len(body) > maxOperationLogBodySize {
+		body = body[:maxOperationLogBodySize]
+	}
+	summary := strings.TrimSpace(string(body))
+	bodyAction := ""
+	bodyUsername := ""
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err == nil {
+		if value, ok := payload["action"].(string); ok {
+			bodyAction = value
+		}
+		if value, ok := payload["username"].(string); ok {
+			bodyUsername = strings.TrimSpace(value)
+		}
+	}
+	return summary, bodyAction, bodyUsername
+}
+
+func resolveOperationContextIDs(c *gin.Context) (string, string, string, string) {
+	projectID := c.Param("projectID")
+	envID := c.Param("envID")
+	appID := c.Param("appID")
+	repoID := c.Param("repoID")
+
+	if appID != "" {
+		appCtx, err := services.GetAppContext(c.Request.Context(), appID)
+		if err == nil && appCtx != nil {
+			envID = appCtx.EnvContext.Env.ID
+			projectID = appCtx.EnvContext.Project.ID
+			if appCtx.App.CodeRepositoryID != nil {
+				repoID = *appCtx.App.CodeRepositoryID
+			}
+		}
+	}
+	if envID != "" && projectID == "" {
+		env, err := services.GetEnv(envID)
+		if err == nil && env != nil {
+			projectID = env.ProjectID
+		}
+	}
+	if repoID != "" && projectID == "" {
+		repo, err := services.GetCodeRepository(repoID)
+		if err == nil && repo != nil {
+			projectID = repo.ProjectID
+		}
+	}
+	return projectID, envID, appID, repoID
+}

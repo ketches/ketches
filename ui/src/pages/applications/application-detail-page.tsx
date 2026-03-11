@@ -2,6 +2,7 @@ import { appFavoritesApi } from "@/api/app-favorite"
 import { appsApi, type App } from "@/api/apps"
 import { clustersApi } from "@/api/clusters"
 import { envsApi } from "@/api/envs"
+import { operationLogsApi, type OperationLogItem } from "@/api/operation-logs"
 import { AppActionButtons } from "@/components/applications/app-action-buttons"
 import { TopologyView } from "@/components/applications/app-topology-view"
 import { AutoScalingConfig } from "@/components/applications/auto-scaling-config"
@@ -31,6 +32,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -54,7 +56,7 @@ import { formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { isAxiosError } from "axios"
 import {
   Activity,
@@ -76,6 +78,7 @@ import {
   FileCog,
   FolderGit2,
   FolderOpen,
+  Footprints,
   GalleryVerticalEnd,
   Hammer,
   HardDrive,
@@ -582,6 +585,7 @@ export function ApplicationDetailPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [rowSelection, setRowSelection] = React.useState({})
   const [instancePagination, setInstancePagination] = React.useState({ pageIndex: 0, pageSize: 10 })
+  const [operationLogsPagination, setOperationLogsPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
   const [isEditImageDialogOpen, setIsEditImageDialogOpen] = React.useState(false)
   const [isEditAppDialogOpen, setIsEditAppDialogOpen] = React.useState(false)
   const [isUnifiedBuildDialogOpen, setIsUnifiedBuildDialogOpen] = React.useState(false)
@@ -631,6 +635,53 @@ export function ApplicationDetailPage() {
   })
 
   const safeInstances = React.useMemo(() => (Array.isArray(instances) ? instances : []), [instances])
+
+  const { data: operationLogsResponse, isLoading: operationLogsLoading, isFetching: operationLogsFetching } = useQuery({
+    queryKey: ['app-operation-logs', appId, operationLogsPagination.pageIndex, operationLogsPagination.pageSize],
+    queryFn: () => operationLogsApi.listAppOperationLogs(appId!, {
+      page: operationLogsPagination.pageIndex + 1,
+      page_size: operationLogsPagination.pageSize,
+    }),
+    enabled: !!appId,
+  })
+
+  const operationLogsColumns: ColumnDef<OperationLogItem>[] = [
+    {
+      accessorKey: "created_at",
+      header: "Time",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">{formatDate(row.original.created_at)}</span>
+      ),
+    },
+    {
+      accessorKey: "username",
+      header: "User",
+    },
+    {
+      accessorKey: "action",
+      header: "Action",
+      cell: ({ row }) => <span className="text-sm font-medium">{row.original.action}</span>,
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge variant={row.original.status === 'success' ? 'secondary' : 'destructive'}>
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "sensitivity",
+      header: "Sensitivity",
+      cell: ({ row }) => <span className="text-xs uppercase text-muted-foreground">{row.original.sensitivity}</span>,
+    },
+    {
+      accessorKey: "client_ip",
+      header: "IP",
+      cell: ({ row }) => <span className="font-mono text-xs">{row.original.client_ip || '-'}</span>,
+    },
+  ]
 
   const filteredInstances = React.useMemo(() => {
     if (!searchQuery) return safeInstances
@@ -1109,6 +1160,7 @@ export function ApplicationDetailPage() {
           <TabsTrigger value="overview"><Telescope />Overview</TabsTrigger>
           <TabsTrigger value="topology"><Share2 />Topology</TabsTrigger>
           <TabsTrigger value="instances"><Shapes />Instances</TabsTrigger>
+          <TabsTrigger value="operations"><Footprints />Operations</TabsTrigger>
           <TabsTrigger value="resources"><Ruler />Resources</TabsTrigger>
           {!isViewer && <TabsTrigger value="env-vars"><Key />Env Vars</TabsTrigger>}
           {!isViewer && <TabsTrigger value="config-files"><FileCog />Config Files</TabsTrigger>}
@@ -1525,6 +1577,39 @@ export function ApplicationDetailPage() {
                     )
                   })}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="operations" className="space-y-4 mt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Footprints className="h-4 w-4" />
+                Operation Logs
+              </CardTitle>
+              <CardDescription>
+                Track recent operations executed against this application.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(operationLogsResponse?.items?.length ?? 0) === 0 && !operationLogsLoading && !operationLogsFetching ? (
+                <EmptyState
+                  title="No operation logs"
+                  description="Operations for this application will appear here."
+                  icon={Footprints}
+                />
+              ) : (
+                <DataTable
+                  columns={operationLogsColumns}
+                  data={operationLogsResponse?.items ?? []}
+                  isLoading={operationLogsLoading || operationLogsFetching}
+                  pagination={operationLogsPagination}
+                  onPaginationChange={setOperationLogsPagination}
+                  totalCount={operationLogsResponse?.pagination.total ?? 0}
+                  manualPagination
+                />
               )}
             </CardContent>
           </Card>

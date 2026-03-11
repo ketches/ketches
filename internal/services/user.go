@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
@@ -11,6 +12,11 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+)
+
+const (
+	defaultBootstrapAdminUsername = "ketches"
+	defaultBootstrapAdminPassword = "ketches"
 )
 
 var (
@@ -75,17 +81,21 @@ func SignUp(req *models.SignUpRequest) (*entities.User, error) {
 	return user, nil
 }
 
-func SignIn(req *models.SignInRequest) (*entities.User, error) {
+func SignIn(req *models.SignInRequest) (*entities.User, bool, error) {
 	var user entities.User
 	if err := db.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		return nil, errors.New("invalid username or password")
+		return nil, false, errors.New("invalid username or password")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return nil, errors.New("invalid username or password")
+		return nil, false, errors.New("invalid username or password")
 	}
 
-	return &user, nil
+	mustChangePassword := user.Role == app.UserRoleAdmin &&
+		user.Username == defaultBootstrapAdminUsername &&
+		req.Password == defaultBootstrapAdminPassword
+
+	return &user, mustChangePassword, nil
 }
 
 func GetUser(userID string) (*entities.User, error) {
@@ -146,6 +156,52 @@ func countAdmins() (int64, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// EnsureBootstrapAdmin creates the built-in admin account only when no admin exists.
+// It never creates a default project for the bootstrap admin.
+func EnsureBootstrapAdmin() error {
+	adminCount, err := countAdmins()
+	if err != nil {
+		return err
+	}
+	if adminCount > 0 {
+		return nil
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultBootstrapAdminPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	admin := &entities.User{
+		Base:     entities.Base{ID: uuid.New()},
+		Username: defaultBootstrapAdminUsername,
+		Email:    buildBootstrapAdminEmail(defaultBootstrapAdminUsername),
+		Password: string(hashedPassword),
+		Fullname: "Ketches Administrator",
+		Role:     app.UserRoleAdmin,
+	}
+
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		// Double check in transaction to avoid duplicate admin creation during concurrent startups.
+		var cnt int64
+		if err := tx.Model(&entities.User{}).Where("role = ?", app.UserRoleAdmin).Count(&cnt).Error; err != nil {
+			return err
+		}
+		if cnt > 0 {
+			return nil
+		}
+		return tx.Create(admin).Error
+	})
+}
+
+func buildBootstrapAdminEmail(username string) string {
+	name := strings.TrimSpace(username)
+	if name == "" {
+		name = "admin"
+	}
+	return fmt.Sprintf("%s@local.ketches", name)
 }
 
 func DeleteUser(userID string) error {

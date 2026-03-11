@@ -24,6 +24,7 @@ func SetupRoutes(r *gin.Engine) {
 
 func setupV1Routes(r *gin.Engine) {
 	v1 := r.Group("/api/v1")
+	v1.Use(middlewares.OperationLog())
 	{
 		v1.GET("/version", handlers.GetVersion)
 
@@ -36,6 +37,11 @@ func setupV1Routes(r *gin.Engine) {
 		authorized := v1.Group("")
 		authorized.Use(middlewares.Auth())
 		{
+			authorized.GET("/activities", handlers.ListActivities)
+			authorized.GET("/operation-logs", middlewares.AdminOnly(), handlers.ListOperationLogs)
+			authorized.GET("/operation-logs/settings", middlewares.AdminOnly(), handlers.GetOperationLogSettings)
+			authorized.PUT("/operation-logs/settings", middlewares.AdminOnly(), handlers.UpdateOperationLogSettings)
+
 			users := authorized.Group("/users")
 			{
 				users.GET("", handlers.ListUsers)
@@ -97,6 +103,7 @@ func setupV1Routes(r *gin.Engine) {
 				codeReposRead.GET("/:repoID/builds/:buildID/logs", handlers.StreamCodeRepositoryBuildLogs)
 				codeReposRead.GET("/:repoID/deployments", handlers.ListBuildDeployments)
 				codeReposRead.GET("/:repoID/build-settings/:settingID/deployed-apps", handlers.ListDeployedAppsByEnvironment)
+				codeReposRead.GET("/:repoID/operation-logs", handlers.ListCodeRepositoryOperationLogs)
 
 				// Write (require at least developer role)
 				codeReposWrite := codeRepos.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
@@ -158,6 +165,7 @@ func setupV1Routes(r *gin.Engine) {
 				appsRead.GET("/:appID/builds", handlers.ListAppBuilds)
 				appsRead.GET("/:appID/deployment-history", handlers.ListDeploymentHistory)
 				appsRead.GET("/:appID/favorite", handlers.GetAppFavoriteStatus)
+				appsRead.GET("/:appID/operation-logs", handlers.ListAppOperationLogs)
 
 				// Exec / Log / Files (block viewer — require at least developer)
 				appsExec := apps.Group("", middlewares.BlockViewer())

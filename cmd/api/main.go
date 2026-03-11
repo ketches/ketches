@@ -27,9 +27,17 @@ func main() {
 		log.Fatalf("failed to initialize database: %v", err)
 	}
 
-	// if err := db.Migrate(); err != nil {
-	// 	log.Fatalf("failed to migrate database: %v", err)
-	// }
+	if err := db.Migrate(); err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
+	}
+
+	if err := services.EnsureBootstrapAdmin(); err != nil {
+		log.Fatalf("failed to ensure bootstrap admin: %v", err)
+	}
+
+	if err := services.EnsureBuiltinExtensions(); err != nil {
+		log.Fatalf("failed to ensure builtin extensions: %v", err)
+	}
 
 	if err := services.InitClusters(); err != nil {
 		log.Fatalf("failed to initialize clusters: %v", err)

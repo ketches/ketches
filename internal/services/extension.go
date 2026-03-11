@@ -13,6 +13,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/pkg/concurrency"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
 	"helm.sh/helm/v3/pkg/action"
@@ -28,6 +29,90 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 )
+
+type builtinExtensionSeed struct {
+	Name        string
+	DisplayName string
+	Description string
+	OCIUrl      string
+	IconURL     string
+}
+
+var builtinExtensions = []builtinExtensionSeed{
+	{
+		Name:        "envoyGateway",
+		DisplayName: "Envoy Gateway",
+		Description: "Envoy Gateway provides Kubernetes Gateway API implementation based on Envoy Proxy.",
+		OCIUrl:      "oci://docker.io/envoyproxy/gateway-helm",
+		IconURL:     "",
+	},
+	{
+		Name:        "kube-prometheus-stack",
+		DisplayName: "Kube Prometheus Stack",
+		Description: "Prometheus community monitoring stack for Kubernetes.",
+		OCIUrl:      "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack",
+		IconURL:     "",
+	},
+	{
+		Name:        "metrics-server",
+		DisplayName: "Metrics Server",
+		Description: "Cluster-wide resource metrics aggregator for Kubernetes autoscaling.",
+		OCIUrl:      "oci://registry-1.docker.io/bitnamicharts/metrics-server",
+		IconURL:     "",
+	},
+}
+
+// EnsureBuiltinExtensions seeds built-in OCI extensions during startup.
+// Existing rows are updated to keep built-in metadata and OCI URL current.
+// It uses a worker-pool upsert flow so adding more built-ins scales better.
+func EnsureBuiltinExtensions() error {
+	return runBuiltinExtensionUpserts(builtinExtensions)
+}
+
+func runBuiltinExtensionUpserts(items []builtinExtensionSeed) error {
+	if err := concurrency.Run(items, 0, upsertBuiltinExtension); err != nil {
+		return fmt.Errorf("builtin extension upsert failed: %w", err)
+	}
+	return nil
+}
+
+func upsertBuiltinExtension(ext builtinExtensionSeed) error {
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var existing entities.Extension
+		err := tx.Where("name = ?", ext.Name).First(&existing).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			item := &entities.Extension{
+				ID:          uuid.New(),
+				Name:        ext.Name,
+				DisplayName: ext.DisplayName,
+				Description: ext.Description,
+				OCIUrl:      ext.OCIUrl,
+				IconURL:     ext.IconURL,
+				Builtin:     true,
+				CreatedBy:   nil,
+			}
+			if err := tx.Create(item).Error; err != nil {
+				return fmt.Errorf("failed to seed built-in extension %q: %w", ext.Name, err)
+			}
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to query extension %q: %w", ext.Name, err)
+		}
+
+		updates := map[string]any{
+			"display_name": ext.DisplayName,
+			"description":  ext.Description,
+			"oci_url":      ext.OCIUrl,
+			"icon_url":     ext.IconURL,
+			"builtin":      true,
+		}
+		if err := tx.Model(&entities.Extension{}).Where("id = ?", existing.ID).Updates(updates).Error; err != nil {
+			return fmt.Errorf("failed to update built-in extension %q: %w", ext.Name, err)
+		}
+		return nil
+	})
+}
 
 // ListExtensions returns all extensions (builtin + admin-added) with install counts from DB.
 func ListExtensions() ([]models.Extension, error) {
