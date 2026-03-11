@@ -106,6 +106,7 @@ This document defines the specialized agents involved in the development and mai
 - Always use shadcn components;
 - Do not write css directly, use tailwind;
 - The src/components/ui directory contains standard components. Please do not modify any content within it;
+- Avoid using the `any` type
 
 ### Docs
 
