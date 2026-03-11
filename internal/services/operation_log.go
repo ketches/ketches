@@ -246,14 +246,28 @@ func getSystemSetting(key string) (*entities.SystemSetting, error) {
 }
 
 func parseOperationLogTime(value string) (time.Time, bool) {
-	if strings.TrimSpace(value) == "" {
+	v := strings.TrimSpace(value)
+	if v == "" {
 		return time.Time{}, false
 	}
-	t, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return time.Time{}, false
+
+	if t, err := time.Parse(time.RFC3339, v); err == nil {
+		return t, true
 	}
-	return t, true
+
+	layouts := []string{
+		"2006-01-02T15:04:05",
+		"2006-01-02T15:04",
+		"2006-01-02",
+	}
+	for _, layout := range layouts {
+		t, err := time.ParseInLocation(layout, v, time.Local)
+		if err == nil {
+			return t, true
+		}
+	}
+
+	return time.Time{}, false
 }
 
 func nullableString(v string) *string {

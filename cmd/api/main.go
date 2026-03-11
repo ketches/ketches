@@ -27,9 +27,9 @@ func main() {
 		log.Fatalf("failed to initialize database: %v", err)
 	}
 
-	if err := db.Migrate(); err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
-	}
+	// if err := db.Migrate(); err != nil {
+	// 	log.Fatalf("failed to migrate database: %v", err)
+	// }
 
 	if err := services.EnsureBootstrapAdmin(); err != nil {
 		log.Fatalf("failed to ensure bootstrap admin: %v", err)

@@ -80,3 +80,98 @@ func TestCleanupExpiredOperationLogs(t *testing.T) {
 	require.NoError(t, db.DB.Model(&entities.OperationLog{}).Count(&count).Error)
 	assert.Equal(t, int64(1), count)
 }
+
+func TestParseOperationLogTimeSupportsMultipleFormats(t *testing.T) {
+	t.Run("RFC3339", func(t *testing.T) {
+		parsed, ok := parseOperationLogTime("2026-03-11T09:30:00Z")
+		require.True(t, ok)
+		assert.Equal(t, 2026, parsed.Year())
+		assert.Equal(t, time.March, parsed.Month())
+		assert.Equal(t, 11, parsed.Day())
+	})
+
+	t.Run("RFC3339 with milliseconds", func(t *testing.T) {
+		parsed, ok := parseOperationLogTime("2026-03-11T09:30:00.000Z")
+		require.True(t, ok)
+		assert.Equal(t, 0, parsed.Nanosecond())
+	})
+
+	t.Run("datetime-local minute precision", func(t *testing.T) {
+		parsed, ok := parseOperationLogTime("2026-03-11T09:30")
+		require.True(t, ok)
+		assert.Equal(t, 2026, parsed.Year())
+		assert.Equal(t, time.March, parsed.Month())
+		assert.Equal(t, 11, parsed.Day())
+		assert.Equal(t, 9, parsed.Hour())
+		assert.Equal(t, 30, parsed.Minute())
+	})
+
+	t.Run("datetime-local second precision", func(t *testing.T) {
+		parsed, ok := parseOperationLogTime("2026-03-11T09:30:45")
+		require.True(t, ok)
+		assert.Equal(t, 45, parsed.Second())
+	})
+
+	t.Run("date only", func(t *testing.T) {
+		parsed, ok := parseOperationLogTime("2026-03-11")
+		require.True(t, ok)
+		assert.Equal(t, 2026, parsed.Year())
+		assert.Equal(t, time.March, parsed.Month())
+		assert.Equal(t, 11, parsed.Day())
+		assert.Equal(t, 0, parsed.Hour())
+		assert.Equal(t, 0, parsed.Minute())
+	})
+
+	t.Run("invalid value", func(t *testing.T) {
+		_, ok := parseOperationLogTime("not-a-date")
+		assert.False(t, ok)
+	})
+}
+
+func TestListOperationLogsFiltersDateTimeLocalRange(t *testing.T) {
+	setupOperationLogServiceTestDB(t)
+
+	beforeRange := time.Date(2026, time.March, 11, 9, 0, 0, 0, time.Local)
+	insideRange := time.Date(2026, time.March, 11, 12, 0, 0, 0, time.Local)
+	afterRange := time.Date(2026, time.March, 11, 15, 0, 0, 0, time.Local)
+
+	require.NoError(t, db.DB.Create(&entities.OperationLog{
+		Base:         entities.Base{ID: "log-before", CreatedAt: beforeRange},
+		Username:     "alice",
+		Action:       "deploy",
+		ResourceType: "app",
+		Status:       entities.OperationLogStatusSuccess,
+		StatusCode:   200,
+		Sensitivity:  entities.OperationLogSensitivityPublic,
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&entities.OperationLog{
+		Base:         entities.Base{ID: "log-inside", CreatedAt: insideRange},
+		Username:     "bob",
+		Action:       "deploy",
+		ResourceType: "app",
+		Status:       entities.OperationLogStatusSuccess,
+		StatusCode:   200,
+		Sensitivity:  entities.OperationLogSensitivityPublic,
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&entities.OperationLog{
+		Base:         entities.Base{ID: "log-after", CreatedAt: afterRange},
+		Username:     "charlie",
+		Action:       "deploy",
+		ResourceType: "app",
+		Status:       entities.OperationLogStatusSuccess,
+		StatusCode:   200,
+		Sensitivity:  entities.OperationLogSensitivityPublic,
+	}).Error)
+
+	total, items, err := ListOperationLogs(models.OperationLogListRequest{
+		PaginationRequest: models.PaginationRequest{Page: 1, PageSize: 10},
+		Start:             "2026-03-11T10:00",
+		End:               "2026-03-11T13:00",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), total)
+	require.Len(t, items, 1)
+	assert.Equal(t, "log-inside", items[0].ID)
+}
