@@ -23,6 +23,7 @@ import { formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
+import { format, subDays } from "date-fns"
 import {
   Activity,
   CheckCircle2,
@@ -115,8 +116,10 @@ export function ActivitiesPage() {
   const [search, setSearch] = React.useState("")
   const [action, setAction] = React.useState("")
   const [resourceType, setResourceType] = React.useState("")
-  const [start, setStart] = React.useState("")
-  const [end, setEnd] = React.useState("")
+  const now = new Date()
+  const sevenDaysAgo = subDays(now, 7)
+  const [start, setStart] = React.useState(format(sevenDaysAgo, "yyyy-MM-dd'T'HH:mm"))
+  const [end, setEnd] = React.useState(format(now, "yyyy-MM-dd'T'HH:mm"))
   const [sensitivity, setSensitivity] = React.useState<"all" | OperationLogSensitivity>("all")
   const [status, setStatus] = React.useState<"all" | OperationLogStatus>("all")
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
