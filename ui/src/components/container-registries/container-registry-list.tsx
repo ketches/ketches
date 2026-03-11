@@ -146,7 +146,7 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
               isLoading={isLoading}
               searchKey="name"
               searchPlaceholder="Filter registries..."
-              toolbarActions={() => (
+              rightToolbar={() => (
                 <Button onClick={() => { setEditRegistry(null); setShowDialog(true) }}>
                   <Plus />
                   Add Registry

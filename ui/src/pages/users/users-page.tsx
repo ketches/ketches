@@ -270,7 +270,7 @@ export function UsersPage() {
         totalCount={total}
         pagination={pagination}
         onPaginationChange={setPagination}
-        leftActions={() => {
+        leftToolbar={() => {
           return (
             <Input
               className="flex flex-1 max-w-sm min-w-75"
@@ -280,7 +280,7 @@ export function UsersPage() {
             />
           )
         }}
-        toolbarActions={(table) => {
+        rightToolbar={(table) => {
           const selectedRows = table.getFilteredSelectedRowModel().rows
           return (
             <div className="flex items-center gap-2">

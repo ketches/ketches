@@ -342,7 +342,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
               isLoading={isLoading}
               searchKey="release_name"
               searchPlaceholder="Filter extensions..."
-              leftActions={() => (
+              leftToolbar={() => (
                 <Button onClick={() => setBrowseOpen(true)}>
                   <Download />
                   Install Extension

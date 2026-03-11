@@ -800,7 +800,7 @@ export function RecycleBinPage() {
     { label: "Recycle Bin", icon: Trash2 }
   ]
 
-  const toolbarLeft = (
+  const leftToolbar = (
     <Input
       className="flex flex-1 max-w-sm min-w-75"
       placeholder="Search deleted resources..."
@@ -870,7 +870,7 @@ export function RecycleBinPage() {
               columns={projectColumns}
               data={projects}
               isLoading={projectsLoading || projectsFetching}
-              leftActions={() => toolbarLeft}
+              leftToolbar={() => leftToolbar}
               batchActions={!isViewer ? batchActions : undefined}
               rowSelection={selectedProjectRows}
               onRowSelectionChange={setSelectedProjectRows}
@@ -899,7 +899,7 @@ export function RecycleBinPage() {
               columns={appColumns}
               data={apps}
               isLoading={appsLoading || appsFetching}
-              leftActions={() => toolbarLeft}
+              leftToolbar={() => leftToolbar}
               batchActions={!isViewer ? batchActions : undefined}
               rowSelection={selectedAppRows}
               onRowSelectionChange={setSelectedAppRows}
@@ -928,7 +928,7 @@ export function RecycleBinPage() {
               columns={envColumns}
               data={envs}
               isLoading={envsLoading || envsFetching}
-              leftActions={() => toolbarLeft}
+              leftToolbar={() => leftToolbar}
               batchActions={!isViewer ? batchActions : undefined}
               rowSelection={selectedEnvRows}
               onRowSelectionChange={setSelectedEnvRows}
@@ -957,7 +957,7 @@ export function RecycleBinPage() {
               columns={codeRepoColumns}
               data={codeRepos}
               isLoading={codeReposLoading || codeReposFetching}
-              leftActions={() => toolbarLeft}
+              leftToolbar={() => leftToolbar}
               batchActions={!isViewer ? batchActions : undefined}
               rowSelection={selectedCodeRepoRows}
               onRowSelectionChange={setSelectedCodeRepoRows}

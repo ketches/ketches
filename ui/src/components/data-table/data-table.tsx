@@ -44,8 +44,8 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   searchKey?: string
   searchPlaceholder?: string
-  toolbarActions?: (table: TanstackTable<TData>) => React.ReactNode
-  leftActions?: (table: TanstackTable<TData>) => React.ReactNode
+  rightToolbar?: (table: TanstackTable<TData>) => React.ReactNode
+  leftToolbar?: (table: TanstackTable<TData>) => React.ReactNode
   batchActions?: (table: TanstackTable<TData>) => React.ReactNode
   onRowClick?: (data: TData) => void
   onRefresh?: () => void
@@ -75,8 +75,8 @@ export function DataTable<TData, TValue>({
   data,
   searchKey,
   searchPlaceholder = "Filter...",
-  toolbarActions,
-  leftActions,
+  rightToolbar: rightToolbar,
+  leftToolbar: leftToolbar,
   batchActions,
   onRowClick,
   onRefresh,
@@ -181,7 +181,7 @@ export function DataTable<TData, TValue>({
   ) : null
 
   // Determine whether toolbar should be rendered
-  const hasToolbar = searchKey || toolbarActions || batchActions || leftActions || viewMode === "card"
+  const hasToolbar = searchKey || rightToolbar || batchActions || leftToolbar || viewMode === "card"
   const visibleColumnCount = Math.max(table.getVisibleLeafColumns().length, 1)
 
   const listLoadingRow = (
@@ -233,9 +233,7 @@ export function DataTable<TData, TValue>({
                 className="flex flex-1 max-w-sm min-w-75"
               />
             )}
-            {/* leftActions: shown after search box (or alone when no search box) */}
-            {leftActions?.(table)}
-            {/* Card mode: select-all and selected count after search box */}
+            {leftToolbar?.(table)}
             {viewMode === "card" && cardSelectAll}
             {viewMode === "card" && selectedCountBadge}
           </div>
@@ -250,7 +248,7 @@ export function DataTable<TData, TValue>({
                 <RefreshCw className={cn(isRefreshing && "animate-spin")} />
               </Button>
             )}
-            {toolbarActions?.(table)}
+            {rightToolbar?.(table)}
           </div>
         </div>
       )}

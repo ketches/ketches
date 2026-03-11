@@ -255,7 +255,7 @@ export function ClustersPage() {
 
   const breadcrumbs = [{ label: "Clusters", icon: ShipWheel }]
 
-  const toolbarLeft = (
+  const leftToolbar = (
     <Input
       className="flex flex-1 max-w-sm min-w-75"
       placeholder="Search clusters..."
@@ -264,7 +264,7 @@ export function ClustersPage() {
     />
   )
 
-  const toolbarRight = (
+  const rightToolbar = (
     <div className="flex items-center gap-2">
       <Tabs
         value={viewMode}
@@ -308,8 +308,8 @@ export function ClustersPage() {
       totalCount={paginationInfo?.total || 0}
       pagination={pagination}
       onPaginationChange={setPagination}
-      leftActions={() => toolbarLeft}
-      toolbarActions={() => toolbarRight}
+      leftToolbar={() => leftToolbar}
+      rightToolbar={() => rightToolbar}
       renderCard={(cluster) => (
         <Card
           key={cluster.id}

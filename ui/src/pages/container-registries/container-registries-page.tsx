@@ -234,7 +234,7 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
   ] : []
   breadcrumbs.push({ label: "Container Registries", icon: Warehouse })
 
-  const toolbarLeft = (
+  const leftToolbar = (
     <Input
       className="flex flex-1 max-w-sm min-w-75"
       placeholder="Search registries..."
@@ -243,7 +243,7 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
     />
   )
 
-  const toolbarRight = (
+  const rightToolbar = (
     <div className="flex items-center gap-2">
       <Tabs
         value={viewMode}
@@ -302,8 +302,8 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
       totalCount={paginationInfo?.total || 0}
       pagination={pagination}
       onPaginationChange={setPagination}
-      leftActions={() => toolbarLeft}
-      toolbarActions={() => toolbarRight}
+      leftToolbar={() => leftToolbar}
+      rightToolbar={() => rightToolbar}
       renderCard={(reg) => (
         <Card
           key={reg.id}

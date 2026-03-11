@@ -253,7 +253,7 @@ export function ProjectsPage() {
   ]
 
   // Toolbar: search on the left, view toggle + new button on the right
-  const toolbarLeft = (
+  const leftToolbar = (
     <Input
       className="flex flex-1 max-w-sm min-w-75"
       placeholder="Search projects..."
@@ -262,7 +262,7 @@ export function ProjectsPage() {
     />
   )
 
-  const toolbarRight = (
+  const rightToolbar = (
     <div className="flex items-center gap-2">
       <Tabs
         value={viewMode}
@@ -306,8 +306,8 @@ export function ProjectsPage() {
       totalCount={paginationInfo?.total ?? 0}
       pagination={pagination}
       onPaginationChange={setPagination}
-      leftActions={() => toolbarLeft}
-      toolbarActions={() => toolbarRight}
+      leftToolbar={() => leftToolbar}
+      rightToolbar={() => rightToolbar}
       renderCard={(project) => {
         const isActive = project.id === activeProjectId
         return (

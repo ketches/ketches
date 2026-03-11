@@ -233,7 +233,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
               isLoading={isLoading}
               searchKey="name"
               searchPlaceholder="Filter certificates..."
-              toolbarActions={() => (
+              rightToolbar={() => (
                 <Button onClick={handleOpenCreate}>
                   <Plus />
                   Add Certificate

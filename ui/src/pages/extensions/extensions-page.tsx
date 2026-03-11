@@ -259,7 +259,7 @@ export function ExtensionsPage() {
 
   const breadcrumbs = [{ label: "Extensions", icon: Blocks }]
 
-  const toolbarLeft = (
+  const leftToolbar = (
     <Input
       className="flex flex-1 max-w-sm min-w-75"
       placeholder="Search extensions..."
@@ -268,7 +268,7 @@ export function ExtensionsPage() {
     />
   )
 
-  const toolbarRight = (
+  const rightToolbar = (
     <div className="flex items-center gap-2">
       <Tabs
         value={viewMode}
@@ -332,8 +332,8 @@ export function ExtensionsPage() {
             totalCount={filteredItems.length}
             pagination={pagination}
             onPaginationChange={setPagination}
-            leftActions={() => toolbarLeft}
-            toolbarActions={() => toolbarRight}
+            leftToolbar={() => leftToolbar}
+            rightToolbar={() => rightToolbar}
             renderCard={(item) => (
               <Card
                 key={item.id}

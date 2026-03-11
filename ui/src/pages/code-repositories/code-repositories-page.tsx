@@ -239,7 +239,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
       totalCount={paginationInfo?.total || 0}
       pagination={pagination}
       onPaginationChange={setPagination}
-      leftActions={() => (
+      leftToolbar={() => (
         <Input
           className="flex flex-1 max-w-sm min-w-75"
           placeholder="Search repositories..."
@@ -247,7 +247,7 @@ export function CodeRepositoriesPage({ projectId: projectIdProp }: { projectId?:
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       )}
-      toolbarActions={() => (
+      rightToolbar={() => (
         <div className="flex items-center gap-2">
           <Tabs value={viewMode} onValueChange={(v) => {
             const newMode = v as "list" | "card"

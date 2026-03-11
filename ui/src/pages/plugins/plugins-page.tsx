@@ -228,7 +228,7 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
   ] : []
   breadcrumbs.push({ label: "Plugins", icon: Puzzle, })
 
-  const toolbarLeft = (
+  const leftToolbar = (
     <Input
       className="flex flex-1 max-w-sm min-w-75"
       placeholder="Search plugins..."
@@ -237,7 +237,7 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
     />
   )
 
-  const toolbarRight = (
+  const rightToolbar = (
     <div className="flex items-center gap-2">
       <Tabs value={viewMode} onValueChange={(v) => {
         const newMode = v as "list" | "card"
@@ -279,8 +279,8 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
       totalCount={paginationInfo?.total || 0}
       pagination={pagination}
       onPaginationChange={setPagination}
-      leftActions={() => toolbarLeft}
-      toolbarActions={() => toolbarRight}
+      leftToolbar={() => leftToolbar}
+      rightToolbar={() => rightToolbar}
       renderCard={(plugin) => (
         <Card
           key={plugin.id}

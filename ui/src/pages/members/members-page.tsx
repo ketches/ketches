@@ -283,7 +283,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
           onPaginationChange={setPagination}
           searchKey="username"
           searchPlaceholder="Search members..."
-          toolbarActions={(table) => {
+          rightToolbar={(table) => {
             const selectedRows = table.getFilteredSelectedRowModel().rows
             return (
               <div className="flex items-center gap-2">

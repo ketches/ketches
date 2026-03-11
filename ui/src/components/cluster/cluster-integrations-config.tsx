@@ -316,7 +316,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
               isLoading={isLoading}
               searchKey="name"
               searchPlaceholder="Filter integrations..."
-              toolbarActions={() => (
+              rightToolbar={() => (
                 <Button onClick={handleOpenCreate}>
                   <Plus />
                   Add Integration

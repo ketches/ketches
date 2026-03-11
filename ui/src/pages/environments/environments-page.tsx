@@ -237,7 +237,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
   breadcrumbs.push({ label: "Environments", icon: Orbit })
 
 
-  const toolbarLeft = (
+  const leftToolbar = (
     <Input className="flex flex-1 max-w-sm min-w-75"
       placeholder="Search environments..."
       value={searchQuery}
@@ -245,7 +245,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
     />
   )
 
-  const toolbarRight = (
+  const rightToolbar = (
     <div className="flex items-center gap-2">
       <Tabs value={viewMode} onValueChange={(v) => {
         const newMode = v as "list" | "card"
@@ -305,8 +305,8 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
           totalCount={paginationInfo?.total || 0}
           pagination={pagination}
           onPaginationChange={setPagination}
-          leftActions={() => toolbarLeft}
-          toolbarActions={() => toolbarRight}
+          leftToolbar={() => leftToolbar}
+          rightToolbar={() => rightToolbar}
           renderCard={(env) => (
             <Card
               key={env.id}

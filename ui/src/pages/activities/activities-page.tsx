@@ -310,7 +310,7 @@ export function ActivitiesPage() {
     updateSettingsMutation.mutate(days)
   }
 
-  const leftActions = (
+  const leftToolbar = (
     <>
       <Input
         className="w-full sm:w-80"
@@ -432,7 +432,7 @@ export function ActivitiesPage() {
         </ComboboxContent>
       </Combobox></>
   )
-  const rightActions = isAdmin ? (
+  const rightToolbar = isAdmin ? (
     <>
       <Input
         type="number"
@@ -480,8 +480,8 @@ export function ActivitiesPage() {
           columns={columns}
           data={items}
           isLoading={isLoading || isFetching}
-          leftActions={() => leftActions}
-          toolbarActions={() => rightActions}
+          leftToolbar={() => leftToolbar}
+          rightToolbar={() => rightToolbar}
           pagination={pagination}
           onPaginationChange={setPagination}
           totalCount={response?.pagination.total ?? 0}

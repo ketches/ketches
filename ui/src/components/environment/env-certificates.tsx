@@ -258,7 +258,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
               isLoading={isLoading}
               searchKey="name"
               searchPlaceholder="Filter certificates..."
-              toolbarActions={!isViewer ? () => (
+              rightToolbar={!isViewer ? () => (
                 <Button onClick={handleOpenCreate}>
                   <Plus />
                   Add Certificate

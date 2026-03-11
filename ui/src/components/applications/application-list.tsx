@@ -439,7 +439,7 @@ export function ApplicationList({
     },
   ]
 
-  const toolbarLeft = (
+  const leftToolbar = (
     <Input
       className="flex flex-1 max-w-sm min-w-75"
       placeholder="Search applications..."
@@ -448,7 +448,7 @@ export function ApplicationList({
     />
   )
 
-  const toolbarRight = (
+  const rightToolbar = (
     <div className="flex items-center gap-2">
       <Tabs value={viewMode} onValueChange={(v) => {
         const newMode = v as "list" | "card"
@@ -507,8 +507,8 @@ export function ApplicationList({
           onPaginationChange={onExternalPaginationChange ?? setPagination}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
-          leftActions={() => toolbarLeft}
-          toolbarActions={() => toolbarRight}
+          leftToolbar={() => leftToolbar}
+          rightToolbar={() => rightToolbar}
           renderCard={(app) => (
             <Card
               key={app.id}
