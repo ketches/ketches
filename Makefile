@@ -28,7 +28,7 @@ PLATFORMS    := linux/amd64,linux/arm64
 .PHONY: all build build-ui build-all \
         test test-coverage \
         lint lint-ui \
-        run dev-ui \
+	run dev-ui openapi \
         docker-build docker-build-api docker-build-ui \
         docker-push docker-push-api docker-push-ui \
         docker-buildx \
@@ -75,6 +75,9 @@ run: ## Run the backend API locally (reads .env)
 
 dev-ui: ## Start the frontend Vite dev server
 	cd ui && npm run dev
+
+openapi: ## Generate openapi/openapi.json and openapi/openapi.yaml
+	go run ./cmd/openapi
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Docker — single-arch (fast local builds)

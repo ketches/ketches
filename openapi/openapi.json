@@ -15,6 +15,37 @@
   },
   "openapi": "3.0.3",
   "paths": {
+    "/api/v1/activities": {
+      "get": {
+        "operationId": "get_api_v1_activities",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/activities",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
     "/api/v1/app-groups/{groupID}": {
       "delete": {
         "operationId": "delete_api_v1_app_groups_groupid",
@@ -602,212 +633,6 @@
         ]
       }
     },
-    "/api/v1/apps/{appID}/build-setting": {
-      "delete": {
-        "operationId": "delete_api_v1_apps_appid_build_config",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "DELETE /api/v1/apps/{appID}/build-setting",
-        "tags": [
-          "apps"
-        ]
-      },
-      "get": {
-        "operationId": "get_api_v1_apps_appid_build_config",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "GET /api/v1/apps/{appID}/build-setting",
-        "tags": [
-          "apps"
-        ]
-      },
-      "post": {
-        "operationId": "post_api_v1_apps_appid_build_config",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "POST /api/v1/apps/{appID}/build-setting",
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/apps/{appID}/build-setting/container-registries": {
-      "get": {
-        "operationId": "get_api_v1_apps_appid_build_config_container_registries",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "GET /api/v1/apps/{appID}/build-setting/container-registries",
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/apps/{appID}/build-setting/test-git": {
-      "post": {
-        "operationId": "post_api_v1_apps_appid_build_config_test_git",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "POST /api/v1/apps/{appID}/build-setting/test-git",
-        "tags": [
-          "apps"
-        ]
-      }
-    },
     "/api/v1/apps/{appID}/builds": {
       "get": {
         "operationId": "get_api_v1_apps_appid_builds",
@@ -845,301 +670,6 @@
           }
         ],
         "summary": "GET /api/v1/apps/{appID}/builds",
-        "tags": [
-          "apps"
-        ]
-      },
-      "post": {
-        "operationId": "post_api_v1_apps_appid_builds",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "POST /api/v1/apps/{appID}/builds",
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/apps/{appID}/builds/{buildID}": {
-      "get": {
-        "operationId": "get_api_v1_apps_appid_builds_buildid",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "buildID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "GET /api/v1/apps/{appID}/builds/{buildID}",
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/apps/{appID}/builds/{buildID}/cancel": {
-      "post": {
-        "operationId": "post_api_v1_apps_appid_builds_buildid_cancel",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "buildID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "POST /api/v1/apps/{appID}/builds/{buildID}/cancel",
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/apps/{appID}/builds/{buildID}/deploy": {
-      "post": {
-        "operationId": "post_api_v1_apps_appid_builds_buildid_deploy",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "buildID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "POST /api/v1/apps/{appID}/builds/{buildID}/deploy",
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/apps/{appID}/builds/{buildID}/logs": {
-      "get": {
-        "operationId": "get_api_v1_apps_appid_builds_buildid_logs",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "buildID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "GET /api/v1/apps/{appID}/builds/{buildID}/logs",
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/apps/{appID}/builds/{buildID}/rebuild": {
-      "post": {
-        "operationId": "post_api_v1_apps_appid_builds_buildid_rebuild",
-        "parameters": [
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "appID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Path parameter",
-            "in": "path",
-            "name": "buildID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "POST /api/v1/apps/{appID}/builds/{buildID}/rebuild",
         "tags": [
           "apps"
         ]
@@ -2674,6 +2204,48 @@
         ]
       }
     },
+    "/api/v1/apps/{appID}/operation-logs": {
+      "get": {
+        "operationId": "get_api_v1_apps_appid_operation_logs",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "appID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/apps/{appID}/operation-logs",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
     "/api/v1/apps/{appID}/plugins": {
       "get": {
         "operationId": "get_api_v1_apps_appid_plugins",
@@ -3030,6 +2602,48 @@
           }
         ],
         "summary": "PATCH /api/v1/apps/{appID}/scheduling",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
+    "/api/v1/apps/{appID}/simple": {
+      "get": {
+        "operationId": "get_api_v1_apps_appid_simple",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "appID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/apps/{appID}/simple",
         "tags": [
           "apps"
         ]
@@ -5183,7 +4797,7 @@
     },
     "/api/v1/code-repositories/{repoID}/build-settings": {
       "get": {
-        "operationId": "get_api_v1_code_repositories_repoid_build_configs",
+        "operationId": "get_api_v1_code_repositories_repoid_build_settings",
         "parameters": [
           {
             "description": "Path parameter",
@@ -5223,7 +4837,7 @@
         ]
       },
       "post": {
-        "operationId": "post_api_v1_code_repositories_repoid_build_configs",
+        "operationId": "post_api_v1_code_repositories_repoid_build_settings",
         "parameters": [
           {
             "description": "Path parameter",
@@ -5265,7 +4879,7 @@
     },
     "/api/v1/code-repositories/{repoID}/build-settings/{settingID}": {
       "delete": {
-        "operationId": "delete_api_v1_code_repositories_repoid_build_configs_configid",
+        "operationId": "delete_api_v1_code_repositories_repoid_build_settings_settingid",
         "parameters": [
           {
             "description": "Path parameter",
@@ -5314,7 +4928,7 @@
         ]
       },
       "get": {
-        "operationId": "get_api_v1_code_repositories_repoid_build_configs_configid",
+        "operationId": "get_api_v1_code_repositories_repoid_build_settings_settingid",
         "parameters": [
           {
             "description": "Path parameter",
@@ -5363,7 +4977,7 @@
         ]
       },
       "put": {
-        "operationId": "put_api_v1_code_repositories_repoid_build_configs_configid",
+        "operationId": "put_api_v1_code_repositories_repoid_build_settings_settingid",
         "parameters": [
           {
             "description": "Path parameter",
@@ -5407,6 +5021,57 @@
           }
         ],
         "summary": "PUT /api/v1/code-repositories/{repoID}/build-settings/{settingID}",
+        "tags": [
+          "code-repositories"
+        ]
+      }
+    },
+    "/api/v1/code-repositories/{repoID}/build-settings/{settingID}/deployed-apps": {
+      "get": {
+        "operationId": "get_api_v1_code_repositories_repoid_build_settings_settingid_deployed_apps",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "repoID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "settingID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/code-repositories/{repoID}/build-settings/{settingID}/deployed-apps",
         "tags": [
           "code-repositories"
         ]
@@ -5777,6 +5442,48 @@
           }
         ],
         "summary": "GET /api/v1/code-repositories/{repoID}/deployments",
+        "tags": [
+          "code-repositories"
+        ]
+      }
+    },
+    "/api/v1/code-repositories/{repoID}/operation-logs": {
+      "get": {
+        "operationId": "get_api_v1_code_repositories_repoid_operation_logs",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "repoID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/code-repositories/{repoID}/operation-logs",
         "tags": [
           "code-repositories"
         ]
@@ -7428,6 +7135,106 @@
         ]
       }
     },
+    "/api/v1/gateways/{gatewayID}/proxy/{path}": {
+      "get": {
+        "operationId": "get_api_v1_gateways_gatewayid_proxy_path",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "gatewayID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Wildcard path parameter",
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/gateways/{gatewayID}/proxy/{path}",
+        "tags": [
+          "gateways"
+        ]
+      },
+      "head": {
+        "operationId": "head_api_v1_gateways_gatewayid_proxy_path",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "gatewayID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Wildcard path parameter",
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "HEAD /api/v1/gateways/{gatewayID}/proxy/{path}",
+        "tags": [
+          "gateways"
+        ]
+      }
+    },
     "/api/v1/gateways/{id}": {
       "delete": {
         "operationId": "delete_api_v1_gateways_id",
@@ -7507,6 +7314,97 @@
         "summary": "PUT /api/v1/gateways/{id}",
         "tags": [
           "gateways"
+        ]
+      }
+    },
+    "/api/v1/operation-logs": {
+      "get": {
+        "operationId": "get_api_v1_operation_logs",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/operation-logs",
+        "tags": [
+          "operation-logs"
+        ]
+      }
+    },
+    "/api/v1/operation-logs/settings": {
+      "get": {
+        "operationId": "get_api_v1_operation_logs_settings",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/operation-logs/settings",
+        "tags": [
+          "operation-logs"
+        ]
+      },
+      "put": {
+        "operationId": "put_api_v1_operation_logs_settings",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/v1/operation-logs/settings",
+        "tags": [
+          "operation-logs"
         ]
       }
     },
@@ -8634,6 +8532,99 @@
         ]
       }
     },
+    "/api/v1/recycle-bin/code-repositories": {
+      "get": {
+        "operationId": "get_api_v1_recycle_bin_code_repositories",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/recycle-bin/code-repositories",
+        "tags": [
+          "recycle-bin"
+        ]
+      }
+    },
+    "/api/v1/recycle-bin/code-repositories/permanently-delete": {
+      "post": {
+        "operationId": "post_api_v1_recycle_bin_code_repositories_permanently_delete",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "POST /api/v1/recycle-bin/code-repositories/permanently-delete",
+        "tags": [
+          "recycle-bin"
+        ]
+      }
+    },
+    "/api/v1/recycle-bin/code-repositories/restore": {
+      "post": {
+        "operationId": "post_api_v1_recycle_bin_code_repositories_restore",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "POST /api/v1/recycle-bin/code-repositories/restore",
+        "tags": [
+          "recycle-bin"
+        ]
+      }
+    },
     "/api/v1/recycle-bin/envs": {
       "get": {
         "operationId": "get_api_v1_recycle_bin_envs",
@@ -9279,14 +9270,23 @@
         ]
       }
     },
-    "/api/v1/webhooks/git/repo/{repoID}": {
-      "post": {
-        "operationId": "post_api_v1_webhooks_git_repo_repoid",
+    "/forward/{gatewayID}/{path}": {
+      "get": {
+        "operationId": "get_forward_gatewayid_path",
         "parameters": [
           {
             "description": "Path parameter",
             "in": "path",
-            "name": "repoID",
+            "name": "gatewayID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Wildcard path parameter",
+            "in": "path",
+            "name": "path",
             "required": true,
             "schema": {
               "type": "string"
@@ -9310,20 +9310,27 @@
             "description": "Internal Server Error"
           }
         },
-        "summary": "POST /api/v1/webhooks/git/repo/{repoID}",
+        "summary": "GET /forward/{gatewayID}/{path}",
         "tags": [
-          "webhooks"
+          "forward"
         ]
-      }
-    },
-    "/api/v1/webhooks/git/{appID}": {
-      "post": {
-        "operationId": "post_api_v1_webhooks_git_appid",
+      },
+      "head": {
+        "operationId": "head_forward_gatewayid_path",
         "parameters": [
           {
             "description": "Path parameter",
             "in": "path",
-            "name": "appID",
+            "name": "gatewayID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Wildcard path parameter",
+            "in": "path",
+            "name": "path",
             "required": true,
             "schema": {
               "type": "string"
@@ -9347,9 +9354,9 @@
             "description": "Internal Server Error"
           }
         },
-        "summary": "POST /api/v1/webhooks/git/{appID}",
+        "summary": "HEAD /forward/{gatewayID}/{path}",
         "tags": [
-          "webhooks"
+          "forward"
         ]
       }
     },

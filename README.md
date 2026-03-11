@@ -173,6 +173,7 @@ make build-all     # Both
 # Development
 make run           # Start API server (reads .env)
 make dev-ui        # Start Vite dev server at :5173
+make openapi       # Generate openapi/openapi.json and openapi/openapi.yaml
 
 # Testing
 make test          # Run tests with race detector

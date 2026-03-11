@@ -173,6 +173,7 @@ make build-all     # 同时编译前后端
 # 开发
 make run           # 启动 API 服务（读取 .env）
 make dev-ui        # 启动 Vite 开发服务器（:5173）
+make openapi       # 生成 openapi/openapi.json 和 openapi/openapi.yaml
 
 # 测试
 make test          # 启用竞态检测运行测试
