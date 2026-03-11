@@ -1,0 +1,123 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+config:
+  port: "8080"
+  logLevel: info
+  dbDriver: postgres
+  dbSource: ""
+  dbSSLMode: disable
+  corsAllowedOrigins: "*"
+  backendUrl: ""
+  jwtSecret: change-this-in-production
+
+api:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/ketches/ketches-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 8080
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: 250m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  extraEnv: []
+  livenessProbe:
+    enabled: false
+    path: /api/v1/version
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readinessProbe:
+    enabled: false
+    path: /api/v1/version
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+ui:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/ketches/ketches-ui
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 80
+  service:
+    type: NodePort
+    port: 80
+    nodePort: 30080
+  resources:
+    requests:
+      cpu: 250m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  extraEnv: []
+
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 17-alpine
+    pullPolicy: IfNotPresent
+  service:
+    port: 5432
+  auth:
+    database: ketches
+    username: ketches
+    password: ketches
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: ketches.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          backendService: api
+        - path: /
+          pathType: Prefix
+          backendService: ui
+  tls: []

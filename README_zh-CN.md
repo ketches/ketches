@@ -95,7 +95,50 @@ docker compose logs ketches-api | grep -i "admin"
 
 ### Helm（Kubernetes）
 
-> Helm Chart 即将推出，进展请关注 [Issues](https://github.com/ketches/ketches/issues)。
+**前置条件**：Kubernetes 1.24+、Helm 3.12+
+
+```bash
+helm upgrade --install ketches ./deploy/helm/ketches \
+  --namespace ketches \
+  --create-namespace
+```
+
+默认 UI Service 类型为 `NodePort`（`30080`）：
+
+```bash
+kubectl -n ketches get svc ketches-ui
+```
+
+也可以使用端口转发访问：
+
+```bash
+kubectl -n ketches port-forward svc/ketches-ui 8080:80
+# 浏览器打开 http://127.0.0.1:8080
+```
+
+生产环境请务必覆盖 `config.jwtSecret`。如果使用外部数据库，请设置 `postgres.enabled=false` 并显式提供 `config.dbSource`。
+
+#### Helm Chart 仓库（GitHub Pages）
+
+仓库已将 Helm Chart 自动发布集成到 `.github/workflows/release.yml`。
+
+当推送符合 `v*` 的 tag 时，GitHub Actions 会自动打包 `deploy/helm/ketches`，更新 `index.yaml`，并发布到 `gh-pages` 分支。
+
+一次性配置步骤：
+
+1. 进入仓库 GitHub Settings 的 **Pages**。
+2. **Source** 选择 **Deploy from a branch**。
+3. 分支选择 **gh-pages**，目录选择 **/**。
+4. 保存。
+
+之后即可通过 GitHub Pages 使用：
+
+```bash
+helm repo add ketches https://ketches.github.io/ketches
+helm repo update
+helm search repo ketches
+helm install ketches ketches/ketches -n ketches --create-namespace
+```
 
 ### 从源码构建
 

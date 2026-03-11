@@ -1,0 +1,14 @@
+apiVersion: v2
+name: ketches
+description: Helm chart for deploying Ketches (API + UI + PostgreSQL)
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - ketches
+  - kubernetes
+  - platform
+  - dashboard
+home: https://github.com/ketches/ketches
+sources:
+  - https://github.com/ketches/ketches

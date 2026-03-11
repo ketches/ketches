@@ -95,7 +95,50 @@ docker compose logs ketches-api | grep -i "admin"
 
 ### Helm (Kubernetes)
 
-> Helm chart coming soon. Track progress in [#issues](https://github.com/ketches/ketches/issues).
+**Prerequisites**: Kubernetes 1.24+, Helm 3.12+
+
+```bash
+helm upgrade --install ketches ./deploy/helm/ketches \
+  --namespace ketches \
+  --create-namespace
+```
+
+The default UI service type is `NodePort` (`30080`):
+
+```bash
+kubectl -n ketches get svc ketches-ui
+```
+
+Or access via port-forward:
+
+```bash
+kubectl -n ketches port-forward svc/ketches-ui 8080:80
+# open http://127.0.0.1:8080
+```
+
+For production, remember to override `config.jwtSecret`. If you use an external database, set `postgres.enabled=false` and provide `config.dbSource`.
+
+#### Helm Chart Repository (GitHub Pages)
+
+This repository includes automated chart publishing in `.github/workflows/release.yml`.
+
+On every tag push matching `v*`, GitHub Actions will package `deploy/helm/ketches`, update `index.yaml`, and publish artifacts to the `gh-pages` branch.
+
+One-time setup:
+
+1. In GitHub repository settings, open **Pages**.
+2. Set **Source** to **Deploy from a branch**.
+3. Select branch **gh-pages** and folder **/**.
+4. Save.
+
+Then users can install from GitHub Pages:
+
+```bash
+helm repo add ketches https://ketches.github.io/ketches
+helm repo update
+helm search repo ketches
+helm install ketches ketches/ketches -n ketches --create-namespace
+```
 
 ### Build from Source
 

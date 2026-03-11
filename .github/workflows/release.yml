@@ -129,11 +129,72 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  release-helm-chart:
+    name: Release Helm chart
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: write
+    env:
+      CHART_DIR: deploy/helm/ketches
+      CHART_REPO_DIR: .chartrepo
+      CHART_REPO_URL: https://ketches.github.io/ketches
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Validate chart
+        run: helm lint "${CHART_DIR}"
+
+      - name: Package chart from tag
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          CHART_VERSION="${TAG_NAME#v}"
+          mkdir -p dist
+          helm package "${CHART_DIR}" \
+            --destination dist \
+            --version "${CHART_VERSION}" \
+            --app-version "${CHART_VERSION}"
+
+      - name: Prepare gh-pages worktree
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages; then
+            git fetch origin gh-pages:gh-pages
+            git worktree add "${CHART_REPO_DIR}" gh-pages
+          else
+            git worktree add -b gh-pages "${CHART_REPO_DIR}"
+          fi
+
+      - name: Update chart repository index
+        run: |
+          cp dist/*.tgz "${CHART_REPO_DIR}/"
+          if [ -f "${CHART_REPO_DIR}/index.yaml" ]; then
+            helm repo index "${CHART_REPO_DIR}" --url "${CHART_REPO_URL}" --merge "${CHART_REPO_DIR}/index.yaml"
+          else
+            helm repo index "${CHART_REPO_DIR}" --url "${CHART_REPO_URL}"
+          fi
+
+      - name: Commit and push gh-pages
+        run: |
+          cd "${CHART_REPO_DIR}"
+          git add .
+          if git diff --cached --quiet; then
+            echo "No chart changes to publish"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "chore(charts): publish ${GITHUB_REF_NAME}"
+          git push origin HEAD:gh-pages
+
   # ── Create GitHub Release ──────────────────────────────────────────────────
   github-release:
     name: GitHub Release
     runs-on: ubuntu-latest
-    needs: [release-api, release-ui]
+    needs: [release-api, release-ui, release-helm-chart]
     permissions:
       contents: write
     steps:

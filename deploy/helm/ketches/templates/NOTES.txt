@@ -1,0 +1,35 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+Useful commands:
+  helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+  helm get values {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+{{- if .Values.ingress.enabled }}
+Ingress is enabled. Access endpoints:
+{{- range .Values.ingress.hosts }}
+  {{- $host := .host }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if eq .Values.ui.service.type "NodePort" }}
+UI service type is NodePort.
+Use one of your cluster node IPs and the configured nodePort:
+
+  export NODE_PORT=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "ketches.ui.fullname" . }} -o jsonpath="{.spec.ports[0].nodePort}")
+  export NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if eq .Values.ui.service.type "LoadBalancer" }}
+UI service type is LoadBalancer.
+It may take a few minutes to get an external IP:
+
+  kubectl get svc --namespace {{ .Release.Namespace }} {{ include "ketches.ui.fullname" . }} -w
+{{- else }}
+Use port-forward to access UI:
+
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "ketches.ui.fullname" . }} 8080:{{ .Values.ui.service.port }}
+  open http://127.0.0.1:8080
+{{- end }}
