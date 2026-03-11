@@ -66,7 +66,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const globalItems = isAdmin ? [] : [
     { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
     { title: "Recycle Bin", url: "/recycle-bin", icon: Trash2, hidden: isViewer },
-    { title: "Activities", url: "/activities", icon: Activity },
+    { title: isAdmin ? "User Activities" : "My Activities", url: "/activities", icon: Activity },
   ]
 
   const userData = {

@@ -294,7 +294,7 @@ export function UsersPage() {
                   }}
                 >
                   <Trash2 />
-                  Delete Selected ({selectedRows.length})
+                  Delete
                 </Button>
               )}
               <AddUserDialog onSuccess={() => refetch()} />
