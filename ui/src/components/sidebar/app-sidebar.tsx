@@ -43,13 +43,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const adminNavItems = [
     { title: "Clusters", url: "/clusters", icon: ShipWheel },
     { title: "Extensions", url: "/extensions", icon: Blocks },
-    // { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
     { title: "Users", url: "/users", icon: User },
   ]
 
   const adminUserNavItems = [
     { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
+    { title: "User Activities", url: "/activities", icon: Activity },
     { title: "Recycle Bin", url: "/recycle-bin", icon: Trash2 },
+
   ]
 
   // Project group: project-scoped modules (Dashboard rendered separately); some hidden for viewers
@@ -66,7 +67,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const globalItems = isAdmin ? [] : [
     { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
     { title: "Recycle Bin", url: "/recycle-bin", icon: Trash2, hidden: isViewer },
-    { title: isAdmin ? "User Activities" : "My Activities", url: "/activities", icon: Activity },
+    { title: "My Activities", url: "/activities", icon: Activity },
   ]
 
   const userData = {

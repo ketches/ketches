@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { ArchiveRestore, Box, Clock, FolderGit2, GalleryVerticalEnd, Loader2, Orbit, RotateCcw, Trash2 } from "lucide-react"
+import { ArchiveRestore, Box, Clock, FolderGit2, GalleryVerticalEnd, Loader2, Orbit, RotateCcw, Trash2, User } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { recycleBinApi, type RecycleBinApp, type RecycleBinCodeRepo, type RecycleBinEnv, type RecycleBinProject } from "@/api/recycle-bin"
+import { recycleBinApi, type RecycleBinApp, type RecycleBinCodeRepo, type RecycleBinEnv, type RecycleBinProject, type RecycleBinUser } from "@/api/recycle-bin"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -23,10 +23,13 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { formatDate } from "@/lib/utils"
+import { useAuthStore } from "@/stores/auth"
 
 export function RecycleBinPage() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = React.useState("")
+  const systemRole = useAuthStore((state) => state.user?.role)
+  const isAdmin = systemRole === 'admin'
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
   const debouncedSearch = useDebounce(searchQuery, 300)
@@ -35,15 +38,22 @@ export function RecycleBinPage() {
   const [selectedEnvRows, setSelectedEnvRows] = React.useState({})
   const [selectedProjectRows, setSelectedProjectRows] = React.useState({})
   const [selectedCodeRepoRows, setSelectedCodeRepoRows] = React.useState({})
+  const [selectedUserRows, setSelectedUserRows] = React.useState({})
 
   const [restoreDialogOpen, setRestoreDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [conflictDialogOpen, setConflictDialogOpen] = React.useState(false)
   const [conflictApps, setConflictApps] = React.useState<RecycleBinApp[]>([])
 
-  const [activeTab, setActiveTab] = React.useState<"projects" | "apps" | "envs" | "code-repos">("projects")
+  const [activeTab, setActiveTab] = React.useState<"projects" | "apps" | "envs" | "code-repos" | "users">("projects")
   const [restoringItemId, setRestoringItemId] = React.useState<string | null>(null)
   const [deletingItemId, setDeletingItemId] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (!isAdmin && activeTab === "users") {
+      setActiveTab("projects")
+    }
+  }, [activeTab, isAdmin])
 
   const [appsPagination, setAppsPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -59,6 +69,12 @@ export function RecycleBinPage() {
     pageIndex: 0,
     pageSize: 10,
   })
+
+  const [usersPagination, setUsersPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
   const [codeReposPagination, setCodeReposPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -100,6 +116,19 @@ export function RecycleBinPage() {
   const projects = React.useMemo(() => projectsResponse?.items ?? [], [projectsResponse])
   const projectsPaginationInfo = projectsResponse?.pagination
 
+  const { data: usersResponse, isLoading: usersLoading, isFetching: usersFetching, refetch: refetchUsers } = useQuery({
+    queryKey: ['recycle-bin-users', debouncedSearch, usersPagination.pageIndex, usersPagination.pageSize],
+    queryFn: () => recycleBinApi.listUsers({
+      search: debouncedSearch,
+      page: usersPagination.pageIndex + 1,
+      page_size: usersPagination.pageSize,
+    }),
+    enabled: isAdmin,
+  })
+
+  const users = React.useMemo(() => usersResponse?.items ?? [], [usersResponse])
+  const usersPaginationInfo = usersResponse?.pagination
+
   const { data: codeReposResponse, isLoading: codeReposLoading, isFetching: codeReposFetching, refetch: refetchCodeRepos } = useQuery({
     queryKey: ['recycle-bin-code-repos', debouncedSearch, codeReposPagination.pageIndex, codeReposPagination.pageSize],
     queryFn: () => recycleBinApi.listCodeRepos(undefined, {
@@ -126,6 +155,23 @@ export function RecycleBinPage() {
   const selectedCodeRepoIds = React.useMemo(() => {
     return Object.keys(selectedCodeRepoRows).filter(key => (selectedCodeRepoRows as Record<string, boolean>)[key]).map(index => codeRepos[parseInt(index)]?.id).filter(Boolean)
   }, [selectedCodeRepoRows, codeRepos])
+
+  const selectedUserIds = React.useMemo(() => {
+    return Object.keys(selectedUserRows).filter(key => (selectedUserRows as Record<string, boolean>)[key]).map(index => users[parseInt(index)]?.id).filter(Boolean)
+  }, [selectedUserRows, users])
+
+  const getErrorDescription = (error: unknown) => {
+    if (typeof error !== "object" || error === null) {
+      return "An unknown error occurred"
+    }
+
+    const response = (error as { response?: { data?: { error?: unknown } } }).response
+    if (typeof response?.data?.error === "string" && response.data.error.length > 0) {
+      return response.data.error
+    }
+
+    return "An unknown error occurred"
+  }
 
   const restoreAppsMutation = useMutation({
     mutationFn: (ids: string[]) => recycleBinApi.restoreApps(ids),
@@ -272,8 +318,44 @@ export function RecycleBinPage() {
     },
   })
 
+  const restoreUsersMutation = useMutation({
+    mutationFn: (ids: string[]) => recycleBinApi.restoreUsers(ids),
+    onSuccess: () => {
+      toast.success("Users restored")
+      queryClient.invalidateQueries({ queryKey: ['recycle-bin-users'] })
+      setSelectedUserRows({})
+      setRestoreDialogOpen(false)
+      setRestoringItemId(null)
+    },
+    onError: (error: unknown) => {
+      toast.error("Failed to restore users", {
+        description: getErrorDescription(error),
+      })
+      setRestoringItemId(null)
+    },
+  })
+
+  const deleteUsersMutation = useMutation({
+    mutationFn: (ids: string[]) => recycleBinApi.permanentlyDeleteUsers(ids),
+    onSuccess: () => {
+      toast.success("Users permanently deleted")
+      queryClient.invalidateQueries({ queryKey: ['recycle-bin-users'] })
+      setSelectedUserRows({})
+      setDeleteDialogOpen(false)
+      setDeletingItemId(null)
+    },
+    onError: (error: unknown) => {
+      toast.error("Failed to delete users", {
+        description: getErrorDescription(error),
+      })
+      setDeletingItemId(null)
+    },
+  })
+
   const handleRestore = () => {
-    if (activeTab === "projects" && selectedProjectIds.length > 0) {
+    if (activeTab === "users" && selectedUserIds.length > 0) {
+      restoreUsersMutation.mutate(selectedUserIds)
+    } else if (activeTab === "projects" && selectedProjectIds.length > 0) {
       restoreProjectsMutation.mutate(selectedProjectIds)
     } else if (activeTab === "apps" && selectedAppIds.length > 0) {
       restoreAppsMutation.mutate(selectedAppIds)
@@ -285,7 +367,9 @@ export function RecycleBinPage() {
   }
 
   const handleDelete = () => {
-    if (activeTab === "projects" && selectedProjectIds.length > 0) {
+    if (activeTab === "users" && selectedUserIds.length > 0) {
+      deleteUsersMutation.mutate(selectedUserIds)
+    } else if (activeTab === "projects" && selectedProjectIds.length > 0) {
       deleteProjectsMutation.mutate(selectedProjectIds)
     } else if (activeTab === "apps" && selectedAppIds.length > 0) {
       deleteAppsMutation.mutate(selectedAppIds)
@@ -296,9 +380,11 @@ export function RecycleBinPage() {
     }
   }
 
-  const handleRestoreSingle = (id: string, type: "project" | "app" | "env" | "code-repo") => {
+  const handleRestoreSingle = (id: string, type: "project" | "app" | "env" | "code-repo" | "user") => {
     setRestoringItemId(id)
-    if (type === "project") {
+    if (type === "user") {
+      restoreUsersMutation.mutate([id])
+    } else if (type === "project") {
       restoreProjectsMutation.mutate([id])
     } else if (type === "app") {
       restoreAppsMutation.mutate([id])
@@ -309,9 +395,11 @@ export function RecycleBinPage() {
     }
   }
 
-  const handleDeleteSingle = (id: string, type: "project" | "app" | "env" | "code-repo") => {
+  const handleDeleteSingle = (id: string, type: "project" | "app" | "env" | "code-repo" | "user") => {
     setDeletingItemId(id)
-    if (type === "project") {
+    if (type === "user") {
+      deleteUsersMutation.mutate([id])
+    } else if (type === "project") {
       deleteProjectsMutation.mutate([id])
     } else if (type === "app") {
       deleteAppsMutation.mutate([id])
@@ -413,6 +501,117 @@ export function RecycleBinPage() {
                   onClick={(e) => {
                     e.stopPropagation()
                     handleDeleteSingle(row.original.id, "project")
+                  }}
+                  disabled={deletingItemId === row.original.id}
+                />
+              }
+            >
+              <Trash2 />
+            </TooltipTrigger>
+            <TooltipContent>Permanently delete</TooltipContent>
+          </Tooltip>
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    })
+  }
+
+  const userColumns: ColumnDef<RecycleBinUser>[] = [
+    {
+      accessorKey: "username",
+      header: "User",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Avatar className="h-8 w-8 rounded-lg bg-primary/10 text-primary border-none">
+            <AvatarFallback className="rounded-lg text-xs font-bold">
+              {row.original.username.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">{row.original.fullname || row.original.username}</span>
+            <span className="text-xs text-muted-foreground font-mono">{row.original.username}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => <span className="text-muted-foreground">{row.original.email || "-"}</span>,
+    },
+    {
+      accessorKey: "role",
+      header: "Role",
+      cell: ({ row }) => <span className="capitalize">{row.original.role}</span>,
+    },
+    {
+      accessorKey: "deleted_at",
+      header: "Deleted At",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(row.original.deleted_at)}</span>
+        </div>
+      ),
+    },
+  ]
+
+  if (isAdmin) {
+    userColumns.unshift({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    })
+    userColumns.push({
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-2">
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRestoreSingle(row.original.id, "user")
+                  }}
+                  disabled={restoringItemId === row.original.id}
+                />
+              }
+            >
+              <ArchiveRestore />
+            </TooltipTrigger>
+            <TooltipContent>Restore user</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteSingle(row.original.id, "user")
                   }}
                   disabled={deletingItemId === row.original.id}
                 />
@@ -788,13 +987,25 @@ export function RecycleBinPage() {
       enableHiding: false,
     })
   }
-  const selectedCount = activeTab === "projects"
-    ? selectedProjectIds.length
-    : activeTab === "apps"
-      ? selectedAppIds.length
-      : activeTab === "envs"
-        ? selectedEnvIds.length
-        : selectedCodeRepoIds.length
+  const selectedCount = activeTab === "users"
+    ? selectedUserIds.length
+    : activeTab === "projects"
+      ? selectedProjectIds.length
+      : activeTab === "apps"
+        ? selectedAppIds.length
+        : activeTab === "envs"
+          ? selectedEnvIds.length
+          : selectedCodeRepoIds.length
+
+  const selectedResourceLabel = activeTab === "users"
+    ? "user(s)"
+    : activeTab === "projects"
+      ? "project(s)"
+      : activeTab === "apps"
+        ? "application(s)"
+        : activeTab === "envs"
+          ? "environment(s)"
+          : "code repositor(ies)"
 
   const breadcrumbs = [
     { label: "Recycle Bin", icon: Trash2 }
@@ -846,13 +1057,47 @@ export function RecycleBinPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "projects" | "apps" | "envs" | "code-repos")}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "projects" | "apps" | "envs" | "code-repos" | "users")}>
         <TabsList>
-          <TabsTrigger value="projects">Projects {projectsPaginationInfo?.total || 0 > 0 ? `(${projectsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
-          <TabsTrigger value="apps">Applications {appsPaginationInfo?.total || 0 > 0 ? `(${appsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
-          <TabsTrigger value="envs">Environments {envsPaginationInfo?.total || 0 > 0 ? `(${envsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
-          <TabsTrigger value="code-repos">Code Repositories {codeReposPaginationInfo?.total || 0 > 0 ? `(${codeReposPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="users">Users {(usersPaginationInfo?.total || 0) > 0 ? `(${usersPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          )}
+          <TabsTrigger value="projects">Projects {(projectsPaginationInfo?.total || 0) > 0 ? `(${projectsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          <TabsTrigger value="apps">Applications {(appsPaginationInfo?.total || 0) > 0 ? `(${appsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          <TabsTrigger value="envs">Environments {(envsPaginationInfo?.total || 0) > 0 ? `(${envsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          <TabsTrigger value="code-repos">Code Repositories {(codeReposPaginationInfo?.total || 0) > 0 ? `(${codeReposPaginationInfo?.total || 0})` : ''}</TabsTrigger>
         </TabsList>
+
+        {isAdmin && (
+          <TabsContent value="users" className="mt-2">
+            {usersLoading && users.length === 0 ? (
+              <div className="flex flex-col flex-1 items-center justify-center min-h-100">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : !usersLoading && users.length === 0 ? (
+              <EmptyState
+                title="No deleted users"
+                description="Deleted users will appear here. You can restore or permanently delete them."
+                icon={User}
+              />
+            ) : (
+              <DataTable
+                columns={userColumns}
+                data={users}
+                isLoading={usersLoading || usersFetching}
+                leftToolbar={() => leftToolbar}
+                batchActions={batchActions}
+                rowSelection={selectedUserRows}
+                onRowSelectionChange={setSelectedUserRows}
+                onRefresh={refetchUsers}
+                manualPagination
+                totalCount={usersPaginationInfo?.total || 0}
+                pagination={usersPagination}
+                onPaginationChange={setUsersPagination}
+              />
+            )}
+          </TabsContent>
+        )}
 
         <TabsContent value="projects" className="mt-2">
           {projectsLoading && projects.length === 0 ? (
@@ -976,7 +1221,7 @@ export function RecycleBinPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Restore Resources</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to restore {selectedCount} {activeTab === "projects" ? "project(s)" : activeTab === "apps" ? "application(s)" : activeTab === "envs" ? "environment(s)" : "code repositor(ies)"}?
+              Are you sure you want to restore {selectedCount} {selectedResourceLabel}?
               This will make them visible and usable again.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -992,7 +1237,7 @@ export function RecycleBinPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Permanently Delete Resources</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete {selectedCount} {activeTab === "projects" ? "project(s)" : activeTab === "apps" ? "application(s)" : activeTab === "envs" ? "environment(s)" : "code repositor(ies)"}?
+              Are you sure you want to permanently delete {selectedCount} {selectedResourceLabel}?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

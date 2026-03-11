@@ -1,4 +1,5 @@
 package models
+
 import "time"
 
 type RecycleBinAppResponse struct {
@@ -80,4 +81,18 @@ type RecycleBinCodeRepositoryResponse struct {
 type ListRecycleBinCodeRepositoryResponse struct {
 	Items      []RecycleBinCodeRepositoryResponse `json:"items"`
 	Pagination PaginationResponse                 `json:"pagination"`
+}
+
+type RecycleBinUserResponse struct {
+	ID        string    `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Fullname  string    `json:"fullname"`
+	Role      string    `json:"role"`
+	DeletedAt time.Time `json:"deleted_at"`
+}
+
+type ListRecycleBinUserResponse struct {
+	Items      []RecycleBinUserResponse `json:"items"`
+	Pagination PaginationResponse       `json:"pagination"`
 }

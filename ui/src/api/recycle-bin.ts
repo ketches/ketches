@@ -54,6 +54,15 @@ export interface RecycleBinCodeRepo {
   deleted_at: string
 }
 
+export interface RecycleBinUser {
+  id: string
+  username: string
+  email: string
+  fullname: string
+  role: string
+  deleted_at: string
+}
+
 export const recycleBinApi = {
   listApps: async (projectId?: string, params?: PaginationParams) => {
     return client.get('/v1/recycle-bin/apps', {
@@ -111,5 +120,17 @@ export const recycleBinApi = {
 
 	permanentlyDeleteCodeRepos: async (ids: string[]) => {
 		return client.post('/v1/recycle-bin/code-repositories/permanently-delete', { ids })
+	},
+
+	listUsers: async (params?: PaginationParams) => {
+		return client.get('/v1/recycle-bin/users', { params }) as Promise<{ items: RecycleBinUser[], pagination: PaginationResponse }>
+	},
+
+	restoreUsers: async (ids: string[]) => {
+		return client.post('/v1/recycle-bin/users/restore', { ids })
+	},
+
+	permanentlyDeleteUsers: async (ids: string[]) => {
+		return client.post('/v1/recycle-bin/users/permanently-delete', { ids })
 	},
 }

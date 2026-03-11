@@ -186,3 +186,54 @@ func BatchPermanentlyDeleteProjects(ids []string) error {
 	}
 	return nil
 }
+
+func ListDeletedUsers(page, pageSize int, search string) (int64, []models.RecycleBinUserResponse, error) {
+	var users []entities.User
+	var total int64
+
+	query := db.DB.Unscoped().Model(&entities.User{}).Where("users.deleted_at IS NOT NULL").Order("deleted_at DESC")
+
+	if search != "" {
+		query = query.Where("users.username LIKE ? OR users.fullname LIKE ? OR users.email LIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	if err := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&users).Error; err != nil {
+		return 0, nil, err
+	}
+
+	result := make([]models.RecycleBinUserResponse, 0, len(users))
+	for _, u := range users {
+		result = append(result, models.RecycleBinUserResponse{
+			ID:        u.ID,
+			Username:  u.Username,
+			Email:     u.Email,
+			Fullname:  u.Fullname,
+			Role:      u.Role,
+			DeletedAt: u.DeletedAt.Time,
+		})
+	}
+
+	return total, result, nil
+}
+
+func BatchRestoreUsers(ids []string) error {
+	for _, id := range ids {
+		if err := RestoreUser(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func BatchPermanentlyDeleteUsers(ids []string) error {
+	for _, id := range ids {
+		if err := PermanentlyDeleteUser(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}

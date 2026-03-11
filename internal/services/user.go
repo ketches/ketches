@@ -151,11 +151,77 @@ func UpdateUser(userID string, fullname, email, phone string) (*entities.User, e
 
 // countAdmins returns the number of admin users in the system.
 func countAdmins() (int64, error) {
+	return countAdminsTx(db.DB)
+}
+
+func countAdminsTx(tx *gorm.DB) (int64, error) {
 	var count int64
-	if err := db.DB.Model(&entities.User{}).Where("role = ?", app.UserRoleAdmin).Count(&count).Error; err != nil {
+	if err := tx.Model(&entities.User{}).Where("role = ?", app.UserRoleAdmin).Count(&count).Error; err != nil {
 		return 0, err
 	}
 	return count, nil
+}
+
+func getUserByID(tx *gorm.DB, userID string, unscoped bool) (*entities.User, error) {
+	var user entities.User
+	query := tx
+	if unscoped {
+		query = query.Unscoped()
+	}
+	if err := query.First(&user, "id = ?", userID).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func listOwnedProjectIDsByUser(tx *gorm.DB, userID string) ([]string, error) {
+	projectIDs := make([]string, 0)
+	err := tx.Model(&entities.ProjectMember{}).
+		Distinct("project_id").
+		Where("user_id = ? AND project_role = ?", userID, app.ProjectRoleOwner).
+		Pluck("project_id", &projectIDs).Error
+	if err != nil {
+		return nil, err
+	}
+	return projectIDs, nil
+}
+
+func softDeleteOwnedProjects(tx *gorm.DB, userID string) error {
+	projectIDs, err := listOwnedProjectIDsByUser(tx, userID)
+	if err != nil {
+		return err
+	}
+	if len(projectIDs) == 0 {
+		return nil
+	}
+	return tx.Where("id IN ?", projectIDs).Delete(&entities.Project{}).Error
+}
+
+func restoreOwnedProjects(tx *gorm.DB, userID string) error {
+	projectIDs, err := listOwnedProjectIDsByUser(tx, userID)
+	if err != nil {
+		return err
+	}
+	if len(projectIDs) == 0 {
+		return nil
+	}
+	return tx.Unscoped().Model(&entities.Project{}).Where("id IN ?", projectIDs).Update("deleted_at", nil).Error
+}
+
+func permanentlyDeleteOwnedProjects(tx *gorm.DB, userID string) error {
+	projectIDs, err := listOwnedProjectIDsByUser(tx, userID)
+	if err != nil {
+		return err
+	}
+	if len(projectIDs) == 0 {
+		return nil
+	}
+
+	if err := tx.Unscoped().Where("project_id IN ?", projectIDs).Delete(&entities.ProjectMember{}).Error; err != nil {
+		return err
+	}
+
+	return tx.Unscoped().Where("id IN ?", projectIDs).Delete(&entities.Project{}).Error
 }
 
 // EnsureBootstrapAdmin creates the built-in admin account only when no admin exists.
@@ -205,23 +271,69 @@ func buildBootstrapAdminEmail(username string) string {
 }
 
 func DeleteUser(userID string) error {
-	user, err := GetUser(userID)
-	if err != nil {
-		return err
-	}
-
-	// Prevent deleting the last admin user.
-	if user.Role == app.UserRoleAdmin {
-		adminCount, err := countAdmins()
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		user, err := getUserByID(tx, userID, false)
 		if err != nil {
 			return err
 		}
-		if adminCount <= 1 {
-			return ErrDeleteLastAdmin
-		}
-	}
 
-	return db.DB.Delete(&entities.User{}, "id = ?", userID).Error
+		// Prevent deleting the last admin user.
+		if user.Role == app.UserRoleAdmin {
+			adminCount, err := countAdminsTx(tx)
+			if err != nil {
+				return err
+			}
+			if adminCount <= 1 {
+				return ErrDeleteLastAdmin
+			}
+		}
+
+		if err := softDeleteOwnedProjects(tx, userID); err != nil {
+			return err
+		}
+
+		return tx.Delete(&entities.User{}, "id = ?", userID).Error
+	})
+}
+
+func RestoreUser(userID string) error {
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		user, err := getUserByID(tx, userID, true)
+		if err != nil {
+			return err
+		}
+		if !user.DeletedAt.Valid {
+			return errors.New("cannot restore active user")
+		}
+
+		if err := restoreOwnedProjects(tx, userID); err != nil {
+			return err
+		}
+
+		return tx.Unscoped().Model(&entities.User{}).Where("id = ?", userID).Update("deleted_at", nil).Error
+	})
+}
+
+func PermanentlyDeleteUser(userID string) error {
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		user, err := getUserByID(tx, userID, true)
+		if err != nil {
+			return err
+		}
+		if !user.DeletedAt.Valid {
+			return errors.New("cannot permanently delete active user")
+		}
+
+		if err := permanentlyDeleteOwnedProjects(tx, userID); err != nil {
+			return err
+		}
+
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&entities.ProjectMember{}).Error; err != nil {
+			return err
+		}
+
+		return tx.Unscoped().Delete(&entities.User{}, "id = ?", userID).Error
+	})
 }
 
 func ChangeUserRole(userID string, role string) error {

@@ -230,6 +230,56 @@ func PermanentlyDeleteProjects(c *gin.Context) {
 	api.NoContent(c)
 }
 
+func ListRecycleBinUsers(c *gin.Context) {
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+
+	total, users, err := services.ListDeletedUsers(req.Page, req.PageSize, req.Search)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, models.ListRecycleBinUserResponse{
+		Items:      users,
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
+	})
+}
+
+func RestoreUsers(c *gin.Context) {
+	var req models.RestoreResourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.BatchRestoreUsers(req.IDs); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.NoContent(c)
+}
+
+func PermanentlyDeleteUsers(c *gin.Context) {
+	var req models.PermanentlyDeleteResourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.BatchPermanentlyDeleteUsers(req.IDs); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.NoContent(c)
+}
+
 // ListRecycleBinCodeRepositories lists soft-deleted code repositories.
 func ListRecycleBinCodeRepositories(c *gin.Context) {
 	projectID := c.Query("project_id")
