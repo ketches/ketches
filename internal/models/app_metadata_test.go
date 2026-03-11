@@ -107,8 +107,7 @@ func TestAppMetadata_Serialization(t *testing.T) {
 	assert.NotContains(t, minJson, "auto_scaling")
 	assert.NotContains(t, minJson, "source")
 
-	// imported_at should be present
-	assert.Contains(t, minJson, "imported_at")
+	assert.NotContains(t, minJson, "imported_at")
 }
 
 func TestKetchesMetadataFile_Serialization(t *testing.T) {
