@@ -1059,13 +1059,13 @@ export function RecycleBinPage() {
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "projects" | "apps" | "envs" | "code-repos" | "users")}>
         <TabsList>
-          {isAdmin && (
-            <TabsTrigger value="users">Users {(usersPaginationInfo?.total || 0) > 0 ? `(${usersPaginationInfo?.total || 0})` : ''}</TabsTrigger>
-          )}
           <TabsTrigger value="projects">Projects {(projectsPaginationInfo?.total || 0) > 0 ? `(${projectsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
           <TabsTrigger value="apps">Applications {(appsPaginationInfo?.total || 0) > 0 ? `(${appsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
           <TabsTrigger value="envs">Environments {(envsPaginationInfo?.total || 0) > 0 ? `(${envsPaginationInfo?.total || 0})` : ''}</TabsTrigger>
           <TabsTrigger value="code-repos">Code Repositories {(codeReposPaginationInfo?.total || 0) > 0 ? `(${codeReposPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="users">Users {(usersPaginationInfo?.total || 0) > 0 ? `(${usersPaginationInfo?.total || 0})` : ''}</TabsTrigger>
+          )}
         </TabsList>
 
         {isAdmin && (
