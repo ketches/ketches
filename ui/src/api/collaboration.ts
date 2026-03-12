@@ -9,6 +9,11 @@ export const SprintStatus = {
   CLOSED: 'closed',
 } as const
 export type SprintStatus = typeof SprintStatus[keyof typeof SprintStatus]
+export const SprintStatusOptions = [
+  { label: 'Planned', value: 'planned' },
+  { label: 'Active', value: 'active' },
+  { label: 'Closed', value: 'closed' },
+] as const
 
 export const RequirementStatus = {
   TRIAGE: 'triage',
@@ -18,6 +23,13 @@ export const RequirementStatus = {
   CLOSED: 'closed',
 } as const
 export type RequirementStatus = typeof RequirementStatus[keyof typeof RequirementStatus]
+export const RequirementStatusOptions = [
+  { label: 'Triage', value: 'triage' },
+  { label: 'Confirmed', value: 'confirmed' },
+  { label: 'In Progress', value: 'in_progress' },
+  { label: 'Done', value: 'done' },
+  { label: 'Closed', value: 'closed' },
+] as const
 
 export const PlanningStatus = {
   BACKLOG: 'backlog',
@@ -26,6 +38,12 @@ export const PlanningStatus = {
   DONE: 'done',
 } as const
 export type PlanningStatus = typeof PlanningStatus[keyof typeof PlanningStatus]
+export const PlanningStatusOptions = [
+  { label: 'Backlog', value: 'backlog' },
+  { label: 'Planned', value: 'planned' },
+  { label: 'In Sprint', value: 'in_sprint' },
+  { label: 'Done', value: 'done' },
+] as const
 
 export const TaskStatus = {
   TODO: 'todo',
@@ -35,6 +53,13 @@ export const TaskStatus = {
   CANCELLED: 'cancelled',
 } as const
 export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus]
+export const TaskStatusOptions = [
+  { label: 'Todo', value: 'todo' },
+  { label: 'In Progress', value: 'in_progress' },
+  { label: 'Review', value: 'review' },
+  { label: 'Done', value: 'done' },
+  { label: 'Cancelled', value: 'cancelled' },
+] as const
 
 export const TestRunStatus = {
   PASSED: 'passed',
@@ -42,6 +67,11 @@ export const TestRunStatus = {
   BLOCKED: 'blocked',
 } as const
 export type TestRunStatus = typeof TestRunStatus[keyof typeof TestRunStatus]
+export const TestRunStatusOptions = [
+  { label: 'Passed', value: 'passed' },
+  { label: 'Failed', value: 'failed' },
+  { label: 'Blocked', value: 'blocked' },
+] as const
 
 export const DefectSeverity = {
   CRITICAL: 'critical',
@@ -50,6 +80,12 @@ export const DefectSeverity = {
   LOW: 'low',
 } as const
 export type DefectSeverity = typeof DefectSeverity[keyof typeof DefectSeverity]
+export const DefectSeverityOptions = [
+  { label: 'Critical', value: 'critical' },
+  { label: 'High', value: 'high' },
+  { label: 'Medium', value: 'medium' },
+  { label: 'Low', value: 'low' },
+] as const
 
 export const DefectStatus = {
   NEW: 'new',
@@ -59,6 +95,13 @@ export const DefectStatus = {
   REJECTED: 'rejected',
 } as const
 export type DefectStatus = typeof DefectStatus[keyof typeof DefectStatus]
+export const DefectStatusOptions = [
+  { label: 'New', value: 'new' },
+  { label: 'Processing', value: 'processing' },
+  { label: 'Pending Verify', value: 'pending_verify' },
+  { label: 'Closed', value: 'closed' },
+  { label: 'Rejected', value: 'rejected' },
+] as const
 
 export const CollabPriority = {
   P0: 'p0',
@@ -67,6 +110,12 @@ export const CollabPriority = {
   P3: 'p3',
 } as const
 export type CollabPriority = typeof CollabPriority[keyof typeof CollabPriority]
+export const CollabPriorityOptions = [
+  { label: 'P0', value: 'p0' },
+  { label: 'P1', value: 'p1' },
+  { label: 'P2', value: 'p2' },
+  { label: 'P3', value: 'p3' },
+] as const
 
 // ── Interfaces ───────────────────────────────────────────────────────────────
 
