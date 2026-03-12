@@ -106,7 +106,10 @@ This document defines the specialized agents involved in the development and mai
 - Always use shadcn components;
 - Do not write css directly, use tailwind;
 - The src/components/ui directory contains standard components. Please do not modify any content within it;
-- Avoid using the `any` type
+- Avoid using the `any` type;
+- Prioritize the use of `Field`, `FieldLabel`, and `FieldContent` in forms.
+- Combobox items should always have a `label` field for display purposes, and an optional `value` field for the underlying value. For example: `{ label: "Option 1", value: "option1" }`.
+- Combobox should use `itemToStringLabel` to specify the label field, never use `value` for that purpose. For example: `<Combobox itemToStringLabel={(v) => v.label} />`
 
 ### Docs
 
