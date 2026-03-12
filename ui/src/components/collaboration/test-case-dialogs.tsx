@@ -13,15 +13,19 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   collaborationApi,
   TestRunStatus,
+  TestRunStatusOptions,
   type TestCase,
+  type Sprint,
   type CreateTestCaseRequest,
   type UpdateTestCaseRequest,
   type CreateTestRunRequest
 } from "@/api/collaboration"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -44,6 +48,7 @@ export function CreateTestCaseDialog({
   const [precondition, setPrecondition] = useState("")
   const [steps, setSteps] = useState("")
   const [expectedResult, setExpectedResult] = useState("")
+  const [sprintId, setSprintId] = useState<string>("")
 
   // Reset form on open
   useEffect(() => {
@@ -52,8 +57,15 @@ export function CreateTestCaseDialog({
       setPrecondition("")
       setSteps("")
       setExpectedResult("")
+      setSprintId("")
     }
   }, [open])
+
+  const { data: sprints } = useQuery({
+    queryKey: ["sprints", projectId, "all"],
+    queryFn: () => collaborationApi.listSprints(projectId, { page_size: 100 }),
+    enabled: open,
+  })
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -61,7 +73,8 @@ export function CreateTestCaseDialog({
         title,
         precondition,
         steps,
-        expected_result: expectedResult
+        expected_result: expectedResult,
+        sprint_id: sprintId || undefined,
       }
       return collaborationApi.createTestCase(projectId, data)
     },
@@ -99,6 +112,22 @@ export function CreateTestCaseDialog({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Verify Login Functionality"
               />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel>Sprint (Optional)</FieldLabel>
+            <FieldContent>
+              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")}>
+                <ComboboxInput placeholder="Select sprint" itemToStringLabel={(item) => item.label} />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {sprints?.items.map((s: Sprint) => (
+                      <ComboboxItem key={s.id} value={s.id} label={s.name}>{s.name}</ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             </FieldContent>
           </Field>
 
@@ -176,6 +205,7 @@ export function EditTestCaseDialog({
   const [precondition, setPrecondition] = useState("")
   const [steps, setSteps] = useState("")
   const [expectedResult, setExpectedResult] = useState("")
+  const [sprintId, setSprintId] = useState<string>("")
 
   useEffect(() => {
     if (open && testCase) {
@@ -183,8 +213,15 @@ export function EditTestCaseDialog({
       setPrecondition(testCase.precondition || "")
       setSteps(testCase.steps)
       setExpectedResult(testCase.expected_result)
+      setSprintId(testCase.sprint_id || "")
     }
   }, [open, testCase])
+
+  const { data: sprints } = useQuery({
+    queryKey: ["sprints", projectId, "all"],
+    queryFn: () => collaborationApi.listSprints(projectId, { page_size: 100 }),
+    enabled: open,
+  })
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -195,6 +232,7 @@ export function EditTestCaseDialog({
         precondition,
         steps,
         expected_result: expectedResult,
+        sprint_id: sprintId || undefined,
         requirement_id: testCase.requirement_id,
         task_id: testCase.task_id
       }
@@ -268,6 +306,22 @@ export function EditTestCaseDialog({
                 onChange={(e) => setExpectedResult(e.target.value)}
                 rows={2}
               />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel>Sprint (Optional)</FieldLabel>
+            <FieldContent>
+              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")}>
+                <ComboboxInput placeholder="Select sprint" itemToStringLabel={(item) => item.label} />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {sprints?.items.map((s: Sprint) => (
+                      <ComboboxItem key={s.id} value={s.id} label={s.name}>{s.name}</ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             </FieldContent>
           </Field>
 

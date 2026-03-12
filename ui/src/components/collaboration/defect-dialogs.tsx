@@ -14,7 +14,10 @@ import {
   collaborationApi,
   DefectStatus,
   DefectSeverity,
+  DefectSeverityOptions,
+  DefectStatusOptions,
   type Defect,
+  type Sprint,
   type CreateDefectRequest,
   type UpdateDefectRequest,
   type Requirement,
@@ -25,6 +28,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -51,6 +55,7 @@ export function CreateDefectDialog({
   const [requirementId, setRequirementId] = useState<string>("")
   const [taskId, setTaskId] = useState<string>("")
   const [testCaseId, setTestCaseId] = useState<string>("")
+  const [sprintId, setSprintId] = useState<string>("")
 
   // Fetch options
   const { data: requirements } = useQuery({
@@ -71,6 +76,12 @@ export function CreateDefectDialog({
     enabled: open,
   })
 
+  const { data: sprints } = useQuery({
+    queryKey: ["sprints", projectId, "all"],
+    queryFn: () => collaborationApi.listSprints(projectId, { page_size: 100 }),
+    enabled: open,
+  })
+
 
   // Reset form on open
   useEffect(() => {
@@ -83,6 +94,7 @@ export function CreateDefectDialog({
       setRequirementId("")
       setTaskId("")
       setTestCaseId("")
+      setSprintId("")
     }
   }, [open])
 
@@ -94,6 +106,7 @@ export function CreateDefectDialog({
         reproduction_steps: reproductionSteps,
         severity,
         status,
+        sprint_id: sprintId || undefined,
         requirement_id: requirementId || undefined,
         task_id: taskId || undefined,
         test_case_id: testCaseId || undefined,
@@ -196,6 +209,22 @@ export function CreateDefectDialog({
             </FieldContent>
           </Field>
 
+          <Field>
+            <FieldLabel>Sprint (Optional)</FieldLabel>
+            <FieldContent>
+              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")}>
+                <ComboboxInput placeholder="Select sprint" itemToStringLabel={(item) => item.label} />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {sprints?.items.map((s: Sprint) => (
+                      <ComboboxItem key={s.id} value={s.id} label={s.name}>{s.name}</ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </FieldContent>
+          </Field>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Field>
               <FieldLabel>Requirement (Optional)</FieldLabel>
@@ -290,6 +319,7 @@ export function EditDefectDialog({
   const [requirementId, setRequirementId] = useState<string>("")
   const [taskId, setTaskId] = useState<string>("")
   const [testCaseId, setTestCaseId] = useState<string>("")
+  const [sprintId, setSprintId] = useState<string>("")
 
   // Fetch options
   const { data: requirements } = useQuery({
@@ -310,6 +340,12 @@ export function EditDefectDialog({
     enabled: open,
   })
 
+  const { data: sprints } = useQuery({
+    queryKey: ["sprints", projectId, "all"],
+    queryFn: () => collaborationApi.listSprints(projectId, { page_size: 100 }),
+    enabled: open,
+  })
+
 
   useEffect(() => {
     if (open && defect) {
@@ -322,6 +358,7 @@ export function EditDefectDialog({
       setRequirementId(defect.requirement_id || "")
       setTaskId(defect.task_id || "")
       setTestCaseId(defect.test_case_id || "")
+      setSprintId(defect.sprint_id || "")
     }
   }, [open, defect])
 
@@ -336,6 +373,7 @@ export function EditDefectDialog({
         severity,
         status,
         fix_note: fixNote,
+        sprint_id: sprintId || undefined,
         requirement_id: requirementId || undefined,
         task_id: taskId || undefined,
         test_case_id: testCaseId || undefined,
@@ -432,6 +470,22 @@ export function EditDefectDialog({
                 onChange={(e) => setReproductionSteps(e.target.value)}
                 rows={4}
               />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel>Sprint (Optional)</FieldLabel>
+            <FieldContent>
+              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")}>
+                <ComboboxInput placeholder="Select sprint" itemToStringLabel={(item) => item.label} />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {sprints?.items.map((s: Sprint) => (
+                      <ComboboxItem key={s.id} value={s.id} label={s.name}>{s.name}</ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             </FieldContent>
           </Field>
 
