@@ -5,6 +5,7 @@ type CollabTestCase struct {
 	Base
 
 	ProjectID      string `gorm:"type:varchar(36);not null;index:idx_collab_tc_project_req;index:idx_collab_tc_project_task"`
+	SprintID       string `gorm:"type:varchar(36);index"`
 	RequirementID  string `gorm:"type:varchar(36);index:idx_collab_tc_project_req"`
 	TaskID         string `gorm:"type:varchar(36);index:idx_collab_tc_project_task"`
 	Title          string `gorm:"type:varchar(200);not null"`

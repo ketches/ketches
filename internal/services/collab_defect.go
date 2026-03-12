@@ -26,6 +26,9 @@ func ListDefects(projectID string, params *models.CollabFilterParams) (int64, []
 	if params.AssigneeID != "" {
 		q = q.Where("assignee_id = ?", params.AssigneeID)
 	}
+	if params.SprintID != "" {
+		q = q.Where("sprint_id = ?", params.SprintID)
+	}
 	if params.Search != "" {
 		q = q.Where("title LIKE ?", "%"+params.Search+"%")
 	}
@@ -59,6 +62,7 @@ func CreateDefect(projectID, userID string, req *models.CreateDefectRequest) (*e
 	defect := &entities.CollabDefect{
 		Base:               entities.Base{ID: uuid.New()},
 		ProjectID:          projectID,
+		SprintID:           req.SprintID,
 		RequirementID:      req.RequirementID,
 		TaskID:             req.TaskID,
 		TestCaseID:         req.TestCaseID,
@@ -99,6 +103,7 @@ func UpdateDefect(projectID, defectID, userID string, req *models.UpdateDefectRe
 	defect.Severity = req.Severity
 	defect.Status = req.Status
 	defect.AssigneeID = req.AssigneeID
+	defect.SprintID = req.SprintID
 	defect.ReproductionSteps = req.ReproductionSteps
 	defect.FixNote = req.FixNote
 	defect.RuntimeContextJSON = req.RuntimeContextJSON

@@ -124,6 +124,7 @@ func toTestCaseResponse(tc *entities.CollabTestCase) models.TestCaseResponse {
 	return models.TestCaseResponse{
 		ID:             tc.ID,
 		ProjectID:      tc.ProjectID,
+		SprintID:       tc.SprintID,
 		RequirementID:  tc.RequirementID,
 		TaskID:         tc.TaskID,
 		Title:          tc.Title,

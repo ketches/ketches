@@ -124,6 +124,7 @@ func toDefectResponse(d *entities.CollabDefect) models.DefectResponse {
 	return models.DefectResponse{
 		ID:                 d.ID,
 		ProjectID:          d.ProjectID,
+		SprintID:           d.SprintID,
 		RequirementID:      d.RequirementID,
 		TaskID:             d.TaskID,
 		TestCaseID:         d.TestCaseID,

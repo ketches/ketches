@@ -26,6 +26,7 @@ type CollabDefect struct {
 	Base
 
 	ProjectID          string `gorm:"type:varchar(36);not null;index:idx_collab_def_project_status;index:idx_collab_def_project_severity;index:idx_collab_def_project_assignee"`
+	SprintID           string `gorm:"type:varchar(36);index"`
 	RequirementID      string `gorm:"type:varchar(36);index"`
 	TaskID             string `gorm:"type:varchar(36);index"`
 	TestCaseID         string `gorm:"type:varchar(36);index"`

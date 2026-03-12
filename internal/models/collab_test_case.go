@@ -5,6 +5,7 @@ import "time"
 // CreateTestCaseRequest is the request body for creating a test case.
 type CreateTestCaseRequest struct {
 	Title          string `json:"title" binding:"required"`
+	SprintID       string `json:"sprint_id"`
 	Precondition   string `json:"precondition"`
 	Steps          string `json:"steps" binding:"required"`
 	ExpectedResult string `json:"expected_result" binding:"required"`
@@ -15,6 +16,7 @@ type CreateTestCaseRequest struct {
 // UpdateTestCaseRequest is the request body for updating a test case.
 type UpdateTestCaseRequest struct {
 	Title          string `json:"title" binding:"required"`
+	SprintID       string `json:"sprint_id"`
 	Precondition   string `json:"precondition"`
 	Steps          string `json:"steps" binding:"required"`
 	ExpectedResult string `json:"expected_result" binding:"required"`
@@ -26,6 +28,7 @@ type UpdateTestCaseRequest struct {
 type TestCaseResponse struct {
 	ID             string    `json:"id"`
 	ProjectID      string    `json:"project_id"`
+	SprintID       string    `json:"sprint_id"`
 	RequirementID  string    `json:"requirement_id"`
 	TaskID         string    `json:"task_id"`
 	Title          string    `json:"title"`

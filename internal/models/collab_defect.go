@@ -9,6 +9,7 @@ type CreateDefectRequest struct {
 	Severity          string `json:"severity" binding:"required"`
 	Status            string `json:"status" binding:"required"`
 	AssigneeID        string `json:"assignee_id"`
+	SprintID          string `json:"sprint_id"`
 	RequirementID     string `json:"requirement_id"`
 	TaskID            string `json:"task_id"`
 	TestCaseID        string `json:"test_case_id"`
@@ -23,6 +24,7 @@ type UpdateDefectRequest struct {
 	Severity           string `json:"severity" binding:"required"`
 	Status             string `json:"status" binding:"required"`
 	AssigneeID         string `json:"assignee_id"`
+	SprintID           string `json:"sprint_id"`
 	RequirementID      string `json:"requirement_id"`
 	TaskID             string `json:"task_id"`
 	TestCaseID         string `json:"test_case_id"`
@@ -41,6 +43,7 @@ type DefectTransitionRequest struct {
 type DefectResponse struct {
 	ID                 string    `json:"id"`
 	ProjectID          string    `json:"project_id"`
+	SprintID           string    `json:"sprint_id"`
 	RequirementID      string    `json:"requirement_id"`
 	TaskID             string    `json:"task_id"`
 	TestCaseID         string    `json:"test_case_id"`

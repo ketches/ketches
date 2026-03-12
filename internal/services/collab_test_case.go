@@ -17,6 +17,9 @@ func ListTestCases(projectID string, params *models.CollabFilterParams) (int64, 
 	if params.Search != "" {
 		q = q.Where("title LIKE ?", "%"+params.Search+"%")
 	}
+	if params.SprintID != "" {
+		q = q.Where("sprint_id = ?", params.SprintID)
+	}
 
 	var total int64
 	if err := q.Model(&entities.CollabTestCase{}).Count(&total).Error; err != nil {
@@ -47,6 +50,7 @@ func CreateTestCase(projectID, userID string, req *models.CreateTestCaseRequest)
 	tc := &entities.CollabTestCase{
 		Base:           entities.Base{ID: uuid.New()},
 		ProjectID:      projectID,
+		SprintID:       req.SprintID,
 		RequirementID:  req.RequirementID,
 		TaskID:         req.TaskID,
 		Title:          req.Title,
@@ -76,6 +80,7 @@ func UpdateTestCase(projectID, testCaseID, userID string, req *models.UpdateTest
 	tc.RequirementID = req.RequirementID
 	tc.TaskID = req.TaskID
 	tc.Title = req.Title
+	tc.SprintID = req.SprintID
 	tc.Precondition = req.Precondition
 	tc.Steps = req.Steps
 	tc.ExpectedResult = req.ExpectedResult
