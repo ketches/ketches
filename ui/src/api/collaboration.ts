@@ -182,6 +182,7 @@ export interface Task {
 export interface TestCase {
   id: string
   project_id: string
+  sprint_id?: string
   requirement_id?: string
   task_id?: string
   title: string
@@ -209,6 +210,7 @@ export interface TestRun {
 export interface Defect {
   id: string
   project_id: string
+  sprint_id?: string
   requirement_id?: string
   task_id?: string
   test_case_id?: string
@@ -276,6 +278,7 @@ export type UpdateTaskRequest = Omit<CreateTaskRequest, 'parent_task_id'>
 
 export interface CreateTestCaseRequest {
   title: string
+  sprint_id?: string
   precondition?: string
   steps: string
   expected_result: string
@@ -296,6 +299,7 @@ export interface CreateDefectRequest {
   severity: DefectSeverity
   status: DefectStatus
   assignee_id?: string
+  sprint_id?: string
   requirement_id?: string
   task_id?: string
   test_case_id?: string
