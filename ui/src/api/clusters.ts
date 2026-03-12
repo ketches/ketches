@@ -98,6 +98,19 @@ export interface K8sNode {
   }
 }
 
+export interface ClusterServicePort {
+  name?: string
+  protocol: string
+  port: number
+  target_port: string
+  node_port?: number
+}
+
+export interface ClusterService {
+  name: string
+  ports: ClusterServicePort[]
+}
+
 export const clustersApi = {
   list: async (params?: PaginationParams) => {
     return client.get('/v1/clusters', { params }) as Promise<{ items: Cluster[], pagination: PaginationResponse }>
@@ -200,6 +213,10 @@ export const clustersApi = {
 
   listServices: async (id: string, namespace: string) => {
     return client.get(`/v1/clusters/${id}/services?namespace=${namespace}`) as Promise<string[]>
+  },
+
+  listServicesWithPorts: async (id: string, namespace: string) => {
+    return client.get(`/v1/clusters/${id}/services?namespace=${namespace}&with_ports=true`) as Promise<ClusterService[]>
   },
 
   listStorageClasses: async (clusterId: string) => {

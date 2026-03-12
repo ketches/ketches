@@ -3,7 +3,7 @@ import { AlertCircle, Edit2, ExternalLink, GamepadDirectional, Loader2, Plus, Tr
 import * as React from "react"
 import { toast } from "sonner"
 
-import { clustersApi, type ClusterIntegration, type CreateClusterIntegrationRequest, type IntegrationType } from "@/api/clusters"
+import { clustersApi, type ClusterIntegration, type ClusterService, type CreateClusterIntegrationRequest, type IntegrationType } from "@/api/clusters"
 import { DataTable } from "@/components/data-table/data-table"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -54,7 +54,7 @@ const defaultFormData: IntegrationFormData = {
   endpoint: "",
   namespace: "default",
   service_name: "",
-  service_port: "80",
+  service_port: "",
   username: "",
   password: "",
   token: "",
@@ -81,11 +81,18 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
     enabled: dialogOpen && formData.access_mode === "service",
   })
 
-  const { data: services = [] } = useQuery({
-    queryKey: ["cluster-services", clusterId, formData.namespace],
-    queryFn: () => clustersApi.listServices(clusterId, formData.namespace),
+  const { data: services = [] } = useQuery<ClusterService[]>({
+    queryKey: ["cluster-services-with-ports", clusterId, formData.namespace],
+    queryFn: () => clustersApi.listServicesWithPorts(clusterId, formData.namespace),
     enabled: dialogOpen && formData.access_mode === "service" && !!formData.namespace,
   })
+
+  const selectedService = React.useMemo(
+    () => services.find((service) => service.name === formData.service_name),
+    [services, formData.service_name],
+  )
+
+  const servicePorts = selectedService?.ports ?? []
 
   const { data: integrations = [], isLoading } = useQuery({
     queryKey: ["cluster-integrations", clusterId],
@@ -178,9 +185,20 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
     }
 
     if (formData.access_mode === "service") {
+      if (!formData.namespace || !formData.service_name || !formData.service_port) {
+        toast.error("Please select namespace, service and port")
+        return
+      }
+
+      const servicePort = Number.parseInt(formData.service_port, 10)
+      if (Number.isNaN(servicePort)) {
+        toast.error("Please select a valid service port")
+        return
+      }
+
       payload.namespace = formData.namespace
       payload.service_name = formData.service_name
-      payload.service_port = parseInt(formData.service_port) || 80
+      payload.service_port = servicePort
       payload.endpoint = ""
     } else {
       payload.endpoint = formData.endpoint
@@ -427,7 +445,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                   <FieldContent>
                     <Combobox
                       value={formData.namespace || ""}
-                      onValueChange={(v) => setFormData({ ...formData, namespace: v ?? "", service_name: "" })}
+                      onValueChange={(v) => setFormData((prev) => ({ ...prev, namespace: v ?? "", service_name: "", service_port: "" }))}
                     >
                       <ComboboxInput placeholder="Select namespace" />
                       <ComboboxContent>
@@ -448,15 +466,29 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                     <FieldContent>
                       <Combobox
                         value={formData.service_name || ""}
-                        onValueChange={(v) => setFormData({ ...formData, service_name: v ?? "" })}
+                        onValueChange={(v) => {
+                          const nextServiceName = v ?? ""
+                          setFormData((prev) => {
+                            const service = services.find((item) => item.name === nextServiceName)
+                            const nextServicePort = nextServiceName === prev.service_name
+                              ? prev.service_port
+                              : service?.ports?.[0]?.port.toString() ?? ""
+
+                            return {
+                              ...prev,
+                              service_name: nextServiceName,
+                              service_port: nextServicePort,
+                            }
+                          })
+                        }}
                         disabled={!formData.namespace}
                       >
                         <ComboboxInput placeholder="Select service" />
                         <ComboboxContent>
                           <ComboboxList>
                             {services.map((svc) => (
-                              <ComboboxItem key={svc} value={svc}>
-                                {svc}
+                              <ComboboxItem key={svc.name} value={svc.name}>
+                                {svc.name}
                               </ComboboxItem>
                             ))}
                           </ComboboxList>
@@ -464,16 +496,36 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                       </Combobox>
                     </FieldContent>
                   </Field>
-                  <Field className="w-24">
+                  <Field className="w-40">
                     <FieldLabel>Port</FieldLabel>
                     <FieldContent>
-                      <Input
-                        value={formData.service_port}
-                        onChange={(e) => setFormData({ ...formData, service_port: e.target.value })}
-                        placeholder="80"
-                        type="number"
-                        required
-                      />
+                      <Combobox
+                        value={formData.service_port || ""}
+                        onValueChange={(v) => setFormData((prev) => ({ ...prev, service_port: v ?? "" }))}
+                        disabled={!formData.service_name || servicePorts.length === 0}
+                        itemToStringLabel={(v) => {
+                          if (!v) return ""
+                          const port = servicePorts.find((item) => item.port.toString() === v)
+                          if (!port) return v
+                          return port.name ? `${port.port} (${port.name})` : `${port.port}`
+                        }}
+                      >
+                        <ComboboxInput placeholder={formData.service_name ? "Select port" : "Select service first"} />
+                        <ComboboxContent>
+                          <ComboboxList>
+                            {servicePorts.map((port) => (
+                              <ComboboxItem key={`${port.port}-${port.protocol}-${port.target_port}-${port.name ?? ""}`} value={port.port.toString()}>
+                                <div className="flex flex-col">
+                                  <span>{port.name ? `${port.port} (${port.name})` : port.port}</span>
+                                  <span className="text-muted-foreground text-[10px]">
+                                    {port.protocol} · target {port.target_port}
+                                  </span>
+                                </div>
+                              </ComboboxItem>
+                            ))}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
                     </FieldContent>
                   </Field>
                 </div>
