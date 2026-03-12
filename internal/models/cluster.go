@@ -53,3 +53,16 @@ type UpdateClusterCredentialsRequest struct {
 	KubeConfig string `json:"kube_config" binding:"required"`
 	GatewayIP  string `json:"gateway_ip"`
 }
+
+type ClusterServicePortResponse struct {
+	Name       string `json:"name,omitempty"`
+	Protocol   string `json:"protocol"`
+	Port       int32  `json:"port"`
+	TargetPort string `json:"target_port"`
+	NodePort   int32  `json:"node_port,omitempty"`
+}
+
+type ClusterServiceResponse struct {
+	Name  string                       `json:"name"`
+	Ports []ClusterServicePortResponse `json:"ports"`
+}

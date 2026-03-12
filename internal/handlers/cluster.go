@@ -312,12 +312,24 @@ func ListClusterServices(c *gin.Context) {
 		api.Error(c, http.StatusBadRequest, fmt.Errorf("namespace is required"))
 		return
 	}
-	services, err := services.ListClusterServices(clusterID, namespace)
+
+	withPorts := c.Query("with_ports")
+	if withPorts == "1" || withPorts == "true" {
+		serviceDetails, err := services.ListClusterServicesWithPorts(clusterID, namespace)
+		if err != nil {
+			api.Error(c, http.StatusInternalServerError, err)
+			return
+		}
+		api.Success(c, serviceDetails)
+		return
+	}
+
+	serviceNames, err := services.ListClusterServices(clusterID, namespace)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Success(c, services)
+	api.Success(c, serviceNames)
 }
 
 func ListStorageClasses(c *gin.Context) {

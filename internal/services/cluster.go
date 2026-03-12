@@ -284,6 +284,42 @@ func ListClusterServices(clusterID string, namespace string) ([]string, error) {
 	return res, nil
 }
 
+func ListClusterServicesWithPorts(clusterID string, namespace string) ([]models.ClusterServiceResponse, error) {
+	client, err := kube.GlobalClusterStore.GetClient(clusterID)
+	if err != nil {
+		return nil, err
+	}
+	serviceList, err := client.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return buildClusterServiceResponses(serviceList.Items), nil
+}
+
+func buildClusterServiceResponses(services []corev1.Service) []models.ClusterServiceResponse {
+	res := make([]models.ClusterServiceResponse, 0, len(services))
+	for _, svc := range services {
+		ports := make([]models.ClusterServicePortResponse, 0, len(svc.Spec.Ports))
+		for _, svcPort := range svc.Spec.Ports {
+			ports = append(ports, models.ClusterServicePortResponse{
+				Name:       svcPort.Name,
+				Protocol:   string(svcPort.Protocol),
+				Port:       svcPort.Port,
+				TargetPort: svcPort.TargetPort.String(),
+				NodePort:   svcPort.NodePort,
+			})
+		}
+
+		res = append(res, models.ClusterServiceResponse{
+			Name:  svc.Name,
+			Ports: ports,
+		})
+	}
+
+	return res
+}
+
 type StorageClassInfo struct {
 	Name        string `json:"name"`
 	Provisioner string `json:"provisioner"`
