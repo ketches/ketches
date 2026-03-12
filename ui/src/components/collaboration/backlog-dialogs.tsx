@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { Field, FieldContent, FieldLabel } from "../ui/field"
 import { collaborationApi, SprintStatus, type Sprint } from "@/api/collaboration"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
@@ -75,7 +75,7 @@ export function PlanToSprintDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-160">
         <DialogHeader>
           <DialogTitle>Plan to Sprint</DialogTitle>
           <DialogDescription>
@@ -83,35 +83,37 @@ export function PlanToSprintDialog({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Select Sprint</Label>
-            <Combobox
-              value={selectedSprintId}
-              onValueChange={(val) => val && setSelectedSprintId(val)}
-            >
-              <ComboboxInput placeholder="Select sprint" />
-              <ComboboxContent>
-                <ComboboxList>
-                  {sprints.map((sprint: Sprint) => (
-                    <ComboboxItem key={sprint.id} value={sprint.id}>
-                      {sprint.name} ({sprint.status})
-                    </ComboboxItem>
-                  ))}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-          </div>
-        </div>
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
+          <Field>
+            <FieldLabel>Select Sprint</FieldLabel>
+            <FieldContent>
+              <Combobox
+                value={selectedSprintId}
+                onValueChange={(val) => val && setSelectedSprintId(val)}
+              >
+                <ComboboxInput placeholder="Select sprint" />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {sprints.map((sprint: Sprint) => (
+                      <ComboboxItem key={sprint.id} value={sprint.id} label={`${sprint.name} (${sprint.status})`}>
+                        {sprint.name} ({sprint.status})
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </FieldContent>
+          </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={mutation.isPending || !selectedSprintId}>
-            {mutation.isPending ? "Moving..." : "Move to Sprint"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={mutation.isPending || !selectedSprintId}>
+              {mutation.isPending ? "Moving..." : "Move to Sprint"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

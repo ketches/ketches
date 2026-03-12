@@ -7,13 +7,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
   collaborationApi,
   CollabPriority,
+  CollabPriorityOptions,
   RequirementStatus,
+  RequirementStatusOptions,
   type Requirement,
   type CreateRequirementRequest,
   type UpdateRequirementRequest,
@@ -23,6 +25,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -94,73 +97,81 @@ export function CreateRequirementDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>{parentId ? "Create Child Requirement" : "Create Requirement"}{parentTitle && ` for "${parentTitle}"`}</DialogTitle>
-          <DialogDescription>
-            Add a new requirement to the backlog.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160">
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>{parentId ? "Create Child Requirement" : "Create Requirement"}{parentTitle && ` for "${parentTitle}"`}</DialogTitle>
+            <DialogDescription>
+              Add a new requirement to the backlog.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. User Authentication"
-            />
-          </div>
+          <Field>
+            <FieldLabel>Title</FieldLabel>
+            <FieldContent>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. User Authentication"
+              />
+            </FieldContent>
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Priority</Label>
-              <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(CollabPriority).map((p) => (
-                      <ComboboxItem key={p} value={p}>{p.toUpperCase()}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+            <Field>
+              <FieldLabel>Priority</FieldLabel>
+              <FieldContent>
+                <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)}>
+                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {CollabPriorityOptions.map((p) => (
+                        <ComboboxItem key={p.value} value={p.value} label={p.label}>{p.label}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
 
-            <div className="grid gap-2">
-              <Label>Status</Label>
-              <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(RequirementStatus).map((s) => (
-                      <ComboboxItem key={s} value={s}>{s.replace('_', ' ').toUpperCase()}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+            <Field>
+              <FieldLabel>Status</FieldLabel>
+              <FieldContent>
+                <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)}>
+                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {RequirementStatusOptions.map((s) => (
+                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detailed description..."
-              rows={5}
-            />
-          </div>
-        </div>
+          <Field>
+            <FieldLabel>Description</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Detailed description..."
+                rows={5}
+              />
+            </FieldContent>
+          </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !title}>
-            {mutation.isPending ? "Creating..." : "Create"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending || !title}>
+              {mutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
@@ -235,68 +246,76 @@ export function EditRequirementDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Edit Requirement</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160">
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Edit Requirement</DialogTitle>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="edit-title">Title</Label>
-            <Input
-              id="edit-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Title</FieldLabel>
+            <FieldContent>
+              <Input
+                id="edit-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </FieldContent>
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Priority</Label>
-              <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(CollabPriority).map((p) => (
-                      <ComboboxItem key={p} value={p}>{p.toUpperCase()}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+            <Field>
+              <FieldLabel>Priority</FieldLabel>
+              <FieldContent>
+                <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)}>
+                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {CollabPriorityOptions.map((p) => (
+                        <ComboboxItem key={p.value} value={p.value} label={p.label}>{p.label}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
 
-            <div className="grid gap-2">
-              <Label>Status</Label>
-              <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(RequirementStatus).map((s) => (
-                      <ComboboxItem key={s} value={s}>{s.replace('_', ' ').toUpperCase()}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+            <Field>
+              <FieldLabel>Status</FieldLabel>
+              <FieldContent>
+                <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)}>
+                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {RequirementStatusOptions.map((s) => (
+                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="edit-description">Description</Label>
-            <Textarea
-              id="edit-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={5}
-            />
-          </div>
-        </div>
+          <Field>
+            <FieldLabel>Description</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="edit-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={5}
+              />
+            </FieldContent>
+          </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !title}>
-            {mutation.isPending ? "Save Changes" : "Save Changes"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending || !title}>
+              {mutation.isPending ? "Save Changes" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

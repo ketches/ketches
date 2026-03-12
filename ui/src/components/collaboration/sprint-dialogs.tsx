@@ -1,4 +1,7 @@
+import { collaborationApi, SprintStatus, SprintStatusOptions, type CreateSprintRequest, type Sprint, type UpdateSprintRequest } from "@/api/collaboration"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -8,18 +11,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { collaborationApi, SprintStatus, type Sprint, type CreateSprintRequest, type UpdateSprintRequest } from "@/api/collaboration"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState, useEffect } from "react"
-import { toast } from "sonner"
-import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 interface CreateSprintDialogProps {
   open: boolean
@@ -96,113 +97,121 @@ export function CreateSprintDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Create Sprint</DialogTitle>
-          <DialogDescription>
-            Create a new sprint to plan your work.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Sprint 1"
-              required
-            />
+          <DialogHeader>
+            <DialogTitle>Create Sprint</DialogTitle>
+            <DialogDescription>
+              Create a new sprint to plan your work.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-4">
+            <Field className="col-span-2">
+              <FieldLabel>Name</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Sprint 1"
+                  required
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Status</FieldLabel>
+              <FieldContent>
+                <Combobox
+                  value={formData.status}
+                  onValueChange={(val) => val && setFormData({ ...formData, status: val as SprintStatus })}
+                >
+                  <ComboboxInput placeholder="Select status" itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {SprintStatusOptions.map((opt) => (
+                        <ComboboxItem key={opt.value} value={opt.value} label={opt.label}>
+                          {opt.label}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="goal">Goal</Label>
-            <Textarea
-              id="goal"
-              value={formData.goal || ""}
-              onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-              placeholder="Sprint goal..."
-              className="min-h-24"
-            />
-          </div>
+
+          <Field>
+            <FieldLabel>Goal</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="goal"
+                value={formData.goal || ""}
+                onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                placeholder="Sprint goal..."
+                className="min-h-24"
+              />
+            </FieldContent>
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Combobox
-                value={formData.status}
-                onValueChange={(val) => val && setFormData({ ...formData, status: val as SprintStatus })}
-              >
-                <ComboboxInput placeholder="Select status" />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(SprintStatus).map((status) => (
-                      <ComboboxItem key={status} value={status}>
-                        {status.replace(/_/g, " ")}
-                      </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2 flex flex-col">
-              <Label>Start Date</Label>
-              <Popover>
-                <PopoverTrigger
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    "w-full pl-3 text-left font-normal",
-                    !startDate && "text-muted-foreground"
-                  )}
-                >
-                  {startDate ? (
-                    format(startDate, "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2 flex flex-col">
-              <Label>End Date</Label>
-              <Popover>
-                <PopoverTrigger
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    "w-full pl-3 text-left font-normal",
-                    !endDate && "text-muted-foreground"
-                  )}
-                >
-                  {endDate ? (
-                    format(endDate, "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+            <Field>
+              <FieldLabel>Start Date</FieldLabel>
+              <FieldContent>
+                <Popover>
+                  <PopoverTrigger
+                    className={cn(
+                      buttonVariants({ variant: "outline" }),
+                      "w-full pl-3 text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    {startDate ? (
+                      format(startDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      autoFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>End Date</FieldLabel>
+              <FieldContent>
+                <Popover>
+                  <PopoverTrigger
+                    className={cn(
+                      buttonVariants({ variant: "outline" }),
+                      "w-full pl-3 text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    {endDate ? (
+                      format(endDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      autoFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </FieldContent>
+            </Field>
           </div>
 
           <DialogFooter>
@@ -215,7 +224,7 @@ export function CreateSprintDialog({
           </DialogFooter>
         </form>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }
 
@@ -297,115 +306,125 @@ export function EditSprintDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Edit Sprint</DialogTitle>
-          <DialogDescription>
-            Update sprint details.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-name">Name</Label>
-            <Input
-              id="edit-name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Sprint 1"
-              required
-            />
+          <DialogHeader>
+            <DialogTitle>Edit Sprint</DialogTitle>
+            <DialogDescription>
+              Update sprint details.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-3 gap-4">
+            <Field className="col-span-2">
+              <FieldLabel>Name</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Sprint 1"
+                  required
+                />
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <FieldLabel>Status</FieldLabel>
+              <FieldContent>
+                <Combobox
+                  value={formData.status}
+                  onValueChange={(val) => val && setFormData({ ...formData, status: val as SprintStatus })}
+                >
+                  <ComboboxInput placeholder="Select status" itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {SprintStatusOptions.map((opt) => (
+                        <ComboboxItem key={opt.value} value={opt.value} label={opt.label}>
+                          {opt.label}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="edit-goal">Goal</Label>
-            <Textarea
-              id="edit-goal"
-              value={formData.goal || ""}
-              onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-              placeholder="Sprint goal..."
-              className="min-h-24"
-            />
-          </div>
+
+          <Field>
+            <FieldLabel>Goal</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="edit-goal"
+                value={formData.goal || ""}
+                onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                placeholder="Sprint goal..."
+                className="min-h-24"
+              />
+            </FieldContent>
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Combobox
-                value={formData.status}
-                onValueChange={(val) => val && setFormData({ ...formData, status: val as SprintStatus })}
-              >
-                <ComboboxInput placeholder="Select status" />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(SprintStatus).map((status) => (
-                      <ComboboxItem key={status} value={status}>
-                        {status.replace(/_/g, " ")}
-                      </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+            <Field>
+              <FieldLabel>Start Date</FieldLabel>
+              <FieldContent>
+                <Popover>
+                  <PopoverTrigger
+                    className={cn(
+                      buttonVariants({ variant: "outline" }),
+                      "w-full pl-3 text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    {startDate ? (
+                      format(startDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <FieldLabel>End Date</FieldLabel>
+              <FieldContent>
+                <Popover>
+                  <PopoverTrigger
+                    className={cn(
+                      buttonVariants({ variant: "outline" }),
+                      "w-full pl-3 text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    {endDate ? (
+                      format(endDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </FieldContent>
+            </Field>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2 flex flex-col">
-              <Label>Start Date</Label>
-              <Popover>
-                <PopoverTrigger
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    "w-full pl-3 text-left font-normal",
-                    !startDate && "text-muted-foreground"
-                  )}
-                >
-                  {startDate ? (
-                    format(startDate, "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2 flex flex-col">
-              <Label>End Date</Label>
-              <Popover>
-                <PopoverTrigger
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    "w-full pl-3 text-left font-normal",
-                    !endDate && "text-muted-foreground"
-                  )}
-                >
-                  {endDate ? (
-                    format(endDate, "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
