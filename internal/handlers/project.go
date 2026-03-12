@@ -28,12 +28,13 @@ func ListProjects(c *gin.Context) {
 	res := []models.ProjectResponse{}
 	for _, p := range projects {
 		res = append(res, models.ProjectResponse{
-			ID:          p.ID,
-			Slug:        p.Slug,
-			Name:        p.Name,
-			Description: p.Description,
-			OwnerName:   p.OwnerName,
-			CreatedAt:   p.CreatedAt,
+			ID:                   p.ID,
+			Slug:                 p.Slug,
+			Name:                 p.Name,
+			Description:          p.Description,
+			CollaborationEnabled: p.CollaborationEnabled,
+			OwnerName:            p.OwnerName,
+			CreatedAt:            p.CreatedAt,
 		})
 	}
 
@@ -69,10 +70,11 @@ func CreateProject(c *gin.Context) {
 	}
 
 	api.Created(c, models.ProjectResponse{
-		ID:          project.ID,
-		Slug:        project.Slug,
-		Name:        project.Name,
-		Description: project.Description,
+		ID:                   project.ID,
+		Slug:                 project.Slug,
+		Name:                 project.Name,
+		Description:          project.Description,
+		CollaborationEnabled: project.CollaborationEnabled,
 	})
 }
 
@@ -85,10 +87,11 @@ func GetProject(c *gin.Context) {
 	}
 
 	api.Success(c, models.ProjectResponse{
-		ID:          project.ID,
-		Slug:        project.Slug,
-		Name:        project.Name,
-		Description: project.Description,
+		ID:                   project.ID,
+		Slug:                 project.Slug,
+		Name:                 project.Name,
+		Description:          project.Description,
+		CollaborationEnabled: project.CollaborationEnabled,
 	})
 }
 
@@ -107,10 +110,11 @@ func UpdateProject(c *gin.Context) {
 	}
 
 	api.Success(c, models.ProjectResponse{
-		ID:          project.ID,
-		Slug:        project.Slug,
-		Name:        project.Name,
-		Description: project.Description,
+		ID:                   project.ID,
+		Slug:                 project.Slug,
+		Name:                 project.Name,
+		Description:          project.Description,
+		CollaborationEnabled: project.CollaborationEnabled,
 	})
 }
 

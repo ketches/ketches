@@ -117,6 +117,11 @@ export function App() {
                 <DashboardLayout><ProjectDetailPage /></DashboardLayout>
               </ProtectedRoute>
             } />
+            <Route path="/projects/:projectId/collaboration" element={
+              <ProtectedRoute>
+                <DashboardLayout><ProjectDetailPage initialTab="collaboration" /></DashboardLayout>
+              </ProtectedRoute>
+            } />
             <Route path="/activities" element={
               <ProtectedRoute>
                 <DashboardLayout><ActivitiesPage /></DashboardLayout>

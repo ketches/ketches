@@ -40,6 +40,12 @@ func Migrate() error {
 		&entities.ClusterExtension{},
 		&entities.OperationLog{},
 		&entities.SystemSetting{},
+		&entities.CollabSprint{},
+		&entities.CollabRequirement{},
+		&entities.CollabTask{},
+		&entities.CollabTestCase{},
+		&entities.CollabTestRun{},
+		&entities.CollabDefect{},
 	); err != nil {
 		return err
 	}

@@ -14,13 +14,14 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
 
 interface CreateProjectFormProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  onSuccess?: (project: any) => void
+  onSuccess?: (project: { id: string; name: string; slug: string }) => void
   onClose?: () => void
 }
 
@@ -41,13 +42,15 @@ export function CreateProjectDialog({
     name: "",
     slug: "",
     description: "",
+    collaborationEnabled: false,
   })
 
   const mutation = useMutation({
-    mutationFn: (data: any) => projectsApi.create({
+    mutationFn: (data: typeof formData) => projectsApi.create({
       name: data.name,
       slug: data.slug,
       description: data.description,
+      collaboration_enabled: data.collaborationEnabled,
     }),
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
@@ -55,7 +58,7 @@ export function CreateProjectDialog({
       onSuccess?.(project)
       setOpen(false)
       onClose?.()
-      setFormData({ name: "", slug: "", description: "" })
+      setFormData({ name: "", slug: "", description: "", collaborationEnabled: false })
       setErrors({})
     },
     onError: (err: AxiosError<{ error: string }>) => {
@@ -151,6 +154,17 @@ export function CreateProjectDialog({
                 />
               </FieldContent>
             </Field>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="project-collaboration-enabled"
+                checked={formData.collaborationEnabled}
+                onCheckedChange={(v) => setFormData((prev) => ({ ...prev, collaborationEnabled: v === true }))}
+              />
+              <label htmlFor="project-collaboration-enabled" className="cursor-pointer text-sm">
+                Enable collaboration module for this project
+              </label>
+            </div>
           </div>
 
           <DialogFooter>

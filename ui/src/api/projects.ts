@@ -6,8 +6,22 @@ export interface Project {
   slug: string
   name: string
   description?: string
+  collaboration_enabled: boolean
   owner_name?: string
   created_at: string
+}
+
+export interface CreateProjectPayload {
+  name: string
+  slug: string
+  description?: string
+  collaboration_enabled: boolean
+}
+
+export interface UpdateProjectPayload {
+  name: string
+  description?: string
+  collaboration_enabled?: boolean
 }
 
 export const ProjectRole = {
@@ -48,7 +62,7 @@ export const projectsApi = {
   listSimple: async () => {
     return client.get('/v1/projects/simple') as Promise<Project[]>
   },
-  create: async (data: any) => {
+  create: async (data: CreateProjectPayload) => {
     return client.post('/v1/projects', data) as Promise<Project>
   },
   get: async (id: string) => {
@@ -68,7 +82,7 @@ export const projectsApi = {
       params: { user_id: userId }
     })
   },
-  update: async (id: string, data: Partial<Project>) => {
+  update: async (id: string, data: UpdateProjectPayload) => {
     return client.put(`/v1/projects/${id}`, data) as Promise<Project>
   },
   delete: async (id: string) => {

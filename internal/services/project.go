@@ -35,7 +35,7 @@ func ListProjects(userID string, role string, req *models.PaginationRequest) (in
 
 	// Build data query with explicit JOIN for owner name
 	dataQ := db.DB.Table("projects").
-		Select(`projects.id, projects.slug, projects.name, projects.description, projects.created_at,
+		Select(`projects.id, projects.slug, projects.name, projects.description, projects.collaboration_enabled, projects.created_at,
 			COALESCE(u.fullname, u.username, '') AS owner_name`).
 		Joins("LEFT JOIN project_members pm ON pm.project_id = projects.id AND pm.project_role = 'owner'").
 		Joins("LEFT JOIN users u ON u.id = pm.user_id").
@@ -57,7 +57,7 @@ func ListProjects(userID string, role string, req *models.PaginationRequest) (in
 
 func ListProjectsSimple(userID string, role string) ([]models.ProjectResponse, error) {
 	var projects []models.ProjectResponse
-	query := db.DB.Model(&entities.Project{}).Select("projects.id, projects.name, projects.slug, projects.description")
+	query := db.DB.Model(&entities.Project{}).Select("projects.id, projects.name, projects.slug, projects.description, projects.collaboration_enabled")
 	if role == app.UserRoleAdmin {
 		if err := query.Order("name").Find(&projects).Error; err != nil {
 			return nil, err
@@ -81,10 +81,11 @@ func CreateProject(req *models.CreateProjectRequest, userID string) (*entities.P
 	}
 
 	project := &entities.Project{
-		Base:        entities.Base{ID: uuid.New()},
-		Slug:        req.Slug,
-		Name:        req.Name,
-		Description: req.Description,
+		Base:                 entities.Base{ID: uuid.New()},
+		Slug:                 req.Slug,
+		Name:                 req.Name,
+		Description:          req.Description,
+		CollaborationEnabled: req.CollaborationEnabled,
 	}
 
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
@@ -125,6 +126,7 @@ func UpdateProject(projectID string, req *models.UpdateBasicInfoRequest) (*entit
 
 	project.Name = req.Name
 	project.Description = req.Description
+	project.CollaborationEnabled = req.CollaborationEnabled
 
 	if err := db.DB.Save(project).Error; err != nil {
 		return nil, err

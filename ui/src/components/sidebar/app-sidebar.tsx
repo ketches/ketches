@@ -2,6 +2,7 @@ import {
   Activity,
   Blocks,
   Box,
+  CheckSquare,
   FolderGit2,
   GalleryVerticalEnd,
   LayoutDashboard,
@@ -30,14 +31,27 @@ import {
 } from "@/components/ui/sidebar"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
+import { useProjectStore } from "@/stores/project"
+import { projectsApi } from "@/api/projects"
+import { useQuery } from "@tanstack/react-query"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [searchOpen, setSearchOpen] = React.useState(false)
   const userRole = useAuthStore((state) => state.user?.role)
   const projectRole = useProjectRole()
+  const activeProjectId = useProjectStore((state) => state.activeProjectId)
 
   const isAdmin = userRole === 'admin'
   const isViewer = projectRole === 'viewer'
+
+  const { data: activeProject } = useQuery({
+    queryKey: ['project', activeProjectId],
+    queryFn: () => projectsApi.get(activeProjectId!),
+    enabled: !isAdmin && !!activeProjectId,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const canShowCollaboration = !isAdmin && !!activeProjectId && !!activeProject?.collaboration_enabled
 
   // Admin nav: platform management modules (Dashboard rendered separately)
   const adminNavItems = [
@@ -55,6 +69,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Project group: project-scoped modules (Dashboard rendered separately); some hidden for viewers
   const projectItems = isAdmin ? [] : [
+    { title: "Collaboration", url: `/projects/${activeProjectId}/collaboration`, icon: CheckSquare, hidden: !canShowCollaboration },
     { title: "Applications", url: "/applications", icon: Box },
     { title: "Environments", url: "/environments", icon: Orbit, hidden: isViewer },
     { title: "Code Repositories", url: "/code-repositories", icon: FolderGit2, hidden: isViewer },

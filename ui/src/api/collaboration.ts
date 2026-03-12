@@ -188,7 +188,7 @@ export interface CreateSprintRequest {
   end_date: string
 }
 
-export interface UpdateSprintRequest extends CreateSprintRequest {}
+export type UpdateSprintRequest = CreateSprintRequest
 
 export interface CreateRequirementRequest {
   title: string
@@ -223,7 +223,7 @@ export interface CreateTaskRequest {
   parent_task_id?: string
 }
 
-export interface UpdateTaskRequest extends Omit<CreateTaskRequest, 'parent_task_id'> {}
+export type UpdateTaskRequest = Omit<CreateTaskRequest, 'parent_task_id'>
 
 export interface CreateTestCaseRequest {
   title: string
@@ -234,7 +234,7 @@ export interface CreateTestCaseRequest {
   task_id?: string
 }
 
-export interface UpdateTestCaseRequest extends CreateTestCaseRequest {}
+export type UpdateTestCaseRequest = CreateTestCaseRequest
 
 export interface CreateTestRunRequest {
   status: TestRunStatus

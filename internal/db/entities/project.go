@@ -4,9 +4,10 @@ import "time"
 
 type Project struct {
 	Base
-	Slug        string `gorm:"type:varchar(64);uniqueIndex;not null"`
-	Name        string `gorm:"type:varchar(128);not null"`
-	Description string `gorm:"type:text"`
+	Slug                 string `gorm:"type:varchar(64);uniqueIndex;not null"`
+	Name                 string `gorm:"type:varchar(128);not null"`
+	Description          string `gorm:"type:text"`
+	CollaborationEnabled bool   `gorm:"type:boolean;not null;default:false"`
 }
 
 type ProjectMember struct {

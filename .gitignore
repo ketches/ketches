@@ -33,6 +33,7 @@ main
 
 # Agents
 .opencode/*
+.sisyphus/*
 .cursor/*
 docs/plans/*
 ui/docs/plans/*

@@ -13,6 +13,7 @@ import {
   Trash2,
   Users,
   Warehouse,
+  SquareStack,
 } from "lucide-react"
 import * as React from "react"
 import { useNavigate, useParams } from "react-router-dom"
@@ -42,12 +43,20 @@ import { UserDashboard } from "@/pages/dashboard/dashboard-page"
 import { EnvironmentsPage } from "@/pages/environments/environments-page"
 import { MembersPage } from "@/pages/members/members-page"
 import { PluginsPage } from "@/pages/plugins/plugins-page"
+import { CollaborationPage } from "@/pages/collaboration/collaboration-page"
 
-export function ProjectDetailPage() {
+interface ProjectDetailPageProps {
+  initialTab?: string
+}
+export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPageProps) {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = React.useState("overview")
+  const [activeTab, setActiveTab] = React.useState<string>(initialTab)
+
+  React.useEffect(() => {
+    setActiveTab(initialTab)
+  }, [initialTab])
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
 
@@ -166,6 +175,10 @@ export function ProjectDetailPage() {
             <Users />
             Members
           </TabsTrigger>
+          <TabsTrigger value="collaboration">
+            <SquareStack />
+            Collaboration
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
@@ -194,6 +207,10 @@ export function ProjectDetailPage() {
 
         <TabsContent value="members" className="space-y-4 mt-2">
           <MembersPage projectId={projectId} />
+        </TabsContent>
+
+        <TabsContent value="collaboration" className="space-y-4 mt-2">
+          <CollaborationPage projectId={projectId!} />
         </TabsContent>
       </Tabs>
 
