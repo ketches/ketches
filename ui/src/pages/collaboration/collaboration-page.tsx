@@ -6,7 +6,7 @@ import {
   Target,
   FileText
 } from "lucide-react"
-import { useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import SprintsPage from "./sprints-page"
@@ -21,11 +21,12 @@ interface CollaborationPageProps {
 }
 
 export function CollaborationPage({ projectId }: CollaborationPageProps) {
-  const [activeTab, setActiveTab] = useState("sprints")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const currentTab = searchParams.get("tab") || "sprints"
 
   return (
     <div className="flex flex-col gap-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={currentTab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="sprints">
             <Kanban className="mr-2 h-4 w-4" />

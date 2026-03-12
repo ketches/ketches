@@ -163,57 +163,68 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
     <div className="flex flex-col h-full gap-6">
       {!propProjectId && <PageHeader items={[{ label: "Backlog", icon: Archive }]} />}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Backlog</h1>
-          <p className="text-sm text-muted-foreground">
-            Prioritize requirements for future sprints.
-          </p>
+      {!propProjectId && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Backlog</h1>
+            <p className="text-sm text-muted-foreground">
+              Prioritize requirements for future sprints.
+            </p>
+          </div>
         </div>
-          <Button onClick={() => {
+      )}
+
+      {!isLoading && requirements.length === 0 ? (
+        <EmptyState
+          title="Backlog is empty"
+          description="Requirements without a sprint will appear here."
+          icon={LayoutList}
+          actionText="Create Requirement"
+          onAction={() => {
             setParentRequirementId(undefined)
             setCreateOpen(true)
-          }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Requirement
-          </Button>
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={requirements}
-        isLoading={isLoading}
-        manualPagination
-        totalCount={totalCount}
-        pagination={pagination}
-        onPaginationChange={setPagination}
-        rowSelection={rowSelection}
-        onRowSelectionChange={setRowSelection}
-        leftToolbar={() => (
-           <Input
-            className="max-w-xs"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+          }}
+          actionIcon={Plus}
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <Input
+              className="max-w-xs"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <div className="flex items-center gap-2">
+              <Button onClick={() => {
+                setParentRequirementId(undefined)
+                setCreateOpen(true)
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Requirement
+              </Button>
+              <Button 
+                disabled={selectedIds.length === 0} 
+                onClick={() => setPlanToSprintOpen(true)}
+              >
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Plan to Sprint ({selectedIds.length})
+              </Button>
+            </div>
+          </div>
+          <DataTable
+            columns={columns}
+            data={requirements}
+            isLoading={isLoading}
+            manualPagination
+            totalCount={totalCount}
+            pagination={pagination}
+            onPaginationChange={setPagination}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
           />
-        )}
-        rightToolbar={() => (
-          <Button 
-            disabled={selectedIds.length === 0} 
-            onClick={() => setPlanToSprintOpen(true)}
-          >
-            <ArrowRight className="mr-2 h-4 w-4" />
-            Plan to Sprint ({selectedIds.length})
-          </Button>
-        )}
-        emptyContent={
-          <EmptyState
-            title="Backlog is empty"
-            description="Requirements without a sprint will appear here."
-            icon={LayoutList}
-          />
-        }
-      />
+        </>
+      )}
 
       <PlanToSprintDialog
         open={planToSprintOpen}

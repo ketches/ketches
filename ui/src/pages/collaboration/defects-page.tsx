@@ -136,47 +136,51 @@ export default function DefectsPage({ projectId: propProjectId }: DefectsPagePro
     <div className="flex flex-col h-full gap-6">
       {!propProjectId && <PageHeader items={[{ label: "Defects", icon: Bug }]} />}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Defects</h1>
-          <p className="text-sm text-muted-foreground">
-            Track and manage project defects and bugs.
-          </p>
+      {!propProjectId && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Defects</h1>
+            <p className="text-sm text-muted-foreground">
+              Track and manage project defects and bugs.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
-      <DataTable
-        columns={columns}
-        data={defects}
-        isLoading={isLoading}
-        manualPagination
-        totalCount={totalCount}
-        pagination={pagination}
-        onPaginationChange={setPagination}
-        leftToolbar={() => (
-           <Input
-            className="max-w-xs"
-            placeholder="Search defects..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      {!isLoading && defects.length === 0 ? (
+        <EmptyState
+          title="No defects found"
+          description="Good job! No bugs reported yet."
+          icon={Bug}
+          actionText="Report Defect"
+          onAction={() => setCreateOpen(true)}
+          actionIcon={Plus}
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <Input
+              className="max-w-xs"
+              placeholder="Search defects..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Report Defect
+            </Button>
+          </div>
+          <DataTable
+            columns={columns}
+            data={defects}
+            isLoading={isLoading}
+            manualPagination
+            totalCount={totalCount}
+            pagination={pagination}
+            onPaginationChange={setPagination}
           />
-        )}
-        rightToolbar={() => (
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Report Defect
-          </Button>
-        )}
-        emptyContent={
-          <EmptyState
-            title="No defects found"
-            description="Good job! No bugs reported yet."
-            icon={Bug}
-            actionText="Report Defect"
-            onAction={() => setCreateOpen(true)}
-          />
-        }
-      />
+        </>
+      )}
 
       <CreateDefectDialog
         open={createOpen}

@@ -213,50 +213,54 @@ export default function RequirementsPage({ projectId: propProjectId }: Requireme
     <div className="flex flex-col h-full gap-6">
       {!propProjectId && <PageHeader items={[{ label: "Requirements", icon: FileText }]} />}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Requirements</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage product requirements and specifications.
-          </p>
+      {!propProjectId && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Requirements</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage product requirements and specifications.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
 
 
 
-      <DataTable
-        columns={columns}
-        data={tableData}
-        isLoading={isLoading}
-        manualPagination
-        totalCount={totalCount}
-        pagination={pagination}
-        onPaginationChange={setPagination}
-        leftToolbar={() => (
-           <Input
-            className="max-w-xs"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      {!isLoading && requirements.length === 0 ? (
+        <EmptyState
+          title="No requirements found"
+          description="Create your first requirement to get started."
+          icon={FileText}
+          actionText="Create Requirement"
+          onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
+          actionIcon={Plus}
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <Input
+              className="max-w-xs"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Requirement
+            </Button>
+          </div>
+          <DataTable
+            columns={columns}
+            data={tableData}
+            isLoading={isLoading}
+            manualPagination
+            totalCount={totalCount}
+            pagination={pagination}
+            onPaginationChange={setPagination}
           />
-        )}
-        rightToolbar={() => (
-          <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Requirement
-          </Button>
-        )}
-        emptyContent={
-          <EmptyState
-            title="No requirements found"
-            description="Create your first requirement to get started."
-            icon={FileText}
-            actionText="Create Requirement"
-            onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
-          />
-        }
-      />
+        </>
+      )}
 
       <CreateRequirementDialog
         open={createOpen}

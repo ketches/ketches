@@ -213,50 +213,54 @@ export default function TasksPage({ projectId: propProjectId }: TasksPageProps) 
     <div className="flex flex-col h-full gap-6">
       {!propProjectId && <PageHeader items={[{ label: "Tasks", icon: CheckSquare }]} />}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Tasks</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage tasks and track progress.
-          </p>
+      {!propProjectId && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Tasks</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage tasks and track progress.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
 
 
 
-      <DataTable
-        columns={columns}
-        data={tableData}
-        isLoading={isLoading}
-        manualPagination
-        totalCount={totalCount}
-        pagination={pagination}
-        onPaginationChange={setPagination}
-        leftToolbar={() => (
-           <Input
-            className="max-w-xs"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      {!isLoading && tasks.length === 0 ? (
+        <EmptyState
+          title="No tasks found"
+          description="Create your first task to get started."
+          icon={CheckSquare}
+          actionText="Create Task"
+          onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
+          actionIcon={Plus}
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <Input
+              className="max-w-xs"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Task
+            </Button>
+          </div>
+          <DataTable
+            columns={columns}
+            data={tableData}
+            isLoading={isLoading}
+            manualPagination
+            totalCount={totalCount}
+            pagination={pagination}
+            onPaginationChange={setPagination}
           />
-        )}
-        rightToolbar={() => (
-          <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Task
-          </Button>
-        )}
-        emptyContent={
-          <EmptyState
-            title="No tasks found"
-            description="Create your first task to get started."
-            icon={CheckSquare}
-            actionText="Create Task"
-            onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
-          />
-        }
-      />
+        </>
+      )}
 
       <CreateTaskDialog
         open={createOpen}

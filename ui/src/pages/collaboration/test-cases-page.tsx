@@ -125,47 +125,51 @@ export default function TestCasesPage({ projectId: propProjectId }: TestCasesPag
     <div className="flex flex-col h-full gap-6">
       {!propProjectId && <PageHeader items={[{ label: "Test Cases", icon: TestTube }]} />}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Test Cases</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage test scenarios and execute test runs.
-          </p>
+      {!propProjectId && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Test Cases</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage test scenarios and execute test runs.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
-      <DataTable
-        columns={columns}
-        data={testCases}
-        isLoading={isLoading}
-        manualPagination
-        totalCount={totalCount}
-        pagination={pagination}
-        onPaginationChange={setPagination}
-        leftToolbar={() => (
-           <Input
-            className="max-w-xs"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      {!isLoading && testCases.length === 0 ? (
+        <EmptyState
+          title="No test cases found"
+          description="Create your first test case to get started."
+          icon={TestTube}
+          actionText="Create Test Case"
+          onAction={() => setCreateOpen(true)}
+          actionIcon={Plus}
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <Input
+              className="max-w-xs"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Test Case
+            </Button>
+          </div>
+          <DataTable
+            columns={columns}
+            data={testCases}
+            isLoading={isLoading}
+            manualPagination
+            totalCount={totalCount}
+            pagination={pagination}
+            onPaginationChange={setPagination}
           />
-        )}
-        rightToolbar={() => (
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Test Case
-          </Button>
-        )}
-        emptyContent={
-          <EmptyState
-            title="No test cases found"
-            description="Create your first test case to get started."
-            icon={TestTube}
-            actionText="Create Test Case"
-            onAction={() => setCreateOpen(true)}
-          />
-        }
-      />
+        </>
+      )}
 
       <CreateTestCaseDialog
         open={createOpen}
