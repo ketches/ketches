@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -116,131 +116,147 @@ export function CreateDefectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Report Defect</DialogTitle>
-          <DialogDescription>
-            Report a new defect found in the project.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160 max-h-[85vh] overflow-y-auto">
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Report Defect</DialogTitle>
+            <DialogDescription>
+              Report a new defect found in the project.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Login fails with 500 error"
-            />
-          </div>
+          <Field>
+            <FieldLabel>Title</FieldLabel>
+            <FieldContent>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Login fails with 500 error"
+              />
+            </FieldContent>
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Severity</Label>
-              <Combobox value={severity} onValueChange={(v) => v && setSeverity(v as DefectSeverity)}>
-                <ComboboxInput placeholder="Select severity" />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(DefectSeverity).map((s) => (
-                      <ComboboxItem key={s} value={s}>{s.toUpperCase()}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
-            <div className="grid gap-2">
-              <Label>Status</Label>
-              <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)}>
-                <ComboboxInput placeholder="Select status" />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(DefectStatus).map((s) => (
-                      <ComboboxItem key={s} value={s}>{s.toUpperCase().replace('_', ' ')}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+            <Field>
+              <FieldLabel>Severity</FieldLabel>
+              <FieldContent>
+                <Combobox value={severity} onValueChange={(v) => v && setSeverity(v as DefectSeverity)}>
+                  <ComboboxInput placeholder="Select severity" itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {DefectSeverityOptions.map((s) => (
+                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Status</FieldLabel>
+              <FieldContent>
+                <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)}>
+                  <ComboboxInput placeholder="Select status" itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {DefectStatusOptions.map((s) => (
+                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detailed description of the issue..."
-              rows={3}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Description</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Detailed description of the issue..."
+                rows={3}
+              />
+            </FieldContent>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="reproduction-steps">Reproduction Steps</Label>
-            <Textarea
-              id="reproduction-steps"
-              value={reproductionSteps}
-              onChange={(e) => setReproductionSteps(e.target.value)}
-              placeholder="1. Go to page X..."
-              rows={4}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Reproduction Steps</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="reproduction-steps"
+                value={reproductionSteps}
+                onChange={(e) => setReproductionSteps(e.target.value)}
+                placeholder="1. Go to page X..."
+                rows={4}
+              />
+            </FieldContent>
+          </Field>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="grid gap-2">
-              <Label>Requirement (Optional)</Label>
-              <Combobox value={requirementId} onValueChange={(v) => setRequirementId(v || "")}>
-                <ComboboxInput placeholder="Select requirement" />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {requirements?.items.map((req: Requirement) => (
-                      <ComboboxItem key={req.id} value={req.id}>{req.title}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
-            <div className="grid gap-2">
-              <Label>Task (Optional)</Label>
-              <Combobox value={taskId} onValueChange={(v) => setTaskId(v || "")}>
-                <ComboboxInput placeholder="Select task" />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {tasks?.items.map((t: Task) => (
-                      <ComboboxItem key={t.id} value={t.id}>{t.title}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
-            <div className="grid gap-2">
-              <Label>Test Case (Optional)</Label>
-              <Combobox value={testCaseId} onValueChange={(v) => setTestCaseId(v || "")}>
-                <ComboboxInput placeholder="Select test case" />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {testCases?.items.map((tc: TestCase) => (
-                      <ComboboxItem key={tc.id} value={tc.id}>{tc.title}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+            <Field>
+              <FieldLabel>Requirement (Optional)</FieldLabel>
+              <FieldContent>
+                <Combobox value={requirementId} onValueChange={(v) => setRequirementId(v || "")}>
+                  <ComboboxInput placeholder="Select requirement" />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {requirements?.items.map((req: Requirement) => (
+                        <ComboboxItem key={req.id} value={req.id} label={req.title}>{req.title}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Task (Optional)</FieldLabel>
+              <FieldContent>
+                <Combobox value={taskId} onValueChange={(v) => setTaskId(v || "")}>
+                  <ComboboxInput placeholder="Select task" />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {tasks?.items.map((t: Task) => (
+                        <ComboboxItem key={t.id} value={t.id} label={t.title}>{t.title}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Test Case (Optional)</FieldLabel>
+              <FieldContent>
+                <Combobox value={testCaseId} onValueChange={(v) => setTestCaseId(v || "")}>
+                  <ComboboxInput placeholder="Select test case" />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {testCases?.items.map((tc: TestCase) => (
+                        <ComboboxItem key={tc.id} value={tc.id} label={tc.title}>{tc.title}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
           </div>
           <p className="text-xs text-muted-foreground">
             * At least one upstream link (Requirement, Task, or Test Case) is required.
           </p>
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button 
-            onClick={() => mutation.mutate()} 
-            disabled={mutation.isPending || !title || !description || (!requirementId && !taskId && !testCaseId)}
-          >
-            {mutation.isPending ? "Creating..." : "Create Defect"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button 
+              type="submit" 
+              disabled={mutation.isPending || !title || !description || (!requirementId && !taskId && !testCaseId)}
+            >
+              {mutation.isPending ? "Creating..." : "Create Defect"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
@@ -345,133 +361,151 @@ export function EditDefectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Defect</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160 max-h-[85vh] overflow-y-auto">
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Edit Defect</DialogTitle>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="edit-title">Title</Label>
-            <Input
-              id="edit-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Title</FieldLabel>
+            <FieldContent>
+              <Input
+                id="edit-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </FieldContent>
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Severity</Label>
-              <Combobox value={severity} onValueChange={(v) => v && setSeverity(v as DefectSeverity)}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(DefectSeverity).map((s) => (
-                      <ComboboxItem key={s} value={s}>{s.toUpperCase()}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
-            <div className="grid gap-2">
-              <Label>Status</Label>
-              <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {Object.values(DefectStatus).map((s) => (
-                      <ComboboxItem key={s} value={s}>{s.toUpperCase().replace('_', ' ')}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+            <Field>
+              <FieldLabel>Severity</FieldLabel>
+              <FieldContent>
+                <Combobox value={severity} onValueChange={(v) => v && setSeverity(v as DefectSeverity)}>
+                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {DefectSeverityOptions.map((s) => (
+                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Status</FieldLabel>
+              <FieldContent>
+                <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)}>
+                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {DefectStatusOptions.map((s) => (
+                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="edit-description">Description</Label>
-            <Textarea
-              id="edit-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Description</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="edit-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+              />
+            </FieldContent>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="edit-reproduction-steps">Reproduction Steps</Label>
-            <Textarea
-              id="edit-reproduction-steps"
-              value={reproductionSteps}
-              onChange={(e) => setReproductionSteps(e.target.value)}
-              rows={4}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Reproduction Steps</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="edit-reproduction-steps"
+                value={reproductionSteps}
+                onChange={(e) => setReproductionSteps(e.target.value)}
+                rows={4}
+              />
+            </FieldContent>
+          </Field>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="grid gap-2">
-              <Label>Requirement</Label>
-              <Combobox value={requirementId} onValueChange={(v) => setRequirementId(v || "")}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {requirements?.items.map((req: Requirement) => (
-                      <ComboboxItem key={req.id} value={req.id}>{req.title}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
-            <div className="grid gap-2">
-              <Label>Task</Label>
-              <Combobox value={taskId} onValueChange={(v) => setTaskId(v || "")}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {tasks?.items.map((t: Task) => (
-                      <ComboboxItem key={t.id} value={t.id}>{t.title}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
-            <div className="grid gap-2">
-              <Label>Test Case</Label>
-              <Combobox value={testCaseId} onValueChange={(v) => setTestCaseId(v || "")}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {testCases?.items.map((tc: TestCase) => (
-                      <ComboboxItem key={tc.id} value={tc.id}>{tc.title}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+            <Field>
+              <FieldLabel>Requirement</FieldLabel>
+              <FieldContent>
+                <Combobox value={requirementId} onValueChange={(v) => setRequirementId(v || "")}>
+                  <ComboboxInput />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {requirements?.items.map((req: Requirement) => (
+                        <ComboboxItem key={req.id} value={req.id} label={req.title}>{req.title}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Task</FieldLabel>
+              <FieldContent>
+                <Combobox value={taskId} onValueChange={(v) => setTaskId(v || "")}>
+                  <ComboboxInput />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {tasks?.items.map((t: Task) => (
+                        <ComboboxItem key={t.id} value={t.id} label={t.title}>{t.title}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Test Case</FieldLabel>
+              <FieldContent>
+                <Combobox value={testCaseId} onValueChange={(v) => setTestCaseId(v || "")}>
+                  <ComboboxInput />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {testCases?.items.map((tc: TestCase) => (
+                        <ComboboxItem key={tc.id} value={tc.id} label={tc.title}>{tc.title}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="edit-fix-note">Fix Note (Optional)</Label>
-            <Textarea
-              id="edit-fix-note"
-              value={fixNote}
-              onChange={(e) => setFixNote(e.target.value)}
-              placeholder="Details about the fix or resolution..."
-              rows={2}
-            />
-          </div>
-        </div>
+          <Field>
+            <FieldLabel>Fix Note (Optional)</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="edit-fix-note"
+                value={fixNote}
+                onChange={(e) => setFixNote(e.target.value)}
+                placeholder="Details about the fix or resolution..."
+                rows={2}
+              />
+            </FieldContent>
+          </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button 
-            onClick={() => mutation.mutate()} 
-            disabled={mutation.isPending || !title || !description || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
-          >
-            {mutation.isPending ? "Save Changes" : "Save Changes"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button 
+              type="submit" 
+              disabled={mutation.isPending || !title || !description || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
+            >
+              {mutation.isPending ? "Save Changes" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
@@ -583,36 +617,38 @@ export function TransitionDefectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle>Transition Defect</DialogTitle>
-          <DialogDescription>
-            Change the status of "{defect.title}".
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160">
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Transition Defect</DialogTitle>
+            <DialogDescription>
+              Change the status of "{defect.title}".
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label>New Status</Label>
-            <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)}>
-              <ComboboxInput />
-              <ComboboxContent>
-                <ComboboxList>
-                  {Object.values(DefectStatus).map((s) => (
-                    <ComboboxItem key={s} value={s}>{s.toUpperCase().replace('_', ' ')}</ComboboxItem>
-                  ))}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-          </div>
-        </div>
+          <Field>
+            <FieldLabel>New Status</FieldLabel>
+            <FieldContent>
+              <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)}>
+                <ComboboxInput itemToStringLabel={(item) => item.label} />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {DefectStatusOptions.map((s) => (
+                      <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </FieldContent>
+          </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-            {mutation.isPending ? "Updating..." : "Update Status"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "Updating..." : "Update Status"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

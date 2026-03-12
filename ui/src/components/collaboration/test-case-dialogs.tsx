@@ -81,65 +81,73 @@ export function CreateTestCaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Create Test Case</DialogTitle>
-          <DialogDescription>
-            Add a new test case to the project.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160">
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Create Test Case</DialogTitle>
+            <DialogDescription>
+              Add a new test case to the project.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Verify Login Functionality"
-            />
-          </div>
+          <Field>
+            <FieldLabel>Title</FieldLabel>
+            <FieldContent>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Verify Login Functionality"
+              />
+            </FieldContent>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="precondition">Precondition</Label>
-            <Textarea
-              id="precondition"
-              value={precondition}
-              onChange={(e) => setPrecondition(e.target.value)}
-              placeholder="e.g. User is logged out"
-              rows={2}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Precondition</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="precondition"
+                value={precondition}
+                onChange={(e) => setPrecondition(e.target.value)}
+                placeholder="e.g. User is logged out"
+                rows={2}
+              />
+            </FieldContent>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="steps">Steps</Label>
-            <Textarea
-              id="steps"
-              value={steps}
-              onChange={(e) => setSteps(e.target.value)}
-              placeholder="1. Navigate to login page..."
-              rows={4}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Steps</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="steps"
+                value={steps}
+                onChange={(e) => setSteps(e.target.value)}
+                placeholder="1. Navigate to login page..."
+                rows={4}
+              />
+            </FieldContent>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="expected-result">Expected Result</Label>
-            <Textarea
-              id="expected-result"
-              value={expectedResult}
-              onChange={(e) => setExpectedResult(e.target.value)}
-              placeholder="User is redirected to dashboard"
-              rows={2}
-            />
-          </div>
-        </div>
+          <Field>
+            <FieldLabel>Expected Result</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="expected-result"
+                value={expectedResult}
+                onChange={(e) => setExpectedResult(e.target.value)}
+                placeholder="User is redirected to dashboard"
+                rows={2}
+              />
+            </FieldContent>
+          </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !title || !steps || !expectedResult}>
-            {mutation.isPending ? "Creating..." : "Create"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending || !title || !steps || !expectedResult}>
+              {mutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
@@ -210,58 +218,66 @@ export function EditTestCaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Edit Test Case</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160">
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Edit Test Case</DialogTitle>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="edit-title">Title</Label>
-            <Input
-              id="edit-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Title</FieldLabel>
+            <FieldContent>
+              <Input
+                id="edit-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </FieldContent>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="edit-precondition">Precondition</Label>
-            <Textarea
-              id="edit-precondition"
-              value={precondition}
-              onChange={(e) => setPrecondition(e.target.value)}
-              rows={2}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Precondition</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="edit-precondition"
+                value={precondition}
+                onChange={(e) => setPrecondition(e.target.value)}
+                rows={2}
+              />
+            </FieldContent>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="edit-steps">Steps</Label>
-            <Textarea
-              id="edit-steps"
-              value={steps}
-              onChange={(e) => setSteps(e.target.value)}
-              rows={4}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Steps</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="edit-steps"
+                value={steps}
+                onChange={(e) => setSteps(e.target.value)}
+                rows={4}
+              />
+            </FieldContent>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="edit-expected-result">Expected Result</Label>
-            <Textarea
-              id="edit-expected-result"
-              value={expectedResult}
-              onChange={(e) => setExpectedResult(e.target.value)}
-              rows={2}
-            />
-          </div>
-        </div>
+          <Field>
+            <FieldLabel>Expected Result</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="edit-expected-result"
+                value={expectedResult}
+                onChange={(e) => setExpectedResult(e.target.value)}
+                rows={2}
+              />
+            </FieldContent>
+          </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !title || !steps || !expectedResult}>
-            {mutation.isPending ? "Save Changes" : "Save Changes"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending || !title || !steps || !expectedResult}>
+              {mutation.isPending ? "Save Changes" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
@@ -379,47 +395,51 @@ export function CreateTestRunDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Record Test Run</DialogTitle>
-          <DialogDescription>
-            Record the execution result for "{testCase.title}".
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-160">
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Record Test Run</DialogTitle>
+            <DialogDescription>
+              Record the execution result for "{testCase.title}".
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label>Status</Label>
-            <Combobox value={status} onValueChange={(v) => v && setStatus(v as TestRunStatus)}>
-              <ComboboxInput />
-              <ComboboxContent>
-                <ComboboxList>
-                  {Object.values(TestRunStatus).map((s) => (
-                    <ComboboxItem key={s} value={s}>{s.toUpperCase()}</ComboboxItem>
-                  ))}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-          </div>
+          <Field>
+            <FieldLabel>Status</FieldLabel>
+            <FieldContent>
+              <Combobox value={status} onValueChange={(v) => v && setStatus(v as TestRunStatus)}>
+                <ComboboxInput itemToStringLabel={(item) => item.label} />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {TestRunStatusOptions.map((s) => (
+                      <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </FieldContent>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="run-comment">Comment (Optional)</Label>
-            <Textarea
-              id="run-comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Any observations or details..."
-              rows={3}
-            />
-          </div>
-        </div>
+          <Field>
+            <FieldLabel>Comment (Optional)</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id="run-comment"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Any observations or details..."
+                rows={3}
+              />
+            </FieldContent>
+          </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-            {mutation.isPending ? "Recording..." : "Record Result"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "Recording..." : "Record Result"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
