@@ -164,6 +164,16 @@ func TransitionDefect(projectID, defectID, userID string, req *models.DefectTran
 		return nil, err
 	}
 
+	// Sync linked task status.
+	if defect.TaskID != "" {
+		targetTaskStatus := defectStatusToTaskStatus(req.Status)
+		if targetTaskStatus != "" {
+			db.DB.Model(&entities.CollabTask{}).
+				Where("id = ? AND project_id = ?", defect.TaskID, projectID).
+				Updates(map[string]any{"status": targetTaskStatus, "updated_by": userID})
+		}
+	}
+
 	return defect, nil
 }
 
@@ -204,5 +214,23 @@ func severityToPriority(severity string) string {
 		return models.CollabPriorityP2
 	default:
 		return models.CollabPriorityP3
+	}
+}
+
+// defectStatusToTaskStatus maps a defect status to its corresponding task status.
+func defectStatusToTaskStatus(defectStatus string) string {
+	switch defectStatus {
+	case entities.DefectStatusNew:
+		return entities.TaskStatusTodo
+	case entities.DefectStatusProcessing:
+		return entities.TaskStatusInProgress
+	case entities.DefectStatusPendingVerify:
+		return entities.TaskStatusReview
+	case entities.DefectStatusClosed:
+		return entities.TaskStatusDone
+	case entities.DefectStatusRejected:
+		return entities.TaskStatusCancelled
+	default:
+		return ""
 	}
 }

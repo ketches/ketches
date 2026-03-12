@@ -171,5 +171,32 @@ func TransitionTask(projectID, taskID, userID string, req *models.TaskTransition
 	if err := db.DB.Save(task).Error; err != nil {
 		return nil, err
 	}
+
+	// Sync all linked defect statuses.
+	targetDefectStatus := taskStatusToDefectStatus(req.Status)
+	if targetDefectStatus != "" {
+		db.DB.Model(&entities.CollabDefect{}).
+			Where("task_id = ? AND project_id = ?", taskID, projectID).
+			Updates(map[string]any{"status": targetDefectStatus, "updated_by": userID})
+	}
+
 	return task, nil
+}
+
+// taskStatusToDefectStatus maps a task status to its corresponding defect status.
+func taskStatusToDefectStatus(taskStatus string) string {
+	switch taskStatus {
+	case entities.TaskStatusTodo:
+		return entities.DefectStatusNew
+	case entities.TaskStatusInProgress:
+		return entities.DefectStatusProcessing
+	case entities.TaskStatusReview:
+		return entities.DefectStatusPendingVerify
+	case entities.TaskStatusDone:
+		return entities.DefectStatusPendingVerify
+	case entities.TaskStatusCancelled:
+		return entities.DefectStatusRejected
+	default:
+		return ""
+	}
 }
