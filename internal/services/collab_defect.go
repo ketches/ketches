@@ -59,6 +59,22 @@ func CreateDefect(projectID, userID string, req *models.CreateDefectRequest) (*e
 		return nil, err
 	}
 
+	// Auto-create a linked task when no task_id is provided.
+	if req.TaskID == "" {
+		autoTask, err := CreateTask(projectID, userID, &models.CreateTaskRequest{
+			Title:       "[Defect] " + req.Title,
+			Description: req.Description,
+			Status:      models.TaskStatusTodo,
+			Priority:    severityToPriority(req.Severity),
+			AssigneeID:  req.AssigneeID,
+			SprintID:    req.SprintID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to auto-create task for defect: %w", err)
+		}
+		req.TaskID = autoTask.ID
+	}
+
 	defect := &entities.CollabDefect{
 		Base:               entities.Base{ID: uuid.New()},
 		ProjectID:          projectID,
@@ -152,10 +168,6 @@ func TransitionDefect(projectID, defectID, userID string, req *models.DefectTran
 }
 
 func validateDefectLinks(projectID, requirementID, taskID, testCaseID, testRunID string) error {
-	if requirementID == "" && taskID == "" && testCaseID == "" && testRunID == "" {
-		return fmt.Errorf("defect must include at least one upstream link")
-	}
-
 	if requirementID != "" {
 		if _, err := GetRequirement(projectID, requirementID); err != nil {
 			return fmt.Errorf("cross-project link is not allowed for requirement_id")
@@ -179,4 +191,18 @@ func validateDefectLinks(projectID, requirementID, taskID, testCaseID, testRunID
 	}
 
 	return nil
+}
+
+// severityToPriority maps defect severity to task priority.
+func severityToPriority(severity string) string {
+	switch severity {
+	case entities.DefectSeverityCritical:
+		return models.CollabPriorityP0
+	case entities.DefectSeverityHigh:
+		return models.CollabPriorityP1
+	case entities.DefectSeverityMedium:
+		return models.CollabPriorityP2
+	default:
+		return models.CollabPriorityP3
+	}
 }
