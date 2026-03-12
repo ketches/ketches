@@ -16,11 +16,11 @@ LDFLAGS      := -ldflags "-w -s \
 # ──────────────────────────────────────────────────────────────────────────────
 # Docker / registry
 # ──────────────────────────────────────────────────────────────────────────────
-REGISTRY     := ghcr.io
-ORG          := ketches
+REGISTRY     ?= ghcr.io
+ORG          ?= ketches
 API_IMAGE    := $(REGISTRY)/$(ORG)/ketches-api
 UI_IMAGE     := $(REGISTRY)/$(ORG)/ketches-ui
-PLATFORMS    := linux/amd64,linux/arm64
+PLATFORMS    ?= linux/amd64,linux/arm64
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Phony targets
@@ -112,6 +112,7 @@ docker-push-ui: ## Push the frontend Docker image
 # Docker — multi-arch (CI / release)
 # ──────────────────────────────────────────────────────────────────────────────
 docker-buildx: ## Build and push multi-arch images via buildx (requires a buildx builder)
+	docker buildx use ketches-builder || docker buildx create --name ketches-builder --use
 	docker buildx build \
 		--platform $(PLATFORMS) \
 		--build-arg VERSION=$(VERSION) \
