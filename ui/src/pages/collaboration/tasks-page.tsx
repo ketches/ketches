@@ -3,6 +3,7 @@ import { collaborationApi, type Task } from "@/api/collaboration"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { StatusBadge, PriorityBadge } from "@/components/collaboration/collab-badges"
+import { KanbanBoard } from "@/components/collaboration/kanban-board"
 import { CreateTaskDialog, EditTaskDialog } from "@/components/collaboration/task-dialogs"
 import { flattenTree, type TreeItem } from "@/components/collaboration/tree-utils"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -27,9 +28,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 interface TasksPageProps {
   projectId?: string
+  viewMode?: "list" | "kanban"
+  assigneeId?: string
+  sprintId?: string
 }
 
-export default function TasksPage({ projectId: propProjectId }: TasksPageProps) {
+export default function TasksPage({ projectId: propProjectId, viewMode = "list", assigneeId, sprintId }: TasksPageProps) {
   const params = useParams<{ projectId: string }>()
   const projectId = propProjectId || params.projectId
 
@@ -53,13 +57,15 @@ export default function TasksPage({ projectId: propProjectId }: TasksPageProps) 
 
   const { data: response, isLoading } = useQuery({
 
-    queryKey: ["tasks", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch],
+    queryKey: ["tasks", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
       return collaborationApi.listTasks(projectId, {
         page: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
         search: debouncedSearch,
+        assignee_id: assigneeId,
+        sprint_id: sprintId,
       })
     },
     enabled: !!projectId,
@@ -236,6 +242,22 @@ export default function TasksPage({ projectId: propProjectId }: TasksPageProps) 
           onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
           actionIcon={Plus}
         />
+      ) : viewMode === "kanban" ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <Input
+              className="max-w-xs"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Task
+            </Button>
+          </div>
+          <KanbanBoard tasks={tasks} projectId={projectId} />
+        </>
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-4">
