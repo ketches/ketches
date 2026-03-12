@@ -69,7 +69,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Project group: project-scoped modules (Dashboard rendered separately); some hidden for viewers
   const projectItems = isAdmin ? [] : [
-    { title: "Collaborations", url: `/projects/${activeProjectId}/collaboration`, icon: CheckSquare, hidden: !canShowCollaboration },
+    { title: "Collaborations", url: "/collaborations", icon: CheckSquare, hidden: !canShowCollaboration },
     { title: "Applications", url: "/applications", icon: Box },
     { title: "Environments", url: "/environments", icon: Orbit, hidden: isViewer },
     { title: "Code Repositories", url: "/code-repositories", icon: FolderGit2, hidden: isViewer },

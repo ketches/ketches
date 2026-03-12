@@ -1,17 +1,18 @@
 import { collaborationApi, type Sprint } from "@/api/collaboration"
-import { DataTable } from "@/components/data-table/data-table"
-import { PageHeader } from "@/components/layout/page-header"
 import { StatusBadge } from "@/components/collaboration/collab-badges"
 import { CreateSprintDialog, EditSprintDialog } from "@/components/collaboration/sprint-dialogs"
+import { DataTable } from "@/components/data-table/data-table"
+import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -20,7 +21,6 @@ import { CalendarRange, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-reac
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
 interface SprintsPageProps {
   projectId?: string
@@ -197,8 +197,14 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
       />
 
       <EditSprintDialog
+        key={selectedItem?.id ?? "sprint-edit"}
         open={editOpen}
-        onOpenChange={setEditOpen}
+        onOpenChange={(nextOpen) => {
+          setEditOpen(nextOpen)
+          if (!nextOpen) {
+            setSelectedItem(null)
+          }
+        }}
         projectId={projectId}
         sprint={selectedItem}
       />

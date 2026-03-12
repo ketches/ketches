@@ -8,23 +8,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
   collaborationApi,
   CollabPriority,
   CollabPriorityOptions,
+  PlanningStatus,
   RequirementStatus,
   RequirementStatusOptions,
-  type Requirement,
   type CreateRequirementRequest,
-  type UpdateRequirementRequest,
-  PlanningStatus
+  type Requirement,
+  type UpdateRequirementRequest
 } from "@/api/collaboration"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState, useEffect } from "react"
-import { toast } from "sonner"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ export function CreateRequirementDialog({
 }: CreateRequirementDialogProps) {
 
   const queryClient = useQueryClient()
-  
+
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [priority, setPriority] = useState<CollabPriority>(CollabPriority.P2)
@@ -73,7 +73,7 @@ export function CreateRequirementDialog({
         status,
         parent_requirement_id: parentId
       }
-      
+
       if (parentId) {
         return collaborationApi.createRequirementChild(projectId, parentId, data)
       } else {
@@ -122,12 +122,12 @@ export function CreateRequirementDialog({
             <Field>
               <FieldLabel>Priority</FieldLabel>
               <FieldContent>
-                <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)}>
-                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)} itemToStringLabel={(item) => CollabPriorityOptions.find(opt => opt.value === item)?.label || item}>
+                  <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {CollabPriorityOptions.map((p) => (
-                        <ComboboxItem key={p.value} value={p.value} label={p.label}>{p.label}</ComboboxItem>
+                        <ComboboxItem key={p.value} value={p.value}>{p.label}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -138,12 +138,12 @@ export function CreateRequirementDialog({
             <Field>
               <FieldLabel>Status</FieldLabel>
               <FieldContent>
-                <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)}>
-                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)} itemToStringLabel={(item) => RequirementStatusOptions.find(opt => opt.value === item)?.label || item}>
+                  <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {RequirementStatusOptions.map((s) => (
-                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                        <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -195,7 +195,7 @@ export function EditRequirementDialog({
   onSuccess
 }: EditRequirementDialogProps) {
   const queryClient = useQueryClient()
-  
+
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [priority, setPriority] = useState<CollabPriority>(CollabPriority.P2)
@@ -215,7 +215,7 @@ export function EditRequirementDialog({
   const mutation = useMutation({
     mutationFn: () => {
       if (!requirement) throw new Error("No requirement selected")
-      
+
       const data: UpdateRequirementRequest = {
         title,
         description,
@@ -267,12 +267,12 @@ export function EditRequirementDialog({
             <Field>
               <FieldLabel>Priority</FieldLabel>
               <FieldContent>
-                <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)}>
-                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)} itemToStringLabel={(item) => CollabPriorityOptions.find(opt => opt.value === item)?.label || item}>
+                  <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {CollabPriorityOptions.map((p) => (
-                        <ComboboxItem key={p.value} value={p.value} label={p.label}>{p.label}</ComboboxItem>
+                        <ComboboxItem key={p.value} value={p.value}>{p.label}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -283,12 +283,12 @@ export function EditRequirementDialog({
             <Field>
               <FieldLabel>Status</FieldLabel>
               <FieldContent>
-                <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)}>
-                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)} itemToStringLabel={(item) => RequirementStatusOptions.find(opt => opt.value === item)?.label || item}>
+                  <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {RequirementStatusOptions.map((s) => (
-                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                        <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>

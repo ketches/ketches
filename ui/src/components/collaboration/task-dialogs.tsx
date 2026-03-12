@@ -9,12 +9,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 
-import { Textarea } from "@/components/ui/textarea"
-import { collaborationApi, TaskStatus, TaskStatusOptions, CollabPriority, CollabPriorityOptions, type Task, type CreateTaskRequest, type UpdateTaskRequest } from "@/api/collaboration"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState, useEffect } from "react"
-import { toast } from "sonner"
+import { collaborationApi, CollabPriority, CollabPriorityOptions, TaskStatus, TaskStatusOptions, type CreateTaskRequest, type Task, type UpdateTaskRequest } from "@/api/collaboration"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Textarea } from "@/components/ui/textarea"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 interface CreateTaskDialogProps {
@@ -104,7 +104,7 @@ export function CreateTaskDialog({
               />
             </FieldContent>
           </Field>
-          
+
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
@@ -125,12 +125,13 @@ export function CreateTaskDialog({
                 <Combobox
                   value={formData.status}
                   onValueChange={(val) => val && setFormData({ ...formData, status: val as TaskStatus })}
+                  itemToStringLabel={(item) => TaskStatusOptions.find(opt => opt.value === item)?.label || item}
                 >
-                  <ComboboxInput placeholder="Select status" itemToStringLabel={(item) => item.label} />
+                  <ComboboxInput placeholder="Select status" />
                   <ComboboxContent>
                     <ComboboxList>
                       {TaskStatusOptions.map((opt) => (
-                        <ComboboxItem key={opt.value} value={opt.value} label={opt.label}>
+                        <ComboboxItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </ComboboxItem>
                       ))}
@@ -146,12 +147,13 @@ export function CreateTaskDialog({
                 <Combobox
                   value={formData.priority}
                   onValueChange={(val) => val && setFormData({ ...formData, priority: val as CollabPriority })}
+                  itemToStringLabel={(item) => CollabPriorityOptions.find(opt => opt.value === item)?.label || item}
                 >
-                  <ComboboxInput placeholder="Select priority" itemToStringLabel={(item) => item.label} />
+                  <ComboboxInput placeholder="Select priority" />
                   <ComboboxContent>
                     <ComboboxList>
                       {CollabPriorityOptions.map((opt) => (
-                        <ComboboxItem key={opt.value} value={opt.value} label={opt.label}>
+                        <ComboboxItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </ComboboxItem>
                       ))}
@@ -161,7 +163,7 @@ export function CreateTaskDialog({
               </FieldContent>
             </Field>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <FieldLabel>Due Date</FieldLabel>
@@ -291,7 +293,7 @@ export function EditTaskDialog({
               />
             </FieldContent>
           </Field>
-          
+
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
@@ -312,12 +314,13 @@ export function EditTaskDialog({
                 <Combobox
                   value={formData.status}
                   onValueChange={(val) => val && setFormData({ ...formData, status: val as TaskStatus })}
+                  itemToStringLabel={(item) => TaskStatusOptions.find(opt => opt.value === item)?.label || item}
                 >
-                  <ComboboxInput placeholder="Select status" itemToStringLabel={(item) => item.label} />
+                  <ComboboxInput placeholder="Select status" />
                   <ComboboxContent>
                     <ComboboxList>
                       {TaskStatusOptions.map((opt) => (
-                        <ComboboxItem key={opt.value} value={opt.value} label={opt.label}>
+                        <ComboboxItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </ComboboxItem>
                       ))}
@@ -333,12 +336,13 @@ export function EditTaskDialog({
                 <Combobox
                   value={formData.priority}
                   onValueChange={(val) => val && setFormData({ ...formData, priority: val as CollabPriority })}
+                  itemToStringLabel={(item) => CollabPriorityOptions.find(opt => opt.value === item)?.label || item}
                 >
-                  <ComboboxInput placeholder="Select priority" itemToStringLabel={(item) => item.label} />
+                  <ComboboxInput placeholder="Select priority" />
                   <ComboboxContent>
                     <ComboboxList>
                       {CollabPriorityOptions.map((opt) => (
-                        <ComboboxItem key={opt.value} value={opt.value} label={opt.label}>
+                        <ComboboxItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </ComboboxItem>
                       ))}
@@ -348,9 +352,9 @@ export function EditTaskDialog({
               </FieldContent>
             </Field>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
-             <Field>
+            <Field>
               <FieldLabel>Due Date</FieldLabel>
               <FieldContent>
                 <Input
@@ -361,7 +365,7 @@ export function EditTaskDialog({
                 />
               </FieldContent>
             </Field>
-             <Field>
+            <Field>
               <FieldLabel>Estimate (hours)</FieldLabel>
               <FieldContent>
                 <Input

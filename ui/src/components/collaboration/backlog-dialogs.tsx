@@ -1,4 +1,6 @@
+import { collaborationApi, SprintStatus, type Sprint } from "@/api/collaboration"
 import { Button } from "@/components/ui/button"
+import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -7,12 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldContent, FieldLabel } from "../ui/field"
-import { collaborationApi, SprintStatus, type Sprint } from "@/api/collaboration"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { toast } from "sonner"
-import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 interface PlanToSprintDialogProps {
   open: boolean
@@ -35,14 +35,14 @@ export function PlanToSprintDialog({
   // Fetch available sprints (Planned or Active)
   const { data: sprintsResponse } = useQuery({
     queryKey: ["sprints", projectId, "plannable"],
-    queryFn: () => collaborationApi.listSprints(projectId, { 
-      page: 1, 
+    queryFn: () => collaborationApi.listSprints(projectId, {
+      page: 1,
       page_size: 100, // Fetch enough sprints
       status: `${SprintStatus.PLANNED},${SprintStatus.ACTIVE}` // API might not support comma separated, usually client side filter or separate requests
     }),
     enabled: open
   })
-  
+
   // If API doesn't support multiple statuses, we might just fetch all or default to PLANNED.
   // Ideally backend supports it. Assuming listSprints returns paginated list.
 
@@ -82,7 +82,7 @@ export function PlanToSprintDialog({
             Move {requirementIds.length} requirement{requirementIds.length !== 1 ? "s" : ""} to a sprint.
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
           <Field>
             <FieldLabel>Select Sprint</FieldLabel>
@@ -95,7 +95,7 @@ export function PlanToSprintDialog({
                 <ComboboxContent>
                   <ComboboxList>
                     {sprints.map((sprint: Sprint) => (
-                      <ComboboxItem key={sprint.id} value={sprint.id} label={`${sprint.name} (${sprint.status})`}>
+                      <ComboboxItem key={sprint.id} value={sprint.id}>
                         {sprint.name} ({sprint.status})
                       </ComboboxItem>
                     ))}

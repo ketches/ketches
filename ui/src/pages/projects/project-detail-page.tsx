@@ -10,10 +10,10 @@ import {
   Orbit,
   Pencil,
   Puzzle,
+  SquareStack,
   Trash2,
   Users,
   Warehouse,
-  SquareStack,
 } from "lucide-react"
 import * as React from "react"
 import { useNavigate, useParams } from "react-router-dom"
@@ -38,12 +38,12 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ApplicationsPage } from "@/pages/applications/applications-page"
 import { CodeRepositoriesPage } from "@/pages/code-repositories/code-repositories-page"
+import { CollaborationsPage } from "@/pages/collaborations/collaborations-page"
 import { ContainerRegistriesPage } from "@/pages/container-registries/container-registries-page"
 import { UserDashboard } from "@/pages/dashboard/dashboard-page"
 import { EnvironmentsPage } from "@/pages/environments/environments-page"
 import { MembersPage } from "@/pages/members/members-page"
 import { PluginsPage } from "@/pages/plugins/plugins-page"
-import { CollaborationPage } from "@/pages/collaboration/collaboration-page"
 
 interface ProjectDetailPageProps {
   initialTab?: string
@@ -210,7 +210,7 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
         </TabsContent>
 
         <TabsContent value="collaboration" className="space-y-4 mt-2">
-          <CollaborationPage projectId={projectId!} />
+          <CollaborationsPage projectId={projectId!} />
         </TabsContent>
       </Tabs>
 

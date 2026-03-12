@@ -1,39 +1,41 @@
 import { collaborationApi, type Task } from "@/api/collaboration"
 
-import { DataTable } from "@/components/data-table/data-table"
-import { PageHeader } from "@/components/layout/page-header"
-import { StatusBadge, PriorityBadge } from "@/components/collaboration/collab-badges"
+import { PriorityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
 import { KanbanBoard } from "@/components/collaboration/kanban-board"
 import { CreateTaskDialog, EditTaskDialog } from "@/components/collaboration/task-dialogs"
 import { flattenTree, type TreeItem } from "@/components/collaboration/tree-utils"
+import { DataTable } from "@/components/data-table/data-table"
+import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { ChevronDown, ChevronRight, CheckSquare, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { CheckSquare, ChevronDown, ChevronRight, Columns3, LayoutList, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
 interface TasksPageProps {
   projectId?: string
   viewMode?: "list" | "kanban"
+  onViewModeChange?: (viewMode: "list" | "kanban") => void
   assigneeId?: string
   sprintId?: string
 }
 
-export default function TasksPage({ projectId: propProjectId, viewMode = "list", assigneeId, sprintId }: TasksPageProps) {
+export default function TasksPage({ projectId: propProjectId, viewMode = "list", onViewModeChange, assigneeId, sprintId }: TasksPageProps) {
   const params = useParams<{ projectId: string }>()
   const projectId = propProjectId || params.projectId
 
@@ -153,7 +155,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
             <span className="truncate font-medium">
               {item.title}
             </span>
-             <div className="text-[10px] text-muted-foreground font-mono ml-2">
+            <div className="text-[10px] text-muted-foreground font-mono ml-2">
               {item.id.slice(0, 8)}
             </div>
           </div>
@@ -186,13 +188,13 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
         const item = row.original
         return (
           <div className="flex justify-end">
-             <DropdownMenu>
+            <DropdownMenu>
               <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                 <MoreHorizontal className="h-4 w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {item.depth === 0 && (
-                   <DropdownMenuItem onClick={() => handleCreateChild(item)}>
+                  <DropdownMenuItem onClick={() => handleCreateChild(item)}>
                     <Plus className="mr-2 h-3.5 w-3.5" />
                     Add Child
                   </DropdownMenuItem>
@@ -212,6 +214,26 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
       },
     },
   ]
+
+  const taskViewTabs = (
+    <Tabs
+      value={viewMode}
+      onValueChange={(value) => {
+        if (value === "list" || value === "kanban") {
+          onViewModeChange?.(value)
+        }
+      }}
+    >
+      <TabsList>
+        <TabsTrigger value="list">
+          <LayoutList className="h-3.5 w-3.5" />
+        </TabsTrigger>
+        <TabsTrigger value="kanban">
+          <Columns3 className="h-3.5 w-3.5" />
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  )
 
   if (!projectId) return null
 
@@ -251,37 +273,43 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Task
-            </Button>
+            <div className="ml-auto flex items-center gap-2">
+              {taskViewTabs}
+              <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
+                <Plus className="h-4 w-4" />
+                New Task
+              </Button>
+            </div>
           </div>
           <KanbanBoard tasks={tasks} projectId={projectId} />
         </>
       ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <DataTable
+          columns={columns}
+          data={tableData}
+          isLoading={isLoading}
+          manualPagination
+          totalCount={totalCount}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          leftToolbar={() => (
             <Input
               className="max-w-xs"
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Task
-            </Button>
-          </div>
-          <DataTable
-            columns={columns}
-            data={tableData}
-            isLoading={isLoading}
-            manualPagination
-            totalCount={totalCount}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-          />
-        </>
+          )}
+          rightToolbar={() => (
+            <>
+              {taskViewTabs}
+              <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
+                <Plus className="h-4 w-4" />
+                New Task
+              </Button>
+            </>
+          )}
+        />
       )}
 
       <CreateTaskDialog
@@ -309,7 +337,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-             <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => selectedItem && deleteMutation.mutate(selectedItem.id)}

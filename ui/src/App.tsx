@@ -20,6 +20,7 @@ import { ClusterNodeDetailPage } from "@/pages/clusters/cluster-node-detail-page
 import { ClustersPage } from "@/pages/clusters/clusters-page"
 import { CodeRepositoriesPage } from "@/pages/code-repositories/code-repositories-page"
 import { CodeRepositoryDetailPage } from "@/pages/code-repositories/code-repository-detail-page"
+import { CollaborationsPage } from "@/pages/collaborations/collaborations-page"
 import { ContainerRegistriesPage } from "@/pages/container-registries/container-registries-page"
 import { DashboardPage } from "@/pages/dashboard/dashboard-page"
 import { EnvironmentDetailPage } from "@/pages/environments/environment-detail-page"
@@ -117,9 +118,9 @@ export function App() {
                 <DashboardLayout><ProjectDetailPage /></DashboardLayout>
               </ProtectedRoute>
             } />
-            <Route path="/projects/:projectId/collaboration" element={
+            <Route path="/collaborations" element={
               <ProtectedRoute>
-                <DashboardLayout><ProjectDetailPage initialTab="collaboration" /></DashboardLayout>
+                <DashboardLayout><CollaborationsPage /></DashboardLayout>
               </ProtectedRoute>
             } />
             <Route path="/activities" element={

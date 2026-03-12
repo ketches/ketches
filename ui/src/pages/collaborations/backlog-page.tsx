@@ -1,8 +1,8 @@
 import { collaborationApi, type Requirement } from "@/api/collaboration"
+import { PlanToSprintDialog } from "@/components/collaboration/backlog-dialogs"
+import { PriorityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
-import { PriorityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
-import { PlanToSprintDialog } from "@/components/collaboration/backlog-dialogs"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -11,11 +11,11 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useQuery } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
-import { Archive, ArrowRight, LayoutList, MoreHorizontal, Plus, Pencil, Trash2, CornerDownRight } from "lucide-react"
+import { Archive, ArrowRight, CornerDownRight, LayoutList, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 
-import { CreateRequirementDialog, EditRequirementDialog, DeleteRequirementDialog } from "@/components/collaboration/requirement-dialogs"
+import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog } from "@/components/collaboration/requirement-dialogs"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,7 +75,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label="Select all"
-          className="translate-y-[2px]"
+          className="translate-y-0.5"
         />
       ),
       cell: ({ row }) => (
@@ -83,7 +83,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
           aria-label="Select row"
-          className="translate-y-[2px]"
+          className="translate-y-0.5"
         />
       ),
       enableSorting: false,
@@ -97,7 +97,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
         return (
           <div className="flex items-center" style={{ paddingLeft: `${depth * 24}px` }}>
             {depth > 0 && <CornerDownRight className="h-4 w-4 mr-2 text-muted-foreground" />}
-            <span className="font-medium truncate block max-w-[300px]">{row.original.title}</span>
+            <span className="font-medium truncate block max-w-75">{row.original.title}</span>
           </div>
         )
       },
@@ -203,8 +203,8 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
                 <Plus className="mr-2 h-4 w-4" />
                 Create Requirement
               </Button>
-              <Button 
-                disabled={selectedIds.length === 0} 
+              <Button
+                disabled={selectedIds.length === 0}
                 onClick={() => setPlanToSprintOpen(true)}
               >
                 <ArrowRight className="mr-2 h-4 w-4" />
@@ -233,10 +233,10 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
         requirementIds={selectedIds.map(index => requirements[parseInt(index)]?.id).filter(Boolean)}
         onSuccess={() => setRowSelection({})}
       />
-      <CreateRequirementDialog 
-        open={createOpen} 
-        onOpenChange={setCreateOpen} 
-        projectId={projectId} 
+      <CreateRequirementDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        projectId={projectId}
         parentId={parentRequirementId}
         onSuccess={() => setCreateOpen(false)}
       />

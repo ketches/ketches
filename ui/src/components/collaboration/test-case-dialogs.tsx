@@ -1,4 +1,15 @@
+import {
+  collaborationApi,
+  TestRunStatus,
+  TestRunStatusOptions,
+  type CreateTestCaseRequest,
+  type CreateTestRunRequest,
+  type Sprint,
+  type TestCase,
+  type UpdateTestCaseRequest
+} from "@/api/collaboration"
 import { Button } from "@/components/ui/button"
+import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -7,24 +18,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  collaborationApi,
-  TestRunStatus,
-  TestRunStatusOptions,
-  type TestCase,
-  type Sprint,
-  type CreateTestCaseRequest,
-  type UpdateTestCaseRequest,
-  type CreateTestRunRequest
-} from "@/api/collaboration"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useQuery } from "@tanstack/react-query"
-import { useState, useEffect } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
@@ -43,7 +41,7 @@ export function CreateTestCaseDialog({
   onSuccess
 }: CreateTestCaseDialogProps) {
   const queryClient = useQueryClient()
-  
+
   const [title, setTitle] = useState("")
   const [precondition, setPrecondition] = useState("")
   const [steps, setSteps] = useState("")
@@ -118,12 +116,14 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Sprint (Optional)</FieldLabel>
             <FieldContent>
-              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")}>
-                <ComboboxInput placeholder="Select sprint" itemToStringLabel={(item) => item.label} />
+              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")} itemToStringLabel={(item) => sprints?.items.find(s => s.id === item)?.name || item}>
+                <ComboboxInput placeholder="Select sprint" />
                 <ComboboxContent>
                   <ComboboxList>
                     {sprints?.items.map((s: Sprint) => (
-                      <ComboboxItem key={s.id} value={s.id} label={s.name}>{s.name}</ComboboxItem>
+                      <ComboboxItem key={s.id} value={s.id}>
+                        {s.name}
+                      </ComboboxItem>
                     ))}
                   </ComboboxList>
                 </ComboboxContent>
@@ -200,7 +200,7 @@ export function EditTestCaseDialog({
   onSuccess
 }: EditTestCaseDialogProps) {
   const queryClient = useQueryClient()
-  
+
   const [title, setTitle] = useState("")
   const [precondition, setPrecondition] = useState("")
   const [steps, setSteps] = useState("")
@@ -226,7 +226,7 @@ export function EditTestCaseDialog({
   const mutation = useMutation({
     mutationFn: () => {
       if (!testCase) throw new Error("No test case selected")
-      
+
       const data: UpdateTestCaseRequest = {
         title,
         precondition,
@@ -312,12 +312,14 @@ export function EditTestCaseDialog({
           <Field>
             <FieldLabel>Sprint (Optional)</FieldLabel>
             <FieldContent>
-              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")}>
-                <ComboboxInput placeholder="Select sprint" itemToStringLabel={(item) => item.label} />
+              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")} itemToStringLabel={(item) => sprints?.items.find(s => s.id === item)?.name || item}>
+                <ComboboxInput placeholder="Select sprint" />
                 <ComboboxContent>
                   <ComboboxList>
                     {sprints?.items.map((s: Sprint) => (
-                      <ComboboxItem key={s.id} value={s.id} label={s.name}>{s.name}</ComboboxItem>
+                      <ComboboxItem key={s.id} value={s.id}>
+                        {s.name}
+                      </ComboboxItem>
                     ))}
                   </ComboboxList>
                 </ComboboxContent>
@@ -410,7 +412,7 @@ export function CreateTestRunDialog({
   onSuccess
 }: CreateTestRunDialogProps) {
   // queryClient not used
-  
+
   const [status, setStatus] = useState<TestRunStatus>(TestRunStatus.PASSED)
   const [comment, setComment] = useState("")
 
@@ -424,7 +426,7 @@ export function CreateTestRunDialog({
   const mutation = useMutation({
     mutationFn: () => {
       if (!testCase) throw new Error("No test case selected")
-      
+
       const data: CreateTestRunRequest = {
         status,
         comment
@@ -461,12 +463,12 @@ export function CreateTestRunDialog({
           <Field>
             <FieldLabel>Status</FieldLabel>
             <FieldContent>
-              <Combobox value={status} onValueChange={(v) => v && setStatus(v as TestRunStatus)}>
-                <ComboboxInput itemToStringLabel={(item) => item.label} />
+              <Combobox value={status} onValueChange={(v) => v && setStatus(v as TestRunStatus)} itemToStringLabel={(item) => TestRunStatusOptions.find(opt => opt.value === item)?.label || item}>
+                <ComboboxInput />
                 <ComboboxContent>
                   <ComboboxList>
                     {TestRunStatusOptions.map((s) => (
-                      <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                      <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
                     ))}
                   </ComboboxList>
                 </ComboboxContent>

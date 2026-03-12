@@ -8,26 +8,26 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
   collaborationApi,
-  DefectStatus,
   DefectSeverity,
   DefectSeverityOptions,
+  DefectStatus,
   DefectStatusOptions,
-  type Defect,
-  type Sprint,
   type CreateDefectRequest,
-  type UpdateDefectRequest,
+  type Defect,
   type Requirement,
+  type Sprint,
   type Task,
   type TestCase,
+  type UpdateDefectRequest,
 } from "@/api/collaboration"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState, useEffect } from "react"
-import { toast } from "sonner"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ export function CreateDefectDialog({
   onSuccess
 }: CreateDefectDialogProps) {
   const queryClient = useQueryClient()
-  
+
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [reproductionSteps, setReproductionSteps] = useState("")
@@ -154,12 +154,16 @@ export function CreateDefectDialog({
             <Field>
               <FieldLabel>Severity</FieldLabel>
               <FieldContent>
-                <Combobox value={severity} onValueChange={(v) => v && setSeverity(v as DefectSeverity)}>
-                  <ComboboxInput placeholder="Select severity" itemToStringLabel={(item) => item.label} />
+                <Combobox
+                  value={severity}
+                  onValueChange={(v) => v && setSeverity(v as DefectSeverity)}
+                  itemToStringLabel={(item) => DefectSeverityOptions.find(opt => opt.value === item)?.label || item}
+                >
+                  <ComboboxInput placeholder="Select severity" />
                   <ComboboxContent>
                     <ComboboxList>
                       {DefectSeverityOptions.map((s) => (
-                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                        <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -169,12 +173,12 @@ export function CreateDefectDialog({
             <Field>
               <FieldLabel>Status</FieldLabel>
               <FieldContent>
-                <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)}>
-                  <ComboboxInput placeholder="Select status" itemToStringLabel={(item) => item.label} />
+                <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)} itemToStringLabel={(item) => DefectStatusOptions.find(opt => opt.value === item)?.label || item}>
+                  <ComboboxInput placeholder="Select status" />
                   <ComboboxContent>
                     <ComboboxList>
                       {DefectStatusOptions.map((s) => (
-                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                        <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -212,12 +216,12 @@ export function CreateDefectDialog({
           <Field>
             <FieldLabel>Sprint (Optional)</FieldLabel>
             <FieldContent>
-              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")}>
-                <ComboboxInput placeholder="Select sprint" itemToStringLabel={(item) => item.label} />
+              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")} itemToStringLabel={(item) => sprints?.items.find(s => s.id === item)?.name || item}>
+                <ComboboxInput placeholder="Select sprint" />
                 <ComboboxContent>
                   <ComboboxList>
                     {sprints?.items.map((s: Sprint) => (
-                      <ComboboxItem key={s.id} value={s.id} label={s.name}>{s.name}</ComboboxItem>
+                      <ComboboxItem key={s.id} value={s.id}>{s.name}</ComboboxItem>
                     ))}
                   </ComboboxList>
                 </ComboboxContent>
@@ -229,12 +233,12 @@ export function CreateDefectDialog({
             <Field>
               <FieldLabel>Requirement (Optional)</FieldLabel>
               <FieldContent>
-                <Combobox value={requirementId} onValueChange={(v) => setRequirementId(v || "")}>
+                <Combobox value={requirementId} onValueChange={(v) => setRequirementId(v || "")} itemToStringLabel={(item) => requirements?.items.find(req => req.id === item)?.title || item}>
                   <ComboboxInput placeholder="Select requirement" />
                   <ComboboxContent>
                     <ComboboxList>
                       {requirements?.items.map((req: Requirement) => (
-                        <ComboboxItem key={req.id} value={req.id} label={req.title}>{req.title}</ComboboxItem>
+                        <ComboboxItem key={req.id} value={req.id}>{req.title}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -244,12 +248,12 @@ export function CreateDefectDialog({
             <Field>
               <FieldLabel>Task (Optional)</FieldLabel>
               <FieldContent>
-                <Combobox value={taskId} onValueChange={(v) => setTaskId(v || "")}>
+                <Combobox value={taskId} onValueChange={(v) => setTaskId(v || "")} itemToStringLabel={(item) => tasks?.items.find(t => t.id === item)?.title || item}>
                   <ComboboxInput placeholder="Select task" />
                   <ComboboxContent>
                     <ComboboxList>
                       {tasks?.items.map((t: Task) => (
-                        <ComboboxItem key={t.id} value={t.id} label={t.title}>{t.title}</ComboboxItem>
+                        <ComboboxItem key={t.id} value={t.id}>{t.title}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -259,12 +263,12 @@ export function CreateDefectDialog({
             <Field>
               <FieldLabel>Test Case (Optional)</FieldLabel>
               <FieldContent>
-                <Combobox value={testCaseId} onValueChange={(v) => setTestCaseId(v || "")}>
+                <Combobox value={testCaseId} onValueChange={(v) => setTestCaseId(v || "")} itemToStringLabel={(item) => testCases?.items.find(tc => tc.id === item)?.title || item}>
                   <ComboboxInput placeholder="Select test case" />
                   <ComboboxContent>
                     <ComboboxList>
                       {testCases?.items.map((tc: TestCase) => (
-                        <ComboboxItem key={tc.id} value={tc.id} label={tc.title}>{tc.title}</ComboboxItem>
+                        <ComboboxItem key={tc.id} value={tc.id}>{tc.title}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -278,8 +282,8 @@ export function CreateDefectDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={mutation.isPending || !title || !description || (!requirementId && !taskId && !testCaseId)}
             >
               {mutation.isPending ? "Creating..." : "Create Defect"}
@@ -309,7 +313,7 @@ export function EditDefectDialog({
   onSuccess
 }: EditDefectDialogProps) {
   const queryClient = useQueryClient()
-  
+
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [reproductionSteps, setReproductionSteps] = useState("")
@@ -365,7 +369,7 @@ export function EditDefectDialog({
   const mutation = useMutation({
     mutationFn: () => {
       if (!defect) throw new Error("No defect selected")
-      
+
       const data: UpdateDefectRequest = {
         title,
         description,
@@ -420,12 +424,12 @@ export function EditDefectDialog({
             <Field>
               <FieldLabel>Severity</FieldLabel>
               <FieldContent>
-                <Combobox value={severity} onValueChange={(v) => v && setSeverity(v as DefectSeverity)}>
-                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                <Combobox value={severity} onValueChange={(v) => v && setSeverity(v as DefectSeverity)} itemToStringLabel={(item) => DefectSeverityOptions.find(opt => opt.value === item)?.label || item}>
+                  <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {DefectSeverityOptions.map((s) => (
-                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                        <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -435,12 +439,12 @@ export function EditDefectDialog({
             <Field>
               <FieldLabel>Status</FieldLabel>
               <FieldContent>
-                <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)}>
-                  <ComboboxInput itemToStringLabel={(item) => item.label} />
+                <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)} itemToStringLabel={(item) => DefectStatusOptions.find(opt => opt.value === item)?.label || item}>
+                  <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {DefectStatusOptions.map((s) => (
-                        <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                        <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -476,12 +480,12 @@ export function EditDefectDialog({
           <Field>
             <FieldLabel>Sprint (Optional)</FieldLabel>
             <FieldContent>
-              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")}>
-                <ComboboxInput placeholder="Select sprint" itemToStringLabel={(item) => item.label} />
+              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")} itemToStringLabel={(item) => sprints?.items.find(s => s.id === item)?.name || item}>
+                <ComboboxInput placeholder="Select sprint" />
                 <ComboboxContent>
                   <ComboboxList>
                     {sprints?.items.map((s: Sprint) => (
-                      <ComboboxItem key={s.id} value={s.id} label={s.name}>{s.name}</ComboboxItem>
+                      <ComboboxItem key={s.id} value={s.id}>{s.name}</ComboboxItem>
                     ))}
                   </ComboboxList>
                 </ComboboxContent>
@@ -493,12 +497,12 @@ export function EditDefectDialog({
             <Field>
               <FieldLabel>Requirement</FieldLabel>
               <FieldContent>
-                <Combobox value={requirementId} onValueChange={(v) => setRequirementId(v || "")}>
+                <Combobox value={requirementId} onValueChange={(v) => setRequirementId(v || "")} itemToStringLabel={(item) => requirements?.items.find(req => req.id === item)?.title || item}>
                   <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {requirements?.items.map((req: Requirement) => (
-                        <ComboboxItem key={req.id} value={req.id} label={req.title}>{req.title}</ComboboxItem>
+                        <ComboboxItem key={req.id} value={req.id}>{req.title}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -508,12 +512,12 @@ export function EditDefectDialog({
             <Field>
               <FieldLabel>Task</FieldLabel>
               <FieldContent>
-                <Combobox value={taskId} onValueChange={(v) => setTaskId(v || "")}>
+                <Combobox value={taskId} onValueChange={(v) => setTaskId(v || "")} itemToStringLabel={(item) => tasks?.items.find(t => t.id === item)?.title || item}>
                   <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {tasks?.items.map((t: Task) => (
-                        <ComboboxItem key={t.id} value={t.id} label={t.title}>{t.title}</ComboboxItem>
+                        <ComboboxItem key={t.id} value={t.id}>{t.title}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -523,12 +527,12 @@ export function EditDefectDialog({
             <Field>
               <FieldLabel>Test Case</FieldLabel>
               <FieldContent>
-                <Combobox value={testCaseId} onValueChange={(v) => setTestCaseId(v || "")}>
+                <Combobox value={testCaseId} onValueChange={(v) => setTestCaseId(v || "")} itemToStringLabel={(item) => testCases?.items.find(tc => tc.id === item)?.title || item}>
                   <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
                       {testCases?.items.map((tc: TestCase) => (
-                        <ComboboxItem key={tc.id} value={tc.id} label={tc.title}>{tc.title}</ComboboxItem>
+                        <ComboboxItem key={tc.id} value={tc.id}>{tc.title}</ComboboxItem>
                       ))}
                     </ComboboxList>
                   </ComboboxContent>
@@ -552,8 +556,8 @@ export function EditDefectDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={mutation.isPending || !title || !description || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
             >
               {mutation.isPending ? "Save Changes" : "Save Changes"}
@@ -638,7 +642,7 @@ export function TransitionDefectDialog({
   onSuccess
 }: TransitionDefectDialogProps) {
   const queryClient = useQueryClient()
-  
+
   const [status, setStatus] = useState<DefectStatus>(DefectStatus.NEW)
 
   useEffect(() => {
@@ -683,12 +687,12 @@ export function TransitionDefectDialog({
           <Field>
             <FieldLabel>New Status</FieldLabel>
             <FieldContent>
-              <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)}>
-                <ComboboxInput itemToStringLabel={(item) => item.label} />
+              <Combobox value={status} onValueChange={(v) => v && setStatus(v as DefectStatus)} itemToStringLabel={(item) => DefectStatusOptions.find(opt => opt.value === item)?.label || item}>
+                <ComboboxInput />
                 <ComboboxContent>
                   <ComboboxList>
                     {DefectStatusOptions.map((s) => (
-                      <ComboboxItem key={s.value} value={s.value} label={s.label}>{s.label}</ComboboxItem>
+                      <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
                     ))}
                   </ComboboxList>
                 </ComboboxContent>

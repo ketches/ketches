@@ -16,11 +16,48 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { format } from "date-fns"
+import { format, isValid, parse } from "date-fns"
 import { CalendarIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
+
+const SPRINT_DATE_FORMAT = "yyyy-MM-dd"
+
+const EMPTY_SPRINT_FORM: Omit<CreateSprintRequest, "start_date" | "end_date"> = {
+  name: "",
+  goal: "",
+  status: SprintStatus.PLANNED,
+}
+
+function formatSprintDate(date: Date) {
+  return format(date, SPRINT_DATE_FORMAT)
+}
+
+function parseSprintDate(value?: string) {
+  if (!value) {
+    return undefined
+  }
+
+  const parsed = parse(value.slice(0, 10), SPRINT_DATE_FORMAT, new Date())
+  return isValid(parsed) ? parsed : undefined
+}
+
+function createSprintRequest(
+  formData: Omit<CreateSprintRequest, "start_date" | "end_date">,
+  startDate?: Date,
+  endDate?: Date,
+) {
+  if (!startDate || !endDate) {
+    return null
+  }
+
+  return {
+    ...formData,
+    start_date: formatSprintDate(startDate),
+    end_date: formatSprintDate(endDate),
+  }
+}
 
 interface CreateSprintDialogProps {
   open: boolean
@@ -36,38 +73,22 @@ export function CreateSprintDialog({
   onSuccess
 }: CreateSprintDialogProps) {
   const queryClient = useQueryClient()
-  const [formData, setFormData] = useState<CreateSprintRequest>({
-    name: "",
-    goal: "",
-    status: SprintStatus.PLANNED,
-    start_date: "",
-    end_date: "",
-  })
+  const [formData, setFormData] = useState(EMPTY_SPRINT_FORM)
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
 
-  useEffect(() => {
-    if (open) {
-      setFormData({
-        name: "",
-        goal: "",
-        status: SprintStatus.PLANNED,
-        start_date: "",
-        end_date: "",
-      })
-      setStartDate(undefined)
-      setEndDate(undefined)
-    }
-  }, [open])
+  const resetForm = () => {
+    setFormData(EMPTY_SPRINT_FORM)
+    setStartDate(undefined)
+    setEndDate(undefined)
+  }
 
-  useEffect(() => {
-    if (startDate) {
-      setFormData(prev => ({ ...prev, start_date: startDate.toISOString() }))
+  const handleOpenStateChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetForm()
     }
-    if (endDate) {
-      setFormData(prev => ({ ...prev, end_date: endDate.toISOString() }))
-    }
-  }, [startDate, endDate])
+    onOpenChange(nextOpen)
+  }
 
   const mutation = useMutation({
     mutationFn: (data: CreateSprintRequest) => {
@@ -76,6 +97,7 @@ export function CreateSprintDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sprints", projectId] })
       toast.success("Sprint created")
+      resetForm()
       onOpenChange(false)
       onSuccess?.()
     },
@@ -92,11 +114,18 @@ export function CreateSprintDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    mutation.mutate(formData)
+
+    const request = createSprintRequest(formData, startDate, endDate)
+    if (!request) {
+      toast.error("Start date and end date are required")
+      return
+    }
+
+    mutation.mutate(request)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenStateChange}>
       <DialogContent className="sm:max-w-160">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
@@ -124,12 +153,13 @@ export function CreateSprintDialog({
                 <Combobox
                   value={formData.status}
                   onValueChange={(val) => val && setFormData({ ...formData, status: val as SprintStatus })}
+                  itemToStringLabel={(item) => SprintStatusOptions.find(opt => opt.value === item)?.label || item}
                 >
-                  <ComboboxInput placeholder="Select status" itemToStringLabel={(item) => item.label} />
+                  <ComboboxInput placeholder="Select status" />
                   <ComboboxContent>
                     <ComboboxList>
                       {SprintStatusOptions.map((opt) => (
-                        <ComboboxItem key={opt.value} value={opt.value} label={opt.label}>
+                        <ComboboxItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </ComboboxItem>
                       ))}
@@ -201,7 +231,7 @@ export function CreateSprintDialog({
                     )}
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-full p-0" align="start">
                     <Calendar
                       mode="single"
                       selected={endDate}
@@ -215,7 +245,7 @@ export function CreateSprintDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => handleOpenStateChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
@@ -244,38 +274,17 @@ export function EditSprintDialog({
   onSuccess
 }: EditSprintDialogProps) {
   const queryClient = useQueryClient()
-  const [formData, setFormData] = useState<UpdateSprintRequest>({
-    name: "",
-    goal: "",
-    status: SprintStatus.PLANNED,
-    start_date: "",
-    end_date: "",
-  })
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined)
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined)
+  const [formData, setFormData] = useState<Omit<UpdateSprintRequest, "start_date" | "end_date">>(() => ({
+    name: sprint?.name ?? "",
+    goal: sprint?.goal ?? "",
+    status: sprint?.status ?? SprintStatus.PLANNED,
+  }))
+  const [startDate, setStartDate] = useState<Date | undefined>(() => parseSprintDate(sprint?.start_date))
+  const [endDate, setEndDate] = useState<Date | undefined>(() => parseSprintDate(sprint?.end_date))
 
-  useEffect(() => {
-    if (sprint && open) {
-      setFormData({
-        name: sprint.name,
-        goal: sprint.goal,
-        status: sprint.status,
-        start_date: sprint.start_date,
-        end_date: sprint.end_date,
-      })
-      setStartDate(sprint.start_date ? new Date(sprint.start_date) : undefined)
-      setEndDate(sprint.end_date ? new Date(sprint.end_date) : undefined)
-    }
-  }, [sprint, open])
-
-  useEffect(() => {
-    if (startDate) {
-      setFormData(prev => ({ ...prev, start_date: startDate.toISOString() }))
-    }
-    if (endDate) {
-      setFormData(prev => ({ ...prev, end_date: endDate.toISOString() }))
-    }
-  }, [startDate, endDate])
+  const handleOpenStateChange = (nextOpen: boolean) => {
+    onOpenChange(nextOpen)
+  }
 
   const mutation = useMutation({
     mutationFn: (data: UpdateSprintRequest) => {
@@ -299,13 +308,20 @@ export function EditSprintDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    mutation.mutate(formData)
+
+    const request = createSprintRequest(formData, startDate, endDate)
+    if (!request) {
+      toast.error("Start date and end date are required")
+      return
+    }
+
+    mutation.mutate(request)
   }
 
   if (!sprint) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenStateChange}>
       <DialogContent className="sm:max-w-160">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
@@ -335,12 +351,13 @@ export function EditSprintDialog({
                 <Combobox
                   value={formData.status}
                   onValueChange={(val) => val && setFormData({ ...formData, status: val as SprintStatus })}
+                  itemToStringLabel={(item) => SprintStatusOptions.find(opt => opt.value === item)?.label || item}
                 >
-                  <ComboboxInput placeholder="Select status" itemToStringLabel={(item) => item.label} />
+                  <ComboboxInput placeholder="Select status" />
                   <ComboboxContent>
                     <ComboboxList>
                       {SprintStatusOptions.map((opt) => (
-                        <ComboboxItem key={opt.value} value={opt.value} label={opt.label}>
+                        <ComboboxItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </ComboboxItem>
                       ))}
@@ -426,7 +443,7 @@ export function EditSprintDialog({
             </Field>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => handleOpenStateChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={mutation.isPending}>

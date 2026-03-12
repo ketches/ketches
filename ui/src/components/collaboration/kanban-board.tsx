@@ -1,7 +1,7 @@
-import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, useDroppable, useDraggable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import { collaborationApi, TaskStatusOptions, type Task, type TaskStatus } from "@/api/collaboration"
 import { PriorityBadge } from "@/components/collaboration/collab-badges"
 import { Card } from "@/components/ui/card"
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -16,7 +16,7 @@ function KanbanColumn({ status, label, children }: { status: string; label: stri
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col min-w-56 w-56 rounded-lg border bg-muted/50 ${isOver ? "ring-2 ring-primary/50" : ""}`}
+      className={`flex flex-1 flex-col min-w-56 rounded-lg border bg-muted/50 ${isOver ? "ring-2 ring-primary/50" : ""}`}
     >
       <div className="flex items-center justify-between px-3 py-2 border-b">
         <span className="text-sm font-medium">{label}</span>
@@ -113,7 +113,7 @@ export function KanbanBoard({ tasks, projectId }: KanbanBoardProps) {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex w-full gap-4 overflow-x-auto pb-4">
         {TaskStatusOptions.map((opt) => (
           <KanbanColumn key={opt.value} status={opt.value} label={opt.label}>
             {groupedTasks[opt.value]?.map((task) => (
