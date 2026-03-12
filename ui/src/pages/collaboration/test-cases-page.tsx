@@ -21,9 +21,10 @@ import { useParams } from "react-router-dom"
 
 interface TestCasesPageProps {
   projectId?: string
+  sprintId?: string
 }
 
-export default function TestCasesPage({ projectId: propProjectId }: TestCasesPageProps) {
+export default function TestCasesPage({ projectId: propProjectId, sprintId }: TestCasesPageProps) {
   const params = useParams<{ projectId: string }>()
   const projectId = propProjectId || params.projectId
 
@@ -42,13 +43,14 @@ export default function TestCasesPage({ projectId: propProjectId }: TestCasesPag
   const [selectedItem, setSelectedItem] = useState<TestCase | null>(null)
 
   const { data: response, isLoading } = useQuery({
-    queryKey: ["test-cases", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch],
+    queryKey: ["test-cases", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, sprintId],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
       return collaborationApi.listTestCases(projectId, {
         page: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
         search: debouncedSearch,
+        sprint_id: sprintId,
       })
     },
     enabled: !!projectId,

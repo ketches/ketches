@@ -27,9 +27,11 @@ import { useParams } from "react-router-dom"
 
 interface RequirementsPageProps {
   projectId?: string
+  assigneeId?: string
+  sprintId?: string
 }
 
-export default function RequirementsPage({ projectId: propProjectId }: RequirementsPageProps) {
+export default function RequirementsPage({ projectId: propProjectId, assigneeId, sprintId }: RequirementsPageProps) {
   const params = useParams<{ projectId: string }>()
   const projectId = propProjectId || params.projectId
 
@@ -52,13 +54,15 @@ export default function RequirementsPage({ projectId: propProjectId }: Requireme
 
   const { data: response, isLoading } = useQuery({
 
-    queryKey: ["requirements", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch],
+    queryKey: ["requirements", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
       return collaborationApi.listRequirements(projectId, {
         page: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
         search: debouncedSearch,
+        assignee_id: assigneeId,
+        sprint_id: sprintId,
       })
     },
     enabled: !!projectId,

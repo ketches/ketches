@@ -22,9 +22,11 @@ import { useParams } from "react-router-dom"
 
 interface DefectsPageProps {
   projectId?: string
+  assigneeId?: string
+  sprintId?: string
 }
 
-export default function DefectsPage({ projectId: propProjectId }: DefectsPageProps) {
+export default function DefectsPage({ projectId: propProjectId, assigneeId, sprintId }: DefectsPageProps) {
   const params = useParams<{ projectId: string }>()
   const projectId = propProjectId || params.projectId
 
@@ -43,13 +45,15 @@ export default function DefectsPage({ projectId: propProjectId }: DefectsPagePro
   const [selectedItem, setSelectedItem] = useState<Defect | null>(null)
 
   const { data: response, isLoading } = useQuery({
-    queryKey: ["defects", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch],
+    queryKey: ["defects", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
       return collaborationApi.listDefects(projectId, {
         page: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
         search: debouncedSearch,
+        assignee_id: assigneeId,
+        sprint_id: sprintId,
       })
     },
     enabled: !!projectId,
