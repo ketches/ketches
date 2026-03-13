@@ -20,7 +20,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { CheckSquare, ChevronDown, ChevronRight, Columns3, LayoutList, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { CheckSquare, ChevronDown, ChevronRight, Columns3, ListTree, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useMemo, useState } from "react"
@@ -189,22 +189,22 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
         return (
           <div className="flex justify-end">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                <MoreHorizontal className="h-4 w-4" />
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()} />}>
+                <MoreVertical />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {item.depth === 0 && (
                   <DropdownMenuItem onClick={() => handleCreateChild(item)}>
-                    <Plus className="mr-2 h-3.5 w-3.5" />
+                    <Plus />
                     Add Child
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => handleEdit(item)}>
-                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  <Pencil />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(item)}>
-                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                <DropdownMenuItem variant="destructive" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(item)}>
+                  <Trash2 />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -223,10 +223,11 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
           onViewModeChange?.(value)
         }
       }}
+      className="h-7"
     >
       <TabsList>
         <TabsTrigger value="list">
-          <LayoutList className="h-3.5 w-3.5" />
+          <ListTree className="h-3.5 w-3.5" />
         </TabsTrigger>
         <TabsTrigger value="kanban">
           <Columns3 className="h-3.5 w-3.5" />

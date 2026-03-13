@@ -18,6 +18,7 @@ import dagre from "dagre"
 import {
   Box,
   Code,
+  Container,
   FileCog,
   FileKey,
   HardDrive,
@@ -26,8 +27,7 @@ import {
   Loader2,
   Network,
   Route,
-  Scale,
-  Shapes
+  Scale
 } from "lucide-react"
 import * as React from "react"
 
@@ -284,7 +284,7 @@ const getTypeIcon = (type: string) => {
     case "Application": return Box
     case "Deployment": return Layers
     case "StatefulSet": return Layers
-    case "Pod": return Shapes
+    case "Pod": return Container
     case "Service": return Network
     case "HTTPRoute": return Route
     case "ConfigMap": return FileCog

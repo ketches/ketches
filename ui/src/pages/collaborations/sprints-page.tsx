@@ -17,7 +17,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { CalendarRange, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { CalendarRange, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -118,16 +118,16 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
         return (
           <div className="flex justify-end">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                <MoreHorizontal className="h-4 w-4" />
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()} />}>
+                <MoreVertical />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleEdit(item)}>
-                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  <Pencil />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(item)}>
-                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                <DropdownMenuItem variant="destructive" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(item)}>
+                  <Trash2 />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>

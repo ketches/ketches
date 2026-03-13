@@ -70,6 +70,7 @@ import {
   ClockCheck,
   CloudCog,
   Cog,
+  Container,
   Copy,
   Cpu,
   Edit2,
@@ -99,7 +100,6 @@ import {
   Ruler,
   Search,
   Server,
-  Shapes,
   Share2,
   Star,
   Telescope,
@@ -272,13 +272,11 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
 
   if (prometheusAvailable === false) {
     return (
-      <div className="min-h-125">
-        <EmptyState
-          title="Prometheus Not Available"
-          description="The cluster does not have a Prometheus integration configured. Please contact your administrator to enable Prometheus monitoring."
-          icon={Activity}
-        />
-      </div>
+      <EmptyState
+        title="Prometheus Not Available"
+        description="The cluster does not have a Prometheus integration configured. Please contact your administrator to enable Prometheus monitoring."
+        icon={Activity}
+      />
     )
   }
 
@@ -292,13 +290,11 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
 
   if (!metricsData || metricsData.chartData.length === 0) {
     return (
-      <div className="min-h-125">
-        <EmptyState
-          title="No Metrics Data"
-          description="No monitoring data is available for this application. Metrics will appear once the application is running and producing data."
-          icon={Activity}
-        />
-      </div>
+      <EmptyState
+        title="No Metrics Data"
+        description="No monitoring data is available for this application. Metrics will appear once the application is running and producing data."
+        icon={Activity}
+      />
     )
   }
 
@@ -1159,7 +1155,7 @@ export function ApplicationDetailPage() {
         <TabsList>
           <TabsTrigger value="overview"><Telescope />Overview</TabsTrigger>
           <TabsTrigger value="topology"><Share2 />Topology</TabsTrigger>
-          <TabsTrigger value="instances"><Shapes />Instances</TabsTrigger>
+          <TabsTrigger value="instances"><Container />Instances</TabsTrigger>
           <TabsTrigger value="operations"><Footprints />Operations</TabsTrigger>
           <TabsTrigger value="resources"><Ruler />Resources</TabsTrigger>
           {!isViewer && <TabsTrigger value="env-vars"><Key />Env Vars</TabsTrigger>}
@@ -1320,7 +1316,7 @@ export function ApplicationDetailPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Shapes className="h-4 w-4" /> Running Instances
+                <Container className="h-4 w-4" /> Running Instances
               </CardTitle>
               <CardDescription>
                 Manage and monitor current pod instances
@@ -1374,7 +1370,7 @@ export function ApplicationDetailPage() {
                   {searchQuery ? (
                     <Search className="h-12 w-12 text-muted-foreground opacity-20" />
                   ) : (
-                    <Shapes className="h-12 w-12 text-muted-foreground opacity-20" />
+                    <Container className="h-12 w-12 text-muted-foreground opacity-20" />
                   )}
                   <div className="text-center">
                     <p className="text-sm font-medium">

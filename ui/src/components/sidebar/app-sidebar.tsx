@@ -2,7 +2,6 @@ import {
   Activity,
   Blocks,
   Box,
-  CheckSquare,
   FolderGit2,
   GalleryVerticalEnd,
   LayoutDashboard,
@@ -12,10 +11,12 @@ import {
   Trash2,
   User,
   Users,
-  Warehouse,
+  VectorSquare,
+  Warehouse
 } from "lucide-react"
 import * as React from "react"
 
+import { projectsApi } from "@/api/projects"
 import { GlobalSearchDialog } from "@/components/global-search/global-search"
 import { NavGlobalSearch } from "@/components/sidebar/nav-global-search"
 import { NavMain } from "@/components/sidebar/nav-main"
@@ -32,7 +33,6 @@ import {
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
-import { projectsApi } from "@/api/projects"
 import { useQuery } from "@tanstack/react-query"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -69,7 +69,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Project group: project-scoped modules (Dashboard rendered separately); some hidden for viewers
   const projectItems = isAdmin ? [] : [
-    { title: "Collaborations", url: "/collaborations", icon: CheckSquare, hidden: !canShowCollaboration },
+    { title: "Collaborations", url: "/collaborations", icon: VectorSquare, hidden: !canShowCollaboration },
     { title: "Applications", url: "/applications", icon: Box },
     { title: "Environments", url: "/environments", icon: Orbit, hidden: isViewer },
     { title: "Code Repositories", url: "/code-repositories", icon: FolderGit2, hidden: isViewer },

@@ -74,7 +74,7 @@ function ProjectItem({
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="text-destructive focus:text-destructive"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
             <Trash2 className="mr-2" />
             Delete

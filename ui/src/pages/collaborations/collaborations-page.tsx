@@ -1,4 +1,4 @@
-import { CheckSquare, GalleryVerticalEnd, Goal } from "lucide-react"
+import { CheckSquare, FlaskConical, GalleryVerticalEnd, Goal } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
@@ -8,7 +8,6 @@ import {
   Bug,
   FileText,
   ListTodo,
-  TestTube,
   User,
   Users
 } from "lucide-react"
@@ -129,16 +128,16 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
         </div>)}
 
       <div className="flex flex-col space-y-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-7">
           <div className="flex flex-wrap items-center gap-4 md:flex-nowrap">
-            <Tabs value={scope} onValueChange={handleScopeChange}>
+            <Tabs value={scope} onValueChange={handleScopeChange} className="h-7">
               <TabsList>
                 <TabsTrigger value="my-items">
-                  <User className="h-4 w-4" />
+                  <User />
                   My Items
                 </TabsTrigger>
                 <TabsTrigger value="all-items">
-                  <Users className="h-4 w-4" />
+                  <Users />
                   All Items
                 </TabsTrigger>
               </TabsList>
@@ -167,35 +166,35 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
               </Combobox>
             </div>
 
-            <TabsList className="ml-auto">
+            <TabsList className="ml-auto" >
               {(validTabs as readonly string[]).includes("sprints") && (
                 <TabsTrigger value="sprints">
-                  <Goal className="h-4 w-4" />
+                  <Goal />
                   Sprints
                 </TabsTrigger>
               )}
               <TabsTrigger value="tasks">
-                <ListTodo className="h-4 w-4" />
+                <ListTodo />
                 Tasks
               </TabsTrigger>
               {(validTabs as readonly string[]).includes("requirements") && (
                 <TabsTrigger value="requirements">
-                  <FileText className="h-4 w-4" />
+                  <FileText />
                   Requirements
                 </TabsTrigger>
               )}
               {(validTabs as readonly string[]).includes("backlog") && (
                 <TabsTrigger value="backlog">
-                  <ListTodo className="h-4 w-4" />
+                  <ListTodo />
                   Backlog
                 </TabsTrigger>
               )}
               <TabsTrigger value="test-cases">
-                <TestTube className="h-4 w-4" />
+                <FlaskConical />
                 Test Cases
               </TabsTrigger>
               <TabsTrigger value="defects">
-                <Bug className="h-4 w-4" />
+                <Bug />
                 Defects
               </TabsTrigger>
             </TabsList>

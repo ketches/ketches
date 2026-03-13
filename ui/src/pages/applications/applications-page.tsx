@@ -22,7 +22,7 @@ import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useQuery } from "@tanstack/react-query"
-import { Box, ChevronsUpDown, GalleryVerticalEnd, LayoutList, List, Loader2, Orbit, Plus, Star, Upload } from "lucide-react"
+import { Box, ChevronsUpDown, FolderTree, GalleryVerticalEnd, List, Loader2, Orbit, Plus, Star, Upload } from "lucide-react"
 import * as React from "react"
 
 export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
@@ -88,7 +88,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
         if (activeEnvId !== null) setActiveEnvWithName(null, null)
       }
     }
-  }, [safeEnvs, activeEnvId, activeProjectId, activeProjectName, setActiveContextWithNames, projectIdProp, embeddedEnvId, hasHydrated, isFetched])
+  }, [safeEnvs, activeEnvId, activeProjectId, activeProjectName, setActiveContextWithNames, projectIdProp, embeddedEnvId, hasHydrated, isFetched, setActiveEnvWithName])
 
   const handleTabChange = (value: string) => {
     setActiveTab(value)
@@ -173,7 +173,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
               ) : (
                 <TabsList>
                   <TabsTrigger value="all"><List />All</TabsTrigger>
-                  <TabsTrigger value="groups"><LayoutList />Groups</TabsTrigger>
+                  <TabsTrigger value="groups"><FolderTree />Groups</TabsTrigger>
                   <TabsTrigger value="favorites"><Star />Favorites</TabsTrigger>
                 </TabsList>
               )}

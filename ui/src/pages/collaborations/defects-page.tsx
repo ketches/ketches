@@ -1,22 +1,22 @@
 import { collaborationApi, type Defect } from "@/api/collaboration"
+import { SeverityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
+import { CreateDefectDialog, DeleteDefectDialog, EditDefectDialog, TransitionDefectDialog } from "@/components/collaboration/defect-dialogs"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
-import { StatusBadge, SeverityBadge } from "@/components/collaboration/collab-badges"
-import { CreateDefectDialog, EditDefectDialog, DeleteDefectDialog, TransitionDefectDialog } from "@/components/collaboration/defect-dialogs"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useQuery } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { MoreHorizontal, Pencil, Plus, Trash2, Bug, ArrowRightLeft } from "lucide-react"
+import { ArrowRightLeft, Bug, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
 
@@ -110,20 +110,20 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
         return (
           <div className="flex justify-end">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                <MoreHorizontal className="h-4 w-4" />
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()} />}>
+                <MoreVertical />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleTransition(item)}>
-                  <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+                  <ArrowRightLeft />
                   Transition
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleEdit(item)}>
-                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  <Pencil />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(item)}>
-                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                <DropdownMenuItem variant="destructive" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(item)}>
+                  <Trash2 />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>

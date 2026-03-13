@@ -11,7 +11,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useQuery } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
-import { Archive, ArrowRight, CornerDownRight, LayoutList, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { Archive, ArrowRight, CornerDownRight, LayoutList, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 
@@ -122,36 +122,37 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
       cell: ({ row }) => {
         const requirement = row.original
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger className="h-8 w-8 p-0 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()} />}>
+                <MoreVertical />
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => {
-                setSelectedRequirement(requirement)
-                setEditOpen(true)
-              }}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                setParentRequirementId(requirement.id)
-                setCreateOpen(true)
-              }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Child
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                setSelectedRequirement(requirement)
-                setDeleteOpen(true)
-              }} className="text-destructive focus:text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  setSelectedRequirement(requirement)
+                  setEditOpen(true)
+                }}>
+                  <Pencil />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setParentRequirementId(requirement.id)
+                  setCreateOpen(true)
+                }}>
+                  <Plus />
+                  Create Child
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setSelectedRequirement(requirement)
+                  setDeleteOpen(true)
+                }} variant="destructive" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Trash2 />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )
       },
     },
