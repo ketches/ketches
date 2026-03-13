@@ -1,13 +1,10 @@
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Input } from "@/components/ui/input"
-
 import { collaborationApi, CollabPriority, CollabPriorityOptions, TaskStatus, TaskStatusOptions, type CreateTaskRequest, type Task, type UpdateTaskRequest } from "@/api/collaboration"
+import { Button } from "@/components/ui/button"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Input } from "@/components/ui/input"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
-
-
 import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
 import { RichTextEditor } from "./rich-text-editor"
@@ -103,14 +100,14 @@ export function CreateTaskDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>{parentId ? "Create Child Task" : "Create Task"}</SheetTitle>
-            <SheetDescription>
-              {parentId ? `Add a sub-task to "${parentTitle}"` : "Add a new task to the project."}
-            </SheetDescription>
-          </SheetHeader>
+        <SheetHeader>
+          <SheetTitle>{parentId ? "Create Child Task" : "Create Task"}</SheetTitle>
+          <SheetDescription>
+            {parentId ? `Add a sub-task to "${parentTitle}"` : "Add a new task to the project."}
+          </SheetDescription>
+        </SheetHeader>
 
+        <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -121,6 +118,28 @@ export function CreateTaskDialog({
                 placeholder="Task title"
                 required
               />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel>Sprint</FieldLabel>
+            <FieldContent>
+              <Combobox
+                value={formData.sprint_id || ""}
+                onValueChange={(val) => val && setFormData({ ...formData, sprint_id: val })}
+                itemToStringLabel={(item) => sprintItems.find(opt => opt.value === item)?.label || item}
+              >
+                <ComboboxInput placeholder="Select sprint" />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {sprintItems.map((opt) => (
+                      <ComboboxItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             </FieldContent>
           </Field>
 
@@ -207,38 +226,18 @@ export function CreateTaskDialog({
               </FieldContent>
             </Field>
           </div>
+        </div>
 
-          <Field>
-            <FieldLabel>Sprint</FieldLabel>
-            <FieldContent>
-              <Combobox
-                value={formData.sprint_id || ""}
-                onValueChange={(val) => val && setFormData({ ...formData, sprint_id: val })}
-                itemToStringLabel={(item) => sprintItems.find(opt => opt.value === item)?.label || item}
-              >
-                <ComboboxInput placeholder="Select sprint" />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {sprintItems.map((opt) => (
-                      <ComboboxItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </FieldContent>
-          </Field>
-
-          <SheetFooter>
+        <SheetFooter>
+          <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button type="submit" disabled={mutation.isPending || !formData.title} onClick={handleSubmit}>
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
-          </SheetFooter>
-        </form>
+          </div>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   )
@@ -418,12 +417,14 @@ export function EditTaskDialog({
           </div>
 
           <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Save Changes" : "Save"}
-            </Button>
+            <div className="flex w-full items-center justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={mutation.isPending}>
+                {mutation.isPending ? "Save Changes" : "Save"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>

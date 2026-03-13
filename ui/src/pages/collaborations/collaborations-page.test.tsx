@@ -1,0 +1,144 @@
+import { act } from "react"
+import ReactDOMClient from "react-dom/client"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import type { Sprint } from "@/api/collaboration"
+import { collaborationApi } from "@/api/collaboration"
+import CollaborationsPage from "./collaborations-page"
+
+vi.mock("@/api/collaboration", () => ({
+  collaborationApi: {
+    listSprints: vi.fn(),
+  },
+}))
+
+vi.mock("@/components/layout/page-header", () => ({
+  PageHeader: () => null,
+}))
+
+vi.mock("./backlog-page", () => ({ default: () => null }))
+vi.mock("./defects-page", () => ({ default: () => null }))
+vi.mock("./requirements-page", () => ({ default: () => null }))
+vi.mock("./sprints-page", () => ({ default: () => null }))
+vi.mock("./tasks-page", () => ({ default: () => null }))
+vi.mock("./test-cases-page", () => ({ default: () => null }))
+
+const listSprintsMock = vi.mocked(collaborationApi.listSprints)
+
+const ACTIVE_SPRINT: Sprint = {
+  id: "sprint-123",
+  project_id: "project-1",
+  name: "Sprint Alpha",
+  goal: "Ship the sprint filter fix",
+  status: "active",
+  start_date: "2026-03-01T00:00:00Z",
+  end_date: "2026-03-14T00:00:00Z",
+  created_by: "user-1",
+  updated_by: "user-1",
+  created_at: "2026-03-01T00:00:00Z",
+  updated_at: "2026-03-01T00:00:00Z",
+}
+
+function createMemoryStorage(): Storage {
+  const store = new Map<string, string>()
+
+  return {
+    get length() {
+      return store.size
+    },
+    clear() {
+      store.clear()
+    },
+    getItem(key) {
+      return store.get(key) ?? null
+    },
+    key(index) {
+      return Array.from(store.keys())[index] ?? null
+    },
+    removeItem(key) {
+      store.delete(key)
+    },
+    setItem(key, value) {
+      store.set(key, value)
+    },
+  }
+}
+
+function flushPromises() {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+describe("CollaborationsPage", () => {
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", createMemoryStorage())
+    localStorage.clear()
+    vi.clearAllMocks()
+
+    if (!("ResizeObserver" in globalThis)) {
+      vi.stubGlobal(
+        "ResizeObserver",
+        class ResizeObserver {
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+        }
+      )
+    }
+
+    if (!("scrollIntoView" in Element.prototype)) {
+      Element.prototype.scrollIntoView = () => {}
+    }
+  })
+
+  afterEach(() => {
+    document.body.innerHTML = ""
+  })
+
+  it("shows the sprint name for a persisted sprint selection after sprints load", async () => {
+    localStorage.setItem("collab-sprint", ACTIVE_SPRINT.id)
+
+    let resolveSprints: ((value: { items: Sprint[] }) => void) | undefined
+    listSprintsMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSprints = resolve
+      }) as ReturnType<typeof collaborationApi.listSprints>
+    )
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <CollaborationsPage projectId="project-1" />
+        </QueryClientProvider>
+      )
+    })
+
+    const sprintInput = container.querySelector('input[placeholder="Filter by sprint..."]') as HTMLInputElement | null
+
+    expect(sprintInput).not.toBeNull()
+    expect(sprintInput?.value).toBe(ACTIVE_SPRINT.id)
+
+    await act(async () => {
+      resolveSprints?.({ items: [ACTIVE_SPRINT] })
+      await flushPromises()
+    })
+
+    expect(sprintInput?.value).toBe(ACTIVE_SPRINT.name)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+})

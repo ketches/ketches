@@ -293,7 +293,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
   if (!projectId) return null
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col h-full gap-4">
       {!propProjectId && <PageHeader items={[{ label: "Tasks", icon: CheckSquare }]} />}
 
       {!propProjectId && (
@@ -322,7 +322,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
       ) : viewMode === "kanban" ? (
         <>
           <div className="flex flex-wrap items-center justify-between gap-4 w-full">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-1 items-center gap-2">
               <Input
                 className="max-w-xs"
                 placeholder="Search..."

@@ -1,7 +1,7 @@
 import { collaborationApi, type Requirement, RequirementStatusOptions } from "@/api/collaboration"
 import { PlanToSprintDialog } from "@/components/collaboration/backlog-dialogs"
 import { PriorityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
-import { StatusFilter, PriorityFilter, AssigneeFilter } from "@/components/collaboration/collab-filters"
+import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -41,7 +41,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
   const [statusFilter, setStatusFilter] = useState("")
   const [priorityFilter, setPriorityFilter] = useState("")
   const [assigneeFilter, setAssigneeFilter] = useState("")
-  
+
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
 
   // Dialog states
@@ -170,7 +170,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
   if (!projectId) return null
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col h-full gap-4">
       {!propProjectId && <PageHeader items={[{ label: "Backlog", icon: Archive }]} />}
 
       {!propProjectId && (

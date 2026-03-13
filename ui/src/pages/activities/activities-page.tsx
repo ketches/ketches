@@ -7,6 +7,7 @@ import {
 } from "@/api/operation-logs"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
+import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -20,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useDebounce } from "@/hooks/use-debounce"
-import { cn, formatDate } from "@/lib/utils"
+import { cn, formatDate, toTitleCase } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
@@ -36,7 +37,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   User,
-  XCircle,
+  XCircle
 } from "lucide-react"
 import * as React from "react"
 import type { DateRange } from "react-day-picker"
@@ -84,50 +85,47 @@ const ACTIVITY_STATUS_OPTIONS = [
   { label: "Failure", value: "failure" },
 ] as const
 
+const OPERATION_LOG_SENSITIVITY_COLOR_BADGE: Record<OperationLogSensitivity, { color: "green" | "yellow" | "red"; icon: React.ComponentType<{ className?: string }> }> = {
+  public: {
+    color: "green",
+    icon: ShieldCheck,
+  },
+  internal: {
+    color: "yellow",
+    icon: Shield,
+  },
+  sensitive: {
+    color: "red",
+    icon: ShieldAlert,
+  },
+}
+
+const OPERATION_LOG_STATUS_BADGE: Record<OperationLogStatus, { color: "green" | "red"; icon: React.ComponentType<{ className?: string }> }> = {
+  success: {
+    color: "green",
+    icon: CheckCircle2,
+  },
+  failure: {
+    color: "red",
+    icon: XCircle,
+  },
+}
+
 
 function StatusCell({ status }: { status: OperationLogStatus }) {
-  if (status === "success") {
-    return (
-      <div className="inline-flex items-center gap-1 text-xs text-green-600">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        <span>Success</span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="inline-flex items-center gap-1 text-xs text-red-600">
-      <XCircle className="h-3.5 w-3.5" />
-      <span>Failure</span>
-    </div>
-  )
+  const { color, icon: Icon } = OPERATION_LOG_STATUS_BADGE[status]
+  return <ColorBadge color={color}>
+    <Icon className="h-3 w-3" />
+    {toTitleCase(status)}
+  </ColorBadge>
 }
 
 function SensitivityCell({ sensitivity }: { sensitivity: OperationLogSensitivity }) {
-  if (sensitivity === "sensitive") {
-    return (
-      <div className="inline-flex items-center gap-1 text-xs text-red-600">
-        <ShieldAlert className="h-3.5 w-3.5" />
-        <span>Sensitive</span>
-      </div>
-    )
-  }
-
-  if (sensitivity === "internal") {
-    return (
-      <div className="inline-flex items-center gap-1 text-xs text-amber-600">
-        <Shield className="h-3.5 w-3.5" />
-        <span>Internal</span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="inline-flex items-center gap-1 text-xs text-sky-600">
-      <ShieldCheck className="h-3.5 w-3.5" />
-      <span>Public</span>
-    </div>
-  )
+  const { color, icon: Icon } = OPERATION_LOG_SENSITIVITY_COLOR_BADGE[sensitivity]
+  return <ColorBadge color={color}>
+    <Icon className="h-3 w-3" />
+    {toTitleCase(sensitivity)}
+  </ColorBadge>
 }
 
 export function ActivitiesPage() {
@@ -225,6 +223,13 @@ export function ActivitiesPage() {
     },
   })
 
+  const toTitleCase = (str: string) => {
+    return str
+      .split(/[\s_-]+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
   const columns = React.useMemo<ColumnDef<OperationLogItem>[]>(
     () => [
       ...(isAdmin
@@ -244,7 +249,7 @@ export function ActivitiesPage() {
       {
         accessorKey: "action",
         header: "Action",
-        cell: ({ row }) => <span className="text-sm font-medium">{row.original.action}</span>,
+        cell: ({ row }) => <span className="">{toTitleCase(row.original.action)}</span>,
       },
       {
         accessorKey: "resource_type",
@@ -370,7 +375,7 @@ export function ActivitiesPage() {
             />
           }
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon className="mr-1 h-4 w-4" />
           {dateRange?.from ? (
             dateRange.to ? (
               <>

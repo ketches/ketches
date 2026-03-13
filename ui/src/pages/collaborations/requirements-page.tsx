@@ -267,7 +267,7 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
   if (!projectId) return null
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col h-full gap-4">
       {!propProjectId && <PageHeader items={[{ label: "Requirements", icon: FileText }]} />}
 
       {!propProjectId && (

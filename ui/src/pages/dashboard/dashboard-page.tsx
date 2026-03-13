@@ -5,7 +5,7 @@ import {
   Blocks,
   Box,
   ChartLine,
-  FolderGit,
+  FolderGit2,
   GalleryVerticalEnd,
   LayoutDashboard,
   Loader2,
@@ -309,7 +309,7 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
             <StatCard
               title="Code Repositories"
               value={stats?.code_repository_count || 0}
-              icon={FolderGit}
+              icon={FolderGit2}
               description="Code repositories"
               onClick={() => navigate("/code-repositories")}
               color="indigo"

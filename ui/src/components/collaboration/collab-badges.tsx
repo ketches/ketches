@@ -1,6 +1,6 @@
+import { CollabPriority, DefectSeverity, DefectStatus, RequirementStatus, TaskStatus } from "@/api/collaboration"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { RequirementStatus, TaskStatus, CollabPriority, DefectStatus, DefectSeverity } from "@/api/collaboration"
 
 // Entity type for status color mapping
 export type EntityType = "task" | "requirement" | "defect" | "sprint"
@@ -55,17 +55,17 @@ export function StatusBadge({ status, entityType }: StatusBadgeProps) {
     }
     const colorMap = colorMaps[entityType]
     const statusColorClass = colorMap[status] || 'bg-gray-100 text-gray-700 border border-gray-200'
-    
+
     return (
-      <span className={cn('inline-block uppercase text-[10px] px-2 py-1 rounded', statusColorClass)}>
+      <span className={cn('inline-block uppercase text-[10px] px-2 py-1 rounded opacity-80 hover:opacity-100', statusColorClass)}>
         {status.replace(/_/g, ' ')}
       </span>
     )
   }
-  
+
   // Fallback to original generic Badge variant logic for backward compatibility
   let variant: "default" | "secondary" | "destructive" | "outline" = "outline"
-  
+
   switch (status) {
     case RequirementStatus.DONE:
     case TaskStatus.DONE:
@@ -97,7 +97,7 @@ export function StatusBadge({ status, entityType }: StatusBadgeProps) {
 
 export function PriorityBadge({ priority }: { priority: string }) {
   let color = "text-muted-foreground"
-  
+
   switch (priority) {
     case CollabPriority.P0:
       color = "text-red-500 font-bold"
@@ -122,7 +122,7 @@ export function PriorityBadge({ priority }: { priority: string }) {
 
 export function SeverityBadge({ severity }: { severity: string }) {
   let color = "text-muted-foreground"
-  
+
   switch (severity) {
     case DefectSeverity.CRITICAL:
       color = "text-destructive font-bold"

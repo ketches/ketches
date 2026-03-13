@@ -124,7 +124,7 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
   if (!projectId) return null
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col h-full gap-4">
       {!propProjectId && <PageHeader items={[{ label: "Test Cases", icon: TestTube }]} />}
 
       {!propProjectId && (

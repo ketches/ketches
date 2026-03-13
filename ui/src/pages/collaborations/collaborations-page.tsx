@@ -33,6 +33,7 @@ import TestCasesPage from "./test-cases-page"
 
 type Scope = "my-items" | "all-items"
 type TaskViewMode = "list" | "kanban"
+type SprintOption = { label: string; value: string }
 
 const STORAGE_KEYS = {
   scope: "collab-scope",
@@ -76,7 +77,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     queryFn: () => collaborationApi.listSprints(projectId ?? "", { page: 1, page_size: 100 }),
     enabled: !!projectId,
   })
-  const sprintOptions = useMemo(() => {
+  const sprintOptions = useMemo<SprintOption[]>(() => {
     const sprints = sprintsData?.items ?? []
 
     return [
@@ -84,6 +85,13 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
       ...sprints.map((s) => ({ label: s.name, value: s.id })),
     ]
   }, [sprintsData?.items])
+  const getSprintOptionLabel = (item: SprintOption | string) => {
+    if (typeof item !== "string") {
+      return item.label
+    }
+
+    return sprintOptions.find((opt) => opt.value === item)?.label || item
+  }
 
   // Auto-select first active sprint when sprints load and no valid selection exists
   useEffect(() => {
@@ -141,9 +149,9 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
         </div>)}
 
       <div className="flex flex-col space-y-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-7">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex flex-wrap items-center gap-4 md:flex-nowrap">
-            <Tabs value={scope} onValueChange={handleScopeChange} className="h-7">
+            <Tabs value={scope} onValueChange={handleScopeChange}>
               <TabsList>
                 <TabsTrigger value="my-items">
                   <User />
@@ -158,22 +166,23 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
 
             <div className="w-full sm:w-auto">
               <Combobox
+                items={sprintOptions}
                 value={selectedSprintId}
                 onValueChange={(val) => setSelectedSprintId(val ?? "")}
-                itemToStringLabel={(item) => sprintOptions.find(opt => opt.value === item)?.label || item}
+                itemToStringLabel={getSprintOptionLabel}
               >
-                <ComboboxInput placeholder="Filter by sprint..." className="w-full sm:w-48" >
+                <ComboboxInput placeholder="Filter by sprint..." className="w-full sm:w-48 h-8" >
                   <InputGroupAddon>
                     <Goal />
                   </InputGroupAddon>
                 </ComboboxInput>
                 <ComboboxContent alignOffset={-24} className="w-auto sm:w-48">
                   <ComboboxList>
-                    {sprintOptions.map((opt) => (
+                    {(opt: SprintOption) => (
                       <ComboboxItem key={opt.value} value={opt.value}>
                         {opt.label}
                       </ComboboxItem>
-                    ))}
+                    )}
                   </ComboboxList>
                 </ComboboxContent>
               </Combobox>
@@ -214,12 +223,12 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
           </div>
 
           {(validTabs as readonly string[]).includes("sprints") && (
-            <TabsContent value="sprints" className="mt-4">
+            <TabsContent value="sprints" className="mt-2">
               <SprintsPage projectId={projectId} />
             </TabsContent>
           )}
 
-          <TabsContent value="tasks" className="mt-4">
+          <TabsContent value="tasks" className="mt-2">
             <TasksPage
               projectId={projectId}
               viewMode={taskViewMode}
@@ -230,7 +239,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
           </TabsContent>
 
           {(validTabs as readonly string[]).includes("requirements") && (
-            <TabsContent value="requirements" className="mt-4">
+            <TabsContent value="requirements" className="mt-2">
               <RequirementsPage
                 projectId={projectId}
                 assigneeId={assigneeId}
@@ -240,19 +249,19 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
           )}
 
           {(validTabs as readonly string[]).includes("backlog") && (
-            <TabsContent value="backlog" className="mt-4">
+            <TabsContent value="backlog" className="mt-2">
               <BacklogPage projectId={projectId} />
             </TabsContent>
           )}
 
-          <TabsContent value="test-cases" className="mt-4">
+          <TabsContent value="test-cases" className="mt-2">
             <TestCasesPage
               projectId={projectId}
               sprintId={selectedSprintId || undefined}
             />
           </TabsContent>
 
-          <TabsContent value="defects" className="mt-4">
+          <TabsContent value="defects" className="mt-2">
             <DefectsPage
               projectId={projectId}
               assigneeId={assigneeId}

@@ -2,8 +2,8 @@ import { collaborationApi, SprintStatus, SprintStatusOptions, type CreateSprintR
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Textarea } from "@/components/ui/textarea"
@@ -120,13 +120,13 @@ export function CreateSprintDialog({
   return (
     <Sheet open={open} onOpenChange={handleOpenStateChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Create Sprint</SheetTitle>
-            <SheetDescription>
-              Create a new sprint to plan your work.
-            </SheetDescription>
-          </SheetHeader>
+        <SheetHeader>
+          <SheetTitle>Create Sprint</SheetTitle>
+          <SheetDescription>
+            Create a new sprint to plan your work.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <div className="grid grid-cols-3 gap-4">
             <Field className="col-span-2">
               <FieldLabel>Name</FieldLabel>
@@ -236,16 +236,18 @@ export function CreateSprintDialog({
               </FieldContent>
             </Field>
           </div>
+        </div>
 
-          <SheetFooter>
+        <SheetFooter>
+          <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => handleOpenStateChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button type="submit" disabled={mutation.isPending || !formData.name} onClick={handleSubmit}>
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
-          </SheetFooter>
-        </form>
+          </div>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   )
@@ -316,132 +318,135 @@ export function EditSprintDialog({
   return (
     <Sheet open={open} onOpenChange={handleOpenStateChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Edit Sprint</SheetTitle>
-            <SheetDescription>
-              Update sprint details.
-            </SheetDescription>
-          </SheetHeader>
+        <SheetHeader>
+          <SheetTitle>Edit Sprint</SheetTitle>
+          <SheetDescription>
+            Update sprint details.
+          </SheetDescription>
+        </SheetHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="grid flex-1 auto-rows-min gap-4 px-4">
+            <div className="grid grid-cols-3 gap-4">
+              <Field className="col-span-2">
+                <FieldLabel>Name</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="edit-name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Sprint 1"
+                    required
+                  />
+                </FieldContent>
+              </Field>
 
-          <div className="grid grid-cols-3 gap-4">
-            <Field className="col-span-2">
-              <FieldLabel>Name</FieldLabel>
+              <Field>
+                <FieldLabel>Status</FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    value={formData.status}
+                    onValueChange={(val) => val && setFormData({ ...formData, status: val as SprintStatus })}
+                    itemToStringLabel={(item) => SprintStatusOptions.find(opt => opt.value === item)?.label || item}
+                  >
+                    <ComboboxInput placeholder="Select status" />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {SprintStatusOptions.map((opt) => (
+                          <ComboboxItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </FieldContent>
+              </Field>
+            </div>
+
+            <Field>
+              <FieldLabel>Goal</FieldLabel>
               <FieldContent>
-                <Input
-                  id="edit-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Sprint 1"
-                  required
+                <Textarea
+                  id="edit-goal"
+                  value={formData.goal || ""}
+                  onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                  placeholder="Sprint goal..."
+                  className="min-h-24"
                 />
               </FieldContent>
             </Field>
 
-            <Field>
-              <FieldLabel>Status</FieldLabel>
-              <FieldContent>
-                <Combobox
-                  value={formData.status}
-                  onValueChange={(val) => val && setFormData({ ...formData, status: val as SprintStatus })}
-                  itemToStringLabel={(item) => SprintStatusOptions.find(opt => opt.value === item)?.label || item}
-                >
-                  <ComboboxInput placeholder="Select status" />
-                  <ComboboxContent>
-                    <ComboboxList>
-                      {SprintStatusOptions.map((opt) => (
-                        <ComboboxItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </ComboboxItem>
-                      ))}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-              </FieldContent>
-            </Field>
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>Start Date</FieldLabel>
+                <FieldContent>
+                  <Popover>
+                    <PopoverTrigger
+                      className={cn(
+                        buttonVariants({ variant: "outline" }),
+                        "w-full pl-3 text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      {startDate ? (
+                        format(startDate, "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </FieldContent>
+              </Field>
 
-          <Field>
-            <FieldLabel>Goal</FieldLabel>
-            <FieldContent>
-              <Textarea
-                id="edit-goal"
-                value={formData.goal || ""}
-                onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-                placeholder="Sprint goal..."
-                className="min-h-24"
-              />
-            </FieldContent>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <FieldLabel>Start Date</FieldLabel>
-              <FieldContent>
-                <Popover>
-                  <PopoverTrigger
-                    className={cn(
-                      buttonVariants({ variant: "outline" }),
-                      "w-full pl-3 text-left font-normal",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    {startDate ? (
-                      format(startDate, "PPP")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel>End Date</FieldLabel>
-              <FieldContent>
-                <Popover>
-                  <PopoverTrigger
-                    className={cn(
-                      buttonVariants({ variant: "outline" }),
-                      "w-full pl-3 text-left font-normal",
-                      !endDate && "text-muted-foreground"
-                    )}
-                  >
-                    {endDate ? (
-                      format(endDate, "PPP")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={setEndDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </FieldContent>
-            </Field>
+              <Field>
+                <FieldLabel>End Date</FieldLabel>
+                <FieldContent>
+                  <Popover>
+                    <PopoverTrigger
+                      className={cn(
+                        buttonVariants({ variant: "outline" }),
+                        "w-full pl-3 text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      {endDate ? (
+                        format(endDate, "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </FieldContent>
+              </Field>
+            </div>
           </div>
           <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenStateChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Save Changes" : "Save"}
-            </Button>
+            <div className="flex w-full items-center justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => handleOpenStateChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={mutation.isPending}>
+                {mutation.isPending ? "Save Changes" : "Save"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>

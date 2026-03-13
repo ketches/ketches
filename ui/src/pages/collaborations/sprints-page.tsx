@@ -141,7 +141,7 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
   if (!projectId) return null
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col h-full gap-4">
       {!propProjectId && <PageHeader items={[{ label: "Sprints", icon: CalendarRange }]} />}
 
       {!propProjectId && (
@@ -174,7 +174,7 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
               onChange={(e) => setSearch(e.target.value)}
             />
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               New Sprint
             </Button>
           </div>

@@ -133,14 +133,14 @@ export function CreateDefectDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Report Defect</SheetTitle>
-            <SheetDescription>
-              Report a new defect found in the project.
-            </SheetDescription>
-          </SheetHeader>
-
+        <SheetHeader>
+          <SheetTitle>Report Defect</SheetTitle>
+          <SheetDescription>
+            Report a new defect found in the project.
+          </SheetDescription>
+        </SheetHeader>
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
+          <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -278,15 +278,18 @@ export function CreateDefectDialog({
           <p className="text-xs text-muted-foreground">
             * At least one upstream link (Requirement, Task, or Test Case) is required.
           </p>
+          </div>
 
           <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button
-              type="submit"
-              disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId)}
-            >
-              {mutation.isPending ? "Creating..." : "Create Defect"}
-            </Button>
+            <div className="flex w-full items-center justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button
+                type="submit"
+                disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId)}
+              >
+                {mutation.isPending ? "Creating..." : "Create Defect"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>
@@ -403,11 +406,11 @@ export function EditDefectDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Edit Defect</SheetTitle>
-          </SheetHeader>
-
+        <SheetHeader>
+          <SheetTitle>Edit Defect</SheetTitle>
+        </SheetHeader>
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
+          <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -548,15 +551,18 @@ export function EditDefectDialog({
               />
             </FieldContent>
           </Field>
+          </div>
 
           <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button
-              type="submit"
-              disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
-            >
-              {mutation.isPending ? "Save Changes" : "Save Changes"}
-            </Button>
+            <div className="flex w-full items-center justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button
+                type="submit"
+                disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
+              >
+                {mutation.isPending ? "Save Changes" : "Save Changes"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>

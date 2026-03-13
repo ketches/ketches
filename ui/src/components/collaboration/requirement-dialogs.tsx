@@ -99,14 +99,13 @@ export function CreateRequirementDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>{parentId ? "Create Child Requirement" : "Create Requirement"}{parentTitle && ` for "${parentTitle}"`}</SheetTitle>
-            <SheetDescription>
-              Add a new requirement to the backlog.
-            </SheetDescription>
-          </SheetHeader>
-
+        <SheetHeader>
+          <SheetTitle>{parentId ? "Create Child Requirement" : "Create Requirement"}{parentTitle && ` for "${parentTitle}"`}</SheetTitle>
+          <SheetDescription>
+            Add a new requirement to the backlog.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -163,14 +162,16 @@ export function CreateRequirementDialog({
               />
             </FieldContent>
           </Field>
+        </div>
 
-          <SheetFooter>
+        <SheetFooter>
+          <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending || !title}>
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
-          </SheetFooter>
-        </form>
+          </div>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   )
@@ -246,71 +247,74 @@ export function EditRequirementDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Edit Requirement</SheetTitle>
-          </SheetHeader>
-
-          <Field>
-            <FieldLabel>Title</FieldLabel>
-            <FieldContent>
-              <Input
-                id="edit-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </FieldContent>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
+        <SheetHeader>
+          <SheetTitle>Edit Requirement</SheetTitle>
+        </SheetHeader>
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
+          <div className="grid flex-1 auto-rows-min gap-4 px-4">
             <Field>
-              <FieldLabel>Priority</FieldLabel>
+              <FieldLabel>Title</FieldLabel>
               <FieldContent>
-                <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)} itemToStringLabel={(item) => CollabPriorityOptions.find(opt => opt.value === item)?.label || item}>
-                  <ComboboxInput />
-                  <ComboboxContent>
-                    <ComboboxList>
-                      {CollabPriorityOptions.map((p) => (
-                        <ComboboxItem key={p.value} value={p.value}>{p.label}</ComboboxItem>
-                      ))}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
+                <Input
+                  id="edit-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
               </FieldContent>
             </Field>
 
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>Priority</FieldLabel>
+                <FieldContent>
+                  <Combobox value={priority} onValueChange={(v) => v && setPriority(v as CollabPriority)} itemToStringLabel={(item) => CollabPriorityOptions.find(opt => opt.value === item)?.label || item}>
+                    <ComboboxInput />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {CollabPriorityOptions.map((p) => (
+                          <ComboboxItem key={p.value} value={p.value}>{p.label}</ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel>Status</FieldLabel>
+                <FieldContent>
+                  <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)} itemToStringLabel={(item) => RequirementStatusOptions.find(opt => opt.value === item)?.label || item}>
+                    <ComboboxInput />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {RequirementStatusOptions.map((s) => (
+                          <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </FieldContent>
+              </Field>
+            </div>
+
             <Field>
-              <FieldLabel>Status</FieldLabel>
+              <FieldLabel>Description</FieldLabel>
               <FieldContent>
-                <Combobox value={status} onValueChange={(v) => v && setStatus(v as RequirementStatus)} itemToStringLabel={(item) => RequirementStatusOptions.find(opt => opt.value === item)?.label || item}>
-                  <ComboboxInput />
-                  <ComboboxContent>
-                    <ComboboxList>
-                      {RequirementStatusOptions.map((s) => (
-                        <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
-                      ))}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
+                <RichTextEditor
+                  value={description}
+                  onChange={setDescription}
+                />
               </FieldContent>
             </Field>
           </div>
 
-          <Field>
-            <FieldLabel>Description</FieldLabel>
-            <FieldContent>
-              <RichTextEditor
-                value={description}
-                onChange={setDescription}
-              />
-            </FieldContent>
-          </Field>
-
           <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending || !title}>
-              {mutation.isPending ? "Save Changes" : "Save Changes"}
-            </Button>
+            <div className="flex w-full items-center justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit" disabled={mutation.isPending || !title}>
+                {mutation.isPending ? "Save Changes" : "Save Changes"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>

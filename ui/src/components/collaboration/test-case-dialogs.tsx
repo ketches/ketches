@@ -96,14 +96,14 @@ export function CreateTestCaseDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Create Test Case</SheetTitle>
-            <SheetDescription>
-              Add a new test case to the project.
-            </SheetDescription>
-          </SheetHeader>
-
+        <SheetHeader>
+          <SheetTitle>Create Test Case</SheetTitle>
+          <SheetDescription>
+            Add a new test case to the project.
+          </SheetDescription>
+        </SheetHeader>
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
+          <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -166,15 +166,18 @@ export function CreateTestCaseDialog({
               />
             </FieldContent>
           </Field>
+          </div>
 
           <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button
-              type="submit"
-              disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
-            >
-              {mutation.isPending ? "Creating..." : "Create"}
-            </Button>
+            <div className="flex w-full items-center justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button
+                type="submit"
+                disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
+              >
+                {mutation.isPending ? "Creating..." : "Create"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>
@@ -257,11 +260,11 @@ export function EditTestCaseDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Edit Test Case</SheetTitle>
-          </SheetHeader>
-
+        <SheetHeader>
+          <SheetTitle>Edit Test Case</SheetTitle>
+        </SheetHeader>
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
+          <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -320,15 +323,18 @@ export function EditTestCaseDialog({
               </Combobox>
             </FieldContent>
           </Field>
+          </div>
 
           <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button
-              type="submit"
-              disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
-            >
-              {mutation.isPending ? "Save Changes" : "Save Changes"}
-            </Button>
+            <div className="flex w-full items-center justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button
+                type="submit"
+                disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
+              >
+                {mutation.isPending ? "Save Changes" : "Save Changes"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>
@@ -449,14 +455,14 @@ export function CreateTestRunDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Record Test Run</SheetTitle>
-            <SheetDescription>
-              Record the execution result for "{testCase.title}".
-            </SheetDescription>
-          </SheetHeader>
-
+        <SheetHeader>
+          <SheetTitle>Record Test Run</SheetTitle>
+          <SheetDescription>
+            Record the execution result for "{testCase.title}".
+          </SheetDescription>
+        </SheetHeader>
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
+          <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Status</FieldLabel>
             <FieldContent>
@@ -485,12 +491,15 @@ export function CreateTestRunDialog({
               />
             </FieldContent>
           </Field>
+          </div>
 
           <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Recording..." : "Record Result"}
-            </Button>
+            <div className="flex w-full items-center justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit" disabled={mutation.isPending}>
+                {mutation.isPending ? "Recording..." : "Record Result"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>

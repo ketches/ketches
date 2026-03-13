@@ -4,6 +4,7 @@ import { toast } from "sonner"
 
 import { projectsApi } from "@/api/projects"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
 
@@ -161,7 +161,7 @@ export function CreateProjectDialog({
                 checked={formData.collaborationEnabled}
                 onCheckedChange={(v) => setFormData((prev) => ({ ...prev, collaborationEnabled: v === true }))}
               />
-              <label htmlFor="project-collaboration-enabled" className="cursor-pointer text-sm">
+              <label htmlFor="project-collaboration-enabled" className="cursor-pointer">
                 Enable collaboration module for this project
               </label>
             </div>

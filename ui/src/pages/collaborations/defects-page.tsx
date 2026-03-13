@@ -1,4 +1,4 @@
-import { collaborationApi, DefectStatus, DefectStatusOptions, type Defect } from "@/api/collaboration"
+import { collaborationApi, type Defect, type DefectStatus, DefectStatusOptions } from "@/api/collaboration"
 import { SeverityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
 import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
 import { CreateDefectDialog, DeleteDefectDialog, EditDefectDialog, TransitionDefectDialog } from "@/components/collaboration/defect-dialogs"
@@ -39,6 +39,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
   })
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebounce(search, 300)
+
 
   const [statusFilter, setStatusFilter] = useState("")
   const [priorityFilter, setPriorityFilter] = useState("")
@@ -162,7 +163,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
   if (!projectId) return null
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col h-full gap-4">
       {!propProjectId && <PageHeader items={[{ label: "Defects", icon: Bug }]} />}
 
       {!propProjectId && (

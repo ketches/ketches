@@ -69,14 +69,15 @@ function ProjectItem({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-fit">
           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-            <Pencil className="mr-2" />
+            <Pencil />
             Edit
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            variant="destructive"
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <Trash2 className="mr-2" />
+            <Trash2 />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
