@@ -1,6 +1,7 @@
-import { collaborationApi, type Defect } from "@/api/collaboration"
-import { SeverityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
+import { collaborationApi, type Defect, type DefectStatus, DefectStatusOptions } from "@/api/collaboration"
+import { SeverityBadge } from "@/components/collaboration/collab-badges"
 import { CreateDefectDialog, DeleteDefectDialog, EditDefectDialog, TransitionDefectDialog } from "@/components/collaboration/defect-dialogs"
+import { InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -14,11 +15,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { ArrowRightLeft, Bug, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
+import { toast } from "sonner"
 
 interface DefectsPageProps {
   projectId?: string
@@ -29,6 +31,7 @@ interface DefectsPageProps {
 export default function DefectsPage({ projectId: propProjectId, assigneeId, sprintId }: DefectsPageProps) {
   const params = useParams<{ projectId: string }>()
   const projectId = propProjectId || params.projectId
+  const queryClient = useQueryClient()
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -62,6 +65,23 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
   const defects = response?.items || []
   const totalCount = response?.pagination?.total || 0
 
+  const transitionDefectMutation = useMutation({
+    mutationFn: ({ defectId, status }: { defectId: string; status: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.transitionDefect(projectId, defectId, status as DefectStatus)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["defects", projectId] })
+      toast.success("Defect status updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update status", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
   const handleEdit = (item: Defect) => {
     setSelectedItem(item)
     setEditOpen(true)
@@ -83,7 +103,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
       header: "Title",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-medium truncate max-w-[400px]">{row.original.title}</span>
+          <span className="font-medium truncate max-w-100">{row.original.title}</span>
           <span className="text-xs text-muted-foreground font-mono">{row.original.id.slice(0, 8)}</span>
         </div>
       ),
@@ -96,7 +116,14 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      cell: ({ row }) => (
+        <InlineStatusEditor
+          currentStatus={row.original.status}
+
+          statusOptions={DefectStatusOptions}
+          onStatusChange={(status) => transitionDefectMutation.mutate({ defectId: row.original.id, status })}
+        />
+      ),
     },
     {
       accessorKey: "created_at",

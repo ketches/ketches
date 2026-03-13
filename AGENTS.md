@@ -108,8 +108,8 @@ This document defines the specialized agents involved in the development and mai
 - The src/components/ui directory contains standard components. Please do not modify any content within it;
 - Avoid using the `any` type;
 - Prioritize the use of `Field`, `FieldLabel`, and `FieldContent` in forms.
-- Combobox items should always have a `label` field for display purposes, and an optional `value` field for the underlying value. For example: `{ label: "Option 1", value: "option1" }`.
-- Combobox should use `itemToStringLabel` to specify the label field, never use `value` for that purpose. For example: `<Combobox itemToStringLabel={(v) => v.label} />`
+- Combobox itmes better use const values. For example: `[{ label: "Option 1", value: "option1" },{ label: "Option 2", value: "option2" }]`.
+- Combobox should use `itemToStringLabel` to specify the label field, never use `value` for that purpose. For example: `itemToStringLabel={(v) => FILE_MODE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}`
 
 ### Docs
 

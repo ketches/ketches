@@ -1,6 +1,6 @@
-import { collaborationApi, PlanningStatus, type Requirement } from "@/api/collaboration"
+import { collaborationApi, PlanningStatus, type Requirement, type RequirementStatus, type CollabPriority, type UpdateRequirementRequest, RequirementStatusOptions } from "@/api/collaboration"
 
-import { PriorityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
+import { InlineStatusEditor, InlinePriorityEditor } from "@/components/collaboration/inline-editors"
 import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog } from "@/components/collaboration/requirement-dialogs"
 import { flattenTree, type TreeItem } from "@/components/collaboration/tree-utils"
 import { DataTable } from "@/components/data-table/data-table"
@@ -121,6 +121,40 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
     returnToBacklogMutation.mutate(item.id)
   }
 
+  const transitionRequirementMutation = useMutation({
+    mutationFn: ({ requirementId, status }: { requirementId: string; status: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.transitionRequirement(projectId, requirementId, status as RequirementStatus)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["requirements", projectId] })
+      toast.success("Requirement status updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update status", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
+  const updateRequirementPriorityMutation = useMutation({
+    mutationFn: ({ requirementId, priority }: { requirementId: string; priority: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.updateRequirement(projectId, requirementId, { priority: priority as CollabPriority } as UpdateRequirementRequest)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["requirements", projectId] })
+      toast.success("Requirement priority updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update priority", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
   const columns: ColumnDef<TreeItem<Requirement>>[] = [
     {
       accessorKey: "title",
@@ -160,12 +194,24 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      cell: ({ row }) => (
+        <InlineStatusEditor
+          currentStatus={row.original.status}
+          
+          statusOptions={RequirementStatusOptions}
+          onStatusChange={(status) => transitionRequirementMutation.mutate({ requirementId: row.original.id, status })}
+        />
+      ),
     },
     {
       accessorKey: "priority",
       header: "Priority",
-      cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
+      cell: ({ row }) => (
+        <InlinePriorityEditor
+          currentPriority={row.original.priority}
+          onPriorityChange={(priority) => updateRequirementPriorityMutation.mutate({ requirementId: row.original.id, priority })}
+        />
+      ),
     },
     {
       accessorKey: "created_at",

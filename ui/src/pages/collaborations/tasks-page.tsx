@@ -1,6 +1,6 @@
-import { collaborationApi, type Task } from "@/api/collaboration"
+import { collaborationApi, type Task, type TaskStatus, type CollabPriority, type UpdateTaskRequest, TaskStatusOptions } from "@/api/collaboration"
 
-import { PriorityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
+import { InlineStatusEditor, InlinePriorityEditor } from "@/components/collaboration/inline-editors"
 import { KanbanBoard } from "@/components/collaboration/kanban-board"
 import { CreateTaskDialog, EditTaskDialog } from "@/components/collaboration/task-dialogs"
 import { flattenTree, type TreeItem } from "@/components/collaboration/tree-utils"
@@ -111,6 +111,40 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
 
   })
 
+  const transitionTaskMutation = useMutation({
+    mutationFn: ({ taskId, status }: { taskId: string; status: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.transitionTask(projectId, taskId, status as TaskStatus)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
+      toast.success("Task status updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update status", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
+  const updateTaskPriorityMutation = useMutation({
+    mutationFn: ({ taskId, priority }: { taskId: string; priority: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.updateTask(projectId, taskId, { priority: priority as CollabPriority } as UpdateTaskRequest)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
+      toast.success("Task priority updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update priority", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
   const handleCreateChild = (item: Task) => {
     setParentForCreate({ id: item.id, title: item.title })
     setCreateOpen(true)
@@ -165,12 +199,24 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      cell: ({ row }) => (
+        <InlineStatusEditor
+          currentStatus={row.original.status}
+          
+          statusOptions={TaskStatusOptions}
+          onStatusChange={(status) => transitionTaskMutation.mutate({ taskId: row.original.id, status })}
+        />
+      ),
     },
     {
       accessorKey: "priority",
       header: "Priority",
-      cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
+      cell: ({ row }) => (
+        <InlinePriorityEditor
+          currentPriority={row.original.priority}
+          onPriorityChange={(priority) => updateTaskPriorityMutation.mutate({ taskId: row.original.id, priority })}
+        />
+      ),
     },
     {
       accessorKey: "estimate_hours",
