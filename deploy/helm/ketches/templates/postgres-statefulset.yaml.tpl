@@ -46,7 +46,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "ketches.secretName" . | quote }}
-                  key: postgres-password
+                  key: db-password
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data

@@ -12,6 +12,3 @@ stringData:
   {{- else if ne .Values.config.dbDriver "sqlite" }}
   db-password: {{ include "ketches.database.password" . | quote }}
   {{- end }}
-  {{- if .Values.postgres.enabled }}
-  postgres-password: {{ .Values.postgres.auth.password | quote }}
-  {{- end }}
