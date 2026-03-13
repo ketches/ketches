@@ -42,7 +42,7 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
   const [runOpen, setRunOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<TestCase | null>(null)
 
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, refetch } = useQuery({
     queryKey: ["test-cases", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, sprintId],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
@@ -148,29 +148,30 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
           actionIcon={Plus}
         />
       ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <DataTable
+          columns={columns}
+          data={testCases}
+          isLoading={isLoading}
+          manualPagination
+          totalCount={totalCount}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          onRefresh={() => refetch()}
+          leftToolbar={() => (
             <Input
               className="max-w-xs"
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          )}
+          rightToolbar={() => (
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               New Test Case
             </Button>
-          </div>
-          <DataTable
-            columns={columns}
-            data={testCases}
-            isLoading={isLoading}
-            manualPagination
-            totalCount={totalCount}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-          />
-        </>
+          )}
+        />
       )}
 
       <CreateTestCaseDialog

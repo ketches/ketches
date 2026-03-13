@@ -99,7 +99,7 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      cell: ({ row }) => <StatusBadge status={row.original.status} entityType="sprint" />,
     },
     {
       accessorKey: "start_date",

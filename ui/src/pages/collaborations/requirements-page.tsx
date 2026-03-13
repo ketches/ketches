@@ -1,6 +1,7 @@
-import { collaborationApi, PlanningStatus, type Requirement, type RequirementStatus, type CollabPriority, type UpdateRequirementRequest, RequirementStatusOptions } from "@/api/collaboration"
+import { collaborationApi, CollabPriority, PlanningStatus, RequirementStatus, RequirementStatusOptions, type Requirement, type UpdateRequirementRequest } from "@/api/collaboration"
 
-import { InlineStatusEditor, InlinePriorityEditor } from "@/components/collaboration/inline-editors"
+import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
+import { InlinePriorityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog } from "@/components/collaboration/requirement-dialogs"
 import { flattenTree, type TreeItem } from "@/components/collaboration/tree-utils"
 import { DataTable } from "@/components/data-table/data-table"
@@ -45,6 +46,10 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
   const debouncedSearch = useDebounce(search, 300)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
+  const [statusFilter, setStatusFilter] = useState("")
+  const [priorityFilter, setPriorityFilter] = useState("")
+  const [assigneeFilter, setAssigneeFilter] = useState("")
+
   // Dialog states
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -52,17 +57,19 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
   const [selectedItem, setSelectedItem] = useState<Requirement | null>(null)
   const [parentForCreate, setParentForCreate] = useState<{ id: string; title: string } | undefined>(undefined)
 
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, refetch } = useQuery({
 
-    queryKey: ["requirements", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId],
+    queryKey: ["requirements", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId, statusFilter, priorityFilter, assigneeFilter],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
       return collaborationApi.listRequirements(projectId, {
         page: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
         search: debouncedSearch,
-        assignee_id: assigneeId,
+        assignee_id: assigneeId || assigneeFilter || undefined,
         sprint_id: sprintId,
+        status: statusFilter || undefined,
+        priority: priorityFilter || undefined,
       })
     },
     enabled: !!projectId,
@@ -197,7 +204,7 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
       cell: ({ row }) => (
         <InlineStatusEditor
           currentStatus={row.original.status}
-          
+          entityType="requirement"
           statusOptions={RequirementStatusOptions}
           onStatusChange={(status) => transitionRequirementMutation.mutate({ requirementId: row.original.id, status })}
         />
@@ -287,29 +294,35 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
           actionIcon={Plus}
         />
       ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Input
-              className="max-w-xs"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        <DataTable
+          columns={columns}
+          data={tableData}
+          isLoading={isLoading}
+          manualPagination
+          totalCount={totalCount}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          onRefresh={() => refetch()}
+          leftToolbar={() => (
+            <>
+              <Input
+                className="max-w-xs"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <StatusFilter value={statusFilter} onChange={setStatusFilter} options={RequirementStatusOptions} />
+              <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+              <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
+            </>
+          )}
+          rightToolbar={() => (
             <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               New Requirement
             </Button>
-          </div>
-          <DataTable
-            columns={columns}
-            data={tableData}
-            isLoading={isLoading}
-            manualPagination
-            totalCount={totalCount}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-          />
-        </>
+          )}
+        />
       )}
 
       <CreateRequirementDialog

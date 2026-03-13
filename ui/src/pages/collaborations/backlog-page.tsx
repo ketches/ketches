@@ -1,6 +1,7 @@
-import { collaborationApi, type Requirement } from "@/api/collaboration"
+import { collaborationApi, type Requirement, RequirementStatusOptions } from "@/api/collaboration"
 import { PlanToSprintDialog } from "@/components/collaboration/backlog-dialogs"
 import { PriorityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
+import { StatusFilter, PriorityFilter, AssigneeFilter } from "@/components/collaboration/collab-filters"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -36,6 +37,11 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
   })
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebounce(search, 300)
+
+  const [statusFilter, setStatusFilter] = useState("")
+  const [priorityFilter, setPriorityFilter] = useState("")
+  const [assigneeFilter, setAssigneeFilter] = useState("")
+  
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
 
   // Dialog states
@@ -46,14 +52,17 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null)
   const [parentRequirementId, setParentRequirementId] = useState<string | undefined>(undefined)
-  const { data: response, isLoading } = useQuery({
-    queryKey: ["backlog", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch],
+  const { data: response, isLoading, refetch } = useQuery({
+    queryKey: ["backlog", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, statusFilter, priorityFilter, assigneeFilter],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
       return collaborationApi.listBacklog(projectId, {
         page: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
         search: debouncedSearch,
+        status: statusFilter || undefined,
+        priority: priorityFilter || undefined,
+        assignee_id: assigneeFilter || undefined,
       })
     },
     enabled: !!projectId,
@@ -110,7 +119,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      cell: ({ row }) => <StatusBadge status={row.original.status} entityType="task" />,
     },
     {
       accessorKey: "created_at",
@@ -188,43 +197,49 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
           actionIcon={Plus}
         />
       ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Input
-              className="max-w-xs"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <div className="flex items-center gap-2">
+        <DataTable
+          columns={columns}
+          data={requirements}
+          isLoading={isLoading}
+          manualPagination
+          totalCount={totalCount}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          onRefresh={() => refetch()}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          leftToolbar={() => (
+            <>
+              <Input
+                className="max-w-xs"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <StatusFilter value={statusFilter} onChange={setStatusFilter} options={RequirementStatusOptions} />
+              <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+              <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
+            </>
+          )}
+          rightToolbar={() => (
+            <>
               <Button onClick={() => {
                 setParentRequirementId(undefined)
                 setCreateOpen(true)
               }}>
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className="h-4 w-4" />
                 Create Requirement
               </Button>
               <Button
                 disabled={selectedIds.length === 0}
                 onClick={() => setPlanToSprintOpen(true)}
               >
-                <ArrowRight className="mr-2 h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
                 Plan to Sprint ({selectedIds.length})
               </Button>
-            </div>
-          </div>
-          <DataTable
-            columns={columns}
-            data={requirements}
-            isLoading={isLoading}
-            manualPagination
-            totalCount={totalCount}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            rowSelection={rowSelection}
-            onRowSelectionChange={setRowSelection}
-          />
-        </>
+            </>
+          )}
+        />
       )}
 
       <PlanToSprintDialog

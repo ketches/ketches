@@ -1,7 +1,7 @@
-import { collaborationApi, type Defect, type DefectStatus, DefectStatusOptions } from "@/api/collaboration"
-import { SeverityBadge } from "@/components/collaboration/collab-badges"
+import { collaborationApi, DefectStatus, DefectStatusOptions, type Defect } from "@/api/collaboration"
+import { SeverityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
+import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
 import { CreateDefectDialog, DeleteDefectDialog, EditDefectDialog, TransitionDefectDialog } from "@/components/collaboration/defect-dialogs"
-import { InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -40,6 +40,9 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebounce(search, 300)
 
+  const [statusFilter, setStatusFilter] = useState("")
+  const [priorityFilter, setPriorityFilter] = useState("")
+  const [assigneeFilter, setAssigneeFilter] = useState("")
   // Dialog states
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -47,16 +50,18 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
   const [transitionOpen, setTransitionOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Defect | null>(null)
 
-  const { data: response, isLoading } = useQuery({
-    queryKey: ["defects", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId],
+  const { data: response, isLoading, refetch } = useQuery({
+    queryKey: ["defects", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId, statusFilter, priorityFilter, assigneeFilter],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
       return collaborationApi.listDefects(projectId, {
         page: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
         search: debouncedSearch,
-        assignee_id: assigneeId,
+        assignee_id: assigneeId || assigneeFilter || undefined,
         sprint_id: sprintId,
+        status: statusFilter || undefined,
+        priority: priorityFilter || undefined,
       })
     },
     enabled: !!projectId,
@@ -116,14 +121,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <InlineStatusEditor
-          currentStatus={row.original.status}
-
-          statusOptions={DefectStatusOptions}
-          onStatusChange={(status) => transitionDefectMutation.mutate({ defectId: row.original.id, status })}
-        />
-      ),
+      cell: ({ row }) => <StatusBadge status={row.original.status} />,
     },
     {
       accessorKey: "created_at",
@@ -159,7 +157,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
         )
       },
     },
-  ], [])
+  ], [transitionDefectMutation])
 
   if (!projectId) return null
 
@@ -188,29 +186,35 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
           actionIcon={Plus}
         />
       ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Input
-              className="max-w-xs"
-              placeholder="Search defects..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        <DataTable
+          columns={columns}
+          data={defects}
+          isLoading={isLoading}
+          manualPagination
+          totalCount={totalCount}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          onRefresh={() => refetch()}
+          leftToolbar={() => (
+            <>
+              <Input
+                className="max-w-xs"
+                placeholder="Search defects..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <StatusFilter value={statusFilter} onChange={setStatusFilter} options={DefectStatusOptions} />
+              <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+              <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
+            </>
+          )}
+          rightToolbar={() => (
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               Report Defect
             </Button>
-          </div>
-          <DataTable
-            columns={columns}
-            data={defects}
-            isLoading={isLoading}
-            manualPagination
-            totalCount={totalCount}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-          />
-        </>
+          )}
+        />
       )}
 
       <CreateDefectDialog

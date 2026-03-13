@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 import {
   collaborationApi,
@@ -29,6 +30,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
+import { RichTextEditor } from "./rich-text-editor"
+import { isRichTextEmpty } from "./rich-text-utils"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -128,15 +131,15 @@ export function CreateDefectDialog({
   })
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160 max-h-[85vh] overflow-y-auto">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Report Defect</DialogTitle>
-            <DialogDescription>
+          <SheetHeader>
+            <SheetTitle>Report Defect</SheetTitle>
+            <SheetDescription>
               Report a new defect found in the project.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <Field>
             <FieldLabel>Title</FieldLabel>
@@ -190,12 +193,10 @@ export function CreateDefectDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="description"
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 placeholder="Detailed description of the issue..."
-                rows={3}
               />
             </FieldContent>
           </Field>
@@ -203,12 +204,10 @@ export function CreateDefectDialog({
           <Field>
             <FieldLabel>Reproduction Steps</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="reproduction-steps"
+              <RichTextEditor
                 value={reproductionSteps}
-                onChange={(e) => setReproductionSteps(e.target.value)}
+                onChange={setReproductionSteps}
                 placeholder="1. Go to page X..."
-                rows={4}
               />
             </FieldContent>
           </Field>
@@ -280,18 +279,18 @@ export function CreateDefectDialog({
             * At least one upstream link (Requirement, Task, or Test Case) is required.
           </p>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || !title || !description || (!requirementId && !taskId && !testCaseId)}
+              disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId)}
             >
               {mutation.isPending ? "Creating..." : "Create Defect"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -402,12 +401,12 @@ export function EditDefectDialog({
   if (!defect) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160 max-h-[85vh] overflow-y-auto">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Edit Defect</DialogTitle>
-          </DialogHeader>
+          <SheetHeader>
+            <SheetTitle>Edit Defect</SheetTitle>
+          </SheetHeader>
 
           <Field>
             <FieldLabel>Title</FieldLabel>
@@ -456,11 +455,9 @@ export function EditDefectDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="edit-description"
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
+                onChange={setDescription}
               />
             </FieldContent>
           </Field>
@@ -468,11 +465,9 @@ export function EditDefectDialog({
           <Field>
             <FieldLabel>Reproduction Steps</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="edit-reproduction-steps"
+              <RichTextEditor
                 value={reproductionSteps}
-                onChange={(e) => setReproductionSteps(e.target.value)}
-                rows={4}
+                onChange={setReproductionSteps}
               />
             </FieldContent>
           </Field>
@@ -554,18 +549,18 @@ export function EditDefectDialog({
             </FieldContent>
           </Field>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || !title || !description || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
+              disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
             >
               {mutation.isPending ? "Save Changes" : "Save Changes"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 

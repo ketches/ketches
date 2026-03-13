@@ -1,6 +1,8 @@
-import { collaborationApi, type Task, type TaskStatus, type CollabPriority, type UpdateTaskRequest, TaskStatusOptions } from "@/api/collaboration"
+import { collaborationApi, CollabPriority, TaskStatus, TaskStatusOptions, type Task, type UpdateTaskRequest } from "@/api/collaboration"
 
-import { InlineStatusEditor, InlinePriorityEditor } from "@/components/collaboration/inline-editors"
+import { DueDateBadge } from "@/components/collaboration/collab-badges"
+import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
+import { InlinePriorityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { KanbanBoard } from "@/components/collaboration/kanban-board"
 import { CreateTaskDialog, EditTaskDialog } from "@/components/collaboration/task-dialogs"
 import { flattenTree, type TreeItem } from "@/components/collaboration/tree-utils"
@@ -17,7 +19,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
-import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { CheckSquare, ChevronDown, ChevronRight, Columns3, ListTree, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
@@ -50,6 +51,10 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
   const debouncedSearch = useDebounce(search, 300)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
+  const [statusFilter, setStatusFilter] = useState("")
+  const [priorityFilter, setPriorityFilter] = useState("")
+  const [assigneeFilter, setAssigneeFilter] = useState("")
+
   // Dialog states
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -59,15 +64,17 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
 
   const { data: response, isLoading } = useQuery({
 
-    queryKey: ["tasks", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId],
+    queryKey: ["tasks", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId, statusFilter, priorityFilter, assigneeFilter],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
       return collaborationApi.listTasks(projectId, {
         page: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
         search: debouncedSearch,
-        assignee_id: assigneeId,
+        assignee_id: assigneeId || assigneeFilter || undefined,
         sprint_id: sprintId,
+        status: statusFilter || undefined,
+        priority: priorityFilter || undefined,
       })
     },
     enabled: !!projectId,
@@ -110,6 +117,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
 
 
   })
+
 
   const transitionTaskMutation = useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: string }) => {
@@ -202,7 +210,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
       cell: ({ row }) => (
         <InlineStatusEditor
           currentStatus={row.original.status}
-          
+          entityType="task"
           statusOptions={TaskStatusOptions}
           onStatusChange={(status) => transitionTaskMutation.mutate({ taskId: row.original.id, status })}
         />
@@ -226,7 +234,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
     {
       accessorKey: "due_date",
       header: "Due",
-      cell: ({ row }) => row.original.due_date ? <span className="text-xs">{formatDate(row.original.due_date)}</span> : <span className="text-xs text-muted-foreground">-</span>,
+      cell: ({ row }) => <DueDateBadge dueDate={row.original.due_date} />,
     },
     {
       id: "actions",
@@ -313,13 +321,18 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
         />
       ) : viewMode === "kanban" ? (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Input
-              className="max-w-xs"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                className="max-w-xs"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <StatusFilter value={statusFilter} onChange={setStatusFilter} options={TaskStatusOptions} />
+              <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+              <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
+            </div>
             <div className="ml-auto flex items-center gap-2">
               {taskViewTabs}
               <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
@@ -328,7 +341,13 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
               </Button>
             </div>
           </div>
-          <KanbanBoard tasks={tasks} projectId={projectId} />
+          <KanbanBoard
+            tasks={tasks}
+            projectId={projectId}
+            onCreateChild={handleCreateChild}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         </>
       ) : (
         <DataTable
@@ -340,12 +359,17 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
           pagination={pagination}
           onPaginationChange={setPagination}
           leftToolbar={() => (
-            <Input
-              className="max-w-xs"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <>
+              <Input
+                className="max-w-xs"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <StatusFilter value={statusFilter} onChange={setStatusFilter} options={TaskStatusOptions} />
+              <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+              <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
+            </>
           )}
           rightToolbar={() => (
             <>
@@ -365,6 +389,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
         projectId={projectId}
         parentId={parentForCreate?.id}
         parentTitle={parentForCreate?.title}
+        defaultSprintId={sprintId}
       />
 
       <EditTaskDialog

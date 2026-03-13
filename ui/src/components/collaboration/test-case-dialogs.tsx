@@ -18,12 +18,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
+import { RichTextEditor } from "./rich-text-editor"
+import { isRichTextEmpty } from "./rich-text-utils"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -91,15 +94,15 @@ export function CreateTestCaseDialog({
   })
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Create Test Case</DialogTitle>
-            <DialogDescription>
+          <SheetHeader>
+            <SheetTitle>Create Test Case</SheetTitle>
+            <SheetDescription>
               Add a new test case to the project.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <Field>
             <FieldLabel>Title</FieldLabel>
@@ -134,12 +137,10 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Precondition</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="precondition"
+              <RichTextEditor
                 value={precondition}
-                onChange={(e) => setPrecondition(e.target.value)}
+                onChange={setPrecondition}
                 placeholder="e.g. User is logged out"
-                rows={2}
               />
             </FieldContent>
           </Field>
@@ -147,12 +148,10 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Steps</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="steps"
+              <RichTextEditor
                 value={steps}
-                onChange={(e) => setSteps(e.target.value)}
+                onChange={setSteps}
                 placeholder="1. Navigate to login page..."
-                rows={4}
               />
             </FieldContent>
           </Field>
@@ -160,25 +159,26 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Expected Result</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="expected-result"
+              <RichTextEditor
                 value={expectedResult}
-                onChange={(e) => setExpectedResult(e.target.value)}
+                onChange={setExpectedResult}
                 placeholder="User is redirected to dashboard"
-                rows={2}
               />
             </FieldContent>
           </Field>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending || !title || !steps || !expectedResult}>
+            <Button
+              type="submit"
+              disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
+            >
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -255,12 +255,12 @@ export function EditTestCaseDialog({
   if (!testCase) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Edit Test Case</DialogTitle>
-          </DialogHeader>
+          <SheetHeader>
+            <SheetTitle>Edit Test Case</SheetTitle>
+          </SheetHeader>
 
           <Field>
             <FieldLabel>Title</FieldLabel>
@@ -276,11 +276,9 @@ export function EditTestCaseDialog({
           <Field>
             <FieldLabel>Precondition</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="edit-precondition"
+              <RichTextEditor
                 value={precondition}
-                onChange={(e) => setPrecondition(e.target.value)}
-                rows={2}
+                onChange={setPrecondition}
               />
             </FieldContent>
           </Field>
@@ -288,11 +286,9 @@ export function EditTestCaseDialog({
           <Field>
             <FieldLabel>Steps</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="edit-steps"
+              <RichTextEditor
                 value={steps}
-                onChange={(e) => setSteps(e.target.value)}
-                rows={4}
+                onChange={setSteps}
               />
             </FieldContent>
           </Field>
@@ -300,11 +296,9 @@ export function EditTestCaseDialog({
           <Field>
             <FieldLabel>Expected Result</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="edit-expected-result"
+              <RichTextEditor
                 value={expectedResult}
-                onChange={(e) => setExpectedResult(e.target.value)}
-                rows={2}
+                onChange={setExpectedResult}
               />
             </FieldContent>
           </Field>
@@ -327,15 +321,18 @@ export function EditTestCaseDialog({
             </FieldContent>
           </Field>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending || !title || !steps || !expectedResult}>
+            <Button
+              type="submit"
+              disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
+            >
               {mutation.isPending ? "Save Changes" : "Save Changes"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -450,15 +447,15 @@ export function CreateTestRunDialog({
   if (!testCase) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Record Test Run</DialogTitle>
-            <DialogDescription>
+          <SheetHeader>
+            <SheetTitle>Record Test Run</SheetTitle>
+            <SheetDescription>
               Record the execution result for "{testCase.title}".
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <Field>
             <FieldLabel>Status</FieldLabel>
@@ -489,14 +486,14 @@ export function CreateTestRunDialog({
             </FieldContent>
           </Field>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Recording..." : "Record Result"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

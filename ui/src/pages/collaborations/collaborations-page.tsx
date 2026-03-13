@@ -85,6 +85,19 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     ]
   }, [sprintsData?.items])
 
+  // Auto-select first active sprint when sprints load and no valid selection exists
+  useEffect(() => {
+    const sprints = sprintsData?.items ?? []
+    if (!sprints.length) return
+    // Skip if a valid sprint is already selected
+    if (selectedSprintId && sprints.some(s => s.id === selectedSprintId)) return
+
+    const firstActive = sprints.find(s => s.status === "active")
+    if (firstActive) {
+      setSelectedSprintId(firstActive.id)
+    }
+  }, [sprintsData?.items, selectedSprintId])
+
   const assigneeId = scope === "my-items" ? currentUserId : undefined
   const handleScopeChange = (value: string) => {
     const nextScope = value as Scope

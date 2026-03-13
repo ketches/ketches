@@ -1,21 +1,16 @@
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 
 import { collaborationApi, CollabPriority, CollabPriorityOptions, TaskStatus, TaskStatusOptions, type CreateTaskRequest, type Task, type UpdateTaskRequest } from "@/api/collaboration"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
-import { Textarea } from "@/components/ui/textarea"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useMemo, useState } from "react"
+
+
 import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
+import { RichTextEditor } from "./rich-text-editor"
 
 interface CreateTaskDialogProps {
   open: boolean
@@ -24,6 +19,7 @@ interface CreateTaskDialogProps {
   parentId?: string
   parentTitle?: string
   onSuccess?: () => void
+  defaultSprintId?: string
 }
 
 export function CreateTaskDialog({
@@ -32,7 +28,8 @@ export function CreateTaskDialog({
   projectId,
   parentId,
   parentTitle,
-  onSuccess
+  onSuccess,
+  defaultSprintId
 }: CreateTaskDialogProps) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState<CreateTaskRequest>({
@@ -41,6 +38,7 @@ export function CreateTaskDialog({
     status: TaskStatus.TODO,
     priority: CollabPriority.P2,
     parent_task_id: parentId,
+    sprint_id: defaultSprintId || "",
   })
 
   useEffect(() => {
@@ -51,9 +49,17 @@ export function CreateTaskDialog({
         status: TaskStatus.TODO,
         priority: CollabPriority.P2,
         parent_task_id: parentId,
+        sprint_id: defaultSprintId || "",
       })
     }
-  }, [open, parentId])
+  }, [open, parentId, defaultSprintId])
+
+  // Sync defaultSprintId changes
+  useEffect(() => {
+    if (defaultSprintId) {
+      setFormData(prev => ({ ...prev, sprint_id: defaultSprintId }))
+    }
+  }, [defaultSprintId])
 
   const mutation = useMutation({
     mutationFn: (data: CreateTaskRequest) => {
@@ -76,21 +82,34 @@ export function CreateTaskDialog({
     }
   })
 
+  const { data: sprintsData } = useQuery({
+    queryKey: ["sprints", projectId, "all"],
+    queryFn: () => collaborationApi.listSprints(projectId, { page: 1, page_size: 100 }),
+    enabled: !!projectId,
+  })
+  const sprintItems = useMemo(() => {
+    return (sprintsData?.items ?? []).map(s => ({ label: s.name, value: s.id }))
+  }, [sprintsData?.items])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.sprint_id) {
+      toast.error("Sprint is required")
+      return
+    }
     mutation.mutate(formData)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>{parentId ? "Create Child Task" : "Create Task"}</DialogTitle>
-            <DialogDescription>
+          <SheetHeader>
+            <SheetTitle>{parentId ? "Create Child Task" : "Create Task"}</SheetTitle>
+            <SheetDescription>
               {parentId ? `Add a sub-task to "${parentTitle}"` : "Add a new task to the project."}
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <Field>
             <FieldLabel>Title</FieldLabel>
@@ -108,12 +127,10 @@ export function CreateTaskDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="description"
+              <RichTextEditor
                 value={formData.description || ""}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(json) => setFormData({ ...formData, description: json })}
                 placeholder="Detailed description..."
-                className="min-h-24"
               />
             </FieldContent>
           </Field>
@@ -191,17 +208,39 @@ export function CreateTaskDialog({
             </Field>
           </div>
 
-          <DialogFooter>
+          <Field>
+            <FieldLabel>Sprint</FieldLabel>
+            <FieldContent>
+              <Combobox
+                value={formData.sprint_id || ""}
+                onValueChange={(val) => val && setFormData({ ...formData, sprint_id: val })}
+                itemToStringLabel={(item) => sprintItems.find(opt => opt.value === item)?.label || item}
+              >
+                <ComboboxInput placeholder="Select sprint" />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {sprintItems.map((opt) => (
+                      <ComboboxItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </FieldContent>
+          </Field>
+
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -271,15 +310,15 @@ export function EditTaskDialog({
   if (!task) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-            <DialogDescription>
+          <SheetHeader>
+            <SheetTitle>Edit Task</SheetTitle>
+            <SheetDescription>
               Update task details.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <Field>
             <FieldLabel>Title</FieldLabel>
@@ -297,12 +336,10 @@ export function EditTaskDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="edit-description"
+              <RichTextEditor
                 value={formData.description || ""}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(json) => setFormData({ ...formData, description: json })}
                 placeholder="Detailed description..."
-                className="min-h-24"
               />
             </FieldContent>
           </Field>
@@ -380,16 +417,16 @@ export function EditTaskDialog({
             </Field>
           </div>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Save Changes" : "Save"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

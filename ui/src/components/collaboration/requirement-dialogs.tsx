@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 import {
   collaborationApi,
@@ -21,11 +22,11 @@ import {
 } from "@/api/collaboration"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
+import { RichTextEditor } from "./rich-text-editor"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -96,15 +97,15 @@ export function CreateRequirementDialog({
   })
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>{parentId ? "Create Child Requirement" : "Create Requirement"}{parentTitle && ` for "${parentTitle}"`}</DialogTitle>
-            <DialogDescription>
+          <SheetHeader>
+            <SheetTitle>{parentId ? "Create Child Requirement" : "Create Requirement"}{parentTitle && ` for "${parentTitle}"`}</SheetTitle>
+            <SheetDescription>
               Add a new requirement to the backlog.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <Field>
             <FieldLabel>Title</FieldLabel>
@@ -155,25 +156,23 @@ export function CreateRequirementDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="description"
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 placeholder="Detailed description..."
-                rows={5}
               />
             </FieldContent>
           </Field>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending || !title}>
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -245,12 +244,12 @@ export function EditRequirementDialog({
   if (!requirement) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Edit Requirement</DialogTitle>
-          </DialogHeader>
+          <SheetHeader>
+            <SheetTitle>Edit Requirement</SheetTitle>
+          </SheetHeader>
 
           <Field>
             <FieldLabel>Title</FieldLabel>
@@ -300,24 +299,22 @@ export function EditRequirementDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <Textarea
-                id="edit-description"
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={5}
+                onChange={setDescription}
               />
             </FieldContent>
           </Field>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending || !title}>
               {mutation.isPending ? "Save Changes" : "Save Changes"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 

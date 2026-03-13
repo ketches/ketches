@@ -1,14 +1,20 @@
 import { collaborationApi, TaskStatusOptions, type Task, type TaskStatus } from "@/api/collaboration"
-import { PriorityBadge } from "@/components/collaboration/collab-badges"
+import { DueDateBadge, PriorityBadge } from "@/components/collaboration/collab-badges"
+import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
 interface KanbanBoardProps {
   tasks: Task[]
   projectId: string
+  onCreateChild?: (task: Task) => void
+  onEdit?: (task: Task) => void
+  onDelete?: (task: Task) => void
 }
 
 function KanbanColumn({ status, label, children }: { status: string; label: string; children: React.ReactNode }) {
@@ -28,7 +34,17 @@ function KanbanColumn({ status, label, children }: { status: string; label: stri
   )
 }
 
-function KanbanCard({ task }: { task: Task }) {
+function KanbanCard({
+  task,
+  onCreateChild,
+  onEdit,
+  onDelete,
+}: {
+  task: Task
+  onCreateChild?: (task: Task) => void
+  onEdit?: (task: Task) => void
+  onDelete?: (task: Task) => void
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, data: { task } })
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined
 
@@ -38,11 +54,49 @@ function KanbanCard({ task }: { task: Task }) {
       {...listeners}
       {...attributes}
       style={style}
-      className={`p-3 cursor-grab active:cursor-grabbing space-y-1 ${isDragging ? "opacity-50" : ""}`}
+      className={`group relative p-3 cursor-grab active:cursor-grabbing space-y-2 ${isDragging ? "opacity-50" : ""}`}
     >
-      <div className="text-sm font-medium line-clamp-2">{task.title}</div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-sm font-medium line-clamp-2">{task.title}</div>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="size-3.5" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onCreateChild?.(task)}>
+              <Plus />
+              Add Child
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEdit?.(task)}>
+              <Pencil />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => onDelete?.(task)}>
+              <Trash2 />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <div className="flex items-center gap-2">
         <PriorityBadge priority={task.priority} />
+        <DueDateBadge dueDate={task.due_date} />
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground truncate">
+          {task.assignee_id || "Unassigned"}
+        </span>
         <span className="text-[10px] text-muted-foreground font-mono">{task.id.slice(0, 8)}</span>
       </div>
     </Card>
@@ -51,17 +105,23 @@ function KanbanCard({ task }: { task: Task }) {
 
 function DragOverlayCard({ task }: { task: Task }) {
   return (
-    <Card className="p-3 shadow-lg space-y-1 w-56">
+    <Card className="p-3 shadow-lg space-y-2 w-56">
       <div className="text-sm font-medium line-clamp-2">{task.title}</div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
         <PriorityBadge priority={task.priority} />
+        <DueDateBadge dueDate={task.due_date} />
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground truncate">
+          {task.assignee_id || "Unassigned"}
+        </span>
         <span className="text-[10px] text-muted-foreground font-mono">{task.id.slice(0, 8)}</span>
       </div>
     </Card>
   )
 }
 
-export function KanbanBoard({ tasks, projectId }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, projectId, onCreateChild, onEdit, onDelete }: KanbanBoardProps) {
   const queryClient = useQueryClient()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
 
@@ -117,7 +177,7 @@ export function KanbanBoard({ tasks, projectId }: KanbanBoardProps) {
         {TaskStatusOptions.map((opt) => (
           <KanbanColumn key={opt.value} status={opt.value} label={opt.label}>
             {groupedTasks[opt.value]?.map((task) => (
-              <KanbanCard key={task.id} task={task} />
+              <KanbanCard key={task.id} task={task} onCreateChild={onCreateChild} onEdit={onEdit} onDelete={onDelete} />
             ))}
           </KanbanColumn>
         ))}

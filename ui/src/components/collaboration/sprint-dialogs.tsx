@@ -2,14 +2,7 @@ import { collaborationApi, SprintStatus, SprintStatusOptions, type CreateSprintR
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -125,15 +118,15 @@ export function CreateSprintDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenStateChange}>
-      <DialogContent className="sm:max-w-160">
+    <Sheet open={open} onOpenChange={handleOpenStateChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Create Sprint</DialogTitle>
-            <DialogDescription>
+          <SheetHeader>
+            <SheetTitle>Create Sprint</SheetTitle>
+            <SheetDescription>
               Create a new sprint to plan your work.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
           <div className="grid grid-cols-3 gap-4">
             <Field className="col-span-2">
               <FieldLabel>Name</FieldLabel>
@@ -244,17 +237,17 @@ export function CreateSprintDialog({
             </Field>
           </div>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenStateChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog >
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -321,15 +314,15 @@ export function EditSprintDialog({
   if (!sprint) return null
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenStateChange}>
-      <DialogContent className="sm:max-w-160">
+    <Sheet open={open} onOpenChange={handleOpenStateChange}>
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Edit Sprint</DialogTitle>
-            <DialogDescription>
+          <SheetHeader>
+            <SheetTitle>Edit Sprint</SheetTitle>
+            <SheetDescription>
               Update sprint details.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <div className="grid grid-cols-3 gap-4">
             <Field className="col-span-2">
@@ -442,16 +435,16 @@ export function EditSprintDialog({
               </FieldContent>
             </Field>
           </div>
-          <DialogFooter>
+          <SheetFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenStateChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Save Changes" : "Save"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
