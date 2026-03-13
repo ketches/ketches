@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import type { LucideIcon } from "lucide-react"
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -17,17 +18,20 @@ interface KanbanBoardProps {
   onDelete?: (task: Task) => void
 }
 
-function KanbanColumn({ status, label, children }: { status: string; label: string; children: React.ReactNode }) {
+function KanbanColumn({ status, label, icon: Icon, color, children }: { status: string; label: string; icon: LucideIcon; color: string, children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-1 flex-col min-w-56 rounded-lg border bg-muted/50 ${isOver ? "ring-2 ring-primary/50" : ""}`}
+      className={`bg-linear-to-b/increasing from-${color}-500/10 to-transparent data-[active=true]:bg-transparent flex flex-1 flex-col min-w-56 overflow-hidden rounded-lg border bg-muted/50 ${isOver ? "border-dashed border-primary/50 ring-1 ring-inset ring-primary/30" : ""}`}
     >
-      <div className="flex items-center justify-between px-3 py-2 border-b">
-        <span className="text-sm font-medium">{label}</span>
+      <div className="flex items-center justify-between px-3 py-2">
+        <span className="flex items-center gap-2 text-sm font-medium">
+          <Icon className={`size-4 text-${color}-500`} />
+          {label}
+        </span>
       </div>
-      <div className="flex flex-col gap-2 p-2 overflow-y-auto min-h-24 flex-1">
+      <div className="flex min-h-24 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-hidden p-2">
         {children}
       </div>
     </div>
@@ -54,7 +58,7 @@ function KanbanCard({
       {...listeners}
       {...attributes}
       style={style}
-      className={`group relative p-3 cursor-grab active:cursor-grabbing space-y-2 ${isDragging ? "opacity-50" : ""}`}
+      className={`group relative w-full p-3 cursor-grab active:cursor-grabbing space-y-2 ${isDragging ? "opacity-0" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="text-sm font-medium line-clamp-2">{task.title}</div>
@@ -103,9 +107,9 @@ function KanbanCard({
   )
 }
 
-function DragOverlayCard({ task }: { task: Task }) {
+function DragOverlayCard({ task, width }: { task: Task; width?: number | null }) {
   return (
-    <Card className="p-3 shadow-lg space-y-2 w-56">
+    <Card className="space-y-2 p-3 shadow-lg" style={width ? { width } : undefined}>
       <div className="text-sm font-medium line-clamp-2">{task.title}</div>
       <div className="flex items-center gap-2">
         <PriorityBadge priority={task.priority} />
@@ -124,6 +128,7 @@ function DragOverlayCard({ task }: { task: Task }) {
 export function KanbanBoard({ tasks, projectId, onCreateChild, onEdit, onDelete }: KanbanBoardProps) {
   const queryClient = useQueryClient()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [activeTaskWidth, setActiveTaskWidth] = useState<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -147,10 +152,12 @@ export function KanbanBoard({ tasks, projectId, onCreateChild, onEdit, onDelete 
   const handleDragStart = (event: DragStartEvent) => {
     const task = event.active.data.current?.task as Task | undefined
     setActiveTask(task ?? null)
+    setActiveTaskWidth(event.active.rect.current.initial?.width ?? null)
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTask(null)
+    setActiveTaskWidth(null)
     const { active, over } = event
     if (!over) return
 
@@ -175,7 +182,7 @@ export function KanbanBoard({ tasks, projectId, onCreateChild, onEdit, onDelete 
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex w-full gap-4 overflow-x-auto pb-4">
         {TaskStatusOptions.map((opt) => (
-          <KanbanColumn key={opt.value} status={opt.value} label={opt.label}>
+          <KanbanColumn key={opt.value} status={opt.value} label={opt.label} icon={opt.icon} color={opt.color}>
             {groupedTasks[opt.value]?.map((task) => (
               <KanbanCard key={task.id} task={task} onCreateChild={onCreateChild} onEdit={onEdit} onDelete={onDelete} />
             ))}
@@ -183,8 +190,8 @@ export function KanbanBoard({ tasks, projectId, onCreateChild, onEdit, onDelete 
         ))}
       </div>
       <DragOverlay>
-        {activeTask ? <DragOverlayCard task={activeTask} /> : null}
+        {activeTask ? <DragOverlayCard task={activeTask} width={activeTaskWidth} /> : null}
       </DragOverlay>
-    </DndContext>
+    </DndContext >
   )
 }

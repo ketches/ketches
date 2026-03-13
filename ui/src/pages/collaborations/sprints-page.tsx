@@ -1,5 +1,5 @@
-import { collaborationApi, type Sprint } from "@/api/collaboration"
-import { StatusBadge } from "@/components/collaboration/collab-badges"
+import { collaborationApi, SprintStatusOptions, type Sprint, type UpdateSprintRequest } from "@/api/collaboration"
+import { InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { CreateSprintDialog, EditSprintDialog } from "@/components/collaboration/sprint-dialogs"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
@@ -44,7 +44,7 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Sprint | null>(null)
 
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, refetch } = useQuery({
     queryKey: ["sprints", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch],
     queryFn: () => {
       if (!projectId) throw new Error("Project ID is required")
@@ -80,6 +80,30 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
 
   })
 
+  const updateSprintStatusMutation = useMutation({
+    mutationFn: ({ sprint, status }: { sprint: Sprint; status: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      const data: UpdateSprintRequest = {
+        name: sprint.name,
+        goal: sprint.goal,
+        status: status as Sprint["status"],
+        start_date: sprint.start_date,
+        end_date: sprint.end_date,
+      }
+      return collaborationApi.updateSprint(projectId, sprint.id, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sprints", projectId] })
+      toast.success("Sprint status updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update status", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
   const handleEdit = (item: Sprint) => {
     setSelectedItem(item)
     setEditOpen(true)
@@ -99,7 +123,14 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} entityType="sprint" />,
+      cell: ({ row }) => (
+        <InlineStatusEditor
+          currentStatus={row.original.status}
+          entityType="sprint"
+          statusOptions={SprintStatusOptions}
+          onStatusChange={(status) => updateSprintStatusMutation.mutate({ sprint: row.original, status })}
+        />
+      ),
     },
     {
       accessorKey: "start_date",
@@ -155,40 +186,41 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
         </div>
       )}
 
-      {!isLoading && sprints.length === 0 ? (
-        <EmptyState
-          title="No sprints found"
-          description="Create your first sprint to get started."
-          icon={CalendarRange}
-          actionText="Create Sprint"
-          onAction={() => setCreateOpen(true)}
-          actionIcon={Plus}
-        />
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+      {<DataTable
+          columns={columns}
+          data={sprints}
+          isLoading={isLoading}
+          manualPagination
+          totalCount={totalCount}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          onRefresh={() => refetch()}
+          emptyContent={
+            <EmptyState
+              title="No sprints found"
+              description="Create your first sprint to get started."
+              icon={CalendarRange}
+              actionText="Create Sprint"
+              onAction={() => setCreateOpen(true)}
+              actionIcon={Plus}
+              border={false}
+            />
+          }
+          leftToolbar={() => (
             <Input
               className="max-w-xs"
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          )}
+          rightToolbar={() => (
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" />
               New Sprint
             </Button>
-          </div>
-          <DataTable
-            columns={columns}
-            data={sprints}
-            isLoading={isLoading}
-            manualPagination
-            totalCount={totalCount}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-          />
-        </>
-      )}
+          )}
+        />}
 
       <CreateSprintDialog
         open={createOpen}

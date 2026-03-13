@@ -1,13 +1,35 @@
 import { collaborationApi, CollabPriority, CollabPriorityOptions, TaskStatus, TaskStatusOptions, type CreateTaskRequest, type Task, type UpdateTaskRequest } from "@/api/collaboration"
+import { projectsApi } from "@/api/projects"
 import { Button } from "@/components/ui/button"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { format, isValid, parse } from "date-fns"
+import { CalendarIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { Calendar } from "../ui/calendar"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 import { RichTextEditor } from "./rich-text-editor"
+import { MemberAvatar } from "./inline-editors"
+
+const TASK_DATE_FORMAT = "yyyy-MM-dd"
+
+function formatTaskDate(date: Date) {
+  return format(date, TASK_DATE_FORMAT)
+}
+
+function parseTaskDate(value?: string) {
+  if (!value) {
+    return undefined
+  }
+
+  const parsed = parse(value.slice(0, 10), TASK_DATE_FORMAT, new Date())
+  return isValid(parsed) ? parsed : undefined
+}
 
 interface CreateTaskDialogProps {
   open: boolean
@@ -29,6 +51,7 @@ export function CreateTaskDialog({
   defaultSprintId
 }: CreateTaskDialogProps) {
   const queryClient = useQueryClient()
+  const authUser = useAuthStore(s => s.user)
   const [formData, setFormData] = useState<CreateTaskRequest>({
     title: "",
     description: "",
@@ -36,6 +59,7 @@ export function CreateTaskDialog({
     priority: CollabPriority.P2,
     parent_task_id: parentId,
     sprint_id: defaultSprintId || "",
+    assignee_id: authUser?.id,
   })
 
   useEffect(() => {
@@ -47,9 +71,10 @@ export function CreateTaskDialog({
         priority: CollabPriority.P2,
         parent_task_id: parentId,
         sprint_id: defaultSprintId || "",
+        assignee_id: authUser?.id,
       })
     }
-  }, [open, parentId, defaultSprintId])
+  }, [open, parentId, defaultSprintId, authUser?.id])
 
   // Sync defaultSprintId changes
   useEffect(() => {
@@ -87,6 +112,19 @@ export function CreateTaskDialog({
   const sprintItems = useMemo(() => {
     return (sprintsData?.items ?? []).map(s => ({ label: s.name, value: s.id }))
   }, [sprintsData?.items])
+
+  const { data: membersData } = useQuery({
+    queryKey: ["project-members", projectId],
+    queryFn: () => projectsApi.listMembers(projectId, { page: 1, page_size: 100 }),
+    enabled: !!projectId,
+  })
+  const memberItems = useMemo(() => {
+    const members = membersData?.items ?? []
+    return [
+      { label: "Unassigned", value: "" },
+      ...members.map(m => ({ label: m.fullname || m.username, value: m.user_id })),
+    ]
+  }, [membersData?.items])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -200,16 +238,44 @@ export function CreateTaskDialog({
             </Field>
           </div>
 
+          <Field>
+            <FieldLabel>Assignee</FieldLabel>
+            <FieldContent>
+              <Combobox
+                value={formData.assignee_id || ""}
+                onValueChange={(val) => setFormData({ ...formData, assignee_id: val || undefined })}
+                itemToStringLabel={(item) => memberItems.find(opt => opt.value === item)?.label || item}
+              >
+                <ComboboxInput placeholder="Select assignee" />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {memberItems.map((opt) => (
+                      <ComboboxItem key={opt.value} value={opt.value}>
+                        {opt.value ? <MemberAvatar name={opt.label} /> : null}
+                        {opt.label}
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </FieldContent>
+          </Field>
+
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <FieldLabel>Due Date</FieldLabel>
               <FieldContent>
-                <Input
-                  id="due_date"
-                  type="date"
-                  value={formData.due_date ? formData.due_date.split('T')[0] : ''}
-                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                />
+                <Popover>
+                  <PopoverTrigger render={<Button variant={"outline"} data-empty={!formData.due_date} className="w-full justify-between text-left font-normal data-[empty=true]:text-muted-foreground">{formData.due_date ? format(parseTaskDate(formData.due_date) ?? new Date(formData.due_date), "PPP") : <span>Pick a date</span>}<CalendarIcon data-icon="inline-end" /></Button>} />
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={parseTaskDate(formData.due_date)}
+                      onSelect={(date) => setFormData({ ...formData, due_date: date ? formatTaskDate(date) : undefined })}
+                      defaultMonth={parseTaskDate(formData.due_date)}
+                    />
+                  </PopoverContent>
+                </Popover>
               </FieldContent>
             </Field>
             <Field>
@@ -306,19 +372,32 @@ export function EditTaskDialog({
     mutation.mutate(formData)
   }
 
+  const { data: editMembersData } = useQuery({
+    queryKey: ["project-members", projectId],
+    queryFn: () => projectsApi.listMembers(projectId, { page: 1, page_size: 100 }),
+    enabled: !!projectId,
+  })
+  const editMemberItems = useMemo(() => {
+    const members = editMembersData?.items ?? []
+    return [
+      { label: "Unassigned", value: "" },
+      ...members.map(m => ({ label: m.fullname || m.username, value: m.user_id })),
+    ]
+  }, [editMembersData?.items])
+
   if (!task) return null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Edit Task</SheetTitle>
-            <SheetDescription>
-              Update task details.
-            </SheetDescription>
-          </SheetHeader>
+        <SheetHeader>
+          <SheetTitle>Edit Task</SheetTitle>
+          <SheetDescription>
+            Update task details.
+          </SheetDescription>
+        </SheetHeader>
 
+        <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -389,16 +468,44 @@ export function EditTaskDialog({
             </Field>
           </div>
 
+          <Field>
+            <FieldLabel>Assignee</FieldLabel>
+            <FieldContent>
+              <Combobox
+                value={formData.assignee_id || ""}
+                onValueChange={(val) => setFormData({ ...formData, assignee_id: val || undefined })}
+                itemToStringLabel={(item) => editMemberItems.find(opt => opt.value === item)?.label || item}
+              >
+                <ComboboxInput placeholder="Select assignee" />
+                <ComboboxContent>
+                  <ComboboxList>
+                    {editMemberItems.map((opt) => (
+                      <ComboboxItem key={opt.value} value={opt.value}>
+                        {opt.value ? <MemberAvatar name={opt.label} /> : null}
+                        {opt.label}
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </FieldContent>
+          </Field>
+
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <FieldLabel>Due Date</FieldLabel>
               <FieldContent>
-                <Input
-                  id="edit-due_date"
-                  type="date"
-                  value={formData.due_date ? formData.due_date.split('T')[0] : ''}
-                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                />
+                <Popover>
+                  <PopoverTrigger render={<Button variant={"outline"} data-empty={!formData.due_date} className="w-full justify-between text-left font-normal data-[empty=true]:text-muted-foreground">{formData.due_date ? format(parseTaskDate(formData.due_date) ?? new Date(formData.due_date), "PPP") : <span>Pick a date</span>}<CalendarIcon data-icon="inline-end" /></Button>} />
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={parseTaskDate(formData.due_date)}
+                      onSelect={(date) => setFormData({ ...formData, due_date: date ? formatTaskDate(date) : undefined })}
+                      defaultMonth={parseTaskDate(formData.due_date)}
+                    />
+                  </PopoverContent>
+                </Popover>
               </FieldContent>
             </Field>
             <Field>
@@ -415,18 +522,18 @@ export function EditTaskDialog({
               </FieldContent>
             </Field>
           </div>
+        </div>
 
-          <SheetFooter>
-            <div className="flex w-full items-center justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Save Changes" : "Save"}
-              </Button>
-            </div>
-          </SheetFooter>
-        </form>
+        <SheetFooter>
+          <div className="flex w-full items-center justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={mutation.isPending} onClick={handleSubmit}>
+              {mutation.isPending ? "Save Changes" : "Save"}
+            </Button>
+          </div>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   )

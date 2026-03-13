@@ -73,6 +73,7 @@ import {
   Container,
   Copy,
   Cpu,
+  Diff,
   Edit2,
   ExternalLink,
   FileClock,
@@ -91,14 +92,12 @@ import {
   List,
   Loader2,
   MemoryStick,
-  MoveVertical,
   Network,
   Orbit,
   Pencil,
   Puzzle,
   RotateCw,
   Ruler,
-  Search,
   Server,
   Share2,
   Star,
@@ -140,7 +139,7 @@ function ScaleAppPopover({ app }: { app: App }) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger>
         <Button>
-          <MoveVertical />
+          <Diff />
           Scale: {app.replicas}
         </Button>
       </PopoverTrigger>
@@ -1155,7 +1154,6 @@ export function ApplicationDetailPage() {
         <TabsList>
           <TabsTrigger value="overview"><Telescope />Overview</TabsTrigger>
           <TabsTrigger value="topology"><Share2 />Topology</TabsTrigger>
-          <TabsTrigger value="instances"><Container />Instances</TabsTrigger>
           <TabsTrigger value="operations"><Footprints />Operations</TabsTrigger>
           <TabsTrigger value="resources"><Ruler />Resources</TabsTrigger>
           {!isViewer && <TabsTrigger value="env-vars"><Key />Env Vars</TabsTrigger>}
@@ -1272,55 +1270,11 @@ export function ApplicationDetailPage() {
             />
           </div>
 
-          {currentEnv && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <ChartLine className="h-4 w-4" />Resource Usage
-                </CardTitle>
-                <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
-              </CardHeader>
-              <CardContent>
-                <AppMetrics
-                  clusterId={currentEnv.cluster_id}
-                  namespace={currentEnv.cluster_namespace}
-                  appSlug={app.slug}
-                  app={app}
-                  timeRange={timeRange}
-                  rangeSeconds={rangeSeconds}
-                  step={step}
-                />
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="topology" className="space-y-4 mt-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Share2 className="h-4 w-4" />
-                Topology
-              </CardTitle>
-              <CardDescription>
-                Resource topology of the application
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TopologyView appId={app.id} isViewer={isViewer} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="instances" className="space-y-4 mt-2">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Container className="h-4 w-4" /> Running Instances
               </CardTitle>
-              <CardDescription>
-                Manage and monitor current pod instances
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1366,21 +1320,11 @@ export function ApplicationDetailPage() {
                 </div>
               </div>
               {filteredInstances.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-4 border rounded-lg border-dashed">
-                  {searchQuery ? (
-                    <Search className="h-12 w-12 text-muted-foreground opacity-20" />
-                  ) : (
-                    <Container className="h-12 w-12 text-muted-foreground opacity-20" />
-                  )}
-                  <div className="text-center">
-                    <p className="text-sm font-medium">
-                      {searchQuery ? `No results for "${searchQuery}"` : "No instances running"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {searchQuery ? "Try a different search term" : "The application might be scaled to zero or not yet deployed."}
-                    </p>
-                  </div>
-                </div>
+                <EmptyState
+                  title={searchQuery ? `No results for "${searchQuery}"` : "No instances running"}
+                  description={searchQuery ? `Try a different search term` : "The application might be scaled to zero or not yet deployed."}
+                  icon={Container}
+                />
               ) : viewMode === 'table' ? (
                 <DataTable
                   columns={instanceColumns}
@@ -1574,6 +1518,45 @@ export function ApplicationDetailPage() {
                   })}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {currentEnv && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ChartLine className="h-4 w-4" />Resource Usage
+                </CardTitle>
+                <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+              </CardHeader>
+              <CardContent>
+                <AppMetrics
+                  clusterId={currentEnv.cluster_id}
+                  namespace={currentEnv.cluster_namespace}
+                  appSlug={app.slug}
+                  app={app}
+                  timeRange={timeRange}
+                  rangeSeconds={rangeSeconds}
+                  step={step}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="topology" className="space-y-4 mt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Share2 className="h-4 w-4" />
+                Topology
+              </CardTitle>
+              <CardDescription>
+                Resource topology of the application
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TopologyView appId={app.id} isViewer={isViewer} />
             </CardContent>
           </Card>
         </TabsContent>

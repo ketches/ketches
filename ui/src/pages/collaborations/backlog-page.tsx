@@ -1,7 +1,7 @@
-import { collaborationApi, type Requirement, RequirementStatusOptions } from "@/api/collaboration"
+import { collaborationApi, CollabPriority, RequirementStatus, RequirementStatusOptions, type Requirement } from "@/api/collaboration"
 import { PlanToSprintDialog } from "@/components/collaboration/backlog-dialogs"
-import { PriorityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
 import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
+import { InlineAssigneeEditor, InlinePriorityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { useDebounce } from "@/hooks/use-debounce"
+import { buildRequirementUpdateRequest } from "@/lib/collaboration-update-payloads"
 import { formatDate } from "@/lib/utils"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
 import { Archive, ArrowRight, CornerDownRight, LayoutList, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useParams } from "react-router-dom"
+import { toast } from "sonner"
 
 import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog } from "@/components/collaboration/requirement-dialogs"
 import {
@@ -30,6 +32,7 @@ interface BacklogPageProps {
 export default function BacklogPage({ projectId: propProjectId }: BacklogPageProps) {
   const params = useParams<{ projectId: string }>()
   const projectId = propProjectId || params.projectId
+  const queryClient = useQueryClient()
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -73,6 +76,65 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
 
   const selectedIds = Object.keys(rowSelection)
 
+  const transitionRequirementMutation = useMutation({
+    mutationFn: ({ requirementId, status }: { requirementId: string; status: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.transitionRequirement(projectId, requirementId, status as RequirementStatus)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["backlog", projectId] })
+      toast.success("Requirement status updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update status", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
+  const updateRequirementPriorityMutation = useMutation({
+    mutationFn: ({ requirement, priority }: { requirement: Requirement; priority: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.updateRequirement(
+        projectId,
+        requirement.id,
+        buildRequirementUpdateRequest(requirement, { priority: priority as CollabPriority })
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["backlog", projectId] })
+      toast.success("Requirement priority updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update priority", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
+  const updateBacklogAssigneeMutation = useMutation({
+    mutationFn: ({ requirement, assigneeId }: { requirement: Requirement; assigneeId: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.updateRequirement(
+        projectId,
+        requirement.id,
+        buildRequirementUpdateRequest(requirement, { assignee_id: assigneeId })
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["backlog", projectId] })
+      toast.success("Assignee updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update assignee", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
   const columns: ColumnDef<Requirement>[] = [
     {
       id: "select",
@@ -114,12 +176,35 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
     {
       accessorKey: "priority",
       header: "Priority",
-      cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
+      cell: ({ row }) => (
+        <InlinePriorityEditor
+          currentPriority={row.original.priority}
+          onPriorityChange={(priority) => updateRequirementPriorityMutation.mutate({ requirement: row.original, priority })}
+        />
+      ),
     },
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} entityType="task" />,
+      cell: ({ row }) => (
+        <InlineStatusEditor
+          currentStatus={row.original.status}
+          entityType="requirement"
+          statusOptions={RequirementStatusOptions}
+          onStatusChange={(status) => transitionRequirementMutation.mutate({ requirementId: row.original.id, status })}
+        />
+      ),
+    },
+    {
+      accessorKey: "assignee_id",
+      header: "Assignee",
+      cell: ({ row }) => (
+        <InlineAssigneeEditor
+          projectId={projectId!}
+          currentAssigneeId={row.original.assignee_id}
+          onAssigneeChange={(assigneeId) => updateBacklogAssigneeMutation.mutate({ requirement: row.original, assigneeId })}
+        />
+      ),
     },
     {
       accessorKey: "created_at",
@@ -184,20 +269,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
         </div>
       )}
 
-      {!isLoading && requirements.length === 0 ? (
-        <EmptyState
-          title="Backlog is empty"
-          description="Requirements without a sprint will appear here."
-          icon={LayoutList}
-          actionText="Create Requirement"
-          onAction={() => {
-            setParentRequirementId(undefined)
-            setCreateOpen(true)
-          }}
-          actionIcon={Plus}
-        />
-      ) : (
-        <DataTable
+      {<DataTable
           columns={columns}
           data={requirements}
           isLoading={isLoading}
@@ -208,6 +280,20 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
           onRefresh={() => refetch()}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
+          emptyContent={
+            <EmptyState
+              title="Backlog is empty"
+              description="Requirements without a sprint will appear here."
+              icon={LayoutList}
+              actionText="Create Requirement"
+              onAction={() => {
+                setParentRequirementId(undefined)
+                setCreateOpen(true)
+              }}
+              actionIcon={Plus}
+              border={false}
+            />
+          }
           leftToolbar={() => (
             <>
               <Input
@@ -239,8 +325,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
               </Button>
             </>
           )}
-        />
-      )}
+        />}
 
       <PlanToSprintDialog
         open={planToSprintOpen}

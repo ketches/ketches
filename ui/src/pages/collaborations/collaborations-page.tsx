@@ -168,10 +168,10 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
               <Combobox
                 items={sprintOptions}
                 value={selectedSprintId}
-                onValueChange={(val) => setSelectedSprintId(val ?? "")}
+                onValueChange={(val) => setSelectedSprintId(typeof val === "string" ? val : val?.value ?? "")}
                 itemToStringLabel={getSprintOptionLabel}
               >
-                <ComboboxInput placeholder="Filter by sprint..." className="w-full sm:w-48 h-8" >
+                <ComboboxInput placeholder="Filter by sprint..." className="w-full sm:w-48 h-7" >
                   <InputGroupAddon>
                     <Goal />
                   </InputGroupAddon>
@@ -191,32 +191,32 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
             <TabsList className="ml-auto" >
               {(validTabs as readonly string[]).includes("sprints") && (
                 <TabsTrigger value="sprints">
-                  <Goal />
+                  <Goal className="text-fuchsia-500" />
                   Sprints
                 </TabsTrigger>
               )}
               <TabsTrigger value="tasks">
-                <ListTodo />
+                <ListTodo className="text-green-500" />
                 Tasks
               </TabsTrigger>
               {(validTabs as readonly string[]).includes("requirements") && (
                 <TabsTrigger value="requirements">
-                  <FileText />
+                  <FileText className="text-blue-500" />
                   Requirements
                 </TabsTrigger>
               )}
               {(validTabs as readonly string[]).includes("backlog") && (
                 <TabsTrigger value="backlog">
-                  <ListTodo />
+                  <ListTodo className="text-yellow-500" />
                   Backlog
                 </TabsTrigger>
               )}
               <TabsTrigger value="test-cases">
-                <FlaskConical />
+                <FlaskConical className="text-purple-500" />
                 Test Cases
               </TabsTrigger>
               <TabsTrigger value="defects">
-                <Bug />
+                <Bug className="text-red-500" />
                 Defects
               </TabsTrigger>
             </TabsList>

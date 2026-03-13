@@ -1,81 +1,194 @@
-import { CollabPriorityOptions } from "@/api/collaboration"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Check } from "lucide-react"
-import { useState } from "react"
-import { PriorityBadge, StatusBadge, type EntityType } from "./collab-badges"
+import { CollabPriorityOptions, DefectSeverityOptions, type CollabOption } from "@/api/collaboration"
+import { projectsApi } from "@/api/projects"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import { InputGroupAddon } from "@/components/ui/input-group"
+import { useQuery } from "@tanstack/react-query"
+import { User } from "lucide-react"
+import { useMemo } from "react"
+
+const colorMap: Record<string, string> = {
+  gray: "text-gray-500",
+  slate: "text-slate-500",
+  blue: "text-blue-500",
+  green: "text-green-500",
+  red: "text-red-500",
+  orange: "text-orange-500",
+  amber: "text-amber-500",
+  purple: "text-purple-500",
+  indigo: "text-indigo-500",
+  yellow: "text-yellow-600",
+}
+
+interface InlineComboboxEditorProps {
+  value: string
+  options: CollabOption[]
+  onValueChange: (newValue: string) => void
+  disabled?: boolean
+}
+
+function InlineComboboxEditor({ value, options, onValueChange, disabled }: InlineComboboxEditorProps) {
+  const current = options.find((o) => o.value === value)
+  const CurrentIcon = current?.icon
+  const currentColor = colorMap[current?.color ?? ""] ?? "text-muted-foreground"
+
+  return (
+    <Combobox
+      value={value}
+      onValueChange={(val: string | null) => {
+        if (val && val !== value) onValueChange(val)
+      }}
+      itemToStringLabel={(v) => options.find((o) => o.value === v)?.label ?? v ?? ""}
+      disabled={disabled}
+    >
+      <ComboboxInput className="w-fit">
+        <InputGroupAddon>
+          {CurrentIcon && <CurrentIcon className={`size-3.5 ${currentColor}`} />}
+        </InputGroupAddon>
+      </ComboboxInput>
+      <ComboboxContent alignOffset={-24} className="w-full">
+        <ComboboxList>
+          {options.map((opt) => {
+            const Icon = opt.icon
+            const color = colorMap[opt.color] ?? "text-muted-foreground"
+            return (
+              <ComboboxItem key={opt.value} value={opt.value}>
+                <Icon className={`size-3.5 ${color}`} />
+                {opt.label}
+              </ComboboxItem>
+            )
+          })}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+}
+
+// ── Backward-compatible wrappers ─────────────────────────────────────────────
 
 interface InlineStatusEditorProps {
   currentStatus: string
-  entityType: EntityType
-  statusOptions: readonly { label: string; value: string }[]
+  entityType: string
+  statusOptions: CollabOption[]
   onStatusChange: (newStatus: string) => void
+  disabled?: boolean
 }
 
-// Inline status editor that renders a StatusBadge as a clickable trigger
-// and shows a popover with available status options
-export function InlineStatusEditor({ currentStatus, entityType, statusOptions, onStatusChange }: InlineStatusEditorProps) {
-  const [open, setOpen] = useState(false)
-
+export function InlineStatusEditor({ currentStatus, statusOptions, onStatusChange, disabled }: InlineStatusEditorProps) {
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<button type="button" className="cursor-pointer" />}>
-        <StatusBadge status={currentStatus} entityType={entityType} />
-      </PopoverTrigger>
-      <PopoverContent className="w-48 p-1" align="start">
-        {statusOptions.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer"
-            onClick={() => {
-              if (opt.value !== currentStatus) {
-                onStatusChange(opt.value)
-              }
-              setOpen(false)
-            }}
-          >
-            <Check className={`h-3.5 w-3.5 ${opt.value === currentStatus ? "opacity-100" : "opacity-0"}`} />
-            {opt.label}
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
+    <InlineComboboxEditor
+      value={currentStatus}
+      options={statusOptions}
+      onValueChange={onStatusChange}
+      disabled={disabled}
+    />
   )
 }
 
 interface InlinePriorityEditorProps {
   currentPriority: string
   onPriorityChange: (newPriority: string) => void
+  disabled?: boolean
 }
 
-// Inline priority editor that renders a PriorityBadge as a clickable trigger
-// and shows a popover with available priority options
-export function InlinePriorityEditor({ currentPriority, onPriorityChange }: InlinePriorityEditorProps) {
-  const [open, setOpen] = useState(false)
-
+export function InlinePriorityEditor({ currentPriority, onPriorityChange, disabled }: InlinePriorityEditorProps) {
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<button type="button" className="cursor-pointer" />}>
-        <PriorityBadge priority={currentPriority} />
-      </PopoverTrigger>
-      <PopoverContent className="w-48 p-1" align="start">
-        {CollabPriorityOptions.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer"
-            onClick={() => {
-              if (opt.value !== currentPriority) {
-                onPriorityChange(opt.value)
-              }
-              setOpen(false)
-            }}
-          >
-            <Check className={`h-3.5 w-3.5 ${opt.value === currentPriority ? "opacity-100" : "opacity-0"}`} />
-            {opt.label}
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
+    <InlineComboboxEditor
+      value={currentPriority}
+      options={CollabPriorityOptions}
+      onValueChange={onPriorityChange}
+      disabled={disabled}
+    />
   )
 }
+
+interface InlineSeverityEditorProps {
+  currentSeverity: string
+  onSeverityChange: (newSeverity: string) => void
+  disabled?: boolean
+}
+
+export function InlineSeverityEditor({ currentSeverity, onSeverityChange, disabled }: InlineSeverityEditorProps) {
+  return (
+    <InlineComboboxEditor
+      value={currentSeverity}
+      options={DefectSeverityOptions}
+      onValueChange={onSeverityChange}
+      disabled={disabled}
+    />
+  )
+}
+
+// ── Assignee editor ──────────────────────────────────────────────────────────
+
+function MemberAvatar({ name }: { name?: string }) {
+  const letter = (name ?? "?")[0].toUpperCase()
+  return (
+    <span className="inline-flex items-center justify-center size-5 rounded-full bg-muted text-[10px] font-medium shrink-0">
+      {letter}
+    </span>
+  )
+}
+
+interface InlineAssigneeEditorProps {
+  projectId: string
+  currentAssigneeId?: string
+  onAssigneeChange: (assigneeId: string) => void
+  disabled?: boolean
+}
+
+export function InlineAssigneeEditor({ projectId, currentAssigneeId, onAssigneeChange, disabled }: InlineAssigneeEditorProps) {
+  const { data } = useQuery({
+    queryKey: ["project-members", projectId],
+    queryFn: () => projectsApi.listMembers(projectId, { page: 1, page_size: 100 }),
+    enabled: !!projectId,
+  })
+
+  const members = data?.items ?? []
+
+  const options = useMemo(() => [
+    { label: "Unassigned", value: "" },
+    ...members.map(m => ({ label: m.fullname || m.username, value: m.user_id })),
+  ], [members])
+
+  const current = options.find(o => o.value === (currentAssigneeId ?? ""))
+
+  return (
+    <Combobox
+      value={currentAssigneeId ?? ""}
+      onValueChange={(val: string | null) => {
+        const next = val ?? ""
+        if (next !== (currentAssigneeId ?? "")) onAssigneeChange(next)
+      }}
+      itemToStringLabel={(v) => options.find(o => o.value === v)?.label ?? v ?? ""}
+      disabled={disabled}
+    >
+      <ComboboxInput className="w-fit">
+        <InputGroupAddon>
+          {current && current.value ? (
+            <MemberAvatar name={current.label} />
+          ) : (
+            <User className="size-3.5 text-muted-foreground" />
+          )}
+        </InputGroupAddon>
+      </ComboboxInput>
+      <ComboboxContent alignOffset={-24} className="w-full">
+        <ComboboxList>
+          {options.map((opt) => (
+            <ComboboxItem key={opt.value} value={opt.value}>
+              {opt.value ? <MemberAvatar name={opt.label} /> : <User className="size-3.5 text-muted-foreground" />}
+              {opt.label}
+            </ComboboxItem>
+          ))}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+}
+
+export { MemberAvatar }

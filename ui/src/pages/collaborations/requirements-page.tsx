@@ -1,7 +1,7 @@
-import { collaborationApi, CollabPriority, PlanningStatus, RequirementStatus, RequirementStatusOptions, type Requirement, type UpdateRequirementRequest } from "@/api/collaboration"
+import { collaborationApi, CollabPriority, PlanningStatus, RequirementStatus, RequirementStatusOptions, type Requirement } from "@/api/collaboration"
 
 import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
-import { InlinePriorityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
+import { InlineAssigneeEditor, InlinePriorityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog } from "@/components/collaboration/requirement-dialogs"
 import { flattenTree, type TreeItem } from "@/components/collaboration/tree-utils"
 import { DataTable } from "@/components/data-table/data-table"
@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input"
 // Remove unused imports
 import { useDebounce } from "@/hooks/use-debounce"
+import { buildRequirementUpdateRequest } from "@/lib/collaboration-update-payloads"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
@@ -146,9 +147,13 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
   })
 
   const updateRequirementPriorityMutation = useMutation({
-    mutationFn: ({ requirementId, priority }: { requirementId: string; priority: string }) => {
+    mutationFn: ({ requirement, priority }: { requirement: Requirement; priority: string }) => {
       if (!projectId) throw new Error("Project ID is required")
-      return collaborationApi.updateRequirement(projectId, requirementId, { priority: priority as CollabPriority } as UpdateRequirementRequest)
+      return collaborationApi.updateRequirement(
+        projectId,
+        requirement.id,
+        buildRequirementUpdateRequest(requirement, { priority: priority as CollabPriority })
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["requirements", projectId] })
@@ -157,6 +162,27 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update priority", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
+  const updateRequirementAssigneeMutation = useMutation({
+    mutationFn: ({ requirement, assigneeId }: { requirement: Requirement; assigneeId: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.updateRequirement(
+        projectId,
+        requirement.id,
+        buildRequirementUpdateRequest(requirement, { assignee_id: assigneeId })
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["requirements", projectId] })
+      toast.success("Requirement assignee updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update assignee", {
         description: err.response?.data?.error || "Unknown error occurred"
       })
     }
@@ -216,7 +242,18 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
       cell: ({ row }) => (
         <InlinePriorityEditor
           currentPriority={row.original.priority}
-          onPriorityChange={(priority) => updateRequirementPriorityMutation.mutate({ requirementId: row.original.id, priority })}
+          onPriorityChange={(priority) => updateRequirementPriorityMutation.mutate({ requirement: row.original, priority })}
+        />
+      ),
+    },
+    {
+      accessorKey: "assignee_id",
+      header: "Assignee",
+      cell: ({ row }) => (
+        <InlineAssigneeEditor
+          projectId={projectId!}
+          currentAssigneeId={row.original.assignee_id}
+          onAssigneeChange={(assigneeId) => updateRequirementAssigneeMutation.mutate({ requirement: row.original, assigneeId })}
         />
       ),
     },
@@ -284,17 +321,7 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
 
 
 
-      {!isLoading && requirements.length === 0 ? (
-        <EmptyState
-          title="No requirements found"
-          description="Create your first requirement to get started."
-          icon={FileText}
-          actionText="Create Requirement"
-          onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
-          actionIcon={Plus}
-        />
-      ) : (
-        <DataTable
+      {<DataTable
           columns={columns}
           data={tableData}
           isLoading={isLoading}
@@ -303,6 +330,17 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
           pagination={pagination}
           onPaginationChange={setPagination}
           onRefresh={() => refetch()}
+          emptyContent={
+            <EmptyState
+              title="No requirements found"
+              description="Create your first requirement to get started."
+              icon={FileText}
+              actionText="Create Requirement"
+              onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
+              actionIcon={Plus}
+              border={false}
+            />
+          }
           leftToolbar={() => (
             <>
               <Input
@@ -322,8 +360,7 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
               New Requirement
             </Button>
           )}
-        />
-      )}
+        />}
 
       <CreateRequirementDialog
         open={createOpen}

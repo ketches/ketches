@@ -1,5 +1,16 @@
+import type { LucideIcon } from 'lucide-react'
+import { AlertCircle, AlertOctagon, AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, ChevronUp, ChevronsUp, CircleAlert, CircleDashed, CircleDotDashed, CircleCheck, CircleSlash, Clock, Cog, Equal, Eye, Info, Play, XCircle } from 'lucide-react'
 import client from './client'
 import { type PaginationParams, type PaginationResponse } from './pagination'
+
+// ── Shared Types ─────────────────────────────────────────────────────────────
+
+export interface CollabOption {
+  label: string
+  value: string
+  icon: LucideIcon
+  color: string
+}
 
 // ── Constants & Enums ────────────────────────────────────────────────────────
 
@@ -9,11 +20,11 @@ export const SprintStatus = {
   CLOSED: 'closed',
 } as const
 export type SprintStatus = typeof SprintStatus[keyof typeof SprintStatus]
-export const SprintStatusOptions = [
-  { label: 'Planned', value: 'planned' },
-  { label: 'Active', value: 'active' },
-  { label: 'Closed', value: 'closed' },
-] as const
+export const SprintStatusOptions: CollabOption[] = [
+  { label: 'Planned', value: 'planned', icon: CalendarClock, color: 'slate' },
+  { label: 'Active', value: 'active', icon: Play, color: 'green' },
+  { label: 'Closed', value: 'closed', icon: CircleCheck, color: 'gray' },
+]
 
 export const RequirementStatus = {
   TRIAGE: 'triage',
@@ -23,13 +34,13 @@ export const RequirementStatus = {
   CLOSED: 'closed',
 } as const
 export type RequirementStatus = typeof RequirementStatus[keyof typeof RequirementStatus]
-export const RequirementStatusOptions = [
-  { label: 'Triage', value: 'triage' },
-  { label: 'Confirmed', value: 'confirmed' },
-  { label: 'In Progress', value: 'in_progress' },
-  { label: 'Done', value: 'done' },
-  { label: 'Closed', value: 'closed' },
-] as const
+export const RequirementStatusOptions: CollabOption[] = [
+  { label: 'Triage', value: 'triage', icon: AlertTriangle, color: 'purple' },
+  { label: 'Confirmed', value: 'confirmed', icon: CircleCheck, color: 'indigo' },
+  { label: 'In Progress', value: 'in_progress', icon: CircleDotDashed, color: 'blue' },
+  { label: 'Done', value: 'done', icon: CheckCircle2, color: 'green' },
+  { label: 'Closed', value: 'closed', icon: CircleSlash, color: 'slate' },
+]
 
 export const PlanningStatus = {
   BACKLOG: 'backlog',
@@ -53,13 +64,13 @@ export const TaskStatus = {
   CANCELLED: 'cancelled',
 } as const
 export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus]
-export const TaskStatusOptions = [
-  { label: 'Todo', value: 'todo' },
-  { label: 'In Progress', value: 'in_progress' },
-  { label: 'Review', value: 'review' },
-  { label: 'Done', value: 'done' },
-  { label: 'Cancelled', value: 'cancelled' },
-] as const
+export const TaskStatusOptions: CollabOption[] = [
+  { label: 'Todo', value: 'todo', icon: CircleDashed, color: "gray" },
+  { label: 'In Progress', value: 'in_progress', icon: CircleDotDashed, color: "blue" },
+  { label: 'Review', value: 'review', icon: Eye, color: "orange" },
+  { label: 'Done', value: 'done', icon: CheckCircle2, color: "green" },
+  { label: 'Cancelled', value: 'cancelled', icon: CircleSlash, color: "gray" },
+]
 
 export const TestRunStatus = {
   PASSED: 'passed',
@@ -67,11 +78,11 @@ export const TestRunStatus = {
   BLOCKED: 'blocked',
 } as const
 export type TestRunStatus = typeof TestRunStatus[keyof typeof TestRunStatus]
-export const TestRunStatusOptions = [
-  { label: 'Passed', value: 'passed' },
-  { label: 'Failed', value: 'failed' },
-  { label: 'Blocked', value: 'blocked' },
-] as const
+export const TestRunStatusOptions: CollabOption[] = [
+  { label: 'Passed', value: 'passed', icon: CheckCircle2, color: "green" },
+  { label: 'Failed', value: 'failed', icon: CircleSlash, color: "red" },
+  { label: 'Blocked', value: 'blocked', icon: CircleDashed, color: "gray" },
+]
 
 export const DefectSeverity = {
   CRITICAL: 'critical',
@@ -80,12 +91,12 @@ export const DefectSeverity = {
   LOW: 'low',
 } as const
 export type DefectSeverity = typeof DefectSeverity[keyof typeof DefectSeverity]
-export const DefectSeverityOptions = [
-  { label: 'Critical', value: 'critical' },
-  { label: 'High', value: 'high' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'Low', value: 'low' },
-] as const
+export const DefectSeverityOptions: CollabOption[] = [
+  { label: 'Critical', value: 'critical', icon: AlertOctagon, color: 'red' },
+  { label: 'High', value: 'high', icon: AlertTriangle, color: 'orange' },
+  { label: 'Medium', value: 'medium', icon: AlertCircle, color: 'yellow' },
+  { label: 'Low', value: 'low', icon: Info, color: 'green' },
+]
 
 export const DefectStatus = {
   NEW: 'new',
@@ -95,13 +106,13 @@ export const DefectStatus = {
   REJECTED: 'rejected',
 } as const
 export type DefectStatus = typeof DefectStatus[keyof typeof DefectStatus]
-export const DefectStatusOptions = [
-  { label: 'New', value: 'new' },
-  { label: 'Processing', value: 'processing' },
-  { label: 'Pending Verify', value: 'pending_verify' },
-  { label: 'Closed', value: 'closed' },
-  { label: 'Rejected', value: 'rejected' },
-] as const
+export const DefectStatusOptions: CollabOption[] = [
+  { label: 'New', value: 'new', icon: CircleAlert, color: 'red' },
+  { label: 'Processing', value: 'processing', icon: Cog, color: 'orange' },
+  { label: 'Pending Verify', value: 'pending_verify', icon: Clock, color: 'amber' },
+  { label: 'Closed', value: 'closed', icon: CheckCircle2, color: 'green' },
+  { label: 'Rejected', value: 'rejected', icon: XCircle, color: 'slate' },
+]
 
 export const CollabPriority = {
   P0: 'p0',
@@ -110,12 +121,12 @@ export const CollabPriority = {
   P3: 'p3',
 } as const
 export type CollabPriority = typeof CollabPriority[keyof typeof CollabPriority]
-export const CollabPriorityOptions = [
-  { label: 'P0', value: 'p0' },
-  { label: 'P1', value: 'p1' },
-  { label: 'P2', value: 'p2' },
-  { label: 'P3', value: 'p3' },
-] as const
+export const CollabPriorityOptions: CollabOption[] = [
+  { label: 'P0', value: 'p0', icon: ChevronsUp, color: 'red' },
+  { label: 'P1', value: 'p1', icon: ChevronUp, color: 'orange' },
+  { label: 'P2', value: 'p2', icon: Equal, color: 'blue' },
+  { label: 'P3', value: 'p3', icon: ChevronDown, color: 'green' },
+]
 
 // ── Interfaces ───────────────────────────────────────────────────────────────
 

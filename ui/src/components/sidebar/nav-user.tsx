@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { AccountDialog } from "@/components/account/account-dialog"
+import { markManualLogout } from "@/lib/auth-redirect"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import {
   Avatar,
@@ -67,8 +68,9 @@ export function NavUser({
   }
 
   const handleLogout = () => {
+    markManualLogout()
     logout()
-    navigate("/login")
+    navigate("/login", { replace: true })
   }
 
   return (

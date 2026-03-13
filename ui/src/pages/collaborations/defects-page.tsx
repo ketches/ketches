@@ -1,7 +1,7 @@
-import { collaborationApi, type Defect, type DefectStatus, DefectStatusOptions } from "@/api/collaboration"
-import { SeverityBadge, StatusBadge } from "@/components/collaboration/collab-badges"
+import { collaborationApi, type Defect, type DefectSeverity, type DefectStatus, DefectStatusOptions, type UpdateDefectRequest } from "@/api/collaboration"
 import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
-import { CreateDefectDialog, DeleteDefectDialog, EditDefectDialog, TransitionDefectDialog } from "@/components/collaboration/defect-dialogs"
+import { InlineAssigneeEditor, InlineSeverityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
+import { CreateDefectDialog, DeleteDefectDialog, EditDefectDialog } from "@/components/collaboration/defect-dialogs"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -17,8 +17,8 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { ArrowRightLeft, Bug, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { Bug, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
+import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -48,7 +48,6 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [transitionOpen, setTransitionOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Defect | null>(null)
 
   const { data: response, isLoading, refetch } = useQuery({
@@ -88,6 +87,70 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
     }
   })
 
+  const updateDefectSeverityMutation = useMutation({
+    mutationFn: ({ defect, severity }: { defect: Defect; severity: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      const data: UpdateDefectRequest = {
+        title: defect.title,
+        description: defect.description,
+        severity: severity as DefectSeverity,
+        status: defect.status,
+        assignee_id: defect.assignee_id,
+        sprint_id: defect.sprint_id,
+        requirement_id: defect.requirement_id,
+        task_id: defect.task_id,
+        test_case_id: defect.test_case_id,
+        test_run_id: defect.test_run_id,
+        reproduction_steps: defect.reproduction_steps,
+        fix_note: defect.fix_note,
+        runtime_context_json: defect.runtime_context_json,
+      }
+      return collaborationApi.updateDefect(projectId, defect.id, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["defects", projectId] })
+      toast.success("Defect severity updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update severity", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
+  const updateDefectAssigneeMutation = useMutation({
+    mutationFn: ({ defect, assigneeId }: { defect: Defect; assigneeId: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      const data: UpdateDefectRequest = {
+        title: defect.title,
+        description: defect.description,
+        severity: defect.severity,
+        status: defect.status,
+        assignee_id: assigneeId || undefined,
+        sprint_id: defect.sprint_id,
+        requirement_id: defect.requirement_id,
+        task_id: defect.task_id,
+        test_case_id: defect.test_case_id,
+        test_run_id: defect.test_run_id,
+        reproduction_steps: defect.reproduction_steps,
+        fix_note: defect.fix_note,
+        runtime_context_json: defect.runtime_context_json,
+      }
+      return collaborationApi.updateDefect(projectId, defect.id, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["defects", projectId] })
+      toast.success("Defect assignee updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update assignee", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
   const handleEdit = (item: Defect) => {
     setSelectedItem(item)
     setEditOpen(true)
@@ -98,12 +161,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
     setDeleteOpen(true)
   }
 
-  const handleTransition = (item: Defect) => {
-    setSelectedItem(item)
-    setTransitionOpen(true)
-  }
-
-  const columns: ColumnDef<Defect>[] = useMemo(() => [
+  const columns: ColumnDef<Defect>[] = [
     {
       accessorKey: "title",
       header: "Title",
@@ -117,12 +175,35 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
     {
       accessorKey: "severity",
       header: "Severity",
-      cell: ({ row }) => <SeverityBadge severity={row.original.severity} />,
+      cell: ({ row }) => (
+        <InlineSeverityEditor
+          currentSeverity={row.original.severity}
+          onSeverityChange={(severity) => updateDefectSeverityMutation.mutate({ defect: row.original, severity })}
+        />
+      ),
     },
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      cell: ({ row }) => (
+        <InlineStatusEditor
+          currentStatus={row.original.status}
+          entityType="defect"
+          statusOptions={DefectStatusOptions}
+          onStatusChange={(status) => transitionDefectMutation.mutate({ defectId: row.original.id, status })}
+        />
+      ),
+    },
+    {
+      accessorKey: "assignee_id",
+      header: "Assignee",
+      cell: ({ row }) => (
+        <InlineAssigneeEditor
+          projectId={projectId!}
+          currentAssigneeId={row.original.assignee_id}
+          onAssigneeChange={(assigneeId) => updateDefectAssigneeMutation.mutate({ defect: row.original, assigneeId })}
+        />
+      ),
     },
     {
       accessorKey: "created_at",
@@ -140,10 +221,6 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
                 <MoreVertical />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleTransition(item)}>
-                  <ArrowRightLeft />
-                  Transition
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleEdit(item)}>
                   <Pencil />
                   Edit
@@ -158,7 +235,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
         )
       },
     },
-  ], [transitionDefectMutation])
+  ]
 
   if (!projectId) return null
 
@@ -177,17 +254,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
         </div>
       )}
 
-      {!isLoading && defects.length === 0 ? (
-        <EmptyState
-          title="No defects found"
-          description="Good job! No bugs reported yet."
-          icon={Bug}
-          actionText="Report Defect"
-          onAction={() => setCreateOpen(true)}
-          actionIcon={Plus}
-        />
-      ) : (
-        <DataTable
+      {<DataTable
           columns={columns}
           data={defects}
           isLoading={isLoading}
@@ -196,6 +263,17 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
           pagination={pagination}
           onPaginationChange={setPagination}
           onRefresh={() => refetch()}
+          emptyContent={
+            <EmptyState
+              title="No defects found"
+              description="Good job! No bugs reported yet."
+              icon={Bug}
+              actionText="Report Defect"
+              onAction={() => setCreateOpen(true)}
+              actionIcon={Plus}
+              border={false}
+            />
+          }
           leftToolbar={() => (
             <>
               <Input
@@ -215,8 +293,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
               Report Defect
             </Button>
           )}
-        />
-      )}
+        />}
 
       <CreateDefectDialog
         open={createOpen}
@@ -232,7 +309,6 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
       />
 
       {selectedItem && (
-        <>
           <DeleteDefectDialog
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
@@ -243,17 +319,6 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
               setSelectedItem(null)
             }}
           />
-          <TransitionDefectDialog
-            open={transitionOpen}
-            onOpenChange={setTransitionOpen}
-            projectId={projectId}
-            defect={selectedItem}
-            onSuccess={() => {
-              setTransitionOpen(false)
-              // Don't nullify selectedItem here to avoid glitch
-            }}
-          />
-        </>
       )}
     </div>
   )

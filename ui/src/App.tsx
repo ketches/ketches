@@ -1,3 +1,4 @@
+import { AuthRoute } from "@/components/auth/auth-route"
 import { BottomPanel } from "@/components/applications/bottom-panel"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { AppHeader } from "@/components/layout/app-header"
@@ -83,14 +84,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       </BottomPanelProvider>
     </SidebarProvider>
   )
-}
-
-function AuthRoute({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />
-  }
-  return <>{children}</>
 }
 
 export function App() {

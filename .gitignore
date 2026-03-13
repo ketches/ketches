@@ -35,8 +35,10 @@ main
 .opencode/*
 .sisyphus/*
 .cursor/*
+.claude/*
 docs/plans/*
 ui/docs/plans/*
+docs/superpowers/*
 
 # Database
 **/*.db

@@ -18,8 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -102,8 +102,7 @@ export function CreateTestCaseDialog({
             Add a new test case to the project.
           </SheetDescription>
         </SheetHeader>
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
-          <div className="grid flex-1 auto-rows-min gap-4 px-4">
+        <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -166,20 +165,20 @@ export function CreateTestCaseDialog({
               />
             </FieldContent>
           </Field>
-          </div>
+        </div>
 
-          <SheetFooter>
-            <div className="flex w-full items-center justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button
-                type="submit"
-                disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
-              >
-                {mutation.isPending ? "Creating..." : "Create"}
-              </Button>
-            </div>
-          </SheetFooter>
-        </form>
+        <SheetFooter>
+          <div className="flex w-full items-center justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button
+              type="submit"
+              disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   )
@@ -265,64 +264,64 @@ export function EditTestCaseDialog({
         </SheetHeader>
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
           <div className="grid flex-1 auto-rows-min gap-4 px-4">
-          <Field>
-            <FieldLabel>Title</FieldLabel>
-            <FieldContent>
-              <Input
-                id="edit-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </FieldContent>
-          </Field>
+            <Field>
+              <FieldLabel>Title</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="edit-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </FieldContent>
+            </Field>
 
-          <Field>
-            <FieldLabel>Precondition</FieldLabel>
-            <FieldContent>
-              <RichTextEditor
-                value={precondition}
-                onChange={setPrecondition}
-              />
-            </FieldContent>
-          </Field>
+            <Field>
+              <FieldLabel>Precondition</FieldLabel>
+              <FieldContent>
+                <RichTextEditor
+                  value={precondition}
+                  onChange={setPrecondition}
+                />
+              </FieldContent>
+            </Field>
 
-          <Field>
-            <FieldLabel>Steps</FieldLabel>
-            <FieldContent>
-              <RichTextEditor
-                value={steps}
-                onChange={setSteps}
-              />
-            </FieldContent>
-          </Field>
+            <Field>
+              <FieldLabel>Steps</FieldLabel>
+              <FieldContent>
+                <RichTextEditor
+                  value={steps}
+                  onChange={setSteps}
+                />
+              </FieldContent>
+            </Field>
 
-          <Field>
-            <FieldLabel>Expected Result</FieldLabel>
-            <FieldContent>
-              <RichTextEditor
-                value={expectedResult}
-                onChange={setExpectedResult}
-              />
-            </FieldContent>
-          </Field>
+            <Field>
+              <FieldLabel>Expected Result</FieldLabel>
+              <FieldContent>
+                <RichTextEditor
+                  value={expectedResult}
+                  onChange={setExpectedResult}
+                />
+              </FieldContent>
+            </Field>
 
-          <Field>
-            <FieldLabel>Sprint (Optional)</FieldLabel>
-            <FieldContent>
-              <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")} itemToStringLabel={(item) => sprints?.items.find(s => s.id === item)?.name || item}>
-                <ComboboxInput placeholder="Select sprint" />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {sprints?.items.map((s: Sprint) => (
-                      <ComboboxItem key={s.id} value={s.id}>
-                        {s.name}
-                      </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </FieldContent>
-          </Field>
+            <Field>
+              <FieldLabel>Sprint (Optional)</FieldLabel>
+              <FieldContent>
+                <Combobox value={sprintId} onValueChange={(v) => setSprintId(v || "")} itemToStringLabel={(item) => sprints?.items.find(s => s.id === item)?.name || item}>
+                  <ComboboxInput placeholder="Select sprint" />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {sprints?.items.map((s: Sprint) => (
+                        <ComboboxItem key={s.id} value={s.id}>
+                          {s.name}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
           </div>
 
           <SheetFooter>
@@ -463,34 +462,34 @@ export function CreateTestRunDialog({
         </SheetHeader>
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
           <div className="grid flex-1 auto-rows-min gap-4 px-4">
-          <Field>
-            <FieldLabel>Status</FieldLabel>
-            <FieldContent>
-              <Combobox value={status} onValueChange={(v) => v && setStatus(v as TestRunStatus)} itemToStringLabel={(item) => TestRunStatusOptions.find(opt => opt.value === item)?.label || item}>
-                <ComboboxInput />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {TestRunStatusOptions.map((s) => (
-                      <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </FieldContent>
-          </Field>
+            <Field>
+              <FieldLabel>Status</FieldLabel>
+              <FieldContent>
+                <Combobox value={status} onValueChange={(v) => v && setStatus(v as TestRunStatus)} itemToStringLabel={(item) => TestRunStatusOptions.find(opt => opt.value === item)?.label || item}>
+                  <ComboboxInput />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {TestRunStatusOptions.map((s) => (
+                        <ComboboxItem key={s.value} value={s.value}>{s.label}</ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
 
-          <Field>
-            <FieldLabel>Comment (Optional)</FieldLabel>
-            <FieldContent>
-              <Textarea
-                id="run-comment"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Any observations or details..."
-                rows={3}
-              />
-            </FieldContent>
-          </Field>
+            <Field>
+              <FieldLabel>Comment (Optional)</FieldLabel>
+              <FieldContent>
+                <Textarea
+                  id="run-comment"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Any observations or details..."
+                  rows={3}
+                />
+              </FieldContent>
+            </Field>
           </div>
 
           <SheetFooter>

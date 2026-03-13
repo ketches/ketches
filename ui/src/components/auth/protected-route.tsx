@@ -1,5 +1,6 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
+import { buildLoginHref, getCurrentRelativePath } from '@/lib/auth-redirect'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -7,9 +8,10 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const location = useLocation()
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return <Navigate to={buildLoginHref(getCurrentRelativePath(location))} replace />
   }
 
   return <>{children}</>

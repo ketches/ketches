@@ -139,8 +139,7 @@ export function CreateDefectDialog({
             Report a new defect found in the project.
           </SheetDescription>
         </SheetHeader>
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
-          <div className="grid flex-1 auto-rows-min gap-4 px-4">
+        <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -278,20 +277,20 @@ export function CreateDefectDialog({
           <p className="text-xs text-muted-foreground">
             * At least one upstream link (Requirement, Task, or Test Case) is required.
           </p>
-          </div>
+        </div>
 
-          <SheetFooter>
-            <div className="flex w-full items-center justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button
-                type="submit"
-                disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId)}
-              >
-                {mutation.isPending ? "Creating..." : "Create Defect"}
-              </Button>
-            </div>
-          </SheetFooter>
-        </form>
+        <SheetFooter>
+          <div className="flex w-full items-center justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button
+              type="submit"
+              disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId)}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending ? "Creating..." : "Create Defect"}
+            </Button>
+          </div>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   )
@@ -409,8 +408,7 @@ export function EditDefectDialog({
         <SheetHeader>
           <SheetTitle>Edit Defect</SheetTitle>
         </SheetHeader>
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
-          <div className="grid flex-1 auto-rows-min gap-4 px-4">
+        <div className="grid flex-1 auto-rows-min gap-4 px-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -551,20 +549,20 @@ export function EditDefectDialog({
               />
             </FieldContent>
           </Field>
-          </div>
+        </div>
 
-          <SheetFooter>
-            <div className="flex w-full items-center justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button
-                type="submit"
-                disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
-              >
-                {mutation.isPending ? "Save Changes" : "Save Changes"}
-              </Button>
-            </div>
-          </SheetFooter>
-        </form>
+        <SheetFooter>
+          <div className="flex w-full items-center justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button
+              type="submit"
+              disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending ? "Save Changes" : "Save Changes"}
+            </Button>
+          </div>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   )

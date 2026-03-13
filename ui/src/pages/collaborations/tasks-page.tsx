@@ -1,8 +1,8 @@
-import { collaborationApi, CollabPriority, TaskStatus, TaskStatusOptions, type Task, type UpdateTaskRequest } from "@/api/collaboration"
+import { collaborationApi, CollabPriority, TaskStatus, TaskStatusOptions, type Task } from "@/api/collaboration"
 
 import { DueDateBadge } from "@/components/collaboration/collab-badges"
 import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
-import { InlinePriorityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
+import { InlineAssigneeEditor, InlinePriorityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { KanbanBoard } from "@/components/collaboration/kanban-board"
 import { CreateTaskDialog, EditTaskDialog } from "@/components/collaboration/task-dialogs"
 import { flattenTree, type TreeItem } from "@/components/collaboration/tree-utils"
@@ -21,7 +21,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { CheckSquare, ChevronDown, ChevronRight, Columns3, ListTree, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
+import { CheckSquare, ChevronDown, ChevronRight, Columns3, ListTree, MoreVertical, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react"
+import { buildTaskUpdateRequest } from "@/lib/collaboration-update-payloads"
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useMemo, useState } from "react"
@@ -62,7 +63,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
   const [selectedItem, setSelectedItem] = useState<Task | null>(null)
   const [parentForCreate, setParentForCreate] = useState<{ id: string; title: string } | undefined>(undefined)
 
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, isFetching, refetch } = useQuery({
 
     queryKey: ["tasks", projectId, pagination.pageIndex, pagination.pageSize, debouncedSearch, assigneeId, sprintId, statusFilter, priorityFilter, assigneeFilter],
     queryFn: () => {
@@ -137,9 +138,13 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
   })
 
   const updateTaskPriorityMutation = useMutation({
-    mutationFn: ({ taskId, priority }: { taskId: string; priority: string }) => {
+    mutationFn: ({ task, priority }: { task: Task; priority: string }) => {
       if (!projectId) throw new Error("Project ID is required")
-      return collaborationApi.updateTask(projectId, taskId, { priority: priority as CollabPriority } as UpdateTaskRequest)
+      return collaborationApi.updateTask(
+        projectId,
+        task.id,
+        buildTaskUpdateRequest(task, { priority: priority as CollabPriority })
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
@@ -148,6 +153,27 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update priority", {
+        description: err.response?.data?.error || "Unknown error occurred"
+      })
+    }
+  })
+
+  const updateTaskAssigneeMutation = useMutation({
+    mutationFn: ({ task, assigneeId }: { task: Task; assigneeId: string }) => {
+      if (!projectId) throw new Error("Project ID is required")
+      return collaborationApi.updateTask(
+        projectId,
+        task.id,
+        buildTaskUpdateRequest(task, { assignee_id: assigneeId })
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
+      toast.success("Task assignee updated")
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error("Failed to update assignee", {
         description: err.response?.data?.error || "Unknown error occurred"
       })
     }
@@ -222,7 +248,18 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
       cell: ({ row }) => (
         <InlinePriorityEditor
           currentPriority={row.original.priority}
-          onPriorityChange={(priority) => updateTaskPriorityMutation.mutate({ taskId: row.original.id, priority })}
+          onPriorityChange={(priority) => updateTaskPriorityMutation.mutate({ task: row.original, priority })}
+        />
+      ),
+    },
+    {
+      accessorKey: "assignee_id",
+      header: "Assignee",
+      cell: ({ row }) => (
+        <InlineAssigneeEditor
+          projectId={projectId!}
+          currentAssigneeId={row.original.assignee_id}
+          onAssigneeChange={(assigneeId) => updateTaskAssigneeMutation.mutate({ task: row.original, assigneeId })}
         />
       ),
     },
@@ -310,16 +347,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
 
 
 
-      {!isLoading && tasks.length === 0 ? (
-        <EmptyState
-          title="No tasks found"
-          description="Create your first task to get started."
-          icon={CheckSquare}
-          actionText="Create Task"
-          onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
-          actionIcon={Plus}
-        />
-      ) : viewMode === "kanban" ? (
+      {viewMode === "kanban" ? (
         <>
           <div className="flex flex-wrap items-center justify-between gap-4 w-full">
             <div className="flex flex-1 items-center gap-2">
@@ -335,19 +363,39 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
             </div>
             <div className="ml-auto flex items-center gap-2">
               {taskViewTabs}
+              <Button
+                variant="secondary"
+                size="icon"
+                aria-label="Refresh tasks"
+                disabled={isLoading}
+                onClick={() => refetch()}
+              >
+                <RefreshCw className={isFetching && !isLoading ? "animate-spin" : undefined} />
+              </Button>
               <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
                 <Plus className="h-4 w-4" />
                 New Task
               </Button>
             </div>
           </div>
-          <KanbanBoard
-            tasks={tasks}
-            projectId={projectId}
-            onCreateChild={handleCreateChild}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+          {!isLoading && tasks.length === 0 ? (
+            <EmptyState
+              title="No tasks found"
+              description="Create your first task to get started."
+              icon={CheckSquare}
+              actionText="Create Task"
+              onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
+              actionIcon={Plus}
+            />
+          ) : (
+            <KanbanBoard
+              tasks={tasks}
+              projectId={projectId}
+              onCreateChild={handleCreateChild}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          )}
         </>
       ) : (
         <DataTable
@@ -358,6 +406,18 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
           totalCount={totalCount}
           pagination={pagination}
           onPaginationChange={setPagination}
+          onRefresh={() => refetch()}
+          emptyContent={
+            <EmptyState
+              title="No tasks found"
+              description="Create your first task to get started."
+              icon={CheckSquare}
+              actionText="Create Task"
+              onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
+              actionIcon={Plus}
+              border={false}
+            />
+          }
           leftToolbar={() => (
             <>
               <Input

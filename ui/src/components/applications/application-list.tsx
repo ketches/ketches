@@ -68,6 +68,7 @@ interface ApplicationListProps {
   envName?: string
   favoritesOnly?: boolean
   hideToolbarActions?: boolean
+  toolbarLeadingContent?: React.ReactNode
   // When set, only show apps whose IDs are in this set (used by group view)
   allowedAppIds?: Set<string>
   // When set, shows 'Remove from Group' action instead of 'Add to Group' for this group
@@ -86,6 +87,7 @@ export function ApplicationList({
   envName: _envName,
   favoritesOnly = false,
   hideToolbarActions,
+  toolbarLeadingContent,
   allowedAppIds,
   currentGroupId,
   externalApps,
@@ -440,12 +442,15 @@ export function ApplicationList({
   ]
 
   const leftToolbar = (
-    <Input
-      className="flex flex-1 max-w-sm min-w-75"
-      placeholder="Search applications..."
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-    />
+    <div className="flex flex-1 flex-wrap items-center gap-3">
+      {toolbarLeadingContent}
+      <Input
+        className="flex flex-1 max-w-sm min-w-75"
+        placeholder="Search applications..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
+    </div>
   )
 
   const rightToolbar = (

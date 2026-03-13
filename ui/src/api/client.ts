@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from 'axios'
+import { buildUnauthenticatedLoginHref, getCurrentRelativePath } from '@/lib/auth-redirect'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -33,8 +34,13 @@ client.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth-storage')
-      window.location.href = '/login'
+      const requestUrl = String(error.config?.url ?? '')
+      const isAuthRequest = requestUrl.endsWith('/v1/users/sign-in') || requestUrl.endsWith('/v1/users/sign-up')
+
+      if (!isAuthRequest) {
+        localStorage.removeItem('auth-storage')
+        window.location.href = buildUnauthenticatedLoginHref(getCurrentRelativePath(window.location))
+      }
     }
     return Promise.reject(error)
   }

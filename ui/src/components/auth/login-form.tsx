@@ -8,12 +8,13 @@ import {
     FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { clearManualLogoutMarker, getPostLoginTarget } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import * as z from "zod";
 
@@ -29,6 +30,7 @@ export function LoginForm({
     ...props
 }: React.ComponentProps<"form">) {
     const navigate = useNavigate();
+    const location = useLocation();
     const setAuth = useAuthStore((state) => state.setAuth);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -68,7 +70,8 @@ export function LoginForm({
             toast.success("Login successful", {
                 description: `Welcome back, ${response.user.username}!`,
             });
-            navigate("/");
+            clearManualLogoutMarker();
+            navigate(getPostLoginTarget(location.search), { replace: true });
         } catch (err: any) {
             const errMsg =
                 err.response?.data?.error || "Invalid username or password";

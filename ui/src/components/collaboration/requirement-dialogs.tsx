@@ -167,7 +167,7 @@ export function CreateRequirementDialog({
         <SheetFooter>
           <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending || !title}>
+            <Button type="submit" disabled={mutation.isPending || !title} onClick={() => mutation.mutate()}>
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>

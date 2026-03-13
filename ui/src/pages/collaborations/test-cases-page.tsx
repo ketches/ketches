@@ -138,17 +138,7 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
         </div>
       )}
 
-      {!isLoading && testCases.length === 0 ? (
-        <EmptyState
-          title="No test cases found"
-          description="Create your first test case to get started."
-          icon={TestTube}
-          actionText="Create Test Case"
-          onAction={() => setCreateOpen(true)}
-          actionIcon={Plus}
-        />
-      ) : (
-        <DataTable
+      {<DataTable
           columns={columns}
           data={testCases}
           isLoading={isLoading}
@@ -157,6 +147,17 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
           pagination={pagination}
           onPaginationChange={setPagination}
           onRefresh={() => refetch()}
+          emptyContent={
+            <EmptyState
+              title="No test cases found"
+              description="Create your first test case to get started."
+              icon={TestTube}
+              actionText="Create Test Case"
+              onAction={() => setCreateOpen(true)}
+              actionIcon={Plus}
+              border={false}
+            />
+          }
           leftToolbar={() => (
             <Input
               className="max-w-xs"
@@ -171,8 +172,7 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
               New Test Case
             </Button>
           )}
-        />
-      )}
+        />}
 
       <CreateTestCaseDialog
         open={createOpen}

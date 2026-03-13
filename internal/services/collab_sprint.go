@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ketches/ketches/internal/db"
@@ -25,7 +26,8 @@ func ListSprints(projectID string, params *models.CollabFilterParams) (int64, []
 
 	q := db.DB.Where("project_id = ?", projectID)
 	if params.Status != "" {
-		q = q.Where("status = ?", params.Status)
+		statuses := strings.Split(params.Status, ",")
+		q = q.Where("status IN ?", statuses)
 	}
 	if params.Search != "" {
 		q = q.Where("name LIKE ?", "%"+params.Search+"%")

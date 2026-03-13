@@ -13,14 +13,24 @@ import {
 import { useDebounce } from "@/hooks/use-debounce"
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type PaginationState } from "@tanstack/react-table"
-import { LayoutList, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Folder, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Label } from '../ui/label'
 import { EditAppGroupDialog } from './edit-app-group-dialog'
 interface Props { envId: string }
 
-function GroupAppList({ groupId, envId, currentGroupId }: { groupId: string; envId: string; currentGroupId: string }) {
+function GroupAppList({
+  groupId,
+  envId,
+  currentGroupId,
+  toolbarLeadingContent,
+}: {
+  groupId: string
+  envId: string
+  currentGroupId: string
+  toolbarLeadingContent?: React.ReactNode
+}) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -51,6 +61,7 @@ function GroupAppList({ groupId, envId, currentGroupId }: { groupId: string; env
       externalSearchQuery={searchQuery}
       onExternalSearchChange={setSearchQuery}
       externalLoading={isLoading || isFetching}
+      toolbarLeadingContent={toolbarLeadingContent}
     />
   )
 }
@@ -76,52 +87,58 @@ export function AppGroupsView({ envId }: Props) {
   })
 
   return (
-    <div className="space-y-8">
-      {groupedApps.map(group => {
+    <div className="space-y-6">
+      {groupedApps.map((group) => {
         return (
-          <div key={group.id}>
-            <div className="group/header flex items-center gap-2 mb-3">
-              <Label className="text-xs text-muted-foreground"><LayoutList className="h-4 w-4" />{group.name}</Label>
-              <div className="opacity-0 group-hover/header:opacity-100 transition-opacity">
-                <DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger
-                      delay={200}
-                      render={
-                        <DropdownMenuTrigger
-                          render={
-                            <Button variant="ghost" size="icon" className="h-6 w-6" />
-                          }
-                        />
-                      }
-                    >
-                      <MoreVertical className="h-3 w-3" />
-                    </TooltipTrigger>
-                    <TooltipContent>Group actions</TooltipContent>
-                  </Tooltip>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => setEditTarget(group)}>
-                      <Pencil />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => deleteMutation.mutate(group.id)}
-                    >
-                      <Trash2 />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-
-            {/* Full DataTable identical to All Apps, filtered to this group's app IDs */}
+          <div key={group.id} className="space-y-6">
             <GroupAppList
               groupId={group.id}
               envId={envId}
               currentGroupId={group.id}
+              toolbarLeadingContent={
+                <div className="group/toolbar flex items-center gap-2 shrink-0">
+                  <Label className="flex items-center gap-2 text-muted-foreground shrink-0">
+                    <Folder className="h-4 w-4" />
+                    {group.name}
+                  </Label>
+                  <div className="">
+                    <DropdownMenu>
+                      <Tooltip>
+                        <TooltipTrigger
+                          delay={200}
+                          render={
+                            <DropdownMenuTrigger
+                              render={
+                                <Button variant="ghost" size="icon" className="h-6 w-6" />
+                              }
+                            />
+                          }
+                        >
+                          <MoreVertical className="h-3 w-3" />
+                        </TooltipTrigger>
+                        <TooltipContent>Group actions</TooltipContent>
+                      </Tooltip>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => setEditTarget(group)}>
+                          <Pencil />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => deleteMutation.mutate(group.id)}
+                        >
+                          <Trash2 />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              }
             />
+            {/* {index < groupedApps.length - 1 && (
+              <Separator className="bg-transparent border-t border-dashed border-border" />
+            )} */}
           </div>
         )
       })}
