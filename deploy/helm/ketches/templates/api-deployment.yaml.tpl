@@ -13,7 +13,6 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml.tpl") . | sha256sum | quote }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml.tpl") . | sha256sum | quote }}
         {{- with .Values.api.podAnnotations }}
         {{- toYaml . | nindent 8 }}
@@ -38,35 +37,47 @@ spec:
               protocol: TCP
           env:
             - name: PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "ketches.configMapName" . | quote }}
-                  key: PORT
+              value: {{ .Values.config.port | quote }}
             - name: LOG_LEVEL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "ketches.configMapName" . | quote }}
-                  key: LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
             - name: DB_DRIVER
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "ketches.configMapName" . | quote }}
-                  key: DB_DRIVER
+              value: {{ .Values.config.dbDriver | quote }}
+            - name: DB_AUTO_MIGRATE
+              value: {{ .Values.config.dbAutoMigrate | quote }}
+            {{- if .Values.config.dbSource }}
             - name: DB_SOURCE
               valueFrom:
                 secretKeyRef:
                   name: {{ include "ketches.secretName" . | quote }}
                   key: db-source
+            {{- else }}
+            - name: DB_NAME
+              value: {{ include "ketches.database.name" . | quote }}
+            {{- if ne .Values.config.dbDriver "sqlite" }}
+            - name: DB_HOST
+              value: {{ include "ketches.database.host" . | quote }}
+            - name: DB_PORT
+              value: {{ include "ketches.database.port" . | quote }}
+            - name: DB_USERNAME
+              value: {{ include "ketches.database.username" . | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ketches.secretName" . | quote }}
+                  key: db-password
+            {{- end }}
+            {{- if eq .Values.config.dbDriver "postgres" }}
+            - name: DB_SSLMODE
+              value: {{ .Values.config.dbSSLMode | quote }}
+            {{- end }}
+            {{- end }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "ketches.secretName" . | quote }}
                   key: jwt-secret
             - name: CORS_ALLOWED_ORIGINS
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "ketches.configMapName" . | quote }}
-                  key: CORS_ALLOWED_ORIGINS
+              value: {{ .Values.config.corsAllowedOrigins | quote }}
             {{- range .Values.api.extraEnv }}
             - name: {{ .name }}
               {{- if hasKey . "valueFrom" }}

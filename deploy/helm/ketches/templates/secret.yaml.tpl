@@ -7,7 +7,11 @@ metadata:
 type: Opaque
 stringData:
   jwt-secret: {{ required "values.config.jwtSecret is required" .Values.config.jwtSecret | quote }}
-  db-source: {{ include "ketches.database.source" . | quote }}
+  {{- if .Values.config.dbSource }}
+  db-source: {{ .Values.config.dbSource | quote }}
+  {{- else if ne .Values.config.dbDriver "sqlite" }}
+  db-password: {{ include "ketches.database.password" . | quote }}
+  {{- end }}
   {{- if .Values.postgres.enabled }}
   postgres-password: {{ .Values.postgres.auth.password | quote }}
   {{- end }}

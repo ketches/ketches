@@ -33,6 +33,12 @@ func InitDB() error {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	if app.Config.DBAutoMigrate {
+		if err := Migrate(); err != nil {
+			return fmt.Errorf("failed to migrate database: %w", err)
+		}
+	}
+
 	log.Printf("successfully connected to %s database", app.Config.DBDriver)
 	return nil
 }

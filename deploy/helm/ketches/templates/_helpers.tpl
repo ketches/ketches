@@ -66,14 +66,60 @@ app.kubernetes.io/component: {{ .component }}
 {{- printf "%s-secrets" (include "ketches.fullname" .) -}}
 {{- end -}}
 
-{{/* DB source generation. */}}
-{{- define "ketches.database.source" -}}
-{{- if .Values.config.dbSource -}}
-{{- .Values.config.dbSource -}}
-{{- else if .Values.postgres.enabled -}}
-{{- printf "host=%s port=%v user=%s password=%s dbname=%s sslmode=%s" (include "ketches.postgres.fullname" .) (int .Values.postgres.service.port) .Values.postgres.auth.username .Values.postgres.auth.password .Values.postgres.auth.database .Values.config.dbSSLMode -}}
+{{/* Database connection value helpers. */}}
+{{- define "ketches.database.host" -}}
+{{- if .Values.postgres.enabled -}}
+{{- include "ketches.postgres.fullname" . -}}
+{{- else if .Values.config.dbHost -}}
+{{- .Values.config.dbHost -}}
 {{- else -}}
-{{- fail "values.config.dbSource must be set when values.postgres.enabled is false" -}}
+{{- fail "values.config.dbHost must be set when values.postgres.enabled is false and values.config.dbSource is empty" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ketches.database.port" -}}
+{{- if .Values.postgres.enabled -}}
+{{- printf "%v" (int .Values.postgres.service.port) -}}
+{{- else if .Values.config.dbPort -}}
+{{- .Values.config.dbPort -}}
+{{- else if eq .Values.config.dbDriver "mysql" -}}
+{{- printf "3306" -}}
+{{- else -}}
+{{- printf "5432" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ketches.database.name" -}}
+{{- if .Values.postgres.enabled -}}
+{{- .Values.postgres.auth.database -}}
+{{- else if .Values.config.dbName -}}
+{{- .Values.config.dbName -}}
+{{- else if eq .Values.config.dbDriver "sqlite" -}}
+{{- printf "ketches.db" -}}
+{{- else -}}
+{{- fail "values.config.dbName must be set when values.postgres.enabled is false and values.config.dbSource is empty" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ketches.database.username" -}}
+{{- if .Values.postgres.enabled -}}
+{{- .Values.postgres.auth.username -}}
+{{- else if .Values.config.dbUsername -}}
+{{- .Values.config.dbUsername -}}
+{{- else if eq .Values.config.dbDriver "mysql" -}}
+{{- printf "root" -}}
+{{- else -}}
+{{- fail "values.config.dbUsername must be set when values.postgres.enabled is false and values.config.dbSource is empty" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ketches.database.password" -}}
+{{- if .Values.postgres.enabled -}}
+{{- .Values.postgres.auth.password -}}
+{{- else if .Values.config.dbPassword -}}
+{{- .Values.config.dbPassword -}}
+{{- else -}}
+{{- fail "values.config.dbPassword must be set when values.postgres.enabled is false and values.config.dbSource is empty" -}}
 {{- end -}}
 {{- end -}}
 

@@ -8,7 +8,13 @@ config:
   logLevel: info
   dbDriver: postgres
   dbSource: ""
+  dbHost: ""
+  dbPort: ""
+  dbName: ""
+  dbUsername: ""
+  dbPassword: ""
   dbSSLMode: disable
+  dbAutoMigrate: true
   corsAllowedOrigins: "*"
   backendUrl: ""
   jwtSecret: change-this-in-production

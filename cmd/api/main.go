@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -17,7 +19,7 @@ func init() {
 }
 
 func main() {
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
 		log.Fatalf("failed to load .env file: %v", err)
 	}
 
@@ -26,10 +28,6 @@ func main() {
 	if err := db.InitDB(); err != nil {
 		log.Fatalf("failed to initialize database: %v", err)
 	}
-
-	// if err := db.Migrate(); err != nil {
-	// 	log.Fatalf("failed to migrate database: %v", err)
-	// }
 
 	if err := services.EnsureBootstrapAdmin(); err != nil {
 		log.Fatalf("failed to ensure bootstrap admin: %v", err)

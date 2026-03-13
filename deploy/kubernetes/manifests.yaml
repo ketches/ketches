@@ -10,20 +10,9 @@ metadata:
   namespace: ketches
 type: Opaque
 stringData:
+  db-password: "ketches"
   postgres-password: "ketches"
   jwt-secret: "change-this-in-production"
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ketches-config
-  namespace: ketches
-data:
-  LOG_LEVEL: "info"
-  DB_DRIVER: "postgres"
-  DB_SOURCE: "host=ketches-db port=5432 user=ketches password=ketches dbname=ketches sslmode=disable"
-  CORS_ALLOWED_ORIGINS: "*"
-  BACKEND_URL: "http://ketches-api:8080"
 ---
 apiVersion: v1
 kind: Service
@@ -124,30 +113,33 @@ spec:
             - name: PORT
               value: "8080"
             - name: LOG_LEVEL
-              valueFrom:
-                configMapKeyRef:
-                  name: ketches-config
-                  key: LOG_LEVEL
+              value: "info"
             - name: DB_DRIVER
+              value: "postgres"
+            - name: DB_AUTO_MIGRATE
+              value: "true"
+            - name: DB_HOST
+              value: "ketches-db"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "ketches"
+            - name: DB_USERNAME
+              value: "ketches"
+            - name: DB_PASSWORD
               valueFrom:
-                configMapKeyRef:
-                  name: ketches-config
-                  key: DB_DRIVER
-            - name: DB_SOURCE
-              valueFrom:
-                configMapKeyRef:
-                  name: ketches-config
-                  key: DB_SOURCE
+                secretKeyRef:
+                  name: ketches-secrets
+                  key: db-password
+            - name: DB_SSLMODE
+              value: "disable"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: ketches-secrets
                   key: jwt-secret
             - name: CORS_ALLOWED_ORIGINS
-              valueFrom:
-                configMapKeyRef:
-                  name: ketches-config
-                  key: CORS_ALLOWED_ORIGINS
+              value: "*"
           resources:
             limits:
               memory: "2Gi"
@@ -193,10 +185,7 @@ spec:
             - containerPort: 80
           env:
             - name: BACKEND_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: ketches-config
-                  key: BACKEND_URL
+              value: "http://ketches-api:8080"
           resources:
             limits:
               memory: "1Gi"

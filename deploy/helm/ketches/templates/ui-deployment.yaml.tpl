@@ -13,7 +13,6 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml.tpl") . | sha256sum | quote }}
         {{- with .Values.ui.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -37,10 +36,7 @@ spec:
               protocol: TCP
           env:
             - name: BACKEND_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "ketches.configMapName" . | quote }}
-                  key: BACKEND_URL
+              value: {{ include "ketches.ui.backendUrl" . | quote }}
             {{- range .Values.ui.extraEnv }}
             - name: {{ .name }}
               {{- if hasKey . "valueFrom" }}

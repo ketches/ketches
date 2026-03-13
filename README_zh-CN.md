@@ -165,30 +165,50 @@ make dev-ui
 
 ## ⚙️ 配置说明
 
-所有配置项均通过环境变量（或 `.env` 文件）设置：
+所有配置项均通过环境变量设置；`.env` 文件仅作为本地开发时的可选方式。
 
 | 变量名 | 默认值 | 说明 |
 | ------ | ------ | ---- |
 | `PORT` | `8080` | API 服务监听端口 |
 | `LOG_LEVEL` | `info` | 日志级别（`debug` / `info` / `warn` / `error`） |
 | `DB_DRIVER` | `sqlite` | 数据库驱动（`postgres` / `mysql` / `sqlite`） |
-| `DB_SOURCE` | `ketches.db` | 数据库连接字符串 |
+| `DB_SOURCE` | *（可选）* | 完整数据库连接字符串；设置后优先于拆分数据库变量 |
+| `DB_HOST` | 按驱动决定 | 未设置 `DB_SOURCE` 时的数据库主机 |
+| `DB_PORT` | 按驱动决定 | 未设置 `DB_SOURCE` 时的数据库端口 |
+| `DB_NAME` | `ketches.db` / `ketches` | 未设置 `DB_SOURCE` 时的 SQLite 文件路径或数据库名 |
+| `DB_USERNAME` | 按驱动决定 | 未设置 `DB_SOURCE` 时的数据库用户名 |
+| `DB_PASSWORD` | 空 | 未设置 `DB_SOURCE` 时的数据库密码 |
+| `DB_SSLMODE` | `disable` | 未设置 `DB_SOURCE` 时 PostgreSQL 的 SSL 模式 |
+| `DB_AUTO_MIGRATE` | `true` | 是否在数据库初始化时执行 GORM AutoMigrate |
 | `JWT_SECRET` | *（必填）* | JWT Token 签名密钥 |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | 允许跨域的源地址，逗号分隔 |
+
+**Note**：生产环境建议设置 `DB_AUTO_MIGRATE=false`，并通过可控的迁移流程管理数据库结构变更。
 
 **PostgreSQL 示例**：
 
 ```bash
 DB_DRIVER=postgres
-DB_SOURCE=host=localhost port=5432 user=postgres password=secret dbname=ketches sslmode=disable
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=ketches
+DB_USERNAME=postgres
+DB_PASSWORD=secret
+DB_SSLMODE=disable
 ```
 
 **MySQL 示例**：
 
 ```bash
 DB_DRIVER=mysql
-DB_SOURCE=root:secret@tcp(localhost:3306)/ketches?charset=utf8mb4&parseTime=True&loc=Local
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=ketches
+DB_USERNAME=root
+DB_PASSWORD=secret
 ```
+
+如果你更希望自行维护完整连接串，也仍然可以直接设置 `DB_SOURCE`。
 
 完整配置参见 [`.env.example`](.env.example)。
 

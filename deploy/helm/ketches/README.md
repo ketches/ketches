@@ -29,8 +29,18 @@ helm upgrade --install ketches ./deploy/helm/ketches \
   --create-namespace \
   --set postgres.enabled=false \
   --set config.dbDriver=postgres \
-  --set-string config.dbSource='host=my-postgres port=5432 user=ketches password=secret dbname=ketches sslmode=disable'
+  --set config.dbHost=my-postgres \
+  --set config.dbPort=5432 \
+  --set config.dbName=ketches \
+  --set config.dbUsername=ketches \
+  --set config.dbPassword=secret \
+  --set config.dbSSLMode=disable
+  --set config.dbAutoMigrate=true
 ```
+
+If you prefer, you can still set `config.dbSource` directly.
+
+**Note**: `config.dbAutoMigrate` is available. For production environments, set `--set config.dbAutoMigrate=false` and run schema migrations separately.
 
 ### Update images
 

@@ -165,30 +165,50 @@ make dev-ui
 
 ## ⚙️ Configuration
 
-All configuration is done via environment variables (or a `.env` file):
+All configuration is done via environment variables. A `.env` file is optional for local development.
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
 | `PORT` | `8080` | API server listen port |
 | `LOG_LEVEL` | `info` | Log level (`debug` / `info` / `warn` / `error`) |
 | `DB_DRIVER` | `sqlite` | Database driver (`postgres` / `mysql` / `sqlite`) |
-| `DB_SOURCE` | `ketches.db` | Database connection string |
+| `DB_SOURCE` | *(optional)* | Full database connection string; takes precedence over split database variables |
+| `DB_HOST` | driver-specific | Database host when `DB_SOURCE` is not set |
+| `DB_PORT` | driver-specific | Database port when `DB_SOURCE` is not set |
+| `DB_NAME` | `ketches.db` / `ketches` | SQLite file path or database name when `DB_SOURCE` is not set |
+| `DB_USERNAME` | driver-specific | Database username when `DB_SOURCE` is not set |
+| `DB_PASSWORD` | empty | Database password when `DB_SOURCE` is not set |
+| `DB_SSLMODE` | `disable` | PostgreSQL SSL mode when `DB_SOURCE` is not set |
+| `DB_AUTO_MIGRATE` | `true` | Whether to run GORM AutoMigrate during database initialization |
 | `JWT_SECRET` | *(required)* | Secret key for signing JWT tokens |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | Comma-separated allowed CORS origins |
+
+**Note**: For production environments, set `DB_AUTO_MIGRATE=false` and manage schema migrations through a controlled migration process.
 
 **PostgreSQL example**:
 
 ```bash
 DB_DRIVER=postgres
-DB_SOURCE=host=localhost port=5432 user=postgres password=secret dbname=ketches sslmode=disable
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=ketches
+DB_USERNAME=postgres
+DB_PASSWORD=secret
+DB_SSLMODE=disable
 ```
 
 **MySQL example**:
 
 ```bash
 DB_DRIVER=mysql
-DB_SOURCE=root:secret@tcp(localhost:3306)/ketches?charset=utf8mb4&parseTime=True&loc=Local
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=ketches
+DB_USERNAME=root
+DB_PASSWORD=secret
 ```
+
+If you prefer, you can still provide a complete `DB_SOURCE` directly.
 
 See [`.env.example`](.env.example) for the full reference.
 
