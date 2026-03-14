@@ -13,7 +13,7 @@ import { buildRequirementUpdateRequest } from "@/lib/collaboration-update-payloa
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
-import { Archive, ArrowRight, CornerDownRight, LayoutList, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
+import { Archive, ArrowRight, CornerDownRight, Logs, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -270,62 +270,56 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
       )}
 
       {<DataTable
-          columns={columns}
-          data={requirements}
-          isLoading={isLoading}
-          manualPagination
-          totalCount={totalCount}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          onRefresh={() => refetch()}
-          rowSelection={rowSelection}
-          onRowSelectionChange={setRowSelection}
-          emptyContent={
-            <EmptyState
-              title="Backlog is empty"
-              description="Requirements without a sprint will appear here."
-              icon={LayoutList}
-              actionText="Create Requirement"
-              onAction={() => {
-                setParentRequirementId(undefined)
-                setCreateOpen(true)
-              }}
-              actionIcon={Plus}
-              border={false}
+        columns={columns}
+        data={requirements}
+        isLoading={isLoading}
+        manualPagination
+        totalCount={totalCount}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        onRefresh={() => refetch()}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
+        emptyContent={
+          <EmptyState
+            title=""
+            description="No results."
+            icon={Logs}
+            border={false}
+          />
+        }
+        leftToolbar={() => (
+          <>
+            <Input
+              className="max-w-xs"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
-          }
-          leftToolbar={() => (
-            <>
-              <Input
-                className="max-w-xs"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <StatusFilter value={statusFilter} onChange={setStatusFilter} options={RequirementStatusOptions} />
-              <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
-              <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
-            </>
-          )}
-          rightToolbar={() => (
-            <>
-              <Button onClick={() => {
-                setParentRequirementId(undefined)
-                setCreateOpen(true)
-              }}>
-                <Plus className="h-4 w-4" />
-                Create Requirement
-              </Button>
-              <Button
-                disabled={selectedIds.length === 0}
-                onClick={() => setPlanToSprintOpen(true)}
-              >
-                <ArrowRight className="h-4 w-4" />
-                Plan to Sprint ({selectedIds.length})
-              </Button>
-            </>
-          )}
-        />}
+            <StatusFilter value={statusFilter} onChange={setStatusFilter} options={RequirementStatusOptions} />
+            <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+            <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
+          </>
+        )}
+        rightToolbar={() => (
+          <>
+            <Button onClick={() => {
+              setParentRequirementId(undefined)
+              setCreateOpen(true)
+            }}>
+              <Plus className="h-4 w-4" />
+              Create Requirement
+            </Button>
+            <Button
+              disabled={selectedIds.length === 0}
+              onClick={() => setPlanToSprintOpen(true)}
+            >
+              <ArrowRight className="h-4 w-4" />
+              Plan to Sprint ({selectedIds.length})
+            </Button>
+          </>
+        )}
+      />}
 
       <PlanToSprintDialog
         open={planToSprintOpen}

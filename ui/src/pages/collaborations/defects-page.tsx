@@ -1,7 +1,7 @@
 import { collaborationApi, type Defect, type DefectSeverity, type DefectStatus, DefectStatusOptions, type UpdateDefectRequest } from "@/api/collaboration"
 import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
-import { InlineAssigneeEditor, InlineSeverityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { CreateDefectDialog, DeleteDefectDialog, EditDefectDialog } from "@/components/collaboration/defect-dialogs"
+import { InlineAssigneeEditor, InlineSeverityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -255,45 +255,42 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
       )}
 
       {<DataTable
-          columns={columns}
-          data={defects}
-          isLoading={isLoading}
-          manualPagination
-          totalCount={totalCount}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          onRefresh={() => refetch()}
-          emptyContent={
-            <EmptyState
-              title="No defects found"
-              description="Good job! No bugs reported yet."
-              icon={Bug}
-              actionText="Report Defect"
-              onAction={() => setCreateOpen(true)}
-              actionIcon={Plus}
-              border={false}
+        columns={columns}
+        data={defects}
+        isLoading={isLoading}
+        manualPagination
+        totalCount={totalCount}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        onRefresh={() => refetch()}
+        emptyContent={
+          <EmptyState
+            title=""
+            description="No results."
+            icon={Bug}
+            border={false}
+          />
+        }
+        leftToolbar={() => (
+          <>
+            <Input
+              className="max-w-xs"
+              placeholder="Search defects..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
-          }
-          leftToolbar={() => (
-            <>
-              <Input
-                className="max-w-xs"
-                placeholder="Search defects..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <StatusFilter value={statusFilter} onChange={setStatusFilter} options={DefectStatusOptions} />
-              <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
-              <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
-            </>
-          )}
-          rightToolbar={() => (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Report Defect
-            </Button>
-          )}
-        />}
+            <StatusFilter value={statusFilter} onChange={setStatusFilter} options={DefectStatusOptions} />
+            <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+            <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
+          </>
+        )}
+        rightToolbar={() => (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Report Defect
+          </Button>
+        )}
+      />}
 
       <CreateDefectDialog
         open={createOpen}
@@ -309,16 +306,16 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
       />
 
       {selectedItem && (
-          <DeleteDefectDialog
-            open={deleteOpen}
-            onOpenChange={setDeleteOpen}
-            projectId={projectId}
-            defectId={selectedItem.id}
-            onSuccess={() => {
-              setDeleteOpen(false)
-              setSelectedItem(null)
-            }}
-          />
+        <DeleteDefectDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          projectId={projectId}
+          defectId={selectedItem.id}
+          onSuccess={() => {
+            setDeleteOpen(false)
+            setSelectedItem(null)
+          }}
+        />
       )}
     </div>
   )

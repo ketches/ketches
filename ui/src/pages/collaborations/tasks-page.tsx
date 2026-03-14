@@ -19,10 +19,10 @@ import {
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
+import { buildTaskUpdateRequest } from "@/lib/collaboration-update-payloads"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { CheckSquare, ChevronDown, ChevronRight, Columns3, ListTree, MoreVertical, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react"
-import { buildTaskUpdateRequest } from "@/lib/collaboration-update-payloads"
+import { CheckSquare, ChevronDown, ChevronRight, Columns3, ListTodo, ListTree, MoreVertical, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react"
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useMemo, useState } from "react"
@@ -380,12 +380,9 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
           </div>
           {!isLoading && tasks.length === 0 ? (
             <EmptyState
-              title="No tasks found"
-              description="Create your first task to get started."
-              icon={CheckSquare}
-              actionText="Create Task"
-              onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
-              actionIcon={Plus}
+              title=""
+              description="No results."
+              icon={ListTodo}
             />
           ) : (
             <KanbanBoard
@@ -409,12 +406,9 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
           onRefresh={() => refetch()}
           emptyContent={
             <EmptyState
-              title="No tasks found"
-              description="Create your first task to get started."
+              title=""
+              description="No results."
               icon={CheckSquare}
-              actionText="Create Task"
-              onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
-              actionIcon={Plus}
               border={false}
             />
           }

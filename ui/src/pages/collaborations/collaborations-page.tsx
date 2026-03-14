@@ -1,4 +1,4 @@
-import { CheckSquare, FlaskConical, GalleryVerticalEnd, Goal } from "lucide-react"
+import { CheckSquare, FlaskConical, GalleryVerticalEnd, Goal, Logs } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
@@ -207,7 +207,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
               )}
               {(validTabs as readonly string[]).includes("backlog") && (
                 <TabsTrigger value="backlog">
-                  <ListTodo className="text-yellow-500" />
+                  <Logs className="text-yellow-500" />
                   Backlog
                 </TabsTrigger>
               )}

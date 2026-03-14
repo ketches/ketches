@@ -17,7 +17,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { CalendarRange, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
+import { CalendarRange, Goal, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -187,40 +187,37 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
       )}
 
       {<DataTable
-          columns={columns}
-          data={sprints}
-          isLoading={isLoading}
-          manualPagination
-          totalCount={totalCount}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          onRefresh={() => refetch()}
-          emptyContent={
-            <EmptyState
-              title="No sprints found"
-              description="Create your first sprint to get started."
-              icon={CalendarRange}
-              actionText="Create Sprint"
-              onAction={() => setCreateOpen(true)}
-              actionIcon={Plus}
-              border={false}
-            />
-          }
-          leftToolbar={() => (
-            <Input
-              className="max-w-xs"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          )}
-          rightToolbar={() => (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              New Sprint
-            </Button>
-          )}
-        />}
+        columns={columns}
+        data={sprints}
+        isLoading={isLoading}
+        manualPagination
+        totalCount={totalCount}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        onRefresh={() => refetch()}
+        emptyContent={
+          <EmptyState
+            title=""
+            description="No results."
+            icon={Goal}
+            border={false}
+          />
+        }
+        leftToolbar={() => (
+          <Input
+            className="max-w-xs"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        )}
+        rightToolbar={() => (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New Sprint
+          </Button>
+        )}
+      />}
 
       <CreateSprintDialog
         open={createOpen}

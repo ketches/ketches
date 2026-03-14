@@ -322,45 +322,42 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
 
 
       {<DataTable
-          columns={columns}
-          data={tableData}
-          isLoading={isLoading}
-          manualPagination
-          totalCount={totalCount}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          onRefresh={() => refetch()}
-          emptyContent={
-            <EmptyState
-              title="No requirements found"
-              description="Create your first requirement to get started."
-              icon={FileText}
-              actionText="Create Requirement"
-              onAction={() => { setParentForCreate(undefined); setCreateOpen(true) }}
-              actionIcon={Plus}
-              border={false}
+        columns={columns}
+        data={tableData}
+        isLoading={isLoading}
+        manualPagination
+        totalCount={totalCount}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        onRefresh={() => refetch()}
+        emptyContent={
+          <EmptyState
+            title=""
+            description="No results."
+            icon={FileText}
+            border={false}
+          />
+        }
+        leftToolbar={() => (
+          <>
+            <Input
+              className="max-w-xs"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
-          }
-          leftToolbar={() => (
-            <>
-              <Input
-                className="max-w-xs"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <StatusFilter value={statusFilter} onChange={setStatusFilter} options={RequirementStatusOptions} />
-              <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
-              <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
-            </>
-          )}
-          rightToolbar={() => (
-            <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
-              <Plus className="h-4 w-4" />
-              New Requirement
-            </Button>
-          )}
-        />}
+            <StatusFilter value={statusFilter} onChange={setStatusFilter} options={RequirementStatusOptions} />
+            <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+            <AssigneeFilter projectId={projectId!} value={assigneeFilter} onChange={setAssigneeFilter} />
+          </>
+        )}
+        rightToolbar={() => (
+          <Button onClick={() => { setParentForCreate(undefined); setCreateOpen(true) }}>
+            <Plus className="h-4 w-4" />
+            New Requirement
+          </Button>
+        )}
+      />}
 
       <CreateRequirementDialog
         open={createOpen}

@@ -15,7 +15,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate } from "@/lib/utils"
 import { useQuery } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { MoreVertical, Pencil, Play, Plus, TestTube, Trash2 } from "lucide-react"
+import { FlaskConical, MoreVertical, Pencil, Play, Plus, TestTube, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
 
@@ -139,40 +139,37 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
       )}
 
       {<DataTable
-          columns={columns}
-          data={testCases}
-          isLoading={isLoading}
-          manualPagination
-          totalCount={totalCount}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          onRefresh={() => refetch()}
-          emptyContent={
-            <EmptyState
-              title="No test cases found"
-              description="Create your first test case to get started."
-              icon={TestTube}
-              actionText="Create Test Case"
-              onAction={() => setCreateOpen(true)}
-              actionIcon={Plus}
-              border={false}
-            />
-          }
-          leftToolbar={() => (
-            <Input
-              className="max-w-xs"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          )}
-          rightToolbar={() => (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              New Test Case
-            </Button>
-          )}
-        />}
+        columns={columns}
+        data={testCases}
+        isLoading={isLoading}
+        manualPagination
+        totalCount={totalCount}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        onRefresh={() => refetch()}
+        emptyContent={
+          <EmptyState
+            title=""
+            description="No results."
+            icon={FlaskConical}
+            border={false}
+          />
+        }
+        leftToolbar={() => (
+          <Input
+            className="max-w-xs"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        )}
+        rightToolbar={() => (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New Test Case
+          </Button>
+        )}
+      />}
 
       <CreateTestCaseDialog
         open={createOpen}
