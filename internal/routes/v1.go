@@ -42,6 +42,15 @@ func setupV1Routes(r *gin.Engine) {
 			authorized.GET("/operation-logs/settings", middlewares.AdminOnly(), handlers.GetOperationLogSettings)
 			authorized.PUT("/operation-logs/settings", middlewares.AdminOnly(), handlers.UpdateOperationLogSettings)
 
+			// ── Notifications (user-scoped) ────────────────────────────
+			notifications := authorized.Group("/notifications")
+			{
+				notifications.GET("", handlers.ListNotifications)
+				notifications.GET("/unread-count", handlers.GetUnreadCount)
+				notifications.POST("/read-all", handlers.MarkAllNotificationsRead)
+				notifications.POST("/:notificationID/action", handlers.HandleNotificationAction)
+			}
+
 			users := authorized.Group("/users")
 			{
 				users.GET("", handlers.ListUsers)

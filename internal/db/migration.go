@@ -46,6 +46,7 @@ func Migrate() error {
 		&entities.CollabTestCase{},
 		&entities.CollabTestRun{},
 		&entities.CollabDefect{},
+		&entities.Notification{},
 	); err != nil {
 		return err
 	}

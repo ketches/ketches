@@ -171,7 +171,8 @@ func InviteProjectMembers(c *gin.Context) {
 		return
 	}
 
-	if err := services.InviteProjectMembers(projectID, req.UserIDs, req.Role); err != nil {
+	claims := api.GetClaims(c)
+	if err := services.InviteProjectMembers(projectID, req.UserIDs, req.Role, claims.UserID); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

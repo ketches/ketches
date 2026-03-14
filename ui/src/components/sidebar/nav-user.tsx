@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 
 import { AccountDialog } from "@/components/account/account-dialog"
-import { markManualLogout } from "@/lib/auth-redirect"
+import { NotificationDialog } from "@/components/notifications/notification-dialog"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import {
   Avatar,
@@ -40,6 +40,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useNotifications } from "@/hooks/use-notifications"
+import { markManualLogout } from "@/lib/auth-redirect"
 import { useAuthStore } from "@/stores/auth"
 import { useNavigate } from "react-router-dom"
 
@@ -56,6 +58,7 @@ export function NavUser({
   const { setTheme } = useTheme()
   const theme = useTheme().theme
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
+  const { unreadCount, dialogOpen: notifDialogOpen, setDialogOpen: setNotifDialogOpen } = useNotifications()
 
   const authUser = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
@@ -122,9 +125,14 @@ export function NavUser({
                   <UserCog className="mr-2" />
                   Account
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setNotifDialogOpen(true)}>
                   <Bell className="mr-2" />
                   Notifications
+                  {unreadCount > 0 && (
+                    <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[0.5rem] font-medium text-white hover:text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -194,6 +202,10 @@ export function NavUser({
         open={accountDialogOpen}
         onOpenChange={setAccountDialogOpen}
         user={user}
+      />
+      <NotificationDialog
+        open={notifDialogOpen}
+        onOpenChange={setNotifDialogOpen}
       />
     </>
   )

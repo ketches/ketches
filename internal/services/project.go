@@ -220,7 +220,13 @@ func UpdateProjectMemberRole(projectID, userID, role string) error {
 	return db.DB.Model(&member).Update("project_role", role).Error
 }
 
-func InviteProjectMembers(projectID string, userIDs []string, role string) error {
+func InviteProjectMembers(projectID string, userIDs []string, role string, senderID string) error {
+	// Get project name for notification content
+	var project entities.Project
+	if err := db.DB.First(&project, "id = ?", projectID).Error; err != nil {
+		return err
+	}
+
 	for _, userID := range userIDs {
 		var count int64
 		db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND user_id = ?", projectID, userID).Count(&count)
@@ -231,13 +237,29 @@ func InviteProjectMembers(projectID string, userIDs []string, role string) error
 			continue
 		}
 
-		member := &entities.ProjectMember{
-			ID:          uuid.New(),
-			ProjectID:   projectID,
-			UserID:      userID,
-			ProjectRole: role,
+		// Check for existing pending invitation
+		hasPending, existingID, err := HasPendingInvitation(userID, projectID)
+		if err != nil {
+			return err
 		}
-		if err := db.DB.Create(member).Error; err != nil {
+		if hasPending {
+			// Update existing invitation's action data
+			actionData := `{"role":"` + role + `"}`
+			if err := db.DB.Model(&entities.Notification{}).Where("id = ?", existingID).
+				Update("action_data", actionData).Error; err != nil {
+				return err
+			}
+			continue
+		}
+
+		// Create invitation notification instead of directly adding member
+		actionData := `{"role":"` + role + `"}`
+		title := "Project Invitation"
+		message := "You have been invited to join project \"" + project.Name + "\""
+		if err := CreateNotification(
+			userID, senderID, "invitation", "project_invitation",
+			title, message, "project", projectID, projectID, actionData,
+		); err != nil {
 			return err
 		}
 	}
