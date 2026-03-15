@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"os"
@@ -43,6 +44,10 @@ func main() {
 
 	// Recover active build watchers
 	core.GlobalBuildWatcher.RecoverActiveBuilds()
+	if err := core.RecoverTerminalBuildLogArchives(context.Background()); err != nil {
+		log.Printf("failed to recover terminal build log archives: %v", err)
+	}
+	go core.StartBuildLogMaintenance(context.Background())
 
 	r := gin.Default()
 	routes.SetupRoutes(r)
