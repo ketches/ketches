@@ -51,6 +51,21 @@ helm upgrade --install ketches ./deploy/helm/ketches \
   --set ui.image.tag=v1.0.0
 ```
 
+### Configure build log persistence
+
+Build log archives are stored on the API pod filesystem and require persistent storage if you want them to survive pod recreation.
+
+```bash
+helm upgrade --install ketches ./deploy/helm/ketches \
+  --namespace ketches \
+  --set config.buildLogBaseDir=/app/data/build-logs \
+  --set config.buildLogRetentionDays=15 \
+  --set api.persistence.enabled=true \
+  --set api.persistence.size=10Gi
+```
+
+This first version assumes `api.replicaCount=1`. If you scale the API horizontally, move build log storage to shared storage or object storage before relying on archived logs.
+
 ### Enable ingress
 
 ```bash
