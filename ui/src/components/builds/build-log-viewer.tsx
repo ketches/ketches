@@ -138,6 +138,33 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
     enabled: !!repoId,
   })
 
+  const archiveStatusMessage = React.useMemo(() => {
+    if (!build) return null
+
+    const isTerminalBuild =
+      build.status === "succeeded" ||
+      build.status === "failed" ||
+      build.status === "cancelled"
+
+    if (!isTerminalBuild) return null
+
+    if (build.log_persist_status === "failed") {
+      return {
+        title: "Archived build log unavailable",
+        detail: build.log_persist_error || "",
+      }
+    }
+
+    if (build.log_persist_status === "expired") {
+      return {
+        title: "Archived build log expired",
+        detail: "",
+      }
+    }
+
+    return null
+  }, [build])
+
   React.useEffect(() => {
     if (!buildId || !repoId) return
     setLogs([])
@@ -185,6 +212,13 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
         {build?.git_ref && <span className="flex items-center text-muted-foreground"> <GitBranch className="mr-1 h-3 w-3 inline" /><span>{build?.git_ref}</span></span>}
         {build?.image_full_name && <span className="flex items-center text-muted-foreground font-mono text-xs"><Image className="mr-1 h-3 w-3 inline" /><span>{build?.image_full_name}</span></span>}
         {build?.error_message && <span className="flex items-center text-destructive text-xs"><AlertTriangle className="mr-1 h-3 w-3 inline" /><span>{build?.error_message}</span></span>}
+        {archiveStatusMessage && (
+          <span className="flex items-center text-amber-700 text-xs">
+            <AlertTriangle className="mr-1 h-3 w-3 inline" />
+            <span>{archiveStatusMessage.title}</span>
+            {archiveStatusMessage.detail && <span className="ml-1">{archiveStatusMessage.detail}</span>}
+          </span>
+        )}
       </div>
       {/* )} */}
       <div ref={containerRef} className="border rounded-lg overflow-hidden h-[70vh]">

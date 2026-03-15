@@ -34,6 +34,8 @@ export interface Build {
   completed_at: string | null
   duration: number
   error_message: string
+  log_persist_status?: 'pending' | 'succeeded' | 'failed' | 'expired' | ''
+  log_persist_error?: string
   deployment_error_message?: string
   created_at: string
 }
