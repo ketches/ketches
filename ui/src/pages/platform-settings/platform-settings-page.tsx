@@ -3,7 +3,7 @@ import * as React from "react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { PlatformAuditLogTab } from "@/components/platform-settings/platform-audit-log-tab"
-import { PlatformBrandingTab } from "@/components/platform-settings/platform-branding-tab"
+import { PlatformGeneralTab } from "@/components/platform-settings/platform-general-tab"
 import { PlatformUpgradeManagementTab } from "@/components/platform-settings/platform-upgrade-management-tab"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { usePlatformBranding } from "@/hooks/use-platform-settings"
@@ -15,7 +15,7 @@ export function PlatformSettingsPage() {
   const { data: branding } = usePlatformBranding()
   const statusQuery = usePlatformUpdateStatusQuery()
   const checkMutation = useCheckPlatformUpdateMutation()
-  const [activeTab, setActiveTab] = React.useState("branding")
+  const [activeTab, setActiveTab] = React.useState("general")
 
   const status = checkMutation.data ?? statusQuery.data
   const brandName = branding?.name || "Ketches Admin"
@@ -50,9 +50,9 @@ export function PlatformSettingsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="branding">
+          <TabsTrigger value="general">
             <Type />
-            Branding
+            General
           </TabsTrigger>
           <TabsTrigger value="upgrade-management">
             <ArrowUpCircle />
@@ -63,8 +63,8 @@ export function PlatformSettingsPage() {
             Audit Log
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="branding" className="mt-2 space-y-4">
-          <PlatformBrandingTab />
+        <TabsContent value="general" className="mt-2 space-y-4">
+          <PlatformGeneralTab />
         </TabsContent>
         <TabsContent value="upgrade-management" className="mt-2 space-y-4">
           <PlatformUpgradeManagementTab

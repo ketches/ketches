@@ -3,10 +3,12 @@ import ReactDOMClient from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
+  mockRole,
   mockUseMutation,
   mockUseQuery,
   mockUseQueryClient,
 } = vi.hoisted(() => ({
+  mockRole: { current: "member" as "member" | "admin" },
   mockUseMutation: vi.fn(),
   mockUseQuery: vi.fn(),
   mockUseQueryClient: vi.fn(),
@@ -24,7 +26,7 @@ vi.mock("@tanstack/react-query", async () => {
 
 vi.mock("@/stores/auth", () => ({
   useAuthStore: (selector: (state: { user: { role: string } | null }) => unknown) =>
-    selector({ user: { role: "member" } }),
+    selector({ user: { role: mockRole.current } }),
 }))
 
 vi.mock("@/hooks/use-debounce", () => ({
@@ -60,16 +62,18 @@ vi.mock("@/components/data-table/data-table", () => ({
     leftToolbar?: () => React.ReactNode
     rightToolbar?: () => React.ReactNode
   }) => (
-    <div>
-      <div>{leftToolbar?.()}</div>
-      <div>{rightToolbar?.()}</div>
-      <div>{Array.isArray(data) && data.length > 0 ? "has-data" : emptyContent ?? "No results."}</div>
+    <div data-testid="activities-table">
+      <div data-testid="left-toolbar">{leftToolbar?.()}</div>
+      <div data-testid="right-toolbar">{rightToolbar?.()}</div>
+      <div data-testid="table-body">
+        {Array.isArray(data) && data.length > 0 ? "has-data" : emptyContent ?? "No results."}
+      </div>
     </div>
   ),
 }))
 
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, ...props }: React.ComponentProps<"button">) => <button {...props}>{children}</button>,
+  Button: ({ children, className, ...props }: React.ComponentProps<"button">) => <button className={className} {...props}>{children}</button>,
 }))
 
 vi.mock("@/components/ui/input", () => ({
@@ -94,18 +98,6 @@ vi.mock("@/components/ui/calendar", () => ({
   Calendar: () => <div>calendar</div>,
 }))
 
-vi.mock("@/api/operation-logs", () => ({
-  activitiesApi: {
-    list: vi.fn(),
-  },
-  operationLogsApi: {
-    getOperationLogSettings: vi.fn(),
-    listOperationLogs: vi.fn(),
-    updateOperationLogSettings: vi.fn(),
-    exportOperationLogsCSV: vi.fn(),
-  },
-}))
-
 vi.mock("sonner", () => ({
   toast: {
     error: vi.fn(),
@@ -114,6 +106,34 @@ vi.mock("sonner", () => ({
 }))
 
 import { ActivitiesPage } from "./activities-page"
+
+function mockActivitiesResponse(items: Array<Record<string, unknown>>) {
+  mockUseQuery.mockImplementation(({ queryKey }: { queryKey: unknown[] }) => {
+    if (queryKey[0] === "operation-log-settings") {
+      return {
+        data: {
+          retention_days: 90,
+        },
+        isLoading: false,
+        isFetching: false,
+      }
+    }
+
+    return {
+      data: {
+        items,
+        pagination: {
+          total: items.length,
+          page: 1,
+          page_size: 10,
+          total_pages: items.length > 0 ? 1 : 0,
+        },
+      },
+      isLoading: false,
+      isFetching: false,
+    }
+  })
+}
 
 describe("ActivitiesPage", () => {
   beforeEach(() => {
@@ -124,37 +144,18 @@ describe("ActivitiesPage", () => {
       isPending: false,
       mutate: vi.fn(),
     })
-    mockUseQuery.mockImplementation(({ queryKey }: { queryKey: unknown[] }) => {
-      if (queryKey[0] === "operation-log-settings") {
-        return {
-          data: undefined,
-          isLoading: false,
-          isFetching: false,
-        }
-      }
-
-      return {
-        data: {
-          items: [],
-          pagination: {
-            total: 0,
-            page: 1,
-            page_size: 10,
-            total_pages: 0,
-          },
-        },
-        isLoading: false,
-        isFetching: false,
-      }
-    })
   })
 
   afterEach(() => {
     document.body.innerHTML = ""
     vi.clearAllMocks()
+    mockRole.current = "member"
   })
 
-  it("keeps the filters visible when the filtered activity result is empty", async () => {
+  it("keeps filters visible when the result is empty", async () => {
+    mockRole.current = "member"
+    mockActivitiesResponse([])
+
     const container = document.createElement("div")
     document.body.appendChild(container)
     const root = ReactDOMClient.createRoot(container)
@@ -163,10 +164,82 @@ describe("ActivitiesPage", () => {
       root.render(<ActivitiesPage />)
     })
 
-    const searchInput = container.querySelector('input[placeholder="Filter by action, resource..."]')
-
-    expect(searchInput).not.toBeNull()
+    expect(container.querySelector('input[placeholder="Filter by action, resource..."]')).not.toBeNull()
     expect(container.textContent).toContain("No activities found")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("keeps export for admins without rendering inline retention controls", async () => {
+    mockRole.current = "admin"
+    mockActivitiesResponse([
+      {
+        id: "log-1",
+        created_at: "2026-03-15T00:00:00Z",
+        username: "admin",
+        action: "update",
+        resource_type: "platform",
+        resource_id: "platform",
+        status: "success",
+        status_code: 200,
+        sensitivity: "internal",
+        request_summary: "updated branding",
+        client_ip: "127.0.0.1",
+      },
+    ])
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(<ActivitiesPage />)
+    })
+
+    expect(container.textContent).toContain("Export CSV")
+    expect(container.textContent).not.toContain("Save Retention Days")
+    expect(container.textContent).not.toContain("manage retention policy")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("renders a single-line adaptive toolbar wrapper for the activities filters", async () => {
+    mockRole.current = "admin"
+    mockActivitiesResponse([
+      {
+        id: "log-1",
+        created_at: "2026-03-15T00:00:00Z",
+        username: "admin",
+        action: "update",
+        resource_type: "platform",
+        resource_id: "platform",
+        status: "success",
+        status_code: 200,
+        sensitivity: "internal",
+        request_summary: "updated branding",
+        client_ip: "127.0.0.1",
+      },
+    ])
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(<ActivitiesPage />)
+    })
+
+    const toolbarWrapper = container.querySelector('[data-testid="left-toolbar"] > div')
+    const searchInput = container.querySelector('input[placeholder="Filter by user, action, resource..."]')
+
+    expect(toolbarWrapper).not.toBeNull()
+    expect(toolbarWrapper?.className).toContain("overflow-x-auto")
+    expect(toolbarWrapper?.className).toContain("min-w-0")
+    expect(searchInput?.className).toContain("flex-1")
 
     await act(async () => {
       root.unmount()

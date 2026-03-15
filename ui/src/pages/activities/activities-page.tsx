@@ -23,7 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useDebounce } from "@/hooks/use-debounce"
 import { cn, formatDate, toTitleCase } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { endOfDay, format, startOfDay, subDays } from "date-fns"
 import {
@@ -31,8 +31,6 @@ import {
   CalendarIcon,
   CheckCircle2,
   Download,
-  Loader2,
-  Save,
   Shield,
   ShieldAlert,
   ShieldCheck,
@@ -129,7 +127,6 @@ function SensitivityCell({ sensitivity }: { sensitivity: OperationLogSensitivity
 }
 
 export function ActivitiesPage() {
-  const queryClient = useQueryClient()
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 
   const [search, setSearch] = React.useState("")
@@ -146,21 +143,8 @@ export function ActivitiesPage() {
   const [sensitivity, setSensitivity] = React.useState<"all" | OperationLogSensitivity>("all")
   const [status, setStatus] = React.useState<"all" | OperationLogStatus>("all")
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
-  const [retentionDays, setRetentionDays] = React.useState("90")
 
   const debouncedSearch = useDebounce(search, 300)
-
-  const { data: settings, isLoading: settingsLoading } = useQuery({
-    queryKey: ["operation-log-settings"],
-    queryFn: () => operationLogsApi.getOperationLogSettings(),
-    enabled: isAdmin,
-  })
-
-  React.useEffect(() => {
-    if (settings?.retention_days) {
-      setRetentionDays(String(settings.retention_days))
-    }
-  }, [settings])
 
   React.useEffect(() => {
     if (dateRange?.from) {
@@ -209,19 +193,6 @@ export function ActivitiesPage() {
   })
 
   const items = React.useMemo(() => response?.items ?? [], [response])
-
-  const updateSettingsMutation = useMutation({
-    mutationFn: (days: number) => operationLogsApi.updateOperationLogSettings(days),
-    onSuccess: () => {
-      toast.success("Retention settings updated")
-      queryClient.invalidateQueries({ queryKey: ["operation-log-settings"] })
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to update retention settings", {
-        description: error.message,
-      })
-    },
-  })
 
   const toTitleCase = (str: string) => {
     return str
@@ -306,19 +277,10 @@ export function ActivitiesPage() {
     }
   }
 
-  const saveRetention = () => {
-    const days = Number(retentionDays)
-    if (!Number.isInteger(days) || days < 1) {
-      toast.error("Retention days must be a positive integer")
-      return
-    }
-    updateSettingsMutation.mutate(days)
-  }
-
   const leftToolbar = (
-    <>
+    <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap pr-1">
       <Input
-        className="w-full sm:w-80"
+        className="min-w-56 flex-1 basis-80"
         placeholder={isAdmin ? "Filter by user, action, resource..." : "Filter by action, resource..."}
         value={search}
         onChange={(e) => {
@@ -327,136 +289,135 @@ export function ActivitiesPage() {
         }}
       />
 
-      <Combobox
-        value={action || "all"}
-        onValueChange={(value) => {
-          setAction(!value || value === "all" ? "" : value)
-          setPagination((p) => ({ ...p, pageIndex: 0 }))
-        }}
-        itemToStringLabel={(v) => ACTIVITY_ACTION_OPTIONS.find(o => o.value === v)?.label || v}
-      >
-        <ComboboxInput className="w-48" placeholder="Action" readOnly />
-        <ComboboxContent>
-          <ComboboxList>
-            {ACTIVITY_ACTION_OPTIONS.map((item) => (
-              <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
-            ))}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
-
-      <Combobox
-        value={resourceType || "all"}
-        onValueChange={(value) => {
-          setResourceType(!value || value === "all" ? "" : value)
-          setPagination((p) => ({ ...p, pageIndex: 0 }))
-        }}
-        itemToStringLabel={(v) => ACTIVITY_RESOURCE_TYPE_OPTIONS.find(o => o.value === v)?.label || v}
-      >
-        <ComboboxInput className="w-52" placeholder="Resource Type" readOnly />
-        <ComboboxContent>
-          <ComboboxList>
-            {ACTIVITY_RESOURCE_TYPE_OPTIONS.map((item) => (
-              <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
-            ))}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
-
-      <Popover>
-        <PopoverTrigger
-          render={
-            <Button
-              variant="outline"
-              className={cn(
-                "w-65 justify-start text-left font-normal",
-                !dateRange && "text-muted-foreground"
-              )}
-            />
-          }
+      <div className="min-w-32 basis-36 flex-[0.9]">
+        <Combobox
+          value={action || "all"}
+          onValueChange={(value) => {
+            setAction(!value || value === "all" ? "" : value)
+            setPagination((p) => ({ ...p, pageIndex: 0 }))
+          }}
+          itemToStringLabel={(v) => ACTIVITY_ACTION_OPTIONS.find(o => o.value === v)?.label || v}
         >
-          <CalendarIcon className="mr-1 h-4 w-4" />
-          {dateRange?.from ? (
-            dateRange.to ? (
-              <>
-                {format(dateRange.from, "LLL dd, y")} -{" "}
-                {format(dateRange.to, "LLL dd, y")}
-              </>
+          <ComboboxInput className="w-full" placeholder="Action" readOnly />
+          <ComboboxContent>
+            <ComboboxList>
+              {ACTIVITY_ACTION_OPTIONS.map((item) => (
+                <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
+              ))}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
+      </div>
+
+      <div className="min-w-36 basis-44 flex-[1.05]">
+        <Combobox
+          value={resourceType || "all"}
+          onValueChange={(value) => {
+            setResourceType(!value || value === "all" ? "" : value)
+            setPagination((p) => ({ ...p, pageIndex: 0 }))
+          }}
+          itemToStringLabel={(v) => ACTIVITY_RESOURCE_TYPE_OPTIONS.find(o => o.value === v)?.label || v}
+        >
+          <ComboboxInput className="w-full" placeholder="Resource Type" readOnly />
+          <ComboboxContent>
+            <ComboboxList>
+              {ACTIVITY_RESOURCE_TYPE_OPTIONS.map((item) => (
+                <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
+              ))}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
+      </div>
+
+      <div className="min-w-56 basis-64 flex-[1.4]">
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !dateRange && "text-muted-foreground"
+                )}
+              />
+            }
+          >
+            <CalendarIcon className="mr-1 h-4 w-4" />
+            {dateRange?.from ? (
+              dateRange.to ? (
+                <>
+                  {format(dateRange.from, "LLL dd, y")} -{" "}
+                  {format(dateRange.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(dateRange.from, "LLL dd, y")
+              )
             ) : (
-              format(dateRange.from, "LLL dd, y")
-            )
-          ) : (
-            <span>Pick a date</span>
-          )}
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            autoFocus
-            mode="range"
-            defaultMonth={dateRange?.from}
-            selected={dateRange}
-            onSelect={setDateRange}
-            numberOfMonths={2}
-          />
-        </PopoverContent>
-      </Popover>
+              <span>Pick a date</span>
+            )}
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              autoFocus
+              mode="range"
+              defaultMonth={dateRange?.from}
+              selected={dateRange}
+              onSelect={setDateRange}
+              numberOfMonths={2}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
 
-      <Combobox
-        value={sensitivity}
-        onValueChange={(value) => {
-          setSensitivity((value as "all" | OperationLogSensitivity) || "all")
-          setPagination((p) => ({ ...p, pageIndex: 0 }))
-        }}
-        itemToStringLabel={(v) => ACTIVITY_SENSITIVITY_OPTIONS.find(o => o.value === v)?.label || v}
-      >
-        <ComboboxInput className="w-40" placeholder="Sensitivity" readOnly />
-        <ComboboxContent>
-          <ComboboxList>
-            {ACTIVITY_SENSITIVITY_OPTIONS.map((item) => (
-              <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
-            ))}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
+      <div className="min-w-32 basis-36 flex-[0.85]">
+        <Combobox
+          value={sensitivity}
+          onValueChange={(value) => {
+            setSensitivity((value as "all" | OperationLogSensitivity) || "all")
+            setPagination((p) => ({ ...p, pageIndex: 0 }))
+          }}
+          itemToStringLabel={(v) => ACTIVITY_SENSITIVITY_OPTIONS.find(o => o.value === v)?.label || v}
+        >
+          <ComboboxInput className="w-full" placeholder="Sensitivity" readOnly />
+          <ComboboxContent>
+            <ComboboxList>
+              {ACTIVITY_SENSITIVITY_OPTIONS.map((item) => (
+                <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
+              ))}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
+      </div>
 
-      <Combobox
-        value={status}
-        onValueChange={(value) => {
-          setStatus((value as "all" | OperationLogStatus) || "all")
-          setPagination((p) => ({ ...p, pageIndex: 0 }))
-        }}
-        itemToStringLabel={(v) => ACTIVITY_STATUS_OPTIONS.find(o => o.value === v)?.label || v}
-      >
-        <ComboboxInput className="w-36" placeholder="Status" readOnly />
-        <ComboboxContent>
-          <ComboboxList>
-            {ACTIVITY_STATUS_OPTIONS.map((item) => (
-              <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
-            ))}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox></>
+      <div className="min-w-28 basis-32 flex-[0.75]">
+        <Combobox
+          value={status}
+          onValueChange={(value) => {
+            setStatus((value as "all" | OperationLogStatus) || "all")
+            setPagination((p) => ({ ...p, pageIndex: 0 }))
+          }}
+          itemToStringLabel={(v) => ACTIVITY_STATUS_OPTIONS.find(o => o.value === v)?.label || v}
+        >
+          <ComboboxInput className="w-full" placeholder="Status" readOnly />
+          <ComboboxContent>
+            <ComboboxList>
+              {ACTIVITY_STATUS_OPTIONS.map((item) => (
+                <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
+              ))}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
+      </div>
+    </div>
   )
   const rightToolbar = isAdmin ? (
-    <>
-      <Input
-        type="number"
-        min={1}
-        value={retentionDays}
-        onChange={(e) => setRetentionDays(e.target.value)}
-        className="w-44"
-        disabled={settingsLoading || updateSettingsMutation.isPending}
-      />
-      <Button onClick={saveRetention} disabled={settingsLoading || updateSettingsMutation.isPending}>
-        {updateSettingsMutation.isPending ? <Loader2 className="animate-spin" /> : <Save />}
-        Save Retention Days
-      </Button>
+    <div className="flex shrink-0 items-center gap-2">
       <Button variant="secondary" onClick={handleExport}>
         <Download />
         Export CSV
       </Button>
-    </>
-  ) : (<></>)
+    </div>
+  ) : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -467,7 +428,7 @@ export function ActivitiesPage() {
           <h1 className="text-2xl font-bold">{isAdmin ? "User Activities" : "My Activities"}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isAdmin
-              ? "Review global operation logs and manage retention policy."
+              ? "Review global operation logs across users, resources, and system actions."
               : "Track your recent actions and project events."}
           </p>
         </div>
