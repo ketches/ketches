@@ -70,8 +70,12 @@ export function ImageEditor({
     return (tagsQuery.data?.tags ?? []).map((tag) => ({ label: tag, value: tag }))
   }, [tagsQuery.data?.tags])
 
-  const handleTagChange = React.useCallback((value: string) => {
-    if (!value) return
+  const handleTagChange = React.useCallback((value: string | null) => {
+    if (!value) {
+      setSelectedTag("")
+      return
+    }
+
     setSelectedTag(value)
     const repo = tagsQuery.data?.repository
     if (repo) {

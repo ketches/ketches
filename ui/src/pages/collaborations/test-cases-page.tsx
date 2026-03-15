@@ -80,7 +80,7 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
       header: "Title",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-medium truncate max-w-[500px]">{row.original.title}</span>
+          <span className="font-medium truncate max-w-125">{row.original.title}</span>
           <span className="text-xs text-muted-foreground font-mono">{row.original.id.slice(0, 8)}</span>
         </div>
       ),

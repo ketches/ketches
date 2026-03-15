@@ -20,13 +20,13 @@ import {
   type Requirement,
   type UpdateRequirementRequest
 } from "@/api/collaboration"
+import { BasicEditor } from "@/components/editor/basic-editor"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
-import { RichTextEditor } from "./rich-text-editor"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -155,7 +155,7 @@ export function CreateRequirementDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={description}
                 onChange={setDescription}
                 placeholder="Detailed description..."
@@ -300,7 +300,7 @@ export function EditRequirementDialog({
             <Field>
               <FieldLabel>Description</FieldLabel>
               <FieldContent>
-                <RichTextEditor
+                <BasicEditor
                   value={description}
                   onChange={setDescription}
                 />

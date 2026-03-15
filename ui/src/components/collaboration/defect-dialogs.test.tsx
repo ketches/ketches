@@ -115,12 +115,12 @@ vi.mock("@/components/ui/textarea", () => ({
   Textarea: (props: React.ComponentProps<"textarea">) => <textarea {...props} />,
 }))
 
-vi.mock("./rich-text-editor", () => ({
-  RichTextEditor: ({ value }: { value: string }) => <div>{value}</div>,
+vi.mock("@/components/editor/basic-editor", () => ({
+  BasicEditor: ({ value }: { value: string }) => <div>{value}</div>,
 }))
 
-vi.mock("./rich-text-utils", () => ({
-  isRichTextEmpty: () => false,
+vi.mock("@/components/editor/basic-editor-value", () => ({
+  isBasicEditorEmpty: () => false,
 }))
 
 vi.mock("../ui/field", () => ({

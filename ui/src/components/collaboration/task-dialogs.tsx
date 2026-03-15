@@ -1,5 +1,6 @@
 import { collaborationApi, CollabPriority, CollabPriorityOptions, TaskStatus, TaskStatusOptions, type CreateTaskRequest, type Task, type UpdateTaskRequest } from "@/api/collaboration"
 import { projectsApi } from "@/api/projects"
+import { BasicEditor } from "@/components/editor/basic-editor"
 import { Button } from "@/components/ui/button"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
@@ -14,7 +15,6 @@ import { Calendar } from "../ui/calendar"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 import { MemberAvatar } from "./inline-editors"
-import { RichTextEditor } from "./rich-text-editor"
 
 const TASK_DATE_FORMAT = "yyyy-MM-dd"
 
@@ -137,7 +137,7 @@ export function CreateTaskDialog({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
+      <SheetContent side="right" className="overflow-y-auto w-1/3">
         <SheetHeader>
           <SheetTitle>{parentId ? "Create Child Task" : "Create Task"}</SheetTitle>
           <SheetDescription>
@@ -184,7 +184,7 @@ export function CreateTaskDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={formData.description || ""}
                 onChange={(json) => setFormData({ ...formData, description: json })}
                 placeholder="Detailed description..."
@@ -415,7 +415,7 @@ export function EditTaskDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={formData.description || ""}
                 onChange={(json) => setFormData({ ...formData, description: json })}
                 placeholder="Detailed description..."

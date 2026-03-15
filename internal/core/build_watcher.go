@@ -140,7 +140,6 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 			}
 
 			if job.Status.Failed > 0 {
-				now := time.Now()
 				errMsg := "Build job failed"
 
 				// Try to get error message from pod
@@ -162,18 +161,7 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 					errMsg = normalizeBuildFailureMessage(errMsg, logTail)
 				}
 
-				var build entities.Build
-				if err := db.DB.First(&build, "id = ?", buildID).Error; err != nil {
-					return
-				}
-
-				build.Status = entities.BuildStatusFailed
-				build.CompletedAt = &now
-				build.ErrorMessage = errMsg
-				if build.StartedAt != nil {
-					build.Duration = int(now.Sub(*build.StartedAt).Seconds())
-				}
-				db.DB.Save(&build)
+				updateBuildFailed(buildID, errMsg)
 
 				// Cleanup secrets
 				go CleanupBuildSecrets(context.Background(), buildEnv.ClusterID, buildID, jobNamespace)
@@ -548,11 +536,29 @@ func markBuildDeploymentFailed(bd *entities.BuildDeployment, errMsg string) {
 	})
 }
 
+func MarkBuildFailed(buildID, errMsg string) {
+	updateBuildFailed(buildID, errMsg)
+}
+
 func updateBuildFailed(buildID, errMsg string) {
 	now := time.Now()
+	var build entities.Build
+	if err := db.DB.First(&build, "id = ?", buildID).Error; err == nil && build.StartedAt != nil {
+		build.Duration = int(now.Sub(*build.StartedAt).Seconds())
+	}
+
 	db.DB.Model(&entities.Build{}).Where("id = ?", buildID).Updates(map[string]any{
 		"status":        entities.BuildStatusFailed,
 		"completed_at":  &now,
+		"duration":      build.Duration,
 		"error_message": errMsg,
 	})
+
+	db.DB.Model(&entities.BuildDeployment{}).
+		Where("build_id = ? AND status = ?", buildID, entities.BuildDeploymentStatusPending).
+		Updates(map[string]any{
+			"status":        entities.BuildDeploymentStatusFailed,
+			"error_message": errMsg,
+			"deployed_at":   &now,
+		})
 }

@@ -42,7 +42,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const projectRole = useProjectRole()
   const activeProjectId = useProjectStore((state) => state.activeProjectId)
 
-  const isAdmin = userRole === 'admin'
+  const isAdmin = userRole === "admin"
   const isViewer = projectRole === 'viewer'
 
   const { data: activeProject } = useQuery({

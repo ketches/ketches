@@ -575,11 +575,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 		jobSlug,
 	)
 	if err != nil {
-		build.Status = entities.BuildStatusFailed
-		build.ErrorMessage = err.Error()
-		completedAt := time.Now()
-		build.CompletedAt = &completedAt
-		db.DB.Save(build)
+		core.MarkBuildFailed(build.ID, err.Error())
 		return nil, fmt.Errorf("failed to submit build job: %w", err)
 	}
 

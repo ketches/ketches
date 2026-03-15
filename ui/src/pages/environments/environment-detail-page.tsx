@@ -383,7 +383,7 @@ export function EnvironmentDetailPage() {
             />
           </div>
 
-          <Card>
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />Resource Usage</CardTitle>

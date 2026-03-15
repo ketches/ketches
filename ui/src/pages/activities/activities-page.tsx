@@ -460,11 +460,11 @@ export function ActivitiesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader items={[{ label: "Activities", icon: Activity }]} />
+      <PageHeader items={[{ label: isAdmin ? "User Activities" : "My Activities", icon: Activity }]} />
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Activities</h1>
+          <h1 className="text-2xl font-bold">{isAdmin ? "User Activities" : "My Activities"}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isAdmin
               ? "Review global operation logs and manage retention policy."
@@ -473,26 +473,25 @@ export function ActivitiesPage() {
         </div>
       </div>
 
-
-      {items.length === 0 && !isLoading && !isFetching ? (
-        <EmptyState
-          title="No activities found"
-          description="Your activities and operation logs will appear here when actions occur."
-          icon={Activity}
-        />
-      ) : (
-        <DataTable
-          columns={columns}
-          data={items}
-          isLoading={isLoading || isFetching}
-          leftToolbar={() => leftToolbar}
-          rightToolbar={() => rightToolbar}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          totalCount={response?.pagination.total ?? 0}
-          manualPagination
-        />
-      )}
+      <DataTable
+        columns={columns}
+        data={items}
+        isLoading={isLoading || isFetching}
+        leftToolbar={() => leftToolbar}
+        rightToolbar={() => rightToolbar}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        totalCount={response?.pagination.total ?? 0}
+        manualPagination
+        emptyContent={(
+          <EmptyState
+            title="No activities found"
+            description="Your activities and operation logs will appear here when actions occur."
+            icon={Activity}
+            border={false}
+          />
+        )}
+      />
     </div>
   )
 }

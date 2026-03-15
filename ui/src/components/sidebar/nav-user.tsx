@@ -63,7 +63,6 @@ export function NavUser({
   const authUser = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const navigate = useNavigate()
-  const isAdmin = authUser?.role === "admin"
 
   const user = {
     name: authUser?.fullname || authUser?.username || initialUser.name,

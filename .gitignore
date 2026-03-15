@@ -11,6 +11,9 @@ __debug_bin*
 # Test binary, built with `go test -c`
 *.test
 
+# Worktree
+.worktrees/
+
 # Code coverage profiles and other test artifacts
 *.out
 coverage.*

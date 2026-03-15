@@ -86,8 +86,12 @@ describe("CollaborationsPage", () => {
       )
     }
 
-    if (!("scrollIntoView" in Element.prototype)) {
-      Element.prototype.scrollIntoView = () => {}
+    const elementPrototype = Element.prototype as Element & {
+      scrollIntoView?: () => void
+    }
+
+    if (!elementPrototype.scrollIntoView) {
+      elementPrototype.scrollIntoView = () => {}
     }
   })
 
@@ -98,7 +102,7 @@ describe("CollaborationsPage", () => {
   it("shows the sprint name for a persisted sprint selection after sprints load", async () => {
     localStorage.setItem("collab-sprint", ACTIVE_SPRINT.id)
 
-    let resolveSprints: ((value: { items: Sprint[] }) => void) | undefined
+    let resolveSprints: ((value: Awaited<ReturnType<typeof collaborationApi.listSprints>>) => void) | undefined
     listSprintsMock.mockReturnValue(
       new Promise((resolve) => {
         resolveSprints = resolve
@@ -131,7 +135,15 @@ describe("CollaborationsPage", () => {
     expect(sprintInput?.value).toBe(ACTIVE_SPRINT.id)
 
     await act(async () => {
-      resolveSprints?.({ items: [ACTIVE_SPRINT] })
+      resolveSprints?.({
+        items: [ACTIVE_SPRINT],
+        pagination: {
+          page: 1,
+          page_size: 100,
+          total: 1,
+          total_pages: 1,
+        },
+      })
       await flushPromises()
     })
 

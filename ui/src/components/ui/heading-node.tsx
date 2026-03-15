@@ -1,6 +1,5 @@
 'use client';
 
-
 import type { PlateElementProps } from 'platejs/react';
 
 import { type VariantProps, cva } from 'class-variance-authority';

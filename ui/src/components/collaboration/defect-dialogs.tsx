@@ -23,6 +23,8 @@ import {
   type TestCase,
   type UpdateDefectRequest,
 } from "@/api/collaboration"
+import { BasicEditor } from "@/components/editor/basic-editor"
+import { isBasicEditorEmpty } from "@/components/editor/basic-editor-value"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -30,8 +32,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
-import { RichTextEditor } from "./rich-text-editor"
-import { isRichTextEmpty } from "./rich-text-utils"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -192,7 +192,7 @@ export function CreateDefectDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={description}
                 onChange={setDescription}
                 placeholder="Detailed description of the issue..."
@@ -203,7 +203,7 @@ export function CreateDefectDialog({
           <Field>
             <FieldLabel>Reproduction Steps</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={reproductionSteps}
                 onChange={setReproductionSteps}
                 placeholder="1. Go to page X..."
@@ -284,7 +284,7 @@ export function CreateDefectDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId)}
+              disabled={mutation.isPending || !title || isBasicEditorEmpty(description) || (!requirementId && !taskId && !testCaseId)}
               onClick={() => mutation.mutate()}
             >
               {mutation.isPending ? "Creating..." : "Create Defect"}
@@ -460,7 +460,7 @@ export function EditDefectDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={description}
                 onChange={setDescription}
               />
@@ -470,7 +470,7 @@ export function EditDefectDialog({
           <Field>
             <FieldLabel>Reproduction Steps</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={reproductionSteps}
                 onChange={setReproductionSteps}
               />
@@ -575,7 +575,7 @@ export function EditDefectDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || !title || isRichTextEmpty(description) || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
+              disabled={mutation.isPending || !title || isBasicEditorEmpty(description) || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
               onClick={() => mutation.mutate()}
             >
               {mutation.isPending ? "Save Changes" : "Save Changes"}

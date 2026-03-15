@@ -8,6 +8,8 @@ import {
   type TestCase,
   type UpdateTestCaseRequest
 } from "@/api/collaboration"
+import { BasicEditor } from "@/components/editor/basic-editor"
+import { isBasicEditorEmpty } from "@/components/editor/basic-editor-value"
 import { Button } from "@/components/ui/button"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import {
@@ -25,8 +27,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
-import { RichTextEditor } from "./rich-text-editor"
-import { isRichTextEmpty } from "./rich-text-utils"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -136,7 +136,7 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Precondition</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={precondition}
                 onChange={setPrecondition}
                 placeholder="e.g. User is logged out"
@@ -147,7 +147,7 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Steps</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={steps}
                 onChange={setSteps}
                 placeholder="1. Navigate to login page..."
@@ -158,7 +158,7 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Expected Result</FieldLabel>
             <FieldContent>
-              <RichTextEditor
+              <BasicEditor
                 value={expectedResult}
                 onChange={setExpectedResult}
                 placeholder="User is redirected to dashboard"
@@ -172,7 +172,7 @@ export function CreateTestCaseDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
+              disabled={mutation.isPending || !title || isBasicEditorEmpty(steps) || isBasicEditorEmpty(expectedResult)}
               onClick={() => mutation.mutate()}
             >
               {mutation.isPending ? "Creating..." : "Create"}
@@ -278,7 +278,7 @@ export function EditTestCaseDialog({
             <Field>
               <FieldLabel>Precondition</FieldLabel>
               <FieldContent>
-                <RichTextEditor
+                <BasicEditor
                   value={precondition}
                   onChange={setPrecondition}
                 />
@@ -288,7 +288,7 @@ export function EditTestCaseDialog({
             <Field>
               <FieldLabel>Steps</FieldLabel>
               <FieldContent>
-                <RichTextEditor
+                <BasicEditor
                   value={steps}
                   onChange={setSteps}
                 />
@@ -298,7 +298,7 @@ export function EditTestCaseDialog({
             <Field>
               <FieldLabel>Expected Result</FieldLabel>
               <FieldContent>
-                <RichTextEditor
+                <BasicEditor
                   value={expectedResult}
                   onChange={setExpectedResult}
                 />
@@ -329,7 +329,7 @@ export function EditTestCaseDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button
                 type="submit"
-                disabled={mutation.isPending || !title || isRichTextEmpty(steps) || isRichTextEmpty(expectedResult)}
+                disabled={mutation.isPending || !title || isBasicEditorEmpty(steps) || isBasicEditorEmpty(expectedResult)}
               >
                 {mutation.isPending ? "Save Changes" : "Save Changes"}
               </Button>
