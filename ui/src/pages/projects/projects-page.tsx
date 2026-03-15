@@ -311,7 +311,7 @@ export function ProjectsPage() {
       renderCard={(project) => {
         const isActive = project.id === activeProjectId
         return (
-          <Card className="group/card hover:shadow-md transition-shadow h-full">
+          <Card className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 min-w-0">

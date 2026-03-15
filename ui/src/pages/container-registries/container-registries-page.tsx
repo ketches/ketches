@@ -307,7 +307,7 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
       renderCard={(reg) => (
         <Card
           key={reg.id}
-          className="group/card hover:shadow-md transition-shadow h-full"
+          className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10"
         >
           <CardHeader className="pb-2">
             <div className="flex items-start justify-between gap-4">

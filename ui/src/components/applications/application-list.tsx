@@ -517,7 +517,7 @@ export function ApplicationList({
           renderCard={(app) => (
             <Card
               key={app.id}
-              className="group/card hover:shadow-md transition-shadow h-full"
+              className="group/card hover:shadow-md transition-shadow h-full bg-secondary/20 hover:bg-blue-200/10"
             >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-4">
