@@ -8,19 +8,21 @@ import (
 )
 
 type AppConfig struct {
-	LogLevel           string
-	Port               string
-	DBDriver           string
-	DBSource           string
-	DBHost             string
-	DBPort             string
-	DBName             string
-	DBUsername         string
-	DBPassword         string
-	DBSSLMode          string
-	DBAutoMigrate      bool
-	JWTSecret          string
-	CORSAllowedOrigins string
+	LogLevel              string
+	Port                  string
+	DBDriver              string
+	DBSource              string
+	DBHost                string
+	DBPort                string
+	DBName                string
+	DBUsername            string
+	DBPassword            string
+	DBSSLMode             string
+	DBAutoMigrate         bool
+	JWTSecret             string
+	CORSAllowedOrigins    string
+	BuildLogBaseDir       string
+	BuildLogRetentionDays int
 }
 
 var Config AppConfig
@@ -36,19 +38,21 @@ func InitConfig() {
 	dbAutoMigrate := getEnvBool("DB_AUTO_MIGRATE", false)
 
 	Config = AppConfig{
-		LogLevel:           getEnv("LOG_LEVEL", "info"),
-		Port:               getEnv("PORT", "8080"),
-		DBDriver:           dbDriver,
-		DBSource:           buildDBSource(dbDriver, dbHost, dbPort, dbName, dbUsername, dbPassword, dbSSLMode),
-		DBHost:             dbHost,
-		DBPort:             dbPort,
-		DBName:             dbName,
-		DBUsername:         dbUsername,
-		DBPassword:         dbPassword,
-		DBSSLMode:          dbSSLMode,
-		DBAutoMigrate:      dbAutoMigrate,
-		JWTSecret:          getEnv("JWT_SECRET", "ketches-secret-key"),
-		CORSAllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", ""),
+		LogLevel:              getEnv("LOG_LEVEL", "info"),
+		Port:                  getEnv("PORT", "8080"),
+		DBDriver:              dbDriver,
+		DBSource:              buildDBSource(dbDriver, dbHost, dbPort, dbName, dbUsername, dbPassword, dbSSLMode),
+		DBHost:                dbHost,
+		DBPort:                dbPort,
+		DBName:                dbName,
+		DBUsername:            dbUsername,
+		DBPassword:            dbPassword,
+		DBSSLMode:             dbSSLMode,
+		DBAutoMigrate:         dbAutoMigrate,
+		JWTSecret:             getEnv("JWT_SECRET", "ketches-secret-key"),
+		CORSAllowedOrigins:    getEnv("CORS_ALLOWED_ORIGINS", ""),
+		BuildLogBaseDir:       fallbackString(getEnv("BUILD_LOG_BASE_DIR", ""), "data/build-logs"),
+		BuildLogRetentionDays: getEnvInt("BUILD_LOG_RETENTION_DAYS", 15),
 	}
 }
 
@@ -112,6 +116,20 @@ func getEnvBool(key string, fallback bool) bool {
 	}
 
 	parsed, err := strconv.ParseBool(strings.TrimSpace(value))
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
+}
+
+func getEnvInt(key string, fallback int) int {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
 	if err != nil {
 		return fallback
 	}
