@@ -326,54 +326,31 @@ func ExecClusterNodeTerminal(clusterID string, nodeName string, stdin io.Reader,
 		return err
 	}
 
-	podName := fmt.Sprintf("node-terminal-%s", uuid.New()[:8])
-	namespace := "default"
-
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-		},
-		Spec: corev1.PodSpec{
-			NodeName: nodeName,
-			Containers: []corev1.Container{
-				{
-					Name:    "shell",
-					Image:   "alpine:latest",
-					Command: []string{"sh", "-c", "while true; do sleep 3600; done"},
-					SecurityContext: &corev1.SecurityContext{
-						Privileged: boolPtr(true),
-					},
-				},
-			},
-			HostPID:       true,
-			HostNetwork:   true,
-			RestartPolicy: corev1.RestartPolicyNever,
-		},
-	}
-
-	_, err = client.CoreV1().Pods(namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	pods := client.CoreV1().Pods(nodeTerminalNamespace)
+	now := nodeTerminalNow()
+	pod, err := ensureNodeTerminalPod(context.Background(), pods, nodeName, now)
 	if err != nil {
-		return fmt.Errorf("failed to create terminal pod: %v", err)
+		return fmt.Errorf("failed to prepare node terminal pod: %w", err)
 	}
 
-	defer client.CoreV1().Pods(namespace).Delete(context.Background(), podName, metav1.DeleteOptions{})
+	waitCtx, cancel := context.WithTimeout(context.Background(), nodeTerminalStartupTimeout)
+	defer cancel()
 
-	for i := 0; i < 30; i++ {
-		p, err := client.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
-		if err == nil && p.Status.Phase == corev1.PodRunning {
-			break
+	pod, err = waitForNodeTerminalPodRunning(waitCtx, pods, nodeName, pod.Name)
+	if err != nil {
+		if deleteErr := deleteNodeTerminalPod(context.Background(), pods, pod.Name); deleteErr != nil {
+			log.Printf("ExecClusterNodeTerminal: failed to delete unhealthy pod %s: %v", pod.Name, deleteErr)
 		}
-		time.Sleep(1 * time.Second)
+		return err
 	}
 
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
-		Name(podName).
-		Namespace(namespace).
+		Name(pod.Name).
+		Namespace(nodeTerminalNamespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
-			Container: "shell",
+			Container: nodeTerminalContainerName,
 			Command:   []string{"nsenter", "-t", "1", "-m", "-u", "-i", "-n", "-p", "--", "sh", "-c", "clear; exec $(command -v bash || command -v ash || command -v sh)"},
 			Stdin:     true,
 			Stdout:    true,

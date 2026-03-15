@@ -41,6 +41,7 @@ func main() {
 	if err := services.InitClusters(); err != nil {
 		log.Fatalf("failed to initialize clusters: %v", err)
 	}
+	services.StartClusterNodeTerminalCleanupLoop()
 
 	// Recover active build watchers
 	core.GlobalBuildWatcher.RecoverActiveBuilds()
