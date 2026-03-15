@@ -1260,7 +1260,7 @@ export function ApplicationDetailPage() {
           </div>
 
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
                 <Container className="h-4 w-4" /> Running Instances
               </CardTitle>
@@ -1503,11 +1503,13 @@ export function ApplicationDetailPage() {
 
           {currentEnv && (
             <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm flex items-center gap-2">
                   <ChartLine className="h-4 w-4" />Resource Usage
                 </CardTitle>
-                <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+                <CardAction>
+                  <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 <AppMetrics

@@ -41,7 +41,7 @@ import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -384,10 +384,12 @@ export function EnvironmentDetailPage() {
           </div>
 
           <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />Resource Usage</CardTitle>
-              <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+              <CardAction>
+                <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+              </CardAction>
             </CardHeader>
             <CardContent>
               <EnvironmentResourceMetrics

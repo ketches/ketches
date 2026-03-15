@@ -328,9 +328,10 @@ func ListDeployments(repoID string) ([]models.CodeRepositoryDeploymentResponse, 
 		Select(deploymentListSelectCols).
 		Joins("JOIN builds b ON b.id = bd.build_id").
 		Joins("JOIN build_settings bs ON bs.id = b.build_setting_id").
-		Joins("LEFT JOIN apps a ON a.id = bd.app_id").
+		Joins("LEFT JOIN apps a ON a.id = bd.app_id AND a.deleted_at IS NULL AND a.code_repository_id = bs.code_repository_id").
 		Joins("LEFT JOIN envs e ON e.id = bd.env_id").
 		Where("bs.code_repository_id = ?", repoID).
+		Where("bd.app_id IS NULL OR a.id IS NOT NULL").
 		Order("bd.created_at DESC").
 		Find(&rows).Error; err != nil {
 		return nil, err

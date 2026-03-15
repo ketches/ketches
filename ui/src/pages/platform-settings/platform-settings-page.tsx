@@ -1,4 +1,4 @@
-import { ArrowUpCircle, History, Settings2, Type } from "lucide-react"
+import { ArrowUpCircle, History, Settings2 } from "lucide-react"
 import * as React from "react"
 
 import { PageHeader } from "@/components/layout/page-header"
@@ -51,7 +51,7 @@ export function PlatformSettingsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="general">
-            <Type />
+            <Settings2 />
             General
           </TabsTrigger>
           <TabsTrigger value="upgrade-management">

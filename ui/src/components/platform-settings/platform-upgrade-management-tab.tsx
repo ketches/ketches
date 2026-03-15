@@ -5,7 +5,7 @@ import type { PlatformUpdateStatus } from "@/api/platform-update"
 import { PlatformUpdateConfigDialog } from "@/components/platform-updates/platform-update-config-dialog"
 import { PlatformUpdateRolloutDialog } from "@/components/platform-updates/platform-update-rollout-dialog"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePlatformUpdateConfigQuery } from "@/hooks/use-platform-update"
 
 interface PlatformUpgradeManagementTabProps {
@@ -63,70 +63,93 @@ export function PlatformUpgradeManagementTab({
           </div>
 
           <div className="space-y-3">
-            <div className="rounded-lg border bg-background/80 p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0 flex-1 space-y-3">
-                  <div className="flex items-start justify-between gap-3 space-y-1">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-medium">Upgrade Target</h3>
-                      <p className="text-xs text-muted-foreground">
-                        Review the current API and UI image repositories and Kubernetes deployment targets.
-                      </p>
-                    </div>
-                    <div className="ml-auto">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setConfigDialogOpen(true)}
-                        disabled={configLoading}
-                      >
-                        Configure
-                      </Button>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <TargetSummary
-                      title="API"
-                      imageRegistry={config?.api.image_repository}
-                      namespace={config?.api.namespace}
-                      deploymentName={config?.api.deployment_name}
-                      containerName={config?.api.container_name}
-                      isLoading={configLoading}
-                    />
-                    <TargetSummary
-                      title="UI"
-                      imageRegistry={config?.ui.image_repository}
-                      namespace={config?.ui.namespace}
-                      deploymentName={config?.ui.deployment_name}
-                      containerName={config?.ui.container_name}
-                      isLoading={configLoading}
-                    />
-                  </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Upgrade Targets
+                </CardTitle>
+                <CardDescription>
+                  View the current image registry and Kubernetes deployment targets for the platform API and UI components.
+                </CardDescription>
+                <CardAction>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfigDialogOpen(true)}
+                    disabled={configLoading}
+                  >
+                    Configure
+                  </Button>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  <TargetSummary
+                    title="API"
+                    imageRegistry={config?.api.image_repository}
+                    namespace={config?.api.namespace}
+                    deploymentName={config?.api.deployment_name}
+                    containerName={config?.api.container_name}
+                    isLoading={configLoading}
+                  />
+                  <TargetSummary
+                    title="UI"
+                    imageRegistry={config?.ui.image_repository}
+                    namespace={config?.ui.namespace}
+                    deploymentName={config?.ui.deployment_name}
+                    containerName={config?.ui.container_name}
+                    isLoading={configLoading}
+                  />
                 </div>
+              </CardContent>
+            </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Check for Updates
+                </CardTitle>
+                <CardDescription>
+                  Pull the latest available image tags for ketches-api and ketches-ui and compare them with the running platform version.
+                </CardDescription>
+                <CardAction>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onCheckForUpdates}
+                    disabled={isChecking}
+                  >
+                    {isChecking && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Check Now
+                  </Button>
+                </CardAction>
+              </CardHeader>
+            </Card>
 
-              </div>
-            </div>
-
-            <ActionBlock
-              icon={RefreshCw}
-              title="Check for Updates"
-              description="Pull the latest available image tags for ketches-api and ketches-ui and compare them with the running platform version."
-              actionLabel="Check Now"
-              onAction={() => onCheckForUpdates?.()}
-              disabled={isChecking}
-              isLoading={isChecking}
-            />
-
-            <ActionBlock
-              icon={ArrowUpCircle}
-              title="Rolling Update"
-              description="Open the rolling update dialog to choose a target version and submit a Kubernetes rolling update for the platform API and UI."
-              actionLabel="Rolling Update"
-              onAction={() => setRolloutDialogOpen(true)}
-              disabled={!status?.recommended_shared_version}
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowUpCircle className="h-4 w-4" />
+                  Rolling Update
+                </CardTitle>
+                <CardDescription>
+                  Open the rolling update dialog to choose a target version and submit a Kubernetes rolling update for the platform API and UI.
+                </CardDescription>
+                <CardAction>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setRolloutDialogOpen(true)}
+                    disabled={!status?.recommended_shared_version}
+                  >
+                    Rolling Update
+                  </Button>
+                </CardAction>
+              </CardHeader>
+            </Card>
           </div>
         </CardContent>
       </Card >
@@ -141,45 +164,6 @@ export function PlatformUpgradeManagementTab({
         onOpenChange={setRolloutDialogOpen}
       />
     </>
-  )
-}
-
-function ActionBlock({
-  icon: Icon,
-  title,
-  description,
-  actionLabel,
-  onAction,
-  disabled = false,
-  isLoading = false,
-}: {
-  icon: typeof Settings2
-  title: string
-  description: string
-  actionLabel: string
-  onAction: () => void
-  disabled?: boolean
-  isLoading?: boolean
-}) {
-  return (
-    <div className="rounded-lg border bg-background/80 p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h3 className="flex items-center gap-2 text-sm font-medium">
-            <Icon className="h-4 w-4" />
-            {title}
-          </h3>
-          <p className="text-xs text-muted-foreground">{description}</p>
-        </div>
-
-        <div className="shrink-0">
-          <Button type="button" variant="outline" onClick={onAction} disabled={disabled}>
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {actionLabel}
-          </Button>
-        </div>
-      </div>
-    </div>
   )
 }
 

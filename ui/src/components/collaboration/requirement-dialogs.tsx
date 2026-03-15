@@ -22,11 +22,11 @@ import {
 } from "@/api/collaboration"
 import { BasicEditor } from "@/components/editor/basic-editor"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 

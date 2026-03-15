@@ -10,7 +10,7 @@ export function PlatformHeader() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton size="lg" className="cursor-default hover:bg-transparent active:bg-transparent">
+        <SidebarMenuButton size="lg" className="cursor-default hover:bg-transparent active:bg-transparent bg-sky-500/5">
           <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
             {!isLoading ? (
               <img src="/ketches.svg" className="size-8 object-cover rounded-lg" alt={brandName || 'Platform'} />

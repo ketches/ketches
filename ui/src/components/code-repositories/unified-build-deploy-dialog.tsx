@@ -7,6 +7,7 @@ import type { SimpleApp } from "@/api/apps"
 import { codeRepositoriesApi, type BuildSetting } from "@/api/code-repositories"
 import { envsApi, type Env } from "@/api/envs"
 import { GitRefSelect } from "@/components/code-repositories/git-ref-select"
+import { ColorBadge } from "@/components/shared/color-badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -19,9 +20,8 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import type { AxiosError } from "axios"
-import { ColorBadge } from "../shared/color-badge"
-import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface UnifiedBuildDeployDialogProps {
   open: boolean

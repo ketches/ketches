@@ -123,7 +123,7 @@ vi.mock("@/components/editor/basic-editor-value", () => ({
   isBasicEditorEmpty: () => false,
 }))
 
-vi.mock("../ui/field", () => ({
+vi.mock("@/components/ui/field", () => ({
   Field: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   FieldContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   FieldLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

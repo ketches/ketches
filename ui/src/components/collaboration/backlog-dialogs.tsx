@@ -9,10 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { toast } from "sonner"
-import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 interface PlanToSprintDialogProps {
   open: boolean

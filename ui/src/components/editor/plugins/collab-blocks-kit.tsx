@@ -12,7 +12,7 @@ import {
   CollabH2Element,
   CollabH3Element,
   CollabParagraphElement,
-} from "../collab-editor-elements"
+} from "@/components/editor/collab-editor-elements"
 
 export const CollabBlocksKit = [
   ParagraphPlugin.withComponent(CollabParagraphElement),

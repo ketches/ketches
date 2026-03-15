@@ -5,6 +5,7 @@ import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } 
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -13,7 +14,6 @@ import { format, isValid, parse } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 const SPRINT_DATE_FORMAT = "yyyy-MM-dd"
 

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 
 export interface VolumeSpec {
   id?: string

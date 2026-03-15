@@ -312,7 +312,7 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
               icon={FolderGit2}
               description="Code repositories"
               onClick={() => navigate("/code-repositories")}
-              color="indigo"
+              color="lime"
             />
             <StatCard
               title="Plugins"
@@ -332,7 +332,7 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
             />
           </div>
 
-          <Card>
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />

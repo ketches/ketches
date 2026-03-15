@@ -1,5 +1,6 @@
 import { CollabPriorityOptions, DefectSeverityOptions, type CollabOption } from "@/api/collaboration"
 import { projectsApi } from "@/api/projects"
+import { MemberAvatar } from "@/components/shared/member-avatar"
 import {
   Combobox,
   ComboboxContent,
@@ -11,7 +12,6 @@ import { InputGroupAddon } from "@/components/ui/input-group"
 import { useQuery } from "@tanstack/react-query"
 import { User } from "lucide-react"
 import { useMemo } from "react"
-import { MemberAvatar } from "../shared/member-avatar"
 
 const colorMap: Record<string, string> = {
   gray: "text-gray-500",

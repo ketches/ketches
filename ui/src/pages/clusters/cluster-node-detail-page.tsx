@@ -36,7 +36,7 @@ import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { StatCard } from "@/components/shared/stat-card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -350,11 +350,13 @@ export function ClusterNodeDetailPage() {
             />
           </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />Node Resource Usage</CardTitle>
-              <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+              <CardAction>
+                <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
+              </CardAction>
             </CardHeader>
             <CardContent>
               <ClusterNodeResourceMetrics

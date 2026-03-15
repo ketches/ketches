@@ -4,7 +4,7 @@ import { AutoformatPlugin } from "@platejs/autoformat"
 import { toggleCodeBlock } from "@platejs/code-block"
 import { ListStyleType, toggleList } from "@platejs/list"
 
-import { TODO_LIST_STYLE_TYPE } from "../collab-editor-constants"
+import { TODO_LIST_STYLE_TYPE } from "@/components/editor/collab-editor-constants"
 
 const collabAutoformatRules: AutoformatRule[] = [
   {

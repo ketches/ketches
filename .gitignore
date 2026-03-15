@@ -43,5 +43,6 @@ docs/plans/*
 ui/docs/plans/*
 docs/superpowers/*
 
-# Database
+# Runtime files
+data/
 **/*.db

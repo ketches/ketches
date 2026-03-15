@@ -7,8 +7,9 @@ import * as z from "zod"
 
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
+import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Combobox,
@@ -21,7 +22,6 @@ import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/fie
 import { Input } from "@/components/ui/input"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import type { AxiosError } from "axios"
-import { EmptyState } from "@/components/shared/empty-state"
 
 const METRIC_OPTIONS = [
   { value: "cpu", label: "CPU Utilization" },
@@ -85,154 +85,151 @@ export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Scale className="h-4 w-4" /> AutoScaling
-            </CardTitle>
-            <CardDescription>Automatically scale replicas based on CPU and Memory usage</CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"}</span>
-            <Checkbox
-              checked={enabled}
-              onCheckedChange={(checked) => setValue("enabled", checked === true)}
-            />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-6">
-          <div className={`space-y-6 transition-opacity duration-200 ${enabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Replica Range</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel className="text-xs text-muted-foreground">Min Replicas</FieldLabel>
-                  <FieldContent>
-                    <Input type="number" {...register("min_replicas", { valueAsNumber: true })} disabled={!enabled} />
-                  </FieldContent>
-                  {errors.min_replicas && <FieldError>{errors.min_replicas.message}</FieldError>}
-                </Field>
-                <Field>
-                  <FieldLabel className="text-xs text-muted-foreground">Max Replicas</FieldLabel>
-                  <FieldContent>
-                    <Input type="number" {...register("max_replicas", { valueAsNumber: true })} disabled={!enabled} />
-                  </FieldContent>
-                  {errors.max_replicas && <FieldError>{errors.max_replicas.message}</FieldError>}
-                </Field>
-              </div>
+      <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))}>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Scale className="h-4 w-4" /> AutoScaling
+          </CardTitle>
+          <CardDescription>Automatically scale replicas based on CPU and Memory usage</CardDescription>
+          <CardAction>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={enabled}
+                onCheckedChange={(checked) => setValue("enabled", checked === true)}
+              />
+              <span className="text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"}</span>
+              {!isViewer && (
+                <Button type="submit" onClick={handleSubmit((v) => updateMutation.mutate(v))} disabled={updateMutation.isPending}>
+                  <Save />
+                  {updateMutation.isPending ? "Saving..." : "Save"}
+                </Button>
+              )}
             </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium">Metrics</h4>
-                {(!cpuEnabled || !memoryEnabled) && (
-                  <Combobox
-                    value={null}
-                    onValueChange={(value: string | null) => {
-                      if (value === "cpu") setValue("cpu_enabled", true)
-                      if (value === "memory") setValue("memory_enabled", true)
-                    }}
-                    itemToStringLabel={(v) => METRIC_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
-                    disabled={!enabled}
-                  >
-                    <ComboboxInput placeholder="Add Metric" />
-                    <ComboboxContent>
-                      <ComboboxList>
-                        {[
-                          ...(!cpuEnabled ? [{ value: "cpu", label: "CPU Utilization" }] : []),
-                          ...(!memoryEnabled ? [{ value: "memory", label: "Memory Utilization" }] : []),
-                        ].map((option) => (
-                          <ComboboxItem key={option.value} value={option.value}>
-                            {option.label}
-                          </ComboboxItem>
-                        ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                )}
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 mt-4">
+            <div className={`space-y-4 transition-opacity duration-200 ${enabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Replica Range</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field>
+                    <FieldLabel className="text-xs text-muted-foreground">Min Replicas</FieldLabel>
+                    <FieldContent>
+                      <Input type="number" {...register("min_replicas", { valueAsNumber: true })} disabled={!enabled} />
+                    </FieldContent>
+                    {errors.min_replicas && <FieldError>{errors.min_replicas.message}</FieldError>}
+                  </Field>
+                  <Field>
+                    <FieldLabel className="text-xs text-muted-foreground">Max Replicas</FieldLabel>
+                    <FieldContent>
+                      <Input type="number" {...register("max_replicas", { valueAsNumber: true })} disabled={!enabled} />
+                    </FieldContent>
+                    {errors.max_replicas && <FieldError>{errors.max_replicas.message}</FieldError>}
+                  </Field>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                {cpuEnabled && (
-                  <div className="flex items-end gap-2 p-3 border rounded-lg bg-muted/30">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-2">
-                        <span className="text-xs font-medium text-muted-foreground">Metric Type</span>
-                        <div className="h-7 flex items-center px-3 bg-muted rounded border text-xs">
-                          CPU Utilization
-                        </div>
-                      </div>
-                      <Field>
-                        <FieldLabel className="text-xs text-muted-foreground">Target Utilization (%)</FieldLabel>
-                        <FieldContent>
-                          <Input type="number" {...register("target_cpu_utilization", { valueAsNumber: true })} disabled={!enabled} />
-                        </FieldContent>
-                        {errors.target_cpu_utilization && <FieldError>{errors.target_cpu_utilization.message}</FieldError>}
-                      </Field>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setValue("cpu_enabled", false)}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Metrics</h4>
+                  {(!cpuEnabled || !memoryEnabled) && (
+                    <Combobox
+                      value={null}
+                      onValueChange={(value: string | null) => {
+                        if (value === "cpu") setValue("cpu_enabled", true)
+                        if (value === "memory") setValue("memory_enabled", true)
+                      }}
+                      itemToStringLabel={(v) => METRIC_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
                       disabled={!enabled}
                     >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                )}
+                      <ComboboxInput placeholder="Add Metric" />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {[
+                            ...(!cpuEnabled ? [{ value: "cpu", label: "CPU Utilization" }] : []),
+                            ...(!memoryEnabled ? [{ value: "memory", label: "Memory Utilization" }] : []),
+                          ].map((option) => (
+                            <ComboboxItem key={option.value} value={option.value}>
+                              {option.label}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  )}
+                </div>
 
-                {memoryEnabled && (
-                  <div className="flex items-end gap-2 p-3 border rounded-lg bg-muted/30">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-2">
-                        <span className="text-xs font-medium text-muted-foreground">Metric Type</span>
-                        <div className="h-7 flex items-center px-3 bg-muted rounded border text-xs">
-                          Memory Utilization
+                <div className="space-y-4">
+                  {cpuEnabled && (
+                    <div className="flex items-end gap-2 p-3 border rounded-lg bg-muted/30">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">Metric Type</span>
+                          <div className="h-7 flex items-center px-3 bg-muted rounded border text-xs">
+                            CPU Utilization
+                          </div>
                         </div>
+                        <Field>
+                          <FieldLabel className="text-xs text-muted-foreground">Target Utilization (%)</FieldLabel>
+                          <FieldContent>
+                            <Input type="number" {...register("target_cpu_utilization", { valueAsNumber: true })} disabled={!enabled} />
+                          </FieldContent>
+                          {errors.target_cpu_utilization && <FieldError>{errors.target_cpu_utilization.message}</FieldError>}
+                        </Field>
                       </div>
-                      <Field>
-                        <FieldLabel className="text-xs text-muted-foreground">Target Utilization (%)</FieldLabel>
-                        <FieldContent>
-                          <Input type="number" {...register("target_memory_utilization", { valueAsNumber: true })} disabled={!enabled} />
-                        </FieldContent>
-                        {errors.target_memory_utilization && <FieldError>{errors.target_memory_utilization.message}</FieldError>}
-                      </Field>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setValue("cpu_enabled", false)}
+                        disabled={!enabled}
+                      >
+                        <Trash2 />
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setValue("memory_enabled", false)}
-                      disabled={!enabled}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                )}
+                  )}
 
-                {!cpuEnabled && !memoryEnabled && (
-                  <EmptyState title="" description="No metrics configured. Click 'Add Metric' to begin." />
-                )}
+                  {memoryEnabled && (
+                    <div className="flex items-end gap-2 p-3 border rounded-lg bg-muted/30">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">Metric Type</span>
+                          <div className="h-7 flex items-center px-3 bg-muted rounded border text-xs">
+                            Memory Utilization
+                          </div>
+                        </div>
+                        <Field>
+                          <FieldLabel className="text-xs text-muted-foreground">Target Utilization (%)</FieldLabel>
+                          <FieldContent>
+                            <Input type="number" {...register("target_memory_utilization", { valueAsNumber: true })} disabled={!enabled} />
+                          </FieldContent>
+                          {errors.target_memory_utilization && <FieldError>{errors.target_memory_utilization.message}</FieldError>}
+                        </Field>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setValue("memory_enabled", false)}
+                        disabled={!enabled}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  )}
+
+                  {!cpuEnabled && !memoryEnabled && (
+                    <EmptyState title="" description="No metrics configured. Click 'Add Metric' to begin." />
+                  )}
+                </div>
               </div>
             </div>
           </div>
-
-          <div className="flex justify-end">
-            {!isViewer && (
-              <Button type="submit" disabled={updateMutation.isPending}>
-                <Save />
-                {updateMutation.isPending ? "Saving..." : "Save"}
-              </Button>
-            )}
-          </div>
-        </form>
-      </CardContent>
+        </CardContent>
+      </form>
     </Card>
   )
 }

@@ -8,7 +8,7 @@ import * as z from "zod"
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { useProjectRole } from "@/hooks/useProjectRole"
@@ -61,14 +61,22 @@ export function ResourceConfig({ app }: ResourceConfigProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Ruler className="h-4 w-4" /> Resources
-        </CardTitle>
-        <CardDescription>Configure CPU and Memory requests and limits</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-6">
+      <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-6">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Ruler className="h-4 w-4" /> Resources
+          </CardTitle>
+          <CardDescription>Configure CPU and Memory requests and limits</CardDescription>
+          <CardAction>
+            {!isViewer && (
+              <Button type="submit" disabled={updateMutation.isPending}>
+                <Save />
+                {updateMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            )}
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <h4 className="text-sm font-medium">CPU (milliCPUs)</h4>
@@ -110,17 +118,8 @@ export function ResourceConfig({ app }: ResourceConfigProps) {
               </div>
             </div>
           </div>
-
-          <div className="flex justify-end">
-            {!isViewer && (
-              <Button type="submit" disabled={updateMutation.isPending}>
-                <Save />
-                {updateMutation.isPending ? "Saving..." : "Save"}
-              </Button>
-            )}
-          </div>
-        </form>
-      </CardContent>
+        </CardContent>
+      </form>
     </Card>
   )
 }

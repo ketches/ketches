@@ -178,3 +178,105 @@ func TestListDeployments_AllowsNilAppID(t *testing.T) {
 	assert.Equal(t, "New App", res[0].AppName)
 	assert.Equal(t, "Dev", res[0].EnvName)
 }
+
+func TestListDeployments_ExcludesDeletedDetachedAndMissingApps(t *testing.T) {
+	setupBuildServiceTestDB(t)
+
+	repoID := "repo-1"
+	envID := "env-1"
+
+	env := entities.Env{
+		Base:             entities.Base{ID: envID},
+		Name:             "Dev",
+		Slug:             "dev",
+		ProjectID:        "project-1",
+		ClusterID:        "cluster-1",
+		ClusterNamespace: "project-dev",
+	}
+	require.NoError(t, db.DB.Create(&env).Error)
+
+	buildSetting := entities.BuildSetting{
+		ID:               "bs-1",
+		CodeRepositoryID: ptr(repoID),
+		Name:             "backend",
+		ImageName:        "repo/app",
+		RegistryID:       "reg-1",
+	}
+	require.NoError(t, db.DB.Create(&buildSetting).Error)
+
+	builds := []entities.Build{
+		{ID: "build-keep", BuildSettingID: buildSetting.ID, BuildEnvID: envID, BuildNumber: 1, Status: entities.BuildStatusSucceeded, GitRef: "main", ImageFullName: "ghcr.io/demo/app:v1.0.0"},
+		{ID: "build-new-app", BuildSettingID: buildSetting.ID, BuildEnvID: envID, BuildNumber: 2, Status: entities.BuildStatusSucceeded, GitRef: "main", ImageFullName: "ghcr.io/demo/app:v1.0.1"},
+		{ID: "build-deleted", BuildSettingID: buildSetting.ID, BuildEnvID: envID, BuildNumber: 3, Status: entities.BuildStatusSucceeded, GitRef: "main", ImageFullName: "ghcr.io/demo/app:v1.0.2"},
+		{ID: "build-detached", BuildSettingID: buildSetting.ID, BuildEnvID: envID, BuildNumber: 4, Status: entities.BuildStatusSucceeded, GitRef: "main", ImageFullName: "ghcr.io/demo/app:v1.0.3"},
+		{ID: "build-missing", BuildSettingID: buildSetting.ID, BuildEnvID: envID, BuildNumber: 5, Status: entities.BuildStatusSucceeded, GitRef: "main", ImageFullName: "ghcr.io/demo/app:v1.0.4"},
+	}
+	require.NoError(t, db.DB.Create(&builds).Error)
+
+	keepRepoID := repoID
+	keepApp := entities.App{
+		Base:             entities.Base{ID: "app-keep"},
+		Slug:             "app-keep",
+		Name:             "Keep App",
+		EnvID:            envID,
+		AppType:          "Deployment",
+		ContainerImage:   "nginx:1",
+		Replicas:         1,
+		CodeRepositoryID: &keepRepoID,
+	}
+	deletedRepoID := repoID
+	deletedApp := entities.App{
+		Base:             entities.Base{ID: "app-deleted"},
+		Slug:             "app-deleted",
+		Name:             "Deleted App",
+		EnvID:            envID,
+		AppType:          "Deployment",
+		ContainerImage:   "nginx:1",
+		Replicas:         1,
+		CodeRepositoryID: &deletedRepoID,
+	}
+	detachedApp := entities.App{
+		Base:           entities.Base{ID: "app-detached"},
+		Slug:           "app-detached",
+		Name:           "Detached App",
+		EnvID:          envID,
+		AppType:        "Deployment",
+		ContainerImage: "nginx:1",
+		Replicas:       1,
+	}
+	require.NoError(t, db.DB.Create(&keepApp).Error)
+	require.NoError(t, db.DB.Create(&deletedApp).Error)
+	require.NoError(t, db.DB.Create(&detachedApp).Error)
+	require.NoError(t, db.DB.Delete(&deletedApp).Error)
+
+	keepAppID := keepApp.ID
+	deletedAppID := deletedApp.ID
+	detachedAppID := detachedApp.ID
+	missingAppID := "app-missing"
+	deployments := []entities.BuildDeployment{
+		{ID: "bd-keep", BuildID: "build-keep", AppID: &keepAppID, EnvID: envID, Status: entities.BuildDeploymentStatusDeployed, DeployedBy: "user-1"},
+		{ID: "bd-new-app", BuildID: "build-new-app", AppID: nil, AppName: "New App", EnvID: envID, Status: entities.BuildDeploymentStatusPending, DeployedBy: "user-1"},
+		{ID: "bd-deleted", BuildID: "build-deleted", AppID: &deletedAppID, EnvID: envID, Status: entities.BuildDeploymentStatusDeployed, DeployedBy: "user-1"},
+		{ID: "bd-detached", BuildID: "build-detached", AppID: &detachedAppID, EnvID: envID, Status: entities.BuildDeploymentStatusDeployed, DeployedBy: "user-1"},
+		{ID: "bd-missing", BuildID: "build-missing", AppID: &missingAppID, AppName: "Missing App", EnvID: envID, Status: entities.BuildDeploymentStatusFailed, DeployedBy: "user-1"},
+	}
+	require.NoError(t, db.DB.Create(&deployments).Error)
+
+	res, err := ListDeployments(repoID)
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+
+	deploymentIDs := []string{res[0].DeploymentID, res[1].DeploymentID}
+	assert.ElementsMatch(t, []string{"bd-keep", "bd-new-app"}, deploymentIDs)
+
+	for _, item := range res {
+		switch item.DeploymentID {
+		case "bd-keep":
+			assert.Equal(t, "app-keep", item.AppID)
+			assert.Equal(t, "Keep App", item.AppName)
+		case "bd-new-app":
+			assert.Equal(t, "", item.AppID)
+			assert.Equal(t, "New App", item.AppName)
+		}
+	}
+}

@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button"
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { Plus, Terminal, X } from "lucide-react"
@@ -7,8 +9,6 @@ import { Terminal as XTerm } from "xterm"
 import { FitAddon } from "xterm-addon-fit"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import "xterm/css/xterm.css"
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty"
-import { Separator } from "../ui/separator"
 import { WorkloadPanelFrame } from "./workload-panel-frame"
 
 interface TerminalSession {

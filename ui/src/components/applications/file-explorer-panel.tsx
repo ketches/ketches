@@ -60,6 +60,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Tooltip,
@@ -68,7 +69,6 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { AxiosError } from "axios"
-import { Separator } from "../ui/separator"
 
 // Copy text to clipboard with toast feedback
 function copyToClipboard(text: string) {

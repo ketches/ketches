@@ -634,7 +634,7 @@ export function ClusterDetailPage() {
             />
           </div>
 
-          <Card>
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />

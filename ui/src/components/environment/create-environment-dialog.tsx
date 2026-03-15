@@ -24,12 +24,12 @@ import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/fie
 import { Input } from "@/components/ui/input"
 
 
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useProjectStore } from "@/stores/project"
 import type { AxiosError } from "axios"
 import { InfoIcon } from "lucide-react"
-import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface CreateEnvironmentFormProps {
   open?: boolean

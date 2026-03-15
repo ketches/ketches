@@ -41,11 +41,11 @@ vi.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: React.ComponentProps<"button">) => <button {...props}>{children}</button>,
 }))
 
-vi.mock("../shared/color-badge", () => ({
+vi.mock("@/components/shared/color-badge", () => ({
   ColorBadge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }))
 
-vi.mock("../shared/empty-state", () => ({
+vi.mock("@/components/shared/empty-state", () => ({
   EmptyState: ({ description }: { description: string }) => <div>{description}</div>,
 }))
 

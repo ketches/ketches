@@ -3,7 +3,7 @@
 import { IndentPlugin } from "@platejs/indent/react"
 import { ListPlugin } from "@platejs/list/react"
 
-import { CollabListElement } from "../collab-editor-elements"
+import { CollabListElement } from "@/components/editor/collab-editor-elements"
 
 export const CollabListsKit = [
   IndentPlugin,

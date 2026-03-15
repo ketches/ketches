@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useDebounce } from "@/hooks/use-debounce"
 import { cn, formatDate, toTitleCase } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
@@ -28,9 +29,26 @@ import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { endOfDay, format, startOfDay, subDays } from "date-fns"
 import {
   Activity,
+  Box,
   CalendarIcon,
   CheckCircle2,
+  CircleArrowUp,
+  CircleMinus,
+  CirclePlus,
   Download,
+  Fingerprint,
+  FolderGit,
+  GalleryHorizontalEnd,
+  Hammer,
+  History,
+  ListCheck,
+  LogIn,
+  LogOut,
+  Orbit,
+  Package,
+  Pause,
+  Play,
+  RefreshCcw,
   Shield,
   ShieldAlert,
   ShieldCheck,
@@ -43,44 +61,44 @@ import { toast } from "sonner"
 
 
 const ACTIVITY_RESOURCE_TYPE_OPTIONS = [
-  { label: "All Resources", value: "all" },
-  { label: "App", value: "app" },
-  { label: "Code Repository", value: "code_repository" },
-  { label: "Project", value: "project" },
-  { label: "Environment", value: "env" },
-  { label: "Deployment", value: "deployment" },
-  { label: "Build", value: "build" },
-  { label: "User", value: "user" },
-  { label: "Session", value: "session" },
+  { label: "All Resources", value: "all", icon: ListCheck, color: "gray" },
+  { label: "App", value: "app", icon: Box, color: "blue" },
+  { label: "Code Repository", value: "code_repository", icon: FolderGit, color: "lime" },
+  { label: "Project", value: "project", icon: GalleryHorizontalEnd, color: "indigo" },
+  { label: "Environment", value: "env", icon: Orbit, color: "green" },
+  { label: "Deployment", value: "deployment", icon: Package, color: "sky" },
+  { label: "Build", value: "build", icon: Hammer, color: "blue" },
+  { label: "User", value: "user", icon: User, color: "red" },
+  { label: "Session", value: "session", icon: Fingerprint, color: "gray" },
 ] as const
 
 const ACTIVITY_ACTION_OPTIONS = [
-  { label: "All Actions", value: "all" },
-  { label: "Create", value: "create" },
-  { label: "Update", value: "update" },
-  { label: "Delete", value: "delete" },
-  { label: "Deploy", value: "deploy" },
-  { label: "Build", value: "build" },
-  { label: "Rollback", value: "rollback" },
-  { label: "Start", value: "start" },
-  { label: "Stop", value: "stop" },
-  { label: "Restart", value: "restart" },
-  { label: "Sign In", value: "sign-in" },
-  { label: "Sign Up", value: "sign-up" },
+  { label: "All Actions", value: "all", icon: ListCheck, color: "gray" },
+  { label: "Create", value: "create", icon: CirclePlus, color: "gray" },
+  { label: "Update", value: "update", icon: CircleArrowUp, color: "gray" },
+  { label: "Delete", value: "delete", icon: CircleMinus, color: "gray" },
+  { label: "Deploy", value: "deploy", icon: Package, color: "gray" },
+  { label: "Build", value: "build", icon: Hammer, color: "gray" },
+  { label: "Rollback", value: "rollback", icon: History, color: "gray" },
+  { label: "Start", value: "start", icon: Play, color: "gray" },
+  { label: "Stop", value: "stop", icon: Pause, color: "gray" },
+  { label: "Restart", value: "restart", icon: RefreshCcw, color: "gray" },
+  { label: "Sign In", value: "sign-in", icon: LogIn, color: "gray" },
+  { label: "Sign Up", value: "sign-up", icon: LogOut, color: "gray" },
 ] as const
 
 
 const ACTIVITY_SENSITIVITY_OPTIONS = [
-  { label: "All Sensitivities", value: "all" },
-  { label: "Public", value: "public" },
-  { label: "Internal", value: "internal" },
-  { label: "Sensitive", value: "sensitive" },
+  { label: "All Sensitivities", value: "all", icon: ListCheck, color: "gray" },
+  { label: "Public", value: "public", icon: ShieldCheck, color: "green" },
+  { label: "Internal", value: "internal", icon: Shield, color: "yellow" },
+  { label: "Sensitive", value: "sensitive", icon: ShieldAlert, color: "red" },
 ] as const
 
 const ACTIVITY_STATUS_OPTIONS = [
-  { label: "All Statuses", value: "all" },
-  { label: "Success", value: "success" },
-  { label: "Failure", value: "failure" },
+  { label: "All Statuses", value: "all", icon: ListCheck, color: "gray" },
+  { label: "Success", value: "success", icon: CheckCircle2, color: "green" },
+  { label: "Failure", value: "failure", icon: XCircle, color: "red" },
 ] as const
 
 const OPERATION_LOG_SENSITIVITY_COLOR_BADGE: Record<OperationLogSensitivity, { color: "green" | "yellow" | "red"; icon: React.ComponentType<{ className?: string }> }> = {
@@ -278,9 +296,9 @@ export function ActivitiesPage() {
   }
 
   const leftToolbar = (
-    <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap pr-1">
+    <div className="flex flex-1 items-center gap-2 pr-1">
       <Input
-        className="min-w-56 flex-1 basis-80"
+        className="w-56"
         placeholder={isAdmin ? "Filter by user, action, resource..." : "Filter by action, resource..."}
         value={search}
         onChange={(e) => {
@@ -289,7 +307,7 @@ export function ActivitiesPage() {
         }}
       />
 
-      <div className="min-w-32 basis-36 flex-[0.9]">
+      <div className="w-28">
         <Combobox
           value={action || "all"}
           onValueChange={(value) => {
@@ -302,14 +320,16 @@ export function ActivitiesPage() {
           <ComboboxContent>
             <ComboboxList>
               {ACTIVITY_ACTION_OPTIONS.map((item) => (
-                <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
+                <ComboboxItem key={item.value} value={item.value}>
+                  <item.icon className={`h-4 w-4 text-${item.color}-500`} />
+                  {item.label}</ComboboxItem>
               ))}
             </ComboboxList>
           </ComboboxContent>
         </Combobox>
       </div>
 
-      <div className="min-w-36 basis-44 flex-[1.05]">
+      <div className="w-36">
         <Combobox
           value={resourceType || "all"}
           onValueChange={(value) => {
@@ -322,14 +342,16 @@ export function ActivitiesPage() {
           <ComboboxContent>
             <ComboboxList>
               {ACTIVITY_RESOURCE_TYPE_OPTIONS.map((item) => (
-                <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
+                <ComboboxItem key={item.value} value={item.value}>
+                  <item.icon className={`h-4 w-4 text-${item.color}-500`} />
+                  {item.label}</ComboboxItem>
               ))}
             </ComboboxList>
           </ComboboxContent>
         </Combobox>
       </div>
 
-      <div className="min-w-56 basis-64 flex-[1.4]">
+      <div className="w-56">
         <Popover>
           <PopoverTrigger
             render={
@@ -369,7 +391,7 @@ export function ActivitiesPage() {
         </Popover>
       </div>
 
-      <div className="min-w-32 basis-36 flex-[0.85]">
+      <div className="w-32">
         <Combobox
           value={sensitivity}
           onValueChange={(value) => {
@@ -382,14 +404,16 @@ export function ActivitiesPage() {
           <ComboboxContent>
             <ComboboxList>
               {ACTIVITY_SENSITIVITY_OPTIONS.map((item) => (
-                <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
+                <ComboboxItem key={item.value} value={item.value}>
+                  <item.icon className={`h-4 w-4 text-${item.color}-500`} />
+                  {item.label}</ComboboxItem>
               ))}
             </ComboboxList>
           </ComboboxContent>
         </Combobox>
       </div>
 
-      <div className="min-w-28 basis-32 flex-[0.75]">
+      <div className="w-28">
         <Combobox
           value={status}
           onValueChange={(value) => {
@@ -402,7 +426,9 @@ export function ActivitiesPage() {
           <ComboboxContent>
             <ComboboxList>
               {ACTIVITY_STATUS_OPTIONS.map((item) => (
-                <ComboboxItem key={item.value} value={item.value}>{item.label}</ComboboxItem>
+                <ComboboxItem key={item.value} value={item.value}>
+                  <item.icon className={`h-4 w-4 text-${item.color}-500`} />
+                  {item.label}</ComboboxItem>
               ))}
             </ComboboxList>
           </ComboboxContent>
@@ -412,10 +438,17 @@ export function ActivitiesPage() {
   )
   const rightToolbar = isAdmin ? (
     <div className="flex shrink-0 items-center gap-2">
-      <Button variant="secondary" onClick={handleExport}>
-        <Download />
-        Export CSV
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button variant="outline" size="icon-sm" disabled={isLoading || items.length === 0} onClick={handleExport}>
+              <Download className="h-4 w-4" />
+            </Button>
+          }
+        >
+        </TooltipTrigger>
+        <TooltipContent>Export CSV</TooltipContent>
+      </Tooltip>
     </div>
   ) : null
 

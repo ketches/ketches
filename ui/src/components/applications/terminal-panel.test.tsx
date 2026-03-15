@@ -12,16 +12,16 @@ vi.mock("xterm", () => ({
     cols = 80
     rows = 24
 
-    loadAddon() {}
-    open() {}
-    focus() {}
-    write() {}
-    writeln() {}
-    dispose() {}
+    loadAddon() { }
+    open() { }
+    focus() { }
+    write() { }
+    writeln() { }
+    dispose() { }
 
     onData() {
       return {
-        dispose() {},
+        dispose() { },
       }
     }
   },
@@ -29,12 +29,12 @@ vi.mock("xterm", () => ({
 
 vi.mock("xterm-addon-fit", () => ({
   FitAddon: class MockFitAddon {
-    fit() {}
+    fit() { }
   },
 }))
 
 vi.mock("xterm-addon-web-links", () => ({
-  WebLinksAddon: class MockWebLinksAddon {},
+  WebLinksAddon: class MockWebLinksAddon { },
 }))
 
 vi.mock("@/components/ui/button", () => ({
@@ -54,7 +54,7 @@ vi.mock("@/components/ui/tooltip", () => ({
   },
 }))
 
-vi.mock("../ui/empty", () => ({
+vi.mock("@/components/ui/empty", () => ({
   Empty: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   EmptyContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   EmptyDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -63,7 +63,7 @@ vi.mock("../ui/empty", () => ({
   EmptyTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock("../ui/separator", () => ({
+vi.mock("@/components/ui/separator", () => ({
   Separator: () => <div />,
 }))
 
@@ -135,9 +135,9 @@ describe("TerminalPanel", () => {
     vi.stubGlobal(
       "ResizeObserver",
       class ResizeObserver {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
+        observe() { }
+        unobserve() { }
+        disconnect() { }
       }
     )
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => window.setTimeout(() => callback(0), 0))

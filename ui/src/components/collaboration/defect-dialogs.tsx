@@ -26,12 +26,12 @@ import {
 import { BasicEditor } from "@/components/editor/basic-editor"
 import { isBasicEditorEmpty } from "@/components/editor/basic-editor-value"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { Field, FieldContent, FieldLabel } from "../ui/field"
 
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 

@@ -8,7 +8,7 @@ import * as z from "zod"
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
 import { useProjectRole } from "@/hooks/useProjectRole"
@@ -50,12 +50,20 @@ export function CommandConfig({ app }: CommandConfigProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-sm flex items-center gap-2"><Play className="h-4 w-4" /> Startup Command</CardTitle>
-        <CardDescription>Override the default container startup command</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-2">
+      <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-2">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2"><Play className="h-4 w-4" /> Startup Command</CardTitle>
+          <CardDescription>Override the default container startup command</CardDescription>
+          <CardAction>
+            {!isViewer && (
+              <Button type="submit" disabled={updateMutation.isPending}>
+                <Save />
+                {updateMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            )}
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <Field>
             <FieldLabel>Command</FieldLabel>
             <FieldContent>
@@ -70,17 +78,8 @@ export function CommandConfig({ app }: CommandConfigProps) {
             </FieldDescription>
             {errors.container_command && <FieldError>{errors.container_command.message}</FieldError>}
           </Field>
-
-          <div className="flex justify-end">
-            {!isViewer && (
-              <Button type="submit" disabled={updateMutation.isPending}>
-                <Save />
-                {updateMutation.isPending ? "Saving..." : "Save"}
-              </Button>
-            )}
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </form>
+    </Card >
   )
 }
