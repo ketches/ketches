@@ -4,20 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
-	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func ListAppBuilds(appID string, page, pageSize int) (int64, []models.AppBuildResponse, error) {
@@ -101,13 +96,17 @@ func CancelBuild(buildID string) (*entities.Build, error) {
 	// Stop watching
 	core.GlobalBuildWatcher.StopWatching(buildID)
 
+	if err := persistBuildLogs(context.Background(), buildID); err != nil {
+		log.Printf("Failed to persist build logs before cancel: %v", err)
+	}
+
 	// Cancel the K8s job
 	if build.JobName != "" {
 		var buildEnv entities.Env
 		if err := db.DB.First(&buildEnv, "id = ?", build.BuildEnvID).Error; err != nil {
 			return nil, err
 		}
-		if err := core.CancelBuildJob(
+		if err := cancelBuildJob(
 			context.Background(),
 			buildEnv.ClusterID,
 			build.JobName,
@@ -119,7 +118,7 @@ func CancelBuild(buildID string) (*entities.Build, error) {
 
 	// Cleanup secrets
 	if buildEnv, err := GetEnv(build.BuildEnvID); err == nil {
-		go core.CleanupBuildSecrets(context.Background(), buildEnv.ClusterID, buildID, build.JobNamespace)
+		cleanupBuildSecrets(context.Background(), buildEnv.ClusterID, buildID, build.JobNamespace)
 	}
 
 	// Update build status
@@ -207,97 +206,6 @@ func DeployBuild(ctx context.Context, buildID string) (*entities.Build, error) {
 		"deployed_at": &now,
 	})
 	return build, nil
-}
-
-func StreamBuildLogs(c *gin.Context, buildID string) {
-	build, err := GetBuild(buildID)
-	if err != nil {
-		c.JSON(404, gin.H{"error": "build not found"})
-		return
-	}
-
-	if build.JobName == "" {
-		c.JSON(400, gin.H{"error": "build has no job"})
-		return
-	}
-
-	buildEnv, err := GetEnv(build.BuildEnvID)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to load build environment"})
-		return
-	}
-	client, err := kube.GlobalClusterStore.GetClient(buildEnv.ClusterID)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to get cluster client"})
-		return
-	}
-
-	pods, err := client.CoreV1().Pods(build.JobNamespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("job-name=%s", build.JobName),
-	})
-	if err != nil || len(pods.Items) == 0 {
-		c.JSON(404, gin.H{"error": "build pod not found"})
-		return
-	}
-
-	pod := &pods.Items[0]
-	podName := pod.Name
-
-	// Collect container names: init containers first, then main containers (so user sees init + build logs)
-	var containerNames []string
-	for _, ic := range pod.Spec.InitContainers {
-		containerNames = append(containerNames, ic.Name)
-	}
-	for _, c := range pod.Spec.Containers {
-		containerNames = append(containerNames, c.Name)
-	}
-
-	follow := build.Status == entities.BuildStatusPending ||
-		build.Status == entities.BuildStatusCloning ||
-		build.Status == entities.BuildStatusBuilding
-
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-
-	tailLines := int64(1000)
-	buf := make([]byte, 4096)
-
-	for i, containerName := range containerNames {
-		// Init containers: do not follow (read until EOF). Last container (kaniko): follow if build still running.
-		containerFollow := follow && (i == len(containerNames)-1)
-		logReq := client.CoreV1().Pods(build.JobNamespace).GetLogs(podName, &corev1.PodLogOptions{
-			Container:  containerName,
-			Follow:     containerFollow,
-			TailLines:  &tailLines,
-			Timestamps: true,
-		})
-
-		stream, err := logReq.Stream(context.Background())
-		if err != nil {
-			// Container may not have started yet; send a line and continue
-			c.SSEvent("log", fmt.Sprintf("[%s] (logs not available yet)\n", containerName))
-			c.Writer.Flush()
-			continue
-		}
-		for {
-			n, err := stream.Read(buf)
-			if n > 0 {
-				c.SSEvent("log", string(buf[:n]))
-				c.Writer.Flush()
-			}
-			if err != nil {
-				if err != io.EOF {
-					log.Printf("Build log stream error %s: %v", containerName, err)
-				}
-				stream.Close()
-				break
-			}
-		}
-	}
-
-	c.SSEvent("done", "stream ended")
-	c.Writer.Flush()
 }
 
 func ToBuildResponse(c context.Context, b *entities.Build) models.BuildResponse {
