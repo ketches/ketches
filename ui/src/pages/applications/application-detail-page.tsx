@@ -34,7 +34,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -494,7 +494,7 @@ function InstanceEventsDialog({ appId, instanceName, open, onOpenChange }: { app
             hidePagination
             emptyContent={
               <EmptyState
-                title="No Events"
+                title=""
                 description="No events found for this instance."
                 icon={Activity}
                 border={false}
@@ -577,7 +577,6 @@ export function ApplicationDetailPage() {
     const saved = localStorage.getItem(INSTANCES_VIEW_MODE_KEY)
     return (saved === 'table' || saved === 'card') ? saved : 'table'
   })
-  const [searchQuery, setSearchQuery] = React.useState("")
   const [rowSelection, setRowSelection] = React.useState({})
   const [instancePagination, setInstancePagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [operationLogsPagination, setOperationLogsPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
@@ -677,16 +676,6 @@ export function ApplicationDetailPage() {
       cell: ({ row }) => <span className="font-mono text-xs">{row.original.client_ip || '-'}</span>,
     },
   ]
-
-  const filteredInstances = React.useMemo(() => {
-    if (!searchQuery) return safeInstances
-    const lowQuery = searchQuery.toLowerCase()
-    return safeInstances.filter(i =>
-      i.instance_name.toLowerCase().includes(lowQuery) ||
-      i.ip?.toLowerCase().includes(lowQuery) ||
-      i.node_name?.toLowerCase().includes(lowQuery)
-    )
-  }, [safeInstances, searchQuery])
 
   const instanceColumns: ColumnDef<any>[] = [
     {
@@ -1022,7 +1011,7 @@ export function ApplicationDetailPage() {
   }
 
   const breadcrumbs: BreadcrumbItem[] = isAdmin ? [
-    { label: "Projects", icon: GalleryVerticalEnd },
+    { label: "Projects", icon: GalleryVerticalEnd, href: '/projects' },
     {
       label: projectNameToUse || "Project",
       icon: GalleryVerticalEnd,
@@ -1275,60 +1264,51 @@ export function ApplicationDetailPage() {
               <CardTitle className="text-sm flex items-center gap-2">
                 <Container className="h-4 w-4" /> Running Instances
               </CardTitle>
+              <CardAction className="flex flex-wrap items-center justify-end gap-2">
+                {Object.keys(rowSelection).length > 0 && !isViewer && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
+                      const selectedNames = selectedIndices.map(idx => safeInstances[parseInt(idx)]?.instance_name).filter(Boolean) as string[]
+
+                      setSelectedInstanceNames(selectedNames)
+                      setBulkDeleteDialogOpen(true)
+                    }}
+                    disabled={bulkDeleteMutation.isPending}
+                  >
+                    <Trash2 />
+                    Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
+                  </Button>
+                )}
+                <Tabs value={viewMode} onValueChange={(v) => {
+                  setViewMode(v as any)
+                  // Reset pagination when view mode changes
+                  setInstancePagination({ pageIndex: 0, pageSize: 10 })
+                }} className="w-auto h-7">
+                  <TabsList>
+                    <TabsTrigger value="table" className="px-2">
+                      <List />
+                    </TabsTrigger>
+                    <TabsTrigger value="card">
+                      <LayoutGrid />
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                {!isViewer && <ScaleAppPopover app={app} />}
+              </CardAction>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <Input
-                  className="flex flex-1 max-w-sm min-w-75"
-                  placeholder="Filter pods..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-
-                <div className="flex items-center gap-2">
-                  {Object.keys(rowSelection).length > 0 && !isViewer && (
-                    <Button
-                      variant="destructive"
-                      onClick={() => {
-                        const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
-                        const selectedNames = selectedIndices.map(idx => filteredInstances[parseInt(idx)]?.instance_name).filter(Boolean) as string[]
-
-                        setSelectedInstanceNames(selectedNames)
-                        setBulkDeleteDialogOpen(true)
-                      }}
-                      disabled={bulkDeleteMutation.isPending}
-                    >
-                      <Trash2 />
-                      Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
-                    </Button>
-                  )}
-                  <Tabs value={viewMode} onValueChange={(v) => {
-                    setViewMode(v as any)
-                    // Reset pagination when view mode changes
-                    setInstancePagination({ pageIndex: 0, pageSize: 10 })
-                  }} className="w-auto h-7">
-                    <TabsList>
-                      <TabsTrigger value="table" className="px-2">
-                        <List />
-                      </TabsTrigger>
-                      <TabsTrigger value="card">
-                        <LayoutGrid />
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                  {!isViewer && <ScaleAppPopover app={app} />}
-                </div>
-              </div>
-              {filteredInstances.length === 0 ? (
+            <CardContent>
+              {safeInstances.length === 0 ? (
                 <EmptyState
-                  title={searchQuery ? `No results for "${searchQuery}"` : "No instances running"}
-                  description={searchQuery ? `Try a different search term` : "The application might be scaled to zero or not yet deployed."}
+                  title="No instances running"
+                  description="The application might be scaled to zero or not yet deployed."
                   icon={Container}
                 />
               ) : viewMode === 'table' ? (
                 <DataTable
                   columns={instanceColumns}
-                  data={filteredInstances}
+                  data={safeInstances}
                   isLoading={isLoading}
                   rowSelection={rowSelection}
                   onRowSelectionChange={setRowSelection}
@@ -1339,7 +1319,7 @@ export function ApplicationDetailPage() {
 
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredInstances.map((instance) => {
+                  {safeInstances.map((instance) => {
                     const isRunning = instance.status === "Running"
                     const appContainerName = app?.slug ? `${app.slug}-app` : ""
                     const containers = instance.containers || [appContainerName]

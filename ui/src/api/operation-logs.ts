@@ -51,6 +51,10 @@ export const listOperationLogs = async (params?: OperationLogListParams) => {
   return client.get('/v1/operation-logs', { params }) as Promise<OperationLogListResponse>
 }
 
+export const listPlatformAuditLogs = async (params?: OperationLogListParams) => {
+  return client.get('/v1/platform-settings/audit-logs', { params }) as Promise<OperationLogListResponse>
+}
+
 export const listAppOperationLogs = async (appId: string, params?: OperationLogListParams) => {
   return client.get(`/v1/apps/${appId}/operation-logs`, { params }) as Promise<OperationLogListResponse>
 }
@@ -120,6 +124,7 @@ export const exportOperationLogsCSV = async (params?: OperationLogListParams) =>
 export const operationLogsApi = {
   listActivities,
   listOperationLogs,
+  listPlatformAuditLogs,
   listAppOperationLogs,
   listCodeRepositoryOperationLogs,
   getOperationLogSettings,

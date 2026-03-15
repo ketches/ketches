@@ -1,10 +1,11 @@
 import { collaborationApi, TaskStatusOptions, type Task, type TaskStatus } from "@/api/collaboration"
+import { projectsApi } from "@/api/projects"
 import { DueDateBadge, PriorityBadge } from "@/components/collaboration/collab-badges"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { LucideIcon } from "lucide-react"
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
@@ -40,11 +41,13 @@ function KanbanColumn({ status, label, icon: Icon, color, children }: { status: 
 
 function KanbanCard({
   task,
+  assigneeLabel,
   onCreateChild,
   onEdit,
   onDelete,
 }: {
   task: Task
+  assigneeLabel: string
   onCreateChild?: (task: Task) => void
   onEdit?: (task: Task) => void
   onDelete?: (task: Task) => void
@@ -99,7 +102,7 @@ function KanbanCard({
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground truncate">
-          {task.assignee_id || "Unassigned"}
+          {assigneeLabel}
         </span>
         <span className="text-[10px] text-muted-foreground font-mono">{task.id.slice(0, 8)}</span>
       </div>
@@ -107,7 +110,7 @@ function KanbanCard({
   )
 }
 
-function DragOverlayCard({ task, width }: { task: Task; width?: number | null }) {
+function DragOverlayCard({ task, assigneeLabel, width }: { task: Task; assigneeLabel: string; width?: number | null }) {
   return (
     <Card className="space-y-2 p-3 shadow-lg" style={width ? { width } : undefined}>
       <div className="text-sm font-medium line-clamp-2">{task.title}</div>
@@ -117,7 +120,7 @@ function DragOverlayCard({ task, width }: { task: Task; width?: number | null })
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground truncate">
-          {task.assignee_id || "Unassigned"}
+          {assigneeLabel}
         </span>
         <span className="text-[10px] text-muted-foreground font-mono">{task.id.slice(0, 8)}</span>
       </div>
@@ -129,6 +132,18 @@ export function KanbanBoard({ tasks, projectId, onCreateChild, onEdit, onDelete 
   const queryClient = useQueryClient()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [activeTaskWidth, setActiveTaskWidth] = useState<number | null>(null)
+  const { data: membersData } = useQuery({
+    queryKey: ["project-members", projectId],
+    queryFn: () => projectsApi.listMembers(projectId, { page: 1, page_size: 100 }),
+    enabled: !!projectId,
+  })
+
+  const memberLabels = new Map(
+    (membersData?.items ?? []).map((member) => [
+      member.user_id,
+      member.fullname || member.username,
+    ])
+  )
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -178,19 +193,40 @@ export function KanbanBoard({ tasks, projectId, onCreateChild, onEdit, onDelete 
     {} as Record<string, Task[]>
   )
 
+  const getAssigneeLabel = (assigneeId?: string) => {
+    if (!assigneeId) {
+      return "Unassigned"
+    }
+
+    return memberLabels.get(assigneeId) || assigneeId
+  }
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex w-full gap-4 overflow-x-auto pb-4">
         {TaskStatusOptions.map((opt) => (
           <KanbanColumn key={opt.value} status={opt.value} label={opt.label} icon={opt.icon} color={opt.color}>
             {groupedTasks[opt.value]?.map((task) => (
-              <KanbanCard key={task.id} task={task} onCreateChild={onCreateChild} onEdit={onEdit} onDelete={onDelete} />
+              <KanbanCard
+                key={task.id}
+                task={task}
+                assigneeLabel={getAssigneeLabel(task.assignee_id)}
+                onCreateChild={onCreateChild}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
             ))}
           </KanbanColumn>
         ))}
       </div>
       <DragOverlay>
-        {activeTask ? <DragOverlayCard task={activeTask} width={activeTaskWidth} /> : null}
+        {activeTask ? (
+          <DragOverlayCard
+            task={activeTask}
+            assigneeLabel={getAssigneeLabel(activeTask.assignee_id)}
+            width={activeTaskWidth}
+          />
+        ) : null}
       </DragOverlay>
     </DndContext >
   )

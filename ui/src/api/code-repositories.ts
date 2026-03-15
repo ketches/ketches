@@ -23,6 +23,11 @@ export interface GitRef {
   type: 'branch' | 'tag'
 }
 
+export interface BuildArgPair {
+  key: string
+  value: string
+}
+
 export interface CreateCodeRepositoryRequest {
   name?: string
   slug?: string
@@ -49,6 +54,10 @@ export interface BuildSetting {
   registry_id: string
   registry?: ContainerRegistry
   build_args: string
+  build_arg_pairs?: BuildArgPair[]
+  platforms: string
+  registry_cache_enabled: boolean
+  registry_cache_ref: string
 }
 
 export interface CreateBuildSettingRequest {
@@ -59,6 +68,10 @@ export interface CreateBuildSettingRequest {
   image_name: string
   registry_id: string
   build_args?: string
+  build_arg_pairs?: BuildArgPair[]
+  platforms?: string
+  registry_cache_enabled?: boolean
+  registry_cache_ref?: string
 }
 
 export interface UpdateBuildSettingRequest {
@@ -69,6 +82,10 @@ export interface UpdateBuildSettingRequest {
   image_name?: string
   registry_id?: string
   build_args?: string
+  build_arg_pairs?: BuildArgPair[]
+  platforms?: string
+  registry_cache_enabled?: boolean
+  registry_cache_ref?: string
 }
 
 export interface TriggerBuildRequest {

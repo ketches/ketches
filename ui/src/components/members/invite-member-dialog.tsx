@@ -2,8 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { UserPlus } from "lucide-react"
 import * as React from "react"
 
-import { PROJECT_ROLES, ProjectRole, ProjectRoleDescriptions, ProjectRoleLabels } from "@/api/projects"
-import { usersApi, type User as UserType } from "@/api/users"
+import { PROJECT_ROLES, ProjectRole, ProjectRoleDescriptions, ProjectRoleLabels, projectsApi } from "@/api/projects"
 import { Button } from "@/components/ui/button"
 import {
   Combobox,
@@ -34,19 +33,24 @@ import {
 } from "@/components/ui/field"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 
-export function InviteMemberDialog({ onAdd }: { onAdd: (data: { userIds: string[], role: string }) => void }) {
+interface InvitableUser {
+  id: string
+  username: string
+  email: string
+  fullname?: string
+}
+
+export function InviteMemberDialog({ projectId, onAdd }: { projectId: string; onAdd: (data: { userIds: string[], role: string }) => void }) {
   const [open, setOpen] = React.useState(false)
   const [userIds, setUserIds] = React.useState<string[]>([])
   const [role, setRole] = React.useState<string>(ProjectRole.DEVELOPER)
   const [searchQuery, setSearchQuery] = React.useState("")
 
-  const { data } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersApi.list({}),
-    enabled: open,
+  const { data: users = [] } = useQuery({
+    queryKey: ['invitable-users', projectId],
+    queryFn: () => projectsApi.listInvitableUsers(projectId),
+    enabled: open && !!projectId,
   })
-
-  const users = data?.users ?? []
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -94,7 +98,7 @@ export function InviteMemberDialog({ onAdd }: { onAdd: (data: { userIds: string[
                   onInputValueChange={setSearchQuery}
                   multiple
                   items={filteredUsers}
-                  itemToStringLabel={(u: string | UserType) => (typeof u === 'string' ? (users.find(user => user.id === u)?.username ?? u) : u.username)}
+                  itemToStringLabel={(u: string | InvitableUser) => (typeof u === 'string' ? (users.find(user => user.id === u)?.username ?? u) : u.username)}
                 >
                   <ComboboxChips ref={anchor} className="w-full">
                     <ComboboxValue>

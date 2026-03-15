@@ -1,6 +1,6 @@
 import { collaborationApi, SprintStatus, type Sprint } from "@/api/collaboration"
 import { Button } from "@/components/ui/button"
-import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -93,7 +93,6 @@ export function PlanToSprintDialog({
               >
                 <ComboboxInput placeholder="Select sprint" />
                 <ComboboxContent>
-                  <ComboboxEmpty>No available sprints</ComboboxEmpty>
                   <ComboboxList>
                     {sprints.map((sprint: Sprint) => (
                       <ComboboxItem key={sprint.id} value={sprint.id}>

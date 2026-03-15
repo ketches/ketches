@@ -22,17 +22,17 @@ type UpdateSprintRequest struct {
 
 // SprintResponse is the response body for a sprint.
 type SprintResponse struct {
-	ID        string     `json:"id"`
-	ProjectID string     `json:"project_id"`
-	Name      string     `json:"name"`
-	Goal      string     `json:"goal"`
-	Status    string     `json:"status"`
-	StartDate *time.Time `json:"start_date"`
-	EndDate   *time.Time `json:"end_date"`
-	CreatedBy string     `json:"created_by"`
-	UpdatedBy string     `json:"updated_by"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	ID        string    `json:"id"`
+	ProjectID string    `json:"project_id"`
+	Name      string    `json:"name"`
+	Goal      string    `json:"goal"`
+	Status    string    `json:"status"`
+	StartDate string    `json:"start_date"`
+	EndDate   string    `json:"end_date"`
+	CreatedBy string    `json:"created_by"`
+	UpdatedBy string    `json:"updated_by"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ListSprintResponse wraps sprint list with pagination.

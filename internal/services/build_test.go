@@ -30,6 +30,7 @@ func setupBuildServiceTestDB(t *testing.T) {
 		&entities.BuildSetting{},
 		&entities.Build{},
 		&entities.BuildDeployment{},
+		&entities.Env{},
 	))
 
 	db.DB = testDB
@@ -79,4 +80,78 @@ func TestListDeployedAppsByEnvironmentAndBuildSetting(t *testing.T) {
 	assert.Equal(t, "App Two", apps[0].Name)
 	assert.Equal(t, "app-1", apps[1].ID)
 	assert.Equal(t, "App One", apps[1].Name)
+}
+
+func TestToCodeRepositoryDeploymentResponse_AllowsNilAppID(t *testing.T) {
+	resp := toCodeRepositoryDeploymentResponse(&codeRepositoryDeploymentRow{
+		BuildID:                "build-1",
+		BuildSettingID:         "bs-1",
+		BuildNumber:            3,
+		GitRef:                 "main",
+		ImageFullName:          "ghcr.io/demo/app:v1.0.0",
+		DeploymentID:           "bd-1",
+		DeploymentStatus:       string(entities.BuildDeploymentStatusPending),
+		DeploymentErrorMessage: "",
+		AppID:                  nil,
+		AppName:                "New App",
+		EnvName:                "Dev",
+	})
+
+	assert.Equal(t, "", resp.AppID)
+	assert.Equal(t, "New App", resp.AppName)
+}
+
+func TestListDeployments_AllowsNilAppID(t *testing.T) {
+	setupBuildServiceTestDB(t)
+
+	repoID := "repo-1"
+	envID := "env-1"
+
+	env := entities.Env{
+		Base:             entities.Base{ID: envID},
+		Name:             "Dev",
+		Slug:             "dev",
+		ProjectID:        "project-1",
+		ClusterID:        "cluster-1",
+		ClusterNamespace: "project-dev",
+	}
+	require.NoError(t, db.DB.Create(&env).Error)
+
+	buildSetting := entities.BuildSetting{
+		ID:               "bs-1",
+		CodeRepositoryID: ptr("repo-1"),
+		Name:             "backend",
+		ImageName:        "repo/app",
+		RegistryID:       "reg-1",
+	}
+	require.NoError(t, db.DB.Create(&buildSetting).Error)
+
+	build := entities.Build{
+		ID:             "build-1",
+		BuildSettingID: buildSetting.ID,
+		BuildEnvID:     envID,
+		BuildNumber:    1,
+		Status:         entities.BuildStatusSucceeded,
+		GitRef:         "main",
+		ImageFullName:  "ghcr.io/demo/app:v1.0.0",
+	}
+	require.NoError(t, db.DB.Create(&build).Error)
+
+	deployment := entities.BuildDeployment{
+		ID:         "bd-1",
+		BuildID:    build.ID,
+		AppID:      nil,
+		EnvID:      envID,
+		AppName:    "New App",
+		Status:     entities.BuildDeploymentStatusPending,
+		DeployedBy: "user-1",
+	}
+	require.NoError(t, db.DB.Create(&deployment).Error)
+
+	res, err := ListDeployments(repoID)
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+	assert.Equal(t, "", res[0].AppID)
+	assert.Equal(t, "New App", res[0].AppName)
+	assert.Equal(t, "Dev", res[0].EnvName)
 }

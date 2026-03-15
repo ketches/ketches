@@ -41,6 +41,14 @@ func setupV1Routes(r *gin.Engine) {
 			authorized.GET("/operation-logs", middlewares.AdminOnly(), handlers.ListOperationLogs)
 			authorized.GET("/operation-logs/settings", middlewares.AdminOnly(), handlers.GetOperationLogSettings)
 			authorized.PUT("/operation-logs/settings", middlewares.AdminOnly(), handlers.UpdateOperationLogSettings)
+			authorized.GET("/platform-settings/audit-logs", middlewares.AdminOnly(), handlers.ListPlatformAuditLogs)
+			authorized.GET("/platform-update/config", middlewares.AdminOnly(), handlers.GetPlatformUpdateConfig)
+			authorized.PUT("/platform-update/config", middlewares.AdminOnly(), handlers.UpdatePlatformUpdateConfig)
+			authorized.GET("/platform-update/status", middlewares.AdminOnly(), handlers.GetPlatformUpdateStatus)
+			authorized.POST("/platform-update/check", middlewares.AdminOnly(), handlers.CheckPlatformUpdate)
+			authorized.POST("/platform-update/rollout", middlewares.AdminOnly(), handlers.TriggerPlatformRollout)
+			authorized.GET("/platform-settings/branding", middlewares.AdminOnly(), handlers.GetPlatformBranding)
+			authorized.PUT("/platform-settings/branding", middlewares.AdminOnly(), handlers.UpdatePlatformBranding)
 
 			// ── Notifications (user-scoped) ────────────────────────────
 			notifications := authorized.Group("/notifications")
@@ -72,6 +80,7 @@ func setupV1Routes(r *gin.Engine) {
 				projectsRead := projects.Group("", middlewares.RequireProjectRole(app.ProjectRoleViewer))
 				projectsRead.GET("/:projectID", handlers.GetProject)
 				projectsRead.GET("/:projectID/members", handlers.ListProjectMembers)
+				projectsRead.GET("/:projectID/invitable-users", handlers.ListInvitableUsers)
 				projectsRead.GET("/:projectID/envs", handlers.ListEnvs)
 				projectsRead.GET("/:projectID/envs/simple", handlers.ListEnvsSimple)
 				projectsRead.GET("/:projectID/container-registries", handlers.ListProjectContainerRegistries)
@@ -213,6 +222,7 @@ func setupV1Routes(r *gin.Engine) {
 				appsRead.GET("/:appID/deployment-history", handlers.ListDeploymentHistory)
 				appsRead.GET("/:appID/favorite", handlers.GetAppFavoriteStatus)
 				appsRead.GET("/:appID/operation-logs", handlers.ListAppOperationLogs)
+			appsRead.GET("/:appID/image-tags", handlers.ListAppImageTags)
 
 				// Exec / Log / Files (block viewer — require at least developer)
 				appsExec := apps.Group("", middlewares.BlockViewer())

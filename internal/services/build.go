@@ -382,12 +382,19 @@ func toCodeRepositoryDeploymentResponse(row *codeRepositoryDeploymentRow) models
 		ImageFullName:  row.ImageFullName,
 		ErrorMessage:   row.DeploymentErrorMessage,
 		CreatedAt:      row.BuildCreatedAt,
-		AppID:          *row.AppID,
+		AppID:          stringValue(row.AppID),
 		AppName:        row.AppName,
 		EnvName:        row.EnvName,
 	}
 
 	return resp
+}
+
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func ListDeployments(repoID string) ([]models.CodeRepositoryDeploymentResponse, error) {

@@ -160,6 +160,30 @@ func ListProjectMembers(c *gin.Context) {
 	})
 }
 
+func ListInvitableUsers(c *gin.Context) {
+	projectID := c.Param("projectID")
+	search := c.Query("search")
+
+	users, err := services.ListInvitableUsers(projectID, search)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	var res []models.UserResponse
+	for _, u := range users {
+		res = append(res, models.UserResponse{
+			ID:       u.ID,
+			Username: u.Username,
+			Email:    u.Email,
+			Fullname: u.Fullname,
+			Role:     u.Role,
+		})
+	}
+
+	api.Success(c, res)
+}
+
 func InviteProjectMembers(c *gin.Context) {
 	projectID := c.Param("projectID")
 	var req struct {

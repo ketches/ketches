@@ -244,6 +244,31 @@ func TestCreateSprint_ValidRequest(t *testing.T) {
 	assert.NotEmpty(t, resp.Data)
 }
 
+func TestCreateSprint_ResponseUsesDateOnlyFormat(t *testing.T) {
+	setupCollabHandlerTestDB(t)
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.Use(claimsMiddleware("u1", "alice", app.UserRoleUser))
+	r.POST("/api/v1/projects/:projectID/sprints", CreateSprint)
+
+	body := `{"name":"Sprint 1","status":"planned","start_date":"2026-03-20","end_date":"2026-03-30"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/sprints", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	var resp collabAPIResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Empty(t, resp.Error)
+
+	var data map[string]any
+	require.NoError(t, json.Unmarshal(resp.Data, &data))
+	assert.Equal(t, "2026-03-20", data["start_date"])
+	assert.Equal(t, "2026-03-30", data["end_date"])
+}
+
 // ---------- Task handler tests ----------
 
 func TestCreateTask_MalformedJSON(t *testing.T) {
@@ -309,6 +334,30 @@ func TestCreateTask_ValidRequest(t *testing.T) {
 	require.NoError(t, json.Unmarshal(resp.Data, &data))
 	assert.Equal(t, "Task 1", data["title"])
 	assert.Equal(t, "todo", data["status"])
+}
+
+func TestCreateTask_ResponseUsesDateOnlyFormat(t *testing.T) {
+	setupCollabHandlerTestDB(t)
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.Use(claimsMiddleware("u1", "alice", app.UserRoleUser))
+	r.POST("/api/v1/projects/:projectID/tasks", CreateTask)
+
+	body := `{"title":"Task 1","status":"todo","priority":"p2","due_date":"2026-03-20"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/tasks", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	var resp collabAPIResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Empty(t, resp.Error)
+
+	var data map[string]any
+	require.NoError(t, json.Unmarshal(resp.Data, &data))
+	assert.Equal(t, "2026-03-20", data["due_date"])
 }
 
 func TestTransitionTask_InvalidTransition(t *testing.T) {

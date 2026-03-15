@@ -11,6 +11,7 @@ import { InputGroupAddon } from "@/components/ui/input-group"
 import { useQuery } from "@tanstack/react-query"
 import { User } from "lucide-react"
 import { useMemo } from "react"
+import { MemberAvatar } from "../shared/member-avatar"
 
 const colorMap: Record<string, string> = {
   gray: "text-gray-500",
@@ -46,12 +47,12 @@ function InlineComboboxEditor({ value, options, onValueChange, disabled }: Inlin
       itemToStringLabel={(v) => options.find((o) => o.value === v)?.label ?? v ?? ""}
       disabled={disabled}
     >
-      <ComboboxInput className="w-fit">
+      <ComboboxInput className="w-36">
         <InputGroupAddon>
           {CurrentIcon && <CurrentIcon className={`size-3.5 ${currentColor}`} />}
         </InputGroupAddon>
       </ComboboxInput>
-      <ComboboxContent alignOffset={-24} className="w-full">
+      <ComboboxContent alignOffset={-24} className="w-36">
         <ComboboxList>
           {options.map((opt) => {
             const Icon = opt.icon
@@ -124,17 +125,6 @@ export function InlineSeverityEditor({ currentSeverity, onSeverityChange, disabl
   )
 }
 
-// ── Assignee editor ──────────────────────────────────────────────────────────
-
-function MemberAvatar({ name }: { name?: string }) {
-  const letter = (name ?? "?")[0].toUpperCase()
-  return (
-    <span className="inline-flex items-center justify-center size-5 rounded-full bg-muted text-[10px] font-medium shrink-0">
-      {letter}
-    </span>
-  )
-}
-
 interface InlineAssigneeEditorProps {
   projectId: string
   currentAssigneeId?: string
@@ -152,7 +142,7 @@ export function InlineAssigneeEditor({ projectId, currentAssigneeId, onAssigneeC
   const members = data?.items ?? []
 
   const options = useMemo(() => [
-    { label: "Unassigned", value: "" },
+    // { label: "Unassigned", value: "" },
     ...members.map(m => ({ label: m.fullname || m.username, value: m.user_id })),
   ], [members])
 
@@ -168,7 +158,7 @@ export function InlineAssigneeEditor({ projectId, currentAssigneeId, onAssigneeC
       itemToStringLabel={(v) => options.find(o => o.value === v)?.label ?? v ?? ""}
       disabled={disabled}
     >
-      <ComboboxInput className="w-fit">
+      <ComboboxInput className="w-36">
         <InputGroupAddon>
           {current && current.value ? (
             <MemberAvatar name={current.label} />
@@ -177,7 +167,7 @@ export function InlineAssigneeEditor({ projectId, currentAssigneeId, onAssigneeC
           )}
         </InputGroupAddon>
       </ComboboxInput>
-      <ComboboxContent alignOffset={-24} className="w-full">
+      <ComboboxContent alignOffset={-24} className="w-36">
         <ComboboxList>
           {options.map((opt) => (
             <ComboboxItem key={opt.value} value={opt.value}>

@@ -41,14 +41,16 @@ export function NavMain({
   dashboardItem,
   projectItems,
   globalItems,
-  adminNavItems,
-  adminUserNavItems,
+  infrastructureItems: infrastructureItems,
+  userScopeItems: userScopeItems,
+  platformItems: platformItems
 }: {
   dashboardItem?: NavItem
   projectItems: NavItem[]
   globalItems: NavItem[]
-  adminNavItems: NavItem[]
-  adminUserNavItems: NavItem[]
+  infrastructureItems: NavItem[]
+  userScopeItems: NavItem[]
+  platformItems: NavItem[]
 }) {
   const visibleProjectItems = projectItems.filter((item) => !item.hidden)
   const visibleGlobalItems = globalItems.filter((item) => !item.hidden)
@@ -84,22 +86,32 @@ export function NavMain({
         </SidebarGroup>
       )}
       {
-        adminNavItems.length > 0 && (
+        infrastructureItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Admin</SidebarGroupLabel>
             <SidebarMenu>
-              {adminNavItems.map((item) => (
+              {infrastructureItems.map((item) => (
                 <NavMenuItem key={item.title} item={item} />
               ))}
             </SidebarMenu>
           </SidebarGroup>
         )
       }
-      {adminUserNavItems.length > 0 && (
+      {userScopeItems.length > 0 && (
         <SidebarGroup>
           <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">User</SidebarGroupLabel>
           <SidebarMenu>
-            {adminUserNavItems.map((item) => (
+            {userScopeItems.map((item) => (
+              <NavMenuItem key={item.title} item={item} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
+      {platformItems.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Platform</SidebarGroupLabel>
+          <SidebarMenu>
+            {platformItems.map((item) => (
               <NavMenuItem key={item.title} item={item} />
             ))}
           </SidebarMenu>

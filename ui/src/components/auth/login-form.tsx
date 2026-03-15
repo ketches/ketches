@@ -1,4 +1,5 @@
 import { authApi } from "@/api/auth";
+import { platformUpdateApi } from "@/api/platform-update";
 import { Button } from "@/components/ui/button";
 import {
     Field,
@@ -12,6 +13,7 @@ import { clearManualLogoutMarker, getPostLoginTarget } from "@/lib/auth-redirect
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -67,14 +69,18 @@ export function LoginForm({
                 response.refresh_token,
             );
             setDefaultPasswordNotice(response.default_password_notice || null);
+            if (response.user.role === "admin") {
+                void platformUpdateApi.check({ mode: "auto" }).catch(() => undefined);
+            }
             toast.success("Login successful", {
                 description: `Welcome back, ${response.user.username}!`,
             });
             clearManualLogoutMarker();
             navigate(getPostLoginTarget(location.search), { replace: true });
-        } catch (err: any) {
-            const errMsg =
-                err.response?.data?.error || "Invalid username or password";
+        } catch (err: unknown) {
+            const errMsg = isAxiosError<{ error?: string }>(err)
+                ? err.response?.data?.error || "Invalid username or password"
+                : "Invalid username or password";
             setError(errMsg);
             toast.error("Login Failed", {
                 description: errMsg,

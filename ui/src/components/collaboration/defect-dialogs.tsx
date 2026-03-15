@@ -367,6 +367,10 @@ export function EditDefectDialog({
     }
   }, [open, defect])
 
+  const requirementLabel = requirements?.items.find((req) => req.id === requirementId)?.title || requirementId
+  const taskLabel = tasks?.items.find((task) => task.id === taskId)?.title || taskId
+  const testCaseLabel = testCases?.items.find((tc) => tc.id === testCaseId)?.title || testCaseId
+
   const mutation = useMutation({
     mutationFn: () => {
       if (!defect) throw new Error("No defect selected")
@@ -493,7 +497,12 @@ export function EditDefectDialog({
             <Field>
               <FieldLabel>Requirement</FieldLabel>
               <FieldContent>
-                <Combobox value={requirementId} onValueChange={(v) => setRequirementId(v || "")} itemToStringLabel={(item) => requirements?.items.find(req => req.id === item)?.title || item}>
+                <Combobox
+                  key={`defect-edit-requirement-${requirementLabel}`}
+                  value={requirementId}
+                  onValueChange={(v) => setRequirementId(v || "")}
+                  itemToStringLabel={(item) => requirements?.items.find(req => req.id === item)?.title || item}
+                >
                   <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
@@ -508,7 +517,12 @@ export function EditDefectDialog({
             <Field>
               <FieldLabel>Task</FieldLabel>
               <FieldContent>
-                <Combobox value={taskId} onValueChange={(v) => setTaskId(v || "")} itemToStringLabel={(item) => tasks?.items.find(t => t.id === item)?.title || item}>
+                <Combobox
+                  key={`defect-edit-task-${taskLabel}`}
+                  value={taskId}
+                  onValueChange={(v) => setTaskId(v || "")}
+                  itemToStringLabel={(item) => tasks?.items.find(t => t.id === item)?.title || item}
+                >
                   <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>
@@ -523,7 +537,12 @@ export function EditDefectDialog({
             <Field>
               <FieldLabel>Test Case</FieldLabel>
               <FieldContent>
-                <Combobox value={testCaseId} onValueChange={(v) => setTestCaseId(v || "")} itemToStringLabel={(item) => testCases?.items.find(tc => tc.id === item)?.title || item}>
+                <Combobox
+                  key={`defect-edit-test-case-${testCaseLabel}`}
+                  value={testCaseId}
+                  onValueChange={(v) => setTestCaseId(v || "")}
+                  itemToStringLabel={(item) => testCases?.items.find(tc => tc.id === item)?.title || item}
+                >
                   <ComboboxInput />
                   <ComboboxContent>
                     <ComboboxList>

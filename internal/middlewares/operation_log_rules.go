@@ -24,6 +24,26 @@ func operationLogRouteRules() map[string]operationLogRule {
 			ResourceType: "user",
 			Sensitivity:  entities.OperationLogSensitivityPublic,
 		},
+		"PUT /api/v1/platform-update/config": {
+			Action:       "update",
+			ResourceType: "platform_update_config",
+			Sensitivity:  entities.OperationLogSensitivitySensitive,
+		},
+		"POST /api/v1/platform-update/check": {
+			Action:       "check",
+			ResourceType: "platform_update_check",
+			Sensitivity:  entities.OperationLogSensitivitySensitive,
+		},
+		"POST /api/v1/platform-update/rollout": {
+			Action:       "rollout",
+			ResourceType: "platform_update_rollout",
+			Sensitivity:  entities.OperationLogSensitivitySensitive,
+		},
+		"PUT /api/v1/platform-settings/branding": {
+			Action:       "update",
+			ResourceType: "platform_branding",
+			Sensitivity:  entities.OperationLogSensitivitySensitive,
+		},
 		"POST /api/v1/projects": {
 			Action:       "create",
 			ResourceType: "project",

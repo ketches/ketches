@@ -281,6 +281,12 @@ type UpdateAppImageRequest struct {
 	RegistryPassword string `json:"registry_password"`
 }
 
+type AppImageTagsResponse struct {
+	Repository string   `json:"repository"`
+	CurrentTag string   `json:"current_tag"`
+	Tags       []string `json:"tags"`
+}
+
 type UpdateAppReplicasRequest struct {
 	Replicas int `json:"replicas" binding:"min=0"`
 }

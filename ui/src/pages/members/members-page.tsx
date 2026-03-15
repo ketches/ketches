@@ -62,6 +62,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       projectsApi.inviteProjectMembers(activeProjectId!, { user_ids: userIds, role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-members', activeProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['invitable-users', activeProjectId] })
       toast.success("Members invited successfully")
     },
     onError: (error: any) => {
@@ -302,6 +303,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
                 )}
                 {!isViewer && (
                   <InviteMemberDialog
+                    projectId={activeProjectId!}
                     onAdd={(data) => {
                       inviteMembersMutation.mutate(data)
                     }}

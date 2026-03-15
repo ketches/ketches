@@ -11,7 +11,7 @@ import {
   User,
   Users
 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { collaborationApi } from "@/api/collaboration"
 import {
@@ -93,17 +93,23 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     return sprintOptions.find((opt) => opt.value === item)?.label || item
   }
 
-  // Auto-select first active sprint when sprints load and no valid selection exists
+  // Auto-select first active sprint when sprints load (runs only once)
+  const hasAutoSelectedSprint = useRef(false)
   useEffect(() => {
+    if (hasAutoSelectedSprint.current) return
     const sprints = sprintsData?.items ?? []
     if (!sprints.length) return
-    // Skip if a valid sprint is already selected
-    if (selectedSprintId && sprints.some(s => s.id === selectedSprintId)) return
+    // Skip if a valid sprint is already selected from storage
+    if (selectedSprintId && sprints.some(s => s.id === selectedSprintId)) {
+      hasAutoSelectedSprint.current = true
+      return
+    }
 
     const firstActive = sprints.find(s => s.status === "active")
     if (firstActive) {
       setSelectedSprintId(firstActive.id)
     }
+    hasAutoSelectedSprint.current = true
   }, [sprintsData?.items, selectedSprintId])
 
   const assigneeId = scope === "my-items" ? currentUserId : undefined

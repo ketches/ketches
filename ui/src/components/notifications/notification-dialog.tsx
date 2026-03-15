@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { Bell, Check, Eye, X } from 'lucide-react'
+import { Bell, Check, Eye, RefreshCw, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { notificationsApi, type Notification, type NotificationAction } from '@/api/notifications'
-import { Badge } from '@/components/ui/badge'
+import { PlatformUpdateRolloutDialog } from '@/components/platform-updates/platform-update-rollout-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,6 +23,7 @@ interface NotificationDialogProps {
 
 export function NotificationDialog({ open, onOpenChange }: NotificationDialogProps) {
   const [page, setPage] = useState(1)
+  const [selectedPlatformUpdate, setSelectedPlatformUpdate] = useState<Notification | null>(null)
   const pageSize = 10
   const queryClient = useQueryClient()
 
@@ -53,98 +54,122 @@ export function NotificationDialog({ open, onOpenChange }: NotificationDialogPro
   const pagination = data?.pagination
   const totalPages = pagination?.total_pages ?? 1
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-180 max-h-[80vh] overflow-y-auto flex flex-col">
-        <DialogHeader>
-          <div className="flex items-center justify-between pr-8">
-            <DialogTitle className="flex items-center gap-2">
-              <Bell className="size-4" />
-              Notifications
-              {pagination && pagination.total > 0 && (
-                <Badge variant="secondary">{pagination.total}</Badge>
-              )}
-            </DialogTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => markAllReadMutation.mutate()}
-              disabled={markAllReadMutation.isPending}
-            >
-              Mark all read
-            </Button>
-          </div>
-        </DialogHeader>
+  const markNotificationRead = (id: string) => {
+    actionMutation.mutate({ id, action: 'read' })
+  }
 
-        <div className="flex-1 overflow-y-auto -mx-4 px-4 min-h-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground text-xs">
-              Loading...
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-180 max-h-[80vh] overflow-y-auto flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between pr-8">
+              <DialogTitle className="flex items-center gap-2">
+                <Bell className="size-4" />
+                Notifications
+                {pagination && pagination.total > 0 && (
+                  <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[0.5rem] font-medium">
+                    {pagination.total > 99 ? '99+' : pagination.total}
+                  </span>
+                )}
+              </DialogTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => markAllReadMutation.mutate()}
+                disabled={markAllReadMutation.isPending}
+              >
+                Mark all read
+              </Button>
             </div>
-          ) : items.length === 0 ? (
-            <EmptyState
-              title=""
-              description="No notifications."
-              icon={Bell}
-              border={false}
-            />
-          ) : (
-            <div className="flex flex-col gap-1">
-              {items.map((notif) => (
-                <NotificationItem
-                  key={notif.id}
-                  notification={notif}
-                  onAction={(action) =>
-                    actionMutation.mutate({ id: notif.id, action })
-                  }
-                  isActing={actionMutation.isPending}
-                />
-              ))}
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto -mx-4 px-4 min-h-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground text-xs">
+                Loading...
+              </div>
+            ) : items.length === 0 ? (
+              <EmptyState
+                title=""
+                description="No notifications."
+                icon={Bell}
+                border={false}
+              />
+            ) : (
+              <div className="flex flex-col gap-1">
+                {items.map((notif) => (
+                  <NotificationItem
+                    key={notif.id}
+                    notification={notif}
+                    onAction={(action) => actionMutation.mutate({ id: notif.id, action })}
+                    onOpenUpdate={() => setSelectedPlatformUpdate(notif)}
+                    isActing={actionMutation.isPending}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
+              <span>
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="xs"
+                  disabled={page <= 1}
+                  onClick={() => setPage((currentPage) => currentPage - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((currentPage) => currentPage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
-        </div>
+        </DialogContent>
+      </Dialog>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
-            <span>
-              Page {page} of {totalPages}
-            </span>
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="xs"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+      <PlatformUpdateRolloutDialog
+        open={Boolean(selectedPlatformUpdate)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setSelectedPlatformUpdate(null)
+          }
+        }}
+        onRolloutSuccess={() => {
+          if (selectedPlatformUpdate) {
+            markNotificationRead(selectedPlatformUpdate.id)
+          }
+        }}
+      />
+    </>
   )
 }
 
 function NotificationItem({
   notification,
   onAction,
+  onOpenUpdate,
   isActing,
 }: {
   notification: Notification
   onAction: (action: NotificationAction) => void
+  onOpenUpdate: () => void
   isActing: boolean
 }) {
   const isPending = notification.status === 'pending'
   const isInvitation = notification.category === 'invitation'
+  const isPlatformUpdate = notification.event_type === 'platform_update_available'
 
   const statusBadge = () => {
     switch (notification.status) {
@@ -162,16 +187,17 @@ function NotificationItem({
 
   return (
     <div
-      className={`rounded-md border p-3 text-xs transition-colors ${isPending ? 'bg-accent/50 border-primary/20' : 'bg-background'
-        }`}
+      className={`rounded-md border p-3 text-xs transition-colors ${
+        isPending ? 'bg-accent/50 border-primary/20' : 'bg-background'
+      }`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="font-medium truncate">{notification.title}</span>
+          <div className="mb-0.5 flex items-center gap-2">
+            <span className="truncate font-medium">{notification.title}</span>
             {statusBadge()}
           </div>
-          <p className="text-muted-foreground mb-1">{notification.message}</p>
+          <p className="mb-1 text-muted-foreground">{notification.message}</p>
           <div className="flex items-center gap-2 text-muted-foreground">
             {notification.sender_name && (
               <span>From {notification.sender_name}</span>
@@ -183,7 +209,7 @@ function NotificationItem({
               </>
             )}
             <span>&middot;</span>
-            <span className='text-[10px]'>
+            <span className="text-[10px]">
               {formatDistanceToNow(new Date(notification.created_at), {
                 addSuffix: true,
               })}
@@ -191,14 +217,14 @@ function NotificationItem({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center gap-1">
           {isInvitation && isPending && (
             <>
               <Button
                 size="sm"
                 onClick={() => onAction('accept')}
                 disabled={isActing}
-                className="bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-950 dark:hover:bg-green-900 dark:text-green-300 border-green-200 dark:border-green-800"
+                className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-950 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900"
               >
                 <Check />
                 Accept
@@ -214,7 +240,28 @@ function NotificationItem({
               </Button>
             </>
           )}
-          {!isInvitation && isPending && (
+          {isPlatformUpdate && isPending && (
+            <>
+              <Button
+                size="sm"
+                onClick={onOpenUpdate}
+                disabled={isActing}
+              >
+                <RefreshCw />
+                Update
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onAction('read')}
+                disabled={isActing}
+              >
+                <X />
+                Ignore
+              </Button>
+            </>
+          )}
+          {!isInvitation && !isPlatformUpdate && isPending && (
             <Button
               variant="ghost"
               size="sm"

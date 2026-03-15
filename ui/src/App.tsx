@@ -28,6 +28,7 @@ import { EnvironmentDetailPage } from "@/pages/environments/environment-detail-p
 import { EnvironmentsPage } from "@/pages/environments/environments-page"
 import { ExtensionsPage } from "@/pages/extensions/extensions-page"
 import { MembersPage } from "@/pages/members/members-page"
+import { PlatformSettingsPage } from "@/pages/platform-settings/platform-settings-page"
 import { PluginsPage } from "@/pages/plugins/plugins-page"
 import { ProjectDetailPage } from "@/pages/projects/project-detail-page"
 import { ProjectsPage } from "@/pages/projects/projects-page"
@@ -182,6 +183,13 @@ export function App() {
               <ProtectedRoute>
                 <AdminRoute>
                   <DashboardLayout><ExtensionsPage /></DashboardLayout>
+                </AdminRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/platform-settings" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <DashboardLayout><PlatformSettingsPage /></DashboardLayout>
                 </AdminRoute>
               </ProtectedRoute>
             } />

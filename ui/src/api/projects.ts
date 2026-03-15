@@ -73,6 +73,10 @@ export const projectsApi = {
     return client.get(`/v1/projects/${id}/members`, { params }) as Promise<{ items: ProjectMember[], pagination: PaginationResponse }>
   },
 
+  listInvitableUsers: async (id: string, params?: { search?: string }) => {
+    return client.get(`/v1/projects/${id}/invitable-users`, { params }) as Promise<{ id: string; username: string; email: string; fullname?: string }[]>
+  },
+
   inviteProjectMembers: async (projectId: string, data: { user_ids: string[]; role: string }) => {
     return client.post(`/v1/projects/${projectId}/members`, data)
   },

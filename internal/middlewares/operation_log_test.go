@@ -3,6 +3,7 @@ package middlewares
 import (
 	"bytes"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -100,4 +101,57 @@ func TestOperationLogMiddlewareSignInLogsWithBodyUsername(t *testing.T) {
 	require.Len(t, logs, 1)
 	assert.Equal(t, "sign_in", logs[0].Action)
 	assert.Equal(t, "tester", logs[0].Username)
+}
+
+func TestCaptureRequestBodyOmitsMultipartPayload(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	require.NoError(t, writer.WriteField("name", "Ketches Admin"))
+	part, err := writer.CreateFormFile("logo", "logo.png")
+	require.NoError(t, err)
+	_, err = part.Write([]byte{0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0x00})
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/platform-settings/branding", bytes.NewReader(body.Bytes()))
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = req
+
+	summary, bodyAction, bodyUsername := captureRequestBody(c)
+
+	assert.Equal(t, "[multipart form data omitted]", summary)
+	assert.Empty(t, bodyAction)
+	assert.Empty(t, bodyUsername)
+}
+
+func TestOperationLogRulesIncludePlatformUpdateRoutes(t *testing.T) {
+	rules := operationLogRouteRules()
+
+	configRule, ok := rules["PUT /api/v1/platform-update/config"]
+	require.True(t, ok)
+	assert.Equal(t, "update", configRule.Action)
+	assert.Equal(t, "platform_update_config", configRule.ResourceType)
+	assert.Equal(t, entities.OperationLogSensitivitySensitive, configRule.Sensitivity)
+
+	rolloutRule, ok := rules["POST /api/v1/platform-update/rollout"]
+	require.True(t, ok)
+	assert.Equal(t, "rollout", rolloutRule.Action)
+	assert.Equal(t, "platform_update_rollout", rolloutRule.ResourceType)
+	assert.Equal(t, entities.OperationLogSensitivitySensitive, rolloutRule.Sensitivity)
+
+	checkRule, ok := rules["POST /api/v1/platform-update/check"]
+	require.True(t, ok)
+	assert.Equal(t, "check", checkRule.Action)
+	assert.Equal(t, "platform_update_check", checkRule.ResourceType)
+	assert.Equal(t, entities.OperationLogSensitivitySensitive, checkRule.Sensitivity)
+
+	brandingRule, ok := rules["PUT /api/v1/platform-settings/branding"]
+	require.True(t, ok)
+	assert.Equal(t, "update", brandingRule.Action)
+	assert.Equal(t, "platform_branding", brandingRule.ResourceType)
+	assert.Equal(t, entities.OperationLogSensitivitySensitive, brandingRule.Sensitivity)
 }

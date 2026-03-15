@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Loader2, RefreshCw } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { appsApi, type App } from "@/api/apps"
 import { Button } from "@/components/ui/button"
+import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,8 @@ export function ImageEditor({
     registry_password: "",
   })
 
+  const [selectedTag, setSelectedTag] = React.useState("")
+
   React.useEffect(() => {
     if (app && open) {
       setFormData({
@@ -47,8 +50,34 @@ export function ImageEditor({
         registry_username: app.registry_username || "",
         registry_password: app.registry_password || "",
       })
+      setSelectedTag("")
     }
   }, [app, open])
+
+  const tagsQuery = useQuery({
+    queryKey: ["app-image-tags", app?.id],
+    queryFn: () => appsApi.listImageTags(app!.id),
+    enabled: !!app && open,
+  })
+
+  React.useEffect(() => {
+    if (tagsQuery.data?.current_tag && !selectedTag) {
+      setSelectedTag(tagsQuery.data.current_tag)
+    }
+  }, [tagsQuery.data, selectedTag])
+
+  const tagOptions = React.useMemo(() => {
+    return (tagsQuery.data?.tags ?? []).map((tag) => ({ label: tag, value: tag }))
+  }, [tagsQuery.data?.tags])
+
+  const handleTagChange = React.useCallback((value: string) => {
+    if (!value) return
+    setSelectedTag(value)
+    const repo = tagsQuery.data?.repository
+    if (repo) {
+      setFormData((prev) => ({ ...prev, container_image: `${repo}:${value}` }))
+    }
+  }, [tagsQuery.data?.repository])
 
   const mutation = useMutation({
     mutationFn: (data: { container_image: string; registry_username?: string; registry_password?: string }) => {
@@ -80,7 +109,7 @@ export function ImageEditor({
           <DialogHeader>
             <DialogTitle>Update Application Image</DialogTitle>
             <DialogDescription>
-              Update the container image and optional registry credentials.
+              Select a tag from the registry or manually enter a container image.
             </DialogDescription>
           </DialogHeader>
 
@@ -94,6 +123,58 @@ export function ImageEditor({
                   onChange={(e) => setFormData((prev) => ({ ...prev, container_image: e.target.value }))}
                   required
                 />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel className="flex items-center justify-between">
+                <span>Image Tag</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  disabled={tagsQuery.isFetching}
+                  onClick={() => void tagsQuery.refetch()}
+                >
+                  <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
+                </Button>
+              </FieldLabel>
+              <FieldContent>
+                {tagsQuery.isLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading tags...
+                  </div>
+                ) : tagsQuery.isError ? (
+                  <p className="text-xs text-destructive py-1">
+                    Failed to load tags. You can still enter an image manually below.
+                  </p>
+                ) : (
+                  <Combobox
+                    value={selectedTag}
+                    onValueChange={handleTagChange}
+                    itemToStringLabel={(value) => tagOptions.find((o) => o.value === value)?.label ?? value ?? ""}
+                  >
+                    <ComboboxInput
+                      name="image-tag"
+                      placeholder="Select or search tag..."
+                      value={selectedTag}
+                      onInput={(e) => setSelectedTag((e.target as HTMLInputElement).value)}
+                      onChange={(e) => setSelectedTag(e.target.value)}
+                    />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {tagOptions.map((option) => (
+                          <ComboboxItem key={option.value} value={option.value}>
+                            {option.label}
+                            {option.value === tagsQuery.data?.current_tag && (
+                              <span className="ml-auto text-xs text-muted-foreground">current</span>
+                            )}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                )}
               </FieldContent>
             </Field>
 
@@ -131,10 +212,10 @@ export function ImageEditor({
               {mutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Saving...
+                  Upgrading...
                 </>
               ) : (
-                "Save Changes"
+                "Upgrade"
               )}
             </Button>
           </DialogFooter>

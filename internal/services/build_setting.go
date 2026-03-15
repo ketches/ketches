@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"os/exec"
+	"sort"
 	"strings"
 
 	"github.com/ketches/ketches/internal/db"
@@ -63,16 +64,29 @@ func ListRepoBuildSettings(repoID string) ([]BuildSettingWithRegistry, error) {
 
 // CreateRepoBuildSetting creates a new build setting under a code repository.
 func CreateRepoBuildSetting(repoID string, req *models.CreateBuildSettingRequest) (*BuildSettingWithRegistry, error) {
+	buildArgs, _, err := normalizeStructuredBuildArgs(req.BuildArgs, req.BuildArgPairs)
+	if err != nil {
+		return nil, err
+	}
+
+	registryCacheEnabled := true
+	if req.RegistryCacheEnabled != nil {
+		registryCacheEnabled = *req.RegistryCacheEnabled
+	}
+
 	s := entities.BuildSetting{
-		ID:               uuid.New(),
-		CodeRepositoryID: &repoID,
-		Name:             req.Name,
-		GitRef:           defaultStr(req.GitRef, "main"),
-		DockerfilePath:   defaultStr(req.DockerfilePath, "Dockerfile"),
-		BuildContext:     defaultStr(req.BuildContext, "."),
-		BuildArgs:        req.BuildArgs,
-		ImageName:        req.ImageName,
-		RegistryID:       req.RegistryID,
+		ID:                   uuid.New(),
+		CodeRepositoryID:     &repoID,
+		Name:                 req.Name,
+		GitRef:               defaultStr(req.GitRef, "main"),
+		DockerfilePath:       defaultStr(req.DockerfilePath, "Dockerfile"),
+		BuildContext:         defaultStr(req.BuildContext, "."),
+		BuildArgs:            buildArgs,
+		ImageName:            req.ImageName,
+		RegistryID:           req.RegistryID,
+		Platforms:            normalizeBuildSettingPlatforms(req.Platforms),
+		RegistryCacheEnabled: &registryCacheEnabled,
+		RegistryCacheRef:     strings.TrimSpace(req.RegistryCacheRef),
 	}
 	if err := db.DB.Create(&s).Error; err != nil {
 		return nil, err
@@ -105,7 +119,23 @@ func UpdateRepoBuildSetting(id string, req *models.UpdateRepoBuildSettingRequest
 	if req.RegistryID != "" {
 		s.RegistryID = req.RegistryID
 	}
-	s.BuildArgs = req.BuildArgs
+
+	if req.Platforms != "" {
+		s.Platforms = normalizeBuildSettingPlatforms(req.Platforms)
+	}
+	if req.RegistryCacheEnabled != nil {
+		s.RegistryCacheEnabled = req.RegistryCacheEnabled
+	}
+	if req.RegistryCacheRef != "" {
+		s.RegistryCacheRef = strings.TrimSpace(req.RegistryCacheRef)
+	}
+	if req.BuildArgPairs != nil || req.BuildArgs != "" {
+		buildArgs, _, err := normalizeStructuredBuildArgs(req.BuildArgs, req.BuildArgPairs)
+		if err != nil {
+			return nil, err
+		}
+		s.BuildArgs = buildArgs
+	}
 	if err := db.DB.Save(&s).Error; err != nil {
 		return nil, err
 	}
@@ -130,16 +160,22 @@ func DeleteRepoBuildSetting(id string) error {
 // ToBuildSettingResponse converts a BuildSettingWithRegistry to its API response model.
 func ToBuildSettingResponse(s *BuildSettingWithRegistry) models.BuildSettingResponse {
 	resp := models.BuildSettingResponse{
-		ID:             s.ID,
-		Name:           s.Name,
-		GitRef:         s.GitRef,
-		DockerfilePath: s.DockerfilePath,
-		BuildContext:   s.BuildContext,
-		ImageName:      s.ImageName,
-		RegistryID:     s.RegistryID,
-		BuildArgs:      s.BuildArgs,
-		CreatedAt:      s.CreatedAt,
-		UpdatedAt:      s.UpdatedAt,
+		ID:                   s.ID,
+		Name:                 s.Name,
+		GitRef:               s.GitRef,
+		DockerfilePath:       s.DockerfilePath,
+		BuildContext:         s.BuildContext,
+		ImageName:            s.ImageName,
+		RegistryID:           s.RegistryID,
+		BuildArgs:            s.BuildArgs,
+		Platforms:            normalizeBuildSettingPlatforms(s.Platforms),
+		RegistryCacheEnabled: buildSettingRegistryCacheEnabled(s.RegistryCacheEnabled),
+		RegistryCacheRef:     s.RegistryCacheRef,
+		CreatedAt:            s.CreatedAt,
+		UpdatedAt:            s.UpdatedAt,
+	}
+	if pairs, ok := parseBuildArgPairs(s.BuildArgs); ok && len(pairs) > 0 {
+		resp.BuildArgPairs = pairs
 	}
 	if s.CodeRepositoryID != nil {
 		resp.CodeRepositoryID = *s.CodeRepositoryID
@@ -152,6 +188,101 @@ func ToBuildSettingResponse(s *BuildSettingWithRegistry) models.BuildSettingResp
 		}
 	}
 	return resp
+}
+
+func normalizeBuildSettingPlatforms(raw string) string {
+	switch strings.TrimSpace(raw) {
+	case "", "linux/amd64":
+		return "linux/amd64"
+	case "linux/amd64,linux/arm64":
+		return "linux/amd64,linux/arm64"
+	default:
+		return "linux/amd64"
+	}
+}
+
+func normalizeStructuredBuildArgs(raw string, pairs []models.BuildArgPair) (string, []models.BuildArgPair, error) {
+	if pairs == nil {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return "", nil, nil
+		}
+		parsed, ok := parseBuildArgPairs(raw)
+		if !ok {
+			return raw, nil, nil
+		}
+		return raw, parsed, nil
+	}
+
+	normalizedPairs := make([]models.BuildArgPair, 0, len(pairs))
+	seen := make(map[string]struct{}, len(pairs))
+	for _, pair := range pairs {
+		key := strings.TrimSpace(pair.Key)
+		if key == "" {
+			return "", nil, fmt.Errorf("build arg key is required")
+		}
+		if _, exists := seen[key]; exists {
+			return "", nil, fmt.Errorf("duplicate build arg key %q", key)
+		}
+		seen[key] = struct{}{}
+		normalizedPairs = append(normalizedPairs, models.BuildArgPair{
+			Key:   key,
+			Value: strings.TrimSpace(pair.Value),
+		})
+	}
+
+	sort.Slice(normalizedPairs, func(i, j int) bool {
+		return normalizedPairs[i].Key < normalizedPairs[j].Key
+	})
+
+	lines := make([]string, 0, len(normalizedPairs))
+	for _, pair := range normalizedPairs {
+		lines = append(lines, fmt.Sprintf("%s=%s", pair.Key, pair.Value))
+	}
+
+	return strings.Join(lines, "\n"), normalizedPairs, nil
+}
+
+func parseBuildArgPairs(raw string) ([]models.BuildArgPair, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, true
+	}
+
+	lines := strings.Split(raw, "\n")
+	pairs := make([]models.BuildArgPair, 0, len(lines))
+	seen := make(map[string]struct{}, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			return nil, false
+		}
+		key = strings.TrimSpace(key)
+		if key == "" {
+			return nil, false
+		}
+		if _, exists := seen[key]; exists {
+			return nil, false
+		}
+		seen[key] = struct{}{}
+		pairs = append(pairs, models.BuildArgPair{
+			Key:   key,
+			Value: strings.TrimSpace(value),
+		})
+	}
+
+	return pairs, true
+}
+
+func buildSettingRegistryCacheEnabled(value *bool) bool {
+	if value == nil {
+		return true
+	}
+	return *value
 }
 
 func TestGitConnection(req *models.TestGitConnectionRequest) *models.TestGitConnectionResponse {

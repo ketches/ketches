@@ -105,6 +105,7 @@ func captureRequestBody(c *gin.Context) (string, string, string) {
 	if c.Request.Body == nil {
 		return "", "", ""
 	}
+	contentType := strings.ToLower(strings.TrimSpace(c.ContentType()))
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxOperationLogBodySize+1))
 	if err != nil {
 		return "", "", ""
@@ -115,6 +116,9 @@ func captureRequestBody(c *gin.Context) (string, string, string) {
 	}
 	if len(body) > maxOperationLogBodySize {
 		body = body[:maxOperationLogBodySize]
+	}
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		return "[multipart form data omitted]", "", ""
 	}
 	summary := strings.TrimSpace(string(body))
 	bodyAction := ""

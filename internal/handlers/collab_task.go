@@ -153,7 +153,7 @@ func toTaskResponse(t *entities.CollabTask) models.TaskResponse {
 		Status:        t.Status,
 		Priority:      t.Priority,
 		AssigneeID:    t.AssigneeID,
-		DueDate:       t.DueDate,
+		DueDate:       formatDateOnly(t.DueDate),
 		EstimateHours: t.EstimateHours,
 		ParentTaskID:  t.ParentTaskID,
 		Depth:         t.Depth,

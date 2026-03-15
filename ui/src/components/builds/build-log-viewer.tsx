@@ -1,9 +1,11 @@
 import { codeRepositoriesApi } from "@/api/code-repositories"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
 import { useTheme } from "@/components/theme-provider/theme-provider"
-import Editor from "@monaco-editor/react"
+import { parseBuildLogAnsi, type BuildLogDecoration } from "@/lib/build-log-ansi"
+import Editor, { type Monaco, type OnMount } from "@monaco-editor/react"
 import { useQuery } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
+import { AlertTriangle, Frame, GitBranch, Image, Loader2 } from "lucide-react"
+import type { editor } from "monaco-editor"
 import * as React from "react"
 
 interface BuildLogViewerProps {
@@ -11,23 +13,16 @@ interface BuildLogViewerProps {
   repoId: string
 }
 
-type MonacoEditor = {
-  getLayoutInfo: () => { height: number }
-  getScrollTop: () => number
-  getScrollHeight: () => number
-  setScrollTop: (value: number) => void
-  onDidScrollChange: (listener: (event: { scrollTopChanged: boolean }) => void) => void
-  onDidLayoutChange?: (listener: () => void) => { dispose: () => void }
-  onDidContentSizeChange?: (listener: () => void) => { dispose: () => void }
-}
-
 export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   const [logs, setLogs] = React.useState<string[]>([])
   const [editorReady, setEditorReady] = React.useState(false)
-  const editorRef = React.useRef<MonacoEditor | null>(null)
+  const editorRef = React.useRef<editor.IStandaloneCodeEditor | null>(null)
+  const monacoRef = React.useRef<Monaco | null>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const autoFollowRef = React.useRef(true)
   const hasInitializedTailRef = React.useRef(false)
+  const decorationIdsRef = React.useRef<string[]>([])
+  const parsedLog = React.useMemo(() => parseBuildLogAnsi(logs.join("")), [logs])
 
   const scheduleScrollToBottom = React.useCallback((force = false) => {
     requestAnimationFrame(() => {
@@ -43,7 +38,7 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
     })
   }, [])
 
-  const isNearBottom = React.useCallback((editor: MonacoEditor) => {
+  const isNearBottom = React.useCallback((editor: editor.IStandaloneCodeEditor) => {
     const viewportHeight = editor.getLayoutInfo()?.height ?? 0
     const scrollTop = editor.getScrollTop?.() ?? 0
     const scrollHeight = editor.getScrollHeight?.() ?? 0
@@ -51,8 +46,9 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
     return scrollTop + viewportHeight >= scrollHeight - 24
   }, [])
 
-  const handleEditorDidMount = (editor: MonacoEditor) => {
+  const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
+    monacoRef.current = monaco
     setEditorReady(true)
     autoFollowRef.current = true
     hasInitializedTailRef.current = false
@@ -95,7 +91,7 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   }, [theme])
 
   React.useEffect(() => {
-    if (!editorReady || logs.length === 0) return
+    if (!editorReady || parsedLog.text.length === 0) return
 
     if (!hasInitializedTailRef.current) {
       scheduleScrollToBottom(true)
@@ -105,20 +101,35 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
     if (autoFollowRef.current) {
       scheduleScrollToBottom()
     }
-  }, [logs, editorReady, scheduleScrollToBottom])
+  }, [parsedLog.text, editorReady, scheduleScrollToBottom])
+
+  React.useEffect(() => {
+    const editor = editorRef.current
+    const monaco = monacoRef.current
+    if (!editor || !monaco || !editor.getModel()) {
+      return
+    }
+
+    decorationIdsRef.current = applyAnsiDecorations(
+      editor,
+      monaco,
+      decorationIdsRef.current,
+      parsedLog.decorations,
+    )
+  }, [parsedLog, editorReady])
 
   React.useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const observer = new ResizeObserver(() => {
-      if (!autoFollowRef.current || logs.length === 0) return
+      if (!autoFollowRef.current || parsedLog.text.length === 0) return
       scheduleScrollToBottom()
     })
     observer.observe(container)
 
     return () => observer.disconnect()
-  }, [logs.length, scheduleScrollToBottom])
+  }, [parsedLog.text.length, scheduleScrollToBottom])
 
   const { data: build } = useQuery({
     queryKey: ['build', buildId, repoId],
@@ -132,6 +143,7 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
     setLogs([])
     autoFollowRef.current = true
     hasInitializedTailRef.current = false
+    decorationIdsRef.current = []
 
     const authData = localStorage.getItem('auth-storage')
     let token = ''
@@ -165,14 +177,14 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   }, [buildId, repoId])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* {build && ( */}
       <div className="flex items-center gap-4 text-xs">
-        <span className="text-muted-foreground">Build #{build?.build_number}</span>
+        <span className="flex items-center text-muted-foreground">Build<Frame className="ml-4 mr-1 h-3 w-3 inline" />{build?.build_number}</span>
         <BuildStatusBadge status={build?.status || "unknown"} />
-        {build?.git_ref && <span className="text-muted-foreground">Ref: {build?.git_ref}</span>}
-        {build?.image_full_name && <span className="text-muted-foreground font-mono text-xs">{build?.image_full_name}</span>}
-        {build?.error_message && <span className="text-destructive text-xs">{build?.error_message}</span>}
+        {build?.git_ref && <span className="flex items-center text-muted-foreground"> <GitBranch className="mr-1 h-3 w-3 inline" /><span>{build?.git_ref}</span></span>}
+        {build?.image_full_name && <span className="flex items-center text-muted-foreground font-mono text-xs"><Image className="mr-1 h-3 w-3 inline" /><span>{build?.image_full_name}</span></span>}
+        {build?.error_message && <span className="flex items-center text-destructive text-xs"><AlertTriangle className="mr-1 h-3 w-3 inline" /><span>{build?.error_message}</span></span>}
       </div>
       {/* )} */}
       <div ref={containerRef} className="border rounded-lg overflow-hidden h-[70vh]">
@@ -180,7 +192,7 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
           height="100%"
           language="text"
           theme={monacoTheme}
-          value={logs.join('\n')}
+          value={parsedLog.text}
           onMount={handleEditorDidMount}
           options={{
             readOnly: true,
@@ -201,5 +213,28 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
         />
       </div>
     </div>
+  )
+}
+
+function applyAnsiDecorations(
+  editor: editor.IStandaloneCodeEditor,
+  monaco: Monaco,
+  previousDecorationIds: string[],
+  decorations: BuildLogDecoration[],
+): string[] {
+  return editor.deltaDecorations(
+    previousDecorationIds,
+    decorations.map((decoration) => ({
+      range: new monaco.Range(
+        decoration.startLineNumber,
+        decoration.startColumn,
+        decoration.endLineNumber,
+        decoration.endColumn,
+      ),
+      options: {
+        inlineClassName: decoration.inlineClassName,
+        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+      },
+    })),
   )
 }

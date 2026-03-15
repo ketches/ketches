@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Orbit,
   Puzzle,
+  Settings2,
   ShipWheel,
   Trash2,
   User,
@@ -53,20 +54,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const canShowCollaboration = !isAdmin && !!activeProjectId && !!activeProject?.collaboration_enabled
 
-  // Admin nav: platform management modules (Dashboard rendered separately)
-  const adminNavItems = [
+  const infrastructureItems = [
     { title: "Clusters", url: "/clusters", icon: ShipWheel },
     { title: "Extensions", url: "/extensions", icon: Blocks },
-    { title: "Users", url: "/users", icon: User },
   ]
 
-  const adminUserNavItems = [
+  const userScopeItems = [
     { title: "Projects", url: "/projects", icon: GalleryVerticalEnd },
     { title: "User Activities", url: "/activities", icon: Activity },
     { title: "Recycle Bin", url: "/recycle-bin", icon: Trash2 },
 
   ]
 
+  const platformItems = [
+    { title: "Users", url: "/users", icon: User },
+    { title: "Settings", url: "/platform-settings", icon: Settings2 },
+  ]
   // Project group: project-scoped modules (Dashboard rendered separately); some hidden for viewers
   const projectItems = isAdmin ? [] : [
     { title: "Collaborations", url: "/collaborations", icon: VectorSquare, hidden: !canShowCollaboration },
@@ -102,8 +105,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           dashboardItem={{ title: "Dashboard", url: "/", icon: LayoutDashboard }}
           projectItems={isAdmin ? [] : projectItems}
           globalItems={isAdmin ? [] : globalItems}
-          adminNavItems={isAdmin ? adminNavItems : []}
-          adminUserNavItems={isAdmin ? adminUserNavItems : []}
+          infrastructureItems={isAdmin ? infrastructureItems : []}
+          userScopeItems={isAdmin ? userScopeItems : []}
+          platformItems={isAdmin ? platformItems : []}
         />
       </SidebarContent>
       <SidebarFooter>

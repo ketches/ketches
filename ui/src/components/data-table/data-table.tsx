@@ -41,7 +41,7 @@ import {
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+  data: TData[] | null | undefined
   searchKey?: string
   searchPlaceholder?: string
   rightToolbar?: (table: TanstackTable<TData>) => React.ReactNode
@@ -114,9 +114,10 @@ export function DataTable<TData, TValue>({
 
   const pagination = paginationProp ?? internalPagination
   const onPaginationChange = onPaginationChangeProp ?? setInternalPagination
+  const normalizedData = Array.isArray(data) ? data : []
 
   const table = useReactTable({
-    data,
+    data: normalizedData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -141,7 +142,7 @@ export function DataTable<TData, TValue>({
   // Determine the minimum page size threshold for the current view mode
   const minPageSize = viewMode === "card" ? 9 : 10
   // For manual pagination use totalCount; for local pagination use data length
-  const effectiveTotal = manualPagination ? (totalCount ?? 0) : data.length
+  const effectiveTotal = manualPagination ? (totalCount ?? 0) : normalizedData.length
   // Show pagination only when data exceeds the minimum page size
   const shouldShowPagination = !hidePagination && effectiveTotal > minPageSize
 

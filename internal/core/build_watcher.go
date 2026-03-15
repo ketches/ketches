@@ -3,7 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,7 +14,9 @@ import (
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // BuildWatcher monitors active build jobs and updates their status.
@@ -145,6 +149,7 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 				})
 				if pods != nil && len(pods.Items) > 0 {
 					pod := pods.Items[0]
+					logTail := readBuildFailureLogTail(ctx, client, jobNamespace, pod.Name, pod.Spec.Containers)
 					for _, cs := range pod.Status.ContainerStatuses {
 						if cs.State.Terminated != nil && cs.State.Terminated.Reason != "" {
 							errMsg = fmt.Sprintf("%s: %s", cs.Name, cs.State.Terminated.Reason)
@@ -154,6 +159,7 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 							break
 						}
 					}
+					errMsg = normalizeBuildFailureMessage(errMsg, logTail)
 				}
 
 				var build entities.Build
@@ -213,6 +219,77 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 			}
 		}
 	}
+}
+
+func readBuildFailureLogTail(
+	ctx context.Context,
+	client *kubernetes.Clientset,
+	namespace, podName string,
+	containers []corev1.Container,
+) string {
+	containerName := ""
+	for _, container := range containers {
+		if container.Name == "buildctl" {
+			containerName = container.Name
+			break
+		}
+	}
+	if containerName == "" && len(containers) > 0 {
+		containerName = containers[0].Name
+	}
+	if containerName == "" {
+		return ""
+	}
+
+	tailLines := int64(40)
+	stream, err := client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
+		Container: containerName,
+		TailLines: &tailLines,
+	}).Stream(ctx)
+	if err != nil {
+		return ""
+	}
+	defer stream.Close()
+
+	data, err := io.ReadAll(stream)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
+
+func normalizeBuildFailureMessage(rawMessage, logTail string) string {
+	combined := strings.ToLower(strings.TrimSpace(rawMessage + "\n" + logTail))
+
+	if strings.Contains(combined, "failed to mount") &&
+		strings.Contains(combined, "/var/lib/buildkit") &&
+		strings.Contains(combined, "operation not permitted") {
+		return "BuildKit builder is missing required mount privileges. The shared ketches-buildkitd StatefulSet must run privileged so it can mount snapshot state under /var/lib/buildkit. Reconcile the builder and retry."
+	}
+
+	if strings.Contains(combined, "exec format error") ||
+		strings.Contains(combined, ".buildkit_qemu_emulator") {
+		return "Multi-arch build requires binfmt/QEMU support, but cross-architecture emulation is unavailable. Verify that DaemonSet ketches-buildkit-binfmt is Ready in namespace ketches-build, then retry."
+	}
+
+	rawMessage = strings.TrimSpace(rawMessage)
+	if rawMessage != "" {
+		return rawMessage
+	}
+
+	logTail = strings.TrimSpace(logTail)
+	if logTail == "" {
+		return "Build job failed"
+	}
+
+	lines := strings.Split(logTail, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line != "" {
+			return line
+		}
+	}
+	return "Build job failed"
 }
 
 func handleAutoDeploy(build *entities.Build) {

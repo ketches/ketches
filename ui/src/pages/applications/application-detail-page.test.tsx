@@ -308,11 +308,17 @@ describe("ApplicationDetailPage", () => {
     const buttonLabels = Array.from(container.querySelectorAll("button")).map(
       (button) => button.textContent?.trim() ?? ""
     )
+    const runningInstancesTitle = Array.from(
+      container.querySelectorAll('[data-slot="card-title"]')
+    ).find((element) => element.textContent?.includes("Running Instances"))
+    const runningInstancesCard = runningInstancesTitle?.closest('[data-slot="card"]')
 
     expect(buttonLabels).not.toContain("Instances")
     expect(runningInstancesIndex).toBeGreaterThanOrEqual(0)
     expect(resourceUsageIndex).toBeGreaterThanOrEqual(0)
     expect(runningInstancesIndex).toBeLessThan(resourceUsageIndex)
+    expect(runningInstancesCard?.querySelector('[data-slot="card-action"]')).not.toBeNull()
+    expect(runningInstancesCard?.querySelector('input[placeholder="Filter pods..."]')).toBeNull()
 
     await act(async () => {
       root.unmount()

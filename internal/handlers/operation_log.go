@@ -85,6 +85,21 @@ func ListOperationLogs(c *gin.Context) {
 	api.Success(c, models.OperationLogListResponse{Items: items, Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize)})
 }
 
+func ListPlatformAuditLogs(c *gin.Context) {
+	var req models.OperationLogListRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	req.Validate()
+	total, items, err := services.ListPlatformOperationLogs(req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.Success(c, models.OperationLogListResponse{Items: items, Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize)})
+}
+
 func GetOperationLogSettings(c *gin.Context) {
 	days, err := services.GetOperationLogRetentionDays()
 	if err != nil {

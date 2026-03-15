@@ -237,6 +237,18 @@ func UpdateAppImage(c *gin.Context) {
 	api.Success(c, services.ToAppResponse(c.Request.Context(), app))
 }
 
+func ListAppImageTags(c *gin.Context) {
+	appID := c.Param("appID")
+
+	result, err := services.ListAppImageTags(c.Request.Context(), appID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, result)
+}
+
 func UpdateAppReplicas(c *gin.Context) {
 	appID := c.Param("appID")
 	var req models.UpdateAppReplicasRequest

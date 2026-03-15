@@ -272,7 +272,7 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
               <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()} />}>
                 <MoreVertical />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-fit">
                 {item.depth === 0 && (
                   <DropdownMenuItem onClick={() => handleCreateChild(item)}>
                     <Plus />

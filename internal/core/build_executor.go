@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/ketches/ketches/internal/models"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -22,7 +22,11 @@ const (
 	GitCloneImage = "alpine/git:latest"
 )
 
-// CreateBuildJob creates a Kubernetes Job to build a container image using Kaniko.
+var defaultKanikoIgnorePaths = []string{
+	"/product_uuid",
+}
+
+// CreateBuildJob creates a Kubernetes Job to build a container image via a BuildKit client job.
 func CreateBuildJob(
 	build *entities.Build,
 	repo *entities.CodeRepository,
@@ -31,134 +35,10 @@ func CreateBuildJob(
 	buildEnv *entities.Env,
 	appCtx *models.AppContext,
 ) (*batchv1.Job, error) {
-	appSlug := appCtx.App.Slug
-	jobName := fmt.Sprintf("build-%s-%d", appSlug, build.BuildNumber)
-	namespace := buildEnv.ClusterNamespace
-
-	// Build the full image destination (build.ImageFullName may be short "image:tag" or already full)
-	imageDestination := resolveImageDestination(registry, setting.ImageName, build.ImageFullName)
-
-	// Docker config for registry auth
-	dockerConfigSecret := fmt.Sprintf("%s-build-registry", jobName)
-	gitSecretName := fmt.Sprintf("%s-git-cred", jobName)
-
-	backoffLimit := int32(0)
-	ttl := int32(3600)
-
-	kanikoArgs := buildKanikoArgs(setting.DockerfilePath, setting.BuildContext, imageDestination, setting.BuildArgs, registry)
-
-	// Git clone command
-	gitRef := build.GitRef
-	if gitRef == "" {
-		gitRef = "main"
-	}
-
-	gitCloneCmd := buildGitCloneCommand(build.GitRepoURL, gitRef, repo.GitUsername, repo.GitPassword)
-
-	labels := map[string]string{
-		kube.LabelAppID:       appCtx.App.ID,
-		kube.LabelEnvID:       appCtx.EnvContext.Env.ID,
-		kube.LabelEnvSlug:     appCtx.EnvContext.Env.Slug,
-		kube.LabelProjectID:   appCtx.EnvContext.Project.ID,
-		kube.LabelProjectSlug: appCtx.EnvContext.Project.Slug,
-		kube.LabelBuildKey:    "true",
-		kube.LabelAppSlug:     appSlug,
-		kube.LabelBuildID:     build.ID,
-		kube.LabelManagedBy:   "true",
-	}
-
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: namespace,
-			Labels:    labels,
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoffLimit,
-			TTLSecondsAfterFinished: &ttl,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
-					InitContainers: []corev1.Container{
-						{
-							Name:    "git-clone",
-							Image:   GitCloneImage,
-							Command: []string{"sh", "-c", gitCloneCmd},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "workspace",
-									MountPath: "/workspace",
-								},
-							},
-						},
-					},
-					Containers: []corev1.Container{
-						{
-							Name:  "kaniko",
-							Image: KanikoImage,
-							Args:  kanikoArgs,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "workspace",
-									MountPath: "/workspace",
-								},
-								{
-									Name:      "docker-config",
-									MountPath: "/kaniko/.docker",
-								},
-							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("500m"),
-									corev1.ResourceMemory: resource.MustParse("1Gi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("2"),
-									corev1.ResourceMemory: resource.MustParse("4Gi"),
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "workspace",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-						{
-							Name: "docker-config",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: dockerConfigSecret,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// If git credentials use a secret, mount it
-	if repo.GitUsername != "" && repo.GitPassword != "" {
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: "git-secret",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: gitSecretName,
-				},
-			},
-		})
-	}
-
-	return job, nil
+	return CreateBuildClientJob(build, repo, setting, registry, buildEnv, appCtx)
 }
 
-// CreateBuildJobFromCodeRepo creates a Kaniko Job using CodeRepository (git) + BuildSetting (dockerfile/image).
+// CreateBuildJobFromCodeRepo creates a BuildKit client Job using CodeRepository (git) + BuildSetting (dockerfile/image).
 func CreateBuildJobFromCodeRepo(
 	build *entities.Build,
 	repo *entities.CodeRepository,
@@ -168,99 +48,7 @@ func CreateBuildJobFromCodeRepo(
 	project *entities.Project,
 	jobSlug string,
 ) (*batchv1.Job, error) {
-	jobName := fmt.Sprintf("build-%s-%d", jobSlug, build.BuildNumber)
-	namespace := buildEnv.ClusterNamespace
-	imageDestination := resolveImageDestination(registry, setting.ImageName, build.ImageFullName)
-	dockerConfigSecret := fmt.Sprintf("%s-build-registry", jobName)
-	gitSecretName := fmt.Sprintf("%s-git-cred", jobName)
-	backoffLimit := int32(0)
-	ttl := int32(3600)
-
-	kanikoArgs := buildKanikoArgs(setting.DockerfilePath, setting.BuildContext, imageDestination, setting.BuildArgs, registry)
-
-	gitRef := build.GitRef
-	if gitRef == "" {
-		gitRef = setting.GitRef
-	}
-	if gitRef == "" {
-		gitRef = "main"
-	}
-	gitCloneCmd := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, repo.GitPassword)
-
-	labels := map[string]string{
-		kube.LabelEnvID:       buildEnv.ID,
-		kube.LabelEnvSlug:     buildEnv.Slug,
-		kube.LabelProjectID:   project.ID,
-		kube.LabelProjectSlug: project.Slug,
-		kube.LabelBuildKey:    "true",
-		kube.LabelAppSlug:     jobSlug,
-		kube.LabelBuildID:     build.ID,
-		kube.LabelManagedBy:   "true",
-	}
-
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: namespace,
-			Labels:    labels,
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoffLimit,
-			TTLSecondsAfterFinished: &ttl,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
-					InitContainers: []corev1.Container{
-						{
-							Name:    "git-clone",
-							Image:   GitCloneImage,
-							Command: []string{"sh", "-c", gitCloneCmd},
-							VolumeMounts: []corev1.VolumeMount{
-								{Name: "workspace", MountPath: "/workspace"},
-							},
-						},
-					},
-					Containers: []corev1.Container{
-						{
-							Name:  "kaniko",
-							Image: KanikoImage,
-							Args:  kanikoArgs,
-							VolumeMounts: []corev1.VolumeMount{
-								{Name: "workspace", MountPath: "/workspace"},
-								{Name: "docker-config", MountPath: "/kaniko/.docker"},
-							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("500m"),
-									corev1.ResourceMemory: resource.MustParse("1Gi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("2"),
-									corev1.ResourceMemory: resource.MustParse("4Gi"),
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{Name: "workspace", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
-						{Name: "docker-config", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: dockerConfigSecret}}},
-					},
-				},
-			},
-		},
-	}
-	if repo.GitUsername != "" && repo.GitPassword != "" {
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: "git-secret",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: gitSecretName},
-			},
-		})
-	}
-	return job, nil
+	return CreateBuildClientJobFromCodeRepo(build, repo, setting, registry, buildEnv, project, jobSlug)
 }
 
 // CreateBuildSecretsFromCodeRepo creates K8s secrets for a code-repo build job.
@@ -322,7 +110,7 @@ func CreateBuildSecretsFromCodeRepo(
 	return nil
 }
 
-// SubmitBuildJobFromCodeRepo creates secrets and submits the Kaniko job for a code repository build.
+// SubmitBuildJobFromCodeRepo creates secrets and submits the BuildKit client job for a code repository build.
 func SubmitBuildJobFromCodeRepo(
 	ctx context.Context,
 	build *entities.Build,
@@ -337,10 +125,16 @@ func SubmitBuildJobFromCodeRepo(
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get cluster client: %w", err)
 	}
+	if err := EnsureClusterBuildkitInfrastructure(ctx, buildEnv.ClusterID); err != nil {
+		return "", "", fmt.Errorf("failed to ensure buildkit infrastructure: %w", err)
+	}
+	if err := EnsureBuildkitBuildPrerequisites(ctx, buildEnv.ClusterID, setting.Platforms); err != nil {
+		return "", "", fmt.Errorf("failed to validate buildkit readiness: %w", err)
+	}
 	if err := CreateBuildSecretsFromCodeRepo(ctx, build, repo, registry, buildEnv, project, jobSlug); err != nil {
 		return "", "", err
 	}
-	job, err := CreateBuildJobFromCodeRepo(build, repo, setting, registry, buildEnv, project, jobSlug)
+	job, err := CreateBuildClientJobFromCodeRepo(build, repo, setting, registry, buildEnv, project, jobSlug)
 	if err != nil {
 		return "", "", err
 	}
@@ -423,7 +217,7 @@ func CreateBuildSecrets(
 	return nil
 }
 
-// SubmitBuildJob creates and submits the Kaniko build job to the cluster.
+// SubmitBuildJob creates and submits the BuildKit client job to the cluster.
 func SubmitBuildJob(
 	ctx context.Context,
 	build *entities.Build,
@@ -437,6 +231,12 @@ func SubmitBuildJob(
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get cluster client: %w", err)
 	}
+	if err := EnsureClusterBuildkitInfrastructure(ctx, buildEnv.ClusterID); err != nil {
+		return "", "", fmt.Errorf("failed to ensure buildkit infrastructure: %w", err)
+	}
+	if err := EnsureBuildkitBuildPrerequisites(ctx, buildEnv.ClusterID, setting.Platforms); err != nil {
+		return "", "", fmt.Errorf("failed to validate buildkit readiness: %w", err)
+	}
 
 	// Create secrets first
 	if err := CreateBuildSecrets(ctx, build, repo, setting, registry, buildEnv, appCtx); err != nil {
@@ -444,7 +244,7 @@ func SubmitBuildJob(
 	}
 
 	// Create the job
-	job, err := CreateBuildJob(build, repo, setting, registry, buildEnv, appCtx)
+	job, err := CreateBuildClientJob(build, repo, setting, registry, buildEnv, appCtx)
 	if err != nil {
 		return "", "", err
 	}
@@ -489,7 +289,7 @@ func CleanupBuildSecrets(ctx context.Context, clusterID, buildID, namespace stri
 	}
 }
 
-// resolveImageDestination returns the full image reference for Kaniko --destination.
+// resolveImageDestination returns the full image reference for the pushed build output.
 // imageNameOrFull may be "image:tag" (short) or already a full reference; we use registry to build full if needed.
 func resolveImageDestination(registry *entities.ContainerRegistry, imageName, imageNameOrFull string) string {
 	imageNameOrFull = sanitizeImageReference(imageNameOrFull)
@@ -548,6 +348,10 @@ func buildKanikoArgs(dockerfilePath, buildContext, imageDestination, buildArgsJS
 		"--cleanup=false",
 	}
 
+	for _, ignorePath := range kanikoIgnorePaths() {
+		kanikoArgs = append(kanikoArgs, fmt.Sprintf("--ignore-path=%s", ignorePath))
+	}
+
 	if shouldEnableKanikoCache(registry) {
 		kanikoArgs = append(kanikoArgs, "--cache=true")
 	} else {
@@ -562,6 +366,41 @@ func buildKanikoArgs(dockerfilePath, buildContext, imageDestination, buildArgsJS
 	}
 
 	return kanikoArgs
+}
+
+func kanikoIgnorePaths() []string {
+	seen := make(map[string]bool, len(defaultKanikoIgnorePaths))
+	paths := make([]string, 0, len(defaultKanikoIgnorePaths)+2)
+
+	appendPath := func(path string) {
+		path = strings.TrimSpace(path)
+		if path == "" || seen[path] {
+			return
+		}
+		seen[path] = true
+		paths = append(paths, path)
+	}
+
+	for _, path := range defaultKanikoIgnorePaths {
+		appendPath(path)
+	}
+
+	for _, part := range splitKanikoIgnorePaths(os.Getenv("KANIKO_EXTRA_IGNORE_PATHS")) {
+		appendPath(part)
+	}
+
+	return paths
+}
+
+func splitKanikoIgnorePaths(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+
+	normalized := strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(raw)
+	normalized = strings.ReplaceAll(normalized, "\n", ",")
+	return strings.Split(normalized, ",")
 }
 
 func shouldEnableKanikoCache(registry *entities.ContainerRegistry) bool {

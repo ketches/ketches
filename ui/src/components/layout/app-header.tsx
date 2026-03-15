@@ -2,8 +2,8 @@ import { ChevronRightIcon } from "lucide-react"
 import { Fragment } from "react"
 import { Link } from "react-router-dom"
 
-import { Button } from "@/components/ui/button"
 import { NotificationBell } from "@/components/notifications/notification-bell"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useBreadcrumbs } from "@/contexts/use-breadcrumbs"
@@ -12,7 +12,7 @@ export function AppHeader() {
   const { breadcrumbs } = useBreadcrumbs()
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+    <header className="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex flex-1 items-center gap-2 px-4">
         <SidebarTrigger className="-ml-1 text-muted-foreground" />
         <Separator
@@ -42,11 +42,10 @@ export function AppHeader() {
             </Fragment>
           ))}
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
           <NotificationBell />
         </div>
       </div>
     </header>
   )
 }
-

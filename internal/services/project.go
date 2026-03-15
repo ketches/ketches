@@ -266,6 +266,32 @@ func InviteProjectMembers(projectID string, userIDs []string, role string, sende
 	return nil
 }
 
+// ListInvitableUsers returns users who can be invited to a project.
+// It excludes: admin-role users, existing project members, and users with
+// pending invitations. Users who refused a previous invitation ARE included.
+func ListInvitableUsers(projectID string, search string) ([]entities.User, error) {
+	var users []entities.User
+	query := db.DB.Model(&entities.User{}).
+		Where("role != ?", app.UserRoleAdmin).
+		Where("id NOT IN (?)",
+			db.DB.Model(&entities.ProjectMember{}).Select("user_id").Where("project_id = ?", projectID),
+		).
+		Where("id NOT IN (?)",
+			db.DB.Model(&entities.Notification{}).Select("recipient_id").
+				Where("resource_id = ? AND event_type = 'project_invitation' AND status = 'pending'", projectID),
+		)
+
+	if search != "" {
+		pattern := "%" + search + "%"
+		query = query.Where("username LIKE ? OR fullname LIKE ? OR email LIKE ?", pattern, pattern, pattern)
+	}
+
+	if err := query.Order("username").Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
 func RemoveProjectMember(projectID, userID string) error {
 	var member entities.ProjectMember
 	if err := db.DB.Where("project_id = ? AND user_id = ?", projectID, userID).First(&member).Error; err != nil {

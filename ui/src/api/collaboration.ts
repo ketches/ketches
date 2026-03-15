@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { AlertCircle, AlertOctagon, AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, ChevronUp, ChevronsUp, CircleAlert, CircleDashed, CircleDotDashed, CircleCheck, CircleSlash, Clock, Cog, Equal, Eye, Info, Play, XCircle } from 'lucide-react'
+import { AlertCircle, AlertOctagon, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, ChevronsUp, CircleAlert, CircleCheck, CircleDashed, CircleDotDashed, CircleSlash, Clock, ClockCheck, Cog, Equal, Eye, Info, XCircle } from 'lucide-react'
 import client from './client'
 import { type PaginationParams, type PaginationResponse } from './pagination'
 
@@ -21,8 +21,8 @@ export const SprintStatus = {
 } as const
 export type SprintStatus = typeof SprintStatus[keyof typeof SprintStatus]
 export const SprintStatusOptions: CollabOption[] = [
-  { label: 'Planned', value: 'planned', icon: CalendarClock, color: 'slate' },
-  { label: 'Active', value: 'active', icon: Play, color: 'green' },
+  { label: 'Planned', value: 'planned', icon: Clock, color: 'slate' },
+  { label: 'Active', value: 'active', icon: ClockCheck, color: 'green' },
   { label: 'Closed', value: 'closed', icon: CircleCheck, color: 'gray' },
 ]
 

@@ -145,6 +145,9 @@ export const appsApi = {
   updateImage: async (id: string, data: { container_image: string, registry_username?: string, registry_password?: string }) => {
     return client.patch(`/v1/apps/${id}/image`, data) as Promise<App>
   },
+  listImageTags: async (id: string) => {
+    return client.get(`/v1/apps/${id}/image-tags`) as Promise<{ repository: string, current_tag: string, tags: string[] }>
+  },
   updateReplicas: async (id: string, replicas: number) => {
     return client.patch(`/v1/apps/${id}/replicas`, { replicas }) as Promise<App>
   },

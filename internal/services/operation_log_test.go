@@ -61,6 +61,39 @@ func TestListOperationLogsFilters(t *testing.T) {
 	assert.Equal(t, "alice", items[0].Username)
 }
 
+func TestListPlatformOperationLogsFiltersPlatformResourceTypes(t *testing.T) {
+	setupOperationLogServiceTestDB(t)
+
+	require.NoError(t, CreateOperationLog(CreateOperationLogInput{
+		UserID:       "u1",
+		Username:     "alice",
+		Action:       "update",
+		ResourceType: "platform_branding",
+		ResourceID:   "platform",
+		Status:       entities.OperationLogStatusSuccess,
+		StatusCode:   200,
+		Sensitivity:  entities.OperationLogSensitivitySensitive,
+	}))
+	require.NoError(t, CreateOperationLog(CreateOperationLogInput{
+		UserID:       "u2",
+		Username:     "bob",
+		Action:       "deploy",
+		ResourceType: "app",
+		ResourceID:   "app-1",
+		Status:       entities.OperationLogStatusSuccess,
+		StatusCode:   200,
+		Sensitivity:  entities.OperationLogSensitivityInternal,
+	}))
+
+	total, items, err := ListPlatformOperationLogs(models.OperationLogListRequest{
+		PaginationRequest: models.PaginationRequest{Page: 1, PageSize: 10},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), total)
+	require.Len(t, items, 1)
+	assert.Equal(t, "platform_branding", items[0].ResourceType)
+}
+
 func TestCleanupExpiredOperationLogs(t *testing.T) {
 	setupOperationLogServiceTestDB(t)
 
@@ -174,4 +207,17 @@ func TestListOperationLogsFiltersDateTimeLocalRange(t *testing.T) {
 	assert.Equal(t, int64(1), total)
 	require.Len(t, items, 1)
 	assert.Equal(t, "log-inside", items[0].ID)
+}
+
+func TestSystemSettingLookupQueryQuotesKeyColumn(t *testing.T) {
+	testDB, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		DryRun:                                   true,
+	})
+	require.NoError(t, err)
+
+	statement := systemSettingLookupQuery(testDB, "platform_branding").Limit(1).Find(&entities.SystemSetting{}).Statement
+
+	assert.Contains(t, statement.SQL.String(), "`key`")
+	assert.NotContains(t, statement.SQL.String(), "WHERE key =")
 }

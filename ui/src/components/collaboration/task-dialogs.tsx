@@ -7,14 +7,14 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { format, isValid, parse } from "date-fns"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, User } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Calendar } from "../ui/calendar"
 import { Field, FieldContent, FieldLabel } from "../ui/field"
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
-import { RichTextEditor } from "./rich-text-editor"
 import { MemberAvatar } from "./inline-editors"
+import { RichTextEditor } from "./rich-text-editor"
 
 const TASK_DATE_FORMAT = "yyyy-MM-dd"
 
@@ -251,7 +251,8 @@ export function CreateTaskDialog({
                   <ComboboxList>
                     {memberItems.map((opt) => (
                       <ComboboxItem key={opt.value} value={opt.value}>
-                        {opt.value ? <MemberAvatar name={opt.label} /> : null}
+                        {opt.value ? <MemberAvatar name={opt.label} /> : <User className="size-3.5 text-muted-foreground" />}
+
                         {opt.label}
                       </ComboboxItem>
                     ))}

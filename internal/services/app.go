@@ -23,6 +23,8 @@ import (
 	"path"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
@@ -324,6 +326,35 @@ func UpdateAppBasic(ctx context.Context, appID string, req *models.UpdateBasicIn
 	}
 
 	return appCtx, nil
+}
+
+func ListAppImageTags(ctx context.Context, appID string) (*models.AppImageTagsResponse, error) {
+	appCtx, err := GetAppContext(ctx, appID)
+	if err != nil {
+		return nil, err
+	}
+
+	image := strings.TrimSpace(appCtx.App.ContainerImage)
+	if image == "" {
+		return nil, errors.New("application has no container image configured")
+	}
+
+	// Parse the repository from the full image reference (e.g. "nginx:1.25" → "index.docker.io/library/nginx")
+	repo, currentTag, err := parseImageRepository(image)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse image reference: %w", err)
+	}
+
+	tags, err := listImageTags(repo, appCtx.App.RegistryUsername, appCtx.App.RegistryPassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list image tags: %w", err)
+	}
+
+	return &models.AppImageTagsResponse{
+		Repository: repo,
+		CurrentTag: currentTag,
+		Tags:       tags,
+	}, nil
 }
 
 func UpdateAppImage(ctx context.Context, appID string, req *models.UpdateAppImageRequest) (*models.AppContext, error) {
@@ -1345,4 +1376,36 @@ func seedAppFromImageMetadata(ctx context.Context, application *entities.App) er
 	}
 
 	return nil
+}
+
+// parseImageRepository splits a container image reference into repository and tag.
+func parseImageRepository(image string) (string, string, error) {
+	repo := image
+	tag := "latest"
+
+	lastSlash := strings.LastIndex(image, "/")
+	lastColon := strings.LastIndex(image, ":")
+	if lastColon > lastSlash && lastColon > 0 {
+		repo = image[:lastColon]
+		tag = image[lastColon+1:]
+	}
+
+	return repo, tag, nil
+}
+
+// listImageTags lists all tags from a container image repository using crane,
+// with optional basic auth for private registries.
+func listImageTags(repository, username, password string) ([]string, error) {
+	var opts []crane.Option
+	if username != "" {
+		opts = append(opts, crane.WithAuth(&authn.Basic{
+			Username: username,
+			Password: password,
+		}))
+	}
+	tags, err := crane.ListTags(repository, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return tags, nil
 }

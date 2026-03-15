@@ -11,6 +11,7 @@ import (
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -78,6 +79,17 @@ func ListCodeRepositoryOperationLogs(repoID string, req models.OperationLogListR
 	return listOperationLogsWithScope(req, operationLogQueryScope{RepoID: repoID})
 }
 
+func ListPlatformOperationLogs(req models.OperationLogListRequest) (int64, []models.OperationLogItem, error) {
+	return listOperationLogsWithScope(req, operationLogQueryScope{
+		ResourceTypes: []string{
+			"platform_branding",
+			"platform_update_config",
+			"platform_update_check",
+			"platform_update_rollout",
+		},
+	})
+}
+
 func GetOperationLogRetentionDays() (int, error) {
 	setting, err := getSystemSetting(operationLogRetentionSettingKey)
 	if err != nil {
@@ -125,6 +137,7 @@ type operationLogQueryScope struct {
 	IsAdmin       bool
 	AppID         string
 	RepoID        string
+	ResourceTypes []string
 }
 
 func listOperationLogsWithScope(req models.OperationLogListRequest, scope operationLogQueryScope) (int64, []models.OperationLogItem, error) {
@@ -145,6 +158,9 @@ func listOperationLogsWithScope(req models.OperationLogListRequest, scope operat
 	}
 	if scope.RepoID != "" {
 		query = query.Where("repo_id = ?", scope.RepoID)
+	}
+	if len(scope.ResourceTypes) > 0 {
+		query = query.Where("resource_type IN ?", scope.ResourceTypes)
 	}
 
 	if scope.Activities {
@@ -235,7 +251,7 @@ func toOperationLogItem(row *entities.OperationLog) models.OperationLogItem {
 
 func getSystemSetting(key string) (*entities.SystemSetting, error) {
 	var setting entities.SystemSetting
-	err := db.DB.Where("key = ?", key).First(&setting).Error
+	err := systemSettingLookupQuery(db.DB, key).First(&setting).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -243,6 +259,13 @@ func getSystemSetting(key string) (*entities.SystemSetting, error) {
 		return nil, err
 	}
 	return &setting, nil
+}
+
+func systemSettingLookupQuery(tx *gorm.DB, key string) *gorm.DB {
+	return tx.Where(clause.Eq{
+		Column: clause.Column{Table: clause.CurrentTable, Name: "key"},
+		Value:  key,
+	})
 }
 
 func parseOperationLogTime(value string) (time.Time, bool) {
