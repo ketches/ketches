@@ -8,7 +8,7 @@ const {
   mockUsePlatformBranding,
   mockUsePlatformUpdateStatusQuery,
   mockUseCheckPlatformUpdateMutation,
-  mockPlatformBrandingTab,
+  mockPlatformGeneralTab,
   mockPlatformUpgradeManagementTab,
   mockPlatformAuditLogTab,
 } = vi.hoisted(() => ({
@@ -16,7 +16,7 @@ const {
   mockUsePlatformBranding: vi.fn(),
   mockUsePlatformUpdateStatusQuery: vi.fn(),
   mockUseCheckPlatformUpdateMutation: vi.fn(),
-  mockPlatformBrandingTab: vi.fn(),
+  mockPlatformGeneralTab: vi.fn(),
   mockPlatformUpgradeManagementTab: vi.fn(),
   mockPlatformAuditLogTab: vi.fn(),
 }))
@@ -25,10 +25,10 @@ vi.mock("@/components/layout/page-header", () => ({
   PageHeader: () => <div data-testid="page-header">header</div>,
 }))
 
-vi.mock("@/components/platform-settings/platform-branding-tab", () => ({
-  PlatformBrandingTab: () => {
-    mockPlatformBrandingTab()
-    return <div data-testid="branding-tab">branding tab</div>
+vi.mock("@/components/platform-settings/platform-general-tab", () => ({
+  PlatformGeneralTab: () => {
+    mockPlatformGeneralTab()
+    return <div data-testid="general-tab">general tab</div>
   },
 }))
 
@@ -117,7 +117,7 @@ describe("PlatformSettingsPage", () => {
     vi.clearAllMocks()
   })
 
-  it("renders branding, upgrade management, and audit log tabs", async () => {
+  it("renders general, upgrade management, and audit log tabs", async () => {
     const container = document.createElement("div")
     document.body.appendChild(container)
     const root = ReactDOMClient.createRoot(container)
@@ -127,10 +127,10 @@ describe("PlatformSettingsPage", () => {
     })
 
     expect(container.textContent).toContain("Platform Settings")
-    expect(container.textContent).toContain("Branding")
+    expect(container.textContent).toContain("General")
     expect(container.textContent).toContain("Upgrade Management")
     expect(container.textContent).toContain("Audit Log")
-    expect(container.querySelector('[data-testid="branding-tab"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="general-tab"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="upgrade-tab"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="audit-log-tab"]')).not.toBeNull()
 
@@ -155,7 +155,7 @@ describe("PlatformSettingsPage", () => {
     })
   })
 
-  it("uses the agreed tab icons for branding and audit log", async () => {
+  it("uses the agreed tab icons for general and audit log", async () => {
     const container = document.createElement("div")
     document.body.appendChild(container)
     const root = ReactDOMClient.createRoot(container)
@@ -164,10 +164,10 @@ describe("PlatformSettingsPage", () => {
       root.render(<PlatformSettingsPage />)
     })
 
-    const brandingTabInvocation = mockPlatformBrandingTab.mock.calls.length
+    const generalTabInvocation = mockPlatformGeneralTab.mock.calls.length
     const auditTabInvocation = mockPlatformAuditLogTab.mock.calls.length
 
-    expect(brandingTabInvocation).toBe(1)
+    expect(generalTabInvocation).toBe(1)
     expect(auditTabInvocation).toBe(1)
     expect(Type).toBeDefined()
     expect(History).toBeDefined()
