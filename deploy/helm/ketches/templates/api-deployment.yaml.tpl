@@ -78,6 +78,10 @@ spec:
                   key: jwt-secret
             - name: CORS_ALLOWED_ORIGINS
               value: {{ .Values.config.corsAllowedOrigins | quote }}
+            - name: BUILD_LOG_BASE_DIR
+              value: {{ .Values.config.buildLogBaseDir | quote }}
+            - name: BUILD_LOG_RETENTION_DAYS
+              value: {{ printf "%v" .Values.config.buildLogRetentionDays | quote }}
             {{- range .Values.api.extraEnv }}
             - name: {{ .name }}
               {{- if hasKey . "valueFrom" }}
@@ -87,6 +91,11 @@ spec:
               value: {{ .value | quote }}
               {{- end }}
             {{- end }}
+          {{- if .Values.api.persistence.enabled }}
+          volumeMounts:
+            - name: build-logs
+              mountPath: {{ .Values.config.buildLogBaseDir | quote }}
+          {{- end }}
           {{- if .Values.api.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
@@ -109,6 +118,12 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
+      {{- if .Values.api.persistence.enabled }}
+      volumes:
+        - name: build-logs
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-build-logs" (include "ketches.api.fullname" .) | quote }}
+      {{- end }}
       {{- with .Values.api.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

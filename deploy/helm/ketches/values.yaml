@@ -18,6 +18,8 @@ config:
   corsAllowedOrigins: "*"
   backendUrl: ""
   jwtSecret: change-this-in-production
+  buildLogBaseDir: /app/data/build-logs
+  buildLogRetentionDays: 15
 
 api:
   replicaCount: 1
@@ -42,6 +44,12 @@ api:
   tolerations: []
   affinity: {}
   extraEnv: []
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+    storageClass: ""
   livenessProbe:
     enabled: false
     path: /api/v1/version

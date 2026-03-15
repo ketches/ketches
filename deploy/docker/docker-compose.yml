@@ -29,6 +29,10 @@ services:
       DB_SOURCE: host=ketches-db port=5432 user=ketches password=ketches dbname=ketches sslmode=disable
       JWT_SECRET: change-this-in-production
       CORS_ALLOWED_ORIGINS: http://localhost
+      BUILD_LOG_BASE_DIR: /app/data/build-logs
+      BUILD_LOG_RETENTION_DAYS: 15
+    volumes:
+      - build-log-data:/app/data/build-logs
     depends_on:
       ketches-db:
         condition: service_healthy
@@ -49,3 +53,4 @@ services:
 
 volumes:
   postgres-data:
+  build-log-data:
