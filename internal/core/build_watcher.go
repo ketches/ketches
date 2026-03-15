@@ -128,6 +128,9 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 					log.Printf("Build watcher: failed to update build %s: %v", buildID, err)
 					return
 				}
+				if err := PersistBuildLogs(context.Background(), buildID); err != nil {
+					log.Printf("Build watcher: failed to persist logs for build %s: %v", buildID, err)
+				}
 
 				// Handle auto-deploy
 				go handleAutoDeploy(&build)
@@ -174,6 +177,9 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 					build.Duration = int(now.Sub(*build.StartedAt).Seconds())
 				}
 				db.DB.Save(&build)
+				if err := PersistBuildLogs(context.Background(), buildID); err != nil {
+					log.Printf("Build watcher: failed to persist logs for build %s: %v", buildID, err)
+				}
 
 				// Cleanup secrets
 				go CleanupBuildSecrets(context.Background(), buildEnv.ClusterID, buildID, jobNamespace)
