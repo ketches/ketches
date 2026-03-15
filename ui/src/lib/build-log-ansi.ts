@@ -11,7 +11,8 @@ export interface ParsedBuildLogAnsi {
   decorations: BuildLogDecoration[]
 }
 
-const ANSI_ESCAPE_PATTERN = /\u001b\[([0-9;]*)m/g
+const ANSI_ESCAPE_CHARACTER = String.fromCharCode(27)
+const ANSI_ESCAPE_PATTERN = new RegExp(`${ANSI_ESCAPE_CHARACTER}\\[([0-9;]*)m`, "g")
 
 const ANSI_FOREGROUND_CLASS_MAP = new Map<number, string>([
   [30, "build-log-ansi-fg-black"],
