@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -11,6 +12,28 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
+
+func TestToBuildResponse_ExposesLogPersistMetadata(t *testing.T) {
+	persistedAt := time.Date(2026, 3, 15, 12, 5, 0, 0, time.UTC)
+	expireAt := persistedAt.Add(15 * 24 * time.Hour)
+	build := &entities.Build{
+		ID:               "build-1",
+		BuildSettingID:   "setting-1",
+		BuildEnvID:       "env-1",
+		BuildNumber:      1,
+		Status:           entities.BuildStatusFailed,
+		TriggerType:      entities.BuildTriggerManual,
+		LogPersistStatus: entities.BuildLogPersistFailed,
+		LogPersistError:  "archive failed",
+		LogPersistedAt:   &persistedAt,
+		LogExpireAt:      &expireAt,
+	}
+
+	resp := ToBuildResponse(context.Background(), build)
+
+	assert.Equal(t, string(entities.BuildLogPersistFailed), resp.LogPersistStatus)
+	assert.Equal(t, "archive failed", resp.LogPersistError)
+}
 
 func setupBuildServiceTestDB(t *testing.T) {
 	t.Helper()

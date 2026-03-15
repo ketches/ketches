@@ -20,6 +20,15 @@ const (
 	BuildTriggerAuto   BuildTriggerType = "auto"
 )
 
+type BuildLogPersistStatus string
+
+const (
+	BuildLogPersistPending   BuildLogPersistStatus = "pending"
+	BuildLogPersistSucceeded BuildLogPersistStatus = "succeeded"
+	BuildLogPersistFailed    BuildLogPersistStatus = "failed"
+	BuildLogPersistExpired   BuildLogPersistStatus = "expired"
+)
+
 type Build struct {
 	ID        string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
@@ -52,6 +61,13 @@ type Build struct {
 	CompletedAt  *time.Time
 	Duration     int    `gorm:"type:int"`
 	ErrorMessage string `gorm:"type:text"`
+
+	LogPath          string                `gorm:"type:varchar(512)"`
+	LogSize          int64                 `gorm:"type:bigint"`
+	LogPersistStatus BuildLogPersistStatus `gorm:"type:varchar(32);default:'pending'"`
+	LogPersistError  string                `gorm:"type:text"`
+	LogPersistedAt   *time.Time
+	LogExpireAt      *time.Time
 }
 
 func (Build) TableName() string {

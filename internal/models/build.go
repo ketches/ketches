@@ -22,6 +22,8 @@ type BuildResponse struct {
 	CompletedAt      *time.Time `json:"completed_at"`
 	Duration         int        `json:"duration"`
 	ErrorMessage     string     `json:"error_message"`
+	LogPersistStatus string     `json:"log_persist_status"`
+	LogPersistError  string     `json:"log_persist_error"`
 	CreatedAt        time.Time  `json:"created_at"`
 }
 
