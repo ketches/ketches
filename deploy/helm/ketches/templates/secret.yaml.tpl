@@ -9,6 +9,6 @@ stringData:
   jwt-secret: {{ required "values.config.jwtSecret is required" .Values.config.jwtSecret | quote }}
   {{- if .Values.config.dbSource }}
   db-source: {{ .Values.config.dbSource | quote }}
-  {{- else if ne .Values.config.dbDriver "sqlite" }}
+  {{- else }}
   db-password: {{ include "ketches.database.password" . | quote }}
   {{- end }}

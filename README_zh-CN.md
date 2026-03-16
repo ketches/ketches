@@ -35,7 +35,7 @@ Ketches 是一个面向企业级的开源云原生应用平台，旨在降低 Ku
 | **健康检查** | Liveness、Readiness、Startup 三类探针，支持 HTTP / TCP / Exec 方式 |
 | **调度规则** | 节点选择器、节点亲和性、污点容忍配置 |
 | **权限控制** | 系统级（admin / user）与项目级（owner / developer / viewer）双层 RBAC |
-| **多数据库** | 开箱即用支持 PostgreSQL、MySQL 和 SQLite |
+| **运行时数据库** | 默认 PostgreSQL，可选 MySQL，测试使用纯 Go SQLite |
 | **集群扩展** | 通过 Helm 安装和管理集群扩展（Gateway API、监控组件等） |
 
 ## 🏗️ 系统架构
@@ -62,8 +62,8 @@ Ketches 是一个面向企业级的开源云原生应用平台，旨在降低 Ku
                         ▼                        ▼                      ▼
              ┌──────────────────┐    ┌────────────────────┐  ┌────────────────────┐
              │     数据库        │    │   Kubernetes       │  │   Kubernetes       │
-             │  PG / MySQL /    │    │   集群 1            │  │   集群 N           │
-             │  SQLite          │    │   (client-go)      │  │   (client-go)      │
+             │ PostgreSQL /     │    │   集群 1            │  │   集群 N           │
+             │ MySQL            │    │   (client-go)      │  │   (client-go)      │
              └──────────────────┘    └────────────────────┘  └────────────────────┘
 ```
 
@@ -142,7 +142,7 @@ helm install ketches ketches/ketches -n ketches --create-namespace
 
 ### 从源码构建
 
-**前置条件**：Go 1.25+、Node.js 22+、GCC（CGO/SQLite 依赖）
+**前置条件**：Go 1.25+、Node.js 22+
 
 ```bash
 git clone https://github.com/ketches/ketches.git
@@ -171,11 +171,11 @@ make dev-ui
 | ------ | ------ | ---- |
 | `PORT` | `8080` | API 服务监听端口 |
 | `LOG_LEVEL` | `info` | 日志级别（`debug` / `info` / `warn` / `error`） |
-| `DB_DRIVER` | `sqlite` | 数据库驱动（`postgres` / `mysql` / `sqlite`） |
+| `DB_DRIVER` | `postgres` | 运行时数据库驱动（`postgres` / `mysql`） |
 | `DB_SOURCE` | *（可选）* | 完整数据库连接字符串；设置后优先于拆分数据库变量 |
 | `DB_HOST` | 按驱动决定 | 未设置 `DB_SOURCE` 时的数据库主机 |
 | `DB_PORT` | 按驱动决定 | 未设置 `DB_SOURCE` 时的数据库端口 |
-| `DB_NAME` | `ketches.db` / `ketches` | 未设置 `DB_SOURCE` 时的 SQLite 文件路径或数据库名 |
+| `DB_NAME` | `ketches` | 未设置 `DB_SOURCE` 时的数据库名 |
 | `DB_USERNAME` | 按驱动决定 | 未设置 `DB_SOURCE` 时的数据库用户名 |
 | `DB_PASSWORD` | 空 | 未设置 `DB_SOURCE` 时的数据库密码 |
 | `DB_SSLMODE` | `disable` | 未设置 `DB_SOURCE` 时 PostgreSQL 的 SSL 模式 |
@@ -184,6 +184,8 @@ make dev-ui
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | 允许跨域的源地址，逗号分隔 |
 
 **Note**：生产环境建议设置 `DB_AUTO_MIGRATE=false`，并通过可控的迁移流程管理数据库结构变更。
+
+SQLite 不再作为运行时支持的数据库，仅在测试中通过纯 Go 驱动保留，以便后端构建彻底去掉 CGO。
 
 **PostgreSQL 示例**：
 
@@ -220,7 +222,6 @@ DB_PASSWORD=secret
 | ---- | ------- | ---- |
 | Go | 1.25+ | 后端开发 |
 | Node.js | 22+ | 前端开发 |
-| GCC | 任意版本 | CGO 编译（SQLite 驱动） |
 | Docker | 24+ | 可选，用于容器化开发 |
 
 ### 常用 `make` 命令

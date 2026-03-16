@@ -35,7 +35,7 @@ Ketches is an enterprise-grade, open-source cloud-native application platform de
 | **Health Checks** | Liveness, readiness and startup probes with flexible probe modes |
 | **Scheduling** | Node selector, node affinity, and toleration rules |
 | **RBAC** | System-level (admin / user) and project-level (owner / developer / viewer) roles |
-| **Multi-database** | PostgreSQL, MySQL, and SQLite out of the box |
+| **Runtime Database** | PostgreSQL by default, MySQL optional, pure-Go SQLite in tests |
 | **Cluster Extensions** | Install and manage Helm-based extensions (Gateway API, monitoring, etc.) |
 
 ## 🏗️ Architecture
@@ -62,8 +62,8 @@ Ketches is an enterprise-grade, open-source cloud-native application platform de
                         ▼                        ▼                      ▼
              ┌──────────────────┐    ┌────────────────────┐  ┌────────────────────┐
              │   Database       │    │  Kubernetes        │  │  Kubernetes        │
-             │  PG / MySQL /    │    │  Cluster 1         │  │  Cluster N         │
-             │  SQLite          │    │  (client-go)       │  │  (client-go)       │
+             │ PostgreSQL /     │    │  Cluster 1         │  │  Cluster N         │
+             │ MySQL            │    │  (client-go)       │  │  (client-go)       │
              └──────────────────┘    └────────────────────┘  └────────────────────┘
 ```
 
@@ -142,7 +142,7 @@ helm install ketches ketches/ketches -n ketches --create-namespace
 
 ### Build from Source
 
-**Prerequisites**: Go 1.25+, Node.js 22+, GCC (for CGO/SQLite)
+**Prerequisites**: Go 1.25+, Node.js 22+
 
 ```bash
 git clone https://github.com/ketches/ketches.git
@@ -171,11 +171,11 @@ All configuration is done via environment variables. A `.env` file is optional f
 | -------- | ------- | ----------- |
 | `PORT` | `8080` | API server listen port |
 | `LOG_LEVEL` | `info` | Log level (`debug` / `info` / `warn` / `error`) |
-| `DB_DRIVER` | `sqlite` | Database driver (`postgres` / `mysql` / `sqlite`) |
+| `DB_DRIVER` | `postgres` | Runtime database driver (`postgres` / `mysql`) |
 | `DB_SOURCE` | *(optional)* | Full database connection string; takes precedence over split database variables |
 | `DB_HOST` | driver-specific | Database host when `DB_SOURCE` is not set |
 | `DB_PORT` | driver-specific | Database port when `DB_SOURCE` is not set |
-| `DB_NAME` | `ketches.db` / `ketches` | SQLite file path or database name when `DB_SOURCE` is not set |
+| `DB_NAME` | `ketches` | Database name when `DB_SOURCE` is not set |
 | `DB_USERNAME` | driver-specific | Database username when `DB_SOURCE` is not set |
 | `DB_PASSWORD` | empty | Database password when `DB_SOURCE` is not set |
 | `DB_SSLMODE` | `disable` | PostgreSQL SSL mode when `DB_SOURCE` is not set |
@@ -184,6 +184,8 @@ All configuration is done via environment variables. A `.env` file is optional f
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | Comma-separated allowed CORS origins |
 
 **Note**: For production environments, set `DB_AUTO_MIGRATE=false` and manage schema migrations through a controlled migration process.
+
+SQLite is no longer a supported runtime database. It remains test-only through a pure-Go driver so backend builds do not require CGO.
 
 **PostgreSQL example**:
 
@@ -220,7 +222,6 @@ See [`.env.example`](.env.example) for the full reference.
 | ---- | ------- | ----- |
 | Go | 1.25+ | Backend |
 | Node.js | 22+ | Frontend |
-| GCC | any | Required for CGO (SQLite driver) |
 | Docker | 24+ | Optional — for containerized development |
 
 ### Common `make` targets

@@ -40,9 +40,9 @@ all: build
 # ──────────────────────────────────────────────────────────────────────────────
 # Build
 # ──────────────────────────────────────────────────────────────────────────────
-build: ## Build the backend binary (requires GCC for CGO/SQLite)
+build: ## Build the backend binary
 	@mkdir -p bin
-	CGO_ENABLED=1 go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/api
+	CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/api
 
 build-ui: ## Build the frontend (requires Node.js)
 	cd ui && npm run build

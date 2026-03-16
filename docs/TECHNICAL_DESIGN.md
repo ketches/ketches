@@ -43,7 +43,6 @@
 | ------ | ---- | ------------- |
 | PostgreSQL | pgx | `host=localhost port=5432 user=postgres password=xxx dbname=ketches sslmode=disable` |
 | MySQL | mysql | `user:password@tcp(localhost:3306)/ketches?charset=utf8mb4&parseTime=True&loc=Local` |
-| SQLite | sqlite | `file:ketches.db?cache=shared&mode=rwc` |
 
 ---
 
@@ -89,8 +88,8 @@
                            ▼                           ▼                           ▼
                 ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
                 │    Database     │         │  Kubernetes     │         │  Kubernetes     │
-                │  (PG/MySQL/     │         │  Cluster 1      │         │  Cluster N      │
-                │   SQLite)       │         │  (client-go)    │         │  (client-go)    │
+                │  (PostgreSQL/   │         │  Cluster 1      │         │  Cluster N      │
+                │   MySQL)        │         │  (client-go)    │         │  (client-go)    │
                 └─────────────────┘         └─────────────────┘         └─────────────────┘
 ```
 
@@ -157,7 +156,6 @@ ketches/
 │   │   ├── migration.go            # 数据库迁移
 │   │   ├── postgres.go             # PostgreSQL 驱动
 │   │   ├── mysql.go                # MySQL 驱动
-│   │   ├── sqlite.go               # SQLite 驱动
 │   │   ├── entities/               # 数据库实体
 │   │   │   ├── base.go
 │   │   │   ├── user.go
@@ -1795,8 +1793,8 @@ GET /readyz               # 就绪检查（包含数据库连接）
 | APP_PORT | 监听端口 | 8080 |
 | APP_RUNMODE | 运行模式 | dev |
 | APP_JWT_SECRET | JWT 密钥 | ketches |
-| DB_TYPE | 数据库类型 | sqlite |
-| DB_DNS | 数据库连接串 | file:ketches.db |
+| DB_TYPE | 数据库类型 | postgres |
+| DB_DNS | 数据库连接串 | host=localhost port=5432 user=postgres password=xxx dbname=ketches sslmode=disable |
 
 ### B. API 错误码
 

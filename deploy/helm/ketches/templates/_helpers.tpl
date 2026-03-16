@@ -94,8 +94,6 @@ app.kubernetes.io/component: {{ .component }}
 {{- .Values.postgres.auth.database -}}
 {{- else if .Values.config.dbName -}}
 {{- .Values.config.dbName -}}
-{{- else if eq .Values.config.dbDriver "sqlite" -}}
-{{- printf "ketches.db" -}}
 {{- else -}}
 {{- fail "values.config.dbName must be set when values.postgres.enabled is false and values.config.dbSource is empty" -}}
 {{- end -}}

@@ -53,7 +53,6 @@ spec:
             {{- else }}
             - name: DB_NAME
               value: {{ include "ketches.database.name" . | quote }}
-            {{- if ne .Values.config.dbDriver "sqlite" }}
             - name: DB_HOST
               value: {{ include "ketches.database.host" . | quote }}
             - name: DB_PORT
@@ -65,7 +64,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "ketches.secretName" . | quote }}
                   key: db-password
-            {{- end }}
             {{- if eq .Values.config.dbDriver "postgres" }}
             - name: DB_SSLMODE
               value: {{ .Values.config.dbSSLMode | quote }}
