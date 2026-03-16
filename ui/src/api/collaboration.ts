@@ -21,7 +21,7 @@ export const SprintStatus = {
 } as const
 export type SprintStatus = typeof SprintStatus[keyof typeof SprintStatus]
 export const SprintStatusOptions: CollabOption[] = [
-  { label: 'Planned', value: 'planned', icon: Clock, color: 'slate' },
+  { label: 'Planned', value: 'planned', icon: Clock, color: 'orange' },
   { label: 'Active', value: 'active', icon: ClockCheck, color: 'green' },
   { label: 'Closed', value: 'closed', icon: CircleCheck, color: 'gray' },
 ]

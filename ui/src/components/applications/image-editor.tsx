@@ -44,8 +44,6 @@ export function ImageEditor({
     registry_password: "",
   })
 
-  const [selectedTag, setSelectedTag] = React.useState("")
-
   React.useEffect(() => {
     if (app && open) {
       setFormData({
@@ -54,7 +52,6 @@ export function ImageEditor({
         registry_password: app.registry_password || "",
       })
       setShowCredentials(Boolean(app.registry_username || app.registry_password))
-      setSelectedTag("")
     }
   }, [app, open])
 
@@ -64,28 +61,34 @@ export function ImageEditor({
     enabled: !!app && open,
   })
 
-  React.useEffect(() => {
-    if (tagsQuery.data?.current_tag && !selectedTag) {
-      setSelectedTag(tagsQuery.data.current_tag)
+  const imageOptions = React.useMemo(() => {
+    const repository = tagsQuery.data?.repository
+
+    if (!repository) {
+      return []
     }
-  }, [tagsQuery.data, selectedTag])
 
-  const tagOptions = React.useMemo(() => {
-    return (tagsQuery.data?.tags ?? []).map((tag) => ({ label: tag, value: tag }))
-  }, [tagsQuery.data?.tags])
+    return (tagsQuery.data?.tags ?? []).map((tag) => {
+      const image = `${repository}:${tag}`
 
-  const handleTagChange = React.useCallback((value: string | null) => {
+      return {
+        label: image,
+        value: image,
+      }
+    })
+  }, [tagsQuery.data])
+
+  const handleContainerImageChange = React.useCallback((containerImage: string) => {
+    setFormData((prev) => ({ ...prev, container_image: containerImage }))
+  }, [])
+
+  const handleImageOptionChange = React.useCallback((value: string | null) => {
     if (!value) {
-      setSelectedTag("")
       return
     }
 
-    setSelectedTag(value)
-    const repo = tagsQuery.data?.repository
-    if (repo) {
-      setFormData((prev) => ({ ...prev, container_image: `${repo}:${value}` }))
-    }
-  }, [tagsQuery.data?.repository])
+    handleContainerImageChange(value)
+  }, [handleContainerImageChange])
 
   const mutation = useMutation({
     mutationFn: (data: { container_image: string; registry_username?: string; registry_password?: string }) => {
@@ -112,12 +115,12 @@ export function ImageEditor({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-140">
+      <DialogContent className="sm:max-w-160">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Update Application Image</DialogTitle>
             <DialogDescription>
-              Select a tag from the registry or manually enter a container image.
+              Refresh available images from the registry or manually enter a container image.
             </DialogDescription>
           </DialogHeader>
 
@@ -125,93 +128,147 @@ export function ImageEditor({
             <Field>
               <div className="flex items-center gap-2">
                 <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
-                <Tooltip>
-                  <TooltipTrigger
-                    delay={200}
-                    render={
-                      <Button
-                        type="button"
-                        variant={showCredentials ? "destructive" : "outline"}
-                        size="icon-sm"
-                        aria-label="Registry credentials"
-                        aria-pressed={showCredentials}
-                        onClick={() => setShowCredentials((prev) => !prev)}
-                        className="ml-auto"
-                      />
-                    }
-                  >
-                    <Key />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Registry Credentials</p>
-                  </TooltipContent>
-                </Tooltip>
+                <div className="flex items-center gap-1 ml-auto">
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon-sm"
+                          aria-label="Refresh image options"
+                          disabled={tagsQuery.isFetching}
+                          onClick={() => {
+                            void tagsQuery.refetch()
+                          }}
+                        >
+                          <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
+                        </Button>
+                      }
+                    >
+                      <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
+                    </TooltipTrigger>
+                    <TooltipContent>Refresh image options</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          type="button"
+                          variant={showCredentials ? "default" : "secondary"}
+                          size="icon-sm"
+                          aria-label="Registry credentials"
+                          aria-pressed={showCredentials}
+                          onClick={() => setShowCredentials((prev) => !prev)}
+                          className="ml-auto"
+                        />
+                      }
+                    >
+                      <Key />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Registry Credentials</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
               <FieldContent>
-                <Input
-                  id="container-image"
-                  placeholder="e.g. nginx:latest"
+                {/* <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1"> */}
+                {/* <div className="min-w-0"> */}
+                <Combobox
                   value={formData.container_image}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, container_image: e.target.value }))}
-                  required
-                />
-              </FieldContent>
-            </Field>
-            <Field>
-              <FieldLabel className="flex items-center justify-between">
-                <span>Image Tag</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  disabled={tagsQuery.isFetching}
-                  onClick={() => void tagsQuery.refetch()}
+                  onValueChange={handleImageOptionChange}
+                  itemToStringLabel={(value) =>
+                    imageOptions.find((option) => option.value === value)?.label ?? value ?? ""
+                  }
                 >
-                  <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
-                </Button>
-              </FieldLabel>
-              <FieldContent>
-                {tagsQuery.isLoading ? (
+                  <ComboboxInput
+                    id="container-image"
+                    name="container_image"
+                    placeholder="e.g. nginx:latest"
+                    value={formData.container_image}
+                    onInput={(e) => handleContainerImageChange((e.target as HTMLInputElement).value)}
+                    onChange={(e) => handleContainerImageChange(e.target.value)}
+                    required
+                    className="w-full"
+                  />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {imageOptions.map((option) => (
+                        <ComboboxItem key={option.value} value={option.value}>
+                          {option.label}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+                {/* </div> */}
+
+                {/* <div className="flex items-center gap-1">
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            aria-label="Refresh image options"
+                            disabled={tagsQuery.isFetching}
+                            onClick={() => {
+                              void tagsQuery.refetch()
+                            }}
+                          >
+                            <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
+                          </Button>
+                        }
+                      >
+                        <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
+                      </TooltipTrigger>
+                      <TooltipContent>Refresh image options</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showCredentials ? "default" : "secondary"}
+                            size="icon"
+                            aria-label="Registry credentials"
+                            aria-pressed={showCredentials}
+                            onClick={() => setShowCredentials((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <Key />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Registry Credentials</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div> */}
+
+                {tagsQuery.isLoading && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Loading tags...
+                    Loading image options...
                   </div>
-                ) : tagsQuery.isError ? (
+                )}
+                {tagsQuery.isError && (
                   <p className="text-xs text-destructive py-1">
-                    Failed to load tags. You can still enter an image manually below.
+                    Failed to load image options. You can still enter an image manually.
                   </p>
-                ) : (
-                  <Combobox
-                    value={selectedTag}
-                    onValueChange={handleTagChange}
-                    itemToStringLabel={(value) => tagOptions.find((o) => o.value === value)?.label ?? value ?? ""}
-                  >
-                    <ComboboxInput
-                      name="image-tag"
-                      placeholder="Select or search tag..."
-                      value={selectedTag}
-                      onInput={(e) => setSelectedTag((e.target as HTMLInputElement).value)}
-                      onChange={(e) => setSelectedTag(e.target.value)}
-                    />
-                    <ComboboxContent>
-                      <ComboboxList>
-                        {tagOptions.map((option) => (
-                          <ComboboxItem key={option.value} value={option.value}>
-                            {option.label}
-                            {option.value === tagsQuery.data?.current_tag && (
-                              <span className="ml-auto text-xs text-muted-foreground">current</span>
-                            )}
-                          </ComboboxItem>
-                        ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
                 )}
               </FieldContent>
             </Field>
 
             {showCredentials && (
-              <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <Field>
                   <FieldLabel htmlFor="registry-username">Registry Username</FieldLabel>
                   <FieldContent>

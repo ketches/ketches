@@ -155,11 +155,12 @@ export function CreateSprintDialog({
                   onValueChange={(val) => val && setFormData({ ...formData, status: val as SprintStatus })}
                   itemToStringLabel={(item) => SprintStatusOptions.find(opt => opt.value === item)?.label || item}
                 >
-                  <ComboboxInput placeholder="Select status" />
+                  <ComboboxInput placeholder="Select status" ></ComboboxInput>
                   <ComboboxContent>
                     <ComboboxList>
                       {SprintStatusOptions.map((opt) => (
                         <ComboboxItem key={opt.value} value={opt.value}>
+                          <opt.icon className={`h-4 w-4 text-${opt.color}-500`} />
                           {opt.label}
                         </ComboboxItem>
                       ))}

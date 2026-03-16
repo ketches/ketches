@@ -134,7 +134,7 @@ export function CreateEnvironmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-140">
+      <DialogContent className="sm:max-w-160">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create Environment</DialogTitle>
@@ -149,60 +149,62 @@ export function CreateEnvironmentDialog({
                 {errors.global}
               </div>
             )}
-            <Field>
-              <FieldLabel>
-                Name *
-                <Tooltip>
-                  <TooltipTrigger tabIndex={-1} type="button">
-                    <InfoIcon className="h-3.5 w-3.5" />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="start" className="max-w-64">
-                    <p className="text-xs">2-50 characters.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  placeholder="Production"
-                  value={formData.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  aria-invalid={!!errors.name}
-                />
-              </FieldContent>
-              {errors.name && (
-                <FieldError>
-                  <span className="text-destructive text-xs">{errors.name}</span>
-                </FieldError>
-              )}
-            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>
+                  Name *
+                  <Tooltip>
+                    <TooltipTrigger tabIndex={-1} type="button">
+                      <InfoIcon className="h-3.5 w-3.5" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" align="start" className="max-w-64">
+                      <p className="text-xs">2-50 characters.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    placeholder="Production"
+                    value={formData.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    aria-invalid={!!errors.name}
+                  />
+                </FieldContent>
+                {errors.name && (
+                  <FieldError>
+                    <span className="text-destructive text-xs">{errors.name}</span>
+                  </FieldError>
+                )}
+              </Field>
 
-            <Field>
-              <FieldLabel>
-                Slug *
-                <Tooltip>
-                  <TooltipTrigger tabIndex={-1} type="button">
-                    <InfoIcon className="h-3.5 w-3.5" />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="start" className="max-w-64">
-                    <p className="text-xs">3-32 characters.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  placeholder="production"
-                  value={formData.slug}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
-                  aria-invalid={!!errors.slug}
-                />
-              </FieldContent>
-              {errors.slug && (
-                <FieldError>
-                  <span className="text-destructive text-xs">{errors.slug}</span>
-                </FieldError>
-              )}
-            </Field>
+              <Field>
+                <FieldLabel>
+                  Slug *
+                  <Tooltip>
+                    <TooltipTrigger tabIndex={-1} type="button">
+                      <InfoIcon className="h-3.5 w-3.5" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" align="start" className="max-w-64">
+                      <p className="text-xs">3-32 characters.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    placeholder="production"
+                    value={formData.slug}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
+                    aria-invalid={!!errors.slug}
+                  />
+                </FieldContent>
+                {errors.slug && (
+                  <FieldError>
+                    <span className="text-destructive text-xs">{errors.slug}</span>
+                  </FieldError>
+                )}
+              </Field>
 
+            </div>
             <Field>
               <FieldLabel>Cluster *</FieldLabel>
               <FieldContent>

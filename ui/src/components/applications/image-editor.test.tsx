@@ -1,4 +1,4 @@
-import { act } from "react"
+import { act, createContext, useContext } from "react"
 import ReactDOMClient from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -91,12 +91,56 @@ vi.mock("@/components/ui/tooltip", () => ({
   TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+const ComboboxContext = createContext<{
+  onValueChange?: (value: string | null) => void
+}>({})
+
 vi.mock("@/components/ui/combobox", () => ({
-  Combobox: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  ComboboxInput: (props: React.ComponentProps<"input">) => <input {...props} />,
+  Combobox: ({
+    children,
+    onValueChange,
+  }: {
+    children: React.ReactNode
+    onValueChange?: (value: string | null) => void
+  }) => (
+    <ComboboxContext.Provider value={{ onValueChange }}>
+      <div>{children}</div>
+    </ComboboxContext.Provider>
+  ),
+  ComboboxTrigger: ({ children }: { children?: React.ReactNode }) => <button type="button">{children}</button>,
+  ComboboxInput: ({
+    children,
+    ...props
+  }: React.ComponentProps<"input"> & { children?: React.ReactNode }) => (
+    <div>
+      <input {...props} />
+      {children}
+    </div>
+  ),
   ComboboxContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ComboboxList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  ComboboxItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ComboboxItem: ({
+    children,
+    value,
+  }: {
+    children: React.ReactNode
+    value: string
+  }) => {
+    const { onValueChange } = useContext(ComboboxContext)
+    return (
+      <button
+        type="button"
+        data-combobox-item={value}
+        onClick={() => onValueChange?.(value)}
+      >
+        {children}
+      </button>
+    )
+  },
+}))
+
+vi.mock("@/components/ui/input-group", () => ({
+  InputGroupButton: ({ children, type, ...props }: React.ComponentProps<"button">) => <button type={type ?? "button"} {...props}>{children}</button>,
 }))
 
 import type { App } from "@/api/apps"
@@ -186,6 +230,44 @@ describe("ImageEditor", () => {
 
     expect(container.textContent).toContain("Registry Username")
     expect(container.textContent).toContain("Registry Password")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("uses the container image field as a combobox with inline refresh instead of a separate image tag field", async () => {
+    const { container, root } = await renderEditor(buildApp())
+
+    expect(container.textContent).not.toContain("Image Tag")
+
+    const refreshButton = container.querySelector('button[aria-label="Refresh image options"]') as HTMLButtonElement | null
+    const imageInput = container.querySelector('input[name="container_image"]') as HTMLInputElement | null
+
+    expect(refreshButton).not.toBeNull()
+    expect(imageInput).not.toBeNull()
+
+    await clickElement(refreshButton as HTMLButtonElement)
+
+    expect(mockRefetch).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows full image names in the combobox options and updates the input when selected", async () => {
+    const { container, root } = await renderEditor(buildApp())
+
+    expect(container.textContent).toContain("ghcr.io/acme/demo:latest")
+
+    const option = container.querySelector('[data-combobox-item="ghcr.io/acme/demo:latest"]') as HTMLButtonElement | null
+
+    expect(option).not.toBeNull()
+
+    await clickElement(option as HTMLButtonElement)
+
+    expect((container.querySelector('input[name="container_image"]') as HTMLInputElement | null)?.value).toBe("ghcr.io/acme/demo:latest")
 
     await act(async () => {
       root.unmount()

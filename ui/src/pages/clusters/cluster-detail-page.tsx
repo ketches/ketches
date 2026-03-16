@@ -638,10 +638,10 @@ export function ClusterDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />
-                Node Resource Usage
+                Node Metrics
               </CardTitle>
               <CardDescription>
-                Real-time resource consumption for each node in the cluster
+                Real-time node metrics for all nodes in the cluster. Use the time range selector to adjust the displayed time range.
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -102,7 +102,7 @@ export function CreateProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-140">
+      <DialogContent className="sm:max-w-160">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create Project</DialogTitle>
@@ -117,31 +117,33 @@ export function CreateProjectDialog({
                 {errors.global}
               </div>
             )}
-            <Field>
-              <FieldLabel>Name *</FieldLabel>
-              <FieldContent>
-                <Input
-                  placeholder="My Project"
-                  value={formData.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  aria-invalid={!!errors.name}
-                />
-              </FieldContent>
-              {errors.name && <FieldError><span className="text-destructive text-xs">{errors.name}</span></FieldError>}
-            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>Name *</FieldLabel>
+                <FieldContent>
+                  <Input
+                    placeholder="My Project"
+                    value={formData.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    aria-invalid={!!errors.name}
+                  />
+                </FieldContent>
+                {errors.name && <FieldError><span className="text-destructive text-xs">{errors.name}</span></FieldError>}
+              </Field>
 
-            <Field>
-              <FieldLabel>Slug *</FieldLabel>
-              <FieldContent>
-                <Input
-                  placeholder="my-project"
-                  value={formData.slug}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
-                  aria-invalid={!!errors.slug}
-                />
-              </FieldContent>
-              {errors.slug && <FieldError><span className="text-destructive text-xs">{errors.slug}</span></FieldError>}
-            </Field>
+              <Field>
+                <FieldLabel>Slug *</FieldLabel>
+                <FieldContent>
+                  <Input
+                    placeholder="my-project"
+                    value={formData.slug}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
+                    aria-invalid={!!errors.slug}
+                  />
+                </FieldContent>
+                {errors.slug && <FieldError><span className="text-destructive text-xs">{errors.slug}</span></FieldError>}
+              </Field>
+            </div>
 
             <Field>
               <FieldLabel>Description</FieldLabel>

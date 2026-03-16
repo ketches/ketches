@@ -386,7 +386,7 @@ export function EnvironmentDetailPage() {
           <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <ChartLine className="h-4 w-4" />Resource Usage</CardTitle>
+                <ChartLine className="h-4 w-4" />Metrics</CardTitle>
               <CardAction>
                 <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
               </CardAction>

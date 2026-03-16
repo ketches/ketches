@@ -292,7 +292,7 @@ describe("ApplicationDetailPage", () => {
     document.body.innerHTML = ""
   })
 
-  it("renders running instances in overview before resource usage and removes the instances tab", async () => {
+  it("renders running instances in overview before metrics and removes the instances tab", async () => {
     const container = document.createElement("div")
     document.body.appendChild(container)
 
@@ -304,7 +304,7 @@ describe("ApplicationDetailPage", () => {
 
     const textContent = container.textContent ?? ""
     const runningInstancesIndex = textContent.indexOf("Running Instances")
-    const resourceUsageIndex = textContent.indexOf("Resource Usage")
+    const metricsIndex = textContent.indexOf("Metrics")
     const buttonLabels = Array.from(container.querySelectorAll("button")).map(
       (button) => button.textContent?.trim() ?? ""
     )
@@ -315,8 +315,8 @@ describe("ApplicationDetailPage", () => {
 
     expect(buttonLabels).not.toContain("Instances")
     expect(runningInstancesIndex).toBeGreaterThanOrEqual(0)
-    expect(resourceUsageIndex).toBeGreaterThanOrEqual(0)
-    expect(runningInstancesIndex).toBeLessThan(resourceUsageIndex)
+    expect(metricsIndex).toBeGreaterThanOrEqual(0)
+    expect(runningInstancesIndex).toBeLessThan(metricsIndex)
     expect(runningInstancesCard?.querySelector('[data-slot="card-action"]')).not.toBeNull()
     expect(runningInstancesCard?.querySelector('input[placeholder="Filter pods..."]')).toBeNull()
 

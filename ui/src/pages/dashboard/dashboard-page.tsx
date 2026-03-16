@@ -336,10 +336,10 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ChartLine className="h-4 w-4" />
-                Environment Resource Usage
+                Environment Metrics
               </CardTitle>
               <CardDescription>
-                Real-time resource consumption across your environments
+                Real-time resource usage metrics for your environments. Click on an environment to view detailed metrics and logs.
               </CardDescription>
             </CardHeader>
             <CardContent>
