@@ -26,7 +26,7 @@ type ClusterExtension struct {
 	Namespace    string                 `gorm:"type:varchar(128);not null;uniqueIndex:uidx_cluster_ns_ext"`
 	ReleaseName  string                 `gorm:"type:varchar(256);not null"`
 	Version      string                 `gorm:"type:varchar(64)"`
-	Values       string                 `gorm:"type:longtext"`
+	Values       string                 `gorm:"size:4294967295"`
 	Status       ClusterExtensionStatus `gorm:"type:varchar(32);default:'pending'"`
 	ErrorMessage string                 `gorm:"type:text"`
 	InstalledBy  *string                `gorm:"type:varchar(36)"`
