@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Database, Layers } from "lucide-react"
+import { Database, Key, Layers } from "lucide-react"
 import * as React from "react"
 import { toast as sonnerToast } from "sonner"
 
-import { appsApi } from "@/api/apps"
+import { appsApi, type App } from "@/api/apps"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -21,11 +21,36 @@ import { cn } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
 import type { AxiosError } from "axios"
 
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
+import { deriveImageDefaults, toNameSlug } from "./create-app-dialog.utils"
+
 interface CreateAppDialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  onSuccess?: (app: any) => void
+  onSuccess?: (app: App) => void
   onClose?: () => void
+}
+
+type CreateAppFormData = {
+  name: string
+  slug: string
+  app_type: "Deployment" | "StatefulSet"
+  container_image: string
+  description: string
+  deploy: boolean
+  registry_username: string
+  registry_password: string
+}
+
+const INITIAL_FORM_DATA: CreateAppFormData = {
+  name: "",
+  slug: "",
+  app_type: "Deployment",
+  container_image: "",
+  description: "",
+  deploy: true,
+  registry_username: "",
+  registry_password: "",
 }
 
 export function CreateAppDialog({
@@ -40,6 +65,10 @@ export function CreateAppDialog({
 
   const queryClient = useQueryClient()
   const { activeEnvId } = useProjectStore()
+  const [showRegistryCredentials, setShowRegistryCredentials] = React.useState(false)
+  const [hasEditedName, setHasEditedName] = React.useState(false)
+  const [hasEditedSlug, setHasEditedSlug] = React.useState(false)
+  const [hasEditedAppType, setHasEditedAppType] = React.useState(false)
 
   const [errors, setErrors] = React.useState<{
     name?: string
@@ -48,19 +77,19 @@ export function CreateAppDialog({
     global?: string
   }>({})
 
-  const [formData, setFormData] = React.useState({
-    name: "",
-    slug: "",
-    app_type: "Deployment",
-    container_image: "",
-    description: "",
-    deploy: true,
-    registry_username: "",
-    registry_password: "",
-  })
+  const [formData, setFormData] = React.useState<CreateAppFormData>({ ...INITIAL_FORM_DATA })
 
-  const mutation = useMutation({
-    mutationFn: (data: any) => appsApi.create(activeEnvId!, {
+  const resetForm = React.useCallback(() => {
+    setFormData({ ...INITIAL_FORM_DATA })
+    setErrors({})
+    setShowRegistryCredentials(false)
+    setHasEditedName(false)
+    setHasEditedSlug(false)
+    setHasEditedAppType(false)
+  }, [])
+
+  const mutation = useMutation<App, AxiosError<{ error: string }>, CreateAppFormData>({
+    mutationFn: (data) => appsApi.create(activeEnvId!, {
       name: data.name,
       slug: data.slug,
       app_type: data.app_type,
@@ -82,25 +111,27 @@ export function CreateAppDialog({
       onSuccess?.(app)
       setOpen(false)
       onClose?.()
-      setFormData({ name: "", slug: "", app_type: "Deployment", container_image: "", description: "", deploy: true, registry_username: "", registry_password: "" })
-      setErrors({})
+      resetForm()
     },
-    onError: (err: AxiosError<{ error: string }>) => {
+    onError: (err) => {
       const errMsg = err.response?.data?.error || "Failed to create application"
       setErrors({ global: errMsg })
       sonnerToast.error("Error", { description: errMsg })
     }
   })
 
-  const handleNameChange = (name: string) => {
-    setFormData((prev) => ({ ...prev, name }))
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "")
-    setFormData((prev) => ({ ...prev, slug }))
+  const handleImageChange = (container_image: string) => {
+    const defaults = deriveImageDefaults(container_image)
+
+    setFormData((prev) => ({
+      ...prev,
+      container_image,
+      name: hasEditedName ? prev.name : defaults.name,
+      slug: hasEditedSlug ? prev.slug : defaults.slug,
+      app_type: hasEditedAppType
+        ? prev.app_type
+        : (defaults.isStateful ? "StatefulSet" : "Deployment"),
+    }))
   }
 
   const validateForm = () => {
@@ -128,7 +159,12 @@ export function CreateAppDialog({
     mutation.mutate(formData)
   }
 
-  const appTypes = [
+  const appTypes: Array<{
+    id: CreateAppFormData["app_type"]
+    title: string
+    description: string
+    icon: typeof Layers
+  }> = [
     {
       id: "Deployment",
       title: "Deployment",
@@ -161,14 +197,94 @@ export function CreateAppDialog({
               </div>
             )}
 
+            <Field>
+              <div className="flex items-center gap-2">
+                <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
+                <Tooltip>
+                  <TooltipTrigger
+                    delay={200}
+                    render={
+                      <Button
+                        type="button"
+                        variant={showRegistryCredentials ? "destructive" : "outline"}
+                        size="icon-sm"
+                        aria-label="Registry credentials"
+                        aria-pressed={showRegistryCredentials}
+                        onClick={() => setShowRegistryCredentials((prev) => !prev)}
+                        className="ml-auto"
+                      />
+                    }
+                  >
+                    <Key />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Registry Credentials</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <FieldContent>
+                <Input
+                  id="container-image"
+                  name="container_image"
+                  placeholder="Enter or paste an image URL, e.g. nginx:latest or ghcr.io/org/app:1.0.0"
+                  value={formData.container_image}
+                  onChange={(e) => handleImageChange(e.target.value)}
+                  aria-invalid={!!errors.container_image}
+                />
+              </FieldContent>
+              {errors.container_image && <FieldError><span className="text-destructive text-xs">{errors.container_image}</span></FieldError>}
+            </Field>
+
+            {showRegistryCredentials && (
+              <div className="grid grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="registry-username">Registry Username</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="registry-username"
+                      name="registry_username"
+                      placeholder="Registry Username"
+                      value={formData.registry_username}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, registry_username: e.target.value }))}
+                      autoComplete="off"
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="registry-password">Registry Password</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="registry-password"
+                      name="registry_password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Registry Password"
+                      value={formData.registry_password}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))}
+                    />
+                  </FieldContent>
+                </Field>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <FieldLabel>Name *</FieldLabel>
+                <FieldLabel htmlFor="name">Name *</FieldLabel>
                 <FieldContent>
                   <Input
+                    id="name"
+                    name="name"
                     placeholder="My App"
                     value={formData.name}
-                    onChange={(e) => handleNameChange(e.target.value)}
+                    onChange={(e) => {
+                      setHasEditedName(true)
+                      const name = e.target.value
+                      setFormData((prev) => ({
+                        ...prev,
+                        name,
+                        slug: hasEditedSlug ? prev.slug : toNameSlug(name),
+                      }))
+                    }}
                     aria-invalid={!!errors.name}
                   />
                 </FieldContent>
@@ -176,12 +292,17 @@ export function CreateAppDialog({
               </Field>
 
               <Field>
-                <FieldLabel>Slug *</FieldLabel>
+                <FieldLabel htmlFor="slug">Slug *</FieldLabel>
                 <FieldContent>
                   <Input
+                    id="slug"
+                    name="slug"
                     placeholder="my-app"
                     value={formData.slug}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
+                    onChange={(e) => {
+                      setHasEditedSlug(true)
+                      setFormData((prev) => ({ ...prev, slug: e.target.value }))
+                    }}
                     aria-invalid={!!errors.slug}
                   />
                 </FieldContent>
@@ -194,9 +315,15 @@ export function CreateAppDialog({
               <FieldContent>
                 <div className="grid grid-cols-2 gap-3">
                   {appTypes.map((type) => (
-                    <div
+                    <button
+                      type="button"
                       key={type.id}
-                      onClick={() => setFormData(prev => ({ ...prev, app_type: type.id }))}
+                      data-app-type={type.id}
+                      aria-pressed={formData.app_type === type.id}
+                      onClick={() => {
+                        setHasEditedAppType(true)
+                        setFormData(prev => ({ ...prev, app_type: type.id }))
+                      }}
                       className={cn(
                         "relative flex flex-col gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted/50",
                         formData.app_type === type.id
@@ -216,55 +343,17 @@ export function CreateAppDialog({
                       <p className="text-[11px] text-muted-foreground leading-tight">
                         {type.description}
                       </p>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </FieldContent>
             </Field>
 
             <Field>
-              <FieldLabel>Container Image *</FieldLabel>
-              <FieldContent>
-                <Input
-                  placeholder="nginx:latest"
-                  value={formData.container_image}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, container_image: e.target.value }))}
-                  aria-invalid={!!errors.container_image}
-                />
-              </FieldContent>
-              {errors.container_image && <FieldError><span className="text-destructive text-xs">{errors.container_image}</span></FieldError>}
-            </Field>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel>Registry Username</FieldLabel>
-                <FieldContent>
-                  <Input
-                    placeholder="Registry Username"
-                    value={formData.registry_username}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, registry_username: e.target.value }))}
-                    autoComplete="off"
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Registry Password</FieldLabel>
-                <FieldContent>
-                  <Input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="Registry Password"
-                    value={formData.registry_password}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))}
-                  />
-                </FieldContent>
-              </Field>
-            </div>
-
-            <Field>
-              <FieldLabel>Description</FieldLabel>
+              <FieldLabel htmlFor="description">Description</FieldLabel>
               <FieldContent>
                 <Textarea
+                  id="description"
                   placeholder="Brief description of this application..."
                   className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                   value={formData.description}

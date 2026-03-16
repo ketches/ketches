@@ -16,11 +16,6 @@ export function MemberAvatar({ name }: { name?: string }) {
         AVATAR_COLOR_CLASSES[letter.charCodeAt(0) % AVATAR_COLOR_CLASSES.length]
 
     return (
-        // <span
-        //     className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[9px] leading-none font-medium ${colorClass}`}
-        // >
-        //     {letter}
-        // </span>
         <span className={`inline-grid h-4 w-4 shrink-0 -translate-x-0.5 place-items-center rounded-full bg-muted text-[9px] leading-none font-medium ${colorClass}`}>
             {letter}
         </span>

@@ -32,6 +32,7 @@ import {
   FieldLabel
 } from "@/components/ui/field"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
+import { MemberAvatar } from "../shared/member-avatar"
 
 interface InvitableUser {
   id: string
@@ -124,9 +125,14 @@ export function InviteMemberDialog({ projectId, onAdd }: { projectId: string; on
                       {(u) => (
                         <ComboboxItem key={u.id} value={u.id}>
                           <Item size="xs" className="p-0">
-                            <ItemContent>
-                              <ItemTitle>{u.fullname}</ItemTitle>
-                              <ItemDescription><span className="font-mono mr-2">{u.username}</span><span>({u.email})</span></ItemDescription>
+                            <ItemContent className="grid grid-cols-[auto,1fr] gap-2 items-center">
+                              <MemberAvatar name={u.fullname} />
+                              <div className="min-w-0">
+                                <ItemTitle>{u.fullname}</ItemTitle>
+                                <ItemDescription className="line-clamp-1">
+                                  {u.email}
+                                </ItemDescription>
+                              </div>
                             </ItemContent>
                           </Item>
                         </ComboboxItem>
