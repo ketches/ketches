@@ -350,10 +350,18 @@ func ListAppImageTags(ctx context.Context, appID string) (*models.AppImageTagsRe
 		return nil, fmt.Errorf("failed to list image tags: %w", err)
 	}
 
+	var result []string
+	for _, tag := range tags {
+		if strings.HasPrefix(tag, "buildcache-") {
+			continue
+		}
+		result = append(result, tag)
+	}
+
 	return &models.AppImageTagsResponse{
 		Repository: repo,
 		CurrentTag: currentTag,
-		Tags:       tags,
+		Tags:       result,
 	}, nil
 }
 

@@ -222,7 +222,7 @@ func setupV1Routes(r *gin.Engine) {
 				appsRead.GET("/:appID/deployment-history", handlers.ListDeploymentHistory)
 				appsRead.GET("/:appID/favorite", handlers.GetAppFavoriteStatus)
 				appsRead.GET("/:appID/operation-logs", handlers.ListAppOperationLogs)
-			appsRead.GET("/:appID/image-tags", handlers.ListAppImageTags)
+				appsRead.GET("/:appID/image-tags", handlers.ListAppImageTags)
 
 				// Exec / Log / Files (block viewer — require at least developer)
 				appsExec := apps.Group("", middlewares.BlockViewer())

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
+import { Key, Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -9,45 +9,19 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group"
+import {
+  deriveRepoDefaults,
+  toRepositoryNameSlug,
+} from "./code-repository-dialog.utils"
 
 interface CreateCodeRepositoryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   projectId: string
   onSuccess?: (repo: CodeRepository) => void
-}
-
-function parseRepoUrl(gitRepoUrl: string): { name: string; slug: string } {
-  const u = gitRepoUrl.trim()
-  if (!u) return { name: '', slug: '' }
-  try {
-    let path = ''
-    if (u.includes('@') && u.includes(':') && !u.startsWith('http') && !u.startsWith('ssh://')) {
-      // Handle git@github.com:user/repo.git format
-      path = u.split(':').pop() || ''
-    } else {
-      const url = new URL(u.startsWith('http') || u.startsWith('ssh://') ? u : `https://${u}`)
-      path = url.pathname
-    }
-
-    path = path.replace(/^\/+/, '').replace(/\/+$/, '')
-    const segment = path.split('/').pop() ?? 'repo'
-    const rawName = segment.replace(/\.git$/i, '').trim() || 'repo'
-    const slug = rawName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 128) || 'repo'
-
-    const name = slug
-      .split('-')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-
-    return { name, slug }
-  } catch {
-    return { name: '', slug: '' }
-  }
 }
 
 const defaultForm: CreateCodeRepositoryRequest = {
@@ -61,14 +35,17 @@ const defaultForm: CreateCodeRepositoryRequest = {
 export function CreateCodeRepositoryDialog({ open, onOpenChange, projectId, onSuccess }: CreateCodeRepositoryDialogProps) {
   const queryClient = useQueryClient()
   const [form, setForm] = React.useState<CreateCodeRepositoryRequest>(defaultForm)
+  const [showCredentials, setShowCredentials] = React.useState(false)
+  const [hasEditedName, setHasEditedName] = React.useState(false)
+  const [hasEditedSlug, setHasEditedSlug] = React.useState(false)
 
   const handleGitRepoUrlChange = (value: string) => {
-    const parsed = parseRepoUrl(value)
+    const parsed = deriveRepoDefaults(value)
     setForm((prev) => ({
       ...prev,
       git_repo_url: value,
-      name: parsed.name || prev.name,
-      slug: parsed.slug || prev.slug,
+      name: hasEditedName ? prev.name : parsed.name,
+      slug: hasEditedSlug ? prev.slug : parsed.slug,
     }))
   }
 
@@ -79,6 +56,9 @@ export function CreateCodeRepositoryDialog({ open, onOpenChange, projectId, onSu
       toast.success('Code repository added')
       onOpenChange(false)
       setForm(defaultForm)
+      setShowCredentials(false)
+      setHasEditedName(false)
+      setHasEditedSlug(false)
       onSuccess?.(repo)
     },
     onError: (err: unknown) => {
@@ -110,58 +90,104 @@ export function CreateCodeRepositoryDialog({ open, onOpenChange, projectId, onSu
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <Field>
-              <FieldLabel>Git Repository URL *</FieldLabel>
+              <FieldLabel htmlFor="git-repo-url">Git Repository URL *</FieldLabel>
               <FieldContent>
-                <Input
-                  placeholder="https://github.com/user/repo.git"
-                  value={form.git_repo_url}
-                  onChange={(e) => handleGitRepoUrlChange(e.target.value)}
-                  required
-                />
+                <InputGroup>
+                  <InputGroupInput id="git-repo-url"
+                    name="git_repo_url"
+                    placeholder="https://github.com/user/repo.git"
+                    value={form.git_repo_url}
+                    onChange={(e) => handleGitRepoUrlChange(e.target.value)}
+                    required />
+                  <InputGroupAddon align="inline-end">
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showCredentials ? "default" : "ghost"}
+                            size="icon-sm"
+                            aria-label="Git credentials"
+                            aria-pressed={showCredentials}
+                            onClick={() => setShowCredentials((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <Key />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Git Credentials</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </InputGroupAddon>
+                </InputGroup>
               </FieldContent>
             </Field>
+            {showCredentials && (
+              <div className="grid grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="git-username">Git Username</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="git-username"
+                      name="git_username"
+                      placeholder="Git username"
+                      value={form.git_username ?? ''}
+                      onChange={(e) => setForm({ ...form, git_username: e.target.value })}
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="git-password">Git Password / Token</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="git-password"
+                      name="git_password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Git password or token"
+                      value={form.git_password ?? ''}
+                      onChange={(e) => setForm({ ...form, git_password: e.target.value })}
+                    />
+                  </FieldContent>
+                </Field>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <FieldLabel>Name</FieldLabel>
+                <FieldLabel htmlFor="name">Name</FieldLabel>
                 <FieldContent>
                   <Input
+                    id="name"
+                    name="name"
                     placeholder="From URL"
                     value={form.name ?? ''}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(e) => {
+                      const name = e.target.value
+                      setHasEditedName(true)
+                      setForm((prev) => ({
+                        ...prev,
+                        name,
+                        slug: hasEditedSlug ? prev.slug : toRepositoryNameSlug(name),
+                      }))
+                    }}
                   />
                 </FieldContent>
               </Field>
               <Field>
-                <FieldLabel>Slug</FieldLabel>
+                <FieldLabel htmlFor="slug">Slug</FieldLabel>
                 <FieldContent>
                   <Input
+                    id="slug"
+                    name="slug"
                     placeholder="From URL"
                     value={form.slug ?? ''}
-                    onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  />
-                </FieldContent>
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel>Git Username</FieldLabel>
-                <FieldContent>
-                  <Input
-                    placeholder=""
-                    value={form.git_username ?? ''}
-                    onChange={(e) => setForm({ ...form, git_username: e.target.value })}
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Git Password / Token</FieldLabel>
-                <FieldContent>
-                  <Input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder=""
-                    value={form.git_password ?? ''}
-                    onChange={(e) => setForm({ ...form, git_password: e.target.value })}
+                    onChange={(e) => {
+                      setHasEditedSlug(true)
+                      setForm({ ...form, slug: e.target.value })
+                    }}
                   />
                 </FieldContent>
               </Field>

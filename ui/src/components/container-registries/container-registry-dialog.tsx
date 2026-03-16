@@ -284,26 +284,28 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
               </FieldContent>
             </Field>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="is-default"
-                checked={form.is_default}
-                onCheckedChange={(v) => setForm({ ...form, is_default: v === true })}
-              />
-              <label htmlFor="is-default" className="cursor-pointer">
-                Default Registry
-              </label>
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="is-default"
+                  checked={form.is_default}
+                  onCheckedChange={(v) => setForm({ ...form, is_default: v === true })}
+                />
+                <label htmlFor="is-default" className="cursor-pointer">
+                  Default Registry
+                </label>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="is-enabled"
-                checked={form.enabled}
-                onCheckedChange={(v) => setForm({ ...form, enabled: v === true })}
-              />
-              <label htmlFor="is-enabled" className="cursor-pointer">
-                Enabled
-              </label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="is-enabled"
+                  checked={form.enabled}
+                  onCheckedChange={(v) => setForm({ ...form, enabled: v === true })}
+                />
+                <label htmlFor="is-enabled" className="cursor-pointer">
+                  Enabled
+                </label>
+              </div>
             </div>
           </div>
 

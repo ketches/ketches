@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, RefreshCw } from "lucide-react"
+import { Key, Loader2, RefreshCw } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import type { AxiosError } from "axios"
 
 interface ImageEditorProps {
   open?: boolean
@@ -34,6 +36,7 @@ export function ImageEditor({
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = setControlledOpen || setInternalOpen
   const queryClient = useQueryClient()
+  const [showCredentials, setShowCredentials] = React.useState(false)
 
   const [formData, setFormData] = React.useState({
     container_image: "",
@@ -50,6 +53,7 @@ export function ImageEditor({
         registry_username: app.registry_username || "",
         registry_password: app.registry_password || "",
       })
+      setShowCredentials(Boolean(app.registry_username || app.registry_password))
       setSelectedTag("")
     }
   }, [app, open])
@@ -94,7 +98,7 @@ export function ImageEditor({
       setOpen(false)
       onSuccess?.()
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to update application image",
       })
@@ -119,9 +123,33 @@ export function ImageEditor({
 
           <div className="grid gap-4 py-4">
             <Field>
-              <FieldLabel>Container Image *</FieldLabel>
+              <div className="flex items-center gap-2">
+                <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
+                <Tooltip>
+                  <TooltipTrigger
+                    delay={200}
+                    render={
+                      <Button
+                        type="button"
+                        variant={showCredentials ? "destructive" : "outline"}
+                        size="icon-sm"
+                        aria-label="Registry credentials"
+                        aria-pressed={showCredentials}
+                        onClick={() => setShowCredentials((prev) => !prev)}
+                        className="ml-auto"
+                      />
+                    }
+                  >
+                    <Key />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Registry Credentials</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <FieldContent>
                 <Input
+                  id="container-image"
                   placeholder="e.g. nginx:latest"
                   value={formData.container_image}
                   onChange={(e) => setFormData((prev) => ({ ...prev, container_image: e.target.value }))}
@@ -182,30 +210,34 @@ export function ImageEditor({
               </FieldContent>
             </Field>
 
-            <div className="grid gap-4">
-              <Field>
-                <FieldLabel>Registry Username</FieldLabel>
-                <FieldContent>
-                  <Input
-                    placeholder="Registry username"
-                    value={formData.registry_username}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, registry_username: e.target.value }))}
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Registry Password</FieldLabel>
-                <FieldContent>
-                  <Input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="Registry password"
-                    value={formData.registry_password}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))}
-                  />
-                </FieldContent>
-              </Field>
-            </div>
+            {showCredentials && (
+              <div className="grid gap-4">
+                <Field>
+                  <FieldLabel htmlFor="registry-username">Registry Username</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="registry-username"
+                      placeholder="Registry username"
+                      value={formData.registry_username}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, registry_username: e.target.value }))}
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="registry-password">Registry Password</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="registry-password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Registry password"
+                      value={formData.registry_password}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))}
+                    />
+                  </FieldContent>
+                </Field>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

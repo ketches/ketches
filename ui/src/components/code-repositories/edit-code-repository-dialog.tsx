@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
+import { Key, Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group"
 
 interface EditCodeRepositoryDialogProps {
   open: boolean
@@ -19,6 +21,7 @@ interface EditCodeRepositoryDialogProps {
 export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }: EditCodeRepositoryDialogProps) {
   const queryClient = useQueryClient()
   const [form, setForm] = React.useState<UpdateCodeRepositoryRequest>({})
+  const [showCredentials, setShowCredentials] = React.useState(false)
 
   React.useEffect(() => {
     if (repo && open) {
@@ -28,6 +31,7 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
         git_username: repo.git_username ?? '',
         git_password: repo.git_password ?? '',
       })
+      setShowCredentials(Boolean(repo.has_git_password || repo.git_username || repo.git_password))
     }
   }, [repo, open])
 
@@ -75,9 +79,10 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <FieldLabel>Name *</FieldLabel>
+                <FieldLabel htmlFor="name">Name *</FieldLabel>
                 <FieldContent>
                   <Input
+                    id="name"
                     value={form.name ?? ''}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
@@ -85,9 +90,10 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
                 </FieldContent>
               </Field>
               <Field>
-                <FieldLabel>Slug *</FieldLabel>
+                <FieldLabel htmlFor="slug">Slug *</FieldLabel>
                 <FieldContent>
                   <Input
+                    id="slug"
                     value={repo.slug ?? ''}
                     disabled
                     className="bg-muted font-mono"
@@ -96,38 +102,67 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
               </Field>
             </div>
             <Field>
-              <FieldLabel>Git Repository URL *</FieldLabel>
+              <FieldLabel htmlFor="git-repo-url">Git Repository URL *</FieldLabel>
               <FieldContent>
-                <Input
-                  value={form.git_repo_url ?? ''}
-                  onChange={(e) => setForm({ ...form, git_repo_url: e.target.value })}
-                  required
-                />
+                <InputGroup>
+                  <InputGroupInput
+                    id="git-repo-url"
+                    value={form.git_repo_url ?? ''}
+                    onChange={(e) => setForm({ ...form, git_repo_url: e.target.value })}
+                    required />
+                  <InputGroupAddon align="inline-end">
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showCredentials ? "default" : "ghost"}
+                            size="icon-sm"
+                            aria-label="Git credentials"
+                            aria-pressed={showCredentials}
+                            onClick={() => setShowCredentials((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <Key />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Git Credentials</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </InputGroupAddon>
+                </InputGroup>
               </FieldContent>
             </Field>
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel>Git Username</FieldLabel>
-                <FieldContent>
-                  <Input
-                    value={form.git_username ?? ''}
-                    onChange={(e) => setForm({ ...form, git_username: e.target.value })}
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Git Password / Token</FieldLabel>
-                <FieldContent>
-                  <Input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="Enter password/token"
-                    value={form.git_password ?? ''}
-                    onChange={(e) => setForm({ ...form, git_password: e.target.value })}
-                  />
-                </FieldContent>
-              </Field>
-            </div>
+            {showCredentials && (
+              <div className="grid grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="git-username">Git Username</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="git-username"
+                      value={form.git_username ?? ''}
+                      onChange={(e) => setForm({ ...form, git_username: e.target.value })}
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="git-password">Git Password / Token</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="git-password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Enter password/token"
+                      value={form.git_password ?? ''}
+                      onChange={(e) => setForm({ ...form, git_password: e.target.value })}
+                    />
+                  </FieldContent>
+                </Field>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

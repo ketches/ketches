@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
 import type { AxiosError } from "axios"
 
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
 import { deriveImageDefaults, toNameSlug } from "./create-app-dialog.utils"
 
@@ -165,19 +166,19 @@ export function CreateAppDialog({
     description: string
     icon: typeof Layers
   }> = [
-    {
-      id: "Deployment",
-      title: "Deployment",
-      description: "Best for stateless applications that can be easily scaled and updated.",
-      icon: Layers,
-    },
-    {
-      id: "StatefulSet",
-      title: "StatefulSet",
-      description: "Best for stateful applications like databases that require stable storage and network identity.",
-      icon: Database,
-    },
-  ]
+      {
+        id: "Deployment",
+        title: "Deployment",
+        description: "Best for stateless applications that can be easily scaled and updated.",
+        icon: Layers,
+      },
+      {
+        id: "StatefulSet",
+        title: "StatefulSet",
+        description: "Best for stateful applications like databases that require stable storage and network identity.",
+        icon: Database,
+      },
+    ]
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -198,39 +199,39 @@ export function CreateAppDialog({
             )}
 
             <Field>
-              <div className="flex items-center gap-2">
-                <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
-                <Tooltip>
-                  <TooltipTrigger
-                    delay={200}
-                    render={
-                      <Button
-                        type="button"
-                        variant={showRegistryCredentials ? "destructive" : "outline"}
-                        size="icon-sm"
-                        aria-label="Registry credentials"
-                        aria-pressed={showRegistryCredentials}
-                        onClick={() => setShowRegistryCredentials((prev) => !prev)}
-                        className="ml-auto"
-                      />
-                    }
-                  >
-                    <Key />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Registry Credentials</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
+              <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
               <FieldContent>
-                <Input
-                  id="container-image"
-                  name="container_image"
-                  placeholder="Enter or paste an image URL, e.g. nginx:latest or ghcr.io/org/app:1.0.0"
-                  value={formData.container_image}
-                  onChange={(e) => handleImageChange(e.target.value)}
-                  aria-invalid={!!errors.container_image}
-                />
+                <InputGroup>
+                  <InputGroupInput id="container-image"
+                    name="container_image"
+                    placeholder="Enter or paste an image URL, e.g. nginx:latest or ghcr.io/org/app:1.0.0"
+                    value={formData.container_image}
+                    onChange={(e) => handleImageChange(e.target.value)}
+                    aria-invalid={!!errors.container_image} />
+                  <InputGroupAddon align="inline-end">
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showRegistryCredentials ? "default" : "ghost"}
+                            size="icon-sm"
+                            aria-label="Registry credentials"
+                            aria-pressed={showRegistryCredentials}
+                            onClick={() => setShowRegistryCredentials((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <Key />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Registry Credentials</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </InputGroupAddon>
+                </InputGroup>
               </FieldContent>
               {errors.container_image && <FieldError><span className="text-destructive text-xs">{errors.container_image}</span></FieldError>}
             </Field>
