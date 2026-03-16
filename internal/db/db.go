@@ -7,7 +7,6 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -22,8 +21,6 @@ func InitDB() error {
 		dialector = postgres.Open(app.Config.DBSource)
 	case "mysql":
 		dialector = mysql.Open(app.Config.DBSource)
-	case "sqlite":
-		dialector = sqlite.Open(app.Config.DBSource)
 	default:
 		return fmt.Errorf("unsupported database driver: %s", app.Config.DBDriver)
 	}
