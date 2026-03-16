@@ -3,6 +3,7 @@ import { UserPlus } from "lucide-react"
 import * as React from "react"
 
 import { PROJECT_ROLES, ProjectRole, ProjectRoleDescriptions, ProjectRoleLabels, projectsApi } from "@/api/projects"
+import { MemberAvatar } from "@/components/shared/member-avatar"
 import { Button } from "@/components/ui/button"
 import {
   Combobox,
@@ -32,7 +33,6 @@ import {
   FieldLabel
 } from "@/components/ui/field"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
-import { MemberAvatar } from "../shared/member-avatar"
 
 interface InvitableUser {
   id: string

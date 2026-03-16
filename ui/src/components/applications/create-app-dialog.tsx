@@ -21,8 +21,8 @@ import { cn } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
 import type { AxiosError } from "axios"
 
-import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group"
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { deriveImageDefaults, toNameSlug } from "./create-app-dialog.utils"
 
 interface CreateAppDialogProps {

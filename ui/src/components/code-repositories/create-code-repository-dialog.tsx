@@ -11,7 +11,7 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
-import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import {
   deriveRepoDefaults,
   toRepositoryNameSlug,
