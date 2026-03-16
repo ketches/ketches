@@ -57,7 +57,7 @@ vi.mock("@dnd-kit/core", () => ({
   useSensors: () => ([]),
 }))
 
-vi.mock("@/components/collaboration/collab-badges", () => ({
+vi.mock("@/components/collaborations/collab-badges", () => ({
   DueDateBadge: () => null,
   PriorityBadge: () => null,
 }))

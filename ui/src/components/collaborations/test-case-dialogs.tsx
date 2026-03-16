@@ -8,8 +8,6 @@ import {
   type TestCase,
   type UpdateTestCaseRequest
 } from "@/api/collaboration"
-import { BasicEditor } from "@/components/editor/basic-editor"
-import { isBasicEditorEmpty } from "@/components/editor/basic-editor-value"
 import { Button } from "@/components/ui/button"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import {
@@ -22,7 +20,6 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -94,15 +91,15 @@ export function CreateTestCaseDialog({
   })
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Create Test Case</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Create Test Case</DialogTitle>
+          <DialogDescription>
             Add a new test case to the project.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="grid flex-1 auto-rows-min gap-4 px-4">
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -136,10 +133,11 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Precondition</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={precondition}
-                onChange={setPrecondition}
+                onChange={(event) => setPrecondition(event.target.value)}
                 placeholder="e.g. User is logged out"
+                className="min-h-24"
               />
             </FieldContent>
           </Field>
@@ -147,10 +145,11 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Steps</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={steps}
-                onChange={setSteps}
+                onChange={(event) => setSteps(event.target.value)}
                 placeholder="1. Navigate to login page..."
+                className="min-h-32"
               />
             </FieldContent>
           </Field>
@@ -158,29 +157,30 @@ export function CreateTestCaseDialog({
           <Field>
             <FieldLabel>Expected Result</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={expectedResult}
-                onChange={setExpectedResult}
+                onChange={(event) => setExpectedResult(event.target.value)}
                 placeholder="User is redirected to dashboard"
+                className="min-h-24"
               />
             </FieldContent>
           </Field>
         </div>
 
-        <SheetFooter>
+        <DialogFooter>
           <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || !title || isBasicEditorEmpty(steps) || isBasicEditorEmpty(expectedResult)}
+              disabled={mutation.isPending || !title.trim() || steps.trim().length === 0 || expectedResult.trim().length === 0}
               onClick={() => mutation.mutate()}
             >
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -257,13 +257,13 @@ export function EditTestCaseDialog({
   if (!testCase) return null
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Edit Test Case</SheetTitle>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Edit Test Case</DialogTitle>
+        </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
-          <div className="grid flex-1 auto-rows-min gap-4 px-4">
+          <div className="grid gap-4">
             <Field>
               <FieldLabel>Title</FieldLabel>
               <FieldContent>
@@ -278,9 +278,10 @@ export function EditTestCaseDialog({
             <Field>
               <FieldLabel>Precondition</FieldLabel>
               <FieldContent>
-                <BasicEditor
+                <Textarea
                   value={precondition}
-                  onChange={setPrecondition}
+                  onChange={(event) => setPrecondition(event.target.value)}
+                  className="min-h-24"
                 />
               </FieldContent>
             </Field>
@@ -288,9 +289,10 @@ export function EditTestCaseDialog({
             <Field>
               <FieldLabel>Steps</FieldLabel>
               <FieldContent>
-                <BasicEditor
+                <Textarea
                   value={steps}
-                  onChange={setSteps}
+                  onChange={(event) => setSteps(event.target.value)}
+                  className="min-h-32"
                 />
               </FieldContent>
             </Field>
@@ -298,9 +300,10 @@ export function EditTestCaseDialog({
             <Field>
               <FieldLabel>Expected Result</FieldLabel>
               <FieldContent>
-                <BasicEditor
+                <Textarea
                   value={expectedResult}
-                  onChange={setExpectedResult}
+                  onChange={(event) => setExpectedResult(event.target.value)}
+                  className="min-h-24"
                 />
               </FieldContent>
             </Field>
@@ -324,20 +327,20 @@ export function EditTestCaseDialog({
             </Field>
           </div>
 
-          <SheetFooter>
+          <DialogFooter>
             <div className="flex w-full items-center justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button
                 type="submit"
-                disabled={mutation.isPending || !title || isBasicEditorEmpty(steps) || isBasicEditorEmpty(expectedResult)}
+                disabled={mutation.isPending || !title.trim() || steps.trim().length === 0 || expectedResult.trim().length === 0}
               >
                 {mutation.isPending ? "Save Changes" : "Save Changes"}
               </Button>
             </div>
-          </SheetFooter>
+          </DialogFooter>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -452,16 +455,16 @@ export function CreateTestRunDialog({
   if (!testCase) return null
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Record Test Run</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Record Test Run</DialogTitle>
+          <DialogDescription>
             Record the execution result for "{testCase.title}".
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
-          <div className="grid flex-1 auto-rows-min gap-4 px-4">
+          <div className="grid gap-4">
             <Field>
               <FieldLabel>Status</FieldLabel>
               <FieldContent>
@@ -492,16 +495,16 @@ export function CreateTestRunDialog({
             </Field>
           </div>
 
-          <SheetFooter>
+          <DialogFooter>
             <div className="flex w-full items-center justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit" disabled={mutation.isPending}>
                 {mutation.isPending ? "Recording..." : "Record Result"}
               </Button>
             </div>
-          </SheetFooter>
+          </DialogFooter>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 import {
   collaborationApi,
@@ -23,8 +22,6 @@ import {
   type TestCase,
   type UpdateDefectRequest,
 } from "@/api/collaboration"
-import { BasicEditor } from "@/components/editor/basic-editor"
-import { isBasicEditorEmpty } from "@/components/editor/basic-editor-value"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -131,15 +128,15 @@ export function CreateDefectDialog({
   })
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Report Defect</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Report Defect</DialogTitle>
+          <DialogDescription>
             Report a new defect found in the project.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="grid flex-1 auto-rows-min gap-4 px-4">
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -192,10 +189,11 @@ export function CreateDefectDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={description}
-                onChange={setDescription}
+                onChange={(event) => setDescription(event.target.value)}
                 placeholder="Detailed description of the issue..."
+                className="min-h-32"
               />
             </FieldContent>
           </Field>
@@ -203,10 +201,11 @@ export function CreateDefectDialog({
           <Field>
             <FieldLabel>Reproduction Steps</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={reproductionSteps}
-                onChange={setReproductionSteps}
+                onChange={(event) => setReproductionSteps(event.target.value)}
                 placeholder="1. Go to page X..."
+                className="min-h-32"
               />
             </FieldContent>
           </Field>
@@ -279,20 +278,20 @@ export function CreateDefectDialog({
           </p>
         </div>
 
-        <SheetFooter>
+        <DialogFooter>
           <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || !title || isBasicEditorEmpty(description) || (!requirementId && !taskId && !testCaseId)}
+              disabled={mutation.isPending || !title.trim() || description.trim().length === 0 || (!requirementId && !taskId && !testCaseId)}
               onClick={() => mutation.mutate()}
             >
               {mutation.isPending ? "Creating..." : "Create Defect"}
             </Button>
           </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -407,12 +406,12 @@ export function EditDefectDialog({
   if (!defect) return null
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Edit Defect</SheetTitle>
-        </SheetHeader>
-        <div className="grid flex-1 auto-rows-min gap-4 px-4">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Edit Defect</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -460,9 +459,10 @@ export function EditDefectDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={description}
-                onChange={setDescription}
+                onChange={(event) => setDescription(event.target.value)}
+                className="min-h-32"
               />
             </FieldContent>
           </Field>
@@ -470,9 +470,10 @@ export function EditDefectDialog({
           <Field>
             <FieldLabel>Reproduction Steps</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={reproductionSteps}
-                onChange={setReproductionSteps}
+                onChange={(event) => setReproductionSteps(event.target.value)}
+                className="min-h-32"
               />
             </FieldContent>
           </Field>
@@ -570,20 +571,20 @@ export function EditDefectDialog({
           </Field>
         </div>
 
-        <SheetFooter>
+        <DialogFooter>
           <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || !title || isBasicEditorEmpty(description) || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
+              disabled={mutation.isPending || !title.trim() || description.trim().length === 0 || (!requirementId && !taskId && !testCaseId && !defect?.test_run_id)}
               onClick={() => mutation.mutate()}
             >
               {mutation.isPending ? "Save Changes" : "Save Changes"}
             </Button>
           </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

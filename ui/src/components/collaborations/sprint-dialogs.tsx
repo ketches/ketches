@@ -2,8 +2,15 @@ import { collaborationApi, SprintStatus, SprintStatusOptions, type CreateSprintR
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -118,15 +125,15 @@ export function CreateSprintDialog({
   }
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenStateChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Create Sprint</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={handleOpenStateChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Create Sprint</DialogTitle>
+          <DialogDescription>
             Create a new sprint to plan your work.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="grid flex-1 auto-rows-min gap-4 px-4">
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
           <div className="grid grid-cols-3 gap-4">
             <Field className="col-span-2">
               <FieldLabel>Name</FieldLabel>
@@ -238,7 +245,7 @@ export function CreateSprintDialog({
           </div>
         </div>
 
-        <SheetFooter>
+        <DialogFooter>
           <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => handleOpenStateChange(false)}>
               Cancel
@@ -247,9 +254,9 @@ export function CreateSprintDialog({
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -316,16 +323,16 @@ export function EditSprintDialog({
   if (!sprint) return null
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenStateChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Edit Sprint</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={handleOpenStateChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Edit Sprint</DialogTitle>
+          <DialogDescription>
             Update sprint details.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid flex-1 auto-rows-min gap-4 px-4">
+          <div className="grid gap-4">
             <div className="grid grid-cols-3 gap-4">
               <Field className="col-span-2">
                 <FieldLabel>Name</FieldLabel>
@@ -438,7 +445,7 @@ export function EditSprintDialog({
               </Field>
             </div>
           </div>
-          <SheetFooter>
+          <DialogFooter>
             <div className="flex w-full items-center justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => handleOpenStateChange(false)}>
                 Cancel
@@ -447,9 +454,9 @@ export function EditSprintDialog({
                 {mutation.isPending ? "Save Changes" : "Save"}
               </Button>
             </div>
-          </SheetFooter>
+          </DialogFooter>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

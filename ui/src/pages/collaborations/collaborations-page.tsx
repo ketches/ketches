@@ -81,7 +81,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     const sprints = sprintsData?.items ?? []
 
     return [
-      { label: "All Sprints", value: "" },
+      // { label: "All Sprints", value: "" },
       ...sprints.map((s) => ({ label: s.name, value: s.id })),
     ]
   }, [sprintsData?.items])
@@ -90,7 +90,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
       return item.label
     }
 
-    return sprintOptions.find((opt) => opt.value === item)?.label || item
+    return sprintOptions.find((opt) => opt.value === item)?.label || item || "All Sprints"
   }
 
   // Auto-select first active sprint when sprints load (runs only once)
@@ -179,16 +179,21 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
               >
                 <ComboboxInput placeholder="Filter by sprint..." className="w-full sm:w-48 h-7" >
                   <InputGroupAddon>
-                    <Goal />
+                    <Goal className="text-fuchsia-500" />
                   </InputGroupAddon>
                 </ComboboxInput>
                 <ComboboxContent alignOffset={-24} className="w-auto sm:w-48">
                   <ComboboxList>
-                    {(opt: SprintOption) => (
+                    <ComboboxItem value="">
+                      <ListTodo />
+                      All Sprints
+                    </ComboboxItem>
+                    {sprintOptions.map((opt) => (
                       <ComboboxItem key={opt.value} value={opt.value}>
+                        <Goal />
                         {opt.label}
                       </ComboboxItem>
-                    )}
+                    ))}
                   </ComboboxList>
                 </ComboboxContent>
               </Combobox>

@@ -1,5 +1,5 @@
 import { collaborationApi, type TestCase } from "@/api/collaboration"
-import { CreateTestCaseDialog, CreateTestRunDialog, DeleteTestCaseDialog, EditTestCaseDialog } from "@/components/collaboration/test-case-dialogs"
+import { CreateTestCaseDialog, CreateTestRunDialog, DeleteTestCaseDialog, EditTestCaseDialog } from "@/components/collaborations/test-case-dialogs"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"

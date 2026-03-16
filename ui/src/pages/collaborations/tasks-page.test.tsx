@@ -83,27 +83,27 @@ vi.mock("@/components/data-table/data-table", () => ({
   ),
 }))
 
-vi.mock("@/components/collaboration/kanban-board", () => ({
+vi.mock("@/components/collaborations/kanban-board", () => ({
   KanbanBoard: () => <div>Kanban Board</div>,
 }))
 
-vi.mock("@/components/collaboration/collab-badges", () => ({
+vi.mock("@/components/collaborations/collab-badges", () => ({
   DueDateBadge: () => null,
 }))
 
-vi.mock("@/components/collaboration/collab-filters", () => ({
+vi.mock("@/components/collaborations/collab-filters", () => ({
   AssigneeFilter: () => null,
   PriorityFilter: () => null,
   StatusFilter: () => null,
 }))
 
-vi.mock("@/components/collaboration/inline-editors", () => ({
+vi.mock("@/components/collaborations/inline-editors", () => ({
   InlineAssigneeEditor: () => null,
   InlinePriorityEditor: () => null,
   InlineStatusEditor: () => null,
 }))
 
-vi.mock("@/components/collaboration/task-dialogs", () => ({
+vi.mock("@/components/collaborations/task-dialogs", () => ({
   CreateTaskDialog: () => null,
   EditTaskDialog: () => null,
 }))

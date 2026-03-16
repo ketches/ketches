@@ -466,17 +466,27 @@ func TestCreateTestRun_RejectsCrossProjectTestCaseLink(t *testing.T) {
 	assert.Contains(t, err.Error(), "cross-project")
 }
 
-func TestCreateDefect_RequiresAtLeastOneUpstreamLink(t *testing.T) {
+func TestCreateDefect_AutoCreatesTaskWhenNoUpstreamLinkProvided(t *testing.T) {
 	setupCollabTestDB(t)
 
-	_, err := CreateDefect("proj1", "user1", &models.CreateDefectRequest{
+	defect, err := CreateDefect("proj1", "user1", &models.CreateDefectRequest{
 		Title:       "Defect without links",
 		Description: "desc",
 		Severity:    models.DefectSeverityHigh,
 		Status:      models.DefectStatusNew,
 	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "at least one upstream link")
+	require.NoError(t, err)
+	require.NotEmpty(t, defect.TaskID)
+	assert.Equal(t, "proj1", defect.ProjectID)
+	assert.Equal(t, models.DefectStatusNew, defect.Status)
+
+	task, err := GetTask("proj1", defect.TaskID)
+	require.NoError(t, err)
+	assert.Equal(t, "[Defect] Defect without links", task.Title)
+	assert.Equal(t, "desc", task.Description)
+	assert.Equal(t, models.TaskStatusTodo, task.Status)
+	assert.Equal(t, models.CollabPriorityP1, task.Priority)
+	assert.Equal(t, "user1", task.CreatedBy)
 }
 
 func TestCreateDefect_RejectsCrossProjectLink(t *testing.T) {

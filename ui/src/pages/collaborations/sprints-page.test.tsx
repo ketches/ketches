@@ -77,11 +77,11 @@ vi.mock("@/components/data-table/data-table", () => ({
   ),
 }))
 
-vi.mock("@/components/collaboration/inline-editors", () => ({
+vi.mock("@/components/collaborations/inline-editors", () => ({
   InlineStatusEditor: () => null,
 }))
 
-vi.mock("@/components/collaboration/sprint-dialogs", () => ({
+vi.mock("@/components/collaborations/sprint-dialogs", () => ({
   CreateSprintDialog: () => null,
   EditSprintDialog: () => null,
 }))

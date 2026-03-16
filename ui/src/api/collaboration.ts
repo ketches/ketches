@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { AlertCircle, AlertOctagon, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, ChevronsUp, CircleAlert, CircleCheck, CircleDashed, CircleDotDashed, CircleSlash, Clock, ClockCheck, Cog, Equal, Eye, Info, XCircle } from 'lucide-react'
+import { AlertCircle, AlertOctagon, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, ChevronsUp, CircleAlert, CircleCheck, CircleDashed, CircleDot, CircleDotDashed, CircleSlash, Clock, ClockCheck, Cog, Equal, Info, XCircle } from 'lucide-react'
 import client from './client'
 import { type PaginationParams, type PaginationResponse } from './pagination'
 
@@ -67,7 +67,7 @@ export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus]
 export const TaskStatusOptions: CollabOption[] = [
   { label: 'Todo', value: 'todo', icon: CircleDashed, color: "gray" },
   { label: 'In Progress', value: 'in_progress', icon: CircleDotDashed, color: "blue" },
-  { label: 'Review', value: 'review', icon: Eye, color: "orange" },
+  { label: 'Review', value: 'review', icon: CircleDot, color: "orange" },
   { label: 'Done', value: 'done', icon: CheckCircle2, color: "green" },
   { label: 'Cancelled', value: 'cancelled', icon: CircleSlash, color: "gray" },
 ]

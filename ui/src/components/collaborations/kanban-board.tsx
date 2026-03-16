@@ -1,6 +1,6 @@
 import { collaborationApi, TaskStatusOptions, type Task, type TaskStatus } from "@/api/collaboration"
 import { projectsApi } from "@/api/projects"
-import { DueDateBadge, PriorityBadge } from "@/components/collaboration/collab-badges"
+import { DueDateBadge, PriorityBadge } from "@/components/collaborations/collab-badges"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"

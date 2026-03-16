@@ -1,6 +1,6 @@
 import { collaborationApi, SprintStatusOptions, type Sprint, type UpdateSprintRequest } from "@/api/collaboration"
-import { InlineStatusEditor } from "@/components/collaboration/inline-editors"
-import { CreateSprintDialog, EditSprintDialog } from "@/components/collaboration/sprint-dialogs"
+import { InlineStatusEditor } from "@/components/collaborations/inline-editors"
+import { CreateSprintDialog, EditSprintDialog } from "@/components/collaborations/sprint-dialogs"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"

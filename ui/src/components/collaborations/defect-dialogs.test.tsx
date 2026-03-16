@@ -85,18 +85,9 @@ vi.mock("sonner", () => ({
   },
 }))
 
-vi.mock("@/components/ui/sheet", () => ({
-  Sheet: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-content">{children}</div>,
   DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -113,14 +104,6 @@ vi.mock("@/components/ui/input", () => ({
 
 vi.mock("@/components/ui/textarea", () => ({
   Textarea: (props: React.ComponentProps<"textarea">) => <textarea {...props} />,
-}))
-
-vi.mock("@/components/editor/basic-editor", () => ({
-  BasicEditor: ({ value }: { value: string }) => <div>{value}</div>,
-}))
-
-vi.mock("@/components/editor/basic-editor-value", () => ({
-  isBasicEditorEmpty: () => false,
 }))
 
 vi.mock("@/components/ui/field", () => ({
@@ -145,7 +128,7 @@ vi.mock("@/components/ui/combobox", () => ({
     value: string
     itemToStringLabel: (item: string) => string
   }) => {
-    const display = useMemo(() => itemToStringLabel(value), [])
+    const display = useMemo(() => itemToStringLabel(value), [itemToStringLabel, value])
     return <ComboboxContext.Provider value={{ display }}>{children}</ComboboxContext.Provider>
   },
   ComboboxContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -224,6 +207,7 @@ describe("EditDefectDialog", () => {
     const inputValues = Array.from(container.querySelectorAll("input"))
       .map((input) => (input as HTMLInputElement).value)
 
+    expect(container.querySelector('[data-testid="dialog-content"]')).not.toBeNull()
     expect(inputValues).toContain("Requirement Title")
     expect(inputValues).toContain("Task Title")
     expect(inputValues).toContain("Test Case Title")

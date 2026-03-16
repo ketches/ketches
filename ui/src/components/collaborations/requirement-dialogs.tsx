@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 import {
   collaborationApi,
@@ -20,10 +19,10 @@ import {
   type Requirement,
   type UpdateRequirementRequest
 } from "@/api/collaboration"
-import { BasicEditor } from "@/components/editor/basic-editor"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -97,15 +96,15 @@ export function CreateRequirementDialog({
   })
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{parentId ? "Create Child Requirement" : "Create Requirement"}{parentTitle && ` for "${parentTitle}"`}</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>{parentId ? "Create Child Requirement" : "Create Requirement"}{parentTitle && ` for "${parentTitle}"`}</DialogTitle>
+          <DialogDescription>
             Add a new requirement to the backlog.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="grid flex-1 auto-rows-min gap-4 px-4">
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -155,25 +154,26 @@ export function CreateRequirementDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={description}
-                onChange={setDescription}
+                onChange={(event) => setDescription(event.target.value)}
                 placeholder="Detailed description..."
+                className="min-h-32"
               />
             </FieldContent>
           </Field>
         </div>
 
-        <SheetFooter>
+        <DialogFooter>
           <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending || !title} onClick={() => mutation.mutate()}>
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -245,13 +245,13 @@ export function EditRequirementDialog({
   if (!requirement) return null
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Edit Requirement</SheetTitle>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Edit Requirement</DialogTitle>
+        </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
-          <div className="grid flex-1 auto-rows-min gap-4 px-4">
+          <div className="grid gap-4">
             <Field>
               <FieldLabel>Title</FieldLabel>
               <FieldContent>
@@ -300,25 +300,26 @@ export function EditRequirementDialog({
             <Field>
               <FieldLabel>Description</FieldLabel>
               <FieldContent>
-                <BasicEditor
+                <Textarea
                   value={description}
-                  onChange={setDescription}
+                  onChange={(event) => setDescription(event.target.value)}
+                  className="min-h-32"
                 />
               </FieldContent>
             </Field>
           </div>
 
-          <SheetFooter>
+          <DialogFooter>
             <div className="flex w-full items-center justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit" disabled={mutation.isPending || !title}>
                 {mutation.isPending ? "Save Changes" : "Save Changes"}
               </Button>
             </div>
-          </SheetFooter>
+          </DialogFooter>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
 

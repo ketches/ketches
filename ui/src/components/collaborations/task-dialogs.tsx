@@ -1,13 +1,20 @@
 import { collaborationApi, CollabPriority, CollabPriorityOptions, TaskStatus, TaskStatusOptions, type CreateTaskRequest, type Task, type UpdateTaskRequest } from "@/api/collaboration"
 import { projectsApi } from "@/api/projects"
-import { BasicEditor } from "@/components/editor/basic-editor"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { format, isValid, parse } from "date-fns"
@@ -136,16 +143,16 @@ export function CreateTaskDialog({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="overflow-y-auto w-1/3">
-        <SheetHeader>
-          <SheetTitle>{parentId ? "Create Child Task" : "Create Task"}</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>{parentId ? "Create Child Task" : "Create Task"}</DialogTitle>
+          <DialogDescription>
             {parentId ? `Add a sub-task to "${parentTitle}"` : "Add a new task to the project."}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="grid flex-1 auto-rows-min gap-4 px-4">
+        <div className="grid gap-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -184,10 +191,11 @@ export function CreateTaskDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={formData.description || ""}
-                onChange={(json) => setFormData({ ...formData, description: json })}
+                onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                 placeholder="Detailed description..."
+                className="min-h-32"
               />
             </FieldContent>
           </Field>
@@ -295,7 +303,7 @@ export function CreateTaskDialog({
           </div>
         </div>
 
-        <SheetFooter>
+        <DialogFooter>
           <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
@@ -304,9 +312,9 @@ export function CreateTaskDialog({
               {mutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -389,16 +397,16 @@ export function EditTaskDialog({
   if (!task) return null
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Edit Task</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Edit Task</DialogTitle>
+          <DialogDescription>
             Update task details.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="grid flex-1 auto-rows-min gap-4 px-4">
+        <div className="grid gap-4">
           <Field>
             <FieldLabel>Title</FieldLabel>
             <FieldContent>
@@ -415,10 +423,11 @@ export function EditTaskDialog({
           <Field>
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <BasicEditor
+              <Textarea
                 value={formData.description || ""}
-                onChange={(json) => setFormData({ ...formData, description: json })}
+                onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                 placeholder="Detailed description..."
+                className="min-h-32"
               />
             </FieldContent>
           </Field>
@@ -525,7 +534,7 @@ export function EditTaskDialog({
           </div>
         </div>
 
-        <SheetFooter>
+        <DialogFooter>
           <div className="flex w-full items-center justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
@@ -534,8 +543,8 @@ export function EditTaskDialog({
               {mutation.isPending ? "Save Changes" : "Save"}
             </Button>
           </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

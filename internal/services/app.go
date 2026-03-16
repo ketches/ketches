@@ -883,8 +883,8 @@ func executeDeployAction(ctx context.Context, appCtx *models.AppContext) (*model
 		return nil, err
 	}
 
-	appCtx.App.DeployStatus = app.AppStatusRunning
-	if err := db.DB.Model(&appCtx.App).Update("deploy_status", app.AppStatusRunning).Error; err != nil {
+	appCtx.App.DeployStatus = "deployed"
+	if err := db.DB.Model(&appCtx.App).Update("deploy_status", "deployed").Error; err != nil {
 		return nil, err
 	}
 
@@ -1180,7 +1180,7 @@ func ToAppResponse(c context.Context, appCtx *models.AppContext) models.AppRespo
 
 func GetAppStatus(c context.Context, appCtx *models.AppContext) string {
 	status := appCtx.App.DeployStatus
-	if status == "deployed" {
+	if shouldCalculateLiveAppStatus(status) {
 		calculatedStatus, err := core.CalculateAppStatus(c, appCtx)
 		if err != nil {
 			log.Printf("Failed to calculate app status for app %s: %v", appCtx.App.ID, err)
@@ -1194,7 +1194,7 @@ func GetAppStatus(c context.Context, appCtx *models.AppContext) string {
 // For deployed apps, it queries the Kubernetes cluster using the flat DTO fields.
 func GetAppListRowStatus(ctx context.Context, row *models.AppListRow) string {
 	status := row.DeployStatus
-	if status == "deployed" && row.ClusterID != "" {
+	if shouldCalculateLiveAppStatus(status) && row.ClusterID != "" {
 		client, err := kube.GlobalClusterStore.GetClient(row.ClusterID)
 		if err != nil {
 			log.Printf("Failed to get cluster client for app %s: %v", row.ID, err)
@@ -1207,6 +1207,11 @@ func GetAppListRowStatus(ctx context.Context, row *models.AppListRow) string {
 		status = string(calculatedStatus)
 	}
 	return status
+}
+
+func shouldCalculateLiveAppStatus(status string) bool {
+	// "running" was written by older deploy flows; treat it as a live-managed deployment state.
+	return status == "deployed" || status == string(app.AppStatusRunning)
 }
 
 // ToAppListResponse converts a flat AppListRow DTO into the API AppResponse.

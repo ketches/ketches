@@ -20,7 +20,6 @@ ARG TAG=
 ARG BUILD_TIME
 
 RUN CGO_ENABLED=1 GOOS=linux go build \
-    -p=1 \
     -ldflags="-w -s \
     -X github.com/ketches/ketches/internal/app.Version=${VERSION} \
     -X github.com/ketches/ketches/internal/app.Commit=${COMMIT} \

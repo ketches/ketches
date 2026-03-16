@@ -4,15 +4,15 @@ import { cva, type VariantProps } from "class-variance-authority"
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -178,26 +178,30 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-        <SheetContent
+      <Dialog open={openMobile} onOpenChange={setOpenMobile} {...props}>
+        <DialogContent
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          showCloseButton={false}
+          className={cn(
+            "bg-sidebar text-sidebar-foreground top-0 h-svh max-w-none -translate-x-0 -translate-y-0 rounded-none p-0 sm:max-w-none",
+            side === "left" ? "left-0 border-r" : "left-auto right-0 border-l",
+            "w-(--sidebar-width)"
+          )}
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
             } as React.CSSProperties
           }
-          side={side}
         >
-          <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-          </SheetHeader>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Sidebar</DialogTitle>
+            <DialogDescription>Displays the mobile sidebar.</DialogDescription>
+          </DialogHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     )
   }
 
@@ -718,4 +722,3 @@ export {
   SidebarTrigger,
   useSidebar
 }
-

@@ -1,7 +1,7 @@
 import { collaborationApi, CollabPriority, RequirementStatus, RequirementStatusOptions, type Requirement } from "@/api/collaboration"
-import { PlanToSprintDialog } from "@/components/collaboration/backlog-dialogs"
-import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
-import { InlineAssigneeEditor, InlinePriorityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
+import { PlanToSprintDialog } from "@/components/collaborations/backlog-dialogs"
+import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaborations/collab-filters"
+import { InlineAssigneeEditor, InlinePriorityEditor, InlineStatusEditor } from "@/components/collaborations/inline-editors"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -18,7 +18,7 @@ import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
 
-import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog } from "@/components/collaboration/requirement-dialogs"
+import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog } from "@/components/collaborations/requirement-dialogs"
 import {
   DropdownMenu,
   DropdownMenuContent,

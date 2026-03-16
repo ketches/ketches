@@ -1,9 +1,9 @@
 import { collaborationApi, CollabPriority, PlanningStatus, RequirementStatus, RequirementStatusOptions, type Requirement } from "@/api/collaboration"
 
-import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaboration/collab-filters"
-import { InlineAssigneeEditor, InlinePriorityEditor, InlineStatusEditor } from "@/components/collaboration/inline-editors"
-import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog } from "@/components/collaboration/requirement-dialogs"
-import { flattenTree, type TreeItem } from "@/components/collaboration/tree-utils"
+import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/collaborations/collab-filters"
+import { InlineAssigneeEditor, InlinePriorityEditor, InlineStatusEditor } from "@/components/collaborations/inline-editors"
+import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog } from "@/components/collaborations/requirement-dialogs"
+import { flattenTree, type TreeItem } from "@/components/collaborations/tree-utils"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
