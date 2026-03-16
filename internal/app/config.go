@@ -28,7 +28,7 @@ type AppConfig struct {
 var Config AppConfig
 
 func InitConfig() {
-	dbDriver := getEnv("DB_DRIVER", "sqlite")
+	dbDriver := getEnv("DB_DRIVER", "postgres")
 	dbHost := getEnv("DB_HOST", "")
 	dbPort := getEnv("DB_PORT", "")
 	dbName := getEnv("DB_NAME", "")
@@ -91,7 +91,7 @@ func buildDBSource(driver, host, port, name, username, password, sslMode string)
 			resolvedName,
 		)
 	default:
-		return fallbackString(name, "ketches.db")
+		return ""
 	}
 }
 

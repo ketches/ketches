@@ -1,6 +1,56 @@
 package app
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
+
+func unsetEnvForTest(t *testing.T, key string) {
+	t.Helper()
+
+	value, exists := os.LookupEnv(key)
+	if err := os.Unsetenv(key); err != nil {
+		t.Fatalf("unset %s: %v", key, err)
+	}
+
+	t.Cleanup(func() {
+		var restoreErr error
+		if exists {
+			restoreErr = os.Setenv(key, value)
+		} else {
+			restoreErr = os.Unsetenv(key)
+		}
+		if restoreErr != nil {
+			t.Fatalf("restore %s: %v", key, restoreErr)
+		}
+	})
+}
+
+func TestInitConfig_DefaultsToPostgresDriver(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	unsetEnvForTest(t, "DB_DRIVER")
+	unsetEnvForTest(t, "DB_SOURCE")
+	unsetEnvForTest(t, "DB_HOST")
+	unsetEnvForTest(t, "DB_PORT")
+	unsetEnvForTest(t, "DB_NAME")
+	unsetEnvForTest(t, "DB_USERNAME")
+	unsetEnvForTest(t, "DB_PASSWORD")
+	unsetEnvForTest(t, "DB_SSLMODE")
+
+	InitConfig()
+
+	if Config.DBDriver != "postgres" {
+		t.Fatalf("expected default db driver %q, got %q", "postgres", Config.DBDriver)
+	}
+	expectedSource := "host=localhost port=5432 user=postgres password= dbname=ketches sslmode=disable"
+	if Config.DBSource != expectedSource {
+		t.Fatalf("expected default db source %q, got %q", expectedSource, Config.DBSource)
+	}
+}
 
 func TestInitConfig_DefaultsBuildLogSettings(t *testing.T) {
 	originalConfig := Config
@@ -68,10 +118,10 @@ func TestBuildDBSourceBuildsMySQLDSN(t *testing.T) {
 	}
 }
 
-func TestBuildDBSourceUsesDBNameForSQLite(t *testing.T) {
+func TestBuildDBSourceReturnsEmptyForUnsupportedDriver(t *testing.T) {
 	result := buildDBSource("sqlite", "", "", "custom.db", "", "", "")
 
-	if result != "custom.db" {
-		t.Fatalf("expected sqlite db name to be used, got %q", result)
+	if result != "" {
+		t.Fatalf("expected unsupported driver to produce empty source, got %q", result)
 	}
 }
