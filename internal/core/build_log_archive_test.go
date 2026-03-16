@@ -23,6 +23,26 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
+type tempFileCheckingReadCloser struct {
+	reader  *strings.Reader
+	onFirst func()
+	checked bool
+}
+
+func (r *tempFileCheckingReadCloser) Read(p []byte) (int, error) {
+	if !r.checked {
+		r.checked = true
+		if r.onFirst != nil {
+			r.onFirst()
+		}
+	}
+	return r.reader.Read(p)
+}
+
+func (r *tempFileCheckingReadCloser) Close() error {
+	return nil
+}
+
 func setupBuildLogArchiveTestDB(t *testing.T) {
 	t.Helper()
 
@@ -226,7 +246,72 @@ func TestPersistBuildLogs_UsesTemporaryFileThenRenames(t *testing.T) {
 	assert.Empty(t, matches)
 }
 
-func TestPersistBuildLogs_MarksFailureWhenPodLogsUnavailable(t *testing.T) {
+func TestPersistBuildLogs_StreamsContainersIntoArchiveFileInDisplayOrder(t *testing.T) {
+	setupBuildLogArchiveTestDB(t)
+	baseDir := setupBuildLogArchiveConfig(t)
+	build := seedBuildLogArchiveFixture(t, entities.BuildStatusSucceeded)
+
+	client := kubefake.NewSimpleClientset(buildLogArchivePod())
+	setupBuildLogArchiveClientHooks(t, client, map[string]string{
+		"git-clone": "clone-step\n",
+		"buildctl":  "build-step\n",
+	}, map[string]error{})
+
+	err := PersistBuildLogs(context.Background(), build.ID)
+	require.NoError(t, err)
+
+	var updated entities.Build
+	require.NoError(t, db.DB.First(&updated, "id = ?", build.ID).Error)
+
+	data, err := os.ReadFile(filepath.Join(baseDir, updated.LogPath))
+	require.NoError(t, err)
+	assert.Equal(t, "clone-step\nbuild-step\n", string(data))
+
+	matches, err := filepath.Glob(filepath.Join(baseDir, "tmp", "*.tmp"))
+	require.NoError(t, err)
+	assert.Empty(t, matches)
+}
+
+func TestPersistBuildLogs_CreatesTempArchiveBeforeStreamingLogs(t *testing.T) {
+	setupBuildLogArchiveTestDB(t)
+	baseDir := setupBuildLogArchiveConfig(t)
+	build := seedBuildLogArchiveFixture(t, entities.BuildStatusSucceeded)
+	client := kubefake.NewSimpleClientset(buildLogArchivePod())
+
+	originalGetClusterClient := getBuildLogClusterClient
+	originalOpenPodLogStream := openBuildPodLogStream
+	t.Cleanup(func() {
+		getBuildLogClusterClient = originalGetClusterClient
+		openBuildPodLogStream = originalOpenPodLogStream
+	})
+
+	getBuildLogClusterClient = func(clusterID string) (kubernetes.Interface, error) {
+		require.Equal(t, "cluster-1", clusterID)
+		return client, nil
+	}
+
+	tmpPath := filepath.Join(baseDir, "tmp", build.ID+".log.tmp")
+	openBuildPodLogStream = func(
+		_ context.Context,
+		_ kubernetes.Interface,
+		namespace, podName, containerName string,
+	) (io.ReadCloser, error) {
+		require.Equal(t, "build-ns", namespace)
+		require.Equal(t, "build-pod-1", podName)
+		return &tempFileCheckingReadCloser{
+			reader: strings.NewReader(containerName + "\n"),
+			onFirst: func() {
+				_, err := os.Stat(tmpPath)
+				require.NoError(t, err)
+			},
+		}, nil
+	}
+
+	err := PersistBuildLogs(context.Background(), build.ID)
+	require.NoError(t, err)
+}
+
+func TestPersistBuildLogs_MarksSourceUnavailableWhenNoBuildPodExists(t *testing.T) {
 	setupBuildLogArchiveTestDB(t)
 	setupBuildLogArchiveConfig(t)
 	build := seedBuildLogArchiveFixture(t, entities.BuildStatusFailed)
@@ -239,9 +324,57 @@ func TestPersistBuildLogs_MarksFailureWhenPodLogsUnavailable(t *testing.T) {
 
 	var updated entities.Build
 	require.NoError(t, db.DB.First(&updated, "id = ?", build.ID).Error)
-	assert.Equal(t, entities.BuildLogPersistFailed, updated.LogPersistStatus)
+	assert.Equal(t, entities.BuildLogPersistSourceUnavailable, updated.LogPersistStatus)
 	assert.Empty(t, updated.LogPath)
 	assert.NotEmpty(t, updated.LogPersistError)
+	assert.Nil(t, updated.LogPersistedAt)
+}
+
+func TestPersistBuildLogs_MarksSourceUnavailableWhenNoContainerLogCanBeOpened(t *testing.T) {
+	setupBuildLogArchiveTestDB(t)
+	setupBuildLogArchiveConfig(t)
+	build := seedBuildLogArchiveFixture(t, entities.BuildStatusFailed)
+
+	client := kubefake.NewSimpleClientset(buildLogArchivePod())
+	setupBuildLogArchiveClientHooks(t, client, map[string]string{}, map[string]error{
+		"git-clone": errors.New("log source not found"),
+		"buildctl":  errors.New("log source not found"),
+	})
+
+	err := PersistBuildLogs(context.Background(), build.ID)
+	require.Error(t, err)
+
+	var updated entities.Build
+	require.NoError(t, db.DB.First(&updated, "id = ?", build.ID).Error)
+	assert.Equal(t, entities.BuildLogPersistSourceUnavailable, updated.LogPersistStatus)
+	assert.Empty(t, updated.LogPath)
+	assert.NotEmpty(t, updated.LogPersistError)
+	assert.Nil(t, updated.LogPersistedAt)
+}
+
+func TestPersistBuildLogs_MarksRetryableFailureWhenClusterClientUnavailable(t *testing.T) {
+	setupBuildLogArchiveTestDB(t)
+	setupBuildLogArchiveConfig(t)
+	build := seedBuildLogArchiveFixture(t, entities.BuildStatusFailed)
+
+	originalGetClusterClient := getBuildLogClusterClient
+	t.Cleanup(func() {
+		getBuildLogClusterClient = originalGetClusterClient
+	})
+
+	getBuildLogClusterClient = func(clusterID string) (kubernetes.Interface, error) {
+		require.Equal(t, "cluster-1", clusterID)
+		return nil, errors.New("cluster unavailable")
+	}
+
+	err := PersistBuildLogs(context.Background(), build.ID)
+	require.Error(t, err)
+
+	var updated entities.Build
+	require.NoError(t, db.DB.First(&updated, "id = ?", build.ID).Error)
+	assert.Equal(t, entities.BuildLogPersistFailed, updated.LogPersistStatus)
+	assert.Empty(t, updated.LogPath)
+	assert.Contains(t, updated.LogPersistError, "cluster unavailable")
 	assert.Nil(t, updated.LogPersistedAt)
 }
 

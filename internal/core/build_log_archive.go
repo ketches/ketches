@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -19,6 +18,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
+
+var errBuildLogSourceUnavailable = errors.New("build pod logs unavailable")
 
 var getBuildLogClusterClient = func(clusterID string) (kubernetes.Interface, error) {
 	return kube.GlobalClusterStore.GetClient(clusterID)
@@ -49,53 +50,64 @@ func PersistBuildLogs(ctx context.Context, buildID string) error {
 
 	var buildEnv entities.Env
 	if err := db.DB.First(&buildEnv, "id = ?", build.BuildEnvID).Error; err != nil {
-		return persistBuildLogFailure(&build, fmt.Errorf("failed to load build environment: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to load build environment: %w", err))
 	}
 
 	client, err := getBuildLogClusterClient(buildEnv.ClusterID)
 	if err != nil {
-		return persistBuildLogFailure(&build, fmt.Errorf("failed to get cluster client: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to get cluster client: %w", err))
 	}
 
 	pods, err := client.CoreV1().Pods(build.JobNamespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("job-name=%s", build.JobName),
 	})
 	if err != nil {
-		return persistBuildLogFailure(&build, fmt.Errorf("failed to list build pods: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to list build pods: %w", err))
 	}
 	if len(pods.Items) == 0 {
-		return persistBuildLogFailure(&build, errors.New("build pod logs unavailable"))
-	}
-
-	logData, err := collectBuildPodLogs(ctx, client, build.JobNamespace, &pods.Items[0])
-	if err != nil {
-		return persistBuildLogFailure(&build, err)
+		return persistBuildLogFailure(&build, entities.BuildLogPersistSourceUnavailable, errBuildLogSourceUnavailable)
 	}
 
 	relPath, absPath, tmpPath, err := buildLogArchivePaths(&build)
 	if err != nil {
-		return persistBuildLogFailure(&build, err)
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, err)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
-		return persistBuildLogFailure(&build, fmt.Errorf("failed to create archive directory: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to create archive directory: %w", err))
 	}
 	if err := os.MkdirAll(filepath.Dir(tmpPath), 0o755); err != nil {
-		return persistBuildLogFailure(&build, fmt.Errorf("failed to create temporary archive directory: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to create temporary archive directory: %w", err))
 	}
 	_ = os.Remove(tmpPath)
 
-	if err := os.WriteFile(tmpPath, logData, 0o644); err != nil {
-		return persistBuildLogFailure(&build, fmt.Errorf("failed to write temporary archive file: %w", err))
+	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	if err != nil {
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to create temporary archive file: %w", err))
+	}
+
+	logSize, err := writeBuildPodLogsToArchive(ctx, client, build.JobNamespace, &pods.Items[0], tmpFile)
+	closeErr := tmpFile.Close()
+	if err != nil {
+		_ = os.Remove(tmpPath)
+		status := entities.BuildLogPersistFailed
+		if errors.Is(err, errBuildLogSourceUnavailable) {
+			status = entities.BuildLogPersistSourceUnavailable
+		}
+		return persistBuildLogFailure(&build, status, err)
+	}
+	if closeErr != nil {
+		_ = os.Remove(tmpPath)
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to close temporary archive file: %w", closeErr))
 	}
 	if err := os.Rename(tmpPath, absPath); err != nil {
-		return persistBuildLogFailure(&build, fmt.Errorf("failed to finalize archive file: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to finalize archive file: %w", err))
 	}
 
 	now := time.Now()
 	expireAt := now.Add(time.Duration(buildLogRetentionDays()) * 24 * time.Hour)
 	build.LogPath = relPath
-	build.LogSize = int64(len(logData))
+	build.LogSize = logSize
 	build.LogPersistStatus = entities.BuildLogPersistSucceeded
 	build.LogPersistError = ""
 	build.LogPersistedAt = &now
@@ -117,12 +129,13 @@ func OpenPersistedBuildLog(build *entities.Build) (io.ReadCloser, error) {
 	return os.Open(buildLogArchiveAbsPath(build.LogPath))
 }
 
-func collectBuildPodLogs(
+func writeBuildPodLogsToArchive(
 	ctx context.Context,
 	client kubernetes.Interface,
 	namespace string,
 	pod *corev1.Pod,
-) ([]byte, error) {
+	dst io.Writer,
+) (int64, error) {
 	containerNames := make([]string, 0, len(pod.Spec.InitContainers)+len(pod.Spec.Containers))
 	for _, container := range pod.Spec.InitContainers {
 		containerNames = append(containerNames, container.Name)
@@ -131,8 +144,8 @@ func collectBuildPodLogs(
 		containerNames = append(containerNames, container.Name)
 	}
 
-	var buffer bytes.Buffer
 	openedAnyStream := false
+	var totalWritten int64
 
 	for _, containerName := range containerNames {
 		stream, err := openBuildPodLogStream(ctx, client, namespace, pod.Name, containerName)
@@ -141,18 +154,19 @@ func collectBuildPodLogs(
 		}
 
 		openedAnyStream = true
-		_, copyErr := io.Copy(&buffer, stream)
+		written, copyErr := io.Copy(dst, stream)
 		stream.Close()
 		if copyErr != nil {
-			return nil, fmt.Errorf("failed to copy logs for container %s: %w", containerName, copyErr)
+			return 0, fmt.Errorf("failed to copy logs for container %s: %w", containerName, copyErr)
 		}
+		totalWritten += written
 	}
 
 	if !openedAnyStream {
-		return nil, errors.New("build pod logs unavailable")
+		return 0, errBuildLogSourceUnavailable
 	}
 
-	return buffer.Bytes(), nil
+	return totalWritten, nil
 }
 
 func buildLogArchivePaths(build *entities.Build) (string, string, string, error) {
@@ -194,10 +208,10 @@ func buildLogRetentionDays() int {
 	return app.Config.BuildLogRetentionDays
 }
 
-func persistBuildLogFailure(build *entities.Build, err error) error {
+func persistBuildLogFailure(build *entities.Build, status entities.BuildLogPersistStatus, err error) error {
 	build.LogPath = ""
 	build.LogSize = 0
-	build.LogPersistStatus = entities.BuildLogPersistFailed
+	build.LogPersistStatus = status
 	build.LogPersistError = err.Error()
 	build.LogPersistedAt = nil
 	build.LogExpireAt = nil

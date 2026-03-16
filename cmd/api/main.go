@@ -5,6 +5,9 @@ import (
 	"errors"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -23,6 +26,9 @@ func main() {
 	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
 		log.Fatalf("failed to load .env file: %v", err)
 	}
+
+	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	app.InitConfig()
 
@@ -45,10 +51,15 @@ func main() {
 
 	// Recover active build watchers
 	core.GlobalBuildWatcher.RecoverActiveBuilds()
-	if err := core.RecoverTerminalBuildLogArchives(context.Background()); err != nil {
-		log.Printf("failed to recover terminal build log archives: %v", err)
-	}
-	go core.StartBuildLogMaintenance(context.Background())
+	go func() {
+		recoveryCtx, cancel := context.WithTimeout(rootCtx, 30*time.Second)
+		defer cancel()
+
+		if err := core.RecoverTerminalBuildLogArchives(recoveryCtx); err != nil && recoveryCtx.Err() == nil {
+			log.Printf("failed to recover terminal build log archives: %v", err)
+		}
+	}()
+	go core.StartBuildLogMaintenance(rootCtx)
 
 	r := gin.Default()
 	routes.SetupRoutes(r)

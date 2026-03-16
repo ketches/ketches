@@ -12,28 +12,43 @@ import (
 )
 
 const buildLogMaintenanceInterval = 24 * time.Hour
+const buildLogRecoveryBatchSize = 100
 
 func RecoverTerminalBuildLogArchives(ctx context.Context) error {
-	var builds []entities.Build
-	if err := db.DB.
-		Where("status IN ?", []entities.BuildStatus{
-			entities.BuildStatusSucceeded,
-			entities.BuildStatusFailed,
-			entities.BuildStatusCancelled,
-		}).
-		Where("log_persist_status <> ?", entities.BuildLogPersistSucceeded).
-		Where("log_persist_status <> ?", entities.BuildLogPersistExpired).
-		Find(&builds).Error; err != nil {
-		return err
-	}
+	for {
+		if ctx.Err() != nil {
+			return nil
+		}
 
-	for i := range builds {
-		if err := PersistBuildLogs(ctx, builds[i].ID); err != nil {
-			log.Printf("Build log maintenance: failed to recover archive for build %s: %v", builds[i].ID, err)
+		var builds []entities.Build
+		if err := db.DB.
+			Where("status IN ?", []entities.BuildStatus{
+				entities.BuildStatusSucceeded,
+				entities.BuildStatusFailed,
+				entities.BuildStatusCancelled,
+			}).
+			Where("log_persist_status IN ?", []entities.BuildLogPersistStatus{
+				entities.BuildLogPersistPending,
+				entities.BuildLogPersistFailed,
+			}).
+			Order("created_at ASC").
+			Limit(buildLogRecoveryBatchSize).
+			Find(&builds).Error; err != nil {
+			return err
+		}
+		if len(builds) == 0 {
+			return nil
+		}
+
+		for i := range builds {
+			if ctx.Err() != nil {
+				return nil
+			}
+			if err := PersistBuildLogs(ctx, builds[i].ID); err != nil {
+				log.Printf("Build log maintenance: failed to recover archive for build %s: %v", builds[i].ID, err)
+			}
 		}
 	}
-
-	return nil
 }
 
 func DeleteExpiredBuildLogs(ctx context.Context, now time.Time) error {
@@ -56,6 +71,10 @@ func DeleteExpiredBuildLogs(ctx context.Context, now time.Time) error {
 }
 
 func StartBuildLogMaintenance(ctx context.Context) {
+	if err := DeleteExpiredBuildLogs(ctx, time.Now().UTC()); err != nil && ctx.Err() == nil {
+		log.Printf("Build log maintenance: failed to delete expired archives: %v", err)
+	}
+
 	ticker := time.NewTicker(buildLogMaintenanceInterval)
 	defer ticker.Stop()
 

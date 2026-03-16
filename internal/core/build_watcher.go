@@ -15,8 +15,14 @@ import (
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	buildWatcherPollInterval      = 5 * time.Second
+	buildWatcherJobNotFoundMaxHit = 3
 )
 
 // BuildWatcher monitors active build jobs and updates their status.
@@ -68,6 +74,10 @@ func (bw *BuildWatcher) RecoverActiveBuilds() {
 	}
 
 	for i := range builds {
+		if strings.TrimSpace(builds[i].JobName) == "" || strings.TrimSpace(builds[i].JobNamespace) == "" {
+			updateBuildFailed(builds[i].ID, "build job metadata missing after restart")
+			continue
+		}
 		log.Printf("Recovering watch for build %s (job: %s)", builds[i].ID, builds[i].JobName)
 		bw.StartWatching(&builds[i])
 	}
@@ -95,8 +105,9 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 		return
 	}
 
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(buildWatcherPollInterval)
 	defer ticker.Stop()
+	consecutiveJobNotFound := 0
 
 	for {
 		select {
@@ -105,9 +116,17 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 		case <-ticker.C:
 			job, err := client.BatchV1().Jobs(jobNamespace).Get(ctx, jobName, metav1.GetOptions{})
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					consecutiveJobNotFound++
+					if consecutiveJobNotFound >= buildWatcherJobNotFoundMaxHit {
+						updateBuildFailed(buildID, "build job not found after restart")
+						return
+					}
+				}
 				log.Printf("Build watcher: failed to get job %s: %v", jobName, err)
 				continue
 			}
+			consecutiveJobNotFound = 0
 
 			// Check if job is complete
 			if job.Status.Succeeded > 0 {
