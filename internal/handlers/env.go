@@ -42,6 +42,22 @@ func ListEnvsSimple(c *gin.Context) {
 	api.Success(c, envs)
 }
 
+func CheckEnvNamespaceAvailability(c *gin.Context) {
+	var req models.CheckEnvNamespaceAvailabilityRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	res, err := services.CheckEnvNamespaceAvailability(req.ClusterID, req.ClusterNamespace)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, res)
+}
+
 func CreateEnv(c *gin.Context) {
 	projectID := c.Param("projectID")
 	var req models.CreateEnvRequest

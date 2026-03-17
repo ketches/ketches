@@ -7,9 +7,12 @@ import (
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func ListAppVolumes(appID string) ([]models.AppVolumeResponse, error) {
@@ -18,9 +21,30 @@ func ListAppVolumes(appID string) ([]models.AppVolumeResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	pvcStatuses, pvcStatusFetchSucceeded := make(map[string]string), false
+	if hasPVCVolumes(volumes) {
+		appCtx, err := GetAppContext(context.Background(), appID)
+		if err == nil {
+			pvcStatuses, pvcStatusFetchSucceeded = listPVCStatuses(context.Background(), appCtx)
+		}
+	}
+
 	result := make([]models.AppVolumeResponse, 0, len(volumes))
 	for _, vol := range volumes {
-		result = append(result, toAppVolumeResponse(&vol))
+		res := toAppVolumeResponse(&vol)
+		if vol.VolumeType == "pvc" {
+			switch {
+			case pvcStatusFetchSucceeded:
+				res.Status = pvcStatuses[vol.Slug]
+				if res.Status == "" {
+					res.Status = "NotFound"
+				}
+			default:
+				res.Status = "Unknown"
+			}
+		}
+		result = append(result, res)
 	}
 	return result, nil
 }
@@ -186,6 +210,7 @@ func toAppVolumeResponse(vol *entities.AppVolume) models.AppVolumeResponse {
 		MountPath:    vol.MountPath,
 		SubPath:      vol.SubPath,
 		VolumeType:   vol.VolumeType,
+		Status:       "",
 		Capacity:     vol.Capacity,
 		StorageClass: vol.StorageClass,
 		VolumeMode:   vol.VolumeMode,
@@ -226,4 +251,42 @@ func checkVolumeMountPathConflicts(appID, mountPath, excludeID string) error {
 	}
 
 	return nil
+}
+
+func hasPVCVolumes(volumes []entities.AppVolume) bool {
+	for _, volume := range volumes {
+		if volume.VolumeType == "pvc" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func listPVCStatuses(ctx context.Context, appCtx *models.AppContext) (map[string]string, bool) {
+	clusterID := appCtx.EnvContext.Env.ClusterID
+	namespace := appCtx.EnvContext.Env.ClusterNamespace
+	if clusterID == "" || namespace == "" {
+		return nil, false
+	}
+
+	client, err := kube.GlobalClusterStore.GetClient(clusterID)
+	if err != nil {
+		return nil, false
+	}
+
+	pvcList, err := client.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, false
+	}
+
+	statuses := make(map[string]string, len(pvcList.Items))
+	for _, pvc := range pvcList.Items {
+		statuses[pvc.Name] = string(pvc.Status.Phase)
+		if pvc.Status.Phase == "" {
+			statuses[pvc.Name] = string(corev1.ClaimPending)
+		}
+	}
+
+	return statuses, true
 }

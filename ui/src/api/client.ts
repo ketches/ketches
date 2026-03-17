@@ -1,5 +1,5 @@
-import axios, { type AxiosInstance } from 'axios'
 import { buildUnauthenticatedLoginHref, getCurrentRelativePath } from '@/lib/auth-redirect'
+import axios, { type AxiosInstance } from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 

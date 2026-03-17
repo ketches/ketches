@@ -31,6 +31,7 @@ export interface VolumeSpec {
   id?: string
   slug: string
   volume_type: string
+  status?: string
   mount_path: string
   sub_path?: string
   storage_class?: string

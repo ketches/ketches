@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Edit2, HardDrive, Plus, Trash2 } from "lucide-react"
+import { CheckCircle, CircleAlert, CircleX, Edit2, HardDrive, Plus, Trash2, type LucideIcon } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -29,6 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { ColorBadge } from "../shared/color-badge"
 
 interface VolumesTableProps {
   app: App
@@ -39,6 +40,19 @@ const VOLUME_TYPE_LABELS: Record<string, string> = {
   emptyDir: "Temporary (emptyDir)",
   hostPath: "Local (hostPath)",
 }
+
+type PVCStatusColor = "green" | "yellow" | "red"
+
+const VOLUME_PVC_STATUSES: ReadonlyArray<{
+  value: string
+  label: string
+  color: PVCStatusColor
+  icon: LucideIcon
+}> = [
+    { value: "Bound", label: "Bound", color: "green", icon: CheckCircle },
+    { value: "Pending", label: "Pending", color: "yellow", icon: CircleAlert },
+    { value: "Failed", label: "Failed", color: "red", icon: CircleX },
+  ]
 
 export function VolumesTable({ app }: VolumesTableProps) {
   const queryClient = useQueryClient()
@@ -62,6 +76,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
         id: vol.id,
         slug: vol.slug,
         volume_type: vol.volume_type || "pvc",
+        status: vol.status || "",
         mount_path: vol.mount_path,
         sub_path: vol.sub_path,
         storage_class: vol.storage_class,
@@ -178,6 +193,29 @@ export function VolumesTable({ app }: VolumesTableProps) {
       header: "Mount Path",
       cell: ({ row }) => (
         <span className="font-mono text-xs">{row.original.mount_path}</span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        row.original.volume_type === "pvc" ? (
+          (() => {
+            const statusInfo = VOLUME_PVC_STATUSES.find(s => s.value === row.original.status)
+            if (!statusInfo) {
+              return <span className="text-muted-foreground text-xs">Unknown</span>
+            }
+            const StatusIcon = statusInfo.icon
+            return (
+              <ColorBadge color={statusInfo.color}>
+                <StatusIcon className="h-3 w-3" />
+                {statusInfo.label}
+              </ColorBadge>
+            )
+          })()
+        ) : (
+          <span className="text-muted-foreground text-xs">-</span>
+        )
       ),
     },
     {

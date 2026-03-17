@@ -3,39 +3,36 @@ package core
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"regexp"
 	"strings"
 
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	maxNamespaceBaseLength = 57
-	randomSuffixLength     = 5
+	maxNamespaceLength = 63
 )
 
+var invalidNamespaceChars = regexp.MustCompile(`[^a-z0-9-]+`)
+
 func GenerateNamespaceName(projectSlug, envSlug string) string {
-	base := fmt.Sprintf("%s-%s", projectSlug, envSlug)
+	base := strings.ToLower(strings.TrimSpace(fmt.Sprintf("%s-%s", projectSlug, envSlug)))
+	base = invalidNamespaceChars.ReplaceAllString(base, "-")
+	base = strings.Trim(base, "-")
+	base = strings.Join(strings.FieldsFunc(base, func(r rune) bool {
+		return r == '-'
+	}), "-")
 
-	if len(base) > maxNamespaceBaseLength {
-		base = base[:maxNamespaceBaseLength]
+	if len(base) > maxNamespaceLength {
+		base = base[:maxNamespaceLength]
+		base = strings.Trim(base, "-")
 	}
 
-	suffix := generateRandomString(randomSuffixLength)
-
-	return fmt.Sprintf("%s-%s", base, suffix)
-}
-
-func generateRandomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(result)
+	return base
 }
 
 func CreateNamespace(ctx context.Context, clusterID, namespaceName string, envCtx *models.EnvContext) error {
@@ -63,7 +60,7 @@ func CreateNamespace(ctx context.Context, clusterID, namespaceName string, envCt
 
 	_, err = client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil {
-		if strings.Contains(err.Error(), "already exists") {
+		if k8serrors.IsAlreadyExists(err) {
 			return nil
 		}
 		return err
@@ -80,11 +77,28 @@ func DeleteNamespace(ctx context.Context, clusterID, namespaceName string) error
 
 	err = client.CoreV1().Namespaces().Delete(ctx, namespaceName, metav1.DeleteOptions{})
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if k8serrors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
 
 	return nil
+}
+
+func NamespaceExists(ctx context.Context, clusterID, namespaceName string) (bool, error) {
+	client, err := kube.GlobalClusterStore.GetClient(clusterID)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = client.CoreV1().Namespaces().Get(ctx, namespaceName, metav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }

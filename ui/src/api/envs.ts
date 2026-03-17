@@ -24,6 +24,12 @@ export interface CreateEnvRequest {
   cluster_namespace: string
 }
 
+export interface EnvNamespaceAvailabilityResponse {
+  available: boolean
+  source: string
+  message: string
+}
+
 export const envsApi = {
   list: async (projectId: string, params?: PaginationParams) => {
     return client.get(`/v1/projects/${projectId}/envs`, {
@@ -35,6 +41,11 @@ export const envsApi = {
   },
   create: async (projectId: string, data: CreateEnvRequest) => {
     return client.post(`/v1/projects/${projectId}/envs`, data) as Promise<Env>
+  },
+  checkNamespaceAvailability: async (projectId: string, params: { cluster_id: string; cluster_namespace: string }) => {
+    return client.get(`/v1/projects/${projectId}/envs/namespace-availability`, {
+      params,
+    }) as Promise<EnvNamespaceAvailabilityResponse>
   },
   get: async (id: string) => {
     return client.get(`/v1/envs/${id}`) as Promise<Env>

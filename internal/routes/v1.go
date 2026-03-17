@@ -83,6 +83,7 @@ func setupV1Routes(r *gin.Engine) {
 				projectsRead.GET("/:projectID/invitable-users", handlers.ListInvitableUsers)
 				projectsRead.GET("/:projectID/envs", handlers.ListEnvs)
 				projectsRead.GET("/:projectID/envs/simple", handlers.ListEnvsSimple)
+				projectsRead.GET("/:projectID/envs/namespace-availability", handlers.CheckEnvNamespaceAvailability)
 				projectsRead.GET("/:projectID/container-registries", handlers.ListProjectContainerRegistries)
 				projectsRead.GET("/:projectID/container-registries/simple", handlers.ListProjectContainerRegistriesSimple)
 				projectsRead.GET("/:projectID/code-repositories", handlers.ListCodeRepositories)

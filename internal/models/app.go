@@ -151,7 +151,7 @@ type AppResponse struct {
 	RequestMemory    int              `json:"request_memory"`
 	LimitCPU         int              `json:"limit_cpu"`
 	LimitMemory      int              `json:"limit_memory"`
-Status           string           `json:"status"`
+	Status           string           `json:"status"`
 	AvailableActions []ActionMetadata `json:"available_actions"`
 	AutoScaling      *AutoScalingSpec `json:"auto_scaling"`
 	SchedulingRule   *SchedulingSpec  `json:"scheduling_rule"`
@@ -214,6 +214,7 @@ type AppVolumeResponse struct {
 	MountPath    string    `json:"mount_path"`
 	SubPath      string    `json:"sub_path"`
 	VolumeType   string    `json:"volume_type"`
+	Status       string    `json:"status"`
 	Capacity     int       `json:"capacity"`
 	StorageClass string    `json:"storage_class"`
 	VolumeMode   string    `json:"volume_mode"`

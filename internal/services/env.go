@@ -3,13 +3,17 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
+	"gorm.io/gorm"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 func ListEnvs(projectID string, page, pageSize int, search string) (int64, []models.EnvResponse, error) {
@@ -47,7 +51,18 @@ func CreateEnv(projectID string, req *models.CreateEnvRequest) (*entities.Env, e
 		return nil, errors.New("environment with this slug already exists in this project")
 	}
 
-	namespaceName := core.GenerateNamespaceName(project.Slug, req.Slug)
+	namespaceName := strings.TrimSpace(req.ClusterNamespace)
+	if namespaceName == "" {
+		namespaceName = core.GenerateNamespaceName(project.Slug, req.Slug)
+	}
+
+	if err := validateEnvNamespace(namespaceName); err != nil {
+		return nil, err
+	}
+
+	if err := ensureEnvNamespaceAvailable(req.ClusterID, namespaceName, ""); err != nil {
+		return nil, err
+	}
 
 	env := &entities.Env{
 		Base:             entities.Base{ID: uuid.New()},
@@ -92,6 +107,82 @@ func CreateEnv(projectID string, req *models.CreateEnvRequest) (*entities.Env, e
 	}
 
 	return env, nil
+}
+
+func validateEnvNamespace(namespace string) error {
+	if namespace == "" {
+		return errors.New("namespace is required")
+	}
+
+	if validationErrors := validation.IsDNS1123Label(namespace); len(validationErrors) > 0 {
+		return fmt.Errorf("namespace %q is invalid: %s", namespace, strings.Join(validationErrors, ", "))
+	}
+
+	return nil
+}
+
+func ensureEnvNamespaceAvailable(clusterID, namespaceName, excludeEnvID string) error {
+	res, err := checkEnvNamespaceAvailability(clusterID, namespaceName, excludeEnvID)
+	if err != nil {
+		return err
+	}
+	if !res.Available {
+		return errors.New(res.Message)
+	}
+
+	return nil
+}
+
+func CheckEnvNamespaceAvailability(clusterID, namespaceName string) (*models.EnvNamespaceAvailabilityResponse, error) {
+	return checkEnvNamespaceAvailability(clusterID, namespaceName, "")
+}
+
+func checkEnvNamespaceAvailability(clusterID, namespaceName, excludeEnvID string) (*models.EnvNamespaceAvailabilityResponse, error) {
+	namespaceName = strings.TrimSpace(namespaceName)
+
+	if err := validateEnvNamespace(namespaceName); err != nil {
+		return &models.EnvNamespaceAvailabilityResponse{
+			Available: false,
+			Source:    "invalid",
+			Message:   err.Error(),
+		}, nil
+	}
+
+	var existing entities.Env
+	query := db.DB.Where("cluster_id = ? AND cluster_namespace = ?", clusterID, namespaceName)
+	if excludeEnvID != "" {
+		query = query.Where("id != ?", excludeEnvID)
+	}
+
+	err := query.First(&existing).Error
+	if err == nil {
+		return &models.EnvNamespaceAvailabilityResponse{
+			Available: false,
+			Source:    "database",
+			Message:   fmt.Sprintf("namespace %q is already used by another environment in this cluster", namespaceName),
+		}, nil
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	exists, err := core.NamespaceExists(context.Background(), clusterID, namespaceName)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return &models.EnvNamespaceAvailabilityResponse{
+			Available: false,
+			Source:    "cluster",
+			Message:   fmt.Sprintf("namespace %q already exists in the selected cluster", namespaceName),
+		}, nil
+	}
+
+	return &models.EnvNamespaceAvailabilityResponse{
+		Available: true,
+		Source:    "available",
+		Message:   fmt.Sprintf("namespace %q is available", namespaceName),
+	}, nil
 }
 
 func GetEnv(envID string) (*entities.Env, error) {

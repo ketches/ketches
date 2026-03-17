@@ -16,6 +16,17 @@ type CreateEnvRequest struct {
 	IsBuildEnv       bool   `json:"is_build_env"`
 }
 
+type CheckEnvNamespaceAvailabilityRequest struct {
+	ClusterID        string `form:"cluster_id" json:"cluster_id" binding:"required"`
+	ClusterNamespace string `form:"cluster_namespace" json:"cluster_namespace" binding:"required"`
+}
+
+type EnvNamespaceAvailabilityResponse struct {
+	Available bool   `json:"available"`
+	Source    string `json:"source"`
+	Message   string `json:"message"`
+}
+
 type EnvResponse struct {
 	ID               string    `json:"id"`
 	Slug             string    `json:"slug"`
