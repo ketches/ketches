@@ -162,7 +162,7 @@ func checkEnvNamespaceAvailability(clusterID, namespaceName, excludeEnvID string
 			Message:   fmt.Sprintf("namespace %q is already used by another environment in this cluster", namespaceName),
 		}, nil
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
