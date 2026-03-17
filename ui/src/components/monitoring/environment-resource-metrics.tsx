@@ -158,7 +158,7 @@ export function EnvironmentResourceMetrics({ clusterId, namespace, timeRange, ra
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <Cpu className="h-3 w-3" />
@@ -180,7 +180,7 @@ export function EnvironmentResourceMetrics({ clusterId, namespace, timeRange, ra
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <MemoryStick className="h-3 w-3" />
@@ -202,7 +202,7 @@ export function EnvironmentResourceMetrics({ clusterId, namespace, timeRange, ra
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <Network className="h-3 w-3" />

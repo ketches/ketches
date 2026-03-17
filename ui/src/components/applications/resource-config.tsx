@@ -61,7 +61,7 @@ export function ResourceConfig({ app }: ResourceConfigProps) {
 
   return (
     <Card>
-      <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-6">
+      <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-4">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Ruler className="h-4 w-4" /> Resources

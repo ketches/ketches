@@ -2,9 +2,10 @@ import { act, createContext, useContext } from "react"
 import ReactDOMClient from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockInvalidateQueries, mockRefetch } = vi.hoisted(() => ({
+const { mockInvalidateQueries, mockRefetch, mockUseQuery } = vi.hoisted(() => ({
   mockInvalidateQueries: vi.fn(),
-  mockRefetch: vi.fn(),
+  mockRefetch: vi.fn<() => Promise<{ data: { repository: string, current_tag: string, tags: string[] } }>>(),
+  mockUseQuery: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-query", () => ({
@@ -12,17 +13,7 @@ vi.mock("@tanstack/react-query", () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
-  useQuery: () => ({
-    data: {
-      repository: "ghcr.io/acme/demo",
-      current_tag: "latest",
-      tags: ["latest"],
-    },
-    isLoading: false,
-    isError: false,
-    isFetching: false,
-    refetch: mockRefetch,
-  }),
+  useQuery: mockUseQuery,
   useQueryClient: () => ({
     invalidateQueries: mockInvalidateQueries,
   }),
@@ -99,12 +90,14 @@ vi.mock("@/components/ui/combobox", () => ({
   Combobox: ({
     children,
     onValueChange,
+    open,
   }: {
     children: React.ReactNode
     onValueChange?: (value: string | null) => void
+    open?: boolean
   }) => (
     <ComboboxContext.Provider value={{ onValueChange }}>
-      <div>{children}</div>
+      <div data-combobox-open={open ? "true" : "false"}>{children}</div>
     </ComboboxContext.Provider>
   ),
   ComboboxTrigger: ({ children }: { children?: React.ReactNode }) => <button type="button">{children}</button>,
@@ -197,6 +190,24 @@ describe("ImageEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    mockRefetch.mockResolvedValue({
+      data: {
+        repository: "ghcr.io/acme/demo",
+        current_tag: "latest",
+        tags: ["latest"],
+      },
+    })
+    mockUseQuery.mockImplementation(() => ({
+      data: {
+        repository: "ghcr.io/acme/demo",
+        current_tag: "latest",
+        tags: ["latest"],
+      },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: mockRefetch,
+    }))
   })
 
   afterEach(() => {
@@ -236,10 +247,15 @@ describe("ImageEditor", () => {
     })
   })
 
-  it("uses the container image field as a combobox with inline refresh instead of a separate image tag field", async () => {
+  it("keeps image loading manual and opens the combobox after refreshing options", async () => {
     const { container, root } = await renderEditor(buildApp())
 
     expect(container.textContent).not.toContain("Image Tag")
+    expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({
+      enabled: false,
+    }))
+    expect(mockRefetch).not.toHaveBeenCalled()
+    expect(container.querySelector('[data-combobox-open="true"]')).toBeNull()
 
     const refreshButton = container.querySelector('button[aria-label="Refresh image options"]') as HTMLButtonElement | null
     const imageInput = container.querySelector('input[name="container_image"]') as HTMLInputElement | null
@@ -248,8 +264,12 @@ describe("ImageEditor", () => {
     expect(imageInput).not.toBeNull()
 
     await clickElement(refreshButton as HTMLButtonElement)
+    await act(async () => {
+      await Promise.resolve()
+    })
 
     expect(mockRefetch).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('[data-combobox-open="true"]')).not.toBeNull()
 
     await act(async () => {
       root.unmount()

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -226,4 +227,40 @@ func TestCleanupIdleNodeTerminalPodsDeletesExpiredAndBrokenPods(t *testing.T) {
 	require.NoError(t, unrelatedErr)
 	assert.Equal(t, fresh.Name, freshPod.Name)
 	assert.Equal(t, unrelated.Name, unrelatedPod.Name)
+}
+
+func TestRunClusterNodeTerminalCleanupLoopStopsOnContextCancel(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	started := make(chan struct{}, 1)
+	done := make(chan struct{})
+	var calls atomic.Int32
+
+	go func() {
+		defer close(done)
+		runClusterNodeTerminalCleanupLoop(ctx, time.Hour, func() time.Time {
+			return time.Date(2026, time.March, 17, 12, 0, 0, 0, time.UTC)
+		}, func(time.Time) {
+			if calls.Add(1) == 1 {
+				started <- struct{}{}
+			}
+		})
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("cleanup loop did not run immediately")
+	}
+
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("cleanup loop did not stop after context cancellation")
+	}
 }

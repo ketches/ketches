@@ -37,6 +37,7 @@ export function ImageEditor({
   const setOpen = setControlledOpen || setInternalOpen
   const queryClient = useQueryClient()
   const [showCredentials, setShowCredentials] = React.useState(false)
+  const [imageOptionsOpen, setImageOptionsOpen] = React.useState(false)
 
   const [formData, setFormData] = React.useState({
     container_image: "",
@@ -52,13 +53,14 @@ export function ImageEditor({
         registry_password: app.registry_password || "",
       })
       setShowCredentials(Boolean(app.registry_username || app.registry_password))
+      setImageOptionsOpen(false)
     }
   }, [app, open])
 
   const tagsQuery = useQuery({
     queryKey: ["app-image-tags", app?.id],
     queryFn: () => appsApi.listImageTags(app!.id),
-    enabled: !!app && open,
+    enabled: false,
   })
 
   const imageOptions = React.useMemo(() => {
@@ -88,7 +90,23 @@ export function ImageEditor({
     }
 
     handleContainerImageChange(value)
+    setImageOptionsOpen(false)
   }, [handleContainerImageChange])
+
+  const handleRefreshImageOptions = React.useCallback(async () => {
+    if (!app) {
+      return
+    }
+
+    const result = await tagsQuery.refetch()
+
+    if (result.error) {
+      setImageOptionsOpen(false)
+      return
+    }
+
+    setImageOptionsOpen((result.data?.tags?.length ?? 0) > 0)
+  }, [app, tagsQuery])
 
   const mutation = useMutation({
     mutationFn: (data: { container_image: string; registry_username?: string; registry_password?: string }) => {
@@ -140,7 +158,7 @@ export function ImageEditor({
                           aria-label="Refresh image options"
                           disabled={tagsQuery.isFetching}
                           onClick={() => {
-                            void tagsQuery.refetch()
+                            void handleRefreshImageOptions()
                           }}
                         >
                           <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
@@ -178,6 +196,8 @@ export function ImageEditor({
                 {/* <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1"> */}
                 {/* <div className="min-w-0"> */}
                 <Combobox
+                  open={imageOptionsOpen}
+                  onOpenChange={setImageOptionsOpen}
                   value={formData.container_image}
                   onValueChange={handleImageOptionChange}
                   itemToStringLabel={(value) =>

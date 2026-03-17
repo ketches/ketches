@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Tooltip,
   TooltipContent,
@@ -268,21 +268,21 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <div className="space-y-1">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Puzzle className="h-4 w-4" /> Installed Plugins
-          </CardTitle>
-          <CardDescription>
-            Enhance your application with various features and integrations
-          </CardDescription>
-        </div>
-        {!readOnly && appPlugins.length > 0 && (
-          <Button onClick={() => setInstallOpen(true)}>
-            <Plus />
-            Install Plugin
-          </Button>
-        )}
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Puzzle className="h-4 w-4" /> Installed Plugins
+        </CardTitle>
+        <CardDescription>
+          Enhance your application with various features and integrations
+        </CardDescription>
+        <CardAction>
+          {!readOnly && appPlugins.length > 0 && (
+            <Button onClick={() => setInstallOpen(true)}>
+              <Plus />
+              Install Plugin
+            </Button>
+          )}
+        </CardAction>
       </CardHeader>
       <CardContent>
         {!isLoading && appPlugins.length === 0 ? (

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -51,9 +52,10 @@ func main() {
 	if err := services.InitClusters(); err != nil {
 		log.Fatalf("failed to initialize clusters: %v", err)
 	}
-	services.StartClusterNodeTerminalCleanupLoop()
+	nodeTerminalCleanupDone := services.StartClusterNodeTerminalCleanupLoop(rootCtx)
 
 	// Recover active build watchers
+	core.GlobalBuildWatcher.SetParentContext(rootCtx)
 	core.GlobalBuildWatcher.RecoverActiveBuilds()
 	go func() {
 		recoveryCtx, cancel := context.WithTimeout(rootCtx, 30*time.Second)
@@ -81,6 +83,17 @@ func main() {
 
 	if err := runServer(rootCtx, srv, listener, serverShutdownTimeout); err != nil {
 		log.Fatalf("failed to start server: %v", err)
+	}
+
+	// Restore default signal handling so a second interrupt can force-exit if shutdown stalls.
+	stop()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
+	defer cancel()
+
+	core.GlobalBuildWatcher.StopAll()
+	if err := waitForGracefulShutdown(shutdownCtx, nodeTerminalCleanupDone, core.GlobalBuildWatcher.Wait); err != nil {
+		log.Printf("graceful shutdown incomplete: %v", err)
 	}
 }
 
@@ -110,4 +123,34 @@ func runServer(ctx context.Context, srv *http.Server, listener net.Listener, shu
 		}
 		return nil
 	}
+}
+
+func waitForGracefulShutdown(
+	ctx context.Context,
+	nodeTerminalCleanupDone <-chan struct{},
+	waitForBuildWatchers func(),
+) error {
+	if nodeTerminalCleanupDone != nil {
+		select {
+		case <-nodeTerminalCleanupDone:
+		case <-ctx.Done():
+			return fmt.Errorf("node terminal cleanup loop did not stop before timeout: %w", ctx.Err())
+		}
+	}
+
+	if waitForBuildWatchers != nil {
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			waitForBuildWatchers()
+		}()
+
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return fmt.Errorf("build watchers did not stop before timeout: %w", ctx.Err())
+		}
+	}
+
+	return nil
 }

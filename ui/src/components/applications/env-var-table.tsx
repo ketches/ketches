@@ -212,7 +212,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
           <Key className="h-4 w-4" /> Environment Variables
         </CardTitle>

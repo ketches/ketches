@@ -358,6 +358,8 @@ func ListAppImageTags(ctx context.Context, appID string) (*models.AppImageTagsRe
 		result = append(result, tag)
 	}
 
+	reverseStrings(result)
+
 	return &models.AppImageTagsResponse{
 		Repository: repo,
 		CurrentTag: currentTag,
@@ -1452,4 +1454,10 @@ func listImageTags(repository, username, password string) ([]string, error) {
 		return nil, err
 	}
 	return tags, nil
+}
+
+func reverseStrings(values []string) {
+	for left, right := 0, len(values)-1; left < right; left, right = left+1, right-1 {
+		values[left], values[right] = values[right], values[left]
+	}
 }

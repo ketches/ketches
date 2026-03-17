@@ -182,7 +182,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <Cpu className="h-3 w-3" />
@@ -204,7 +204,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <Cpu className="h-3 w-3" />
@@ -226,7 +226,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <MemoryStick className="h-3 w-3" />
@@ -248,7 +248,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <MemoryStick className="h-3 w-3" />
@@ -272,7 +272,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
       </div>
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <HardDrive className="h-3 w-3" />
@@ -294,7 +294,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <HardDrive className="h-3 w-3" />

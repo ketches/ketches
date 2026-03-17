@@ -219,7 +219,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
           <FileCog className="h-4 w-4" /> Config Files
         </CardTitle>

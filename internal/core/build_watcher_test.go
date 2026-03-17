@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -241,4 +241,29 @@ func TestWatchBuild_FailsAfterRepeatedJobNotFound(t *testing.T) {
 	assert.Equal(t, entities.BuildStatusFailed, updated.Status)
 	assert.Equal(t, "build job not found after restart", updated.ErrorMessage)
 	require.NotNil(t, updated.CompletedAt)
+}
+
+func TestBuildWatcherCancelsActiveWatchersOnParentContextCancel(t *testing.T) {
+	t.Parallel()
+
+	parentCtx, cancelParent := context.WithCancel(context.Background())
+	defer cancelParent()
+
+	stopped := make(chan string, 2)
+	bw := &BuildWatcher{
+		watching:  make(map[string]context.CancelFunc),
+		parentCtx: parentCtx,
+		watchBuildFn: func(ctx context.Context, buildID, _, _, _ string) {
+			<-ctx.Done()
+			stopped <- buildID
+		},
+	}
+
+	bw.StartWatching(&entities.Build{ID: "build-1", BuildEnvID: "env-1", JobName: "job-1", JobNamespace: "ns-1"})
+	bw.StartWatching(&entities.Build{ID: "build-2", BuildEnvID: "env-1", JobName: "job-2", JobNamespace: "ns-1"})
+
+	cancelParent()
+	bw.Wait()
+
+	assert.ElementsMatch(t, []string{"build-1", "build-2"}, []string{<-stopped, <-stopped})
 }

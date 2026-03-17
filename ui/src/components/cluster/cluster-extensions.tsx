@@ -185,6 +185,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
           <div className="flex justify-end">
             <Button
               size="sm"
+              variant="outline"
               onClick={() => {
                 setInstallTarget(item)
                 setInstallOpen(true)
@@ -280,6 +281,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             {ext.status === "deployed" && (
               <Button
                 size="sm"
+                variant="outline"
                 onClick={() => setUpdateTarget(ext)}
               >
                 <ArrowBigUpDash />
@@ -289,7 +291,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             {/* Uninstall / Retry Uninstall: hidden while transitioning */}
             {!busy && (
               <Button
-                variant="outline"
+                variant="destructive"
                 size="sm"
                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={() => setDeleteTarget(ext.id)}

@@ -313,7 +313,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
     <div className="space-y-4 min-h-125">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1"><Cpu className="h-3 w-3" />CPU Usage</span>
               <span className="font-mono text-xs text-muted-foreground">{totalCpu.toFixed(2)} mCores (Total)</span>
@@ -334,7 +334,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1"><Cpu className="h-3 w-3" />CPU Utilization</span>
             </CardDescription>
@@ -352,7 +352,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1"><MemoryStick className="h-3 w-3" />Memory Usage</span>
               <span className="font-mono text-xs text-muted-foreground">{totalMem.toFixed(2)} GiB (Total)</span>
@@ -373,7 +373,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1"><ChartLine className="h-3 w-3" />Memory Utilization</span>
             </CardDescription>
@@ -394,7 +394,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1"><Network className="h-3 w-3" />Network Ingress</span>
               <span className="text-primary flex items-center gap-0.5"><ArrowDown className="h-2 w-2" />{totalIngress.toFixed(1)} KB/s</span>
@@ -415,7 +415,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardDescription className="flex items-center justify-between">
               <span className="flex items-center gap-1"><Network className="h-3 w-3" />Network Egress</span>
               <span className="text-chart-2 flex items-center gap-0.5"><ArrowUp className="h-2 w-2" />{totalEgress.toFixed(1)} KB/s</span>
@@ -1327,7 +1327,7 @@ export function ApplicationDetailPage() {
 
                     return (
                       <Card key={instance.instance_name} className="group/card hover:shadow-md transition-shadow cursor-pointer">
-                        <CardHeader className="pb-2">
+                        <CardHeader>
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex items-start gap-3 min-w-0">
                               <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">

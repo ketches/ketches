@@ -613,7 +613,7 @@ export function HealthConfig({ app }: HealthConfigProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
           <HeartPulse className="h-4 w-4" /> Health Checks
         </CardTitle>

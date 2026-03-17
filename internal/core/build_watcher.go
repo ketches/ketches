@@ -27,8 +27,11 @@ const (
 
 // BuildWatcher monitors active build jobs and updates their status.
 type BuildWatcher struct {
-	mu       sync.Mutex
-	watching map[string]context.CancelFunc // buildID -> cancel func
+	mu           sync.Mutex
+	watching     map[string]context.CancelFunc // buildID -> cancel func
+	parentCtx    context.Context
+	watchBuildFn func(ctx context.Context, buildID, buildEnvID, jobName, jobNamespace string)
+	wg           sync.WaitGroup
 }
 
 var GlobalBuildWatcher = &BuildWatcher{
@@ -38,16 +41,33 @@ var GlobalBuildWatcher = &BuildWatcher{
 // StartWatching begins monitoring a build job.
 func (bw *BuildWatcher) StartWatching(build *entities.Build) {
 	bw.mu.Lock()
-	defer bw.mu.Unlock()
+	if bw.watching == nil {
+		bw.watching = make(map[string]context.CancelFunc)
+	}
 
 	if _, exists := bw.watching[build.ID]; exists {
+		bw.mu.Unlock()
 		return // Already watching
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	bw.watching[build.ID] = cancel
+	parentCtx := bw.parentCtx
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	watchBuildFn := bw.watchBuildFn
+	if watchBuildFn == nil {
+		watchBuildFn = bw.watchBuild
+	}
 
-	go bw.watchBuild(ctx, build.ID, build.BuildEnvID, build.JobName, build.JobNamespace)
+	ctx, cancel := context.WithCancel(parentCtx)
+	bw.watching[build.ID] = cancel
+	bw.wg.Add(1)
+	bw.mu.Unlock()
+
+	go func() {
+		defer bw.wg.Done()
+		watchBuildFn(ctx, build.ID, build.BuildEnvID, build.JobName, build.JobNamespace)
+	}()
 }
 
 // StopWatching stops monitoring a build job.
@@ -59,6 +79,34 @@ func (bw *BuildWatcher) StopWatching(buildID string) {
 		cancel()
 		delete(bw.watching, buildID)
 	}
+}
+
+// SetParentContext configures the parent context for subsequently started watchers.
+func (bw *BuildWatcher) SetParentContext(ctx context.Context) {
+	bw.mu.Lock()
+	defer bw.mu.Unlock()
+
+	bw.parentCtx = ctx
+}
+
+// StopAll stops all active watchers.
+func (bw *BuildWatcher) StopAll() {
+	bw.mu.Lock()
+	cancels := make([]context.CancelFunc, 0, len(bw.watching))
+	for buildID, cancel := range bw.watching {
+		cancels = append(cancels, cancel)
+		delete(bw.watching, buildID)
+	}
+	bw.mu.Unlock()
+
+	for _, cancel := range cancels {
+		cancel()
+	}
+}
+
+// Wait blocks until all watcher goroutines exit.
+func (bw *BuildWatcher) Wait() {
+	bw.wg.Wait()
 }
 
 // RecoverActiveBuilds finds and resumes watching for builds that are still active.

@@ -179,7 +179,7 @@ export function InstanceResourceMetrics({
             <div className="grid gap-4 md:grid-cols-2">
               {/* CPU Usage */}
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader>
                   <CardDescription className="flex items-center justify-between">
                     <span className="flex items-center gap-1"><Cpu className="h-3 w-3" />CPU Usage</span>
                     <span className="font-mono text-xs">{metrics.current.cpu.toFixed(2)} mCores</span>
@@ -206,7 +206,7 @@ export function InstanceResourceMetrics({
 
               {/* Memory Usage */}
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader>
                   <CardDescription className="flex items-center justify-between">
                     <span className="flex items-center gap-1"><MemoryStick className="h-3 w-3" />Memory Usage</span>
                     <span className="font-mono text-xs">{metrics.current.memory.toFixed(2)} GiB</span>
@@ -236,7 +236,7 @@ export function InstanceResourceMetrics({
             <div className="grid gap-4 md:grid-cols-2">
               {/* CPU Utilization */}
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader>
                   <CardDescription className="flex items-center justify-between">
                     <span className="flex items-center gap-1"><Cpu className="h-3 w-3" />CPU Utilization</span>
                     <span className={`font-mono text-xs ${getUtilizationColorClass(metrics.current.cpuUtil)}`}>{metrics.current.cpuUtil.toFixed(1)}%</span>
@@ -257,7 +257,7 @@ export function InstanceResourceMetrics({
 
               {/* Memory Utilization */}
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader>
                   <CardDescription className="flex items-center justify-between">
                     <span className="flex items-center gap-1"><MemoryStick className="h-3 w-3" />Memory Utilization</span>
                     <span className={`font-mono text-xs ${getUtilizationColorClass(metrics.current.memUtil)}`}>{metrics.current.memUtil.toFixed(1)}%</span>

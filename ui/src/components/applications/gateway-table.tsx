@@ -282,14 +282,13 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
           <Network className="h-4 w-4" /> Port Gateways
         </CardTitle>
         <CardDescription>Expose your application to the network</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-
+      <CardContent>
         {!isLoading && gateways.length === 0 ? (
           <EmptyState
             title="No gateways configured"

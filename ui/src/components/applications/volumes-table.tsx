@@ -286,7 +286,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
           <HardDrive className="h-4 w-4" /> Storage Volumes
         </CardTitle>

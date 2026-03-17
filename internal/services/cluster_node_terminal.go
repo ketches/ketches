@@ -39,6 +39,7 @@ var nodeTerminalBrokenWaitingReasons = map[string]struct{}{
 
 var (
 	nodeTerminalCleanupOnce  = &sync.Once{}
+	nodeTerminalCleanupDone  <-chan struct{}
 	nodeTerminalNow          = func() time.Time { return time.Now().UTC() }
 	nodeTerminalWaitInterval = time.Second
 )
@@ -290,19 +291,42 @@ func cleanupIdleNodeTerminalPods(ctx context.Context, pods corev1client.PodInter
 	return nil
 }
 
-func StartClusterNodeTerminalCleanupLoop() {
+func StartClusterNodeTerminalCleanupLoop(ctx context.Context) <-chan struct{} {
 	nodeTerminalCleanupOnce.Do(func() {
+		done := make(chan struct{})
+		nodeTerminalCleanupDone = done
 		go func() {
-			cleanupClusterNodeTerminalPodsAcrossClusters(nodeTerminalNow())
-
-			ticker := time.NewTicker(nodeTerminalCleanupInterval)
-			defer ticker.Stop()
-
-			for range ticker.C {
-				cleanupClusterNodeTerminalPodsAcrossClusters(nodeTerminalNow())
-			}
+			defer close(done)
+			runClusterNodeTerminalCleanupLoop(ctx, nodeTerminalCleanupInterval, nodeTerminalNow, cleanupClusterNodeTerminalPodsAcrossClusters)
 		}()
 	})
+
+	return nodeTerminalCleanupDone
+}
+
+func runClusterNodeTerminalCleanupLoop(
+	ctx context.Context,
+	interval time.Duration,
+	now func() time.Time,
+	cleanup func(time.Time),
+) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	cleanup(now())
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cleanup(now())
+		}
+	}
 }
 
 func cleanupClusterNodeTerminalPodsAcrossClusters(now time.Time) {

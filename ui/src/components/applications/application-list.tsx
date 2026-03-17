@@ -519,7 +519,7 @@ export function ApplicationList({
               key={app.id}
               className="group/card hover:shadow-md transition-shadow h-full bg-secondary/20 hover:bg-blue-200/10"
             >
-              <CardHeader className="pb-2">
+              <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 min-w-0">
                     <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
