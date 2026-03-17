@@ -87,8 +87,8 @@ vi.mock("@/components/shared/key-value-input", () => ({
   ),
 }))
 
-import type { BuildSetting, BuildArgPair } from "@/api/code-repositories"
-import { BuildSettingSheet } from "./build-setting-sheet"
+import type { BuildArgPair, BuildSetting } from "@/api/code-repositories"
+import { BuildSettingSheet } from "./build-setting-dialog"
 
 const registries = [
   { id: "registry-1", name: "Main Registry", provider: "ghcr" },

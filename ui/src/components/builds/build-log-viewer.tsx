@@ -13,8 +13,10 @@ interface BuildLogViewerProps {
   repoId: string
 }
 
+const LOG_CHUNK_FLUSH_DELAY_MS = 16
+
 export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
-  const [logs, setLogs] = React.useState<string[]>([])
+  const [logText, setLogText] = React.useState("")
   const [editorReady, setEditorReady] = React.useState(false)
   const editorRef = React.useRef<editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = React.useRef<Monaco | null>(null)
@@ -22,7 +24,46 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
   const autoFollowRef = React.useRef(true)
   const hasInitializedTailRef = React.useRef(false)
   const decorationIdsRef = React.useRef<string[]>([])
-  const parsedLog = React.useMemo(() => parseBuildLogAnsi(logs.join("")), [logs])
+  const pendingLogChunkRef = React.useRef("")
+  const logFlushTimeoutRef = React.useRef<number | null>(null)
+  const parsedLog = React.useMemo(() => parseBuildLogAnsi(logText), [logText])
+
+  const clearScheduledLogFlush = React.useCallback(() => {
+    if (logFlushTimeoutRef.current === null) return
+    window.clearTimeout(logFlushTimeoutRef.current)
+    logFlushTimeoutRef.current = null
+  }, [])
+
+  const flushBufferedLogs = React.useCallback(() => {
+    clearScheduledLogFlush()
+
+    if (pendingLogChunkRef.current.length === 0) {
+      return
+    }
+
+    const bufferedChunk = pendingLogChunkRef.current
+    pendingLogChunkRef.current = ""
+
+    React.startTransition(() => {
+      setLogText((prev) => prev + bufferedChunk)
+    })
+  }, [clearScheduledLogFlush])
+
+  const scheduleBufferedLogFlush = React.useCallback(() => {
+    if (logFlushTimeoutRef.current !== null) {
+      return
+    }
+
+    logFlushTimeoutRef.current = window.setTimeout(() => {
+      flushBufferedLogs()
+    }, LOG_CHUNK_FLUSH_DELAY_MS)
+  }, [flushBufferedLogs])
+
+  const queueLogChunk = React.useCallback((chunk: string) => {
+    pendingLogChunkRef.current += chunk
+    // Batch archived log bursts so Monaco can mount before we parse the full stream.
+    scheduleBufferedLogFlush()
+  }, [scheduleBufferedLogFlush])
 
   const scheduleScrollToBottom = React.useCallback((force = false) => {
     requestAnimationFrame(() => {
@@ -167,7 +208,9 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
 
   React.useEffect(() => {
     if (!buildId || !repoId) return
-    setLogs([])
+    clearScheduledLogFlush()
+    pendingLogChunkRef.current = ""
+    setLogText("")
     autoFollowRef.current = true
     hasInitializedTailRef.current = false
     decorationIdsRef.current = []
@@ -187,21 +230,25 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
     const eventSource = new EventSource(url)
 
     eventSource.addEventListener('log', (event) => {
-      setLogs((prev) => [...prev, event.data])
+      queueLogChunk(event.data)
     })
 
     eventSource.addEventListener('done', () => {
+      flushBufferedLogs()
       eventSource.close()
     })
 
     eventSource.onerror = () => {
+      flushBufferedLogs()
       eventSource.close()
     }
 
     return () => {
+      clearScheduledLogFlush()
+      pendingLogChunkRef.current = ""
       eventSource.close()
     }
-  }, [buildId, repoId])
+  }, [buildId, clearScheduledLogFlush, flushBufferedLogs, queueLogChunk, repoId])
 
   return (
     <div className="space-y-2">

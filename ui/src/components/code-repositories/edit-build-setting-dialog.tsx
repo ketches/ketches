@@ -1,5 +1,5 @@
 import { codeRepositoriesApi, type BuildSetting, type UpdateBuildSettingRequest } from "@/api/code-repositories"
-import { BuildSettingSheet, type BuildSettingSheetSubmitPayload } from "@/components/code-repositories/build-setting-sheet"
+import { BuildSettingSheet, type BuildSettingSheetSubmitPayload } from "@/components/code-repositories/build-setting-dialog"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
 import * as React from "react"

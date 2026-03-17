@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -136,6 +136,62 @@ func TestStreamBuildLogs_StreamsActivePodLogs(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "clone-step")
 	assert.Contains(t, recorder.Body.String(), "build-step")
 	assert.Contains(t, recorder.Body.String(), "stream ended")
+}
+
+func TestStreamBuildLogs_RetriesFollowContainerUntilLogsAreAvailable(t *testing.T) {
+	setupBuildLogsServiceTestDB(t)
+	build := seedBuildLogsServiceFixture(t, entities.BuildStatusBuilding)
+
+	client := kubefake.NewSimpleClientset(buildLogsServicePod())
+
+	originalGetBuildLogsClusterClient := getBuildLogsClusterClient
+	originalOpenBuildLogsPodStream := openBuildLogsPodStream
+	originalWaitForBuildLogsRetry := waitForBuildLogsRetry
+	t.Cleanup(func() {
+		getBuildLogsClusterClient = originalGetBuildLogsClusterClient
+		openBuildLogsPodStream = originalOpenBuildLogsPodStream
+		waitForBuildLogsRetry = originalWaitForBuildLogsRetry
+	})
+
+	buildctlAttempts := 0
+	getBuildLogsClusterClient = func(clusterID string) (kubernetes.Interface, error) {
+		require.Equal(t, "cluster-1", clusterID)
+		return client, nil
+	}
+	waitForBuildLogsRetry = func(ctx context.Context, delay time.Duration) error {
+		return nil
+	}
+	openBuildLogsPodStream = func(
+		_ context.Context,
+		_ kubernetes.Interface,
+		namespace, podName, containerName string,
+		follow bool,
+	) (io.ReadCloser, error) {
+		require.Equal(t, "build-ns", namespace)
+		require.Equal(t, "build-pod-1", podName)
+		if containerName == "buildctl" {
+			require.True(t, follow)
+			buildctlAttempts += 1
+			if buildctlAttempts == 1 {
+				return nil, errors.New("container is waiting to start")
+			}
+			return io.NopCloser(strings.NewReader("build-step\n")), nil
+		}
+		require.False(t, follow)
+		return io.NopCloser(strings.NewReader("clone-step\n")), nil
+	}
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+
+	StreamBuildLogs(c, build.ID)
+
+	assert.Equal(t, 200, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "clone-step")
+	assert.Contains(t, recorder.Body.String(), "[buildctl] (logs not available yet)")
+	assert.Contains(t, recorder.Body.String(), "build-step")
+	assert.Contains(t, recorder.Body.String(), "stream ended")
+	assert.Equal(t, 2, buildctlAttempts)
 }
 
 func TestStreamBuildLogs_StreamsArchivedLogsForTerminalBuild(t *testing.T) {

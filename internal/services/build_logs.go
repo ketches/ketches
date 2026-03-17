@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/core"
@@ -39,6 +40,19 @@ var openPersistedBuildLog = core.OpenPersistedBuildLog
 var persistBuildLogs = core.PersistBuildLogs
 var cancelBuildJob = core.CancelBuildJob
 var cleanupBuildSecrets = core.CleanupBuildSecrets
+var waitForBuildLogsRetry = func(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+const buildLogRetryDelay = time.Second
 
 func StreamBuildLogs(c *gin.Context, buildID string) {
 	build, err := GetBuild(buildID)
@@ -82,6 +96,8 @@ func streamActiveBuildLogs(c *gin.Context, build *entities.Build) error {
 		return errors.New("build has no job")
 	}
 
+	requestCtx := buildLogsRequestContext(c)
+
 	buildEnv, err := GetEnv(build.BuildEnvID)
 	if err != nil {
 		return fmt.Errorf("failed to load build environment: %w", err)
@@ -91,7 +107,7 @@ func streamActiveBuildLogs(c *gin.Context, build *entities.Build) error {
 		return fmt.Errorf("failed to get cluster client: %w", err)
 	}
 
-	pods, err := client.CoreV1().Pods(build.JobNamespace).List(context.Background(), metav1.ListOptions{
+	pods, err := client.CoreV1().Pods(build.JobNamespace).List(requestCtx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("job-name=%s", build.JobName),
 	})
 	if err != nil || len(pods.Items) == 0 {
@@ -115,11 +131,27 @@ func streamActiveBuildLogs(c *gin.Context, build *entities.Build) error {
 
 	for i, containerName := range containerNames {
 		containerFollow := follow && i == len(containerNames)-1
-		stream, err := openBuildLogsPodStream(context.Background(), client, build.JobNamespace, pod.Name, containerName, containerFollow)
+		stream, err := openBuildLogsPodStream(requestCtx, client, build.JobNamespace, pod.Name, containerName, containerFollow)
 		if err != nil {
 			c.SSEvent("log", fmt.Sprintf("[%s] (logs not available yet)\n", containerName))
 			c.Writer.Flush()
-			continue
+			if !containerFollow {
+				continue
+			}
+
+			stream, err = retryOpenFollowBuildLogsPodStream(
+				requestCtx,
+				client,
+				build.JobNamespace,
+				pod.Name,
+				containerName,
+			)
+			if err != nil {
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					return nil
+				}
+				continue
+			}
 		}
 
 		if err := streamSSELogReader(c, stream); err != nil {
@@ -137,6 +169,31 @@ func writeBuildLogSSEHeaders(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
+}
+
+func buildLogsRequestContext(c *gin.Context) context.Context {
+	if c != nil && c.Request != nil {
+		return c.Request.Context()
+	}
+
+	return context.Background()
+}
+
+func retryOpenFollowBuildLogsPodStream(
+	ctx context.Context,
+	client kubernetes.Interface,
+	namespace, podName, containerName string,
+) (io.ReadCloser, error) {
+	for {
+		if err := waitForBuildLogsRetry(ctx, buildLogRetryDelay); err != nil {
+			return nil, err
+		}
+
+		stream, err := openBuildLogsPodStream(ctx, client, namespace, podName, containerName, true)
+		if err == nil {
+			return stream, nil
+		}
+	}
 }
 
 func streamSSELogReader(c *gin.Context, stream io.Reader) error {

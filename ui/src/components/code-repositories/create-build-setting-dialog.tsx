@@ -1,7 +1,7 @@
 import * as React from "react"
 
 import { codeRepositoriesApi, type CreateBuildSettingRequest } from "@/api/code-repositories"
-import { BuildSettingSheet, type BuildSettingSheetSubmitPayload } from "@/components/code-repositories/build-setting-sheet"
+import { BuildSettingSheet, type BuildSettingSheetSubmitPayload } from "@/components/code-repositories/build-setting-dialog"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
 import { toast } from "sonner"
