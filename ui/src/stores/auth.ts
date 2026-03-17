@@ -7,6 +7,7 @@ export interface User {
   email: string
   role: string
   fullname?: string
+  bio?: string
 }
 
 interface AuthState {
@@ -16,6 +17,7 @@ interface AuthState {
   isAuthenticated: boolean
 
   setAuth: (user: User, accessToken: string, refreshToken: string) => void
+  updateUser: (user: Partial<User>) => void
   updateTokens: (accessToken: string, refreshToken: string) => void
   logout: () => void
 }
@@ -35,6 +37,11 @@ export const useAuthStore = create<AuthState>()(
           refreshToken,
           isAuthenticated: true,
         }),
+
+      updateUser: (user) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...user } : state.user,
+        })),
 
       updateTokens: (accessToken, refreshToken) =>
         set({ accessToken, refreshToken }),

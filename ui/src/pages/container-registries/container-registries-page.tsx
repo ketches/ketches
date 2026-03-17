@@ -38,7 +38,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useProjectRole } from "@/hooks/useProjectRole"
-import { cn, formatDate } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 
@@ -115,9 +115,9 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
           <div className="p-1.5 bg-indigo-500/10 rounded-md text-indigo-600 shrink-0">
             <Warehouse className="h-4 w-4" />
           </div>
-          <div className="min-w-0">
-            <span className="font-medium text-foreground">{row.original.name}{row.original.is_default && (
-              <ColorBadge color="green" className="ml-2">Default</ColorBadge>
+          <div className="min-w-0 gap-2 flex flex-col">
+            <span className="font-medium text-foreground flex items-center">{row.original.name}{row.original.is_default && (
+              <Star className="ml-2 h-3.5 w-3.5 text-primary fill-primary shrink-0" />
             )}</span>
             <p className="text-xs text-muted-foreground font-mono truncate">
               {row.original.description}
@@ -326,14 +326,7 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
                       {reg.is_default && (
                         <Star className="h-3.5 w-3.5 text-primary fill-primary shrink-0" />
                       )}
-                      <span
-                        className={cn(
-                          "text-[10px] px-1.5 py-0 rounded-full border shrink-0",
-                          reg.enabled ? "bg-green-50 text-green-700 border-green-200" : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {reg.enabled ? "Enabled" : "Disabled"}
-                      </span>
+                      <ColorBadge color={reg.enabled ? "green" : "gray"} >{reg.enabled ? "Enabled" : "Disabled"}</ColorBadge>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">

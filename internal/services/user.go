@@ -20,8 +20,9 @@ const (
 )
 
 var (
-	ErrDeleteLastAdmin = errors.New("cannot delete the last admin user")
-	ErrDemoteLastAdmin = errors.New("cannot demote the last admin user")
+	ErrDeleteLastAdmin       = errors.New("cannot delete the last admin user")
+	ErrDemoteLastAdmin       = errors.New("cannot demote the last admin user")
+	ErrInvalidCurrentPassword = errors.New("current password is incorrect")
 )
 
 func createDefaultProject(tx *gorm.DB, user *entities.User) error {
@@ -133,7 +134,27 @@ func ListUsers(page, pageSize int, search string) (int64, []entities.User, error
 	return total, users, nil
 }
 
-func UpdateUser(userID string, fullname, email, phone string) (*entities.User, error) {
+func GetCurrentUserProfile(userID string) (*entities.User, error) {
+	return GetUser(userID)
+}
+
+func UpdateCurrentUserProfile(userID, fullname, email, bio string) (*entities.User, error) {
+	user, err := GetUser(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	user.Fullname = strings.TrimSpace(fullname)
+	user.Email = strings.TrimSpace(email)
+	user.Bio = strings.TrimSpace(bio)
+
+	if err := db.DB.Save(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func UpdateUser(userID, fullname, email, bio, phone string) (*entities.User, error) {
 	user, err := GetUser(userID)
 	if err != nil {
 		return nil, err
@@ -141,12 +162,35 @@ func UpdateUser(userID string, fullname, email, phone string) (*entities.User, e
 
 	user.Fullname = fullname
 	user.Email = email
+	user.Bio = bio
 	user.Phone = phone
 
 	if err := db.DB.Save(user).Error; err != nil {
 		return nil, err
 	}
 	return user, nil
+}
+
+func ChangeCurrentUserPassword(userID, currentPassword, newPassword string) error {
+	user, err := GetUser(userID)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
+		return ErrInvalidCurrentPassword
+	}
+
+	return ChangeUserPassword(userID, newPassword)
+}
+
+func ChangeUserPassword(userID, newPassword string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Model(&entities.User{}).Where("id = ?", userID).Update("password", string(hashedPassword)).Error
 }
 
 // countAdmins returns the number of admin users in the system.

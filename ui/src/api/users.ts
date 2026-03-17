@@ -5,6 +5,7 @@ export interface User {
   username: string
   email: string
   fullname?: string
+  bio?: string
   role: string
   created_at: string
 }
@@ -38,6 +39,17 @@ export interface ListUsersParams {
   search?: string
 }
 
+export interface UpdateMyProfileRequest {
+  fullname: string
+  email: string
+  bio: string
+}
+
+export interface UpdateMyPasswordRequest {
+  current_password: string
+  new_password: string
+}
+
 export const usersApi = {
   list: async (params: ListUsersParams = {}) => {
     const searchParams = new URLSearchParams()
@@ -51,6 +63,15 @@ export const usersApi = {
   },
   create: async (data: CreateUserRequest) => {
     return client.post('/v1/users', data) as Promise<User>
+  },
+  getMe: async () => {
+    return client.get('/v1/users/me') as Promise<User>
+  },
+  updateMyProfile: async (data: UpdateMyProfileRequest) => {
+    return client.put('/v1/users/me/profile', data) as Promise<User>
+  },
+  updateMyPassword: async (data: UpdateMyPasswordRequest) => {
+    return client.patch('/v1/users/me/password', data) as Promise<void>
   },
   importUsers: async (file: File, type: 'json' | 'csv' | 'excel' = 'json') => {
     const formData = new FormData()
@@ -69,6 +90,6 @@ export const usersApi = {
     return client.patch(`/v1/users/${id}/role`, { role })
   },
   updatePassword: async (id: string, password: string) => {
-    return client.patch(`/v1/users/${id}/password`, { password })
+    return client.patch(`/v1/users/${id}/password`, { password }) as Promise<void>
   },
 }

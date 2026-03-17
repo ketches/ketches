@@ -158,7 +158,7 @@ export function DataTable<TData, TValue>({
   // Card mode: select-all checkbox and selected count shown in toolbar
   // Card mode: select-all shown on DataTable hover or when rows are selected
   const hasSelection = table.getFilteredSelectedRowModel().rows.length > 0
-  const cardSelectAll = viewMode === "card" ? (
+  const cardSelectAll = viewMode === "card" && batchActions ? (
     <label className={cn(
       "flex items-center gap-2 cursor-pointer transition-opacity",
       hasSelection ? "opacity-100" : "opacity-0 group-hover/datatable:opacity-100"
@@ -319,18 +319,19 @@ export function DataTable<TData, TValue>({
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <div key={row.id} className="relative group">
-                  <div className={cn(
-                    "absolute top-2 left-2 z-10 transition-opacity",
-                    row.getIsSelected() ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                    table.getFilteredSelectedRowModel().rows.length > 0 ? "opacity-100" : ""
-                  )}>
-                    <Checkbox
-                      checked={row.getIsSelected()}
-                      onCheckedChange={(value) => row.toggleSelected(!!value)}
-                      aria-label="Select row"
-                      className="bg-background"
-                    />
-                  </div>
+                  {batchActions && (
+                    <div className={cn(
+                      "absolute top-2 left-2 z-10 transition-opacity",
+                      row.getIsSelected() ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                      table.getFilteredSelectedRowModel().rows.length > 0 ? "opacity-100" : ""
+                    )}>
+                      <Checkbox
+                        checked={row.getIsSelected()}
+                        onCheckedChange={(value) => row.toggleSelected(!!value)}
+                        aria-label="Select row"
+                        className="bg-background"
+                      />
+                    </div>)}
                   {renderCard?.(row.original, table)}
                 </div>
               ))

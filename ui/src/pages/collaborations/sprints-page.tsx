@@ -144,6 +144,7 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
     },
     {
       id: "actions",
+      header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
         const item = row.original
         return (

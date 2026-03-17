@@ -191,7 +191,7 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
   const columns: ColumnDef<TreeItem<Requirement>>[] = [
     {
       accessorKey: "title",
-      header: "Title",
+      header: () => <div className="ml-6">Title</div>,
       cell: ({ row }) => {
         const item = row.original
         const hasChildren = item.children && item.children.length > 0
@@ -259,11 +259,12 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
     },
     {
       accessorKey: "created_at",
-      header: "Created",
+      header: "Created At",
       cell: ({ row }) => <span className="text-xs text-muted-foreground">{formatDate(row.original.created_at)}</span>,
     },
     {
       id: "actions",
+      header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
         const item = row.original
         return (

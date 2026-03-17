@@ -10,14 +10,14 @@ import {
 import { Input } from "@/components/ui/input"
 
 interface PasswordFormProps {
-  onSave?: (data: { currentPassword: string; newPassword: string }) => void
+  onSave?: (data: { currentPassword: string; newPassword: string }) => Promise<void> | void
+  isSaving?: boolean
 }
 
-export function PasswordForm({ onSave }: PasswordFormProps) {
+export function PasswordForm({ onSave, isSaving = false }: PasswordFormProps) {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,18 +34,13 @@ export function PasswordForm({ onSave }: PasswordFormProps) {
       return
     }
 
-    setIsSaving(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    onSave?.({ currentPassword, newPassword })
-    setIsSaving(false)
-
-    // Reset form
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
+    try {
+      await onSave?.({ currentPassword, newPassword })
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch {
+    }
   }
 
   return (

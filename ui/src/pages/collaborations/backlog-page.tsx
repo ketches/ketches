@@ -208,11 +208,12 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
     },
     {
       accessorKey: "created_at",
-      header: "Created",
+      header: "Created At",
       cell: ({ row }) => <span className="text-xs text-muted-foreground">{formatDate(row.original.created_at)}</span>,
     },
     {
       id: "actions",
+      header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
         const requirement = row.original
         return (
@@ -315,7 +316,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
               onClick={() => setPlanToSprintOpen(true)}
             >
               <ArrowRight className="h-4 w-4" />
-              Plan to Sprint ({selectedIds.length})
+              Plan to Sprint {selectedIds.length > 0 && `(${selectedIds.length})`}
             </Button>
           </>
         )}

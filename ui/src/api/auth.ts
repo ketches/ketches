@@ -6,6 +6,7 @@ export interface SignInResponse {
         username: string;
         email: string;
         fullname: string;
+        bio?: string;
         role: string;
     };
     access_token: string;

@@ -38,8 +38,24 @@ type UserResponse struct {
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	Fullname  string    `json:"fullname"`
+	Bio       string    `json:"bio"`
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type UpdateCurrentUserProfileRequest struct {
+	Fullname string `json:"fullname" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Bio      string `json:"bio"`
+}
+
+type ChangeCurrentUserPasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=8"`
+}
+
+type ChangeUserPasswordRequest struct {
+	Password string `json:"password" binding:"required,min=6"`
 }
 
 // BatchImportRequest represents a batch of users to import

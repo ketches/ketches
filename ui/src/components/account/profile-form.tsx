@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -8,44 +8,47 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 interface ProfileFormProps {
   user: {
-    name: string
+    fullname: string
     email: string
+    bio?: string
     avatar: string
   }
-  onSave?: (data: { name: string; email: string; bio: string }) => void
+  onSave?: (data: { fullname: string; email: string; bio: string }) => Promise<void> | void
+  isSaving?: boolean
 }
 
-export function ProfileForm({ user, onSave }: ProfileFormProps) {
-  const [name, setName] = useState(user.name)
+export function ProfileForm({ user, onSave, isSaving = false }: ProfileFormProps) {
+  const [fullname, setFullname] = useState(user.fullname)
   const [email, setEmail] = useState(user.email)
-  const [bio, setBio] = useState("")
-  const [isSaving, setIsSaving] = useState(false)
+  const [bio, setBio] = useState(user.bio ?? "")
+
+  useEffect(() => {
+    setFullname(user.fullname)
+    setEmail(user.email)
+    setBio(user.bio ?? "")
+  }, [user.bio, user.email, user.fullname])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSaving(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    onSave?.({ name, email, bio })
-    setIsSaving(false)
+    await onSave?.({ fullname, email, bio })
   }
 
   return (
     <form onSubmit={handleSubmit}>
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="name">Name *</FieldLabel>
+          <FieldLabel htmlFor="fullname">Full Name *</FieldLabel>
           <FieldContent>
             <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
+              id="fullname"
+              value={fullname}
+              onChange={(e) => setFullname(e.target.value)}
+              placeholder="Your full name"
+              required
             />
           </FieldContent>
         </Field>
@@ -58,17 +61,19 @@ export function ProfileForm({ user, onSave }: ProfileFormProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
+              required
             />
           </FieldContent>
         </Field>
         <Field>
           <FieldLabel htmlFor="bio">Bio</FieldLabel>
           <FieldContent>
-            <Input
+            <Textarea
               id="bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us about yourself"
+              rows={4}
             />
           </FieldContent>
         </Field>

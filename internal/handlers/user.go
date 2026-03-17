@@ -34,6 +34,7 @@ func SignUp(c *gin.Context) {
 		Username:  user.Username,
 		Email:     user.Email,
 		Fullname:  user.Fullname,
+		Bio:       user.Bio,
 		Role:      user.Role,
 		CreatedAt: user.CreatedAt,
 	})
@@ -70,6 +71,7 @@ func SignIn(c *gin.Context) {
 			Username:  user.Username,
 			Email:     user.Email,
 			Fullname:  user.Fullname,
+			Bio:       user.Bio,
 			Role:      user.Role,
 			CreatedAt: user.CreatedAt,
 		},
@@ -115,6 +117,7 @@ func ListUsers(c *gin.Context) {
 			Username:  u.Username,
 			Email:     u.Email,
 			Fullname:  u.Fullname,
+			Bio:       u.Bio,
 			Role:      u.Role,
 			CreatedAt: u.CreatedAt,
 		})
@@ -133,6 +136,7 @@ func UpdateUser(c *gin.Context) {
 	var req struct {
 		Fullname string `json:"fullname"`
 		Email    string `json:"email"`
+		Bio      string `json:"bio"`
 		Phone    string `json:"phone"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -140,7 +144,7 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	user, err := services.UpdateUser(userID, req.Fullname, req.Email, req.Phone)
+	user, err := services.UpdateUser(userID, req.Fullname, req.Email, req.Bio, req.Phone)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -151,8 +155,105 @@ func UpdateUser(c *gin.Context) {
 		Username: user.Username,
 		Email:    user.Email,
 		Fullname: user.Fullname,
+		Bio:      user.Bio,
 		Role:     user.Role,
 	})
+}
+
+func GetCurrentUserProfile(c *gin.Context) {
+	claims := api.GetClaims(c)
+	if claims == nil {
+		api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
+		return
+	}
+
+	user, err := services.GetCurrentUserProfile(claims.UserID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, models.UserResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		Fullname:  user.Fullname,
+		Bio:       user.Bio,
+		Role:      user.Role,
+		CreatedAt: user.CreatedAt,
+	})
+}
+
+func UpdateCurrentUserProfile(c *gin.Context) {
+	claims := api.GetClaims(c)
+	if claims == nil {
+		api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
+		return
+	}
+
+	var req models.UpdateCurrentUserProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	user, err := services.UpdateCurrentUserProfile(claims.UserID, req.Fullname, req.Email, req.Bio)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, models.UserResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		Fullname:  user.Fullname,
+		Bio:       user.Bio,
+		Role:      user.Role,
+		CreatedAt: user.CreatedAt,
+	})
+}
+
+func ChangeCurrentUserPassword(c *gin.Context) {
+	claims := api.GetClaims(c)
+	if claims == nil {
+		api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
+		return
+	}
+
+	var req models.ChangeCurrentUserPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.ChangeCurrentUserPassword(claims.UserID, req.CurrentPassword, req.NewPassword); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, services.ErrInvalidCurrentPassword) {
+			status = http.StatusBadRequest
+		}
+		api.Error(c, status, err)
+		return
+	}
+
+	api.NoContent(c)
+}
+
+func ChangeUserPassword(c *gin.Context) {
+	userID := c.Param("userID")
+
+	var req models.ChangeUserPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.ChangeUserPassword(userID, req.Password); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.NoContent(c)
 }
 
 func DeleteUser(c *gin.Context) {
@@ -205,6 +306,7 @@ func CreateUser(c *gin.Context) {
 		Username:  user.Username,
 		Email:     user.Email,
 		Fullname:  user.Fullname,
+		Bio:       user.Bio,
 		Role:      user.Role,
 		CreatedAt: user.CreatedAt,
 	})

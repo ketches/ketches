@@ -1,3 +1,4 @@
+import { usersApi } from "@/api/users"
 import { PasswordForm } from "@/components/account/password-form"
 import { ProfileForm } from "@/components/account/profile-form"
 import {
@@ -7,18 +8,73 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuthStore } from "@/stores/auth"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import type { AxiosError } from "axios"
+import { toast } from "sonner"
 
 interface AccountDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: {
-    name: string
+    fullname: string
     email: string
+    bio?: string
     avatar: string
   }
 }
 
 export function AccountDialog({ open, onOpenChange, user }: AccountDialogProps) {
+  const authUser = useAuthStore((state) => state.user)
+  const updateUser = useAuthStore((state) => state.updateUser)
+  const queryClient = useQueryClient()
+
+  const profileQuery = useQuery({
+    queryKey: ["users", "me"],
+    queryFn: usersApi.getMe,
+    enabled: open && Boolean(authUser?.id),
+  })
+
+  const profileMutation = useMutation({
+    mutationFn: usersApi.updateMyProfile,
+    onSuccess: (updatedUser) => {
+      updateUser({
+        fullname: updatedUser.fullname,
+        email: updatedUser.email,
+        bio: updatedUser.bio,
+      })
+      queryClient.setQueryData(["users", "me"], updatedUser)
+      void queryClient.invalidateQueries({ queryKey: ["users"] })
+      toast.success("Profile updated")
+      onOpenChange(false)
+    },
+    onError: (error: AxiosError<{ error?: string }>) => {
+      toast.error("Failed to update profile", {
+        description: error.response?.data?.error || "An unknown error occurred",
+      })
+    },
+  })
+
+  const passwordMutation = useMutation({
+    mutationFn: usersApi.updateMyPassword,
+    onSuccess: () => {
+      toast.success("Password updated successfully")
+      onOpenChange(false)
+    },
+    onError: (error: AxiosError<{ error?: string }>) => {
+      toast.error("Failed to update password", {
+        description: error.response?.data?.error || "An unknown error occurred",
+      })
+    },
+  })
+
+  const profileUser = {
+    fullname: profileQuery.data?.fullname || user.fullname,
+    email: profileQuery.data?.email || user.email,
+    bio: profileQuery.data?.bio || user.bio || "",
+    avatar: user.avatar,
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton>
@@ -32,19 +88,22 @@ export function AccountDialog({ open, onOpenChange, user }: AccountDialogProps) 
           </TabsList>
           <TabsContent value="profile">
             <ProfileForm
-              user={user}
-              onSave={(data) => {
-                console.log("Profile saved:", data)
-                onOpenChange(false)
+              user={profileUser}
+              onSave={async (data) => {
+                await profileMutation.mutateAsync(data)
               }}
+              isSaving={profileMutation.isPending}
             />
           </TabsContent>
           <TabsContent value="password">
             <PasswordForm
-              onSave={(data) => {
-                console.log("Password updated:", data)
-                onOpenChange(false)
+              onSave={async (data) => {
+                await passwordMutation.mutateAsync({
+                  current_password: data.currentPassword,
+                  new_password: data.newPassword,
+                })
               }}
+              isSaving={passwordMutation.isPending}
             />
           </TabsContent>
         </Tabs>

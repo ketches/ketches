@@ -155,6 +155,7 @@ type AppResponse struct {
 	AvailableActions []ActionMetadata `json:"available_actions"`
 	AutoScaling      *AutoScalingSpec `json:"auto_scaling"`
 	SchedulingRule   *SchedulingSpec  `json:"scheduling_rule"`
+	Probes           []ProbeSpec      `json:"probes"`
 	CreatedAt        time.Time        `json:"created_at"`
 }
 

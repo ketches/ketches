@@ -201,7 +201,12 @@ export function NavUser({
       <AccountDialog
         open={accountDialogOpen}
         onOpenChange={setAccountDialogOpen}
-        user={user}
+        user={{
+          fullname: authUser?.fullname || authUser?.username || initialUser.name,
+          email: authUser?.email || initialUser.email,
+          bio: authUser?.bio || "",
+          avatar: initialUser.avatar,
+        }}
       />
       <NotificationDialog
         open={notifDialogOpen}

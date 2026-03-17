@@ -115,10 +115,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
         description: err.response?.data?.error || "Unknown error occurred"
       })
     }
-
-
   })
-
 
   const transitionTaskMutation = useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: string }) => {
@@ -197,7 +194,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
   const columns: ColumnDef<TreeItem<Task>>[] = [
     {
       accessorKey: "title",
-      header: "Title",
+      header: () => <div className="ml-6">Title</div>,
       cell: ({ row }) => {
         const item = row.original
         const hasChildren = item.children && item.children.length > 0
@@ -275,6 +272,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
     },
     {
       id: "actions",
+      header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
         const item = row.original
         return (

@@ -62,9 +62,13 @@ func setupV1Routes(r *gin.Engine) {
 			users := authorized.Group("/users")
 			{
 				users.GET("", handlers.ListUsers)
+				users.GET("/me", handlers.GetCurrentUserProfile)
+				users.PUT("/me/profile", handlers.UpdateCurrentUserProfile)
+				users.PATCH("/me/password", handlers.ChangeCurrentUserPassword)
 				users.POST("", middlewares.AdminOnly(), handlers.CreateUser)
 				users.POST("/import", middlewares.AdminOnly(), handlers.ImportUsers)
 				users.PUT("/:userID", handlers.UpdateUser)
+				users.PATCH("/:userID/password", middlewares.AdminOnly(), handlers.ChangeUserPassword)
 				users.DELETE("/:userID", handlers.DeleteUser)
 				users.PUT("/:userID/change-role", middlewares.AdminOnly(), handlers.ChangeUserRole)
 				users.PATCH("/:userID/role", middlewares.AdminOnly(), handlers.ChangeUserRole)

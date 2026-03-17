@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,6 +19,8 @@ import (
 	"github.com/ketches/ketches/internal/routes"
 	"github.com/ketches/ketches/internal/services"
 )
+
+const serverShutdownTimeout = 10 * time.Second
 
 func init() {
 	app.PrintVersionBanner()
@@ -65,7 +69,45 @@ func main() {
 	routes.SetupRoutes(r)
 
 	log.Printf("server starting on :%s", app.Config.Port)
-	if err := r.Run(":" + app.Config.Port); err != nil {
+	listener, err := net.Listen("tcp", ":"+app.Config.Port)
+	if err != nil {
+		log.Fatalf("failed to listen on :%s: %v", app.Config.Port, err)
+	}
+
+	srv := &http.Server{
+		Addr:    ":" + app.Config.Port,
+		Handler: r,
+	}
+
+	if err := runServer(rootCtx, srv, listener, serverShutdownTimeout); err != nil {
 		log.Fatalf("failed to start server: %v", err)
+	}
+}
+
+func runServer(ctx context.Context, srv *http.Server, listener net.Listener, shutdownTimeout time.Duration) error {
+	serverErrCh := make(chan error, 1)
+	go func() {
+		serverErrCh <- srv.Serve(listener)
+	}()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+
+		err := <-serverErrCh
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	case err := <-serverErrCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
 	}
 }

@@ -495,7 +495,17 @@ func UpdateAppHealth(ctx context.Context, appID string, req *models.UpdateAppHea
 	}
 
 	// Re-fetch to get updated probes
-	return GetAppContext(ctx, appCtx.App.ID)
+	updatedCtx, err := GetAppContext(ctx, appCtx.App.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply updated config to Kubernetes so container probe specs are reconciled
+	if err := ApplyApp(ctx, updatedCtx); err != nil {
+		return nil, err
+	}
+
+	return updatedCtx, nil
 }
 
 func UpdateAppScheduling(ctx context.Context, appID string, req *models.UpdateAppSchedulingRequest) (*models.AppContext, error) {
@@ -1175,6 +1185,27 @@ func ToAppResponse(c context.Context, appCtx *models.AppContext) models.AppRespo
 			NodeSelector: appCtx.SchedulingRule.NodeSelector,
 			NodeAffinity: appCtx.SchedulingRule.NodeAffinity,
 			Tolerations:  appCtx.SchedulingRule.Tolerations,
+		}
+	}
+
+	// Map probes from AppContext to response
+	if len(appCtx.Probes) > 0 {
+		res.Probes = make([]models.ProbeSpec, len(appCtx.Probes))
+		for i, p := range appCtx.Probes {
+			res.Probes[i] = models.ProbeSpec{
+				Type:                p.Type,
+				ProbeMode:           p.ProbeMode,
+				Enabled:             p.Enabled,
+				HttpGetPath:         p.HttpGetPath,
+				HttpGetPort:         p.HttpGetPort,
+				TcpSocketPort:       p.TcpSocketPort,
+				ExecCommand:         p.ExecCommand,
+				InitialDelaySeconds: p.InitialDelaySeconds,
+				PeriodSeconds:       p.PeriodSeconds,
+				TimeoutSeconds:      p.TimeoutSeconds,
+				SuccessThreshold:    p.SuccessThreshold,
+				FailureThreshold:    p.FailureThreshold,
+			}
 		}
 	}
 
