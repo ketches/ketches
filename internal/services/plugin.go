@@ -34,6 +34,7 @@ func CreatePlugin(req *models.CreatePluginRequest) (*entities.Plugin, error) {
 		Name:             req.Name,
 		Description:      req.Description,
 		Image:            req.Image,
+		ImagePullPolicy:  req.ImagePullPolicy,
 		RegistryUsername: req.RegistryUsername,
 		RegistryPassword: req.RegistryPassword,
 		Command:          req.Command,
@@ -137,6 +138,9 @@ func UpdatePlugin(pluginID string, req *models.UpdatePluginRequest) (*entities.P
 	}
 	if req.Image != "" {
 		updates["image"] = req.Image
+	}
+	if req.ImagePullPolicy != "" {
+		updates["image_pull_policy"] = req.ImagePullPolicy
 	}
 	if req.RegistryUsername != "" {
 		updates["registry_username"] = req.RegistryUsername

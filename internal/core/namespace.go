@@ -66,6 +66,10 @@ func CreateNamespace(ctx context.Context, clusterID, namespaceName string, envCt
 		return err
 	}
 
+	if err := CreateDefaultResourceQuota(ctx, clusterID, namespaceName); err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -257,8 +257,9 @@ func (m *AppMetadata) getSelectorLabels() map[string]string {
 
 func (m *AppMetadata) buildContainer() corev1.Container {
 	container := corev1.Container{
-		Name:  "app-" + m.AppContext.App.Slug,
-		Image: m.AppContext.App.ContainerImage,
+		Name:            "app-" + m.AppContext.App.Slug,
+		Image:           m.AppContext.App.ContainerImage,
+		ImagePullPolicy: resolveImagePullPolicy(m.AppContext.App.ImagePullPolicy, m.AppContext.App.ContainerImage),
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%dm", m.AppContext.App.RequestCPU)),
@@ -360,8 +361,9 @@ func (m *AppMetadata) buildSidecarContainers() []corev1.Container {
 
 func (m *AppMetadata) buildPluginContainer(plugin *entities.Plugin) corev1.Container {
 	container := corev1.Container{
-		Name:  plugin.Slug,
-		Image: plugin.Image,
+		Name:            plugin.Slug,
+		Image:           plugin.Image,
+		ImagePullPolicy: resolveImagePullPolicy(plugin.ImagePullPolicy, plugin.Image),
 	}
 
 	if plugin.Command != "" {
@@ -563,4 +565,24 @@ func ptrInt32(i int32) *int32 {
 
 func ptrPort(p gatewayv1.PortNumber) *gatewayv1.PortNumber {
 	return &p
+}
+
+func resolveImagePullPolicy(policy, image string) corev1.PullPolicy {
+	if policy != "" {
+		return corev1.PullPolicy(policy)
+	}
+	tag := extractImageTag(image)
+	if tag == "latest" || tag == "" {
+		return corev1.PullAlways
+	}
+	return corev1.PullIfNotPresent
+}
+
+func extractImageTag(image string) string {
+	withoutDigest := strings.SplitN(image, "@", 2)[0]
+	parts := strings.SplitN(withoutDigest, ":", 2)
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[1]
 }

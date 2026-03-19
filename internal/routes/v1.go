@@ -184,6 +184,7 @@ func setupV1Routes(r *gin.Engine) {
 			{
 				envsRead := envs.Group("", middlewares.RequireProjectRole(app.ProjectRoleViewer))
 				envsRead.GET("/:envID", handlers.GetEnv)
+				envsRead.GET("/:envID/resource-quota", handlers.GetEnvResourceQuota)
 				envsRead.GET("/:envID/apps", handlers.ListApps)
 				envsRead.GET("/:envID/apps/simple", handlers.ListAppsSimple)
 				envsRead.GET("/:envID/apps/export", handlers.ExportEnvApps)
@@ -199,6 +200,7 @@ func setupV1Routes(r *gin.Engine) {
 				envsWrite.DELETE("/:envID", handlers.DeleteEnv)
 				envsWrite.PATCH("/:envID/set-build-env", handlers.SetBuildEnv)
 				envsWrite.PATCH("/:envID/unset-build-env", handlers.UnsetBuildEnv)
+				envsWrite.PUT("/:envID/resource-quota", handlers.UpdateEnvResourceQuota)
 				envsWrite.POST("/:envID/apps", handlers.CreateApp)
 				envsWrite.POST("/:envID/apps/import", handlers.ImportApps)
 				envsWrite.POST("/:envID/app-groups", handlers.CreateAppGroup)

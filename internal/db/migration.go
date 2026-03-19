@@ -16,6 +16,7 @@ func Migrate() error {
 		&entities.Project{},
 		&entities.ProjectMember{},
 		&entities.Env{},
+		&entities.EnvResourceQuota{},
 		&entities.App{},
 		&entities.AppEnvVar{},
 		&entities.AppVolume{},

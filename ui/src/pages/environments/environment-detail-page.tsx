@@ -15,6 +15,7 @@ import {
   Orbit,
   Pencil,
   RefreshCw,
+  Settings2,
   ShieldCheck,
   ShipWheel,
   Telescope,
@@ -31,6 +32,7 @@ import { envsApi } from "@/api/envs"
 import { ApplicationList } from "@/components/applications/application-list"
 import { EditEnvironmentDialog } from "@/components/environment/edit-environment-dialog"
 import { EnvCertificates } from "@/components/environment/env-certificates"
+import { EnvSettingsTab } from "@/components/environment/env-settings-tab"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-resource-metrics"
@@ -261,6 +263,10 @@ export function EnvironmentDetailPage() {
             <ShieldCheck />
             Certificates
           </TabsTrigger>
+          <TabsTrigger value="settings">
+            <Settings2 />
+            Settings
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="group/card space-y-4 mt-2">
@@ -420,6 +426,10 @@ export function EnvironmentDetailPage() {
 
         <TabsContent value="certificates" className="space-y-4 mt-2">
           <EnvCertificates envId={envId!} isViewer={isViewer} />
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-4 mt-2">
+          <EnvSettingsTab envId={envId!} isViewer={isViewer} />
         </TabsContent>
       </Tabs>
 

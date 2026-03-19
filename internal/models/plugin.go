@@ -21,6 +21,7 @@ type CreatePluginRequest struct {
 	Name             string         `json:"name" binding:"required"`
 	Description      string         `json:"description"`
 	Image            string         `json:"image" binding:"required"`
+	ImagePullPolicy  string         `json:"image_pull_policy"`
 	RegistryUsername string         `json:"registry_username"`
 	RegistryPassword string         `json:"registry_password"`
 	Command          string         `json:"command"`
@@ -32,6 +33,7 @@ type UpdatePluginRequest struct {
 	Name             string         `json:"name"`
 	Description      string         `json:"description"`
 	Image            string         `json:"image"`
+	ImagePullPolicy  string         `json:"image_pull_policy"`
 	RegistryUsername string         `json:"registry_username"`
 	RegistryPassword string         `json:"registry_password"`
 	Command          string         `json:"command"`
@@ -45,6 +47,7 @@ type PluginResponse struct {
 	Name             string         `json:"name"`
 	Description      string         `json:"description"`
 	Image            string         `json:"image"`
+	ImagePullPolicy  string         `json:"image_pull_policy"`
 	RegistryUsername string         `json:"registry_username"`
 	Command          string         `json:"command"`
 	EnvVars          []PluginEnvVar `json:"env_vars"`

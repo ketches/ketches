@@ -298,6 +298,7 @@ func toPluginResponse(plugin any) models.PluginResponse {
 		Name:             p.Name,
 		Description:      p.Description,
 		Image:            p.Image,
+		ImagePullPolicy:  p.ImagePullPolicy,
 		RegistryUsername: p.RegistryUsername,
 		Command:          p.Command,
 		EnvVars:          envVars,

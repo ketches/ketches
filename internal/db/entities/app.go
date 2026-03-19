@@ -11,6 +11,7 @@ type App struct {
 	AppType     string `gorm:"type:varchar(32);default:'Deployment'"`
 
 	ContainerImage   string `gorm:"type:varchar(256);not null"`
+	ImagePullPolicy  string `gorm:"type:varchar(32);default:'IfNotPresent'"`
 	ContainerCommand string `gorm:"type:text"`
 	RegistryUsername string `gorm:"type:varchar(128)"`
 	RegistryPassword string `gorm:"type:varchar(256)"`

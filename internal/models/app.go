@@ -20,6 +20,7 @@ type CreateAppRequest struct {
 	Description      string `json:"description"`
 	AppType          string `json:"app_type"`
 	ContainerImage   string `json:"container_image" binding:"required"`
+	ImagePullPolicy  string `json:"image_pull_policy"`
 	RegistryUsername string `json:"registry_username"`
 	RegistryPassword string `json:"registry_password"`
 	Replicas         int    `json:"replicas"`
@@ -143,6 +144,7 @@ type AppResponse struct {
 	AppType          string           `json:"app_type"`
 	CodeRepositoryID string           `json:"code_repository_id,omitempty"` // when set, app was deployed from this code repo
 	ContainerImage   string           `json:"container_image"`
+	ImagePullPolicy  string           `json:"image_pull_policy"`
 	ContainerCommand string           `json:"container_command"`
 	RegistryUsername string           `json:"registry_username"`
 	RegistryPassword string           `json:"registry_password"`
@@ -279,6 +281,7 @@ type AppTopologyResponse struct {
 
 type UpdateAppImageRequest struct {
 	ContainerImage   string `json:"container_image" binding:"required"`
+	ImagePullPolicy  string `json:"image_pull_policy"`
 	RegistryUsername string `json:"registry_username"`
 	RegistryPassword string `json:"registry_password"`
 }
@@ -328,6 +331,7 @@ type AppListRow struct {
 	AppType          string    `gorm:"column:app_type"`
 	CodeRepositoryID *string   `gorm:"column:code_repository_id"`
 	ContainerImage   string    `gorm:"column:container_image"`
+	ImagePullPolicy  string    `gorm:"column:image_pull_policy"`
 	ContainerCommand string    `gorm:"column:container_command"`
 	RegistryUsername string    `gorm:"column:registry_username"`
 	RegistryPassword string    `gorm:"column:registry_password"`

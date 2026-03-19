@@ -11,6 +11,7 @@ type Plugin struct {
 	Name             string    `gorm:"type:varchar(128);not null"`
 	Description      string    `gorm:"type:text"`
 	Image            string    `gorm:"type:varchar(256);not null"`
+	ImagePullPolicy  string    `gorm:"type:varchar(32);default:'IfNotPresent'"`
 	RegistryUsername string    `gorm:"type:varchar(128)"`
 	RegistryPassword string    `gorm:"type:varchar(256)"`
 	Command          string    `gorm:"type:text"`

@@ -197,3 +197,33 @@ func DeleteEnv(c *gin.Context) {
 	}
 	api.NoContent(c)
 }
+
+func GetEnvResourceQuota(c *gin.Context) {
+	envID := c.Param("envID")
+
+	result, err := services.GetResourceQuota(envID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, result)
+}
+
+func UpdateEnvResourceQuota(c *gin.Context) {
+	envID := c.Param("envID")
+
+	var req models.UpdateResourceQuotaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	result, err := services.UpdateResourceQuota(envID, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, result)
+}

@@ -53,3 +53,19 @@ type RecycleBinEnvRow struct {
 	ProjectSlug string `gorm:"column:project_slug"`
 	ClusterName string `gorm:"column:cluster_name"`
 }
+
+type ResourceQuotaResponse struct {
+	CPURequest    string `json:"cpu_request"`
+	CPULimit      string `json:"cpu_limit"`
+	MemoryRequest string `json:"memory_request"`
+	MemoryLimit   string `json:"memory_limit"`
+	Pods          string `json:"pods"`
+}
+
+type UpdateResourceQuotaRequest struct {
+	CPURequest    string `json:"cpu_request" binding:"required"`
+	CPULimit      string `json:"cpu_limit" binding:"required"`
+	MemoryRequest string `json:"memory_request" binding:"required"`
+	MemoryLimit   string `json:"memory_limit" binding:"required"`
+	Pods          string `json:"pods" binding:"required"`
+}

@@ -8,6 +8,7 @@ export interface Plugin {
   name: string
   description: string
   image: string
+  image_pull_policy?: string
   registry_username: string
   command: string
   env_vars: { key: string, value: string }[]
@@ -45,6 +46,7 @@ export interface CreatePluginRequest {
   name: string
   description: string
   image: string
+  image_pull_policy?: string
   registry_username?: string
   command?: string
   env_vars?: { key: string, value: string }[]
@@ -55,6 +57,7 @@ export interface UpdatePluginRequest {
   name?: string
   description?: string
   image?: string
+  image_pull_policy?: string
   registry_username?: string
   command?: string
   env_vars?: { key: string, value: string }[]

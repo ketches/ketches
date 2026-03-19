@@ -110,6 +110,7 @@ func CreateApp(ctx context.Context, envID string, req *models.CreateAppRequest) 
 		Description:      req.Description,
 		EnvID:            envID,
 		ContainerImage:   req.ContainerImage,
+		ImagePullPolicy:  req.ImagePullPolicy,
 		ContainerCommand: req.ContainerCommand,
 		RegistryUsername: req.RegistryUsername,
 		RegistryPassword: req.RegistryPassword,
@@ -374,6 +375,7 @@ func UpdateAppImage(ctx context.Context, appID string, req *models.UpdateAppImag
 	}
 
 	appCtx.App.ContainerImage = req.ContainerImage
+	appCtx.App.ImagePullPolicy = req.ImagePullPolicy
 	appCtx.App.RegistryUsername = req.RegistryUsername
 	if req.RegistryPassword != "" {
 		appCtx.App.RegistryPassword = req.RegistryPassword
@@ -1158,6 +1160,7 @@ func ToAppResponse(c context.Context, appCtx *models.AppContext) models.AppRespo
 		AppType:          a.AppType,
 		CodeRepositoryID: derefString(a.CodeRepositoryID),
 		ContainerImage:   a.ContainerImage,
+		ImagePullPolicy:  a.ImagePullPolicy,
 		ContainerCommand: a.ContainerCommand,
 		RegistryUsername: a.RegistryUsername,
 		RegistryPassword: a.RegistryPassword,

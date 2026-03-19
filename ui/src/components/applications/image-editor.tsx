@@ -19,6 +19,12 @@ import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { AxiosError } from "axios"
 
+const IMAGE_PULL_POLICY_OPTIONS = [
+  { label: "IfNotPresent", value: "IfNotPresent" },
+  { label: "Always", value: "Always" },
+  { label: "Never", value: "Never" },
+]
+
 interface ImageEditorProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -41,6 +47,7 @@ export function ImageEditor({
 
   const [formData, setFormData] = React.useState({
     container_image: "",
+    image_pull_policy: "",
     registry_username: "",
     registry_password: "",
   })
@@ -49,6 +56,7 @@ export function ImageEditor({
     if (app && open) {
       setFormData({
         container_image: app.container_image,
+        image_pull_policy: app.image_pull_policy || "IfNotPresent",
         registry_username: app.registry_username || "",
         registry_password: app.registry_password || "",
       })
@@ -109,7 +117,7 @@ export function ImageEditor({
   }, [app, tagsQuery])
 
   const mutation = useMutation({
-    mutationFn: (data: { container_image: string; registry_username?: string; registry_password?: string }) => {
+    mutationFn: (data: { container_image: string, image_pull_policy?: string, registry_username?: string, registry_password?: string }) => {
       if (!app) throw new Error("No application selected")
       return appsApi.updateImage(app.id, data)
     },
@@ -143,90 +151,11 @@ export function ImageEditor({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            <Field>
-              <div className="flex items-center gap-2">
-                <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
-                <div className="flex items-center gap-1 ml-auto">
-                  <Tooltip>
-                    <TooltipTrigger
-                      delay={200}
-                      render={
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="icon-sm"
-                          aria-label="Refresh image options"
-                          disabled={tagsQuery.isFetching}
-                          onClick={() => {
-                            void handleRefreshImageOptions()
-                          }}
-                        >
-                          <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
-                        </Button>
-                      }
-                    >
-                      <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
-                    </TooltipTrigger>
-                    <TooltipContent>Refresh image options</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger
-                      delay={200}
-                      render={
-                        <Button
-                          type="button"
-                          variant={showCredentials ? "default" : "secondary"}
-                          size="icon-sm"
-                          aria-label="Registry credentials"
-                          aria-pressed={showCredentials}
-                          onClick={() => setShowCredentials((prev) => !prev)}
-                          className="ml-auto"
-                        />
-                      }
-                    >
-                      <Key />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Registry Credentials</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-              <FieldContent>
-                {/* <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1"> */}
-                {/* <div className="min-w-0"> */}
-                <Combobox
-                  open={imageOptionsOpen}
-                  onOpenChange={setImageOptionsOpen}
-                  value={formData.container_image}
-                  onValueChange={handleImageOptionChange}
-                  itemToStringLabel={(value) =>
-                    imageOptions.find((option) => option.value === value)?.label ?? value ?? ""
-                  }
-                >
-                  <ComboboxInput
-                    id="container-image"
-                    name="container_image"
-                    placeholder="e.g. nginx:latest"
-                    value={formData.container_image}
-                    onInput={(e) => handleContainerImageChange((e.target as HTMLInputElement).value)}
-                    onChange={(e) => handleContainerImageChange(e.target.value)}
-                    required
-                    className="w-full"
-                  />
-                  <ComboboxContent>
-                    <ComboboxList>
-                      {imageOptions.map((option) => (
-                        <ComboboxItem key={option.value} value={option.value}>
-                          {option.label}
-                        </ComboboxItem>
-                      ))}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-                {/* </div> */}
-
-                {/* <div className="flex items-center gap-1">
+            <div className="grid grid-cols-[3fr_1fr] gap-4">
+              <Field>
+                <div className="flex items-center gap-2">
+                  <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
+                  <div className="flex items-center gap-1 ml-auto">
                     <Tooltip>
                       <TooltipTrigger
                         delay={200}
@@ -234,11 +163,11 @@ export function ImageEditor({
                           <Button
                             type="button"
                             variant="secondary"
-                            size="icon"
+                            size="icon-sm"
                             aria-label="Refresh image options"
                             disabled={tagsQuery.isFetching}
                             onClick={() => {
-                              void tagsQuery.refetch()
+                              void handleRefreshImageOptions()
                             }}
                           >
                             <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
@@ -256,7 +185,7 @@ export function ImageEditor({
                           <Button
                             type="button"
                             variant={showCredentials ? "default" : "secondary"}
-                            size="icon"
+                            size="icon-sm"
                             aria-label="Registry credentials"
                             aria-pressed={showCredentials}
                             onClick={() => setShowCredentials((prev) => !prev)}
@@ -271,21 +200,79 @@ export function ImageEditor({
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                </div> */}
+                </div>
+                <FieldContent>
+                  <Combobox
+                    open={imageOptionsOpen}
+                    onOpenChange={setImageOptionsOpen}
+                    value={formData.container_image}
+                    onValueChange={handleImageOptionChange}
+                    itemToStringLabel={(value) =>
+                      imageOptions.find((option) => option.value === value)?.label ?? value ?? ""
+                    }
+                  >
+                    <ComboboxInput
+                      id="container-image"
+                      name="container_image"
+                      placeholder="e.g. nginx:latest"
+                      value={formData.container_image}
+                      onInput={(e) => handleContainerImageChange((e.target as HTMLInputElement).value)}
+                      onChange={(e) => handleContainerImageChange(e.target.value)}
+                      required
+                      className="w-full"
+                    />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {imageOptions.map((option) => (
+                          <ComboboxItem key={option.value} value={option.value}>
+                            {option.label}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                  {tagsQuery.isLoading && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Loading image options...
+                    </div>
+                  )}
+                  {tagsQuery.isError && (
+                    <p className="text-xs text-destructive py-1">
+                      Failed to load image options. You can still enter an image manually.
+                    </p>
+                  )}
+                </FieldContent>
+              </Field>
 
-                {tagsQuery.isLoading && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Loading image options...
-                  </div>
-                )}
-                {tagsQuery.isError && (
-                  <p className="text-xs text-destructive py-1">
-                    Failed to load image options. You can still enter an image manually.
-                  </p>
-                )}
-              </FieldContent>
-            </Field>
+              <Field>
+                <FieldLabel htmlFor="image-pull-policy" className="h-6">Pull Policy</FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    value={formData.image_pull_policy}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, image_pull_policy: value ?? "IfNotPresent" }))}
+                    itemToStringLabel={(v) => IMAGE_PULL_POLICY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                  >
+                    <ComboboxInput
+                      id="image-pull-policy"
+                      name="image_pull_policy"
+                      value={formData.image_pull_policy}
+                      readOnly
+                      className="w-full cursor-pointer"
+                    />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {IMAGE_PULL_POLICY_OPTIONS.map((option) => (
+                          <ComboboxItem key={option.value} value={option.value}>
+                            {option.label}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </FieldContent>
+              </Field>
+            </div>
 
             {showCredentials && (
               <div className="grid grid-cols-2 gap-4">

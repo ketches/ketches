@@ -60,6 +60,7 @@ export interface App {
   app_type: string
   code_repository_id?: string
   container_image: string
+  image_pull_policy?: string
   container_command?: string
   registry_username?: string
   registry_password?: string
@@ -142,7 +143,7 @@ export const appsApi = {
   updateBasic: async (id: string, data: Partial<App>) => {
     return client.patch(`/v1/apps/${id}/basic`, data) as Promise<App>
   },
-  updateImage: async (id: string, data: { container_image: string, registry_username?: string, registry_password?: string }) => {
+  updateImage: async (id: string, data: { container_image: string, image_pull_policy?: string, registry_username?: string, registry_password?: string }) => {
     return client.patch(`/v1/apps/${id}/image`, data) as Promise<App>
   },
   listImageTags: async (id: string) => {

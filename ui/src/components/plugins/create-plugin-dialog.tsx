@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { pluginsApi } from "@/api/plugins"
 import { KeyValueInput, type KeyValuePair } from "@/components/shared/key-value-input"
 import { Button } from "@/components/ui/button"
+import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,12 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { AxiosError } from "axios"
+
+const IMAGE_PULL_POLICY_OPTIONS = [
+  { label: "IfNotPresent", value: "IfNotPresent" },
+  { label: "Always", value: "Always" },
+  { label: "Never", value: "Never" },
+]
 
 interface CreatePluginDialogProps {
   open: boolean
@@ -48,6 +55,7 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
     slug: "",
     description: "",
     image: "",
+    image_pull_policy: "IfNotPresent",
     registry_username: "",
     registry_password: "",
     command: "",
@@ -76,6 +84,7 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
       slug: "",
       description: "",
       image: "",
+      image_pull_policy: "",
       registry_username: "",
       registry_password: "",
       command: "",
@@ -115,6 +124,7 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
       name: formData.name,
       description: formData.description,
       image: formData.image,
+      image_pull_policy: formData.image_pull_policy || undefined,
       registry_username: formData.registry_username || undefined,
       registry_password: formData.registry_password || undefined,
       command: formData.command || undefined,
@@ -216,18 +226,48 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
               </FieldContent>
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="image">Container Image *</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="image"
-                  placeholder="docker.io/library/migrate:latest"
-                  value={formData.image}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                  required
-                />
-              </FieldContent>
-            </Field>
+            <div className="grid grid-cols-[3fr_1fr] gap-4">
+              <Field>
+                <FieldLabel htmlFor="image">Container Image *</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="image"
+                    placeholder="docker.io/library/migrate:latest"
+                    value={formData.image}
+                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                    required
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="image-pull-policy">Pull Policy</FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    value={formData.image_pull_policy}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, image_pull_policy: value ?? "IfNotPresent" }))}
+                    itemToStringLabel={(v) => IMAGE_PULL_POLICY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                  >
+                    <ComboboxInput
+                      id="image-pull-policy"
+                      name="image_pull_policy"
+                      value={formData.image_pull_policy}
+                      readOnly
+                      className="w-full cursor-pointer"
+                    />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        {IMAGE_PULL_POLICY_OPTIONS.map((option) => (
+                          <ComboboxItem key={option.value} value={option.value}>
+                            {option.label}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </FieldContent>
+              </Field>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <Field>

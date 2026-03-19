@@ -100,6 +100,10 @@ func CreateEnv(projectID string, req *models.CreateEnvRequest) (*entities.Env, e
 		return nil, err
 	}
 
+	if err := CreateDefaultEnvResourceQuota(env.ID); err != nil {
+		return nil, err
+	}
+
 	// If the cluster has Gateway API CRDs, create the env-level Gateway resource.
 	// Failure is non-fatal — the env is created either way.
 	if gwErr := tryEnsureEnvGateway(context.Background(), envCtx); gwErr != nil {

@@ -30,6 +30,22 @@ export interface EnvNamespaceAvailabilityResponse {
   message: string
 }
 
+export interface ResourceQuota {
+  cpu_request: string
+  cpu_limit: string
+  memory_request: string
+  memory_limit: string
+  pods: string
+}
+
+export interface UpdateResourceQuotaRequest {
+  cpu_request: string
+  cpu_limit: string
+  memory_request: string
+  memory_limit: string
+  pods: string
+}
+
 export const envsApi = {
   list: async (projectId: string, params?: PaginationParams) => {
     return client.get(`/v1/projects/${projectId}/envs`, {
@@ -63,5 +79,11 @@ export const envsApi = {
   },
   unsetBuildEnv: async (id: string) => {
     return client.patch(`/v1/envs/${id}/unset-build-env`) as Promise<Env>
+  },
+  getResourceQuota: async (envId: string) => {
+    return client.get(`/v1/envs/${envId}/resource-quota`) as Promise<ResourceQuota>
+  },
+  updateResourceQuota: async (envId: string, data: UpdateResourceQuotaRequest) => {
+    return client.put(`/v1/envs/${envId}/resource-quota`, data) as Promise<ResourceQuota>
   },
 }
