@@ -30,6 +30,8 @@ import { ExtensionsPage } from "@/pages/extensions/extensions-page"
 import { MembersPage } from "@/pages/members/members-page"
 import { PlatformSettingsPage } from "@/pages/platform-settings/platform-settings-page"
 import { PluginsPage } from "@/pages/plugins/plugins-page"
+import { BuilderSessionsPage } from "@/pages/builder-sessions/builder-sessions-page"
+import { BuilderWorkbenchPage } from "@/pages/builder-sessions/builder-workbench-page"
 import { ProjectDetailPage } from "@/pages/projects/project-detail-page"
 import { ProjectsPage } from "@/pages/projects/projects-page"
 import { RecycleBinPage } from "@/pages/recycle-bin/recycle-bin-page"
@@ -110,6 +112,16 @@ export function App() {
             <Route path="/projects/:projectId" element={
               <ProtectedRoute>
                 <DashboardLayout><ProjectDetailPage /></DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/projects/:projectId/builder-sessions" element={
+              <ProtectedRoute>
+                <DashboardLayout><BuilderSessionsPage /></DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/projects/:projectId/builder-sessions/:sessionId" element={
+              <ProtectedRoute>
+                <DashboardLayout><BuilderWorkbenchPage /></DashboardLayout>
               </ProtectedRoute>
             } />
             <Route path="/collaborations" element={
