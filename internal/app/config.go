@@ -8,21 +8,27 @@ import (
 )
 
 type AppConfig struct {
-	LogLevel              string
-	Port                  string
-	DBDriver              string
-	DBSource              string
-	DBHost                string
-	DBPort                string
-	DBName                string
-	DBUsername            string
-	DBPassword            string
-	DBSSLMode             string
-	DBAutoMigrate         bool
-	JWTSecret             string
-	CORSAllowedOrigins    string
-	BuildLogBaseDir       string
-	BuildLogRetentionDays int
+	LogLevel               string
+	Port                   string
+	DBDriver               string
+	DBSource               string
+	DBHost                 string
+	DBPort                 string
+	DBName                 string
+	DBUsername             string
+	DBPassword             string
+	DBSSLMode              string
+	DBAutoMigrate          bool
+	JWTSecret              string
+	CORSAllowedOrigins     string
+	BuildLogBaseDir        string
+	BuildLogRetentionDays  int
+	BuilderAgentBaseURL    string
+	BuilderAgentAPIKey     string
+	BuilderAgentModel      string
+	BuilderWorkspaceImage  string
+	BuilderWorkspaceRoot   string
+	BuilderSessionTTLHours int
 }
 
 var Config AppConfig
@@ -38,21 +44,27 @@ func InitConfig() {
 	dbAutoMigrate := getEnvBool("DB_AUTO_MIGRATE", false)
 
 	Config = AppConfig{
-		LogLevel:              getEnv("LOG_LEVEL", "info"),
-		Port:                  getEnv("PORT", "8080"),
-		DBDriver:              dbDriver,
-		DBSource:              buildDBSource(dbDriver, dbHost, dbPort, dbName, dbUsername, dbPassword, dbSSLMode),
-		DBHost:                dbHost,
-		DBPort:                dbPort,
-		DBName:                dbName,
-		DBUsername:            dbUsername,
-		DBPassword:            dbPassword,
-		DBSSLMode:             dbSSLMode,
-		DBAutoMigrate:         dbAutoMigrate,
-		JWTSecret:             getEnv("JWT_SECRET", "ketches-secret-key"),
-		CORSAllowedOrigins:    getEnv("CORS_ALLOWED_ORIGINS", ""),
-		BuildLogBaseDir:       fallbackString(getEnv("BUILD_LOG_BASE_DIR", ""), "data/build-logs"),
-		BuildLogRetentionDays: getEnvInt("BUILD_LOG_RETENTION_DAYS", 15),
+		LogLevel:               getEnv("LOG_LEVEL", "info"),
+		Port:                   getEnv("PORT", "8080"),
+		DBDriver:               dbDriver,
+		DBSource:               buildDBSource(dbDriver, dbHost, dbPort, dbName, dbUsername, dbPassword, dbSSLMode),
+		DBHost:                 dbHost,
+		DBPort:                 dbPort,
+		DBName:                 dbName,
+		DBUsername:             dbUsername,
+		DBPassword:             dbPassword,
+		DBSSLMode:              dbSSLMode,
+		DBAutoMigrate:          dbAutoMigrate,
+		JWTSecret:              getEnv("JWT_SECRET", "ketches-secret-key"),
+		CORSAllowedOrigins:     getEnv("CORS_ALLOWED_ORIGINS", ""),
+		BuildLogBaseDir:        fallbackString(getEnv("BUILD_LOG_BASE_DIR", ""), "data/build-logs"),
+		BuildLogRetentionDays:  getEnvInt("BUILD_LOG_RETENTION_DAYS", 15),
+		BuilderAgentBaseURL:    getEnv("BUILDER_AGENT_BASE_URL", ""),
+		BuilderAgentAPIKey:     getEnv("BUILDER_AGENT_API_KEY", ""),
+		BuilderAgentModel:      getEnv("BUILDER_AGENT_MODEL", ""),
+		BuilderWorkspaceImage:  getEnv("BUILDER_WORKSPACE_IMAGE", ""),
+		BuilderWorkspaceRoot:   fallbackString(getEnv("BUILDER_WORKSPACE_ROOT", ""), "/workspace"),
+		BuilderSessionTTLHours: getEnvInt("BUILDER_SESSION_TTL_HOURS", 24),
 	}
 }
 
