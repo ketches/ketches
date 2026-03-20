@@ -786,6 +786,32 @@ paths:
       summary: PATCH /api/v1/apps/{appID}/image
       tags:
       - apps
+  /api/v1/apps/{appID}/image-tags:
+    get:
+      operationId: get_api_v1_apps_appid_image_tags
+      parameters:
+      - description: Path parameter
+        in: path
+        name: appID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/apps/{appID}/image-tags
+      tags:
+      - apps
   /api/v1/apps/{appID}/instances:
     get:
       operationId: get_api_v1_apps_appid_instances
@@ -4223,6 +4249,57 @@ paths:
       summary: PUT /api/v1/envs/{envID}/certificates/{certID}
       tags:
       - envs
+  /api/v1/envs/{envID}/resource-quota:
+    get:
+      operationId: get_api_v1_envs_envid_resource_quota
+      parameters:
+      - description: Path parameter
+        in: path
+        name: envID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/envs/{envID}/resource-quota
+      tags:
+      - envs
+    put:
+      operationId: put_api_v1_envs_envid_resource_quota
+      parameters:
+      - description: Path parameter
+        in: path
+        name: envID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PUT /api/v1/envs/{envID}/resource-quota
+      tags:
+      - envs
   /api/v1/envs/{envID}/set-build-env:
     patch:
       operationId: patch_api_v1_envs_envid_set_build_env
@@ -4561,6 +4638,89 @@ paths:
       summary: PUT /api/v1/gateways/{id}
       tags:
       - gateways
+  /api/v1/notifications:
+    get:
+      operationId: get_api_v1_notifications
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/notifications
+      tags:
+      - notifications
+  /api/v1/notifications/{notificationID}/action:
+    post:
+      operationId: post_api_v1_notifications_notificationid_action
+      parameters:
+      - description: Path parameter
+        in: path
+        name: notificationID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/notifications/{notificationID}/action
+      tags:
+      - notifications
+  /api/v1/notifications/read-all:
+    post:
+      operationId: post_api_v1_notifications_read_all
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/notifications/read-all
+      tags:
+      - notifications
+  /api/v1/notifications/unread-count:
+    get:
+      operationId: get_api_v1_notifications_unread_count
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/notifications/unread-count
+      tags:
+      - notifications
   /api/v1/operation-logs:
     get:
       operationId: get_api_v1_operation_logs
@@ -4617,6 +4777,156 @@ paths:
       summary: PUT /api/v1/operation-logs/settings
       tags:
       - operation-logs
+  /api/v1/platform-settings/audit-logs:
+    get:
+      operationId: get_api_v1_platform_settings_audit_logs
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/platform-settings/audit-logs
+      tags:
+      - platform-settings
+  /api/v1/platform-settings/branding:
+    get:
+      operationId: get_api_v1_platform_settings_branding
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/platform-settings/branding
+      tags:
+      - platform-settings
+    put:
+      operationId: put_api_v1_platform_settings_branding
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PUT /api/v1/platform-settings/branding
+      tags:
+      - platform-settings
+  /api/v1/platform-update/check:
+    post:
+      operationId: post_api_v1_platform_update_check
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/platform-update/check
+      tags:
+      - platform-update
+  /api/v1/platform-update/config:
+    get:
+      operationId: get_api_v1_platform_update_config
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/platform-update/config
+      tags:
+      - platform-update
+    put:
+      operationId: put_api_v1_platform_update_config
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PUT /api/v1/platform-update/config
+      tags:
+      - platform-update
+  /api/v1/platform-update/rollout:
+    post:
+      operationId: post_api_v1_platform_update_rollout
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/platform-update/rollout
+      tags:
+      - platform-update
+  /api/v1/platform-update/status:
+    get:
+      operationId: get_api_v1_platform_update_status
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/platform-update/status
+      tags:
+      - platform-update
   /api/v1/projects:
     get:
       operationId: get_api_v1_projects
@@ -4728,6 +5038,359 @@ paths:
       security:
       - BearerAuth: []
       summary: PUT /api/v1/projects/{projectID}
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/backlog:
+    get:
+      operationId: get_api_v1_projects_projectid_backlog
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/backlog
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/backlog/plan-to-sprint:
+    post:
+      operationId: post_api_v1_projects_projectid_backlog_plan_to_sprint
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/backlog/plan-to-sprint
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/backlog/reorder:
+    post:
+      operationId: post_api_v1_projects_projectid_backlog_reorder
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/backlog/reorder
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/backlog/return:
+    post:
+      operationId: post_api_v1_projects_projectid_backlog_return
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/backlog/return
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/builder-sessions:
+    get:
+      operationId: get_api_v1_projects_projectid_builder_sessions
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/builder-sessions
+      tags:
+      - projects
+    post:
+      operationId: post_api_v1_projects_projectid_builder_sessions
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/builder-sessions
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/builder-sessions/{sessionID}:
+    get:
+      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: sessionID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files:
+    get:
+      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_files
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: sessionID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files/download:
+    get:
+      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_files_download
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: sessionID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files/download
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files/read:
+    get:
+      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_files_read
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: sessionID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files/read
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/messages:
+    post:
+      operationId: post_api_v1_projects_projectid_builder_sessions_sessionid_messages
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: sessionID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/builder-sessions/{sessionID}/messages
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/logs:
+    get:
+      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_runs_runid_logs
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: sessionID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: runID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/logs
       tags:
       - projects
   /api/v1/projects/{projectID}/code-repositories:
@@ -4884,6 +5547,183 @@ paths:
       summary: GET /api/v1/projects/{projectID}/container-registries/simple
       tags:
       - projects
+  /api/v1/projects/{projectID}/defects:
+    get:
+      operationId: get_api_v1_projects_projectid_defects
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/defects
+      tags:
+      - projects
+    post:
+      operationId: post_api_v1_projects_projectid_defects
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/defects
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/defects/{defectID}:
+    delete:
+      operationId: delete_api_v1_projects_projectid_defects_defectid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: defectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: DELETE /api/v1/projects/{projectID}/defects/{defectID}
+      tags:
+      - projects
+    get:
+      operationId: get_api_v1_projects_projectid_defects_defectid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: defectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/defects/{defectID}
+      tags:
+      - projects
+    put:
+      operationId: put_api_v1_projects_projectid_defects_defectid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: defectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PUT /api/v1/projects/{projectID}/defects/{defectID}
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/defects/{defectID}/transition:
+    post:
+      operationId: post_api_v1_projects_projectid_defects_defectid_transition
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: defectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/defects/{defectID}/transition
+      tags:
+      - projects
   /api/v1/projects/{projectID}/envs:
     get:
       operationId: get_api_v1_projects_projectid_envs
@@ -4935,6 +5775,32 @@ paths:
       summary: POST /api/v1/projects/{projectID}/envs
       tags:
       - projects
+  /api/v1/projects/{projectID}/envs/namespace-availability:
+    get:
+      operationId: get_api_v1_projects_projectid_envs_namespace_availability
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/envs/namespace-availability
+      tags:
+      - projects
   /api/v1/projects/{projectID}/envs/simple:
     get:
       operationId: get_api_v1_projects_projectid_envs_simple
@@ -4959,6 +5825,32 @@ paths:
       security:
       - BearerAuth: []
       summary: GET /api/v1/projects/{projectID}/envs/simple
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/invitable-users:
+    get:
+      operationId: get_api_v1_projects_projectid_invitable_users
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/invitable-users
       tags:
       - projects
   /api/v1/projects/{projectID}/members:
@@ -5240,6 +6132,746 @@ paths:
       summary: GET /api/v1/projects/{projectID}/plugins/simple
       tags:
       - projects
+  /api/v1/projects/{projectID}/requirements:
+    get:
+      operationId: get_api_v1_projects_projectid_requirements
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/requirements
+      tags:
+      - projects
+    post:
+      operationId: post_api_v1_projects_projectid_requirements
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/requirements
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/requirements/{requirementID}:
+    delete:
+      operationId: delete_api_v1_projects_projectid_requirements_requirementid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: requirementID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: DELETE /api/v1/projects/{projectID}/requirements/{requirementID}
+      tags:
+      - projects
+    get:
+      operationId: get_api_v1_projects_projectid_requirements_requirementid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: requirementID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/requirements/{requirementID}
+      tags:
+      - projects
+    put:
+      operationId: put_api_v1_projects_projectid_requirements_requirementid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: requirementID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PUT /api/v1/projects/{projectID}/requirements/{requirementID}
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/requirements/{requirementID}/children:
+    post:
+      operationId: post_api_v1_projects_projectid_requirements_requirementid_children
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: requirementID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/requirements/{requirementID}/children
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/requirements/{requirementID}/transition:
+    post:
+      operationId: post_api_v1_projects_projectid_requirements_requirementid_transition
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: requirementID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/requirements/{requirementID}/transition
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/sprints:
+    get:
+      operationId: get_api_v1_projects_projectid_sprints
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/sprints
+      tags:
+      - projects
+    post:
+      operationId: post_api_v1_projects_projectid_sprints
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/sprints
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/sprints/{sprintID}:
+    delete:
+      operationId: delete_api_v1_projects_projectid_sprints_sprintid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: sprintID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: DELETE /api/v1/projects/{projectID}/sprints/{sprintID}
+      tags:
+      - projects
+    get:
+      operationId: get_api_v1_projects_projectid_sprints_sprintid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: sprintID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/sprints/{sprintID}
+      tags:
+      - projects
+    put:
+      operationId: put_api_v1_projects_projectid_sprints_sprintid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: sprintID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PUT /api/v1/projects/{projectID}/sprints/{sprintID}
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/tasks:
+    get:
+      operationId: get_api_v1_projects_projectid_tasks
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/tasks
+      tags:
+      - projects
+    post:
+      operationId: post_api_v1_projects_projectid_tasks
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/tasks
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/tasks/{taskID}:
+    delete:
+      operationId: delete_api_v1_projects_projectid_tasks_taskid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: taskID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: DELETE /api/v1/projects/{projectID}/tasks/{taskID}
+      tags:
+      - projects
+    get:
+      operationId: get_api_v1_projects_projectid_tasks_taskid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: taskID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/tasks/{taskID}
+      tags:
+      - projects
+    put:
+      operationId: put_api_v1_projects_projectid_tasks_taskid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: taskID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PUT /api/v1/projects/{projectID}/tasks/{taskID}
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/tasks/{taskID}/children:
+    post:
+      operationId: post_api_v1_projects_projectid_tasks_taskid_children
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: taskID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/tasks/{taskID}/children
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/tasks/{taskID}/transition:
+    post:
+      operationId: post_api_v1_projects_projectid_tasks_taskid_transition
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: taskID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/tasks/{taskID}/transition
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/test-cases:
+    get:
+      operationId: get_api_v1_projects_projectid_test_cases
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/test-cases
+      tags:
+      - projects
+    post:
+      operationId: post_api_v1_projects_projectid_test_cases
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/test-cases
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/test-cases/{testCaseID}:
+    delete:
+      operationId: delete_api_v1_projects_projectid_test_cases_testcaseid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: testCaseID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: DELETE /api/v1/projects/{projectID}/test-cases/{testCaseID}
+      tags:
+      - projects
+    get:
+      operationId: get_api_v1_projects_projectid_test_cases_testcaseid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: testCaseID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/projects/{projectID}/test-cases/{testCaseID}
+      tags:
+      - projects
+    put:
+      operationId: put_api_v1_projects_projectid_test_cases_testcaseid
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: testCaseID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PUT /api/v1/projects/{projectID}/test-cases/{testCaseID}
+      tags:
+      - projects
+  /api/v1/projects/{projectID}/test-cases/{testCaseID}/runs:
+    post:
+      operationId: post_api_v1_projects_projectid_test_cases_testcaseid_runs
+      parameters:
+      - description: Path parameter
+        in: path
+        name: projectID
+        required: true
+        schema:
+          type: string
+      - description: Path parameter
+        in: path
+        name: testCaseID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/projects/{projectID}/test-cases/{testCaseID}/runs
+      tags:
+      - projects
   /api/v1/projects/simple:
     get:
       operationId: get_api_v1_projects_simple
@@ -5513,6 +7145,63 @@ paths:
       summary: POST /api/v1/recycle-bin/projects/restore
       tags:
       - recycle-bin
+  /api/v1/recycle-bin/users:
+    get:
+      operationId: get_api_v1_recycle_bin_users
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/recycle-bin/users
+      tags:
+      - recycle-bin
+  /api/v1/recycle-bin/users/permanently-delete:
+    post:
+      operationId: post_api_v1_recycle_bin_users_permanently_delete
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/recycle-bin/users/permanently-delete
+      tags:
+      - recycle-bin
+  /api/v1/recycle-bin/users/restore:
+    post:
+      operationId: post_api_v1_recycle_bin_users_restore
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: POST /api/v1/recycle-bin/users/restore
+      tags:
+      - recycle-bin
   /api/v1/users:
     get:
       operationId: get_api_v1_users
@@ -5627,6 +7316,32 @@ paths:
       summary: PUT /api/v1/users/{userID}/change-role
       tags:
       - users
+  /api/v1/users/{userID}/password:
+    patch:
+      operationId: patch_api_v1_users_userid_password
+      parameters:
+      - description: Path parameter
+        in: path
+        name: userID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PATCH /api/v1/users/{userID}/password
+      tags:
+      - users
   /api/v1/users/{userID}/role:
     patch:
       operationId: patch_api_v1_users_userid_role
@@ -5670,6 +7385,63 @@ paths:
       security:
       - BearerAuth: []
       summary: POST /api/v1/users/import
+      tags:
+      - users
+  /api/v1/users/me:
+    get:
+      operationId: get_api_v1_users_me
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: GET /api/v1/users/me
+      tags:
+      - users
+  /api/v1/users/me/password:
+    patch:
+      operationId: patch_api_v1_users_me_password
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PATCH /api/v1/users/me/password
+      tags:
+      - users
+  /api/v1/users/me/profile:
+    put:
+      operationId: put_api_v1_users_me_profile
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: PUT /api/v1/users/me/profile
       tags:
       - users
   /api/v1/users/sign-in:

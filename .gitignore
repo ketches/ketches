@@ -39,6 +39,7 @@ main
 .sisyphus/*
 .cursor/*
 .claude/*
+.superpowers/*
 docs/plans/*
 ui/docs/plans/*
 docs/superpowers/*
