@@ -3,13 +3,18 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"time"
 
+	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
+
+var builderRunLogsTerminalPollInterval = 100 * time.Millisecond
 
 func ListBuilderSessions(c *gin.Context) {
 	projectID := c.Param("projectID")
@@ -81,6 +86,25 @@ func PostBuilderSessionMessage(c *gin.Context) {
 	api.Created(c, detail)
 }
 
+func RequestBuilderRunCancel(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+	runID := c.Param("runID")
+
+	if _, err := services.RequestBuilderSessionRunCancel(c.Request.Context(), projectID, sessionID, runID); err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	detail, err := services.GetBuilderSessionDetail(c.Request.Context(), projectID, sessionID)
+	if err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	api.Success(c, detail)
+}
+
 func requireBuilderSessionUserID(c *gin.Context) (string, bool) {
 	claims := api.GetClaims(c)
 	if claims == nil {
@@ -94,6 +118,8 @@ func builderSessionErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, services.ErrBuilderSessionNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, services.ErrBuilderRunNotFound):
+		return http.StatusNotFound
 	case errors.Is(err, services.ErrBuilderSessionNotAppendable):
 		return http.StatusConflict
 	default:
@@ -105,32 +131,148 @@ func StreamBuilderRunLogs(c *gin.Context) {
 	projectID := c.Param("projectID")
 	sessionID := c.Param("sessionID")
 	runID := c.Param("runID")
+	afterSequence, err := parseBuilderRunLogsAfterCursor(c)
+	if err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
 
 	run, err := services.GetBuilderRun(c.Request.Context(), projectID, sessionID, runID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
+	liveEvents, unsubscribe := services.SubscribeBuilderRunEvents(runID)
+	defer unsubscribe()
 
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	if run.ExecutionLog != "" {
-		c.SSEvent("log", run.ExecutionLog)
-		c.Writer.Flush()
+	replayedEvents, err := services.ReplayBuilderRunEventsAfterCursor(c.Request.Context(), runID, afterSequence)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	for i := range replayedEvents {
+		streamBuilderRunEvent(c, &replayedEvents[i])
+		afterSequence = replayedEvents[i].Sequence
+	}
+	run, err = services.GetBuilderRun(c.Request.Context(), projectID, sessionID, runID)
+	if err != nil {
+		api.Error(c, http.StatusNotFound, err)
+		return
 	}
 
-	if run.Status == entities.BuilderRunStatusSucceeded ||
-		run.Status == entities.BuilderRunStatusFailed ||
-		run.Status == entities.BuilderRunStatusCancelled {
+	if isBuilderRunTerminalStatus(run.Status) {
+		if drainBuilderRunQueuedLiveEvents(c, liveEvents, &afterSequence) {
+			return
+		}
 		c.SSEvent("done", "stream ended")
 		c.Writer.Flush()
 		return
 	}
 
-	c.SSEvent("done", "stream ended")
+	terminalTicker := time.NewTicker(builderRunLogsTerminalPollInterval)
+	defer terminalTicker.Stop()
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case <-terminalTicker.C:
+			run, err = services.GetBuilderRun(c.Request.Context(), projectID, sessionID, runID)
+			if err != nil {
+				return
+			}
+			if isBuilderRunTerminalStatus(run.Status) {
+				if drainBuilderRunQueuedLiveEvents(c, liveEvents, &afterSequence) {
+					return
+				}
+				c.SSEvent("done", "stream ended")
+				c.Writer.Flush()
+				return
+			}
+		case event, ok := <-liveEvents:
+			if !ok {
+				return
+			}
+			if event.Sequence <= afterSequence {
+				continue
+			}
+			streamBuilderRunEvent(c, &event)
+			afterSequence = event.Sequence
+
+			run, err = services.GetBuilderRun(c.Request.Context(), projectID, sessionID, runID)
+			if err != nil {
+				return
+			}
+			if isBuilderRunTerminalStatus(run.Status) {
+				if drainBuilderRunQueuedLiveEvents(c, liveEvents, &afterSequence) {
+					return
+				}
+				c.SSEvent("done", "stream ended")
+				c.Writer.Flush()
+				return
+			}
+		}
+	}
+}
+
+func drainBuilderRunQueuedLiveEvents(c *gin.Context, liveEvents <-chan entities.BuilderRunEvent, afterSequence *int64) bool {
+	if afterSequence == nil {
+		return false
+	}
+
+	for {
+		select {
+		case event, ok := <-liveEvents:
+			if !ok {
+				return true
+			}
+			if event.Sequence <= *afterSequence {
+				continue
+			}
+			streamBuilderRunEvent(c, &event)
+			*afterSequence = event.Sequence
+		default:
+			return false
+		}
+	}
+}
+
+func parseBuilderRunLogsAfterCursor(c *gin.Context) (int64, error) {
+	afterParam := c.Query("after")
+	if afterParam == "" {
+		return 0, nil
+	}
+
+	afterSequence, err := strconv.ParseInt(afterParam, 10, 64)
+	if err != nil || afterSequence < 0 {
+		return 0, errors.New("after must be a non-negative integer")
+	}
+	return afterSequence, nil
+}
+
+func streamBuilderRunEvent(c *gin.Context, event *entities.BuilderRunEvent) {
+	if event == nil || event.Message == "" {
+		return
+	}
+	c.Render(-1, sse.Event{
+		Id:    strconv.FormatInt(event.Sequence, 10),
+		Event: "log",
+		Data:  event.Message,
+	})
 	c.Writer.Flush()
+}
+
+func isBuilderRunTerminalStatus(status entities.BuilderRunStatus) bool {
+	switch status {
+	case entities.BuilderRunStatusSucceeded, entities.BuilderRunStatusFailed, entities.BuilderRunStatusCancelled, entities.BuilderRunStatusTimedOut:
+		return true
+	default:
+		return false
+	}
 }
 
 func ListBuilderWorkspaceFiles(c *gin.Context) {

@@ -96,6 +96,12 @@ func TestInitConfig_DefaultsBuilderSettings(t *testing.T) {
 		Config = originalConfig
 	})
 
+	t.Setenv("BUILDER_PROVIDER_REGISTRY_JSON", "")
+	t.Setenv("BUILDER_MODEL_PROFILE_REGISTRY_JSON", "")
+	t.Setenv("BUILDER_EXECUTOR_POLICY_REGISTRY_JSON", "")
+	t.Setenv("BUILDER_DEFAULT_PROVIDER_KEY", "")
+	t.Setenv("BUILDER_DEFAULT_MODEL_PROFILE_KEY", "")
+	t.Setenv("BUILDER_DEFAULT_EXECUTOR_POLICY_KEY", "")
 	t.Setenv("BUILDER_AGENT_BASE_URL", "")
 	t.Setenv("BUILDER_AGENT_API_KEY", "")
 	t.Setenv("BUILDER_AGENT_MODEL", "")
@@ -105,6 +111,24 @@ func TestInitConfig_DefaultsBuilderSettings(t *testing.T) {
 
 	InitConfig()
 
+	if Config.BuilderProviderRegistryJSON != "" {
+		t.Fatalf("expected default builder provider registry JSON %q, got %q", "", Config.BuilderProviderRegistryJSON)
+	}
+	if Config.BuilderModelProfileRegistryJSON != "" {
+		t.Fatalf("expected default builder model profile registry JSON %q, got %q", "", Config.BuilderModelProfileRegistryJSON)
+	}
+	if Config.BuilderExecutorPolicyRegistryJSON != "" {
+		t.Fatalf("expected default builder executor policy registry JSON %q, got %q", "", Config.BuilderExecutorPolicyRegistryJSON)
+	}
+	if Config.BuilderDefaultProviderKey != "default" {
+		t.Fatalf("expected default builder provider key %q, got %q", "default", Config.BuilderDefaultProviderKey)
+	}
+	if Config.BuilderDefaultModelProfileKey != "builder-default" {
+		t.Fatalf("expected default builder model profile key %q, got %q", "builder-default", Config.BuilderDefaultModelProfileKey)
+	}
+	if Config.BuilderDefaultExecutorPolicyKey != "workspace-only" {
+		t.Fatalf("expected default builder executor policy key %q, got %q", "workspace-only", Config.BuilderDefaultExecutorPolicyKey)
+	}
 	if Config.BuilderAgentBaseURL != "" {
 		t.Fatalf("expected default builder agent base URL %q, got %q", "", Config.BuilderAgentBaseURL)
 	}
@@ -131,6 +155,12 @@ func TestInitConfig_UsesBuilderEnvOverrides(t *testing.T) {
 		Config = originalConfig
 	})
 
+	t.Setenv("BUILDER_PROVIDER_REGISTRY_JSON", `[{"key":"default","base_url":"https://registry.example.com"}]`)
+	t.Setenv("BUILDER_MODEL_PROFILE_REGISTRY_JSON", `[{"key":"builder-default","model":"gpt-5.4"}]`)
+	t.Setenv("BUILDER_EXECUTOR_POLICY_REGISTRY_JSON", `[{"key":"workspace-only","executor_kind":"workspace_pod"}]`)
+	t.Setenv("BUILDER_DEFAULT_PROVIDER_KEY", "openai-compatible-primary")
+	t.Setenv("BUILDER_DEFAULT_MODEL_PROFILE_KEY", "builder-fast")
+	t.Setenv("BUILDER_DEFAULT_EXECUTOR_POLICY_KEY", "workspace-plus-build")
 	t.Setenv("BUILDER_AGENT_BASE_URL", "https://builder.example.com")
 	t.Setenv("BUILDER_AGENT_API_KEY", "builder-secret")
 	t.Setenv("BUILDER_AGENT_MODEL", "builder-model")
@@ -140,6 +170,24 @@ func TestInitConfig_UsesBuilderEnvOverrides(t *testing.T) {
 
 	InitConfig()
 
+	if Config.BuilderProviderRegistryJSON != `[{"key":"default","base_url":"https://registry.example.com"}]` {
+		t.Fatalf("expected builder provider registry JSON override %q, got %q", `[{"key":"default","base_url":"https://registry.example.com"}]`, Config.BuilderProviderRegistryJSON)
+	}
+	if Config.BuilderModelProfileRegistryJSON != `[{"key":"builder-default","model":"gpt-5.4"}]` {
+		t.Fatalf("expected builder model profile registry JSON override %q, got %q", `[{"key":"builder-default","model":"gpt-5.4"}]`, Config.BuilderModelProfileRegistryJSON)
+	}
+	if Config.BuilderExecutorPolicyRegistryJSON != `[{"key":"workspace-only","executor_kind":"workspace_pod"}]` {
+		t.Fatalf("expected builder executor policy registry JSON override %q, got %q", `[{"key":"workspace-only","executor_kind":"workspace_pod"}]`, Config.BuilderExecutorPolicyRegistryJSON)
+	}
+	if Config.BuilderDefaultProviderKey != "openai-compatible-primary" {
+		t.Fatalf("expected builder default provider key override %q, got %q", "openai-compatible-primary", Config.BuilderDefaultProviderKey)
+	}
+	if Config.BuilderDefaultModelProfileKey != "builder-fast" {
+		t.Fatalf("expected builder default model profile key override %q, got %q", "builder-fast", Config.BuilderDefaultModelProfileKey)
+	}
+	if Config.BuilderDefaultExecutorPolicyKey != "workspace-plus-build" {
+		t.Fatalf("expected builder default executor policy key override %q, got %q", "workspace-plus-build", Config.BuilderDefaultExecutorPolicyKey)
+	}
 	if Config.BuilderAgentBaseURL != "https://builder.example.com" {
 		t.Fatalf("expected builder agent base URL override %q, got %q", "https://builder.example.com", Config.BuilderAgentBaseURL)
 	}

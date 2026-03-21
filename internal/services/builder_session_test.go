@@ -26,6 +26,10 @@ func setupBuilderSessionServiceTestDB(t *testing.T) {
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	require.NoError(t, err)
+	sqlDB, err := testDB.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
 
 	db.DB = testDB
 	require.NoError(t, db.Migrate())
@@ -72,9 +76,24 @@ func TestCreateBuilderSessionUsesProjectScopedContractAndStartsQueuedRun(t *test
 	require.Len(t, runs, 1)
 	assert.Equal(t, messages[0].ID, runs[0].TriggerMessageID)
 	assert.Equal(t, entities.BuilderRunStatusQueued, runs[0].Status)
+	require.NotNil(t, runs[0].Phase)
+	assert.Equal(t, entities.BuilderRunPhaseQueued, *runs[0].Phase)
+	assert.Equal(t, 0, runs[0].AttemptCount)
+	assert.Equal(t, 3, runs[0].MaxAttempts)
 	assert.Equal(t, "user-1", runs[0].RequestedBy)
 	assert.Nil(t, runs[0].StartedAt)
 	assert.Nil(t, runs[0].WorkspaceID)
+	assert.Nil(t, runs[0].ClaimToken)
+	assert.Nil(t, runs[0].ClaimedAt)
+	assert.Nil(t, runs[0].HeartbeatAt)
+	assert.Nil(t, runs[0].TimeoutAt)
+	assert.Nil(t, runs[0].CancelRequestedAt)
+	assert.Nil(t, runs[0].ProviderKey)
+	assert.Nil(t, runs[0].ModelProfileKey)
+	assert.Nil(t, runs[0].ExecutorPolicyKey)
+	assert.Nil(t, runs[0].ExecutorHandleID)
+	assert.Nil(t, runs[0].ErrorCode)
+	assert.Nil(t, runs[0].ErrorClass)
 	assert.Equal(t, "Create a service layer for builder sessions.", runs[0].InstructionSummary)
 	assert.Equal(t, "", runs[0].ExecutionLog)
 
@@ -87,6 +106,59 @@ func TestCreateBuilderSessionUsesProjectScopedContractAndStartsQueuedRun(t *test
 	assert.Equal(t, "", resp.Runs[0].WorkspaceID)
 	assert.Nil(t, resp.Workspace)
 	assert.Empty(t, resp.Artifacts)
+}
+
+func TestGetBuilderSessionDetailReadsLegacyRowsWithoutControlPlaneFields(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	workspaceID := "workspace-legacy"
+
+	require.NoError(t, db.DB.Exec(`
+		INSERT INTO builder_sessions (
+			id, created_at, updated_at, project_id, build_env_id, title, summary, status, created_by, last_activity_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, "session-legacy", now, now, "project-legacy", "env-legacy", "Legacy session", "", entities.BuilderSessionStatusReady, "user-legacy", now).Error)
+
+	require.NoError(t, db.DB.Exec(`
+		INSERT INTO builder_messages (
+			id, created_at, updated_at, session_id, run_id, role, content, metadata_json, created_by
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, "message-legacy", now, now, "session-legacy", nil, entities.BuilderMessageRoleUser, "Legacy prompt", "", "user-legacy").Error)
+
+	require.NoError(t, db.DB.Exec(`
+		INSERT INTO builder_runs (
+			id, created_at, updated_at, session_id, trigger_message_id, workspace_id, status, requested_by, instruction_summary, execution_log, started_at, completed_at, error_message
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, "run-legacy", now, now, "session-legacy", "message-legacy", workspaceID, entities.BuilderRunStatusSucceeded, "user-legacy", "Legacy prompt", "", now, now, "").Error)
+
+	require.NoError(t, db.DB.Exec("UPDATE builder_runs SET phase = NULL, claim_token = NULL, claimed_at = NULL, heartbeat_at = NULL, timeout_at = NULL, cancel_requested_at = NULL, provider_key = NULL, model_profile_key = NULL, executor_policy_key = NULL, executor_handle_id = NULL, error_code = NULL, error_class = NULL WHERE id = ?", "run-legacy").Error)
+
+	require.NoError(t, db.DB.Exec(`
+		INSERT INTO builder_workspaces (
+			id, created_at, updated_at, session_id, build_env_id, cluster_id, namespace, pod_name, container_name, status, workspace_root, terminated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, workspaceID, now, now, "session-legacy", "env-legacy", "cluster-legacy", "legacy-ns", "legacy-pod", "workspace", entities.BuilderWorkspaceStatusActive, "/workspace", nil).Error)
+
+	detail, err := GetBuilderSessionDetail(context.Background(), "project-legacy", "session-legacy")
+	require.NoError(t, err)
+	require.NotNil(t, detail)
+	assert.Equal(t, "session-legacy", detail.Session.ID)
+	assert.Equal(t, string(entities.BuilderRunStatusSucceeded), detail.Session.LatestRunStatus)
+	require.Len(t, detail.Messages, 1)
+	require.Len(t, detail.Runs, 1)
+	assert.Equal(t, "run-legacy", detail.Runs[0].ID)
+	assert.Equal(t, string(entities.BuilderRunStatusSucceeded), detail.Runs[0].Status)
+	require.NotNil(t, detail.Workspace)
+	assert.Equal(t, workspaceID, detail.Workspace.ID)
+	assert.Empty(t, detail.Artifacts)
+
+	items, err := ListBuilderSessions(context.Background(), "project-legacy")
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, "session-legacy", items[0].ID)
+	assert.Equal(t, string(entities.BuilderRunStatusSucceeded), items[0].LatestRunStatus)
+	assert.Equal(t, workspaceID, items[0].CurrentWorkspaceID)
 }
 
 func TestAppendBuilderMessageQueuesRunWhenSessionIsProvisioning(t *testing.T) {
@@ -134,33 +206,50 @@ func TestAppendBuilderMessageQueuesRunWhenSessionIsProvisioning(t *testing.T) {
 	assert.Equal(t, string(entities.BuilderRunStatusQueued), resp.Runs[0].Status)
 }
 
-func TestAppendBuilderMessageClaimsExecutionOnlyOnceFromReadySession(t *testing.T) {
+func TestAppendBuilderMessageLeavesReadySessionReadyUntilWorkerClaim(t *testing.T) {
 	setupBuilderSessionServiceTestDB(t)
 
+	now := time.Now().UTC()
 	session := entities.BuilderSession{
-		Base:           entities.Base{ID: "session-1"},
+		Base: entities.Base{
+			ID:        "session-1",
+			CreatedAt: now.Add(-30 * time.Minute),
+			UpdatedAt: now.Add(-10 * time.Minute),
+		},
 		ProjectID:      "project-1",
 		BuildEnvID:     "env-1",
 		Title:          "Bootstrap API",
 		Status:         entities.BuilderSessionStatusReady,
 		CreatedBy:      "user-1",
-		LastActivityAt: time.Now().UTC().Add(-time.Minute),
+		LastActivityAt: now.Add(-10 * time.Minute),
 	}
 	require.NoError(t, db.DB.Create(&session).Error)
 
-	claimed, startedAt, err := claimBuilderSessionExecution(db.DB, session.ID)
+	resp, err := AppendBuilderSessionMessage(context.Background(), "project-1", session.ID, "user-2", &models.AppendBuilderSessionMessageRequest{
+		Content: "Queue this for the worker to claim.",
+	})
 	require.NoError(t, err)
-	assert.True(t, claimed)
-	assert.NotNil(t, startedAt)
+	require.NotNil(t, resp)
 
-	claimed, startedAt, err = claimBuilderSessionExecution(db.DB, session.ID)
-	require.NoError(t, err)
-	assert.False(t, claimed)
-	assert.Nil(t, startedAt)
+	var runs []entities.BuilderRun
+	require.NoError(t, db.DB.Where("session_id = ?", session.ID).Order("created_at ASC, id ASC").Find(&runs).Error)
+	require.Len(t, runs, 1)
+	assert.Equal(t, entities.BuilderRunStatusQueued, runs[0].Status)
+	require.NotNil(t, runs[0].Phase)
+	assert.Equal(t, entities.BuilderRunPhaseQueued, *runs[0].Phase)
+	assert.Nil(t, runs[0].StartedAt)
+	assert.Nil(t, runs[0].ClaimToken)
+	assert.Nil(t, runs[0].ClaimedAt)
+	assert.Nil(t, runs[0].HeartbeatAt)
+	assert.Nil(t, runs[0].TimeoutAt)
 
 	var updatedSession entities.BuilderSession
 	require.NoError(t, db.DB.First(&updatedSession, "id = ?", session.ID).Error)
-	assert.Equal(t, entities.BuilderSessionStatusRunning, updatedSession.Status)
+	assert.Equal(t, entities.BuilderSessionStatusReady, updatedSession.Status)
+
+	assert.Equal(t, string(entities.BuilderSessionStatusReady), resp.Session.Status)
+	assert.Equal(t, runs[0].ID, resp.Session.LatestRunID)
+	assert.Equal(t, string(entities.BuilderRunStatusQueued), resp.Session.LatestRunStatus)
 }
 
 func TestAppendBuilderMessageQueuesRunWhenReadySessionAlreadyHasExecutingRun(t *testing.T) {
@@ -208,6 +297,10 @@ func TestAppendBuilderMessageQueuesRunWhenReadySessionAlreadyHasExecutingRun(t *
 	assert.Equal(t, entities.BuilderRunStatusExecuting, runs[0].Status)
 	assert.Equal(t, entities.BuilderRunStatusQueued, runs[1].Status)
 	assert.Nil(t, runs[1].StartedAt)
+	assert.Nil(t, runs[1].ClaimToken)
+	assert.Nil(t, runs[1].ClaimedAt)
+	assert.Nil(t, runs[1].HeartbeatAt)
+	assert.Nil(t, runs[1].TimeoutAt)
 
 	var executingCount int64
 	require.NoError(t, db.DB.Model(&entities.BuilderRun{}).Where("session_id = ? AND status = ?", session.ID, entities.BuilderRunStatusExecuting).Count(&executingCount).Error)
@@ -304,7 +397,7 @@ func TestAppendBuilderMessageReturnsBuilderSessionNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, ErrBuilderSessionNotFound)
 }
 
-func TestAppendBuilderMessageUsesContentContractAndStartsRunExecutingWhenIdle(t *testing.T) {
+func TestAppendBuilderMessageUsesContentContractAndQueuesRunWhenReadySessionIsIdle(t *testing.T) {
 	setupBuilderSessionServiceTestDB(t)
 
 	now := time.Now().UTC()
@@ -368,20 +461,24 @@ func TestAppendBuilderMessageUsesContentContractAndStartsRunExecutingWhenIdle(t 
 	require.Len(t, runs, 2)
 	assert.Equal(t, entities.BuilderRunStatusSucceeded, runs[0].Status)
 	assert.Equal(t, messages[1].ID, runs[1].TriggerMessageID)
-	assert.Equal(t, entities.BuilderRunStatusExecuting, runs[1].Status)
+	assert.Equal(t, entities.BuilderRunStatusQueued, runs[1].Status)
 	assert.Equal(t, "user-2", runs[1].RequestedBy)
-	assert.NotNil(t, runs[1].StartedAt)
+	assert.Nil(t, runs[1].StartedAt)
+	assert.Nil(t, runs[1].ClaimToken)
+	assert.Nil(t, runs[1].ClaimedAt)
+	assert.Nil(t, runs[1].HeartbeatAt)
+	assert.Nil(t, runs[1].TimeoutAt)
 	assert.Equal(t, "Add pagination to the service list.", runs[1].InstructionSummary)
 	assert.Equal(t, "", runs[1].ExecutionLog)
 
 	var updatedSession entities.BuilderSession
 	require.NoError(t, db.DB.First(&updatedSession, "id = ?", session.ID).Error)
-	assert.Equal(t, entities.BuilderSessionStatusRunning, updatedSession.Status)
+	assert.Equal(t, entities.BuilderSessionStatusReady, updatedSession.Status)
 	assert.True(t, updatedSession.LastActivityAt.After(lastActivityAt))
 
-	assert.Equal(t, string(entities.BuilderSessionStatusRunning), resp.Session.Status)
+	assert.Equal(t, string(entities.BuilderSessionStatusReady), resp.Session.Status)
 	assert.Equal(t, runs[1].ID, resp.Session.LatestRunID)
-	assert.Equal(t, string(entities.BuilderRunStatusExecuting), resp.Session.LatestRunStatus)
+	assert.Equal(t, string(entities.BuilderRunStatusQueued), resp.Session.LatestRunStatus)
 	require.Len(t, resp.Messages, 2)
 	require.Len(t, resp.Runs, 2)
 }
@@ -896,6 +993,72 @@ func TestListBuilderSessionsScopesByProjectAndIncludesArtifactCount(t *testing.T
 	assert.Equal(t, string(entities.BuilderRunStatusExecuting), resp[1].LatestRunStatus)
 	assert.Equal(t, int64(0), resp[1].ArtifactCount)
 	assert.NotContains(t, []string{resp[0].ID, resp[1].ID}, "session-3")
+}
+
+func TestRequestBuilderSessionRunCancel(t *testing.T) {
+	t.Run("persists cancel intent after validating project and session ownership", func(t *testing.T) {
+		setupBuilderSessionServiceTestDB(t)
+
+		now := time.Now().UTC().Truncate(time.Second)
+		insertBuilderSessionSeed(t, now.Add(-2*time.Minute), "project-cancel", "session-cancel", "env-cancel", entities.BuilderSessionStatusReady, "Cancel session")
+		insertBuilderMessageSeed(t, now.Add(-2*time.Minute), "session-cancel", "message-cancel", "Cancel prompt", "worker-user")
+		require.NoError(t, db.DB.Create(&entities.BuilderRun{
+			ID:                 "run-cancel",
+			CreatedAt:          now.Add(-time.Minute),
+			UpdatedAt:          now.Add(-time.Minute),
+			SessionID:          "session-cancel",
+			TriggerMessageID:   "message-cancel",
+			Status:             entities.BuilderRunStatusQueued,
+			Phase:              builderRunPhasePtr(entities.BuilderRunPhaseQueued),
+			RequestedBy:        "worker-user",
+			InstructionSummary: "Cancel prompt",
+		}).Error)
+
+		cancelledRun, err := RequestBuilderSessionRunCancel(context.Background(), "project-cancel", "session-cancel", "run-cancel")
+		require.NoError(t, err)
+		require.NotNil(t, cancelledRun)
+		assert.Equal(t, entities.BuilderRunStatusQueued, cancelledRun.Status)
+		require.NotNil(t, cancelledRun.CancelRequestedAt)
+
+		var persistedRun entities.BuilderRun
+		require.NoError(t, db.DB.First(&persistedRun, "id = ?", "run-cancel").Error)
+		assert.Equal(t, entities.BuilderRunStatusQueued, persistedRun.Status)
+		require.NotNil(t, persistedRun.CancelRequestedAt)
+
+		var session entities.BuilderSession
+		require.NoError(t, db.DB.First(&session, "id = ?", "session-cancel").Error)
+		assert.Equal(t, entities.BuilderSessionStatusReady, session.Status)
+	})
+
+	t.Run("rejects runs outside the requested session scope", func(t *testing.T) {
+		setupBuilderSessionServiceTestDB(t)
+
+		now := time.Now().UTC().Truncate(time.Second)
+		insertBuilderSessionSeed(t, now.Add(-3*time.Minute), "project-cancel", "session-primary", "env-cancel", entities.BuilderSessionStatusReady, "Primary session")
+		insertBuilderSessionSeed(t, now.Add(-2*time.Minute), "project-cancel", "session-secondary", "env-cancel", entities.BuilderSessionStatusReady, "Secondary session")
+		insertBuilderMessageSeed(t, now.Add(-2*time.Minute), "session-secondary", "message-secondary", "Scoped prompt", "worker-user")
+		require.NoError(t, db.DB.Create(&entities.BuilderRun{
+			ID:                 "run-secondary",
+			CreatedAt:          now.Add(-time.Minute),
+			UpdatedAt:          now.Add(-time.Minute),
+			SessionID:          "session-secondary",
+			TriggerMessageID:   "message-secondary",
+			Status:             entities.BuilderRunStatusQueued,
+			Phase:              builderRunPhasePtr(entities.BuilderRunPhaseQueued),
+			RequestedBy:        "worker-user",
+			InstructionSummary: "Scoped prompt",
+		}).Error)
+
+		cancelledRun, err := RequestBuilderSessionRunCancel(context.Background(), "project-cancel", "session-primary", "run-secondary")
+		require.Error(t, err)
+		assert.Nil(t, cancelledRun)
+		assert.ErrorIs(t, err, ErrBuilderRunNotFound)
+
+		var persistedRun entities.BuilderRun
+		require.NoError(t, db.DB.First(&persistedRun, "id = ?", "run-secondary").Error)
+		assert.Nil(t, persistedRun.CancelRequestedAt)
+		assert.Equal(t, entities.BuilderRunStatusQueued, persistedRun.Status)
+	})
 }
 
 func ptrTime(v time.Time) *time.Time {

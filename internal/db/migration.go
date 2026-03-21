@@ -34,6 +34,8 @@ func Migrate() error {
 		&entities.BuilderSession{},
 		&entities.BuilderMessage{},
 		&entities.BuilderRun{},
+		&entities.BuilderExecutorHandle{},
+		&entities.BuilderRunEvent{},
 		&entities.BuilderWorkspace{},
 		&entities.BuilderArtifact{},
 		&entities.BuildSetting{},

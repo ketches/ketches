@@ -10,6 +10,10 @@ type EnvResourceQuota struct {
 	Pods          string `gorm:"type:varchar(32);not null;default:'50'"`
 }
 
+func (EnvResourceQuota) TableName() string {
+	return "env_resource_quota"
+}
+
 const DefaultCPURequest = "2"
 const DefaultCPULimit = "4"
 const DefaultMemoryRequest = "4Gi"

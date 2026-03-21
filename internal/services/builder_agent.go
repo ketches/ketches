@@ -57,8 +57,18 @@ type builderAgentChatCompletionResponse struct {
 }
 
 func GenerateBuilderFiles(ctx context.Context, messages []BuilderAgentMessage) (*BuilderAgentResult, error) {
+	registry, err := loadBuilderProviderRegistry(app.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	resolvedProviderProfile, err := registry.resolveBuilderProviderProfile("", "")
+	if err != nil {
+		return nil, err
+	}
+
 	requestBody, err := json.Marshal(builderAgentChatCompletionRequest{
-		Model:    app.Config.BuilderAgentModel,
+		Model:    resolvedProviderProfile.ModelProfile.Model,
 		Messages: messages,
 		ResponseFormat: builderAgentResponseFormat{
 			Type: "json_schema",
@@ -73,12 +83,14 @@ func GenerateBuilderFiles(ctx context.Context, messages []BuilderAgentMessage) (
 		return nil, err
 	}
 
-	endpoint := strings.TrimRight(app.Config.BuilderAgentBaseURL, "/") + "/v1/chat/completions"
+	endpoint := strings.TrimRight(resolvedProviderProfile.Provider.BaseURL, "/") + "/v1/chat/completions"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(requestBody))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+app.Config.BuilderAgentAPIKey)
+	if strings.TrimSpace(resolvedProviderProfile.Provider.APIKey) != "" {
+		req.Header.Set("Authorization", "Bearer "+resolvedProviderProfile.Provider.APIKey)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)

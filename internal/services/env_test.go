@@ -38,6 +38,7 @@ func setupEnvTestDB(t *testing.T) {
 		&entities.Project{},
 		&entities.Cluster{},
 		&entities.Env{},
+		&entities.EnvResourceQuota{},
 		&entities.Certificate{},
 	))
 
