@@ -201,10 +201,114 @@ func TestBuilderSessionRoutes(t *testing.T) {
 		var created models.BuilderSessionDetailResponse
 		require.NoError(t, json.Unmarshal(createResp.Data, &created))
 		require.NotEmpty(t, created.Session.ID)
+		require.NotEmpty(t, created.Session.LatestRunID)
+
+		finalizingPhase := entities.BuilderRunPhaseFinalizing
+		require.NoError(t, db.DB.Model(&entities.BuilderRun{}).Where("id = ?", created.Session.LatestRunID).Updates(map[string]any{
+			"status":        entities.BuilderRunStatusSucceeded,
+			"phase":         &finalizingPhase,
+			"execution_log": "legacy route execution log",
+			"completed_at":  time.Now().UTC().Truncate(time.Second),
+		}).Error)
+		require.NoError(t, db.DB.Create(&[]entities.BuilderRunEvent{
+			{
+				ID:        "route-run-event-1",
+				CreatedAt: time.Now().UTC().Add(-2 * time.Second),
+				RunID:     created.Session.LatestRunID,
+				Sequence:  1,
+				Level:     entities.BuilderRunEventLevelInfo,
+				Kind:      entities.BuilderRunEventKindLog,
+				Message:   "[system] routed replay\n",
+			},
+			{
+				ID:        "route-run-event-2",
+				CreatedAt: time.Now().UTC().Add(-time.Second),
+				RunID:     created.Session.LatestRunID,
+				Sequence:  2,
+				Level:     entities.BuilderRunEventLevelInfo,
+				Kind:      entities.BuilderRunEventKindStatus,
+				Message:   "[system] routed completion\n",
+			},
+		}).Error)
+
+		logsReq := newBuilderSessionRouteRequest(t, http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+created.Session.ID+"/runs/"+created.Session.LatestRunID+"/logs", "", developer)
+		logsW := httptest.NewRecorder()
+		r.ServeHTTP(logsW, logsReq)
+		require.Equal(t, http.StatusOK, logsW.Code)
+		assert.Contains(t, logsW.Body.String(), "id:1")
+		assert.Contains(t, logsW.Body.String(), "id:2")
+		assert.Contains(t, logsW.Body.String(), "[system] routed replay")
+		assert.Contains(t, logsW.Body.String(), "[system] routed completion")
+		assert.NotContains(t, logsW.Body.String(), "legacy route execution log")
+
+		resumedLogsReq := newBuilderSessionRouteRequest(t, http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+created.Session.ID+"/runs/"+created.Session.LatestRunID+"/logs?after=1", "", developer)
+		resumedLogsW := httptest.NewRecorder()
+		r.ServeHTTP(resumedLogsW, resumedLogsReq)
+		require.Equal(t, http.StatusOK, resumedLogsW.Code)
+		assert.NotContains(t, resumedLogsW.Body.String(), "[system] routed replay")
+		assert.Contains(t, resumedLogsW.Body.String(), "id:2")
+		assert.Contains(t, resumedLogsW.Body.String(), "[system] routed completion")
 
 		messageReq := newBuilderSessionRouteRequest(t, http.MethodPost, "/api/v1/projects/project-1/builder-sessions/"+created.Session.ID+"/messages", `{"content":"Follow up through the production route."}`, developer)
 		messageW := httptest.NewRecorder()
 		r.ServeHTTP(messageW, messageReq)
 		require.Equal(t, http.StatusCreated, messageW.Code)
+
+		cancelReq := newBuilderSessionRouteRequest(t, http.MethodPost, "/api/v1/projects/project-1/builder-sessions/"+existingSessionID+"/runs/run-route-1/cancel", "", developer)
+		cancelW := httptest.NewRecorder()
+		r.ServeHTTP(cancelW, cancelReq)
+		require.Equal(t, http.StatusOK, cancelW.Code)
+
+		var cancelResp builderSessionRouteAPIResponse
+		require.NoError(t, json.Unmarshal(cancelW.Body.Bytes(), &cancelResp))
+		var cancelDetail models.BuilderSessionDetailResponse
+		require.NoError(t, json.Unmarshal(cancelResp.Data, &cancelDetail))
+		assert.Equal(t, existingSessionID, cancelDetail.Session.ID)
+		assert.Equal(t, string(entities.BuilderSessionStatusReady), cancelDetail.Session.Status)
+		require.Len(t, cancelDetail.Runs, 1)
+		assert.Equal(t, string(entities.BuilderRunStatusQueued), cancelDetail.Runs[0].Status)
+
+		var cancelledRun entities.BuilderRun
+		require.NoError(t, db.DB.First(&cancelledRun, "id = ?", "run-route-1").Error)
+		require.NotNil(t, cancelledRun.CancelRequestedAt)
+
+		now := time.Now().UTC().Truncate(time.Second)
+		require.NoError(t, db.DB.Create(&entities.BuilderSession{
+			Base:           entities.Base{ID: "session-route-2", CreatedAt: now, UpdatedAt: now},
+			ProjectID:      "project-1",
+			BuildEnvID:     "env-1",
+			Title:          "Scoped route session",
+			Status:         entities.BuilderSessionStatusReady,
+			CreatedBy:      developer.ID,
+			LastActivityAt: now,
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+			ID:        "message-route-2",
+			CreatedAt: now,
+			UpdatedAt: now,
+			SessionID: "session-route-2",
+			Role:      entities.BuilderMessageRoleUser,
+			Content:   "Scoped route prompt",
+			CreatedBy: developer.ID,
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderRun{
+			ID:                 "run-route-2",
+			CreatedAt:          now,
+			UpdatedAt:          now,
+			SessionID:          "session-route-2",
+			TriggerMessageID:   "message-route-2",
+			Status:             entities.BuilderRunStatusQueued,
+			RequestedBy:        developer.ID,
+			InstructionSummary: "Scoped route prompt",
+		}).Error)
+
+		wrongScopeReq := newBuilderSessionRouteRequest(t, http.MethodPost, "/api/v1/projects/project-1/builder-sessions/"+existingSessionID+"/runs/run-route-2/cancel", "", developer)
+		wrongScopeW := httptest.NewRecorder()
+		r.ServeHTTP(wrongScopeW, wrongScopeReq)
+		require.Equal(t, http.StatusNotFound, wrongScopeW.Code)
+
+		var scopedRun entities.BuilderRun
+		require.NoError(t, db.DB.First(&scopedRun, "id = ?", "run-route-2").Error)
+		assert.Nil(t, scopedRun.CancelRequestedAt)
 	})
 }

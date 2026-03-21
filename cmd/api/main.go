@@ -57,6 +57,11 @@ func main() {
 	// Recover active build watchers
 	core.GlobalBuildWatcher.SetParentContext(rootCtx)
 	core.GlobalBuildWatcher.RecoverActiveBuilds()
+	services.GlobalBuilderWorker.SetParentContext(rootCtx)
+	if err := services.GlobalBuilderWorker.RecoverActiveRuns(rootCtx); err != nil {
+		log.Fatalf("failed to recover builder worker state: %v", err)
+	}
+	services.GlobalBuilderWorker.Start()
 	go func() {
 		recoveryCtx, cancel := context.WithTimeout(rootCtx, 30*time.Second)
 		defer cancel()
@@ -92,7 +97,8 @@ func main() {
 	defer cancel()
 
 	core.GlobalBuildWatcher.StopAll()
-	if err := waitForGracefulShutdown(shutdownCtx, nodeTerminalCleanupDone, core.GlobalBuildWatcher.Wait); err != nil {
+	services.GlobalBuilderWorker.Stop()
+	if err := waitForGracefulShutdown(shutdownCtx, nodeTerminalCleanupDone, core.GlobalBuildWatcher.Wait, services.GlobalBuilderWorker.Wait); err != nil {
 		log.Printf("graceful shutdown incomplete: %v", err)
 	}
 }
@@ -129,6 +135,7 @@ func waitForGracefulShutdown(
 	ctx context.Context,
 	nodeTerminalCleanupDone <-chan struct{},
 	waitForBuildWatchers func(),
+	waitForBuilderWorker func(),
 ) error {
 	if nodeTerminalCleanupDone != nil {
 		select {
@@ -149,6 +156,20 @@ func waitForGracefulShutdown(
 		case <-done:
 		case <-ctx.Done():
 			return fmt.Errorf("build watchers did not stop before timeout: %w", ctx.Err())
+		}
+	}
+
+	if waitForBuilderWorker != nil {
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			waitForBuilderWorker()
+		}()
+
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return fmt.Errorf("builder worker did not stop before timeout: %w", ctx.Err())
 		}
 	}
 

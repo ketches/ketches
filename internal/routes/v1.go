@@ -110,6 +110,7 @@ func setupV1Routes(r *gin.Engine) {
 				projectsWrite.POST("/:projectID/code-repositories", handlers.CreateCodeRepository)
 				projectsWrite.POST("/:projectID/builder-sessions", handlers.CreateBuilderSession)
 				projectsWrite.POST("/:projectID/builder-sessions/:sessionID/messages", handlers.PostBuilderSessionMessage)
+				projectsWrite.POST("/:projectID/builder-sessions/:sessionID/runs/:runID/cancel", handlers.RequestBuilderRunCancel)
 				projectsWrite.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/logs", handlers.StreamBuilderRunLogs)
 				projectsWrite.GET("/:projectID/builder-sessions/:sessionID/files", handlers.ListBuilderWorkspaceFiles)
 				projectsWrite.GET("/:projectID/builder-sessions/:sessionID/files/read", handlers.ReadBuilderWorkspaceFile)

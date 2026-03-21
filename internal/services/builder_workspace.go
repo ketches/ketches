@@ -8,11 +8,9 @@ import (
 	"io"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ketches/ketches/internal/app"
-	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
@@ -63,13 +61,8 @@ func ProvisionBuilderWorkspace(ctx context.Context, sessionID string) (*entities
 	}
 
 	workspace, err := getCurrentBuilderWorkspace(tx, session.ID)
-	if err == nil {
-		if updateErr := markBuilderSessionReady(tx, session.ID); updateErr != nil {
-			return nil, updateErr
-		}
-		return workspace, nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
+	workspaceExists := err == nil
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
@@ -82,48 +75,123 @@ func ProvisionBuilderWorkspace(ctx context.Context, sessionID string) (*entities
 		return nil, err
 	}
 
-	resources, err := core.BuildBuilderWorkspaceResources(core.BuilderWorkspaceSpec{
-		SessionID:      session.ID,
-		ProjectID:      session.ProjectID,
-		ProjectSlug:    project.Slug,
-		BuildEnvID:     buildEnv.ID,
-		BuildEnvSlug:   buildEnv.Slug,
-		Namespace:      buildEnv.ClusterNamespace,
-		StorageRequest: builderWorkspaceStorageRequest,
-	})
+	handles, err := listCurrentBuilderWorkspaceExecutorHandles(tx, session.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := getBuilderWorkspaceClusterClient(buildEnv.ClusterID)
-	if err != nil {
-		return nil, err
+	orderedHandles := orderBuilderWorkspaceExecutorHandlesForWorkspace(workspace, handles)
+	var canonicalHandle *entities.BuilderExecutorHandle
+	var canonicalSnapshot *builderExecutorSnapshot
+	var ensureHandle *entities.BuilderExecutorHandle
+
+	for i := range orderedHandles {
+		handle := &orderedHandles[i]
+		if !builderWorkspaceExecutorHandleHasSnapshotRuntimeRefs(handle) {
+			if ensureHandle == nil {
+				ensureHandle = handle
+			}
+			continue
+		}
+
+		executor, err := getBuilderWorkspaceExecutor(handle.Kind)
+		if err != nil {
+			return nil, err
+		}
+
+		snapshot, err := executor.GetWorkspaceSnapshot(ctx, handle)
+		if err != nil {
+			return nil, err
+		}
+		if snapshot == nil {
+			continue
+		}
+		if snapshot.Usable() {
+			canonicalHandle = handle
+			canonicalSnapshot = snapshot
+			break
+		}
+		if !snapshot.Terminal() && ensureHandle == nil {
+			ensureHandle = handle
+		}
 	}
 
-	if _, err := client.CoreV1().PersistentVolumeClaims(buildEnv.ClusterNamespace).Create(ctx, resources.PersistentVolumeClaim, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
-		return nil, err
-	}
-	if _, err := client.CoreV1().Pods(buildEnv.ClusterNamespace).Create(ctx, resources.Pod, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
-		return nil, err
+	if canonicalHandle == nil {
+		if ensureHandle == nil {
+			ensureHandle, err = createBuilderWorkspaceExecutorHandle(tx, session.ID, buildEnv.ClusterID, buildEnv.ClusterNamespace)
+			if err != nil {
+				return nil, err
+			}
+			orderedHandles = append(orderedHandles, *ensureHandle)
+		}
+
+		executor, err := getBuilderWorkspaceExecutor(ensureHandle.Kind)
+		if err != nil {
+			return nil, err
+		}
+
+		canonicalSnapshot, err = executor.EnsureWorkspace(ctx, builderWorkspaceExecutorRequest{
+			Handle:         ensureHandle,
+			SessionID:      session.ID,
+			ProjectID:      session.ProjectID,
+			ProjectSlug:    project.Slug,
+			BuildEnvID:     buildEnv.ID,
+			BuildEnvSlug:   buildEnv.Slug,
+			ClusterID:      buildEnv.ClusterID,
+			Namespace:      buildEnv.ClusterNamespace,
+			StorageRequest: builderWorkspaceStorageRequest,
+		})
+		if err != nil {
+			return nil, err
+		}
+		canonicalHandle = ensureHandle
 	}
 
 	now := time.Now().UTC()
-	workspace = &entities.BuilderWorkspace{
-		ID:            uuid.New(),
-		CreatedAt:     now,
-		UpdatedAt:     now,
-		SessionID:     session.ID,
-		BuildEnvID:    buildEnv.ID,
-		ClusterID:     buildEnv.ClusterID,
-		Namespace:     buildEnv.ClusterNamespace,
-		PodName:       resources.Pod.Name,
-		ContainerName: resources.Pod.Spec.Containers[0].Name,
-		Status:        entities.BuilderWorkspaceStatusActive,
-		WorkspaceRoot: app.Config.BuilderWorkspaceRoot,
+	if !workspaceExists || workspace == nil {
+		workspace = &entities.BuilderWorkspace{
+			ID:        uuid.New(),
+			CreatedAt: now,
+			SessionID: session.ID,
+		}
+	}
+	workspace.UpdatedAt = now
+
+	if err := reconcileBuilderWorkspaceFromExecutorSnapshot(workspace, buildEnv.ID, app.Config.BuilderWorkspaceRoot, canonicalSnapshot); err != nil {
+		return nil, err
 	}
 
 	if err := tx.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(workspace).Error; err != nil {
+		if err := persistBuilderWorkspaceExecutorHandleSnapshot(tx, canonicalHandle, canonicalSnapshot); err != nil {
+			return err
+		}
+		for i := range orderedHandles {
+			handle := &orderedHandles[i]
+			if canonicalHandle != nil && handle.ID == canonicalHandle.ID {
+				continue
+			}
+			if handle.TerminatedAt != nil || handle.Status == entities.BuilderExecutorHandleStatusTerminated {
+				continue
+			}
+
+			if builderWorkspaceExecutorHandleHasSnapshotRuntimeRefs(handle) && !builderWorkspaceExecutorHandleMatchesSnapshot(handle, canonicalSnapshot) {
+				executor, err := getBuilderWorkspaceExecutor(handle.Kind)
+				if err != nil {
+					return err
+				}
+				if err := executor.CancelWorkspace(ctx, handle); err != nil {
+					return err
+				}
+			}
+			if err := markBuilderWorkspaceExecutorHandleTerminated(tx, handle.ID); err != nil {
+				return err
+			}
+		}
+		if workspaceExists {
+			if err := tx.Save(workspace).Error; err != nil {
+				return err
+			}
+		} else if err := tx.Create(workspace).Error; err != nil {
 			return err
 		}
 		return markBuilderSessionReady(tx, session.ID)
@@ -200,6 +268,12 @@ func writeBuilderAgentFiles(ctx context.Context, workspace *entities.BuilderWork
 	}
 
 	for _, file := range files {
+		if run.ClaimToken != nil && strings.TrimSpace(*run.ClaimToken) != "" {
+			if err := ensureClaimedBuilderRunOwnership(ctx, run.ID, *run.ClaimToken); err != nil {
+				return err
+			}
+		}
+
 		validatedFile, err := validateBuilderAgentFileWrite(file)
 		if err != nil {
 			return err
@@ -211,6 +285,12 @@ func writeBuilderAgentFiles(ctx context.Context, workspace *entities.BuilderWork
 		}
 
 		if err := writeBuilderWorkspaceFile(appCtx, workspace.PodName, workspace.ContainerName, resolvedPath, validatedFile.Content); err != nil {
+			return err
+		}
+	}
+
+	if run.ClaimToken != nil && strings.TrimSpace(*run.ClaimToken) != "" {
+		if err := ensureClaimedBuilderRunOwnership(ctx, run.ID, *run.ClaimToken); err != nil {
 			return err
 		}
 	}
@@ -251,16 +331,26 @@ func refreshBuilderWorkspaceArtifacts(ctx context.Context, appCtx *models.AppCon
 		})
 	}
 
+	if run.ClaimToken != nil && strings.TrimSpace(*run.ClaimToken) != "" {
+		return withOwnedExecutingBuilderRunTx(ctx, run.ID, *run.ClaimToken, func(tx *gorm.DB, _ *entities.BuilderRun) error {
+			return replaceBuilderWorkspaceArtifactsTx(tx, workspace, artifacts)
+		})
+	}
+
 	tx := db.DB.WithContext(ctx)
 	return tx.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("session_id = ? AND workspace_id = ?", workspace.SessionID, workspace.ID).Delete(&entities.BuilderArtifact{}).Error; err != nil {
-			return err
-		}
-		if len(artifacts) == 0 {
-			return nil
-		}
-		return tx.Create(&artifacts).Error
+		return replaceBuilderWorkspaceArtifactsTx(tx, workspace, artifacts)
 	})
+}
+
+func replaceBuilderWorkspaceArtifactsTx(tx *gorm.DB, workspace *entities.BuilderWorkspace, artifacts []entities.BuilderArtifact) error {
+	if err := tx.Where("session_id = ? AND workspace_id = ?", workspace.SessionID, workspace.ID).Delete(&entities.BuilderArtifact{}).Error; err != nil {
+		return err
+	}
+	if len(artifacts) == 0 {
+		return nil
+	}
+	return tx.Create(&artifacts).Error
 }
 
 func buildBuilderWorkspaceAppContext(workspace *entities.BuilderWorkspace) (*models.AppContext, error) {
@@ -308,10 +398,168 @@ func getCurrentBuilderWorkspace(tx *gorm.DB, sessionID string) (*entities.Builde
 	return &workspace, nil
 }
 
+func listCurrentBuilderWorkspaceExecutorHandles(tx *gorm.DB, sessionID string) ([]entities.BuilderExecutorHandle, error) {
+	handles := make([]entities.BuilderExecutorHandle, 0)
+	if err := tx.Where("session_id = ? AND kind = ? AND status IN ? AND terminated_at IS NULL", sessionID, entities.BuilderExecutorHandleKindWorkspacePod, []entities.BuilderExecutorHandleStatus{entities.BuilderExecutorHandleStatusProvisioning, entities.BuilderExecutorHandleStatusActive}).
+		Order("created_at DESC, id DESC").
+		Find(&handles).Error; err != nil {
+		return nil, err
+	}
+	return handles, nil
+}
+
+func orderBuilderWorkspaceExecutorHandlesForWorkspace(workspace *entities.BuilderWorkspace, handles []entities.BuilderExecutorHandle) []entities.BuilderExecutorHandle {
+	if workspace == nil || workspace.ExecutorHandleID == nil {
+		return handles
+	}
+
+	ordered := make([]entities.BuilderExecutorHandle, 0, len(handles))
+	for i := range handles {
+		if handles[i].ID == *workspace.ExecutorHandleID {
+			ordered = append(ordered, handles[i])
+			break
+		}
+	}
+	for i := range handles {
+		if handles[i].ID == *workspace.ExecutorHandleID {
+			continue
+		}
+		ordered = append(ordered, handles[i])
+	}
+	return ordered
+}
+
+func createBuilderWorkspaceExecutorHandle(tx *gorm.DB, sessionID, clusterID, namespace string) (*entities.BuilderExecutorHandle, error) {
+	now := time.Now().UTC()
+	handle := &entities.BuilderExecutorHandle{
+		ID:        uuid.New(),
+		CreatedAt: now,
+		UpdatedAt: now,
+		SessionID: sessionID,
+		Kind:      entities.BuilderExecutorHandleKindWorkspacePod,
+		Status:    entities.BuilderExecutorHandleStatusProvisioning,
+		ClusterID: builderStringPtr(clusterID),
+		Namespace: builderStringPtr(namespace),
+	}
+	if err := tx.Create(handle).Error; err != nil {
+		return nil, err
+	}
+	return handle, nil
+}
+
+func getOrCreateBuilderWorkspaceExecutorHandle(tx *gorm.DB, sessionID, clusterID, namespace string) (*entities.BuilderExecutorHandle, error) {
+	handle, err := getCurrentBuilderWorkspaceExecutorHandle(tx, sessionID)
+	if err == nil {
+		return handle, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	now := time.Now().UTC()
+	handle = &entities.BuilderExecutorHandle{
+		ID:        uuid.New(),
+		CreatedAt: now,
+		UpdatedAt: now,
+		SessionID: sessionID,
+		Kind:      entities.BuilderExecutorHandleKindWorkspacePod,
+		Status:    entities.BuilderExecutorHandleStatusProvisioning,
+		ClusterID: builderStringPtr(clusterID),
+		Namespace: builderStringPtr(namespace),
+	}
+	if err := tx.Create(handle).Error; err != nil {
+		return nil, err
+	}
+	return handle, nil
+}
+
+func getCurrentBuilderWorkspaceExecutorHandle(tx *gorm.DB, sessionID string) (*entities.BuilderExecutorHandle, error) {
+	var handle entities.BuilderExecutorHandle
+	if err := tx.Where("session_id = ? AND kind = ? AND status IN ? AND terminated_at IS NULL", sessionID, entities.BuilderExecutorHandleKindWorkspacePod, []entities.BuilderExecutorHandleStatus{entities.BuilderExecutorHandleStatusProvisioning, entities.BuilderExecutorHandleStatusActive}).
+		Order("created_at DESC, id DESC").
+		Take(&handle).Error; err != nil {
+		return nil, err
+	}
+	return &handle, nil
+}
+
+func persistBuilderWorkspaceExecutorHandleSnapshot(tx *gorm.DB, handle *entities.BuilderExecutorHandle, snapshot *builderExecutorSnapshot) error {
+	if handle == nil {
+		return errors.New("builder executor handle is required")
+	}
+	if snapshot == nil {
+		return errors.New("builder executor snapshot is required")
+	}
+
+	now := time.Now().UTC()
+	handle.UpdatedAt = now
+	handle.Kind = snapshot.Kind
+	handle.Status = snapshot.Status
+	handle.ClusterID = builderStringPtr(snapshot.ClusterID)
+	handle.Namespace = builderStringPtr(snapshot.Namespace)
+	handle.WorkloadName = builderStringPtr(snapshot.WorkloadName)
+	handle.ContainerName = builderStringPtr(snapshot.ContainerName)
+
+	return tx.Model(&entities.BuilderExecutorHandle{}).
+		Where("id = ?", handle.ID).
+		Updates(map[string]any{
+			"updated_at":     now,
+			"kind":           handle.Kind,
+			"status":         handle.Status,
+			"cluster_id":     handle.ClusterID,
+			"namespace":      handle.Namespace,
+			"workload_name":  handle.WorkloadName,
+			"container_name": handle.ContainerName,
+		}).Error
+}
+
+func markBuilderWorkspaceExecutorHandleTerminated(tx *gorm.DB, handleID string) error {
+	now := time.Now().UTC()
+	return tx.Model(&entities.BuilderExecutorHandle{}).
+		Where("id = ?", handleID).
+		Updates(map[string]any{
+			"status":        entities.BuilderExecutorHandleStatusTerminated,
+			"updated_at":    now,
+			"terminated_at": now,
+		}).Error
+}
+
+func builderWorkspaceExecutorHandleMatchesSnapshot(handle *entities.BuilderExecutorHandle, snapshot *builderExecutorSnapshot) bool {
+	if handle == nil || snapshot == nil {
+		return false
+	}
+	if handle.ClusterID == nil || handle.Namespace == nil || handle.WorkloadName == nil {
+		return false
+	}
+	if *handle.ClusterID != snapshot.ClusterID || *handle.Namespace != snapshot.Namespace || *handle.WorkloadName != snapshot.WorkloadName {
+		return false
+	}
+	return true
+}
+
+func builderWorkspaceExecutorHandleHasSnapshotRuntimeRefs(handle *entities.BuilderExecutorHandle) bool {
+	if handle == nil {
+		return false
+	}
+	if handle.ClusterID == nil || *handle.ClusterID == "" {
+		return false
+	}
+	if handle.Namespace == nil || *handle.Namespace == "" {
+		return false
+	}
+	if handle.WorkloadName == nil || *handle.WorkloadName == "" {
+		return false
+	}
+	return true
+}
+
 func markBuilderSessionReady(tx *gorm.DB, sessionID string) error {
 	now := time.Now().UTC()
 	return tx.Model(&entities.BuilderSession{}).
-		Where("id = ?", sessionID).
+		Where("id = ? AND status IN ?", sessionID, []entities.BuilderSessionStatus{
+			entities.BuilderSessionStatusProvisioning,
+			entities.BuilderSessionStatusReady,
+		}).
 		Updates(map[string]any{
 			"status":     entities.BuilderSessionStatusReady,
 			"updated_at": now,
@@ -346,167 +594,6 @@ func resolveBuilderWorkspacePath(workspaceRoot, requestedPath string) (string, e
 	return candidatePath, nil
 }
 
-var (
-	builderRunBroadcasters sync.Map
-)
-
-func subscribeBuilderRunLogs(runID string) (<-chan string, func()) {
-	ch := make(chan string, 256)
-	builderRunBroadcasters.Store(runID, ch)
-	return ch, func() {
-		builderRunBroadcasters.Delete(runID)
-		close(ch)
-	}
-}
-
-func publishBuilderRunLog(runID string, line string) {
-	if ch, ok := builderRunBroadcasters.Load(runID); ok {
-		select {
-		case ch.(chan string) <- line:
-		default:
-		}
-	}
-}
-
-func ExecuteNextBuilderRun(ctx context.Context, sessionID string) error {
-	tx := db.DB.WithContext(ctx)
-
-	session, err := loadBuilderSession(tx, "", sessionID)
-	if err != nil {
-		return err
-	}
-
-	workspace, err := ProvisionBuilderWorkspace(ctx, sessionID)
-	if err != nil {
-		markBuilderRunFailed(ctx, tx, sessionID, "", "workspace provisioning failed: "+err.Error())
-		markSessionFailed(ctx, tx, sessionID)
-		return err
-	}
-
-	run, err := claimAndStartNextBuilderRun(ctx, tx, session, workspace)
-	if err != nil {
-		return err
-	}
-	if run == nil {
-		return nil
-	}
-
-	go executeBuilderRun(context.Background(), session, workspace, run)
-	return nil
-}
-
-func executeBuilderRun(ctx context.Context, session *entities.BuilderSession, workspace *entities.BuilderWorkspace, run *entities.BuilderRun) {
-	runID := run.ID
-	sessionID := session.ID
-
-	defer func() {
-		finalizeBuilderRun(context.Background(), sessionID, runID)
-	}()
-
-	publishBuilderRunLog(runID, "[system] run started\n")
-
-	messages, err := loadBuilderConversationMessages(ctx, sessionID)
-	if err != nil {
-		publishBuilderRunLog(runID, "[system] failed to load conversation: "+err.Error()+"\n")
-		return
-	}
-
-	publishBuilderRunLog(runID, "[agent] generating files...\n")
-
-	result, err := GenerateBuilderFiles(ctx, messages)
-	if err != nil {
-		publishBuilderRunLog(runID, "[agent] error: "+err.Error()+"\n")
-		appendBuilderSessionSystemMessage(ctx, sessionID, runID, "run failed: "+err.Error())
-		markBuilderRunFailed(ctx, nil, sessionID, runID, err.Error())
-		markSessionReadyOrFailed(ctx, sessionID, false)
-		return
-	}
-
-	if len(result.Files) == 0 {
-		publishBuilderRunLog(runID, "[agent] no files to write\n")
-		appendBuilderSessionAssistantMessage(ctx, sessionID, runID, result.AssistantMessage)
-		appendBuilderSessionSystemMessage(ctx, sessionID, runID, "run completed: no files generated")
-		persistBuilderRunSuccess(ctx, sessionID, runID, "", result.AssistantMessage)
-		markSessionReadyOrFailed(ctx, sessionID, true)
-		return
-	}
-
-	for _, file := range result.Files {
-		publishBuilderRunLog(runID, "[agent] writing "+file.Path+"\n")
-	}
-
-	if err := writeBuilderAgentFiles(ctx, workspace, run, result.Files); err != nil {
-		publishBuilderRunLog(runID, "[system] file write failed: "+err.Error()+"\n")
-		appendBuilderSessionSystemMessage(ctx, sessionID, runID, "run failed: "+err.Error())
-		markBuilderRunFailed(ctx, nil, sessionID, runID, err.Error())
-		markSessionReadyOrFailed(ctx, sessionID, false)
-		return
-	}
-
-	publishBuilderRunLog(runID, "[system] "+fmt.Sprintf("%d files written\n", len(result.Files)))
-
-	appendBuilderSessionAssistantMessage(ctx, sessionID, runID, result.AssistantMessage)
-	appendBuilderSessionSystemMessage(ctx, sessionID, runID, fmt.Sprintf("run completed: %d files generated", len(result.Files)))
-
-	executionLog := buildExecutionLogSummary(runID, result)
-	persistBuilderRunSuccess(ctx, sessionID, runID, executionLog, result.AssistantMessage)
-	markSessionReadyOrFailed(ctx, sessionID, true)
-}
-
-func claimAndStartNextBuilderRun(ctx context.Context, tx *gorm.DB, session *entities.BuilderSession, workspace *entities.BuilderWorkspace) (*entities.BuilderRun, error) {
-	var run entities.BuilderRun
-	if err := tx.Where("session_id = ? AND status = ?", session.ID, entities.BuilderRunStatusQueued).
-		Order("created_at ASC, id ASC").
-		Take(&run).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	now := time.Now().UTC()
-	if err := tx.Model(&run).Updates(map[string]any{
-		"status":       entities.BuilderRunStatusExecuting,
-		"workspace_id": workspaceIDPtr(workspace.ID),
-		"started_at":   now,
-	}).Error; err != nil {
-		return nil, err
-	}
-	if err := tx.Model(&entities.BuilderSession{}).Where("id = ?", session.ID).Updates(map[string]any{
-		"status":           entities.BuilderSessionStatusRunning,
-		"updated_at":       now,
-		"last_activity_at": now,
-	}).Error; err != nil {
-		return nil, err
-	}
-
-	run.Status = entities.BuilderRunStatusExecuting
-	run.StartedAt = &now
-	run.WorkspaceID = workspaceIDPtr(workspace.ID)
-	return &run, nil
-}
-
-func finalizeBuilderRun(ctx context.Context, sessionID, runID string) {
-	if err := triggerNextBuilderRun(context.Background(), sessionID); err != nil {
-		return
-	}
-}
-
-func triggerNextBuilderRun(ctx context.Context, sessionID string) error {
-	tx := db.DB.WithContext(ctx)
-	var nextRun entities.BuilderRun
-	if err := tx.Where("session_id = ? AND status = ?", sessionID, entities.BuilderRunStatusQueued).
-		Order("created_at ASC, id ASC").
-		Take(&nextRun).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil
-		}
-		return err
-	}
-	go ExecuteNextBuilderRun(context.Background(), sessionID)
-	return nil
-}
-
 func loadBuilderConversationMessages(ctx context.Context, sessionID string) ([]BuilderAgentMessage, error) {
 	var messages []entities.BuilderMessage
 	if err := db.DB.WithContext(ctx).Where("session_id = ?", sessionID).Order("created_at ASC, id ASC").Find(&messages).Error; err != nil {
@@ -523,83 +610,15 @@ func loadBuilderConversationMessages(ctx context.Context, sessionID string) ([]B
 	return agentMsgs, nil
 }
 
-func appendBuilderSessionAssistantMessage(ctx context.Context, sessionID string, runID string, content string) {
-	db.DB.WithContext(ctx).Create(&entities.BuilderMessage{
+func appendBuilderSessionMessageTx(tx *gorm.DB, sessionID string, runID string, role entities.BuilderMessageRole, content string) error {
+	return tx.Create(&entities.BuilderMessage{
 		ID:        uuid.New(),
 		SessionID: sessionID,
 		RunID:     &runID,
-		Role:      entities.BuilderMessageRoleAssistant,
+		Role:      role,
 		Content:   content,
 		CreatedBy: "builder-agent",
-	})
-}
-
-func appendBuilderSessionSystemMessage(ctx context.Context, sessionID string, runID string, content string) {
-	db.DB.WithContext(ctx).Create(&entities.BuilderMessage{
-		ID:        uuid.New(),
-		SessionID: sessionID,
-		RunID:     &runID,
-		Role:      entities.BuilderMessageRoleSystem,
-		Content:   content,
-		CreatedBy: "builder-agent",
-	})
-}
-
-func markBuilderRunFailed(ctx context.Context, tx *gorm.DB, sessionID, runID string, errMsg string) {
-	if tx == nil {
-		tx = db.DB.WithContext(ctx)
-	}
-	now := time.Now().UTC()
-	tx.Model(&entities.BuilderRun{}).Where("id = ? AND session_id = ?", runID, sessionID).Updates(map[string]any{
-		"status":        entities.BuilderRunStatusFailed,
-		"error_message": errMsg,
-		"completed_at":  now,
-	})
-}
-
-func markSessionFailed(ctx context.Context, tx *gorm.DB, sessionID string) {
-	now := time.Now().UTC()
-	tx.Model(&entities.BuilderSession{}).Where("id = ?", sessionID).Updates(map[string]any{
-		"status":     entities.BuilderSessionStatusFailed,
-		"updated_at": now,
-	})
-}
-
-func markSessionReadyOrFailed(ctx context.Context, sessionID string, succeeded bool) {
-	tx := db.DB.WithContext(ctx)
-	now := time.Now().UTC()
-	status := entities.BuilderSessionStatusReady
-	if !succeeded {
-		status = entities.BuilderSessionStatusFailed
-	}
-	tx.Model(&entities.BuilderSession{}).Where("id = ?", sessionID).Updates(map[string]any{
-		"status":           status,
-		"updated_at":       now,
-		"last_activity_at": now,
-	})
-}
-
-func persistBuilderRunSuccess(ctx context.Context, sessionID, runID, executionLog, assistantMessage string) {
-	tx := db.DB.WithContext(ctx)
-	now := time.Now().UTC()
-	tx.Model(&entities.BuilderRun{}).Where("id = ? AND session_id = ?", runID, sessionID).Updates(map[string]any{
-		"status":        entities.BuilderRunStatusSucceeded,
-		"execution_log": executionLog,
-		"completed_at":  now,
-	})
-}
-
-func buildExecutionLogSummary(runID string, result *BuilderAgentResult) string {
-	lines := make([]string, 0, len(result.Files)+2)
-	lines = append(lines, "[agent] response: "+result.AssistantMessage)
-	for _, f := range result.Files {
-		lines = append(lines, "[agent] wrote: "+f.Path)
-	}
-	return strings.Join(lines, "\n")
-}
-
-func workspaceIDPtr(id string) *string {
-	return &id
+	}).Error
 }
 
 func waitForBuilderWorkspacePodReady(ctx context.Context, client kubernetes.Interface, namespace, podName string) error {

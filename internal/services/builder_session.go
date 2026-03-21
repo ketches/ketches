@@ -17,6 +17,7 @@ import (
 var (
 	ErrBuilderSessionNotFound      = errors.New("builder session not found")
 	ErrBuilderSessionNotAppendable = errors.New("builder session not appendable")
+	ErrBuilderRunNotFound          = errors.New("builder run not found")
 )
 
 type BuilderSessionNotFoundError struct {
@@ -46,6 +47,23 @@ func (e *BuilderSessionNotAppendableError) Error() string {
 
 func (e *BuilderSessionNotAppendableError) Unwrap() error {
 	return ErrBuilderSessionNotAppendable
+}
+
+type BuilderRunNotFoundError struct {
+	ProjectID string
+	SessionID string
+	RunID     string
+}
+
+func (e *BuilderRunNotFoundError) Error() string {
+	if e.ProjectID == "" {
+		return fmt.Sprintf("builder run %s not found in session %s", e.RunID, e.SessionID)
+	}
+	return fmt.Sprintf("builder run %s not found in session %s for project %s", e.RunID, e.SessionID, e.ProjectID)
+}
+
+func (e *BuilderRunNotFoundError) Unwrap() error {
+	return ErrBuilderRunNotFound
 }
 
 func CreateBuilderSession(ctx context.Context, projectID, userID string, req *models.CreateBuilderSessionRequest) (*models.BuilderSessionDetailResponse, error) {
@@ -79,6 +97,7 @@ func CreateBuilderSession(ctx context.Context, projectID, userID string, req *mo
 		SessionID:          session.ID,
 		TriggerMessageID:   message.ID,
 		Status:             entities.BuilderRunStatusQueued,
+		Phase:              builderRunPhaseRef(entities.BuilderRunPhaseQueued),
 		RequestedBy:        userID,
 		InstructionSummary: req.Prompt,
 	}
@@ -129,6 +148,8 @@ func AppendBuilderSessionMessage(ctx context.Context, projectID, sessionID, user
 		ID:                 uuid.New(),
 		SessionID:          sessionID,
 		TriggerMessageID:   message.ID,
+		Status:             entities.BuilderRunStatusQueued,
+		Phase:              builderRunPhaseRef(entities.BuilderRunPhaseQueued),
 		RequestedBy:        userID,
 		InstructionSummary: req.Content,
 	}
@@ -146,17 +167,6 @@ func AppendBuilderSessionMessage(ctx context.Context, projectID, sessionID, user
 		session = *appendableSession
 		message.SessionID = session.ID
 		run.SessionID = session.ID
-
-		claimed, startedAt, claimErr := claimBuilderSessionExecution(tx, session.ID)
-		if claimErr != nil {
-			return claimErr
-		}
-		if claimed {
-			run.Status = entities.BuilderRunStatusExecuting
-			run.StartedAt = startedAt
-		} else {
-			run.Status = entities.BuilderRunStatusQueued
-		}
 
 		if err := touchAppendableBuilderSession(tx, session.ID, now); err != nil {
 			return err
@@ -229,11 +239,19 @@ func GetBuilderRun(ctx context.Context, projectID, sessionID, runID string) (*en
 	var run entities.BuilderRun
 	if err := tx.Where("id = ? AND session_id = ?", runID, session.ID).First(&run).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("builder run %s not found in session %s", runID, session.ID)
+			return nil, &BuilderRunNotFoundError{ProjectID: projectID, SessionID: session.ID, RunID: runID}
 		}
 		return nil, err
 	}
 	return &run, nil
+}
+
+func RequestBuilderSessionRunCancel(ctx context.Context, projectID, sessionID, runID string) (*entities.BuilderRun, error) {
+	if _, err := GetBuilderRun(ctx, projectID, sessionID, runID); err != nil {
+		return nil, err
+	}
+
+	return RequestBuilderRunCancel(ctx, runID)
 }
 
 func getBuilderSessionDetail(tx *gorm.DB, projectID, sessionID string) (*models.BuilderSessionDetailResponse, error) {
@@ -352,18 +370,8 @@ func touchAppendableBuilderSession(tx *gorm.DB, sessionID string, now time.Time)
 	return validateBuilderSessionAppendable(session)
 }
 
-func claimBuilderSessionExecution(tx *gorm.DB, sessionID string) (bool, *time.Time, error) {
-	now := time.Now().UTC()
-	result := tx.Model(&entities.BuilderSession{}).
-		Where("id = ? AND status = ? AND NOT EXISTS (SELECT 1 FROM builder_runs WHERE session_id = ? AND status = ?)", sessionID, entities.BuilderSessionStatusReady, sessionID, entities.BuilderRunStatusExecuting).
-		Update("status", entities.BuilderSessionStatusRunning)
-	if result.Error != nil {
-		return false, nil, result.Error
-	}
-	if result.RowsAffected == 0 {
-		return false, nil, nil
-	}
-	return true, &now, nil
+func builderRunPhaseRef(phase entities.BuilderRunPhase) *entities.BuilderRunPhase {
+	return &phase
 }
 
 func builderSessionDetailQuery(tx *gorm.DB, projectID string) *gorm.DB {

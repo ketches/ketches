@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -26,6 +27,20 @@ type builderSessionAPIResponse struct {
 	Error string          `json:"error,omitempty"`
 }
 
+type builderStreamHookRecorder struct {
+	*httptest.ResponseRecorder
+	flushHook func()
+}
+
+func (r *builderStreamHookRecorder) Flush() {
+	if r.flushHook != nil {
+		hook := r.flushHook
+		r.flushHook = nil
+		hook()
+	}
+	r.ResponseRecorder.Flush()
+}
+
 func setupBuilderSessionHandlerTestDB(t *testing.T) {
 	t.Helper()
 
@@ -38,6 +53,10 @@ func setupBuilderSessionHandlerTestDB(t *testing.T) {
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	require.NoError(t, err)
+	sqlDB, err := testDB.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
 
 	db.DB = testDB
 	require.NoError(t, db.Migrate())
@@ -67,6 +86,8 @@ func newBuilderSessionHandlerRouter(userID, username, role string) *gin.Engine {
 	projectsWrite := r.Group("/api/v1/projects", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 	projectsWrite.POST("/:projectID/builder-sessions", CreateBuilderSession)
 	projectsWrite.POST("/:projectID/builder-sessions/:sessionID/messages", PostBuilderSessionMessage)
+	projectsWrite.POST("/:projectID/builder-sessions/:sessionID/runs/:runID/cancel", RequestBuilderRunCancel)
+	projectsWrite.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/logs", StreamBuilderRunLogs)
 
 	return r
 }
@@ -77,6 +98,7 @@ func newBuilderSessionDirectWriteRouter() *gin.Engine {
 	r := gin.New()
 	r.POST("/api/v1/projects/:projectID/builder-sessions", CreateBuilderSession)
 	r.POST("/api/v1/projects/:projectID/builder-sessions/:sessionID/messages", PostBuilderSessionMessage)
+	r.POST("/api/v1/projects/:projectID/builder-sessions/:sessionID/runs/:runID/cancel", RequestBuilderRunCancel)
 
 	return r
 }
@@ -501,13 +523,13 @@ func TestPostBuilderSessionMessageHandler(t *testing.T) {
 		var detail models.BuilderSessionDetailResponse
 		require.NoError(t, json.Unmarshal(resp.Data, &detail))
 		assert.Equal(t, "session-1", detail.Session.ID)
-		assert.Equal(t, string(entities.BuilderSessionStatusRunning), detail.Session.Status)
-		assert.Equal(t, string(entities.BuilderRunStatusExecuting), detail.Session.LatestRunStatus)
+		assert.Equal(t, string(entities.BuilderSessionStatusReady), detail.Session.Status)
+		assert.Equal(t, string(entities.BuilderRunStatusQueued), detail.Session.LatestRunStatus)
 		require.Len(t, detail.Messages, 1)
 		assert.Equal(t, "Add pagination to the service list.", detail.Messages[0].Content)
 		require.Len(t, detail.Runs, 1)
-		assert.Equal(t, string(entities.BuilderRunStatusExecuting), detail.Runs[0].Status)
-		assert.NotNil(t, detail.Runs[0].StartedAt)
+		assert.Equal(t, string(entities.BuilderRunStatusQueued), detail.Runs[0].Status)
+		assert.Nil(t, detail.Runs[0].StartedAt)
 	})
 
 	t.Run("maps missing sessions to not found", func(t *testing.T) {
@@ -625,6 +647,469 @@ func TestListBuilderSessionsHandler(t *testing.T) {
 		assert.Equal(t, "/workspace/session-1", items[1].CurrentWorkspaceRoot)
 		assert.Equal(t, int64(1), items[1].ArtifactCount)
 	})
+}
+
+func TestRequestBuilderRunCancellationHandler(t *testing.T) {
+	t.Run("persists cancel intent without changing the session lifecycle", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		seedBuilderSessionProjectMember(t, "project-1", "developer-1", app.ProjectRoleDeveloper)
+
+		now := time.Now().UTC().Truncate(time.Second)
+		queuedPhase := entities.BuilderRunPhaseQueued
+		require.NoError(t, db.DB.Create(&entities.BuilderSession{
+			Base: entities.Base{
+				ID:        "session-1",
+				CreatedAt: now.Add(-2 * time.Minute),
+				UpdatedAt: now.Add(-2 * time.Minute),
+			},
+			ProjectID:      "project-1",
+			BuildEnvID:     "env-1",
+			Title:          "Cancelable session",
+			Status:         entities.BuilderSessionStatusReady,
+			CreatedBy:      "user-1",
+			LastActivityAt: now.Add(-time.Minute),
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+			ID:        "message-1",
+			CreatedAt: now.Add(-90 * time.Second),
+			UpdatedAt: now.Add(-90 * time.Second),
+			SessionID: "session-1",
+			Role:      entities.BuilderMessageRoleUser,
+			Content:   "Cancel prompt",
+			CreatedBy: "user-1",
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderRun{
+			ID:                 "run-1",
+			CreatedAt:          now.Add(-time.Minute),
+			UpdatedAt:          now.Add(-time.Minute),
+			SessionID:          "session-1",
+			TriggerMessageID:   "message-1",
+			Status:             entities.BuilderRunStatusQueued,
+			Phase:              &queuedPhase,
+			RequestedBy:        "user-1",
+			InstructionSummary: "Cancel prompt",
+		}).Error)
+
+		r := newBuilderSessionHandlerRouter("developer-1", "alice", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/builder-sessions/session-1/runs/run-1/cancel", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+
+		var resp builderSessionAPIResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		require.Empty(t, resp.Error)
+
+		var detail models.BuilderSessionDetailResponse
+		require.NoError(t, json.Unmarshal(resp.Data, &detail))
+		assert.Equal(t, "session-1", detail.Session.ID)
+		assert.Equal(t, string(entities.BuilderSessionStatusReady), detail.Session.Status)
+		require.Len(t, detail.Runs, 1)
+		assert.Equal(t, "run-1", detail.Runs[0].ID)
+		assert.Equal(t, string(entities.BuilderRunStatusQueued), detail.Runs[0].Status)
+
+		var persistedRun entities.BuilderRun
+		require.NoError(t, db.DB.First(&persistedRun, "id = ?", "run-1").Error)
+		require.NotNil(t, persistedRun.CancelRequestedAt)
+		assert.Equal(t, entities.BuilderRunStatusQueued, persistedRun.Status)
+
+		var session entities.BuilderSession
+		require.NoError(t, db.DB.First(&session, "id = ?", "session-1").Error)
+		assert.Equal(t, entities.BuilderSessionStatusReady, session.Status)
+	})
+
+	t.Run("maps out-of-scope runs to not found", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		seedBuilderSessionProjectMember(t, "project-1", "developer-1", app.ProjectRoleDeveloper)
+
+		now := time.Now().UTC().Truncate(time.Second)
+		queuedPhase := entities.BuilderRunPhaseQueued
+		require.NoError(t, db.DB.Create(&entities.BuilderSession{
+			Base:           entities.Base{ID: "session-1", CreatedAt: now.Add(-2 * time.Minute), UpdatedAt: now.Add(-2 * time.Minute)},
+			ProjectID:      "project-1",
+			BuildEnvID:     "env-1",
+			Title:          "Primary session",
+			Status:         entities.BuilderSessionStatusReady,
+			CreatedBy:      "user-1",
+			LastActivityAt: now.Add(-time.Minute),
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderSession{
+			Base:           entities.Base{ID: "session-2", CreatedAt: now.Add(-90 * time.Second), UpdatedAt: now.Add(-90 * time.Second)},
+			ProjectID:      "project-1",
+			BuildEnvID:     "env-1",
+			Title:          "Secondary session",
+			Status:         entities.BuilderSessionStatusReady,
+			CreatedBy:      "user-1",
+			LastActivityAt: now.Add(-30 * time.Second),
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+			ID:        "message-2",
+			CreatedAt: now.Add(-60 * time.Second),
+			UpdatedAt: now.Add(-60 * time.Second),
+			SessionID: "session-2",
+			Role:      entities.BuilderMessageRoleUser,
+			Content:   "Scoped cancel prompt",
+			CreatedBy: "user-1",
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderRun{
+			ID:                 "run-2",
+			CreatedAt:          now.Add(-30 * time.Second),
+			UpdatedAt:          now.Add(-30 * time.Second),
+			SessionID:          "session-2",
+			TriggerMessageID:   "message-2",
+			Status:             entities.BuilderRunStatusQueued,
+			Phase:              &queuedPhase,
+			RequestedBy:        "user-1",
+			InstructionSummary: "Scoped cancel prompt",
+		}).Error)
+
+		r := newBuilderSessionHandlerRouter("developer-1", "alice", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/builder-sessions/session-1/runs/run-2/cancel", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNotFound, w.Code)
+
+		var resp builderSessionAPIResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		assert.Contains(t, resp.Error, "builder run run-2 not found")
+
+		var persistedRun entities.BuilderRun
+		require.NoError(t, db.DB.First(&persistedRun, "id = ?", "run-2").Error)
+		assert.Nil(t, persistedRun.CancelRequestedAt)
+	})
+}
+
+func TestStreamBuilderRunLogsReplaysDurableEvents(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "developer-1", app.ProjectRoleDeveloper)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	completedAt := now.Add(-30 * time.Second)
+	finalizingPhase := entities.BuilderRunPhaseFinalizing
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base: entities.Base{
+			ID:        "session-stream-1",
+			CreatedAt: now.Add(-2 * time.Minute),
+			UpdatedAt: now.Add(-2 * time.Minute),
+		},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Replay stream session",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        "message-stream-1",
+		CreatedAt: now.Add(-90 * time.Second),
+		UpdatedAt: now.Add(-90 * time.Second),
+		SessionID: "session-stream-1",
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Replay durable builder logs",
+		CreatedBy: "user-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-stream-1",
+		CreatedAt:          now.Add(-time.Minute),
+		UpdatedAt:          now.Add(-time.Minute),
+		SessionID:          "session-stream-1",
+		TriggerMessageID:   "message-stream-1",
+		Status:             entities.BuilderRunStatusSucceeded,
+		Phase:              &finalizingPhase,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Replay durable builder logs",
+		ExecutionLog:       "legacy independent execution log",
+		CompletedAt:        &completedAt,
+	}).Error)
+	require.NoError(t, db.DB.Create(&[]entities.BuilderRunEvent{
+		{
+			ID:        "run-stream-event-1",
+			CreatedAt: now.Add(-55 * time.Second),
+			RunID:     "run-stream-1",
+			Sequence:  1,
+			Level:     entities.BuilderRunEventLevelInfo,
+			Kind:      entities.BuilderRunEventKindLog,
+			Message:   "[system] run started\n",
+		},
+		{
+			ID:        "run-stream-event-2",
+			CreatedAt: now.Add(-45 * time.Second),
+			RunID:     "run-stream-1",
+			Sequence:  2,
+			Level:     entities.BuilderRunEventLevelInfo,
+			Kind:      entities.BuilderRunEventKindStatus,
+			Message:   "[system] run completed\n",
+		},
+	}).Error)
+
+	r := newBuilderSessionHandlerRouter("developer-1", "alice", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/session-stream-1/runs/run-stream-1/logs", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/event-stream")
+
+	body := w.Body.String()
+	assert.Contains(t, body, "id:1")
+	assert.Contains(t, body, "id:2")
+	assert.Contains(t, body, "[system] run started")
+	assert.Contains(t, body, "[system] run completed")
+	assert.NotContains(t, body, "legacy independent execution log")
+	assert.Contains(t, body, "event:done")
+	assert.Less(t, strings.Index(body, "[system] run completed"), strings.Index(body, "event:done"))
+}
+
+func TestStreamBuilderRunLogsEmitsDoneAfterReplayTurnsTerminal(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "developer-1", app.ProjectRoleDeveloper)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	generatingPhase := entities.BuilderRunPhaseGenerating
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base: entities.Base{
+			ID:        "session-stream-race-1",
+			CreatedAt: now.Add(-2 * time.Minute),
+			UpdatedAt: now.Add(-2 * time.Minute),
+		},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Replay race session",
+		Status:         entities.BuilderSessionStatusRunning,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        "message-stream-race-1",
+		CreatedAt: now.Add(-90 * time.Second),
+		UpdatedAt: now.Add(-90 * time.Second),
+		SessionID: "session-stream-race-1",
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Replay while the run turns terminal",
+		CreatedBy: "user-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-stream-race-1",
+		CreatedAt:          now.Add(-time.Minute),
+		UpdatedAt:          now.Add(-time.Minute),
+		SessionID:          "session-stream-race-1",
+		TriggerMessageID:   "message-stream-race-1",
+		Status:             entities.BuilderRunStatusExecuting,
+		Phase:              &generatingPhase,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Replay while the run turns terminal",
+	}).Error)
+	require.NoError(t, db.DB.Create(&[]entities.BuilderRunEvent{
+		{
+			ID:        "run-stream-race-event-1",
+			CreatedAt: now.Add(-40 * time.Second),
+			RunID:     "run-stream-race-1",
+			Sequence:  1,
+			Level:     entities.BuilderRunEventLevelInfo,
+			Kind:      entities.BuilderRunEventKindLog,
+			Message:   "[system] replayed start\n",
+		},
+		{
+			ID:        "run-stream-race-event-2",
+			CreatedAt: now.Add(-30 * time.Second),
+			RunID:     "run-stream-race-1",
+			Sequence:  2,
+			Level:     entities.BuilderRunEventLevelInfo,
+			Kind:      entities.BuilderRunEventKindStatus,
+			Message:   "[system] replayed completion\n",
+		},
+	}).Error)
+
+	r := newBuilderSessionHandlerRouter("developer-1", "alice", app.UserRoleUser)
+	requestCtx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/session-stream-race-1/runs/run-stream-race-1/logs", nil).WithContext(requestCtx)
+	w := &builderStreamHookRecorder{ResponseRecorder: httptest.NewRecorder()}
+	w.flushHook = func() {
+		finalizingPhase := entities.BuilderRunPhaseFinalizing
+		completedAt := time.Now().UTC().Truncate(time.Second)
+		require.NoError(t, db.DB.Model(&entities.BuilderRun{}).Where("id = ?", "run-stream-race-1").Updates(map[string]any{
+			"status":       entities.BuilderRunStatusSucceeded,
+			"phase":        &finalizingPhase,
+			"completed_at": &completedAt,
+		}).Error)
+	}
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "id:1")
+	assert.Contains(t, body, "id:2")
+	assert.Contains(t, body, "[system] replayed start")
+	assert.Contains(t, body, "[system] replayed completion")
+	assert.Contains(t, body, "event:done")
+	assert.Less(t, strings.Index(body, "[system] replayed completion"), strings.Index(body, "event:done"))
+}
+
+func TestStreamBuilderRunLogsDrainsQueuedLiveEventsBeforeDone(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "developer-1", app.ProjectRoleDeveloper)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	generatingPhase := entities.BuilderRunPhaseGenerating
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base: entities.Base{
+			ID:        "session-stream-drain-1",
+			CreatedAt: now.Add(-2 * time.Minute),
+			UpdatedAt: now.Add(-2 * time.Minute),
+		},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Drain queued live events session",
+		Status:         entities.BuilderSessionStatusRunning,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        "message-stream-drain-1",
+		CreatedAt: now.Add(-90 * time.Second),
+		UpdatedAt: now.Add(-90 * time.Second),
+		SessionID: "session-stream-drain-1",
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Drain queued live events before done",
+		CreatedBy: "user-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-stream-drain-1",
+		CreatedAt:          now.Add(-time.Minute),
+		UpdatedAt:          now.Add(-time.Minute),
+		SessionID:          "session-stream-drain-1",
+		TriggerMessageID:   "message-stream-drain-1",
+		Status:             entities.BuilderRunStatusExecuting,
+		Phase:              &generatingPhase,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Drain queued live events before done",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRunEvent{
+		ID:        "run-stream-drain-event-1",
+		CreatedAt: now.Add(-40 * time.Second),
+		RunID:     "run-stream-drain-1",
+		Sequence:  1,
+		Level:     entities.BuilderRunEventLevelInfo,
+		Kind:      entities.BuilderRunEventKindLog,
+		Message:   "[system] replayed start\n",
+	}).Error)
+
+	r := newBuilderSessionHandlerRouter("developer-1", "alice", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/session-stream-drain-1/runs/run-stream-drain-1/logs", nil)
+	w := &builderStreamHookRecorder{ResponseRecorder: httptest.NewRecorder()}
+	w.flushHook = func() {
+		finalizingPhase := entities.BuilderRunPhaseFinalizing
+		completedAt := time.Now().UTC().Truncate(time.Second)
+		require.NoError(t, db.DB.Model(&entities.BuilderRun{}).Where("id = ?", "run-stream-drain-1").Updates(map[string]any{
+			"status":       entities.BuilderRunStatusSucceeded,
+			"phase":        &finalizingPhase,
+			"completed_at": &completedAt,
+		}).Error)
+		_, err := services.AppendBuilderRunEvent(context.Background(), "run-stream-drain-1", services.BuilderRunEventInput{
+			Kind:    entities.BuilderRunEventKindStatus,
+			Message: "[system] queued completion\n",
+		})
+		require.NoError(t, err)
+	}
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "id:1")
+	assert.Contains(t, body, "[system] replayed start")
+	assert.Contains(t, body, "id:2")
+	assert.Contains(t, body, "[system] queued completion")
+	assert.Contains(t, body, "event:done")
+	assert.Less(t, strings.Index(body, "[system] queued completion"), strings.Index(body, "event:done"))
+}
+
+func TestStreamBuilderRunLogsEmitsDoneWhenReplayCompletesBeforeTerminalFinalize(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "developer-1", app.ProjectRoleDeveloper)
+	originalPollInterval := builderRunLogsTerminalPollInterval
+	builderRunLogsTerminalPollInterval = 10 * time.Millisecond
+	t.Cleanup(func() {
+		builderRunLogsTerminalPollInterval = originalPollInterval
+	})
+
+	now := time.Now().UTC().Truncate(time.Second)
+	generatingPhase := entities.BuilderRunPhaseGenerating
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base: entities.Base{
+			ID:        "session-stream-replay-finalize-1",
+			CreatedAt: now.Add(-2 * time.Minute),
+			UpdatedAt: now.Add(-2 * time.Minute),
+		},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Replay finalize race session",
+		Status:         entities.BuilderSessionStatusRunning,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        "message-stream-replay-finalize-1",
+		CreatedAt: now.Add(-90 * time.Second),
+		UpdatedAt: now.Add(-90 * time.Second),
+		SessionID: "session-stream-replay-finalize-1",
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Replay a final event before the run turns terminal",
+		CreatedBy: "user-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-stream-replay-finalize-1",
+		CreatedAt:          now.Add(-time.Minute),
+		UpdatedAt:          now.Add(-time.Minute),
+		SessionID:          "session-stream-replay-finalize-1",
+		TriggerMessageID:   "message-stream-replay-finalize-1",
+		Status:             entities.BuilderRunStatusExecuting,
+		Phase:              &generatingPhase,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Replay a final event before the run turns terminal",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRunEvent{
+		ID:        "run-stream-replay-finalize-event-1",
+		CreatedAt: now.Add(-20 * time.Second),
+		RunID:     "run-stream-replay-finalize-1",
+		Sequence:  1,
+		Level:     entities.BuilderRunEventLevelInfo,
+		Kind:      entities.BuilderRunEventKindStatus,
+		Message:   "[system] replayed final event\n",
+	}).Error)
+
+	r := newBuilderSessionHandlerRouter("developer-1", "alice", app.UserRoleUser)
+	requestCtx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/session-stream-replay-finalize-1/runs/run-stream-replay-finalize-1/logs", nil).WithContext(requestCtx)
+	w := &builderStreamHookRecorder{ResponseRecorder: httptest.NewRecorder()}
+	w.flushHook = func() {
+		time.AfterFunc(30*time.Millisecond, func() {
+			finalizingPhase := entities.BuilderRunPhaseFinalizing
+			completedAt := time.Now().UTC().Truncate(time.Second)
+			_ = db.DB.Model(&entities.BuilderRun{}).Where("id = ?", "run-stream-replay-finalize-1").Updates(map[string]any{
+				"status":       entities.BuilderRunStatusSucceeded,
+				"phase":        &finalizingPhase,
+				"completed_at": &completedAt,
+			}).Error
+		})
+	}
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "id:1")
+	assert.Contains(t, body, "[system] replayed final event")
+	assert.Contains(t, body, "event:done")
+	assert.Less(t, strings.Index(body, "[system] replayed final event"), strings.Index(body, "event:done"))
 }
 
 func TestGetBuilderSessionHandler(t *testing.T) {

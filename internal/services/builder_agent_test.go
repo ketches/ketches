@@ -73,11 +73,7 @@ func TestGenerateBuilderFiles_SendsConfiguredOpenAICompatibleRequestAndParsesRes
 	}))
 	defer server.Close()
 
-	app.Config = app.AppConfig{
-		BuilderAgentBaseURL: server.URL,
-		BuilderAgentAPIKey:  "test-api-key",
-		BuilderAgentModel:   "builder-model",
-	}
+	app.Config = newBuilderAgentRegistryTestConfig(t, server.URL)
 
 	result, err := GenerateBuilderFiles(context.Background(), []BuilderAgentMessage{
 		{Role: "system", Content: "You are a builder."},
@@ -89,6 +85,40 @@ func TestGenerateBuilderFiles_SendsConfiguredOpenAICompatibleRequestAndParsesRes
 	require.Len(t, result.Files, 1)
 	assert.Equal(t, "cmd/api/main.go", result.Files[0].Path)
 	assert.Equal(t, "package main\n", result.Files[0].Content)
+}
+
+func TestGenerateBuilderFiles_SkipsAuthorizationHeaderWhenRegistryAPIKeyIsBlank(t *testing.T) {
+	originalConfig := app.Config
+	t.Cleanup(func() {
+		app.Config = originalConfig
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/chat/completions", r.URL.Path)
+		require.Empty(t, r.Header.Get("Authorization"))
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{
+					"message": map[string]any{
+						"content": `{"assistant_message":"Created initial files.","files":[{"path":"cmd/api/main.go","content":"package main\n"}]}`,
+					},
+				},
+			},
+		}))
+	}))
+	defer server.Close()
+
+	app.Config = newBuilderAgentRegistryTestConfigWithAPIKey(t, server.URL, "")
+
+	result, err := GenerateBuilderFiles(context.Background(), []BuilderAgentMessage{
+		{Role: "user", Content: "Create the initial files."},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
 }
 
 func TestGenerateBuilderFiles_RejectsUnsafeFilePaths(t *testing.T) {
@@ -110,11 +140,7 @@ func TestGenerateBuilderFiles_RejectsUnsafeFilePaths(t *testing.T) {
 				app.Config = originalConfig
 			})
 
-			app.Config = app.AppConfig{
-				BuilderAgentBaseURL: server.URL,
-				BuilderAgentAPIKey:  "test-api-key",
-				BuilderAgentModel:   "builder-model",
-			}
+			app.Config = newBuilderAgentRegistryTestConfig(t, server.URL)
 
 			result, err := GenerateBuilderFiles(context.Background(), []BuilderAgentMessage{{Role: "user", Content: "Write a file."}})
 			require.Error(t, err)
@@ -146,11 +172,7 @@ func TestGenerateBuilderFiles_RejectsBlankFileWrites(t *testing.T) {
 				app.Config = originalConfig
 			})
 
-			app.Config = app.AppConfig{
-				BuilderAgentBaseURL: server.URL,
-				BuilderAgentAPIKey:  "test-api-key",
-				BuilderAgentModel:   "builder-model",
-			}
+			app.Config = newBuilderAgentRegistryTestConfig(t, server.URL)
 
 			result, err := GenerateBuilderFiles(context.Background(), []BuilderAgentMessage{{Role: "user", Content: "Write a file."}})
 			require.Error(t, err)
@@ -188,4 +210,19 @@ func marshalJSONString(t *testing.T, value string) string {
 	encoded, err := json.Marshal(value)
 	require.NoError(t, err)
 	return string(encoded)
+}
+
+func newBuilderAgentRegistryTestConfig(t *testing.T, baseURL string) app.AppConfig {
+	return newBuilderAgentRegistryTestConfigWithAPIKey(t, baseURL, "test-api-key")
+}
+
+func newBuilderAgentRegistryTestConfigWithAPIKey(t *testing.T, baseURL, apiKey string) app.AppConfig {
+	t.Helper()
+
+	return app.AppConfig{
+		BuilderProviderRegistryJSON:     `[{"key":"openai-compatible-primary","base_url":` + marshalJSONString(t, baseURL) + `,"api_key":` + marshalJSONString(t, apiKey) + `}]`,
+		BuilderModelProfileRegistryJSON: `[{"key":"builder-default","model":"builder-model"}]`,
+		BuilderDefaultProviderKey:       "openai-compatible-primary",
+		BuilderDefaultModelProfileKey:   "builder-default",
+	}
 }
