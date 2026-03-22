@@ -117,6 +117,97 @@ func seedBuilderSessionRouteReadFixture(t *testing.T) string {
 	return session.ID
 }
 
+func seedBuilderSessionRouteBuildOutputFixture(t *testing.T) string {
+	t.Helper()
+
+	now := time.Now().UTC().Truncate(time.Second)
+	terminatedAt := now.Add(-30 * time.Second)
+	workspaceID := "workspace-route-build-output"
+	sessionID := "session-route-build-output"
+	runID := "run-route-build-output"
+
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base: entities.Base{
+			ID:        sessionID,
+			CreatedAt: now.Add(-5 * time.Minute),
+			UpdatedAt: now.Add(-4 * time.Minute),
+		},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Route build output session",
+		Summary:        "Build outputs should remain visible on the existing detail route.",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "developer-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        "message-route-build-output",
+		CreatedAt: now.Add(-4 * time.Minute),
+		UpdatedAt: now.Add(-4 * time.Minute),
+		SessionID: sessionID,
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Build the generated app.",
+		CreatedBy: "developer-1",
+	}).Error)
+
+	completedAt := now.Add(-2 * time.Minute)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 runID,
+		CreatedAt:          now.Add(-3 * time.Minute),
+		UpdatedAt:          now.Add(-2 * time.Minute),
+		SessionID:          sessionID,
+		TriggerMessageID:   "message-route-build-output",
+		WorkspaceID:        &workspaceID,
+		Status:             entities.BuilderRunStatusSucceeded,
+		RequestedBy:        "developer-1",
+		InstructionSummary: "Build the generated app.",
+		CompletedAt:        &completedAt,
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderWorkspace{
+		ID:            workspaceID,
+		CreatedAt:     now.Add(-3 * time.Minute),
+		UpdatedAt:     now.Add(-2 * time.Minute),
+		SessionID:     sessionID,
+		BuildEnvID:    "env-1",
+		ClusterID:     "cluster-1",
+		Namespace:     "builder-route-build-output",
+		PodName:       "builder-route-build-output-0",
+		ContainerName: "workspace",
+		Status:        entities.BuilderWorkspaceStatusExpired,
+		WorkspaceRoot: "/workspace/route-build-output",
+		TerminatedAt:  &terminatedAt,
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&[]entities.BuilderArtifact{
+		{
+			ID:           "artifact-route-build-output-source",
+			CreatedAt:    now.Add(-2 * time.Minute),
+			UpdatedAt:    now.Add(-2 * time.Minute),
+			SessionID:    sessionID,
+			WorkspaceID:  workspaceID,
+			RunID:        runID,
+			Kind:         entities.BuilderArtifactKindWorkspaceFile,
+			Path:         "src/main.tsx",
+			MetadataJSON: `{"size_bytes":120,"source_phase":"materializing_files"}`,
+		},
+		{
+			ID:           "artifact-route-build-output-build",
+			CreatedAt:    now.Add(-time.Minute),
+			UpdatedAt:    now.Add(-time.Minute),
+			SessionID:    sessionID,
+			WorkspaceID:  workspaceID,
+			RunID:        runID,
+			Kind:         entities.BuilderArtifactKindBuildOutput,
+			Path:         "dist/index.html",
+			MetadataJSON: `{"size_bytes":512,"output_root":"dist","source_phase":"building"}`,
+		},
+	}).Error)
+
+	return sessionID
+}
+
 func newBuilderSessionRouteRequest(t *testing.T, method, path, body string, user *entities.User) *http.Request {
 	t.Helper()
 
@@ -311,4 +402,45 @@ func TestBuilderSessionRoutes(t *testing.T) {
 		require.NoError(t, db.DB.First(&scopedRun, "id = ?", "run-route-2").Error)
 		assert.Nil(t, scopedRun.CancelRequestedAt)
 	})
+}
+
+func TestBuilderSessionRoutesExposeBuildOutputArtifactsWithoutRouteChurn(t *testing.T) {
+	setupBuilderSessionRoutesTestDB(t)
+
+	viewer := seedBuilderSessionRouteUser(t, "viewer-1", "viewer", app.UserRoleUser)
+	seedBuilderSessionRouteProjectMember(t, "project-1", viewer.ID, app.ProjectRoleViewer)
+	sessionID := seedBuilderSessionRouteBuildOutputFixture(t)
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	routes.SetupRoutes(r)
+
+	req := newBuilderSessionRouteRequest(t, http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID, "", viewer)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp builderSessionRouteAPIResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	var detail models.BuilderSessionDetailResponse
+	require.NoError(t, json.Unmarshal(resp.Data, &detail))
+	assert.Equal(t, sessionID, detail.Session.ID)
+	assert.Nil(t, detail.Workspace)
+	require.Len(t, detail.Artifacts, 2)
+
+	artifactsByPath := make(map[string]models.BuilderArtifactSummaryResponse, len(detail.Artifacts))
+	for _, artifact := range detail.Artifacts {
+		artifactsByPath[artifact.Path] = artifact
+	}
+
+	workspaceArtifact, ok := artifactsByPath["src/main.tsx"]
+	require.True(t, ok)
+	assert.Equal(t, string(entities.BuilderArtifactKindWorkspaceFile), workspaceArtifact.Kind)
+	assert.JSONEq(t, `{"size_bytes":120,"source_phase":"materializing_files"}`, workspaceArtifact.MetadataJSON)
+
+	buildOutputArtifact, ok := artifactsByPath["dist/index.html"]
+	require.True(t, ok)
+	assert.Equal(t, string(entities.BuilderArtifactKindBuildOutput), buildOutputArtifact.Kind)
+	assert.JSONEq(t, `{"size_bytes":512,"output_root":"dist","source_phase":"building"}`, buildOutputArtifact.MetadataJSON)
 }

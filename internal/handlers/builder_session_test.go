@@ -359,6 +359,97 @@ func seedBuilderSessionDetailFixture(t *testing.T) string {
 	return session.ID
 }
 
+func seedBuilderSessionTerminatedWorkspaceArtifactFixture(t *testing.T) string {
+	t.Helper()
+
+	now := time.Now().UTC().Truncate(time.Second)
+	terminatedAt := now.Add(-30 * time.Second)
+	workspaceID := "workspace-terminated-handler"
+	sessionID := "session-terminated-handler"
+	runID := "run-terminated-handler"
+
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base: entities.Base{
+			ID:        sessionID,
+			CreatedAt: now.Add(-5 * time.Minute),
+			UpdatedAt: now.Add(-4 * time.Minute),
+		},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Completed build session",
+		Summary:        "Build outputs should remain visible after workspace teardown.",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        "message-terminated-handler",
+		CreatedAt: now.Add(-4 * time.Minute),
+		UpdatedAt: now.Add(-4 * time.Minute),
+		SessionID: sessionID,
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Build the generated app.",
+		CreatedBy: "user-1",
+	}).Error)
+
+	completedAt := now.Add(-2 * time.Minute)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 runID,
+		CreatedAt:          now.Add(-3 * time.Minute),
+		UpdatedAt:          now.Add(-2 * time.Minute),
+		SessionID:          sessionID,
+		TriggerMessageID:   "message-terminated-handler",
+		WorkspaceID:        &workspaceID,
+		Status:             entities.BuilderRunStatusSucceeded,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Build the generated app.",
+		CompletedAt:        &completedAt,
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderWorkspace{
+		ID:            workspaceID,
+		CreatedAt:     now.Add(-3 * time.Minute),
+		UpdatedAt:     now.Add(-2 * time.Minute),
+		SessionID:     sessionID,
+		BuildEnvID:    "env-1",
+		ClusterID:     "cluster-1",
+		Namespace:     "builder-session-terminated-handler",
+		PodName:       "builder-session-terminated-handler-0",
+		ContainerName: "workspace",
+		Status:        entities.BuilderWorkspaceStatusExpired,
+		WorkspaceRoot: "/workspace/session-terminated-handler",
+		TerminatedAt:  &terminatedAt,
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&[]entities.BuilderArtifact{
+		{
+			ID:           "artifact-terminated-handler-source",
+			CreatedAt:    now.Add(-2 * time.Minute),
+			UpdatedAt:    now.Add(-2 * time.Minute),
+			SessionID:    sessionID,
+			WorkspaceID:  workspaceID,
+			RunID:        runID,
+			Kind:         entities.BuilderArtifactKindWorkspaceFile,
+			Path:         "src/main.tsx",
+			MetadataJSON: `{"size_bytes":120,"source_phase":"materializing_files"}`,
+		},
+		{
+			ID:           "artifact-terminated-handler-build",
+			CreatedAt:    now.Add(-time.Minute),
+			UpdatedAt:    now.Add(-time.Minute),
+			SessionID:    sessionID,
+			WorkspaceID:  workspaceID,
+			RunID:        runID,
+			Kind:         entities.BuilderArtifactKindBuildOutput,
+			Path:         "dist/index.html",
+			MetadataJSON: `{"size_bytes":512,"output_root":"dist","source_phase":"building"}`,
+		},
+	}).Error)
+
+	return sessionID
+}
+
 func TestCreateBuilderSessionHandler(t *testing.T) {
 	t.Run("fails fast when claims are missing", func(t *testing.T) {
 		setupBuilderSessionHandlerTestDB(t)
@@ -1166,4 +1257,42 @@ func TestGetBuilderSessionHandler(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		assert.Contains(t, resp.Error, "builder session missing-session not found")
 	})
+}
+
+func TestGetBuilderSessionHandlerReturnsLatestRunArtifactsWithoutActiveWorkspace(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+	sessionID := seedBuilderSessionTerminatedWorkspaceArtifactFixture(t)
+
+	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID, nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp builderSessionAPIResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Empty(t, resp.Error)
+
+	var detail models.BuilderSessionDetailResponse
+	require.NoError(t, json.Unmarshal(resp.Data, &detail))
+	assert.Nil(t, detail.Workspace)
+	require.Len(t, detail.Artifacts, 2)
+
+	artifactsByPath := make(map[string]models.BuilderArtifactSummaryResponse, len(detail.Artifacts))
+	for _, artifact := range detail.Artifacts {
+		artifactsByPath[artifact.Path] = artifact
+	}
+
+	workspaceArtifact, ok := artifactsByPath["src/main.tsx"]
+	require.True(t, ok)
+	assert.Equal(t, string(entities.BuilderArtifactKindWorkspaceFile), workspaceArtifact.Kind)
+	assert.JSONEq(t, `{"size_bytes":120,"source_phase":"materializing_files"}`, workspaceArtifact.MetadataJSON)
+
+	buildOutputArtifact, ok := artifactsByPath["dist/index.html"]
+	require.True(t, ok)
+	assert.Equal(t, string(entities.BuilderArtifactKindBuildOutput), buildOutputArtifact.Kind)
+	assert.JSONEq(t, `{"size_bytes":512,"output_root":"dist","source_phase":"building"}`, buildOutputArtifact.MetadataJSON)
 }
