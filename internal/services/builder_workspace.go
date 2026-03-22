@@ -24,7 +24,16 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const builderWorkspaceStorageRequest = "5Gi"
+const (
+	builderWorkspaceStorageRequest = "5Gi"
+	builderBuildOutputRootDist     = "dist"
+	builderBuildOutputRootBuild    = "build"
+)
+
+type builderArtifactMetadata struct {
+	SizeBytes  int64  `json:"size_bytes"`
+	OutputRoot string `json:"output_root,omitempty"`
+}
 
 var getBuilderWorkspaceClusterClient = func(clusterID string) (kubernetes.Interface, error) {
 	return kube.GlobalClusterStore.GetClient(clusterID)
@@ -304,31 +313,9 @@ func refreshBuilderWorkspaceArtifacts(ctx context.Context, appCtx *models.AppCon
 		return err
 	}
 
-	artifacts := make([]entities.BuilderArtifact, 0, len(listing.Files))
-	for _, file := range listing.Files {
-		if file.Type != "file" {
-			continue
-		}
-
-		artifactPath, err := validateBuilderAgentFilePath(file.Name)
-		if err != nil {
-			return err
-		}
-
-		metadataJSON, err := json.Marshal(map[string]int64{"size_bytes": file.Size})
-		if err != nil {
-			return err
-		}
-
-		artifacts = append(artifacts, entities.BuilderArtifact{
-			ID:           uuid.New(),
-			SessionID:    workspace.SessionID,
-			WorkspaceID:  workspace.ID,
-			RunID:        run.ID,
-			Kind:         "file",
-			Path:         artifactPath,
-			MetadataJSON: string(metadataJSON),
-		})
+	artifacts, err := collectBuilderWorkspaceFileArtifacts(workspace, run, listing)
+	if err != nil {
+		return err
 	}
 
 	if run.ClaimToken != nil && strings.TrimSpace(*run.ClaimToken) != "" {
@@ -341,6 +328,185 @@ func refreshBuilderWorkspaceArtifacts(ctx context.Context, appCtx *models.AppCon
 	return tx.Transaction(func(tx *gorm.DB) error {
 		return replaceBuilderWorkspaceArtifactsTx(tx, workspace, artifacts)
 	})
+}
+
+func CollectBuilderBuildArtifacts(workspace *entities.BuilderWorkspace, run *entities.BuilderRun, listing *models.ListFilesResponse) ([]entities.BuilderArtifact, error) {
+	appCtx, err := buildBuilderWorkspaceAppContext(workspace)
+	if err != nil {
+		return nil, err
+	}
+
+	return collectBuilderBuildArtifactsWithListFn(context.Background(), workspace, run, listing, func(_ context.Context, workspace *entities.BuilderWorkspace, requestedPath string) (*models.ListFilesResponse, error) {
+		return listBuilderWorkspaceFilesInContainer(appCtx, workspace.PodName, workspace.ContainerName, requestedPath)
+	})
+}
+
+func collectBuilderBuildArtifactsWithListFn(ctx context.Context, workspace *entities.BuilderWorkspace, run *entities.BuilderRun, listing *models.ListFilesResponse, listFiles func(context.Context, *entities.BuilderWorkspace, string) (*models.ListFilesResponse, error)) ([]entities.BuilderArtifact, error) {
+	outputRoot, err := detectBuilderBuildOutputRoot(workspace, listing)
+	if err != nil {
+		return nil, err
+	}
+	if listFiles == nil {
+		return nil, errors.New("builder artifact list function is required")
+	}
+
+	return collectBuilderBuildArtifactsRecursive(ctx, workspace, run, listing, outputRoot, listFiles)
+}
+
+func collectBuilderWorkspaceFileArtifacts(workspace *entities.BuilderWorkspace, run *entities.BuilderRun, listing *models.ListFilesResponse) ([]entities.BuilderArtifact, error) {
+	return collectBuilderArtifactsFromListing(workspace, run, listing, entities.BuilderArtifactKindWorkspaceFile, "")
+}
+
+func collectBuilderArtifactsFromListing(workspace *entities.BuilderWorkspace, run *entities.BuilderRun, listing *models.ListFilesResponse, kind entities.BuilderArtifactKind, outputRoot string) ([]entities.BuilderArtifact, error) {
+	if workspace == nil {
+		return nil, errors.New("builder workspace is required")
+	}
+	if run == nil {
+		return nil, errors.New("builder run is required")
+	}
+	if listing == nil {
+		return nil, errors.New("builder artifact listing is required")
+	}
+
+	artifactBasePath, err := resolveBuilderArtifactListingBasePath(workspace.WorkspaceRoot, listing.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	artifacts := make([]entities.BuilderArtifact, 0, len(listing.Files))
+	for _, file := range listing.Files {
+		if file.Type != "file" {
+			continue
+		}
+
+		artifact, err := newBuilderArtifact(workspace, run, kind, path.Join(artifactBasePath, file.Name), file.Size, outputRoot)
+		if err != nil {
+			return nil, err
+		}
+
+		artifacts = append(artifacts, artifact)
+	}
+
+	return artifacts, nil
+}
+
+func collectBuilderBuildArtifactsRecursive(ctx context.Context, workspace *entities.BuilderWorkspace, run *entities.BuilderRun, listing *models.ListFilesResponse, outputRoot string, listFiles func(context.Context, *entities.BuilderWorkspace, string) (*models.ListFilesResponse, error)) ([]entities.BuilderArtifact, error) {
+	if workspace == nil {
+		return nil, errors.New("builder workspace is required")
+	}
+	if run == nil {
+		return nil, errors.New("builder run is required")
+	}
+	if listing == nil {
+		return nil, errors.New("builder artifact listing is required")
+	}
+	if listFiles == nil {
+		return nil, errors.New("builder artifact list function is required")
+	}
+
+	artifactBasePath, err := resolveBuilderArtifactListingBasePath(workspace.WorkspaceRoot, listing.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	artifacts := make([]entities.BuilderArtifact, 0, len(listing.Files))
+	for _, file := range listing.Files {
+		switch file.Type {
+		case "file":
+			artifact, err := newBuilderArtifact(workspace, run, entities.BuilderArtifactKindBuildOutput, path.Join(artifactBasePath, file.Name), file.Size, outputRoot)
+			if err != nil {
+				return nil, err
+			}
+			artifacts = append(artifacts, artifact)
+		case "dir":
+			nestedListingPath := path.Join(listing.Path, file.Name)
+			nestedListing, err := listFiles(ctx, workspace, nestedListingPath)
+			if err != nil {
+				return nil, err
+			}
+			nestedArtifacts, err := collectBuilderBuildArtifactsRecursive(ctx, workspace, run, nestedListing, outputRoot, listFiles)
+			if err != nil {
+				return nil, err
+			}
+			artifacts = append(artifacts, nestedArtifacts...)
+		}
+	}
+
+	return artifacts, nil
+}
+
+func detectBuilderBuildOutputRoot(workspace *entities.BuilderWorkspace, listing *models.ListFilesResponse) (string, error) {
+	if workspace == nil {
+		return "", errors.New("builder workspace is required")
+	}
+	if listing == nil {
+		return "", errors.New("builder artifact listing is required")
+	}
+
+	artifactBasePath, err := resolveBuilderArtifactListingBasePath(workspace.WorkspaceRoot, listing.Path)
+	if err != nil {
+		return "", err
+	}
+	if artifactBasePath == "" {
+		return "", errors.New("builder build output listing must be rooted under a supported output directory")
+	}
+
+	segments := strings.Split(artifactBasePath, "/")
+	if len(segments) == 0 {
+		return "", errors.New("builder build output listing must be rooted under a supported output directory")
+	}
+
+	switch segments[0] {
+	case builderBuildOutputRootDist, builderBuildOutputRootBuild:
+		return segments[0], nil
+	default:
+		return "", fmt.Errorf("unsupported builder build output root: %s", artifactBasePath)
+	}
+}
+
+func resolveBuilderArtifactListingBasePath(workspaceRoot, listingPath string) (string, error) {
+	cleanWorkspaceRoot := path.Clean(strings.TrimSpace(strings.ReplaceAll(workspaceRoot, "\\", "/")))
+	resolvedListingPath, err := resolveBuilderWorkspacePath(workspaceRoot, listingPath)
+	if err != nil {
+		return "", err
+	}
+	if resolvedListingPath == cleanWorkspaceRoot {
+		return "", nil
+	}
+	return strings.TrimPrefix(resolvedListingPath, cleanWorkspaceRoot+"/"), nil
+}
+
+func marshalBuilderArtifactMetadata(sizeBytes int64, outputRoot string) (string, error) {
+	metadataJSON, err := json.Marshal(builderArtifactMetadata{
+		SizeBytes:  sizeBytes,
+		OutputRoot: outputRoot,
+	})
+	if err != nil {
+		return "", err
+	}
+	return string(metadataJSON), nil
+}
+
+func newBuilderArtifact(workspace *entities.BuilderWorkspace, run *entities.BuilderRun, kind entities.BuilderArtifactKind, artifactPath string, sizeBytes int64, outputRoot string) (entities.BuilderArtifact, error) {
+	validatedArtifactPath, err := validateBuilderAgentFilePath(artifactPath)
+	if err != nil {
+		return entities.BuilderArtifact{}, err
+	}
+
+	metadataJSON, err := marshalBuilderArtifactMetadata(sizeBytes, outputRoot)
+	if err != nil {
+		return entities.BuilderArtifact{}, err
+	}
+
+	return entities.BuilderArtifact{
+		ID:           uuid.New(),
+		SessionID:    workspace.SessionID,
+		WorkspaceID:  workspace.ID,
+		RunID:        run.ID,
+		Kind:         kind,
+		Path:         validatedArtifactPath,
+		MetadataJSON: metadataJSON,
+	}, nil
 }
 
 func replaceBuilderWorkspaceArtifactsTx(tx *gorm.DB, workspace *entities.BuilderWorkspace, artifacts []entities.BuilderArtifact) error {

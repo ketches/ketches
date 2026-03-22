@@ -691,10 +691,60 @@ func TestWriteAgentFilesRefreshesArtifactsFromWorkspaceRoot(t *testing.T) {
 	var artifacts []entities.BuilderArtifact
 	require.NoError(t, db.DB.Where("session_id = ? AND workspace_id = ?", workspace.SessionID, workspace.ID).Order("path ASC").Find(&artifacts).Error)
 	require.Len(t, artifacts, 2)
+	assert.Equal(t, "workspace_file", string(artifacts[0].Kind))
 	assert.Equal(t, "README.md", artifacts[0].Path)
 	assert.Equal(t, run.ID, artifacts[0].RunID)
+	assert.JSONEq(t, `{"size_bytes":120}`, artifacts[0].MetadataJSON)
+	assert.Equal(t, "workspace_file", string(artifacts[1].Kind))
 	assert.Equal(t, "package.json", artifacts[1].Path)
 	assert.Equal(t, run.ID, artifacts[1].RunID)
+	assert.JSONEq(t, `{"size_bytes":80}`, artifacts[1].MetadataJSON)
+}
+
+func TestCollectBuilderBuildArtifacts(t *testing.T) {
+	setupBuilderWorkspaceServiceTestDB(t)
+	setBuilderWorkspaceServiceConfigForTest(t)
+	_, workspace, run := seedBuilderWorkspaceServiceFixture(t)
+
+	originalListBuilderWorkspaceFilesInContainer := listBuilderWorkspaceFilesInContainer
+	t.Cleanup(func() {
+		listBuilderWorkspaceFilesInContainer = originalListBuilderWorkspaceFilesInContainer
+	})
+
+	nestedListingPaths := make([]string, 0, 1)
+	listBuilderWorkspaceFilesInContainer = func(_ *models.AppContext, podName, containerName, filePath string) (*models.ListFilesResponse, error) {
+		assert.Equal(t, workspace.PodName, podName)
+		assert.Equal(t, workspace.ContainerName, containerName)
+		nestedListingPaths = append(nestedListingPaths, filePath)
+		if filePath == "/workspace/dist/assets" {
+			return &models.ListFilesResponse{
+				Path: filePath,
+				Files: []models.FileInfo{
+					{Name: "app.js", Type: "file", Size: 2048},
+				},
+			}, nil
+		}
+		return nil, errors.New("unexpected nested listing path")
+	}
+
+	artifacts, err := CollectBuilderBuildArtifacts(workspace, run, &models.ListFilesResponse{
+		Path: "/workspace/dist",
+		Files: []models.FileInfo{
+			{Name: "index.html", Type: "file", Size: 512},
+			{Name: "assets", Type: "dir"},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, artifacts, 2)
+	assert.Equal(t, []string{"/workspace/dist/assets"}, nestedListingPaths)
+	assert.Equal(t, "build_output", string(artifacts[0].Kind))
+	assert.Equal(t, "dist/index.html", artifacts[0].Path)
+	assert.Equal(t, run.ID, artifacts[0].RunID)
+	assert.JSONEq(t, `{"size_bytes":512,"output_root":"dist"}`, artifacts[0].MetadataJSON)
+	assert.Equal(t, "build_output", string(artifacts[1].Kind))
+	assert.Equal(t, "dist/assets/app.js", artifacts[1].Path)
+	assert.Equal(t, run.ID, artifacts[1].RunID)
+	assert.JSONEq(t, `{"size_bytes":2048,"output_root":"dist"}`, artifacts[1].MetadataJSON)
 }
 
 func TestWriteAgentFilesRejectsLostOwnership(t *testing.T) {
