@@ -287,15 +287,20 @@ func getBuilderSessionDetail(tx *gorm.DB, projectID, sessionID string) (*models.
 
 	var workspace *models.BuilderWorkspaceSummaryResponse
 	artifactResponses := []models.BuilderArtifactSummaryResponse{}
+	artifactQuery := tx.Table("builder_artifacts").
+		Select("id, session_id, workspace_id, run_id, kind, path, metadata_json, created_at, updated_at")
 	if row.CurrentWorkspaceID != "" {
 		workspace = toBuilderWorkspaceSummaryFromDetailRow(&row)
+		artifactQuery = artifactQuery.Where("session_id = ? AND workspace_id = ?", sessionID, row.CurrentWorkspaceID)
+	} else if row.LatestRunID != "" {
+		artifactQuery = artifactQuery.Where("session_id = ? AND run_id = ?", sessionID, row.LatestRunID)
+	} else {
+		artifactQuery = nil
+	}
 
+	if artifactQuery != nil {
 		var artifactRows []models.BuilderArtifactSummaryRow
-		if err := tx.Table("builder_artifacts").
-			Select("id, session_id, workspace_id, run_id, kind, path, metadata_json, created_at, updated_at").
-			Where("session_id = ? AND workspace_id = ?", sessionID, row.CurrentWorkspaceID).
-			Order("created_at DESC, id DESC").
-			Find(&artifactRows).Error; err != nil {
+		if err := artifactQuery.Order("created_at DESC, id DESC").Find(&artifactRows).Error; err != nil {
 			return nil, err
 		}
 

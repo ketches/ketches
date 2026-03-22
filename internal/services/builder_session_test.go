@@ -756,6 +756,117 @@ func TestGetBuilderSessionDetailDerivesWorkspaceLatestRunAndArtifactSummary(t *t
 	assert.Equal(t, `{"size_bytes":256}`, resp.Artifacts[0].MetadataJSON)
 }
 
+func TestGetBuilderSessionDetailReturnsLatestRunArtifactsWithoutActiveWorkspace(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	terminatedAt := now.Add(-30 * time.Second)
+	workspaceID := "workspace-terminated"
+
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base: entities.Base{
+			ID:        "session-artifacts-without-active-workspace",
+			CreatedAt: now.Add(-5 * time.Minute),
+			UpdatedAt: now.Add(-4 * time.Minute),
+		},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Completed build session",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        "message-artifacts-without-active-workspace",
+		CreatedAt: now.Add(-4 * time.Minute),
+		UpdatedAt: now.Add(-4 * time.Minute),
+		SessionID: "session-artifacts-without-active-workspace",
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Build the generated app.",
+		CreatedBy: "user-1",
+	}).Error)
+
+	completedAt := now.Add(-2 * time.Minute)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-artifacts-without-active-workspace",
+		CreatedAt:          now.Add(-3 * time.Minute),
+		UpdatedAt:          now.Add(-2 * time.Minute),
+		SessionID:          "session-artifacts-without-active-workspace",
+		TriggerMessageID:   "message-artifacts-without-active-workspace",
+		WorkspaceID:        &workspaceID,
+		Status:             entities.BuilderRunStatusSucceeded,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Build the generated app.",
+		CompletedAt:        &completedAt,
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderWorkspace{
+		ID:            workspaceID,
+		CreatedAt:     now.Add(-3 * time.Minute),
+		UpdatedAt:     now.Add(-2 * time.Minute),
+		SessionID:     "session-artifacts-without-active-workspace",
+		BuildEnvID:    "env-1",
+		ClusterID:     "cluster-1",
+		Namespace:     "builder-session-terminated",
+		PodName:       "builder-session-terminated-0",
+		ContainerName: "workspace",
+		Status:        entities.BuilderWorkspaceStatusExpired,
+		WorkspaceRoot: "/workspace/session-terminated",
+		TerminatedAt:  &terminatedAt,
+	}).Error)
+
+	require.NoError(t, db.DB.Create(&[]entities.BuilderArtifact{
+		{
+			ID:           "artifact-workspace-source",
+			CreatedAt:    now.Add(-2 * time.Minute),
+			UpdatedAt:    now.Add(-2 * time.Minute),
+			SessionID:    "session-artifacts-without-active-workspace",
+			WorkspaceID:  workspaceID,
+			RunID:        "run-artifacts-without-active-workspace",
+			Kind:         entities.BuilderArtifactKindWorkspaceFile,
+			Path:         "src/main.tsx",
+			MetadataJSON: `{"size_bytes":120,"source_phase":"materializing_files"}`,
+		},
+		{
+			ID:           "artifact-build-output",
+			CreatedAt:    now.Add(-time.Minute),
+			UpdatedAt:    now.Add(-time.Minute),
+			SessionID:    "session-artifacts-without-active-workspace",
+			WorkspaceID:  workspaceID,
+			RunID:        "run-artifacts-without-active-workspace",
+			Kind:         entities.BuilderArtifactKindBuildOutput,
+			Path:         "dist/index.html",
+			MetadataJSON: `{"size_bytes":512,"output_root":"dist","source_phase":"building"}`,
+		},
+	}).Error)
+
+	resp, err := GetBuilderSessionDetail(context.Background(), "project-1", "session-artifacts-without-active-workspace")
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Nil(t, resp.Workspace)
+	require.Len(t, resp.Artifacts, 2)
+
+	artifactsByPath := make(map[string]models.BuilderArtifactSummaryResponse, len(resp.Artifacts))
+	for _, artifact := range resp.Artifacts {
+		artifactsByPath[artifact.Path] = artifact
+	}
+
+	workspaceArtifact, ok := artifactsByPath["src/main.tsx"]
+	require.True(t, ok)
+	assert.Equal(t, string(entities.BuilderArtifactKindWorkspaceFile), workspaceArtifact.Kind)
+	assert.Equal(t, workspaceID, workspaceArtifact.WorkspaceID)
+	assert.Equal(t, "run-artifacts-without-active-workspace", workspaceArtifact.RunID)
+	assert.JSONEq(t, `{"size_bytes":120,"source_phase":"materializing_files"}`, workspaceArtifact.MetadataJSON)
+
+	buildOutputArtifact, ok := artifactsByPath["dist/index.html"]
+	require.True(t, ok)
+	assert.Equal(t, string(entities.BuilderArtifactKindBuildOutput), buildOutputArtifact.Kind)
+	assert.Equal(t, workspaceID, buildOutputArtifact.WorkspaceID)
+	assert.Equal(t, "run-artifacts-without-active-workspace", buildOutputArtifact.RunID)
+	assert.JSONEq(t, `{"size_bytes":512,"output_root":"dist","source_phase":"building"}`, buildOutputArtifact.MetadataJSON)
+}
+
 func TestGetBuilderSessionDetailReturnsBuilderSessionNotFound(t *testing.T) {
 	setupBuilderSessionServiceTestDB(t)
 
