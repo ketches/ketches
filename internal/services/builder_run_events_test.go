@@ -190,3 +190,27 @@ func TestSubscribeBuilderRunEventsDropsOverflowedSubscriber(t *testing.T) {
 	assert.False(t, exists)
 	assert.NotPanics(t, unsubscribe)
 }
+
+func TestAppendBuilderRunExecutionEventHelpers(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+	run := seedBuilderRunEventTestRun(t, "run-execution-event-helper")
+	buildingPhase := entities.BuilderRunPhaseBuilding
+
+	logEvent, err := AppendBuilderRunExecutionLogEvent(context.Background(), run.ID, &buildingPhase, "[build] vite build\n")
+	require.NoError(t, err)
+	require.NotNil(t, logEvent)
+	assert.Equal(t, entities.BuilderRunEventKindLog, logEvent.Kind)
+	require.NotNil(t, logEvent.Phase)
+	assert.Equal(t, buildingPhase, *logEvent.Phase)
+
+	statusEvent, err := AppendBuilderRunExecutionStatusEvent(context.Background(), run.ID, &buildingPhase, entities.BuilderRunEventLevelInfo, "[system] frontend build completed\n")
+	require.NoError(t, err)
+	require.NotNil(t, statusEvent)
+	assert.Equal(t, entities.BuilderRunEventKindStatus, statusEvent.Kind)
+	require.NotNil(t, statusEvent.Phase)
+	assert.Equal(t, buildingPhase, *statusEvent.Phase)
+
+	var persistedRun entities.BuilderRun
+	require.NoError(t, db.DB.First(&persistedRun, "id = ?", run.ID).Error)
+	assert.Equal(t, "[build] vite build\n[system] frontend build completed\n", persistedRun.ExecutionLog)
+}
