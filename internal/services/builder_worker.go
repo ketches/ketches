@@ -5,37 +5,55 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 const (
-	builderWorkerDefaultPollInterval      = 2 * time.Second
-	builderWorkerDefaultLeaseDuration     = 2 * time.Minute
-	builderWorkerDefaultHeartbeatInterval = 30 * time.Second
+	builderWorkerDefaultPollInterval       = 2 * time.Second
+	builderWorkerDefaultLeaseDuration      = 2 * time.Minute
+	builderWorkerDefaultHeartbeatInterval  = 30 * time.Second
+	builderWorkerDefaultCancelPollInterval = 250 * time.Millisecond
 
-	builderWorkerLeaseExpiredErrorCode = "lease_expired"
-	builderWorkerCancelRequestedCode   = "cancel_requested"
-	builderWorkerTimeoutErrorClass     = "timeout"
-	builderWorkerCancelledErrorClass   = "cancelled"
-	builderWorkerUnknownErrorClass     = "unknown"
-	builderWorkerProvisioningErrorCode = "workspace_provision_failed"
-	builderWorkerProvisioningClass     = "executor_provisioning"
-	builderWorkerGenerationErrorCode   = "generation_failed"
-	builderWorkerFileWriteErrorCode    = "workspace_write_failed"
-	builderWorkerWorkspaceIOClass      = "workspace_io"
+	builderWorkerLeaseExpiredErrorCode  = "lease_expired"
+	builderWorkerCancelRequestedCode    = "cancel_requested"
+	builderWorkerTimeoutErrorClass      = "timeout"
+	builderWorkerCancelledErrorClass    = "cancelled"
+	builderWorkerUnknownErrorClass      = "unknown"
+	builderWorkerProvisioningErrorCode  = "workspace_provision_failed"
+	builderWorkerProvisioningClass      = "executor_provisioning"
+	builderWorkerGenerationErrorCode    = "generation_failed"
+	builderWorkerFileWriteErrorCode     = "workspace_write_failed"
+	builderWorkerWorkspaceIOClass       = "workspace_io"
+	builderWorkerExecutionPlanErrorCode = "frontend_execution_plan_failed"
+	builderWorkerExecutionErrorCode     = "frontend_execution_failed"
+	builderWorkerArtifactErrorCode      = "build_artifact_collection_failed"
+	builderWorkerExecutionPlaneClass    = "execution_plane"
+	builderWorkerCommandExitCodeMarker  = "__KETCHES_BUILDER_EXIT_CODE__:"
 )
+
+const builderWorkerPhaseInstallingDependencies entities.BuilderRunPhase = "installing_dependencies"
 
 var (
 	ErrBuilderWorkerStartupPreflightBlocked = errors.New("builder worker startup preflight blocked")
 	GlobalBuilderWorker                     = NewBuilderWorker()
+	builderWorkerProvisionWorkspace         = ProvisionBuilderWorkspace
+	builderWorkerLoadConversationMessages   = loadBuilderConversationMessages
+	builderWorkerGenerateFiles              = GenerateBuilderFiles
+	builderWorkerWriteAgentFiles            = writeBuilderAgentFiles
+	builderWorkerListWorkspaceFiles         = defaultBuilderWorkerListWorkspaceFiles
+	builderWorkerRunFrontendCommand         = defaultBuilderWorkerRunFrontendCommand
+	builderWorkerExecCommandWithContext     = execCommandWithContext
 )
 
 type BuilderWorkerStartupPreflightError struct {
@@ -333,7 +351,7 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 		return err
 	}
 
-	workspace, err := ProvisionBuilderWorkspace(ctx, run.SessionID)
+	workspace, err := builderWorkerProvisionWorkspace(ctx, run.SessionID)
 	if err != nil {
 		return finalizeClaimedBuilderRunFailure(
 			ctx,
@@ -356,7 +374,7 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 		return err
 	}
 
-	messages, err := loadBuilderConversationMessages(ctx, run.SessionID)
+	messages, err := builderWorkerLoadConversationMessages(ctx, run.SessionID)
 	if err != nil {
 		return finalizeClaimedBuilderRunFailure(
 			ctx,
@@ -376,7 +394,7 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 		return err
 	}
 
-	result, err := GenerateBuilderFiles(ctx, messages)
+	result, err := builderWorkerGenerateFiles(ctx, messages)
 	if err != nil {
 		return finalizeClaimedBuilderRunFailure(
 			ctx,
@@ -412,7 +430,7 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 		}
 	}
 
-	if err := writeBuilderAgentFiles(ctx, workspace, run, result.Files); err != nil {
+	if err := builderWorkerWriteAgentFiles(ctx, workspace, run, result.Files); err != nil {
 		return finalizeClaimedBuilderRunFailure(
 			ctx,
 			run,
@@ -428,13 +446,350 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 		return err
 	}
 
+	if cancelled, err := finalizeClaimedBuilderRunCancellation(ctx, run, claimToken, "[system] run cancelled before frontend execution started\n"); cancelled || err != nil {
+		return err
+	}
+
+	workspaceListing, err := builderWorkerListWorkspaceFiles(ctx, workspace, workspace.WorkspaceRoot)
+	if err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerExecutionPlanErrorCode,
+			builderWorkerExecutionPlaneClass,
+			"failed to inspect workspace for frontend execution: "+err.Error(),
+			true,
+		)
+	}
+
+	frontendPlan, err := DetectBuilderFrontendExecutionPlan(workspaceListing)
+	if err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerExecutionPlanErrorCode,
+			builderWorkerExecutionPlaneClass,
+			err.Error(),
+			true,
+		)
+	}
+
+	frontendRunner := BuilderFrontendCommandRunnerFunc(func(ctx context.Context, step BuilderFrontendExecutionStep, command []string, appendLog func(string) error) (BuilderFrontendCommandResult, error) {
+		phase := builderWorkerPhaseInstallingDependencies
+		if step == BuilderFrontendExecutionStepBuild {
+			phase = entities.BuilderRunPhaseBuilding
+		}
+		if err := updateClaimedBuilderRunState(ctx, run.ID, claimToken, phase, run.WorkspaceID, run.ExecutorHandleID); err != nil {
+			return BuilderFrontendCommandResult{}, err
+		}
+		return builderWorkerRunFrontendCommand(ctx, workspace, step, command, appendLog)
+	})
+
+	frontendExecutionCtx, stopFrontendExecutionWatcher := w.newClaimedRunFrontendExecutionContext(ctx, run.ID, claimToken)
+	defer stopFrontendExecutionWatcher()
+
+	if _, err := executeBuilderFrontendPlanWithEventWriter(frontendExecutionCtx, run.ID, frontendPlan, frontendRunner, builderFrontendExecutionEventWriter{
+		appendLog: func(ctx context.Context, message string) error {
+			return appendOwnedBuilderRunLogEvent(ctx, run.ID, claimToken, message)
+		},
+		appendStatus: func(ctx context.Context, level entities.BuilderRunEventLevel, message string) error {
+			return appendOwnedBuilderRunStatusEvent(ctx, run.ID, claimToken, level, message)
+		},
+	}); err != nil {
+		if errors.Is(err, context.Canceled) {
+			if cancelled, cancelErr := finalizeClaimedBuilderRunCancellation(ctx, run, claimToken, "[system] run cancelled during frontend execution\n"); cancelled || cancelErr != nil {
+				return cancelErr
+			}
+			return err
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerExecutionErrorCode,
+			builderWorkerExecutionPlaneClass,
+			err.Error(),
+			true,
+		)
+	}
+
+	if cancelled, err := finalizeClaimedBuilderRunCancellation(ctx, run, claimToken, "[system] run cancelled after frontend execution completed\n"); cancelled || err != nil {
+		return err
+	}
+
+	buildArtifactCount, err := collectAndPersistBuilderBuildArtifacts(ctx, workspace, run, claimToken)
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			if cancelled, cancelErr := finalizeClaimedBuilderRunCancellation(ctx, run, claimToken, "[system] run cancelled before build artifacts were persisted\n"); cancelled || cancelErr != nil {
+				return cancelErr
+			}
+			return err
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerArtifactErrorCode,
+			builderWorkerExecutionPlaneClass,
+			err.Error(),
+			true,
+		)
+	}
+
 	return finalizeClaimedBuilderRunSuccess(
 		ctx,
 		run,
 		claimToken,
 		result.AssistantMessage,
-		fmt.Sprintf("run completed: %d files generated", len(result.Files)),
+		fmt.Sprintf("run completed: %d files generated and %d build artifacts collected", len(result.Files), buildArtifactCount),
 	)
+}
+
+func defaultBuilderWorkerListWorkspaceFiles(ctx context.Context, workspace *entities.BuilderWorkspace, requestedPath string) (*models.ListFilesResponse, error) {
+	if workspace == nil {
+		return nil, errors.New("builder workspace is required")
+	}
+
+	appCtx, err := buildBuilderWorkspaceAppContext(workspace)
+	if err != nil {
+		return nil, err
+	}
+
+	return listBuilderWorkspaceFilesInContainer(appCtx, workspace.PodName, workspace.ContainerName, requestedPath)
+}
+
+func defaultBuilderWorkerRunFrontendCommand(ctx context.Context, workspace *entities.BuilderWorkspace, step BuilderFrontendExecutionStep, command []string, appendLog func(string) error) (BuilderFrontendCommandResult, error) {
+	if workspace == nil {
+		return BuilderFrontendCommandResult{}, errors.New("builder workspace is required")
+	}
+	if appendLog == nil {
+		return BuilderFrontendCommandResult{}, errors.New("builder frontend append log callback is required")
+	}
+	if err := ctx.Err(); err != nil {
+		return BuilderFrontendCommandResult{}, err
+	}
+
+	appCtx, err := buildBuilderWorkspaceAppContext(workspace)
+	if err != nil {
+		return BuilderFrontendCommandResult{}, err
+	}
+
+	commandScript, err := buildBuilderWorkerFrontendCommandScript(workspace.WorkspaceRoot, command)
+	if err != nil {
+		return BuilderFrontendCommandResult{}, err
+	}
+	if builderWorkerExecCommandWithContext == nil {
+		return BuilderFrontendCommandResult{}, errors.New("builder worker exec command helper is required")
+	}
+
+	stdout, stderr, err := builderWorkerExecCommandWithContext(ctx, appCtx, workspace.PodName, workspace.ContainerName, []string{"sh", "-lc", commandScript})
+	if err != nil {
+		stdoutToAppend := stdout
+		if stdout != "" {
+			if cleanStdout, _, parseErr := parseBuilderWorkerFrontendCommandOutput(stdout); parseErr == nil {
+				stdoutToAppend = cleanStdout
+			}
+		}
+		if stdoutToAppend != "" {
+			if appendErr := appendLog(stdoutToAppend); appendErr != nil {
+				return BuilderFrontendCommandResult{}, appendErr
+			}
+		}
+		if stderr != "" {
+			if appendErr := appendLog(stderr); appendErr != nil {
+				return BuilderFrontendCommandResult{}, appendErr
+			}
+		}
+		return BuilderFrontendCommandResult{}, err
+	}
+
+	cleanStdout, exitCode, err := parseBuilderWorkerFrontendCommandOutput(stdout)
+	if err != nil {
+		return BuilderFrontendCommandResult{}, err
+	}
+
+	if cleanStdout != "" {
+		if err := appendLog(cleanStdout); err != nil {
+			return BuilderFrontendCommandResult{}, err
+		}
+	}
+	if stderr != "" {
+		if err := appendLog(stderr); err != nil {
+			return BuilderFrontendCommandResult{}, err
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return BuilderFrontendCommandResult{}, err
+	}
+
+	return BuilderFrontendCommandResult{ExitCode: exitCode}, nil
+}
+
+func buildBuilderWorkerFrontendCommandScript(workspaceRoot string, command []string) (string, error) {
+	cleanWorkspaceRoot := strings.TrimSpace(workspaceRoot)
+	if cleanWorkspaceRoot == "" {
+		return "", errors.New("builder workspace root is required")
+	}
+	if len(command) == 0 {
+		return "", errors.New("builder frontend command is required")
+	}
+
+	quotedCommand := make([]string, 0, len(command))
+	for i := range command {
+		quotedCommand = append(quotedCommand, quoteBuilderWorkerShellArg(command[i]))
+	}
+
+	return strings.Join([]string{
+		"cd " + quoteBuilderWorkerShellArg(cleanWorkspaceRoot),
+		"status=$?",
+		"if [ \"$status\" -eq 0 ]; then",
+		strings.Join(quotedCommand, " "),
+		"status=$?",
+		"fi",
+		"printf '\\n" + builderWorkerCommandExitCodeMarker + "%s\\n' \"$status\"",
+	}, "\n"), nil
+}
+
+func quoteBuilderWorkerShellArg(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `"'"'`) + "'"
+}
+
+func parseBuilderWorkerFrontendCommandOutput(stdout string) (string, int, error) {
+	trimmedOutput := stdout
+	markerIndex := strings.LastIndex(trimmedOutput, "\n"+builderWorkerCommandExitCodeMarker)
+	markerStart := 0
+	if markerIndex >= 0 {
+		markerStart = markerIndex + 1
+	} else if strings.HasPrefix(trimmedOutput, builderWorkerCommandExitCodeMarker) {
+		markerStart = 0
+	} else {
+		return "", 0, errors.New("builder frontend command output missing exit code marker")
+	}
+
+	markerLine := strings.TrimSpace(trimmedOutput[markerStart:])
+	exitCodeText := strings.TrimPrefix(markerLine, builderWorkerCommandExitCodeMarker)
+	exitCode, err := strconv.Atoi(exitCodeText)
+	if err != nil {
+		return "", 0, fmt.Errorf("parse builder frontend command exit code: %w", err)
+	}
+
+	return trimmedOutput[:markerStart], exitCode, nil
+}
+
+func collectAndPersistBuilderBuildArtifacts(ctx context.Context, workspace *entities.BuilderWorkspace, run *entities.BuilderRun, claimToken string) (int, error) {
+	if workspace == nil {
+		return 0, errors.New("builder workspace is required")
+	}
+	if run == nil {
+		return 0, errors.New("builder run is required")
+	}
+
+	workspaceListing, err := builderWorkerListWorkspaceFiles(ctx, workspace, workspace.WorkspaceRoot)
+	if err != nil {
+		return 0, err
+	}
+
+	workspaceArtifacts, err := collectBuilderWorkspaceFileArtifacts(workspace, run, workspaceListing)
+	if err != nil {
+		return 0, err
+	}
+
+	outputRoot, err := detectBuilderWorkerOutputRootFromWorkspaceListing(workspaceListing)
+	if err != nil {
+		return 0, err
+	}
+
+	buildOutputListing, err := builderWorkerListWorkspaceFiles(ctx, workspace, path.Join(workspace.WorkspaceRoot, outputRoot))
+	if err != nil {
+		return 0, err
+	}
+
+	buildArtifacts, err := collectBuilderBuildArtifactsWithListFn(ctx, workspace, run, buildOutputListing, builderWorkerListWorkspaceFiles)
+	if err != nil {
+		return 0, err
+	}
+
+	artifacts := append(workspaceArtifacts, buildArtifacts...)
+	if err := withOwnedExecutingBuilderRunTx(ctx, run.ID, claimToken, func(tx *gorm.DB, _ *entities.BuilderRun) error {
+		return replaceBuilderWorkspaceArtifactsTx(tx, workspace, artifacts)
+	}); err != nil {
+		return 0, err
+	}
+
+	return len(buildArtifacts), nil
+}
+
+func (w *BuilderWorker) newClaimedRunFrontendExecutionContext(ctx context.Context, runID, claimToken string) (context.Context, context.CancelFunc) {
+	frontendExecutionCtx, cancel := context.WithCancel(ctx)
+	if strings.TrimSpace(runID) == "" || strings.TrimSpace(claimToken) == "" {
+		return frontendExecutionCtx, cancel
+	}
+
+	pollInterval := w.frontendExecutionCancelPollInterval()
+	go w.watchClaimedRunFrontendExecutionCancellation(frontendExecutionCtx, runID, claimToken, pollInterval, cancel)
+	return frontendExecutionCtx, cancel
+}
+
+func (w *BuilderWorker) frontendExecutionCancelPollInterval() time.Duration {
+	if w != nil && w.heartbeatInterval > 0 && w.heartbeatInterval < builderWorkerDefaultCancelPollInterval {
+		return w.heartbeatInterval
+	}
+	return builderWorkerDefaultCancelPollInterval
+}
+
+func (w *BuilderWorker) watchClaimedRunFrontendExecutionCancellation(ctx context.Context, runID, claimToken string, pollInterval time.Duration, cancel context.CancelFunc) {
+	if cancel == nil {
+		return
+	}
+	if pollInterval <= 0 {
+		pollInterval = builderWorkerDefaultCancelPollInterval
+	}
+
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			run, err := loadOwnedExecutingBuilderRun(db.DB.WithContext(ctx), runID, claimToken)
+			if err != nil {
+				if ctx.Err() != nil || errors.Is(err, gorm.ErrRecordNotFound) {
+					return
+				}
+				continue
+			}
+			if run.CancelRequestedAt != nil {
+				cancel()
+				return
+			}
+		}
+	}
+}
+
+func detectBuilderWorkerOutputRootFromWorkspaceListing(listing *models.ListFilesResponse) (string, error) {
+	if listing == nil {
+		return "", errors.New("builder workspace listing is required")
+	}
+
+	for _, candidate := range []string{builderBuildOutputRootDist, builderBuildOutputRootBuild} {
+		for _, file := range listing.Files {
+			if file.Type == "dir" && file.Name == candidate {
+				return candidate, nil
+			}
+		}
+	}
+
+	return "", errors.New("build succeeded but no supported output directory was found")
 }
 
 func finalizeClaimedBuilderRunSuccess(ctx context.Context, run *entities.BuilderRun, claimToken, assistantMessage, summaryMessage string) error {

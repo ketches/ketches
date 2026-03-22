@@ -20,6 +20,14 @@ import (
 
 // execCommand executes a non-interactive command in a container and returns stdout/stderr
 func execCommand(appCtx *models.AppContext, instanceName, containerName string, command []string) (string, string, error) {
+	return execCommandWithContext(context.Background(), appCtx, instanceName, containerName, command)
+}
+
+func execCommandWithContext(ctx context.Context, appCtx *models.AppContext, instanceName, containerName string, command []string) (string, string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
 	if err != nil {
 		return "", "", err
@@ -50,10 +58,13 @@ func execCommand(appCtx *models.AppContext, instanceName, containerName string, 
 	}
 
 	var stdout, stderr bytes.Buffer
-	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: &stdout,
 		Stderr: &stderr,
 	})
+	if ctx.Err() != nil {
+		return stdout.String(), stderr.String(), ctx.Err()
+	}
 
 	return stdout.String(), stderr.String(), err
 }
