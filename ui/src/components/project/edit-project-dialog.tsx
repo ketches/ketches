@@ -3,6 +3,8 @@ import * as React from "react"
 import { toast } from "sonner"
 
 import { projectsApi, type Project } from "@/api/projects"
+import { ProjectAiProvidersPanel } from "@/components/project/project-ai-providers-panel"
+import { ProjectSettingsShell, type ProjectSettingsSection } from "@/components/project/project-settings-shell"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -37,6 +39,7 @@ export function EditProjectDialog({
 
   const queryClient = useQueryClient()
   const [errors, setErrors] = React.useState<{ name?: string; global?: string }>({})
+  const [activeSection, setActiveSection] = React.useState<ProjectSettingsSection>("general")
 
   const [formData, setFormData] = React.useState({
     name: "",
@@ -55,6 +58,12 @@ export function EditProjectDialog({
       setErrors({})
     }
   }, [project])
+
+  React.useEffect(() => {
+    if (open) {
+      setActiveSection("general")
+    }
+  }, [open])
 
   const mutation = useMutation({
     mutationFn: (data: typeof formData) => {
@@ -98,7 +107,7 @@ export function EditProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-140">
+      <DialogContent className="sm:max-w-[50vw] w-full min-h-[75vh]" showCloseButton>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Edit Project</DialogTitle>
@@ -107,59 +116,67 @@ export function EditProjectDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            {errors.global && (
-              <div className="text-sm font-medium text-destructive text-center">
-                {errors.global}
+          <ProjectSettingsShell activeSection={activeSection} onSectionChange={setActiveSection}>
+            {activeSection === "general" ? (
+              <div className="grid gap-4 py-4">
+                {errors.global && (
+                  <div className="text-sm font-medium text-destructive text-center">
+                    {errors.global}
+                  </div>
+                )}
+                <Field>
+                  <FieldLabel>Name *</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      placeholder="My Project"
+                      value={formData.name}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                      aria-invalid={!!errors.name}
+                    />
+                  </FieldContent>
+                  {errors.name && <FieldError><span className="text-destructive text-xs">{errors.name}</span></FieldError>}
+                </Field>
+
+                <Field>
+                  <FieldLabel>Slug</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      value={project?.slug || ""}
+                      disabled
+                      className="bg-muted font-mono"
+                    />
+                  </FieldContent>
+                </Field>
+
+                <Field>
+                  <FieldLabel>Description</FieldLabel>
+                  <FieldContent>
+                    <Textarea
+                      placeholder="Brief description..."
+                      value={formData.description}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                      className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
+                    />
+                  </FieldContent>
+                </Field>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="project-edit-collaboration-enabled"
+                    checked={formData.collaborationEnabled}
+                    onCheckedChange={(v) => setFormData((prev) => ({ ...prev, collaborationEnabled: v === true }))}
+                  />
+                  <label htmlFor="project-edit-collaboration-enabled" className="cursor-pointer">
+                    Enable collaboration module for this project
+                  </label>
+                </div>
               </div>
-            )}
-            <Field>
-              <FieldLabel>Name *</FieldLabel>
-              <FieldContent>
-                <Input
-                  placeholder="My Project"
-                  value={formData.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                  aria-invalid={!!errors.name}
-                />
-              </FieldContent>
-              {errors.name && <FieldError><span className="text-destructive text-xs">{errors.name}</span></FieldError>}
-            </Field>
+            ) : null}
 
-            <Field>
-              <FieldLabel>Slug</FieldLabel>
-              <FieldContent>
-                <Input
-                  value={project?.slug || ""}
-                  disabled
-                  className="bg-muted font-mono"
-                />
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel>Description</FieldLabel>
-              <FieldContent>
-                <Textarea
-                  placeholder="Brief description..."
-                  value={formData.description}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
-                />
-              </FieldContent>
-            </Field>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="project-edit-collaboration-enabled"
-                checked={formData.collaborationEnabled}
-                onCheckedChange={(v) => setFormData((prev) => ({ ...prev, collaborationEnabled: v === true }))}
-              />
-              <label htmlFor="project-edit-collaboration-enabled" className="cursor-pointer">
-                Enable collaboration module for this project
-              </label>
-            </div>
-          </div>
+            {activeSection === "ai-providers" ? (
+              project ? <ProjectAiProvidersPanel projectId={project.id} /> : null
+            ) : null}
+          </ProjectSettingsShell>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

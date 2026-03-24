@@ -112,11 +112,50 @@ export interface BuilderArtifact {
   updated_at: string
 }
 
+export type BuilderPreviewStatus = 'unavailable' | 'delivery_only' | 'previewable'
+
+export interface BuilderPreviewSummary {
+  available: boolean
+  status: BuilderPreviewStatus
+  resolved_run_id: string
+  published_at: string | null
+  completed_at: string | null
+  output_root: string
+  default_entry_path: string
+  download_available: boolean
+  preview_available: boolean
+  is_stale: boolean
+  newer_run_id: string
+  newer_run_status: BuilderRunStatus | ''
+  download_url?: string
+  preview_launch_url?: string
+}
+
+export interface BuilderPreviewLaunch {
+  frame_url: string
+}
+
+export interface BuilderModelOption {
+  key: string
+  modelLabel: string
+  providerLabel: string
+  scope: 'project' | 'user'
+  providerKey: string
+  modelProfileKey: string
+}
+
+export interface BuilderModelSelection {
+  options: BuilderModelOption[]
+  effective_default_source: 'project' | 'user' | 'none'
+  effective_default_option?: BuilderModelOption
+}
+
 export interface BuilderSessionDetail {
   session: BuilderSession
   messages: BuilderMessage[]
   runs: BuilderRun[]
   workspace?: BuilderWorkspace
+  preview?: BuilderPreviewSummary
   artifacts: BuilderArtifact[]
 }
 
@@ -126,6 +165,9 @@ export interface CreateBuilderSessionRequest {
   build_env_id: string
   title?: string
   prompt: string
+  selected_model_key?: string
+  provider_key?: string
+  model_profile_key?: string
 }
 
 export interface PostBuilderSessionMessageRequest {
@@ -172,6 +214,48 @@ export const builderSessionsApi = {
 
   get: async (projectId: string, sessionId: string) => {
     return client.get(`/v1/projects/${projectId}/builder-sessions/${sessionId}`) as Promise<BuilderSessionDetail>
+  },
+
+  getPreview: async (projectId: string, sessionId: string) => {
+    return client.get(`/v1/projects/${projectId}/builder-sessions/${sessionId}/preview`) as Promise<BuilderPreviewSummary>
+  },
+
+  launchPreview: async (projectId: string, sessionId: string, runId: string) => {
+    return client.get(`/v1/projects/${projectId}/builder-sessions/${sessionId}/runs/${runId}/preview/launch`) as Promise<BuilderPreviewLaunch>
+  },
+
+  getModelSelection: async (projectId: string) => {
+    return client.get(`/v1/projects/${projectId}/builder-model-selection`) as Promise<BuilderModelSelection>
+  },
+
+  downloadPreviewSnapshotBlob: async (projectId: string, sessionId: string, runId: string): Promise<void> => {
+    const authData = localStorage.getItem('auth-storage')
+    let token = ''
+    if (authData) {
+      try {
+        const { state } = JSON.parse(authData)
+        token = state.accessToken || ''
+      } catch { /* ignore */ }
+    }
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+    const response = await fetch(
+      `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/runs/${runId}/delivery/download`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    )
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.statusText}`)
+    }
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `builder-output-${runId.slice(0, 8)}.tar.gz`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   },
 
   create: async (projectId: string, data: CreateBuilderSessionRequest) => {

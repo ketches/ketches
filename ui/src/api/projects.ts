@@ -55,6 +55,26 @@ export interface ProjectMember {
   joined_at: string
 }
 
+export interface ProjectAiProvider {
+  id: string
+  provider_key: string
+  display_name: string
+  base_url: string
+  default_model_profile_key: string
+  default_model?: string
+  enabled: boolean
+  created_at: string
+}
+
+export interface UpsertProjectAiProviderRequest {
+  provider_key: string
+  display_name: string
+  base_url: string
+  api_key: string
+  default_model_profile_key: string
+  enabled: boolean
+}
+
 export const projectsApi = {
   list: async (params?: { page?: number; page_size?: number; search?: string }) => {
     return client.get('/v1/projects', { params }) as Promise<{ items: Project[], pagination: PaginationResponse }>
@@ -88,6 +108,15 @@ export const projectsApi = {
   },
   update: async (id: string, data: UpdateProjectPayload) => {
     return client.put(`/v1/projects/${id}`, data) as Promise<Project>
+  },
+  listAiProviders: async (id: string) => {
+    return client.get(`/v1/projects/${id}/ai-providers`) as Promise<ProjectAiProvider[]>
+  },
+  createAiProvider: async (id: string, data: UpsertProjectAiProviderRequest) => {
+    return client.post(`/v1/projects/${id}/ai-providers`, data) as Promise<ProjectAiProvider>
+  },
+  updateAiProvider: async (id: string, providerId: string, data: UpsertProjectAiProviderRequest) => {
+    return client.put(`/v1/projects/${id}/ai-providers/${providerId}`, data) as Promise<ProjectAiProvider>
   },
   delete: async (id: string) => {
     return client.delete(`/v1/projects/${id}`)

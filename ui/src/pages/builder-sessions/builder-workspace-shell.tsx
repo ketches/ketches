@@ -20,6 +20,8 @@ import {
   builderRunStatusLabels,
   builderSessionsApi,
   type BuilderMessage,
+  type BuilderModelOption,
+  type BuilderPreviewLaunch,
   type BuilderRunStatus,
   type BuilderSession,
   type BuilderSessionDetail,
@@ -45,6 +47,10 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/stores/auth"
+
+import { BuilderPreviewPanel } from "./builder-preview-panel"
+import { BuilderPreviewFrame } from "./builder-preview-frame"
+import { BuilderModelSelector } from "./builder-model-selector"
 
 const AUTO_RESUME_WINDOW_MS = 8 * 60 * 60 * 1000
 
@@ -93,11 +99,13 @@ export function BuilderWorkspaceShell() {
 
   const [messageInput, setMessageInput] = React.useState("")
   const [draftBuildEnvId, setDraftBuildEnvId] = React.useState("")
+  const [draftModelKey, setDraftModelKey] = React.useState<string | null>(null)
   const [draftError, setDraftError] = React.useState("")
   const [filesExpanded, setFilesExpanded] = React.useState(false)
   const [currentPath, setCurrentPath] = React.useState("/")
   const [selectedFile, setSelectedFile] = React.useState<BuilderWorkspaceFile | null>(null)
   const [fileContent, setFileContent] = React.useState<string | null>(null)
+  const [previewLaunch, setPreviewLaunch] = React.useState<BuilderPreviewLaunch | null>(null)
   const composerRef = React.useRef<HTMLTextAreaElement | null>(null)
 
   const { data: sessionsResponse, isLoading: isSessionsLoading } = useQuery({
@@ -138,6 +146,15 @@ export function BuilderWorkspaceShell() {
     () => draftBuildEnvs.map((env) => ({ label: env.name, value: env.id })),
     [draftBuildEnvs]
   )
+  const { data: modelSelection } = useQuery({
+    queryKey: ["builder-model-selection", projectId],
+    queryFn: () => builderSessionsApi.getModelSelection(projectId!),
+    enabled: !!projectId && !sessionId,
+  })
+  const draftModelOptions = React.useMemo<BuilderModelOption[]>(
+    () => modelSelection?.options ?? [],
+    [modelSelection?.options]
+  )
 
   React.useEffect(() => {
     if (sessionId || draftBuildEnvId || draftBuildEnvOptions.length !== 1) {
@@ -146,6 +163,36 @@ export function BuilderWorkspaceShell() {
 
     setDraftBuildEnvId(draftBuildEnvOptions[0].value)
   }, [draftBuildEnvId, draftBuildEnvOptions, sessionId])
+
+  React.useEffect(() => {
+    if (sessionId || draftModelKey || !modelSelection) {
+      return
+    }
+
+    if (modelSelection.effective_default_option) {
+      setDraftModelKey(modelSelection.effective_default_option.key)
+    }
+  }, [draftModelKey, modelSelection, sessionId])
+
+  const modelSelectionHint = React.useMemo(() => {
+    if (!modelSelection) {
+      return ""
+    }
+
+    if (modelSelection.effective_default_source === "project") {
+      if (draftModelKey && modelSelection.effective_default_option && draftModelKey !== modelSelection.effective_default_option.key) {
+        return "Overrides project default"
+      }
+
+      return "Default from project settings"
+    }
+
+    if (modelSelection.effective_default_source === "user") {
+      return "Default from your account settings"
+    }
+
+    return ""
+  }, [draftModelKey, modelSelection])
 
   const { data: sessionDetail, isLoading: isSessionLoading, error: sessionError } = useQuery({
     queryKey: ["builder-session", projectId, sessionId],
@@ -159,6 +206,7 @@ export function BuilderWorkspaceShell() {
 
   const selectedDetail: BuilderSessionDetail | undefined = sessionDetail
   const selectedSession = selectedDetail?.session ?? null
+  const selectedPreview = selectedDetail?.preview
   const selectedSessionRunActive = isRunActive(selectedSession?.latest_run_status)
   const hasFiles =
     !!selectedDetail &&
@@ -175,15 +223,22 @@ export function BuilderWorkspaceShell() {
     setCurrentPath("/")
     setSelectedFile(null)
     setFileContent(null)
+    setPreviewLaunch(null)
   }, [sessionId])
 
   const createSessionMutation = useMutation({
-    mutationFn: (payload: { buildEnvId: string; prompt: string }) =>
-      builderSessionsApi.create(projectId!, {
+    mutationFn: (payload: { buildEnvId: string; prompt: string; modelKey: string | null }) => {
+      const selectedModelOption = draftModelOptions.find((option) => option.key === payload.modelKey)
+
+      return builderSessionsApi.create(projectId!, {
         build_env_id: payload.buildEnvId,
         prompt: payload.prompt,
-      }),
-    onSuccess: (detail) => {
+        selected_model_key: selectedModelOption?.key,
+        provider_key: selectedModelOption?.providerKey,
+        model_profile_key: selectedModelOption?.modelProfileKey,
+      })
+    },
+    onSuccess: (detail: BuilderSessionDetail) => {
       setMessageInput("")
       setDraftError("")
       queryClient.invalidateQueries({ queryKey: ["builder-sessions", projectId] })
@@ -232,8 +287,8 @@ export function BuilderWorkspaceShell() {
       return
     }
 
-    createSessionMutation.mutate({ buildEnvId: draftBuildEnvId, prompt: content })
-  }, [createSessionMutation, draftBuildEnvId, messageInput, sendMessageMutation, sessionId])
+    createSessionMutation.mutate({ buildEnvId: draftBuildEnvId, prompt: content, modelKey: draftModelKey })
+  }, [createSessionMutation, draftBuildEnvId, draftModelKey, messageInput, sendMessageMutation, sessionId])
 
   const handleSelectFile = React.useCallback(
     async (file: BuilderWorkspaceFile) => {
@@ -281,6 +336,31 @@ export function BuilderWorkspaceShell() {
       toast.error("Failed to download files")
     }
   }, [projectId, sessionId])
+
+  const handleDownloadPreview = React.useCallback(async () => {
+    if (!projectId || !sessionId || !selectedPreview?.resolved_run_id) {
+      return
+    }
+
+    try {
+      await builderSessionsApi.downloadPreviewSnapshotBlob(projectId, sessionId, selectedPreview.resolved_run_id)
+    } catch {
+      toast.error("Failed to download preview snapshot")
+    }
+  }, [projectId, selectedPreview?.resolved_run_id, sessionId])
+
+  const handleOpenPreview = React.useCallback(async () => {
+    if (!projectId || !sessionId || !selectedPreview?.resolved_run_id || !selectedPreview.preview_available) {
+      return
+    }
+
+    try {
+      const launch = await builderSessionsApi.launchPreview(projectId, sessionId, selectedPreview.resolved_run_id)
+      setPreviewLaunch(launch)
+    } catch {
+      toast.error("Failed to open preview")
+    }
+  }, [projectId, selectedPreview?.preview_available, selectedPreview?.resolved_run_id, sessionId])
 
   const historyItems = sessions.map((session) => {
     const isSelected = session.id === sessionId
@@ -373,8 +453,16 @@ export function BuilderWorkspaceShell() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Loading conversation…
                   </div>
-                ) : sessionId ? (
+                  ) : sessionId ? (
                   <div className="space-y-4">
+                    {selectedPreview ? (
+                      <BuilderPreviewPanel
+                        preview={selectedPreview}
+                        onDownload={handleDownloadPreview}
+                        onOpenPreview={handleOpenPreview}
+                      />
+                    ) : null}
+                    {previewLaunch?.frame_url ? <BuilderPreviewFrame frameUrl={previewLaunch.frame_url} /> : null}
                     {messages.length === 0 ? (
                       <div className="flex min-h-40 flex-col items-center justify-center text-center text-sm text-muted-foreground">
                         <Bot className="mb-3 h-6 w-6" />
@@ -395,46 +483,55 @@ export function BuilderWorkspaceShell() {
                     </div>
 
                     <div className="max-w-md">
-                      <Field>
-                        <FieldLabel htmlFor="builder-draft-build-env">Build environment</FieldLabel>
-                        <FieldContent>
-                          <Combobox
-                            value={draftBuildEnvId}
-                            onValueChange={(value) => {
-                              setDraftBuildEnvId(value ?? "")
-                              setDraftError("")
-                            }}
-                            itemToStringLabel={(value: string) =>
-                              draftBuildEnvOptions.find((option) => option.value === value)?.label ?? value ?? ""
-                            }
-                          >
-                            <ComboboxInput
-                              id="builder-draft-build-env"
-                              placeholder="Select a build environment"
-                              className="w-full"
-                            />
-                            <ComboboxContent>
-                              <ComboboxList>
-                                {draftBuildEnvOptions.length === 0 ? (
-                                  <ComboboxItem value="__no-build-env__" disabled>
-                                    No build environments available
-                                  </ComboboxItem>
-                                ) : (
-                                  draftBuildEnvOptions.map((option) => (
-                                    <ComboboxItem key={option.value} value={option.value}>
-                                      {option.label}
+                      <div className="space-y-4">
+                        <Field>
+                          <FieldLabel htmlFor="builder-draft-build-env">Build environment</FieldLabel>
+                          <FieldContent>
+                            <Combobox
+                              value={draftBuildEnvId}
+                              onValueChange={(value) => {
+                                setDraftBuildEnvId(value ?? "")
+                                setDraftError("")
+                              }}
+                              itemToStringLabel={(value: string) =>
+                                draftBuildEnvOptions.find((option) => option.value === value)?.label ?? value ?? ""
+                              }
+                            >
+                              <ComboboxInput
+                                id="builder-draft-build-env"
+                                placeholder="Select a build environment"
+                                className="w-full"
+                              />
+                              <ComboboxContent>
+                                <ComboboxList>
+                                  {draftBuildEnvOptions.length === 0 ? (
+                                    <ComboboxItem value="__no-build-env__" disabled>
+                                      No build environments available
                                     </ComboboxItem>
-                                  ))
-                                )}
-                              </ComboboxList>
-                            </ComboboxContent>
-                          </Combobox>
-                        </FieldContent>
-                        <FieldDescription>
-                          The first message creates the Builder session in the selected environment.
-                        </FieldDescription>
-                        {draftError ? <FieldError>{draftError}</FieldError> : null}
-                      </Field>
+                                  ) : (
+                                    draftBuildEnvOptions.map((option) => (
+                                      <ComboboxItem key={option.value} value={option.value}>
+                                        {option.label}
+                                      </ComboboxItem>
+                                    ))
+                                  )}
+                                </ComboboxList>
+                              </ComboboxContent>
+                            </Combobox>
+                          </FieldContent>
+                          <FieldDescription>
+                            The first message creates the Builder session in the selected environment.
+                          </FieldDescription>
+                          {draftError ? <FieldError>{draftError}</FieldError> : null}
+                        </Field>
+
+                        <BuilderModelSelector
+                          value={draftModelKey}
+                          options={draftModelOptions}
+                          onValueChange={setDraftModelKey}
+                        />
+                        {modelSelectionHint ? <div className="text-sm text-muted-foreground">{modelSelectionHint}</div> : null}
+                      </div>
                     </div>
                   </div>
                 )}

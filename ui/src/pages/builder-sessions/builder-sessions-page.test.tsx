@@ -7,29 +7,35 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type {
   BuilderArtifact,
   BuilderMessage,
+  BuilderModelSelection,
+  BuilderPreviewSummary,
   BuilderRun,
   BuilderSession,
   BuilderSessionDetail,
 } from "@/api/builder-sessions"
 
-const {
-  listBuilderSessionsMock,
-  getBuilderSessionMock,
-  createBuilderSessionMock,
-  postBuilderMessageMock,
-  listBuilderFilesMock,
-  readBuilderFileMock,
-  downloadTarBlobMock,
-  envsListMock,
+  const {
+    listBuilderSessionsMock,
+    getBuilderSessionMock,
+    getBuilderModelSelectionMock,
+    createBuilderSessionMock,
+    postBuilderMessageMock,
+    launchBuilderPreviewMock,
+    listBuilderFilesMock,
+    readBuilderFileMock,
+    downloadTarBlobMock,
+    envsListMock,
   mockAuthState,
 } = vi.hoisted(() => ({
   listBuilderSessionsMock: vi.fn(),
   getBuilderSessionMock: vi.fn(),
-  createBuilderSessionMock: vi.fn(),
-  postBuilderMessageMock: vi.fn(),
-  listBuilderFilesMock: vi.fn(),
-  readBuilderFileMock: vi.fn(),
-  downloadTarBlobMock: vi.fn(),
+  getBuilderModelSelectionMock: vi.fn(),
+    createBuilderSessionMock: vi.fn(),
+    postBuilderMessageMock: vi.fn(),
+    launchBuilderPreviewMock: vi.fn(),
+    listBuilderFilesMock: vi.fn(),
+    readBuilderFileMock: vi.fn(),
+    downloadTarBlobMock: vi.fn(),
   envsListMock: vi.fn(),
   mockAuthState: {
     user: {
@@ -52,8 +58,10 @@ vi.mock("@/api/builder-sessions", async () => {
     builderSessionsApi: {
       list: listBuilderSessionsMock,
       get: getBuilderSessionMock,
+      getModelSelection: getBuilderModelSelectionMock,
       create: createBuilderSessionMock,
       postMessage: postBuilderMessageMock,
+      launchPreview: launchBuilderPreviewMock,
       listFiles: listBuilderFilesMock,
       readFile: readBuilderFileMock,
       downloadTar: vi.fn(),
@@ -321,11 +329,13 @@ function buildDetail({
   runs,
   messages,
   artifacts,
+  preview,
 }: {
   session?: Partial<BuilderSession>
   runs?: BuilderRun[]
   messages?: BuilderMessage[]
   artifacts?: BuilderArtifact[]
+  preview?: BuilderPreviewSummary
 } = {}): BuilderSessionDetail {
   const session = buildSession(sessionOverrides)
 
@@ -342,6 +352,7 @@ function buildDetail({
           status: session.latest_run_status,
         }),
       ],
+    preview,
     artifacts: artifacts ?? [],
   }
 }
@@ -412,8 +423,10 @@ describe("Builder workspace routes", () => {
 
     listBuilderSessionsMock.mockReset()
     getBuilderSessionMock.mockReset()
+    getBuilderModelSelectionMock.mockReset()
     createBuilderSessionMock.mockReset()
     postBuilderMessageMock.mockReset()
+    launchBuilderPreviewMock.mockReset()
     listBuilderFilesMock.mockReset()
     readBuilderFileMock.mockReset()
     downloadTarBlobMock.mockReset()
@@ -444,6 +457,36 @@ describe("Builder workspace routes", () => {
       size: 32,
     })
     downloadTarBlobMock.mockResolvedValue(undefined)
+    launchBuilderPreviewMock.mockResolvedValue({ frame_url: "/builder-preview/default" })
+    getBuilderModelSelectionMock.mockResolvedValue({
+      options: [
+        {
+          key: "project-claude-sonnet",
+          modelLabel: "Claude 4 Sonnet",
+          providerLabel: "Anthropic",
+          scope: "project",
+          providerKey: "anthropic-project",
+          modelProfileKey: "claude-sonnet-4",
+        },
+        {
+          key: "user-gpt-4-1",
+          modelLabel: "GPT-4.1",
+          providerLabel: "OpenAI",
+          scope: "user",
+          providerKey: "openai-user",
+          modelProfileKey: "gpt-4.1",
+        },
+      ],
+      effective_default_source: "project",
+      effective_default_option: {
+        key: "project-claude-sonnet",
+        modelLabel: "Claude 4 Sonnet",
+        providerLabel: "Anthropic",
+        scope: "project",
+        providerKey: "anthropic-project",
+        modelProfileKey: "claude-sonnet-4",
+      },
+    } satisfies BuilderModelSelection)
     envsListMock.mockResolvedValue({
       items: [
         {
@@ -814,6 +857,324 @@ describe("Builder workspace routes", () => {
     expect(container.querySelector('[data-testid="builder-files-rail-toggle"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="builder-files-list"]')).toBeNull()
     expect(container.textContent).not.toContain("src")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows a delivery-only preview panel without opening the files rail", async () => {
+    const sessionWithPreview = buildSession({
+      id: "session-with-preview",
+      artifact_count: 0,
+    })
+    getBuilderSessionMock.mockResolvedValue(
+      buildDetail({
+        session: sessionWithPreview,
+        artifacts: [],
+        preview: {
+          available: true,
+          status: "delivery_only",
+          resolved_run_id: sessionWithPreview.latest_run_id,
+          published_at: null,
+          completed_at: null,
+          output_root: "dist",
+          default_entry_path: "",
+          download_available: true,
+          preview_available: false,
+          is_stale: false,
+          newer_run_id: "",
+          newer_run_status: "",
+          download_url: `/api/v1/projects/project-1/builder-sessions/${sessionWithPreview.id}/runs/${sessionWithPreview.latest_run_id}/delivery/download`,
+          preview_launch_url: "",
+        },
+      })
+    )
+
+    const { container, root } = await renderBuilderRoute(
+      "/projects/project-1/builder-sessions/session-with-preview"
+    )
+
+    await settle()
+
+    expect(container.textContent).toContain("Preview output")
+    expect(container.textContent).toContain("Download snapshot")
+    expect(container.textContent).toContain("Preview is unavailable for this output")
+    expect(container.querySelector('[data-testid="builder-files-rail"]')).toBeNull()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows stale preview messaging when a newer run exists", async () => {
+    const sessionWithStalePreview = buildSession({
+      id: "session-with-stale-preview",
+      latest_run_id: "run-3",
+      latest_run_status: "failed",
+    })
+    getBuilderSessionMock.mockResolvedValue(
+      buildDetail({
+        session: sessionWithStalePreview,
+        runs: [
+          buildRun({ id: "run-3", session_id: sessionWithStalePreview.id, status: "failed" }),
+          buildRun({ id: "run-2", session_id: sessionWithStalePreview.id, status: "succeeded" }),
+        ],
+        preview: {
+          available: true,
+          status: "previewable",
+          resolved_run_id: "run-2",
+          published_at: null,
+          completed_at: null,
+          output_root: "dist",
+          default_entry_path: "dist/index.html",
+          download_available: true,
+          preview_available: true,
+          is_stale: true,
+          newer_run_id: "run-3",
+          newer_run_status: "failed",
+          download_url: `/api/v1/projects/project-1/builder-sessions/${sessionWithStalePreview.id}/runs/run-2/delivery/download`,
+          preview_launch_url: `/api/v1/projects/project-1/builder-sessions/${sessionWithStalePreview.id}/runs/run-2/preview/launch`,
+        },
+      })
+    )
+
+    const { container, root } = await renderBuilderRoute(
+      "/projects/project-1/builder-sessions/session-with-stale-preview"
+    )
+
+    await settle()
+
+    expect(container.textContent).toContain("A newer run exists")
+    expect(container.textContent).toContain("run-3")
+    expect(container.textContent).toContain("failed")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("launches a sandboxed preview iframe for previewable snapshots", async () => {
+    const sessionWithPreview = buildSession({
+      id: "session-previewable",
+      artifact_count: 0,
+    })
+    getBuilderSessionMock.mockResolvedValue(
+      buildDetail({
+        session: sessionWithPreview,
+        artifacts: [],
+        preview: {
+          available: true,
+          status: "previewable",
+          resolved_run_id: sessionWithPreview.latest_run_id,
+          published_at: null,
+          completed_at: null,
+          output_root: "dist",
+          default_entry_path: "dist/index.html",
+          download_available: true,
+          preview_available: true,
+          is_stale: false,
+          newer_run_id: "",
+          newer_run_status: "",
+          download_url: `/api/v1/projects/project-1/builder-sessions/${sessionWithPreview.id}/runs/${sessionWithPreview.latest_run_id}/delivery/download`,
+          preview_launch_url: `/api/v1/projects/project-1/builder-sessions/${sessionWithPreview.id}/runs/${sessionWithPreview.latest_run_id}/preview/launch`,
+        },
+      })
+    )
+    launchBuilderPreviewMock.mockResolvedValue({
+      frame_url: "/builder-preview/projects/project-1/sessions/session-previewable/runs/run-1/",
+    })
+
+    const { container, root } = await renderBuilderRoute(
+      "/projects/project-1/builder-sessions/session-previewable"
+    )
+
+    await settle()
+
+    const openPreviewButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Open preview")
+    ) as HTMLButtonElement | undefined
+
+    expect(openPreviewButton).toBeDefined()
+
+    await act(async () => {
+      openPreviewButton?.click()
+      await flushPromises()
+      await flushPromises()
+    })
+
+    expect(launchBuilderPreviewMock).toHaveBeenCalledWith("project-1", "session-previewable", "run-1")
+
+    const iframe = container.querySelector('[data-testid="builder-preview-iframe"]') as HTMLIFrameElement | null
+    expect(iframe).not.toBeNull()
+    expect(iframe?.getAttribute("src")).toBe("/builder-preview/projects/project-1/sessions/session-previewable/runs/run-1/")
+    expect(iframe?.getAttribute("sandbox")).toContain("allow-scripts")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("does not render a preview iframe for delivery-only snapshots", async () => {
+    const sessionWithDeliveryOnly = buildSession({
+      id: "session-delivery-only",
+      artifact_count: 0,
+    })
+    getBuilderSessionMock.mockResolvedValue(
+      buildDetail({
+        session: sessionWithDeliveryOnly,
+        artifacts: [],
+        preview: {
+          available: true,
+          status: "delivery_only",
+          resolved_run_id: sessionWithDeliveryOnly.latest_run_id,
+          published_at: null,
+          completed_at: null,
+          output_root: "dist",
+          default_entry_path: "",
+          download_available: true,
+          preview_available: false,
+          is_stale: false,
+          newer_run_id: "",
+          newer_run_status: "",
+          download_url: `/api/v1/projects/project-1/builder-sessions/${sessionWithDeliveryOnly.id}/runs/${sessionWithDeliveryOnly.latest_run_id}/delivery/download`,
+          preview_launch_url: "",
+        },
+      })
+    )
+
+    const { container, root } = await renderBuilderRoute(
+      "/projects/project-1/builder-sessions/session-delivery-only"
+    )
+
+    await settle()
+
+    expect(container.querySelector('[data-testid="builder-preview-iframe"]')).toBeNull()
+    expect(launchBuilderPreviewMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows grouped model choices and includes the selected model when creating a Builder session", async () => {
+    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions?draft=1")
+
+    await settle()
+
+    expect(container.textContent).toContain("Project models")
+    expect(container.textContent).toContain("My models")
+    expect(container.textContent).toContain("Anthropic · Project")
+    expect(container.textContent).toContain("OpenAI · User")
+
+    const composer = container.querySelector('[data-testid="builder-composer"]') as HTMLTextAreaElement | null
+    const sendButton = container.querySelector('[data-testid="builder-send-message"]') as HTMLButtonElement | null
+
+    await act(async () => {
+      if (composer) {
+        composer.value = "Build me a dashboard app"
+        composer.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+      sendButton?.click()
+      await flushPromises()
+    })
+
+    expect(createBuilderSessionMock).toHaveBeenCalledWith("project-1", {
+      build_env_id: "env-1",
+      prompt: "Build me a dashboard app",
+      selected_model_key: "project-claude-sonnet",
+      provider_key: "anthropic-project",
+      model_profile_key: "claude-sonnet-4",
+    })
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("preselects the project default model and labels its source", async () => {
+    getBuilderModelSelectionMock.mockResolvedValue({
+      options: [
+        {
+          key: "project-claude-sonnet",
+          modelLabel: "Claude 4 Sonnet",
+          providerLabel: "Anthropic",
+          scope: "project",
+          providerKey: "anthropic-project",
+          modelProfileKey: "claude-sonnet-4",
+        },
+      ],
+      effective_default_source: "project",
+      effective_default_option: {
+        key: "project-claude-sonnet",
+        modelLabel: "Claude 4 Sonnet",
+        providerLabel: "Anthropic",
+        scope: "project",
+        providerKey: "anthropic-project",
+        modelProfileKey: "claude-sonnet-4",
+      },
+    } satisfies BuilderModelSelection)
+
+    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions?draft=1")
+
+    await settle()
+
+    expect(container.textContent).toContain("Default from project settings")
+    expect(container.textContent).toContain("Claude 4 Sonnet")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("falls back to the user default when no project default exists", async () => {
+    getBuilderModelSelectionMock.mockResolvedValue({
+      options: [
+        {
+          key: "user-gpt-4-1",
+          modelLabel: "GPT-4.1",
+          providerLabel: "OpenAI",
+          scope: "user",
+          providerKey: "openai-user",
+          modelProfileKey: "gpt-4.1",
+        },
+      ],
+      effective_default_source: "user",
+      effective_default_option: {
+        key: "user-gpt-4-1",
+        modelLabel: "GPT-4.1",
+        providerLabel: "OpenAI",
+        scope: "user",
+        providerKey: "openai-user",
+        modelProfileKey: "gpt-4.1",
+      },
+    } satisfies BuilderModelSelection)
+
+    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions?draft=1")
+
+    await settle()
+
+    expect(container.textContent).toContain("Default from your account settings")
+    expect(container.textContent).toContain("GPT-4.1")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("leaves the selector unselected when no default exists", async () => {
+    getBuilderModelSelectionMock.mockResolvedValue({
+      options: [],
+      effective_default_source: "none",
+    } satisfies BuilderModelSelection)
+
+    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions?draft=1")
+
+    await settle()
+
+    expect(container.textContent).toContain("Model")
+    expect(container.textContent).not.toContain("Default from project settings")
+    expect(container.textContent).not.toContain("Default from your account settings")
 
     await act(async () => {
       root.unmount()

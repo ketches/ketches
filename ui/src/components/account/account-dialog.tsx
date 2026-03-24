@@ -1,4 +1,6 @@
 import { usersApi } from "@/api/users"
+import { AccountAiProvidersPanel } from "@/components/account/account-ai-providers-panel"
+import { AccountSettingsShell, type AccountSettingsSection } from "@/components/account/account-settings-shell"
 import { PasswordForm } from "@/components/account/password-form"
 import { ProfileForm } from "@/components/account/profile-form"
 import {
@@ -7,10 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
+import * as React from "react"
 import { toast } from "sonner"
 
 interface AccountDialogProps {
@@ -28,6 +30,13 @@ export function AccountDialog({ open, onOpenChange, user }: AccountDialogProps) 
   const authUser = useAuthStore((state) => state.user)
   const updateUser = useAuthStore((state) => state.updateUser)
   const queryClient = useQueryClient()
+  const [activeSection, setActiveSection] = React.useState<AccountSettingsSection>("profile")
+
+  React.useEffect(() => {
+    if (open) {
+      setActiveSection("profile")
+    }
+  }, [open])
 
   const profileQuery = useQuery({
     queryKey: ["users", "me"],
@@ -77,16 +86,12 @@ export function AccountDialog({ open, onOpenChange, user }: AccountDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton>
+      <DialogContent showCloseButton className="sm:max-w-[50vw] w-full min-h[75vh]">
         <DialogHeader>
           <DialogTitle>Account Settings</DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="profile">
-          <TabsList className="grid w-full grid-cols-2 gap-2">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="password">Password</TabsTrigger>
-          </TabsList>
-          <TabsContent value="profile">
+        <AccountSettingsShell activeSection={activeSection} onSectionChange={setActiveSection}>
+          {activeSection === "profile" ? (
             <ProfileForm
               user={profileUser}
               onSave={async (data) => {
@@ -94,8 +99,9 @@ export function AccountDialog({ open, onOpenChange, user }: AccountDialogProps) 
               }}
               isSaving={profileMutation.isPending}
             />
-          </TabsContent>
-          <TabsContent value="password">
+          ) : null}
+
+          {activeSection === "security" ? (
             <PasswordForm
               onSave={async (data) => {
                 await passwordMutation.mutateAsync({
@@ -105,8 +111,12 @@ export function AccountDialog({ open, onOpenChange, user }: AccountDialogProps) 
               }}
               isSaving={passwordMutation.isPending}
             />
-          </TabsContent>
-        </Tabs>
+          ) : null}
+
+          {activeSection === "ai-providers" ? (
+            <AccountAiProvidersPanel />
+          ) : null}
+        </AccountSettingsShell>
       </DialogContent>
     </Dialog>
   )
