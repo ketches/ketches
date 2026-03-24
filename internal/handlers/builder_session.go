@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,6 +18,10 @@ import (
 )
 
 var builderRunLogsTerminalPollInterval = 100 * time.Millisecond
+var resolveBuilderSessionSnapshot = services.ResolveBuilderSessionSnapshot
+var writeBuilderSessionSnapshotArchive = func(ctx context.Context, projectID, sessionID, runID string, writer io.Writer) error {
+	return services.DownloadBuilderSessionSnapshot(ctx, projectID, sessionID, runID, writer)
+}
 
 func ListBuilderSessions(c *gin.Context) {
 	projectID := c.Param("projectID")
@@ -26,6 +33,38 @@ func ListBuilderSessions(c *gin.Context) {
 	}
 
 	api.Success(c, sessions)
+}
+
+func ListBuilderAvailableModelOptions(c *gin.Context) {
+	projectID := c.Param("projectID")
+	userID, ok := requireBuilderSessionUserID(c)
+	if !ok {
+		return
+	}
+
+	options, err := services.GetBuilderAvailableModelOptions(c.Request.Context(), projectID, userID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, options)
+}
+
+func GetBuilderDefaultModelSelection(c *gin.Context) {
+	projectID := c.Param("projectID")
+	userID, ok := requireBuilderSessionUserID(c)
+	if !ok {
+		return
+	}
+
+	selection, err := services.GetBuilderDefaultModelSelection(c.Request.Context(), projectID, userID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, selection)
 }
 
 func CreateBuilderSession(c *gin.Context) {
@@ -61,6 +100,91 @@ func GetBuilderSession(c *gin.Context) {
 	}
 
 	api.Success(c, detail)
+}
+
+func GetBuilderSessionPreview(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+
+	preview, err := services.GetBuilderSessionPreview(c.Request.Context(), projectID, sessionID)
+	if err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	api.Success(c, preview)
+}
+
+func LaunchBuilderSessionPreview(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+	runID := c.Param("runID")
+	userID, ok := requireBuilderSessionUserID(c)
+	if !ok {
+		return
+	}
+
+	launch, err := services.LaunchBuilderSessionPreview(c.Request.Context(), projectID, sessionID, runID)
+	if err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+	token, err := services.MintBuilderPreviewSessionToken(userID, projectID, sessionID, runID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	c.SetCookie(services.BuilderPreviewSessionCookieName, token, 600, fmt.Sprintf("/builder-preview/projects/%s/sessions/%s/runs/%s", projectID, sessionID, runID), "", true, true)
+
+	api.Success(c, launch)
+}
+
+func ReadBuilderPreviewAsset(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+	runID := c.Param("runID")
+	assetPath := c.Param("assetPath")
+
+	_, snapshotFile, err := services.ResolveBuilderSessionSnapshotFile(c.Request.Context(), projectID, sessionID, runID, assetPath)
+	if err != nil {
+		if errors.Is(err, services.ErrBuilderAgentUnsafeFilePath) {
+			api.Error(c, http.StatusBadRequest, err)
+			return
+		}
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	reader, err := services.OpenBuilderOutputSnapshotFile(snapshotFile)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	defer reader.Close()
+
+	c.Header("Content-Type", snapshotFile.ContentType)
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Content-Security-Policy", "sandbox allow-scripts")
+	if _, err := io.Copy(c.Writer, reader); err != nil {
+		c.Error(err)
+	}
+}
+
+func DownloadBuilderSessionSnapshot(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+	runID := c.Param("runID")
+
+	if _, err := resolveBuilderSessionSnapshot(c.Request.Context(), projectID, sessionID, runID); err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	c.Header("Content-Type", "application/gzip")
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="builder-output-%s.tar.gz"`, runID))
+	if err := writeBuilderSessionSnapshotArchive(c.Request.Context(), projectID, sessionID, runID, c.Writer); err != nil {
+		c.Error(err)
+	}
 }
 
 func PostBuilderSessionMessage(c *gin.Context) {

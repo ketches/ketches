@@ -18,6 +18,8 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
+var newRemoteCommandExecutor = remotecommand.NewSPDYExecutor
+
 // execCommand executes a non-interactive command in a container and returns stdout/stderr
 func execCommand(appCtx *models.AppContext, instanceName, containerName string, command []string) (string, string, error) {
 	return execCommandWithContext(context.Background(), appCtx, instanceName, containerName, command)
@@ -112,6 +114,14 @@ func execCommandWithStdin(appCtx *models.AppContext, instanceName, containerName
 
 // execCommandStreamStdout executes a command and streams stdout to the provided writer
 func execCommandStreamStdout(appCtx *models.AppContext, instanceName, containerName string, command []string, stdout io.Writer) error {
+	return execCommandStreamStdoutWithContext(context.Background(), appCtx, instanceName, containerName, command, stdout)
+}
+
+func execCommandStreamStdoutWithContext(ctx context.Context, appCtx *models.AppContext, instanceName, containerName string, command []string, stdout io.Writer) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
 	if err != nil {
 		return err
@@ -136,16 +146,21 @@ func execCommandStreamStdout(appCtx *models.AppContext, instanceName, containerN
 			TTY:       false,
 		}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	exec, err := newRemoteCommandExecutor(config, "POST", req.URL())
 	if err != nil {
 		return err
 	}
 
 	var stderr bytes.Buffer
-	return exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: stdout,
 		Stderr: &stderr,
 	})
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	return err
 }
 
 // execCommandWithStdinStream executes a command with stdin stream and stdout writer

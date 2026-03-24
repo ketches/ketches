@@ -8,6 +8,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var builderRunTerminalStatuses = []entities.BuilderRunStatus{
@@ -39,6 +40,34 @@ func NormalizeLegacyBuilderRunsForControlPlane(ctx context.Context) error {
 	return normalizeLegacyBuilderRunsForControlPlane(db.DB.WithContext(ctx))
 }
 
+var builderRunControlPlaneFields = []string{
+	"Phase",
+	"ClaimToken",
+	"ClaimedAt",
+	"HeartbeatAt",
+	"TimeoutAt",
+	"CancelRequestedAt",
+	"ProviderKey",
+	"ModelProfileKey",
+	"ExecutorPolicyKey",
+	"ExecutorHandleID",
+	"ErrorCode",
+	"ErrorClass",
+}
+
+func ensureBuilderRunControlPlaneColumns(tx *gorm.DB) error {
+	for _, field := range builderRunControlPlaneFields {
+		if tx.Migrator().HasColumn(&entities.BuilderRun{}, field) {
+			continue
+		}
+		if err := tx.Migrator().AddColumn(&entities.BuilderRun{}, field); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func ClaimNextQueuedBuilderRun(ctx context.Context, claimToken string, leaseDuration time.Duration) (*entities.BuilderRun, error) {
 	tx := db.DB.WithContext(ctx)
 	var claimedRun *entities.BuilderRun
@@ -49,6 +78,27 @@ func ClaimNextQueuedBuilderRun(ctx context.Context, claimToken string, leaseDura
 			return err
 		}
 		if candidateID == "" {
+			return nil
+		}
+
+		candidateRun, err := loadBuilderRunByID(tx, candidateID)
+		if err != nil {
+			return err
+		}
+
+		session, err := lockBuilderSessionForRunClaim(tx, candidateRun.SessionID)
+		if err != nil {
+			return err
+		}
+		if err := validateBuilderSessionAppendable(session); err != nil {
+			return err
+		}
+
+		hasExecutingRun, err := sessionHasExecutingBuilderRun(tx, candidateRun.SessionID)
+		if err != nil {
+			return err
+		}
+		if hasExecutingRun {
 			return nil
 		}
 
@@ -69,7 +119,7 @@ func ClaimNextQueuedBuilderRun(ctx context.Context, claimToken string, leaseDura
 		}
 
 		result := tx.Model(&entities.BuilderRun{}).
-			Where("id = ? AND status = ? AND EXISTS (SELECT 1 FROM builder_sessions AS bs WHERE bs.id = builder_runs.session_id AND bs.status IN ?) AND NOT EXISTS (SELECT 1 FROM builder_runs AS active WHERE active.session_id = builder_runs.session_id AND active.status = ?)", candidateID, entities.BuilderRunStatusQueued, appendableBuilderSessionStatuses(), entities.BuilderRunStatusExecuting).
+			Where("id = ? AND status = ?", candidateID, entities.BuilderRunStatusQueued).
 			Updates(updates)
 		if result.Error != nil {
 			return result.Error
@@ -159,6 +209,9 @@ func RequeueBuilderRun(ctx context.Context, input BuilderRunRequeueInput) (*enti
 	err := tx.Transaction(func(tx *gorm.DB) error {
 		ownedRun, err := loadOwnedExecutingBuilderRun(tx, input.RunID, input.ClaimToken)
 		if err != nil {
+			return err
+		}
+		if err := deleteBuilderOutputSnapshotsByRunIDTx(tx, input.RunID); err != nil {
 			return err
 		}
 
@@ -300,6 +353,10 @@ func FinalizeBuilderRun(ctx context.Context, input BuilderRunFinalizeInput) (*en
 }
 
 func normalizeLegacyBuilderRunsForControlPlane(tx *gorm.DB) error {
+	if err := ensureBuilderRunControlPlaneColumns(tx); err != nil {
+		return err
+	}
+
 	if err := tx.Model(&entities.BuilderRun{}).
 		Where("phase IS NULL AND status = ?", entities.BuilderRunStatusQueued).
 		Update("phase", entities.BuilderRunPhaseQueued).Error; err != nil {
@@ -376,6 +433,40 @@ func loadOwnedExecutingBuilderRun(tx *gorm.DB, runID, claimToken string) (*entit
 		return nil, err
 	}
 	return &run, nil
+}
+
+func lockBuilderSessionForRunClaim(tx *gorm.DB, sessionID string) (*entities.BuilderSession, error) {
+	var session entities.BuilderSession
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", sessionID).First(&session).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, &BuilderSessionNotFoundError{SessionID: sessionID}
+		}
+		return nil, err
+	}
+	return &session, nil
+}
+
+func sessionHasExecutingBuilderRun(tx *gorm.DB, sessionID string) (bool, error) {
+	type builderRunExistsRow struct {
+		ID string
+	}
+
+	var row builderRunExistsRow
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Model(&entities.BuilderRun{}).
+		Select("id").
+		Where("session_id = ? AND status = ?", sessionID, entities.BuilderRunStatusExecuting).
+		Order("created_at ASC, id ASC").
+		Limit(1).
+		Take(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }
 
 func nullableStringValue(value *string) any {

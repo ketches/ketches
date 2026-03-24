@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +17,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/routes"
+	"github.com/ketches/ketches/internal/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -443,4 +446,87 @@ func TestBuilderSessionRoutesExposeBuildOutputArtifactsWithoutRouteChurn(t *test
 	require.True(t, ok)
 	assert.Equal(t, string(entities.BuilderArtifactKindBuildOutput), buildOutputArtifact.Kind)
 	assert.JSONEq(t, `{"size_bytes":512,"output_root":"dist","source_phase":"building"}`, buildOutputArtifact.MetadataJSON)
+}
+
+func TestBuilderSessionRoutesExposePreviewReadEndpoints(t *testing.T) {
+	setupBuilderSessionRoutesTestDB(t)
+
+	viewer := seedBuilderSessionRouteUser(t, "viewer-1", "viewer", app.UserRoleUser)
+	seedBuilderSessionRouteProjectMember(t, "project-1", viewer.ID, app.ProjectRoleViewer)
+	sessionID := seedBuilderSessionRouteReadFixture(t)
+	baseDir := t.TempDir()
+	app.Config.BuilderSnapshotBaseDir = baseDir
+	publishedAt := time.Now().UTC().Add(-2 * time.Minute)
+	storagePath := "sessions/route-preview/snapshot"
+	require.NoError(t, os.MkdirAll(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist", "index.html"), []byte("<html><body>route preview</body></html>"), 0o644))
+	require.NoError(t, db.DB.Model(&entities.BuilderRun{}).Where("id = ?", "run-route-1").Updates(map[string]any{
+		"status":       entities.BuilderRunStatusSucceeded,
+		"completed_at": time.Now().UTC().Add(-3 * time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+		ID:               "snapshot-route-preview",
+		CreatedAt:        publishedAt,
+		UpdatedAt:        publishedAt,
+		SessionID:        sessionID,
+		RunID:            "run-route-1",
+		WorkspaceID:      "",
+		Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+		OutputRoot:       "dist",
+		DefaultEntryPath: "dist/index.html",
+		StoragePath:      storagePath,
+		FileCount:        1,
+		TotalSizeBytes:   512,
+		PublishedAt:      publishedAt,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshotFile{
+		ID:             "snapshot-route-preview-file",
+		CreatedAt:      publishedAt,
+		UpdatedAt:      publishedAt,
+		SnapshotID:     "snapshot-route-preview",
+		RelativePath:   "dist/index.html",
+		StoragePath:    storagePath + "/dist/index.html",
+		SizeBytes:      39,
+		ContentType:    "text/html; charset=utf-8",
+		IsDefaultEntry: true,
+	}).Error)
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	routes.SetupRoutes(r)
+
+	previewReq := newBuilderSessionRouteRequest(t, http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/preview", "", viewer)
+	previewW := httptest.NewRecorder()
+	r.ServeHTTP(previewW, previewReq)
+	require.Equal(t, http.StatusOK, previewW.Code)
+
+	launchReq := newBuilderSessionRouteRequest(t, http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/runs/run-route-1/preview/launch", "", viewer)
+	launchW := httptest.NewRecorder()
+	r.ServeHTTP(launchW, launchReq)
+	require.Equal(t, http.StatusOK, launchW.Code)
+	launchCookie := launchW.Header().Get("Set-Cookie")
+	assert.Contains(t, launchCookie, services.BuilderPreviewSessionCookieName+"=")
+
+	downloadReq := newBuilderSessionRouteRequest(t, http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/runs/run-route-1/delivery/download", "", viewer)
+	downloadW := httptest.NewRecorder()
+	r.ServeHTTP(downloadW, downloadReq)
+	require.Equal(t, http.StatusOK, downloadW.Code)
+
+	rawPreviewReq := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-route-1/", nil)
+	rawPreviewReq.Header.Set("Cookie", launchCookie)
+	rawPreviewW := httptest.NewRecorder()
+	r.ServeHTTP(rawPreviewW, rawPreviewReq)
+	require.Equal(t, http.StatusOK, rawPreviewW.Code)
+	assert.Contains(t, rawPreviewW.Header().Get("Content-Type"), "text/html")
+	assert.Equal(t, "<html><body>route preview</body></html>", rawPreviewW.Body.String())
+
+	missingCookieReq := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-route-1/", nil)
+	missingCookieW := httptest.NewRecorder()
+	r.ServeHTTP(missingCookieW, missingCookieReq)
+	require.Equal(t, http.StatusUnauthorized, missingCookieW.Code)
+
+	viewerWorkspaceDownloadReq := newBuilderSessionRouteRequest(t, http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/files/download", "", viewer)
+	viewerWorkspaceDownloadW := httptest.NewRecorder()
+	r.ServeHTTP(viewerWorkspaceDownloadW, viewerWorkspaceDownloadReq)
+	require.Equal(t, http.StatusForbidden, viewerWorkspaceDownloadW.Code)
 }

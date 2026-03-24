@@ -16,6 +16,8 @@ import (
 
 var ErrBuilderAgentUnsafeFilePath = errors.New("unsafe file path")
 
+const maxBuilderRelativePathLength = 255
+
 type BuilderAgentMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -57,12 +59,16 @@ type builderAgentChatCompletionResponse struct {
 }
 
 func GenerateBuilderFiles(ctx context.Context, messages []BuilderAgentMessage) (*BuilderAgentResult, error) {
+	return GenerateBuilderFilesWithSelection(ctx, messages, "", "")
+}
+
+func GenerateBuilderFilesWithSelection(ctx context.Context, messages []BuilderAgentMessage, providerKey, modelProfileKey string) (*BuilderAgentResult, error) {
 	registry, err := loadBuilderProviderRegistry(app.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	resolvedProviderProfile, err := registry.resolveBuilderProviderProfile("", "")
+	resolvedProviderProfile, err := registry.resolveBuilderProviderProfile(providerKey, modelProfileKey)
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +200,9 @@ func validateBuilderAgentFilePath(filePath string) (string, error) {
 		if segment == "" || segment == "." || segment == ".." {
 			return "", fmt.Errorf("%w: %s", ErrBuilderAgentUnsafeFilePath, filePath)
 		}
+	}
+	if len(normalized) > maxBuilderRelativePathLength {
+		return "", fmt.Errorf("%w: %s", ErrBuilderAgentUnsafeFilePath, filePath)
 	}
 
 	return path.Clean(normalized), nil

@@ -49,11 +49,12 @@ var (
 	GlobalBuilderWorker                     = NewBuilderWorker()
 	builderWorkerProvisionWorkspace         = ProvisionBuilderWorkspace
 	builderWorkerLoadConversationMessages   = loadBuilderConversationMessages
-	builderWorkerGenerateFiles              = GenerateBuilderFiles
+	builderWorkerGenerateFiles              = GenerateBuilderFilesWithSelection
 	builderWorkerWriteAgentFiles            = writeBuilderAgentFiles
 	builderWorkerListWorkspaceFiles         = defaultBuilderWorkerListWorkspaceFiles
 	builderWorkerRunFrontendCommand         = defaultBuilderWorkerRunFrontendCommand
 	builderWorkerExecCommandWithContext     = execCommandWithContext
+	builderWorkerPublishOutputSnapshot      = PublishBuilderOutputSnapshot
 )
 
 type BuilderWorkerStartupPreflightError struct {
@@ -394,7 +395,7 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 		return err
 	}
 
-	result, err := builderWorkerGenerateFiles(ctx, messages)
+	result, err := builderWorkerGenerateFiles(ctx, messages, stringPointerValue(run.ProviderKey), stringPointerValue(run.ModelProfileKey))
 	if err != nil {
 		return finalizeClaimedBuilderRunFailure(
 			ctx,
@@ -542,6 +543,50 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 			err.Error(),
 			true,
 		)
+	}
+	if err := ensureClaimedBuilderRunOwnership(ctx, run.ID, claimToken); err != nil {
+		return err
+	}
+
+	snapshotRun := *run
+	snapshotRun.Status = entities.BuilderRunStatusSucceeded
+	snapshot, err := builderWorkerPublishOutputSnapshot(ctx, workspace, &snapshotRun)
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			if cancelled, cancelErr := finalizeClaimedBuilderRunCancellation(ctx, run, claimToken, "[system] run cancelled before preview snapshot was published\n"); cancelled || cancelErr != nil {
+				return cancelErr
+			}
+			return err
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerArtifactErrorCode,
+			builderWorkerExecutionPlaneClass,
+			"failed to publish preview snapshot: "+err.Error(),
+			true,
+		)
+	}
+	if err := ensureClaimedBuilderRunOwnership(ctx, run.ID, claimToken); err != nil {
+		if cleanupErr := DeleteBuilderOutputSnapshotsByRunID(ctx, run.ID); cleanupErr != nil {
+			return errors.Join(err, cleanupErr)
+		}
+		return err
+	}
+	if snapshot != nil {
+		payloadJSON := fmt.Sprintf(`{"snapshot_id":%q,"status":%q}`, snapshot.ID, snapshot.Status)
+		if err := appendOwnedBuilderRunEvent(ctx, run.ID, claimToken, BuilderRunEventInput{
+			Kind:        entities.BuilderRunEventKindPreview,
+			Level:       entities.BuilderRunEventLevelInfo,
+			Message:     "[system] preview snapshot published\n",
+			PayloadJSON: payloadJSON,
+		}); err != nil {
+			return err
+		}
 	}
 
 	return finalizeClaimedBuilderRunSuccess(

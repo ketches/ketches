@@ -208,6 +208,36 @@ func TestInitConfig_UsesBuilderEnvOverrides(t *testing.T) {
 	}
 }
 
+func TestInitConfig_DefaultsBuilderSnapshotBaseDir(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	t.Setenv("BUILDER_SNAPSHOT_BASE_DIR", "")
+
+	InitConfig()
+
+	if Config.BuilderSnapshotBaseDir != "data/builder-previews" {
+		t.Fatalf("expected default builder snapshot base dir %q, got %q", "data/builder-previews", Config.BuilderSnapshotBaseDir)
+	}
+}
+
+func TestInitConfig_UsesBuilderSnapshotBaseDirOverride(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	t.Setenv("BUILDER_SNAPSHOT_BASE_DIR", "/tmp/builder-previews")
+
+	InitConfig()
+
+	if Config.BuilderSnapshotBaseDir != "/tmp/builder-previews" {
+		t.Fatalf("expected builder snapshot base dir override %q, got %q", "/tmp/builder-previews", Config.BuilderSnapshotBaseDir)
+	}
+}
+
 func TestBuildDBSourceUsesExplicitSource(t *testing.T) {
 	t.Setenv("DB_SOURCE", "custom-source")
 

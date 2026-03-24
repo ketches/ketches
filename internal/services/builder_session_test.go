@@ -108,6 +108,27 @@ func TestCreateBuilderSessionUsesProjectScopedContractAndStartsQueuedRun(t *test
 	assert.Empty(t, resp.Artifacts)
 }
 
+func TestCreateBuilderSessionPersistsSelectedProviderAndModel(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	resp, err := CreateBuilderSession(context.Background(), "project-1", "user-1", &models.CreateBuilderSessionRequest{
+		BuildEnvID:      "env-1",
+		Prompt:          "Create a service layer for builder sessions.",
+		ProviderKey:     "anthropic-project",
+		ModelProfileKey: "claude-sonnet-4",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	var runs []entities.BuilderRun
+	require.NoError(t, db.DB.Where("session_id = ?", resp.Session.ID).Find(&runs).Error)
+	require.Len(t, runs, 1)
+	require.NotNil(t, runs[0].ProviderKey)
+	require.NotNil(t, runs[0].ModelProfileKey)
+	assert.Equal(t, "anthropic-project", *runs[0].ProviderKey)
+	assert.Equal(t, "claude-sonnet-4", *runs[0].ModelProfileKey)
+}
+
 func TestGetBuilderSessionDetailReadsLegacyRowsWithoutControlPlaneFields(t *testing.T) {
 	setupBuilderSessionServiceTestDB(t)
 
@@ -865,6 +886,441 @@ func TestGetBuilderSessionDetailReturnsLatestRunArtifactsWithoutActiveWorkspace(
 	assert.Equal(t, workspaceID, buildOutputArtifact.WorkspaceID)
 	assert.Equal(t, "run-artifacts-without-active-workspace", buildOutputArtifact.RunID)
 	assert.JSONEq(t, `{"size_bytes":512,"output_root":"dist","source_phase":"building"}`, buildOutputArtifact.MetadataJSON)
+}
+
+func TestGetBuilderSessionDetailUsesLatestSuccessfulPublishedSnapshotForPreview(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	sessionID := "session-preview-latest-success"
+	workspaceID := "workspace-preview-latest-success"
+	messageID := "message-preview-latest-success"
+	succeededRunID := "run-preview-succeeded"
+	failedRunID := "run-preview-failed"
+	publishedAt := now.Add(-2 * time.Minute)
+	completedAt := now.Add(-3 * time.Minute)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base:           entities.Base{ID: sessionID, CreatedAt: now.Add(-10 * time.Minute), UpdatedAt: now.Add(-time.Minute)},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Preview latest success",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        messageID,
+		CreatedAt: now.Add(-9 * time.Minute),
+		UpdatedAt: now.Add(-9 * time.Minute),
+		SessionID: sessionID,
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Build the generated app.",
+		CreatedBy: "user-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 succeededRunID,
+		CreatedAt:          now.Add(-4 * time.Minute),
+		UpdatedAt:          now.Add(-3 * time.Minute),
+		SessionID:          sessionID,
+		TriggerMessageID:   messageID,
+		WorkspaceID:        stringPtr(workspaceID),
+		Status:             entities.BuilderRunStatusSucceeded,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Build the generated app.",
+		CompletedAt:        &completedAt,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 failedRunID,
+		CreatedAt:          now.Add(-time.Minute),
+		UpdatedAt:          now.Add(-30 * time.Second),
+		SessionID:          sessionID,
+		TriggerMessageID:   messageID,
+		WorkspaceID:        stringPtr(workspaceID),
+		Status:             entities.BuilderRunStatusFailed,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Retry after preview failure.",
+		ErrorMessage:       "snapshot publish failed",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderWorkspace{
+		ID:            workspaceID,
+		CreatedAt:     now.Add(-5 * time.Minute),
+		UpdatedAt:     now.Add(-4 * time.Minute),
+		SessionID:     sessionID,
+		BuildEnvID:    "env-1",
+		ClusterID:     "cluster-1",
+		Namespace:     "builder-preview-latest-success",
+		PodName:       "builder-preview-latest-success-0",
+		ContainerName: "workspace",
+		Status:        entities.BuilderWorkspaceStatusExpired,
+		WorkspaceRoot: "/workspace/preview-latest-success",
+		TerminatedAt:  ptrTime(now.Add(-20 * time.Second)),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+		ID:               "snapshot-preview-latest-success",
+		CreatedAt:        publishedAt,
+		UpdatedAt:        publishedAt,
+		SessionID:        sessionID,
+		RunID:            succeededRunID,
+		WorkspaceID:      workspaceID,
+		Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+		OutputRoot:       "dist",
+		DefaultEntryPath: "dist/index.html",
+		StoragePath:      "sessions/preview/runs/succeeded/snapshot",
+		FileCount:        2,
+		TotalSizeBytes:   2560,
+		PublishedAt:      publishedAt,
+	}).Error)
+
+	resp, err := GetBuilderSessionDetail(context.Background(), "project-1", sessionID)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Preview)
+	assert.True(t, resp.Preview.Available)
+	assert.Equal(t, "previewable", resp.Preview.Status)
+	assert.Equal(t, succeededRunID, resp.Preview.ResolvedRunID)
+	if assert.NotNil(t, resp.Preview.PublishedAt) {
+		assert.WithinDuration(t, publishedAt, *resp.Preview.PublishedAt, time.Second)
+	}
+	if assert.NotNil(t, resp.Preview.CompletedAt) {
+		assert.WithinDuration(t, completedAt, *resp.Preview.CompletedAt, time.Second)
+	}
+	assert.Equal(t, "dist", resp.Preview.OutputRoot)
+	assert.Equal(t, "dist/index.html", resp.Preview.DefaultEntryPath)
+	assert.True(t, resp.Preview.DownloadAvailable)
+	assert.True(t, resp.Preview.PreviewAvailable)
+	assert.True(t, resp.Preview.IsStale)
+	assert.Equal(t, failedRunID, resp.Preview.NewerRunID)
+	assert.Equal(t, string(entities.BuilderRunStatusFailed), resp.Preview.NewerRunStatus)
+	assert.Nil(t, resp.Workspace)
+	assert.Empty(t, resp.Artifacts)
+}
+
+func TestGetBuilderSessionDetailReturnsNoPreviewWhenNoSuccessfulSnapshotExists(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	sessionID := "session-preview-none"
+	messageID := "message-preview-none"
+
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base:           entities.Base{ID: sessionID, CreatedAt: now.Add(-5 * time.Minute), UpdatedAt: now.Add(-time.Minute)},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "No preview yet",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        messageID,
+		CreatedAt: now.Add(-4 * time.Minute),
+		UpdatedAt: now.Add(-4 * time.Minute),
+		SessionID: sessionID,
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Build the generated app.",
+		CreatedBy: "user-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-preview-none",
+		CreatedAt:          now.Add(-3 * time.Minute),
+		UpdatedAt:          now.Add(-2 * time.Minute),
+		SessionID:          sessionID,
+		TriggerMessageID:   messageID,
+		Status:             entities.BuilderRunStatusFailed,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Build the generated app.",
+		ErrorMessage:       "build failed",
+	}).Error)
+
+	resp, err := GetBuilderSessionDetail(context.Background(), "project-1", sessionID)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Preview)
+	assert.False(t, resp.Preview.Available)
+	assert.Equal(t, "unavailable", resp.Preview.Status)
+	assert.False(t, resp.Preview.DownloadAvailable)
+	assert.False(t, resp.Preview.PreviewAvailable)
+	assert.False(t, resp.Preview.IsStale)
+	assert.Empty(t, resp.Preview.ResolvedRunID)
+}
+
+func TestGetBuilderSessionDetailIgnoresSnapshotNotBackedBySessionRun(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	sessionID := "session-preview-orphaned"
+	messageID := "message-preview-orphaned"
+
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base:           entities.Base{ID: sessionID, CreatedAt: now.Add(-5 * time.Minute), UpdatedAt: now.Add(-time.Minute)},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Ignore orphaned snapshot",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        messageID,
+		CreatedAt: now.Add(-4 * time.Minute),
+		UpdatedAt: now.Add(-4 * time.Minute),
+		SessionID: sessionID,
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Build the generated app.",
+		CreatedBy: "user-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-preview-orphaned-latest",
+		CreatedAt:          now.Add(-3 * time.Minute),
+		UpdatedAt:          now.Add(-2 * time.Minute),
+		SessionID:          sessionID,
+		TriggerMessageID:   messageID,
+		Status:             entities.BuilderRunStatusFailed,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Build the generated app.",
+		ErrorMessage:       "build failed",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+		ID:               "snapshot-preview-orphaned",
+		CreatedAt:        now.Add(-2 * time.Minute),
+		UpdatedAt:        now.Add(-2 * time.Minute),
+		SessionID:        sessionID,
+		RunID:            "run-preview-orphaned-missing",
+		WorkspaceID:      "workspace-preview-orphaned",
+		Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+		OutputRoot:       "dist",
+		DefaultEntryPath: "dist/index.html",
+		StoragePath:      "sessions/preview/runs/orphaned/snapshot",
+		FileCount:        1,
+		TotalSizeBytes:   512,
+		PublishedAt:      now.Add(-2 * time.Minute),
+	}).Error)
+
+	resp, err := GetBuilderSessionDetail(context.Background(), "project-1", sessionID)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Preview)
+	assert.False(t, resp.Preview.Available)
+	assert.Equal(t, "unavailable", resp.Preview.Status)
+	assert.Empty(t, resp.Preview.ResolvedRunID)
+	assert.Nil(t, resp.Preview.PublishedAt)
+	assert.Nil(t, resp.Preview.CompletedAt)
+}
+
+func TestGetBuilderSessionDetailKeepsWorkspaceArtifactsSeparateFromPreview(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	sessionID := "session-preview-separate"
+	activeWorkspaceID := "workspace-preview-active"
+	terminatedWorkspaceID := "workspace-preview-terminated"
+	messageID := "message-preview-separate"
+	succeededRunID := "run-preview-separate-succeeded"
+	publishedAt := now.Add(-2 * time.Minute)
+	completedAt := now.Add(-3 * time.Minute)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base:           entities.Base{ID: sessionID, CreatedAt: now.Add(-10 * time.Minute), UpdatedAt: now.Add(-time.Minute)},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Preview separate from workspace",
+		Status:         entities.BuilderSessionStatusRunning,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        messageID,
+		CreatedAt: now.Add(-9 * time.Minute),
+		UpdatedAt: now.Add(-9 * time.Minute),
+		SessionID: sessionID,
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Build the generated app.",
+		CreatedBy: "user-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 succeededRunID,
+		CreatedAt:          now.Add(-4 * time.Minute),
+		UpdatedAt:          now.Add(-3 * time.Minute),
+		SessionID:          sessionID,
+		TriggerMessageID:   messageID,
+		WorkspaceID:        stringPtr(terminatedWorkspaceID),
+		Status:             entities.BuilderRunStatusSucceeded,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Build the generated app.",
+		CompletedAt:        &completedAt,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderWorkspace{
+		ID:            terminatedWorkspaceID,
+		CreatedAt:     now.Add(-5 * time.Minute),
+		UpdatedAt:     now.Add(-4 * time.Minute),
+		SessionID:     sessionID,
+		BuildEnvID:    "env-1",
+		ClusterID:     "cluster-1",
+		Namespace:     "builder-preview-terminated",
+		PodName:       "builder-preview-terminated-0",
+		ContainerName: "workspace",
+		Status:        entities.BuilderWorkspaceStatusExpired,
+		WorkspaceRoot: "/workspace/preview-terminated",
+		TerminatedAt:  ptrTime(now.Add(-30 * time.Second)),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderWorkspace{
+		ID:            activeWorkspaceID,
+		CreatedAt:     now.Add(-time.Minute),
+		UpdatedAt:     now.Add(-time.Minute),
+		SessionID:     sessionID,
+		BuildEnvID:    "env-1",
+		ClusterID:     "cluster-1",
+		Namespace:     "builder-preview-active",
+		PodName:       "builder-preview-active-0",
+		ContainerName: "workspace",
+		Status:        entities.BuilderWorkspaceStatusActive,
+		WorkspaceRoot: "/workspace/preview-active",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+		ID:               "snapshot-preview-separate",
+		CreatedAt:        publishedAt,
+		UpdatedAt:        publishedAt,
+		SessionID:        sessionID,
+		RunID:            succeededRunID,
+		WorkspaceID:      terminatedWorkspaceID,
+		Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+		OutputRoot:       "dist",
+		DefaultEntryPath: "dist/index.html",
+		StoragePath:      "sessions/preview/runs/separate/snapshot",
+		FileCount:        1,
+		TotalSizeBytes:   512,
+		PublishedAt:      publishedAt,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderArtifact{
+		ID:           "artifact-active-workspace-only",
+		CreatedAt:    now.Add(-30 * time.Second),
+		UpdatedAt:    now.Add(-30 * time.Second),
+		SessionID:    sessionID,
+		WorkspaceID:  activeWorkspaceID,
+		RunID:        "",
+		Kind:         entities.BuilderArtifactKindWorkspaceFile,
+		Path:         "src/live.tsx",
+		MetadataJSON: `{"size_bytes":42}`,
+	}).Error)
+
+	resp, err := GetBuilderSessionDetail(context.Background(), "project-1", sessionID)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Workspace)
+	assert.Equal(t, activeWorkspaceID, resp.Workspace.ID)
+	require.NotNil(t, resp.Preview)
+	assert.True(t, resp.Preview.Available)
+	assert.Equal(t, succeededRunID, resp.Preview.ResolvedRunID)
+	assert.Equal(t, terminatedWorkspaceID, resp.Runs[0].WorkspaceID)
+	require.Len(t, resp.Artifacts, 1)
+	assert.Equal(t, "src/live.tsx", resp.Artifacts[0].Path)
+	assert.Equal(t, activeWorkspaceID, resp.Artifacts[0].WorkspaceID)
+}
+
+func TestGetBuilderSessionDetailRetainsLatestRunArtifactsWhenPreviewExistsWithoutActiveWorkspace(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	terminatedAt := now.Add(-30 * time.Second)
+	workspaceID := "workspace-preview-artifacts"
+	sessionID := "session-preview-artifacts"
+	runID := "run-preview-artifacts"
+	publishedAt := now.Add(-2 * time.Minute)
+	completedAt := now.Add(-2 * time.Minute)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base:           entities.Base{ID: sessionID, CreatedAt: now.Add(-5 * time.Minute), UpdatedAt: now.Add(-4 * time.Minute)},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Preview with retained artifacts",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderMessage{
+		ID:        "message-preview-artifacts",
+		CreatedAt: now.Add(-4 * time.Minute),
+		UpdatedAt: now.Add(-4 * time.Minute),
+		SessionID: sessionID,
+		Role:      entities.BuilderMessageRoleUser,
+		Content:   "Build the generated app.",
+		CreatedBy: "user-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 runID,
+		CreatedAt:          now.Add(-3 * time.Minute),
+		UpdatedAt:          now.Add(-2 * time.Minute),
+		SessionID:          sessionID,
+		TriggerMessageID:   "message-preview-artifacts",
+		WorkspaceID:        &workspaceID,
+		Status:             entities.BuilderRunStatusSucceeded,
+		RequestedBy:        "user-1",
+		InstructionSummary: "Build the generated app.",
+		CompletedAt:        &completedAt,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderWorkspace{
+		ID:            workspaceID,
+		CreatedAt:     now.Add(-3 * time.Minute),
+		UpdatedAt:     now.Add(-2 * time.Minute),
+		SessionID:     sessionID,
+		BuildEnvID:    "env-1",
+		ClusterID:     "cluster-1",
+		Namespace:     "builder-preview-artifacts",
+		PodName:       "builder-preview-artifacts-0",
+		ContainerName: "workspace",
+		Status:        entities.BuilderWorkspaceStatusExpired,
+		WorkspaceRoot: "/workspace/preview-artifacts",
+		TerminatedAt:  &terminatedAt,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+		ID:               "snapshot-preview-artifacts",
+		CreatedAt:        publishedAt,
+		UpdatedAt:        publishedAt,
+		SessionID:        sessionID,
+		RunID:            runID,
+		WorkspaceID:      workspaceID,
+		Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+		OutputRoot:       "dist",
+		DefaultEntryPath: "dist/index.html",
+		StoragePath:      "sessions/preview/runs/artifacts/snapshot",
+		FileCount:        2,
+		TotalSizeBytes:   632,
+		PublishedAt:      publishedAt,
+	}).Error)
+	require.NoError(t, db.DB.Create(&[]entities.BuilderArtifact{
+		{
+			ID:           "artifact-preview-artifacts-source",
+			CreatedAt:    now.Add(-2 * time.Minute),
+			UpdatedAt:    now.Add(-2 * time.Minute),
+			SessionID:    sessionID,
+			WorkspaceID:  workspaceID,
+			RunID:        runID,
+			Kind:         entities.BuilderArtifactKindWorkspaceFile,
+			Path:         "src/main.tsx",
+			MetadataJSON: `{"size_bytes":120}`,
+		},
+		{
+			ID:           "artifact-preview-artifacts-build",
+			CreatedAt:    now.Add(-time.Minute),
+			UpdatedAt:    now.Add(-time.Minute),
+			SessionID:    sessionID,
+			WorkspaceID:  workspaceID,
+			RunID:        runID,
+			Kind:         entities.BuilderArtifactKindBuildOutput,
+			Path:         "dist/index.html",
+			MetadataJSON: `{"size_bytes":512,"output_root":"dist"}`,
+		},
+	}).Error)
+
+	resp, err := GetBuilderSessionDetail(context.Background(), "project-1", sessionID)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Preview)
+	assert.True(t, resp.Preview.Available)
+	assert.Equal(t, runID, resp.Preview.ResolvedRunID)
+	assert.Nil(t, resp.Workspace)
+	require.Len(t, resp.Artifacts, 2)
 }
 
 func TestGetBuilderSessionDetailReturnsBuilderSessionNotFound(t *testing.T) {

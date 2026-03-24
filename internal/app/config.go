@@ -23,6 +23,7 @@ type AppConfig struct {
 	CORSAllowedOrigins                string
 	BuildLogBaseDir                   string
 	BuildLogRetentionDays             int
+	BuilderSnapshotBaseDir            string
 	BuilderProviderRegistryJSON       string
 	BuilderModelProfileRegistryJSON   string
 	BuilderExecutorPolicyRegistryJSON string
@@ -65,6 +66,7 @@ func InitConfig() {
 		CORSAllowedOrigins:                getEnv("CORS_ALLOWED_ORIGINS", ""),
 		BuildLogBaseDir:                   fallbackString(getEnv("BUILD_LOG_BASE_DIR", ""), "data/build-logs"),
 		BuildLogRetentionDays:             getEnvInt("BUILD_LOG_RETENTION_DAYS", 15),
+		BuilderSnapshotBaseDir:            fallbackString(getEnv("BUILDER_SNAPSHOT_BASE_DIR", ""), "data/builder-previews"),
 		BuilderProviderRegistryJSON:       getEnv("BUILDER_PROVIDER_REGISTRY_JSON", ""),
 		BuilderModelProfileRegistryJSON:   getEnv("BUILDER_MODEL_PROFILE_REGISTRY_JSON", ""),
 		BuilderExecutorPolicyRegistryJSON: getEnv("BUILDER_EXECUTOR_POLICY_REGISTRY_JSON", ""),

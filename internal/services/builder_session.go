@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"path"
 	"strings"
 	"time"
 
@@ -100,6 +102,8 @@ func CreateBuilderSession(ctx context.Context, projectID, userID string, req *mo
 		Phase:              builderRunPhaseRef(entities.BuilderRunPhaseQueued),
 		RequestedBy:        userID,
 		InstructionSummary: req.Prompt,
+		ProviderKey:        stringPointerOrNil(strings.TrimSpace(req.ProviderKey)),
+		ModelProfileKey:    stringPointerOrNil(strings.TrimSpace(req.ModelProfileKey)),
 	}
 
 	err := tx.Transaction(func(tx *gorm.DB) error {
@@ -152,6 +156,8 @@ func AppendBuilderSessionMessage(ctx context.Context, projectID, sessionID, user
 		Phase:              builderRunPhaseRef(entities.BuilderRunPhaseQueued),
 		RequestedBy:        userID,
 		InstructionSummary: req.Content,
+		ProviderKey:        stringPointerOrNil(strings.TrimSpace(req.ProviderKey)),
+		ModelProfileKey:    stringPointerOrNil(strings.TrimSpace(req.ModelProfileKey)),
 	}
 
 	var session entities.BuilderSession
@@ -229,6 +235,14 @@ func GetBuilderSessionDetail(ctx context.Context, projectID, sessionID string) (
 	return detail, nil
 }
 
+func GetBuilderAvailableModelOptions(ctx context.Context, projectID, userID string) ([]models.BuilderAvailableModelOptionResponse, error) {
+	return ListBuilderAvailableModelOptions(projectID, userID)
+}
+
+func GetBuilderDefaultModelSelection(ctx context.Context, projectID, userID string) (*models.BuilderModelSelectionResponse, error) {
+	return GetBuilderModelSelection(projectID, userID)
+}
+
 func GetBuilderRun(ctx context.Context, projectID, sessionID, runID string) (*entities.BuilderRun, error) {
 	tx := db.DB.WithContext(ctx)
 	session, err := loadBuilderSession(tx, projectID, sessionID)
@@ -252,6 +266,95 @@ func RequestBuilderSessionRunCancel(ctx context.Context, projectID, sessionID, r
 	}
 
 	return RequestBuilderRunCancel(ctx, runID)
+}
+
+func GetBuilderSessionPreview(ctx context.Context, projectID, sessionID string) (*models.BuilderSessionPreviewResponse, error) {
+	detail, err := GetBuilderSessionDetail(ctx, projectID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if detail == nil || detail.Preview == nil {
+		return &models.BuilderSessionPreviewResponse{}, nil
+	}
+
+	preview := &models.BuilderSessionPreviewResponse{
+		Available:         detail.Preview.Available,
+		Status:            detail.Preview.Status,
+		ResolvedRunID:     detail.Preview.ResolvedRunID,
+		PublishedAt:       detail.Preview.PublishedAt,
+		CompletedAt:       detail.Preview.CompletedAt,
+		OutputRoot:        detail.Preview.OutputRoot,
+		DefaultEntryPath:  detail.Preview.DefaultEntryPath,
+		DownloadAvailable: detail.Preview.DownloadAvailable,
+		PreviewAvailable:  detail.Preview.PreviewAvailable,
+		IsStale:           detail.Preview.IsStale,
+		NewerRunID:        detail.Preview.NewerRunID,
+		NewerRunStatus:    detail.Preview.NewerRunStatus,
+	}
+	if preview.Available && preview.ResolvedRunID != "" {
+		preview.DownloadURL = builderSessionSnapshotDownloadPath(projectID, sessionID, preview.ResolvedRunID)
+		if preview.PreviewAvailable {
+			preview.PreviewLaunchURL = builderSessionPreviewLaunchPath(projectID, sessionID, preview.ResolvedRunID)
+		}
+	}
+
+	return preview, nil
+}
+
+func LaunchBuilderSessionPreview(ctx context.Context, projectID, sessionID, runID string) (*models.BuilderPreviewLaunchResponse, error) {
+	snapshot, err := getBuilderSessionSnapshotForRun(ctx, projectID, sessionID, runID)
+	if err != nil {
+		return nil, err
+	}
+	if snapshot.Status != entities.BuilderOutputSnapshotStatusPreviewable {
+		return nil, &BuilderRunNotFoundError{ProjectID: projectID, SessionID: sessionID, RunID: runID}
+	}
+
+	return &models.BuilderPreviewLaunchResponse{
+		FrameURL: builderPreviewFramePath(projectID, sessionID, runID),
+	}, nil
+}
+
+func DownloadBuilderSessionSnapshot(ctx context.Context, projectID, sessionID, runID string, writer io.Writer) error {
+	if writer == nil {
+		return errors.New("snapshot archive writer is required")
+	}
+	snapshot, err := getBuilderSessionSnapshotForRun(ctx, projectID, sessionID, runID)
+	if err != nil {
+		return err
+	}
+
+	return WriteBuilderOutputSnapshotArchive(ctx, snapshot, writer)
+}
+
+func ResolveBuilderSessionSnapshot(ctx context.Context, projectID, sessionID, runID string) (*entities.BuilderOutputSnapshot, error) {
+	return getBuilderSessionSnapshotForRun(ctx, projectID, sessionID, runID)
+}
+
+func ResolveBuilderSessionSnapshotFile(ctx context.Context, projectID, sessionID, runID, assetPath string) (*entities.BuilderOutputSnapshot, *entities.BuilderOutputSnapshotFile, error) {
+	snapshot, err := getBuilderSessionSnapshotForRun(ctx, projectID, sessionID, runID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if snapshot.Status != entities.BuilderOutputSnapshotStatusPreviewable {
+		return nil, nil, &BuilderRunNotFoundError{ProjectID: projectID, SessionID: sessionID, RunID: runID}
+	}
+
+	resolvedAssetPath := strings.TrimPrefix(strings.TrimSpace(assetPath), "/")
+	if resolvedAssetPath == "" {
+		resolvedAssetPath = snapshot.DefaultEntryPath
+	} else if snapshot.OutputRoot != "" && !strings.HasPrefix(resolvedAssetPath, snapshot.OutputRoot+"/") {
+		resolvedAssetPath = path.Join(snapshot.OutputRoot, resolvedAssetPath)
+	}
+	snapshotFile, err := GetBuilderOutputSnapshotFile(ctx, snapshot.ID, resolvedAssetPath)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, &BuilderRunNotFoundError{ProjectID: projectID, SessionID: sessionID, RunID: runID}
+		}
+		return nil, nil, err
+	}
+
+	return snapshot, snapshotFile, nil
 }
 
 func getBuilderSessionDetail(tx *gorm.DB, projectID, sessionID string) (*models.BuilderSessionDetailResponse, error) {
@@ -285,6 +388,11 @@ func getBuilderSessionDetail(tx *gorm.DB, projectID, sessionID string) (*models.
 		runResponses = append(runResponses, toBuilderRunResponse(&runs[i]))
 	}
 
+	previewSummary, err := buildBuilderSessionPreviewSummary(tx, sessionID, &row, runs)
+	if err != nil {
+		return nil, err
+	}
+
 	var workspace *models.BuilderWorkspaceSummaryResponse
 	artifactResponses := []models.BuilderArtifactSummaryResponse{}
 	artifactQuery := tx.Table("builder_artifacts").
@@ -315,7 +423,56 @@ func getBuilderSessionDetail(tx *gorm.DB, projectID, sessionID string) (*models.
 		Messages:  messageResponses,
 		Runs:      runResponses,
 		Workspace: workspace,
+		Preview:   previewSummary,
 		Artifacts: artifactResponses,
+	}, nil
+}
+
+func buildBuilderSessionPreviewSummary(tx *gorm.DB, sessionID string, row *models.BuilderSessionDetailRow, runs []entities.BuilderRun) (*models.BuilderPreviewSummaryResponse, error) {
+	preview := &models.BuilderPreviewSummaryResponse{
+		Available:         false,
+		Status:            "unavailable",
+		DownloadAvailable: false,
+		PreviewAvailable:  false,
+		IsStale:           false,
+	}
+
+	snapshot, err := getLatestSuccessfulBuilderOutputSnapshot(tx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if snapshot == nil {
+		return preview, nil
+	}
+
+	preview.Available = true
+	preview.Status = string(snapshot.Status)
+	preview.ResolvedRunID = snapshot.RunID
+	preview.PublishedAt = &snapshot.PublishedAt
+	preview.OutputRoot = snapshot.OutputRoot
+	preview.DefaultEntryPath = snapshot.DefaultEntryPath
+	preview.DownloadAvailable = true
+	preview.PreviewAvailable = snapshot.Status == entities.BuilderOutputSnapshotStatusPreviewable
+
+	for i := range runs {
+		if runs[i].ID == snapshot.RunID {
+			preview.Available = true
+			preview.CompletedAt = runs[i].CompletedAt
+			if row != nil && row.LatestRunID != "" && row.LatestRunID != snapshot.RunID {
+				preview.IsStale = true
+				preview.NewerRunID = row.LatestRunID
+				preview.NewerRunStatus = row.LatestRunStatus
+			}
+			return preview, nil
+		}
+	}
+
+	return &models.BuilderPreviewSummaryResponse{
+		Available:         false,
+		Status:            "unavailable",
+		DownloadAvailable: false,
+		PreviewAvailable:  false,
+		IsStale:           false,
 	}, nil
 }
 
@@ -586,4 +743,39 @@ func stringPointerValue(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func stringPointerOrNil(value string) *string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return &value
+}
+
+func builderSessionSnapshotDownloadPath(projectID, sessionID, runID string) string {
+	return fmt.Sprintf("/api/v1/projects/%s/builder-sessions/%s/runs/%s/delivery/download", projectID, sessionID, runID)
+}
+
+func builderSessionPreviewLaunchPath(projectID, sessionID, runID string) string {
+	return fmt.Sprintf("/api/v1/projects/%s/builder-sessions/%s/runs/%s/preview/launch", projectID, sessionID, runID)
+}
+
+func builderPreviewFramePath(projectID, sessionID, runID string) string {
+	return fmt.Sprintf("/builder-preview/projects/%s/sessions/%s/runs/%s/", projectID, sessionID, runID)
+}
+
+func getBuilderSessionSnapshotForRun(ctx context.Context, projectID, sessionID, runID string) (*entities.BuilderOutputSnapshot, error) {
+	if _, err := GetBuilderRun(ctx, projectID, sessionID, runID); err != nil {
+		return nil, err
+	}
+
+	snapshot, err := GetBuilderOutputSnapshotByRunID(ctx, runID)
+	if err != nil {
+		return nil, err
+	}
+	if snapshot == nil || snapshot.SessionID != sessionID {
+		return nil, &BuilderRunNotFoundError{ProjectID: projectID, SessionID: sessionID, RunID: runID}
+	}
+
+	return snapshot, nil
 }

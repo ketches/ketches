@@ -121,6 +121,56 @@ func TestGenerateBuilderFiles_SkipsAuthorizationHeaderWhenRegistryAPIKeyIsBlank(
 	require.NotNil(t, result)
 }
 
+func TestGenerateBuilderFilesWithSelection_UsesExplicitRunLevelProviderAndModel(t *testing.T) {
+	originalConfig := app.Config
+	t.Cleanup(func() {
+		app.Config = originalConfig
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/chat/completions", r.URL.Path)
+		require.Equal(t, "Bearer selected-api-key", r.Header.Get("Authorization"))
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		var payload struct {
+			Model string `json:"model"`
+		}
+		require.NoError(t, json.Unmarshal(body, &payload))
+		assert.Equal(t, "selected-builder-model", payload.Model)
+
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{
+					"content": `{"assistant_message":"Created initial files.","files":[{"path":"cmd/api/main.go","content":"package main\n"}]}`,
+				},
+			}},
+		}))
+	}))
+	defer server.Close()
+
+	app.Config = app.AppConfig{
+		BuilderProviderRegistryJSON: `[
+			{"key":"default-provider","base_url":"https://defaults.example.com","api_key":"default-key"},
+			{"key":"selected-provider","base_url":` + marshalJSONString(t, server.URL) + `,"api_key":"selected-api-key"}
+		]`,
+		BuilderModelProfileRegistryJSON: `[
+			{"key":"builder-default","model":"default-model"},
+			{"key":"selected-model","model":"selected-builder-model"}
+		]`,
+		BuilderDefaultProviderKey:     "default-provider",
+		BuilderDefaultModelProfileKey: "builder-default",
+	}
+
+	result, err := GenerateBuilderFilesWithSelection(context.Background(), []BuilderAgentMessage{{Role: "user", Content: "Create the initial files."}}, "selected-provider", "selected-model")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "Created initial files.", result.AssistantMessage)
+}
+
 func TestGenerateBuilderFiles_RejectsUnsafeFilePaths(t *testing.T) {
 	tests := []struct {
 		name string

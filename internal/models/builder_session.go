@@ -3,13 +3,19 @@ package models
 import "time"
 
 type CreateBuilderSessionRequest struct {
-	BuildEnvID string `json:"build_env_id" binding:"required"`
-	Title      string `json:"title"`
-	Prompt     string `json:"prompt" binding:"required"`
+	BuildEnvID       string `json:"build_env_id" binding:"required"`
+	Title            string `json:"title"`
+	Prompt           string `json:"prompt" binding:"required"`
+	SelectedModelKey string `json:"selected_model_key"`
+	ProviderKey      string `json:"provider_key"`
+	ModelProfileKey  string `json:"model_profile_key"`
 }
 
 type AppendBuilderSessionMessageRequest struct {
-	Content string `json:"content" binding:"required"`
+	Content          string `json:"content" binding:"required"`
+	SelectedModelKey string `json:"selected_model_key"`
+	ProviderKey      string `json:"provider_key"`
+	ModelProfileKey  string `json:"model_profile_key"`
 }
 
 type BuilderSessionResponse struct {
@@ -106,11 +112,48 @@ type BuilderArtifactSummaryResponse struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+type BuilderPreviewSummaryResponse struct {
+	Available         bool       `json:"available"`
+	Status            string     `json:"status"`
+	ResolvedRunID     string     `json:"resolved_run_id"`
+	PublishedAt       *time.Time `json:"published_at,omitempty"`
+	CompletedAt       *time.Time `json:"completed_at,omitempty"`
+	OutputRoot        string     `json:"output_root"`
+	DefaultEntryPath  string     `json:"default_entry_path"`
+	DownloadAvailable bool       `json:"download_available"`
+	PreviewAvailable  bool       `json:"preview_available"`
+	IsStale           bool       `json:"is_stale"`
+	NewerRunID        string     `json:"newer_run_id"`
+	NewerRunStatus    string     `json:"newer_run_status"`
+}
+
+type BuilderSessionPreviewResponse struct {
+	Available         bool       `json:"available"`
+	Status            string     `json:"status"`
+	ResolvedRunID     string     `json:"resolved_run_id"`
+	PublishedAt       *time.Time `json:"published_at,omitempty"`
+	CompletedAt       *time.Time `json:"completed_at,omitempty"`
+	OutputRoot        string     `json:"output_root"`
+	DefaultEntryPath  string     `json:"default_entry_path"`
+	DownloadAvailable bool       `json:"download_available"`
+	PreviewAvailable  bool       `json:"preview_available"`
+	IsStale           bool       `json:"is_stale"`
+	NewerRunID        string     `json:"newer_run_id"`
+	NewerRunStatus    string     `json:"newer_run_status"`
+	DownloadURL       string     `json:"download_url"`
+	PreviewLaunchURL  string     `json:"preview_launch_url"`
+}
+
+type BuilderPreviewLaunchResponse struct {
+	FrameURL string `json:"frame_url"`
+}
+
 type BuilderSessionDetailResponse struct {
 	Session   BuilderSessionResponse           `json:"session"`
 	Messages  []BuilderMessageResponse         `json:"messages"`
 	Runs      []BuilderRunResponse             `json:"runs"`
 	Workspace *BuilderWorkspaceSummaryResponse `json:"workspace,omitempty"`
+	Preview   *BuilderPreviewSummaryResponse   `json:"preview,omitempty"`
 	Artifacts []BuilderArtifactSummaryResponse `json:"artifacts"`
 }
 

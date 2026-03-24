@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func TestNormalizeLegacyBuilderRunsForControlPlane(t *testing.T) {
@@ -98,6 +100,81 @@ func TestNormalizeLegacyBuilderRunsForControlPlane(t *testing.T) {
 	assert.Equal(t, string(entities.BuilderRunStatusQueued), latestStatuses["session-modern"])
 }
 
+func TestPreflightBuilderWorkerStartupRepairsMissingPhaseColumn(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	require.NoError(t, db.DB.Migrator().DropColumn(&entities.BuilderRun{}, "Phase"))
+	assert.False(t, db.DB.Migrator().HasColumn(&entities.BuilderRun{}, "Phase"))
+
+	require.NoError(t, db.DB.Exec(`
+		INSERT INTO builder_runs (
+			id, created_at, updated_at, session_id, trigger_message_id, status, requested_by, instruction_summary, execution_log, error_message
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, "run-missing-phase", now, now, "session-missing-phase", "message-missing-phase", entities.BuilderRunStatusQueued, "test-user", "legacy prompt", "", "").Error)
+
+	err := PreflightBuilderWorkerStartup(context.Background())
+	require.NoError(t, err)
+	assert.True(t, db.DB.Migrator().HasColumn(&entities.BuilderRun{}, "Phase"))
+
+	var run entities.BuilderRun
+	require.NoError(t, db.DB.First(&run, "id = ?", "run-missing-phase").Error)
+	require.NotNil(t, run.Phase)
+	assert.Equal(t, entities.BuilderRunPhaseQueued, *run.Phase)
+}
+
+func TestPreflightBuilderWorkerStartupRepairsMissingControlPlaneColumns(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	insertBuilderSessionSeed(t, now, "project-missing-control-plane-columns", "session-missing-control-plane-columns", "env-missing-control-plane-columns", entities.BuilderSessionStatusRunning, "Legacy executing session")
+	insertBuilderMessageSeed(t, now, "session-missing-control-plane-columns", "message-missing-control-plane-columns", "Legacy executing prompt", "test-user")
+
+	missingFields := []string{
+		"Phase",
+		"ClaimToken",
+		"ClaimedAt",
+		"HeartbeatAt",
+		"TimeoutAt",
+		"CancelRequestedAt",
+		"ProviderKey",
+		"ModelProfileKey",
+		"ExecutorPolicyKey",
+		"ExecutorHandleID",
+		"ErrorCode",
+		"ErrorClass",
+	}
+	for _, field := range missingFields {
+		require.NoError(t, db.DB.Migrator().DropColumn(&entities.BuilderRun{}, field))
+		assert.False(t, db.DB.Migrator().HasColumn(&entities.BuilderRun{}, field))
+	}
+
+	require.NoError(t, db.DB.Exec(`
+		INSERT INTO builder_runs (
+			id, created_at, updated_at, session_id, trigger_message_id, status, requested_by, instruction_summary, execution_log, started_at, completed_at, error_message
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, "run-missing-control-plane-columns", now, now, "session-missing-control-plane-columns", "message-missing-control-plane-columns", entities.BuilderRunStatusExecuting, "test-user", "legacy prompt", "", now, nil, "").Error)
+
+	err := PreflightBuilderWorkerStartup(context.Background())
+	var startupErr *BuilderWorkerStartupPreflightError
+	require.ErrorAs(t, err, &startupErr)
+	require.NotNil(t, startupErr)
+	assert.Equal(t, int64(1), startupErr.LegacyExecutingRunCount)
+	assert.Equal(t, []string{"run-missing-control-plane-columns"}, startupErr.LegacyExecutingRunIDs)
+
+	for _, field := range missingFields {
+		assert.True(t, db.DB.Migrator().HasColumn(&entities.BuilderRun{}, field))
+	}
+
+	var run entities.BuilderRun
+	require.NoError(t, db.DB.First(&run, "id = ?", "run-missing-control-plane-columns").Error)
+	assert.Equal(t, entities.BuilderRunStatusExecuting, run.Status)
+	assert.Nil(t, run.ClaimToken)
+	assert.Nil(t, run.ClaimedAt)
+	assert.Nil(t, run.HeartbeatAt)
+	assert.Nil(t, run.TimeoutAt)
+}
+
 func TestClaimNextQueuedBuilderRun(t *testing.T) {
 	setupBuilderSessionServiceTestDB(t)
 
@@ -145,6 +222,97 @@ func TestClaimNextQueuedBuilderRun(t *testing.T) {
 	var session entities.BuilderSession
 	require.NoError(t, db.DB.First(&session, "id = ?", "session-claim").Error)
 	assert.Equal(t, entities.BuilderSessionStatusRunning, session.Status)
+}
+
+func TestClaimNextQueuedBuilderRunUsesMySQLSafeUpdateShape(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	insertBuilderSessionSeed(t, now, "project-claim-sql", "session-claim-sql", "env-claim-sql", entities.BuilderSessionStatusReady, "Queued claim SQL session")
+	insertBuilderMessageSeed(t, now, "session-claim-sql", "message-claim-sql", "Queued claim SQL prompt", "worker-user")
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-claim-sql",
+		CreatedAt:          now,
+		UpdatedAt:          now,
+		SessionID:          "session-claim-sql",
+		TriggerMessageID:   "message-claim-sql",
+		Status:             entities.BuilderRunStatusQueued,
+		Phase:              builderRunPhasePtr(entities.BuilderRunPhaseQueued),
+		RequestedBy:        "worker-user",
+		InstructionSummary: "Queued claim SQL prompt",
+	}).Error)
+
+	callbackName := "test:capture-builder-run-claim-update-sql"
+	var capturedSQL string
+	require.NoError(t, db.DB.Callback().Update().After("gorm:update").Register(callbackName, func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Schema == nil || tx.Statement.Schema.Table != "builder_runs" {
+			return
+		}
+		capturedSQL = tx.Statement.SQL.String()
+	}))
+	t.Cleanup(func() {
+		db.DB.Callback().Update().Remove(callbackName)
+	})
+
+	claimedRun, err := ClaimNextQueuedBuilderRun(context.Background(), "worker-sql", 5*time.Minute)
+	require.NoError(t, err)
+	require.NotNil(t, claimedRun)
+	require.NotEmpty(t, capturedSQL)
+	assert.False(t, strings.Contains(capturedSQL, "FROM builder_runs AS active"), capturedSQL)
+	assert.False(t, strings.Contains(capturedSQL, "NOT EXISTS (SELECT 1 FROM builder_runs AS active"), capturedSQL)
+}
+
+func TestSessionHasExecutingBuilderRunUsesLockingRead(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	claimToken := "worker-lock-check"
+	claimedAt := now.Add(-time.Minute)
+	timeoutAt := now.Add(time.Minute)
+	insertBuilderSessionSeed(t, now, "project-lock-check", "session-lock-check", "env-lock-check", entities.BuilderSessionStatusRunning, "Lock check session")
+	insertBuilderMessageSeed(t, now, "session-lock-check", "message-lock-check", "Lock check prompt", "worker-user")
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-lock-check",
+		CreatedAt:          now,
+		UpdatedAt:          now,
+		SessionID:          "session-lock-check",
+		TriggerMessageID:   "message-lock-check",
+		Status:             entities.BuilderRunStatusExecuting,
+		Phase:              builderRunPhasePtr(entities.BuilderRunPhaseGenerating),
+		ClaimToken:         &claimToken,
+		ClaimedAt:          &claimedAt,
+		HeartbeatAt:        &claimedAt,
+		TimeoutAt:          &timeoutAt,
+		RequestedBy:        "worker-user",
+		InstructionSummary: "Lock check prompt",
+	}).Error)
+
+	callbackName := "test:capture-executing-run-locking-read"
+	lockingReadSeen := false
+	require.NoError(t, db.DB.Callback().Query().Before("gorm:query").Register(callbackName, func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Table != "builder_runs" {
+			return
+		}
+		lockingClause, ok := tx.Statement.Clauses["FOR"]
+		if !ok {
+			return
+		}
+		locking, ok := lockingClause.Expression.(clause.Locking)
+		if !ok {
+			return
+		}
+		if locking.Strength == "UPDATE" {
+			lockingReadSeen = true
+		}
+	}))
+	t.Cleanup(func() {
+		db.DB.Callback().Query().Remove(callbackName)
+	})
+
+	hasExecutingRun, err := sessionHasExecutingBuilderRun(db.DB, "session-lock-check")
+	require.NoError(t, err)
+	assert.True(t, hasExecutingRun)
+	assert.True(t, lockingReadSeen)
 }
 
 func TestClaimNextQueuedBuilderRunRejectsClosedSessionBeforeCommit(t *testing.T) {
@@ -339,6 +507,80 @@ func TestRequeueBuilderRun(t *testing.T) {
 	assert.Equal(t, errorCode, *requeuedRun.ErrorCode)
 	assert.Equal(t, errorClass, *requeuedRun.ErrorClass)
 	assert.Equal(t, "Upstream provider asked for retry.", requeuedRun.ErrorMessage)
+}
+
+func TestRequeueBuilderRunDeletesPublishedSnapshotsForTheRun(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	claimToken := "worker-retry-snapshot"
+	claimedAt := now.Add(-2 * time.Minute)
+	heartbeatAt := now.Add(-90 * time.Second)
+	timeoutAt := now.Add(2 * time.Minute)
+
+	insertBuilderSessionSeed(t, now.Add(-3*time.Minute), "project-requeue-snapshot", "session-requeue-snapshot", "env-requeue-snapshot", entities.BuilderSessionStatusRunning, "Retry snapshot session")
+	insertBuilderMessageSeed(t, now.Add(-3*time.Minute), "session-requeue-snapshot", "message-requeue-snapshot", "Retry snapshot prompt", "worker-user")
+	require.NoError(t, db.DB.Create(&entities.BuilderRun{
+		ID:                 "run-requeue-snapshot",
+		CreatedAt:          now.Add(-2 * time.Minute),
+		UpdatedAt:          now.Add(-2 * time.Minute),
+		SessionID:          "session-requeue-snapshot",
+		TriggerMessageID:   "message-requeue-snapshot",
+		Status:             entities.BuilderRunStatusExecuting,
+		Phase:              builderRunPhasePtr(entities.BuilderRunPhaseBuilding),
+		AttemptCount:       1,
+		ClaimToken:         &claimToken,
+		ClaimedAt:          &claimedAt,
+		HeartbeatAt:        &heartbeatAt,
+		TimeoutAt:          &timeoutAt,
+		RequestedBy:        "worker-user",
+		InstructionSummary: "Retry snapshot prompt",
+		StartedAt:          &claimedAt,
+	}).Error)
+
+	publishedAt := now.Add(-time.Minute)
+	require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+		ID:               "snapshot-requeue",
+		CreatedAt:        publishedAt,
+		UpdatedAt:        publishedAt,
+		SessionID:        "session-requeue-snapshot",
+		RunID:            "run-requeue-snapshot",
+		WorkspaceID:      "workspace-requeue-snapshot",
+		Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+		OutputRoot:       "dist",
+		DefaultEntryPath: "dist/index.html",
+		StoragePath:      "sessions/session-requeue-snapshot/runs/run-requeue-snapshot/snapshot-requeue",
+		FileCount:        1,
+		TotalSizeBytes:   512,
+		PublishedAt:      publishedAt,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshotFile{
+		ID:             "snapshot-file-requeue",
+		CreatedAt:      publishedAt,
+		UpdatedAt:      publishedAt,
+		SnapshotID:     "snapshot-requeue",
+		RelativePath:   "dist/index.html",
+		StoragePath:    "sessions/session-requeue-snapshot/runs/run-requeue-snapshot/snapshot-requeue/dist/index.html",
+		SizeBytes:      512,
+		ContentType:    "text/html; charset=utf-8",
+		IsDefaultEntry: true,
+	}).Error)
+
+	requeuedRun, err := RequeueBuilderRun(context.Background(), BuilderRunRequeueInput{
+		RunID:        "run-requeue-snapshot",
+		ClaimToken:   claimToken,
+		ErrorMessage: "Retry after pre-finalization ownership loss.",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, requeuedRun)
+
+	var snapshotCount int64
+	require.NoError(t, db.DB.Model(&entities.BuilderOutputSnapshot{}).Where("run_id = ?", "run-requeue-snapshot").Count(&snapshotCount).Error)
+	assert.Equal(t, int64(0), snapshotCount)
+
+	var snapshotFileCount int64
+	require.NoError(t, db.DB.Model(&entities.BuilderOutputSnapshotFile{}).Where("snapshot_id = ?", "snapshot-requeue").Count(&snapshotFileCount).Error)
+	assert.Equal(t, int64(0), snapshotFileCount)
 }
 
 func TestRequestBuilderRunCancel(t *testing.T) {

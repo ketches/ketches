@@ -3,14 +3,18 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
@@ -25,6 +29,27 @@ import (
 type builderSessionAPIResponse struct {
 	Data  json.RawMessage `json:"data,omitempty"`
 	Error string          `json:"error,omitempty"`
+}
+
+type builderSessionDownloadRecorder struct {
+	HeaderMap http.Header
+	Status    int
+	Body      strings.Builder
+}
+
+func (r *builderSessionDownloadRecorder) Header() http.Header {
+	if r.HeaderMap == nil {
+		r.HeaderMap = make(http.Header)
+	}
+	return r.HeaderMap
+}
+
+func (r *builderSessionDownloadRecorder) Write(data []byte) (int, error) {
+	return r.Body.Write(data)
+}
+
+func (r *builderSessionDownloadRecorder) WriteHeader(statusCode int) {
+	r.Status = statusCode
 }
 
 type builderStreamHookRecorder struct {
@@ -45,8 +70,10 @@ func setupBuilderSessionHandlerTestDB(t *testing.T) {
 	t.Helper()
 
 	originalDB := db.DB
+	originalConfig := app.Config
 	t.Cleanup(func() {
 		db.DB = originalDB
+		app.Config = originalConfig
 	})
 
 	testDB, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
@@ -80,8 +107,14 @@ func newBuilderSessionHandlerRouter(userID, username, role string) *gin.Engine {
 	r.Use(builderSessionClaimsMiddleware(userID, username, role))
 
 	projectsRead := r.Group("/api/v1/projects", middlewares.RequireProjectRole(app.ProjectRoleViewer))
+	projectsRead.GET("/:projectID/builder-model-options", ListBuilderAvailableModelOptions)
+	projectsRead.GET("/:projectID/builder-model-selection", GetBuilderDefaultModelSelection)
 	projectsRead.GET("/:projectID/builder-sessions", ListBuilderSessions)
 	projectsRead.GET("/:projectID/builder-sessions/:sessionID", GetBuilderSession)
+	projectsRead.GET("/:projectID/builder-sessions/:sessionID/preview", GetBuilderSessionPreview)
+	projectsRead.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/preview/launch", LaunchBuilderSessionPreview)
+	projectsRead.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/delivery/download", DownloadBuilderSessionSnapshot)
+	r.GET("/builder-preview/projects/:projectID/sessions/:sessionID/runs/:runID/*assetPath", middlewares.BuilderPreviewAuth(), middlewares.RequireProjectRole(app.ProjectRoleViewer), ReadBuilderPreviewAsset)
 
 	projectsWrite := r.Group("/api/v1/projects", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 	projectsWrite.POST("/:projectID/builder-sessions", CreateBuilderSession)
@@ -538,6 +571,113 @@ func TestCreateBuilderSessionHandler(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		assert.Equal(t, "insufficient permissions", resp.Error)
 	})
+}
+
+func TestListBuilderAvailableModelOptionsHandler(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+	originalConfig := app.Config
+	app.Config = app.AppConfig{
+		BuilderProviderRegistryJSON: `[{
+			"key":"anthropic-project","base_url":"https://api.anthropic.com","api_key":"shared-secret"},
+			{"key":"openai-user","base_url":"https://api.openai.com","api_key":"secret-key"}
+		]`,
+		BuilderModelProfileRegistryJSON: `[{
+			"key":"claude-sonnet-4","model":"claude-4-sonnet"},
+			{"key":"gpt-4.1","model":"gpt-4.1"}
+		]`,
+		BuilderDefaultProviderKey:     "anthropic-project",
+		BuilderDefaultModelProfileKey: "claude-sonnet-4",
+	}
+	t.Cleanup(func() { app.Config = originalConfig })
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-1",
+		ProjectID:              "project-1",
+		ProviderKey:            "anthropic-project",
+		DisplayName:            "Anthropic Shared",
+		BaseURL:                "https://api.anthropic.com",
+		APIKey:                 "shared-secret",
+		DefaultModelProfileKey: "claude-sonnet-4",
+		Enabled:                true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.UserAIProvider{
+		ID:                     "user-provider-1",
+		UserID:                 "viewer-1",
+		ProviderKey:            "openai-user",
+		DisplayName:            "OpenAI Personal",
+		BaseURL:                "https://api.openai.com",
+		APIKey:                 "secret-key",
+		DefaultModelProfileKey: "gpt-4.1",
+		Enabled:                true,
+	}).Error)
+
+	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-model-options", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp builderSessionAPIResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Empty(t, resp.Error)
+	assert.Contains(t, string(resp.Data), "anthropic-project")
+	assert.Contains(t, string(resp.Data), "openai-user")
+}
+
+func TestGetBuilderDefaultModelSelection(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+	originalConfig := app.Config
+	app.Config = app.AppConfig{
+		BuilderProviderRegistryJSON: `[
+			{"key":"anthropic-project","base_url":"https://api.anthropic.com","api_key":"shared-secret"},
+			{"key":"openai-user","base_url":"https://api.openai.com","api_key":"secret-key"}
+		]`,
+		BuilderModelProfileRegistryJSON: `[
+			{"key":"claude-sonnet-4","model":"claude-4-sonnet"},
+			{"key":"gpt-4.1","model":"gpt-4.1"}
+		]`,
+		BuilderDefaultProviderKey:     "anthropic-project",
+		BuilderDefaultModelProfileKey: "claude-sonnet-4",
+	}
+	t.Cleanup(func() { app.Config = originalConfig })
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-default",
+		ProjectID:              "project-1",
+		ProviderKey:            "anthropic-project",
+		DisplayName:            "Anthropic Shared",
+		BaseURL:                "https://api.anthropic.com",
+		APIKey:                 "shared-secret",
+		DefaultModelProfileKey: "claude-sonnet-4",
+		Enabled:                true,
+		IsDefault:              true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.UserAIProvider{
+		ID:                     "user-provider-default",
+		UserID:                 "viewer-1",
+		ProviderKey:            "openai-user",
+		DisplayName:            "OpenAI Personal",
+		BaseURL:                "https://api.openai.com",
+		APIKey:                 "secret-key",
+		DefaultModelProfileKey: "gpt-4.1",
+		Enabled:                true,
+		IsDefault:              true,
+	}).Error)
+
+	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-model-selection", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp builderSessionAPIResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Empty(t, resp.Error)
+	assert.Contains(t, string(resp.Data), "effective_default_source")
+	assert.Contains(t, string(resp.Data), "project")
+	assert.Contains(t, string(resp.Data), "anthropic-project")
 }
 
 func TestPostBuilderSessionMessageHandler(t *testing.T) {
@@ -1295,4 +1435,467 @@ func TestGetBuilderSessionHandlerReturnsLatestRunArtifactsWithoutActiveWorkspace
 	require.True(t, ok)
 	assert.Equal(t, string(entities.BuilderArtifactKindBuildOutput), buildOutputArtifact.Kind)
 	assert.JSONEq(t, `{"size_bytes":512,"output_root":"dist","source_phase":"building"}`, buildOutputArtifact.MetadataJSON)
+}
+
+func TestGetBuilderSessionPreviewHandler(t *testing.T) {
+	t.Run("returns preview summary for viewers", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+
+		now := time.Now().UTC().Truncate(time.Second)
+		publishedAt := now.Add(-2 * time.Minute)
+		completedAt := now.Add(-3 * time.Minute)
+		require.NoError(t, db.DB.Model(&entities.BuilderRun{}).Where("id = ?", "run-2").Update("completed_at", completedAt).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+			ID:               "snapshot-handler-preview",
+			CreatedAt:        publishedAt,
+			UpdatedAt:        publishedAt,
+			SessionID:        sessionID,
+			RunID:            "run-2",
+			WorkspaceID:      "workspace-2",
+			Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+			OutputRoot:       "dist",
+			DefaultEntryPath: "dist/index.html",
+			StoragePath:      "sessions/handler-preview/snapshot",
+			FileCount:        2,
+			TotalSizeBytes:   2560,
+			PublishedAt:      publishedAt,
+		}).Error)
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/preview", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		var resp builderSessionAPIResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		require.Empty(t, resp.Error)
+
+		var preview models.BuilderSessionPreviewResponse
+		require.NoError(t, json.Unmarshal(resp.Data, &preview))
+		assert.True(t, preview.Available)
+		assert.Equal(t, "previewable", preview.Status)
+		assert.Equal(t, "run-2", preview.ResolvedRunID)
+		assert.Equal(t, "dist", preview.OutputRoot)
+		assert.Equal(t, "dist/index.html", preview.DefaultEntryPath)
+		assert.True(t, preview.DownloadAvailable)
+		assert.True(t, preview.PreviewAvailable)
+		assert.Contains(t, preview.DownloadURL, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/runs/run-2/delivery/download")
+		assert.Contains(t, preview.PreviewLaunchURL, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/runs/run-2/preview/launch")
+	})
+}
+
+func TestLaunchBuilderSessionPreviewHandler(t *testing.T) {
+	t.Run("returns frame url for previewable run", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+			ID:               "snapshot-handler-launch",
+			CreatedAt:        time.Now().UTC().Add(-2 * time.Minute),
+			UpdatedAt:        time.Now().UTC().Add(-2 * time.Minute),
+			SessionID:        sessionID,
+			RunID:            "run-2",
+			WorkspaceID:      "workspace-2",
+			Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+			OutputRoot:       "dist",
+			DefaultEntryPath: "dist/index.html",
+			StoragePath:      "sessions/handler-launch/snapshot",
+			FileCount:        1,
+			TotalSizeBytes:   512,
+			PublishedAt:      time.Now().UTC().Add(-2 * time.Minute),
+		}).Error)
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/runs/run-2/preview/launch", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		var resp builderSessionAPIResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		require.Empty(t, resp.Error)
+
+		var launch models.BuilderPreviewLaunchResponse
+		require.NoError(t, json.Unmarshal(resp.Data, &launch))
+		assert.Contains(t, launch.FrameURL, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-2/")
+		assert.Contains(t, w.Header().Get("Set-Cookie"), services.BuilderPreviewSessionCookieName+"=")
+		assert.Contains(t, w.Header().Get("Set-Cookie"), "HttpOnly")
+		assert.Contains(t, w.Header().Get("Set-Cookie"), "Secure")
+	})
+}
+
+func TestReadBuilderPreviewAssetHandler(t *testing.T) {
+	t.Run("requires preview session cookie", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-2/", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("rejects mismatched preview session cookie scope", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		require.NoError(t, db.DB.Create(&entities.User{
+			Base:     entities.Base{ID: "viewer-1"},
+			Username: "viewer",
+			Email:    "viewer@example.com",
+			Password: "test-password",
+			Fullname: "viewer",
+			Role:     app.UserRoleUser,
+		}).Error)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+
+		token, err := services.MintBuilderPreviewSessionToken("viewer-1", "project-1", sessionID, "run-other")
+		require.NoError(t, err)
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-2/", nil)
+		req.AddCookie(&http.Cookie{Name: services.BuilderPreviewSessionCookieName, Value: token})
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("rejects expired preview session cookie", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		require.NoError(t, db.DB.Create(&entities.User{
+			Base:     entities.Base{ID: "viewer-1"},
+			Username: "viewer",
+			Email:    "viewer@example.com",
+			Password: "test-password",
+			Fullname: "viewer",
+			Role:     app.UserRoleUser,
+		}).Error)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+
+		claims := services.BuilderPreviewClaims{
+			UserID:    "viewer-1",
+			ProjectID: "project-1",
+			SessionID: sessionID,
+			RunID:     "run-2",
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+				IssuedAt:  jwt.NewNumericDate(time.Now().Add(-2 * time.Minute)),
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signed, err := token.SignedString([]byte(app.Config.JWTSecret))
+		require.NoError(t, err)
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-2/", nil)
+		req.AddCookie(&http.Cookie{Name: services.BuilderPreviewSessionCookieName, Value: signed})
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("serves default preview entry when cookie is valid", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		require.NoError(t, db.DB.Create(&entities.User{
+			Base:     entities.Base{ID: "viewer-1"},
+			Username: "viewer",
+			Email:    "viewer@example.com",
+			Password: "test-password",
+			Fullname: "viewer",
+			Role:     app.UserRoleUser,
+		}).Error)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+		baseDir := t.TempDir()
+		app.Config.BuilderSnapshotBaseDir = baseDir
+		publishedAt := time.Now().UTC().Add(-2 * time.Minute)
+		storagePath := "sessions/handler-raw-preview/snapshot"
+		require.NoError(t, os.MkdirAll(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist", "index.html"), []byte("<html><body>preview</body></html>"), 0o644))
+		require.NoError(t, os.MkdirAll(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist", "assets"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist", "assets", "app.js"), []byte("console.log('preview');\n"), 0o644))
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+			ID:               "snapshot-handler-raw-preview",
+			CreatedAt:        publishedAt,
+			UpdatedAt:        publishedAt,
+			SessionID:        sessionID,
+			RunID:            "run-2",
+			WorkspaceID:      "workspace-2",
+			Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+			OutputRoot:       "dist",
+			DefaultEntryPath: "dist/index.html",
+			StoragePath:      storagePath,
+			FileCount:        1,
+			TotalSizeBytes:   33,
+			PublishedAt:      publishedAt,
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshotFile{
+			ID:             "snapshot-handler-raw-preview-file",
+			CreatedAt:      publishedAt,
+			UpdatedAt:      publishedAt,
+			SnapshotID:     "snapshot-handler-raw-preview",
+			RelativePath:   "dist/index.html",
+			StoragePath:    storagePath + "/dist/index.html",
+			SizeBytes:      33,
+			ContentType:    "text/html; charset=utf-8",
+			IsDefaultEntry: true,
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshotFile{
+			ID:             "snapshot-handler-raw-preview-asset",
+			CreatedAt:      publishedAt,
+			UpdatedAt:      publishedAt,
+			SnapshotID:     "snapshot-handler-raw-preview",
+			RelativePath:   "dist/assets/app.js",
+			StoragePath:    storagePath + "/dist/assets/app.js",
+			SizeBytes:      24,
+			ContentType:    "application/javascript",
+			IsDefaultEntry: false,
+		}).Error)
+
+		token, err := services.MintBuilderPreviewSessionToken("viewer-1", "project-1", sessionID, "run-2")
+		require.NoError(t, err)
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-2/", nil)
+		req.AddCookie(&http.Cookie{Name: services.BuilderPreviewSessionCookieName, Value: token})
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+		assert.Equal(t, "nosniff", w.Header().Get("X-Content-Type-Options"))
+		assert.Contains(t, w.Header().Get("Content-Security-Policy"), "sandbox")
+		assert.Equal(t, "<html><body>preview</body></html>", w.Body.String())
+
+		assetReq := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-2/assets/app.js", nil)
+		assetReq.AddCookie(&http.Cookie{Name: services.BuilderPreviewSessionCookieName, Value: token})
+		assetW := httptest.NewRecorder()
+
+		r.ServeHTTP(assetW, assetReq)
+
+		require.Equal(t, http.StatusOK, assetW.Code)
+		assert.Contains(t, assetW.Header().Get("Content-Type"), "application/javascript")
+		assert.Equal(t, "console.log('preview');\n", assetW.Body.String())
+	})
+
+	t.Run("rejects preview cookie after project membership is removed", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		require.NoError(t, db.DB.Create(&entities.User{
+			Base:     entities.Base{ID: "viewer-1"},
+			Username: "viewer",
+			Email:    "viewer@example.com",
+			Password: "test-password",
+			Fullname: "viewer",
+			Role:     app.UserRoleUser,
+		}).Error)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+
+		token, err := services.MintBuilderPreviewSessionToken("viewer-1", "project-1", sessionID, "run-2")
+		require.NoError(t, err)
+		require.NoError(t, db.DB.Where("project_id = ? AND user_id = ?", "project-1", "viewer-1").Delete(&entities.ProjectMember{}).Error)
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-2/", nil)
+		req.AddCookie(&http.Cookie{Name: services.BuilderPreviewSessionCookieName, Value: token})
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("allows system admin through preview route without project membership", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		require.NoError(t, db.DB.Create(&entities.User{
+			Base:     entities.Base{ID: "admin-1"},
+			Username: "admin",
+			Email:    "admin@example.com",
+			Password: "test-password",
+			Fullname: "admin",
+			Role:     app.UserRoleAdmin,
+		}).Error)
+		sessionID := seedBuilderSessionDetailFixture(t)
+		baseDir := t.TempDir()
+		app.Config.BuilderSnapshotBaseDir = baseDir
+		publishedAt := time.Now().UTC().Add(-2 * time.Minute)
+		storagePath := "sessions/handler-admin-preview/snapshot"
+		require.NoError(t, os.MkdirAll(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist", "index.html"), []byte("<html><body>admin preview</body></html>"), 0o644))
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+			ID:               "snapshot-handler-admin-preview",
+			CreatedAt:        publishedAt,
+			UpdatedAt:        publishedAt,
+			SessionID:        sessionID,
+			RunID:            "run-2",
+			WorkspaceID:      "workspace-2",
+			Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+			OutputRoot:       "dist",
+			DefaultEntryPath: "dist/index.html",
+			StoragePath:      storagePath,
+			FileCount:        1,
+			TotalSizeBytes:   39,
+			PublishedAt:      publishedAt,
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshotFile{
+			ID:             "snapshot-handler-admin-preview-file",
+			CreatedAt:      publishedAt,
+			UpdatedAt:      publishedAt,
+			SnapshotID:     "snapshot-handler-admin-preview",
+			RelativePath:   "dist/index.html",
+			StoragePath:    storagePath + "/dist/index.html",
+			SizeBytes:      39,
+			ContentType:    "text/html; charset=utf-8",
+			IsDefaultEntry: true,
+		}).Error)
+
+		token, err := services.MintBuilderPreviewSessionToken("admin-1", "project-1", sessionID, "run-2")
+		require.NoError(t, err)
+
+		r := newBuilderSessionHandlerRouter("admin-1", "admin", app.UserRoleAdmin)
+		req := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-2/", nil)
+		req.AddCookie(&http.Cookie{Name: services.BuilderPreviewSessionCookieName, Value: token})
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "<html><body>admin preview</body></html>", w.Body.String())
+	})
+
+	t.Run("maps malformed preview asset paths to bad request", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		require.NoError(t, db.DB.Create(&entities.User{
+			Base:     entities.Base{ID: "viewer-1"},
+			Username: "viewer",
+			Email:    "viewer@example.com",
+			Password: "test-password",
+			Fullname: "viewer",
+			Role:     app.UserRoleUser,
+		}).Error)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+		baseDir := t.TempDir()
+		app.Config.BuilderSnapshotBaseDir = baseDir
+		publishedAt := time.Now().UTC().Add(-2 * time.Minute)
+		storagePath := "sessions/handler-malformed-preview/snapshot"
+		require.NoError(t, os.MkdirAll(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(baseDir, filepath.FromSlash(storagePath), "dist", "index.html"), []byte("<html><body>preview</body></html>"), 0o644))
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+			ID:               "snapshot-handler-malformed-preview",
+			CreatedAt:        publishedAt,
+			UpdatedAt:        publishedAt,
+			SessionID:        sessionID,
+			RunID:            "run-2",
+			WorkspaceID:      "workspace-2",
+			Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+			OutputRoot:       "dist",
+			DefaultEntryPath: "dist/index.html",
+			StoragePath:      storagePath,
+			FileCount:        1,
+			TotalSizeBytes:   33,
+			PublishedAt:      publishedAt,
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshotFile{
+			ID:             "snapshot-handler-malformed-preview-file",
+			CreatedAt:      publishedAt,
+			UpdatedAt:      publishedAt,
+			SnapshotID:     "snapshot-handler-malformed-preview",
+			RelativePath:   "dist/index.html",
+			StoragePath:    storagePath + "/dist/index.html",
+			SizeBytes:      33,
+			ContentType:    "text/html; charset=utf-8",
+			IsDefaultEntry: true,
+		}).Error)
+		token, err := services.MintBuilderPreviewSessionToken("viewer-1", "project-1", sessionID, "run-2")
+		require.NoError(t, err)
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/builder-preview/projects/project-1/sessions/"+sessionID+"/runs/run-2/%2E%2E/%2E%2E/secret.txt", nil)
+		req.AddCookie(&http.Cookie{Name: services.BuilderPreviewSessionCookieName, Value: token})
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestDownloadBuilderSessionSnapshotHandler(t *testing.T) {
+	t.Run("streams snapshot archive for viewers", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+		publishedAt := time.Now().UTC().Add(-2 * time.Minute)
+		require.NoError(t, db.DB.Create(&entities.BuilderOutputSnapshot{
+			ID:               "snapshot-handler-download",
+			CreatedAt:        publishedAt,
+			UpdatedAt:        publishedAt,
+			SessionID:        sessionID,
+			RunID:            "run-2",
+			WorkspaceID:      "workspace-2",
+			Status:           entities.BuilderOutputSnapshotStatusPreviewable,
+			OutputRoot:       "dist",
+			DefaultEntryPath: "dist/index.html",
+			StoragePath:      "sessions/handler-download/snapshot",
+			FileCount:        1,
+			TotalSizeBytes:   512,
+			PublishedAt:      publishedAt,
+		}).Error)
+
+		originalWriteArchive := writeBuilderSessionSnapshotArchive
+		writeBuilderSessionSnapshotArchive = func(ctx context.Context, projectID, sessionID, runID string, writer io.Writer) error {
+			_, err := writer.Write([]byte("snapshot-archive"))
+			return err
+		}
+		defer func() { writeBuilderSessionSnapshotArchive = originalWriteArchive }()
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/runs/run-2/delivery/download", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "application/gzip", w.Header().Get("Content-Type"))
+		assert.Contains(t, w.Header().Get("Content-Disposition"), "builder-output-run-2.tar.gz")
+		assert.Equal(t, "snapshot-archive", w.Body.String())
+	})
+
+	t.Run("maps snapshot download failures to builder session error responses", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		sessionID := seedBuilderSessionDetailFixture(t)
+
+		originalWriteArchive := writeBuilderSessionSnapshotArchive
+		writeBuilderSessionSnapshotArchive = func(ctx context.Context, projectID, sessionID, runID string, writer io.Writer) error {
+			return &services.BuilderRunNotFoundError{ProjectID: projectID, SessionID: sessionID, RunID: runID}
+		}
+		defer func() { writeBuilderSessionSnapshotArchive = originalWriteArchive }()
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+sessionID+"/runs/run-missing/delivery/download", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNotFound, w.Code)
+		var resp builderSessionAPIResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		assert.Contains(t, resp.Error, "builder run run-missing not found")
+	})
 }
