@@ -86,36 +86,40 @@ export function AccountDialog({ open, onOpenChange, user }: AccountDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton className="sm:max-w-[50vw] w-full min-h[75vh]">
-        <DialogHeader>
-          <DialogTitle>Account Settings</DialogTitle>
-        </DialogHeader>
+      <DialogContent showCloseButton className="sm:max-w-3xl w-full gap-0 overflow-hidden p-0">
         <AccountSettingsShell activeSection={activeSection} onSectionChange={setActiveSection}>
-          {activeSection === "profile" ? (
-            <ProfileForm
-              user={profileUser}
-              onSave={async (data) => {
-                await profileMutation.mutateAsync(data)
-              }}
-              isSaving={profileMutation.isPending}
-            />
-          ) : null}
+          <div className="flex flex-col overflow-auto">
+            <DialogHeader className="border-b px-6 py-4">
+              <DialogTitle>Account Settings</DialogTitle>
+            </DialogHeader>
+            <div className="p-6">
+              {activeSection === "profile" ? (
+                <ProfileForm
+                  user={profileUser}
+                  onSave={async (data) => {
+                    await profileMutation.mutateAsync(data)
+                  }}
+                  isSaving={profileMutation.isPending}
+                />
+              ) : null}
 
-          {activeSection === "security" ? (
-            <PasswordForm
-              onSave={async (data) => {
-                await passwordMutation.mutateAsync({
-                  current_password: data.currentPassword,
-                  new_password: data.newPassword,
-                })
-              }}
-              isSaving={passwordMutation.isPending}
-            />
-          ) : null}
+              {activeSection === "security" ? (
+                <PasswordForm
+                  onSave={async (data) => {
+                    await passwordMutation.mutateAsync({
+                      current_password: data.currentPassword,
+                      new_password: data.newPassword,
+                    })
+                  }}
+                  isSaving={passwordMutation.isPending}
+                />
+              ) : null}
 
-          {activeSection === "ai-providers" ? (
-            <AccountAiProvidersPanel />
-          ) : null}
+              {activeSection === "ai-providers" ? (
+                <AccountAiProvidersPanel />
+              ) : null}
+            </div>
+          </div>
         </AccountSettingsShell>
       </DialogContent>
     </Dialog>

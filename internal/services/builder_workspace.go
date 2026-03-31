@@ -28,6 +28,7 @@ const (
 	builderWorkspaceStorageRequest = "5Gi"
 	builderBuildOutputRootDist     = "dist"
 	builderBuildOutputRootBuild    = "build"
+	builderBuildOutputRootNext     = ".next"
 )
 
 type builderArtifactMetadata struct {
@@ -62,6 +63,14 @@ var downloadBuilderWorkspaceArchive = func(appCtx *models.AppContext, podName, c
 }
 
 func ProvisionBuilderWorkspace(ctx context.Context, sessionID string) (*entities.BuilderWorkspace, error) {
+	executionImage, err := loadBuilderWorkspaceExecutionImage(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return provisionBuilderWorkspace(ctx, sessionID, executionImage)
+}
+
+func provisionBuilderWorkspace(ctx context.Context, sessionID, executionImage string) (*entities.BuilderWorkspace, error) {
 	tx := db.DB.WithContext(ctx)
 
 	session, err := loadBuilderSession(tx, "", sessionID)
@@ -148,6 +157,7 @@ func ProvisionBuilderWorkspace(ctx context.Context, sessionID string) (*entities
 			BuildEnvSlug:   buildEnv.Slug,
 			ClusterID:      buildEnv.ClusterID,
 			Namespace:      buildEnv.ClusterNamespace,
+			ExecutionImage: executionImage,
 			StorageRequest: builderWorkspaceStorageRequest,
 		})
 		if err != nil {
@@ -209,6 +219,26 @@ func ProvisionBuilderWorkspace(ctx context.Context, sessionID string) (*entities
 	}
 
 	return workspace, nil
+}
+
+func loadBuilderWorkspaceExecutionImage(ctx context.Context, sessionID string) (string, error) {
+	if strings.TrimSpace(sessionID) == "" {
+		return "", errors.New("builder session id is required")
+	}
+
+	var run entities.BuilderRun
+	err := db.DB.WithContext(ctx).
+		Where("session_id = ?", sessionID).
+		Order("created_at DESC, id DESC").
+		First(&run).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	return strings.TrimSpace(stringPointerValue(run.ExecutionImageRef)), nil
 }
 
 func ListBuilderWorkspaceFiles(ctx context.Context, projectID, sessionID, requestedPath string) (*models.ListFilesResponse, error) {
@@ -457,7 +487,7 @@ func detectBuilderBuildOutputRoot(workspace *entities.BuilderWorkspace, listing 
 	}
 
 	switch segments[0] {
-	case builderBuildOutputRootDist, builderBuildOutputRootBuild:
+	case builderBuildOutputRootDist, builderBuildOutputRootBuild, builderBuildOutputRootNext:
 		return segments[0], nil
 	default:
 		return "", fmt.Errorf("unsupported builder build output root: %s", artifactBasePath)

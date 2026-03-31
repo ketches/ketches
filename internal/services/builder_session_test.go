@@ -129,6 +129,49 @@ func TestCreateBuilderSessionPersistsSelectedProviderAndModel(t *testing.T) {
 	assert.Equal(t, "claude-sonnet-4", *runs[0].ModelProfileKey)
 }
 
+func TestCreateBuilderSessionPersistsSelectedExecutorAndImageProfile(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	resp, err := CreateBuilderSession(context.Background(), "project-1", "user-1", &models.CreateBuilderSessionRequest{
+		BuildEnvID:               "env-1",
+		Prompt:                   "Create a service layer for builder sessions.",
+		ExecutorPolicyKey:        "workspace-node-static",
+		ExecutionImageProfileKey: "node-static",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	var runs []entities.BuilderRun
+	require.NoError(t, db.DB.Where("session_id = ?", resp.Session.ID).Find(&runs).Error)
+	require.Len(t, runs, 1)
+	require.NotNil(t, runs[0].ExecutorPolicyKey)
+	require.NotNil(t, runs[0].ExecutionImageProfileKey)
+	assert.Equal(t, "workspace-node-static", *runs[0].ExecutorPolicyKey)
+	assert.Equal(t, "node-static", *runs[0].ExecutionImageProfileKey)
+}
+
+func TestCreateBuilderSessionPersistsPlannedProjectIntent(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	resp, err := CreateBuilderSession(context.Background(), "project-1", "user-1", &models.CreateBuilderSessionRequest{
+		BuildEnvID: "env-1",
+		Prompt:     "Build a Next.js SSR app with authentication",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	var runs []entities.BuilderRun
+	require.NoError(t, db.DB.Where("session_id = ?", resp.Session.ID).Find(&runs).Error)
+	require.Len(t, runs, 1)
+	require.NotNil(t, runs[0].PlannedProjectKind)
+	require.NotNil(t, runs[0].PlannedExecutorPolicyKey)
+	require.NotNil(t, runs[0].PlannedImageProfileKey)
+	assert.Equal(t, "node_ssr_app", *runs[0].PlannedProjectKind)
+	assert.Equal(t, "workspace-node-ssr", *runs[0].PlannedExecutorPolicyKey)
+	assert.Equal(t, "node-ssr", *runs[0].PlannedImageProfileKey)
+	assert.Equal(t, "Detected a Node SSR/web app request.", runs[0].PlannedProjectSummary)
+}
+
 func TestGetBuilderSessionDetailReadsLegacyRowsWithoutControlPlaneFields(t *testing.T) {
 	setupBuilderSessionServiceTestDB(t)
 
@@ -225,6 +268,44 @@ func TestAppendBuilderMessageQueuesRunWhenSessionIsProvisioning(t *testing.T) {
 	assert.Equal(t, string(entities.BuilderRunStatusQueued), resp.Session.LatestRunStatus)
 	require.Len(t, resp.Runs, 1)
 	assert.Equal(t, string(entities.BuilderRunStatusQueued), resp.Runs[0].Status)
+}
+
+func TestAppendBuilderMessagePersistsSelectedExecutorAndImageProfile(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	now := time.Now().UTC()
+	session := entities.BuilderSession{
+		Base: entities.Base{
+			ID:        "session-exec-selection",
+			CreatedAt: now.Add(-30 * time.Minute),
+			UpdatedAt: now.Add(-10 * time.Minute),
+		},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Bootstrap API",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "user-1",
+		LastActivityAt: now.Add(-time.Minute),
+	}
+	require.NoError(t, db.DB.Create(&session).Error)
+
+	resp, err := AppendBuilderSessionMessage(context.Background(), "project-1", session.ID, "user-2", &models.AppendBuilderSessionMessageRequest{
+		Content:                  "Queue this with a selected execution profile.",
+		ExecutorPolicyKey:        "workspace-node-static",
+		ExecutionImageProfileKey: "node-static",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	var runs []entities.BuilderRun
+	require.NoError(t, db.DB.Where("session_id = ?", session.ID).Order("created_at ASC, id ASC").Find(&runs).Error)
+	require.Len(t, runs, 1)
+	require.NotNil(t, runs[0].ExecutorPolicyKey)
+	require.NotNil(t, runs[0].ExecutionImageProfileKey)
+	assert.Equal(t, "workspace-node-static", *runs[0].ExecutorPolicyKey)
+	assert.Equal(t, "node-static", *runs[0].ExecutionImageProfileKey)
+	assert.Equal(t, "workspace-node-static", resp.Runs[0].ExecutorPolicyKey)
+	assert.Equal(t, "node-static", resp.Runs[0].ExecutionImageProfileKey)
 }
 
 func TestAppendBuilderMessageLeavesReadySessionReadyUntilWorkerClaim(t *testing.T) {

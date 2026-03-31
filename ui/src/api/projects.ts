@@ -63,6 +63,7 @@ export interface ProjectAiProvider {
   default_model_profile_key: string
   default_model?: string
   enabled: boolean
+  is_default: boolean
   created_at: string
 }
 
@@ -73,6 +74,7 @@ export interface UpsertProjectAiProviderRequest {
   api_key: string
   default_model_profile_key: string
   enabled: boolean
+  is_default: boolean
 }
 
 export const projectsApi = {
@@ -117,6 +119,9 @@ export const projectsApi = {
   },
   updateAiProvider: async (id: string, providerId: string, data: UpsertProjectAiProviderRequest) => {
     return client.put(`/v1/projects/${id}/ai-providers/${providerId}`, data) as Promise<ProjectAiProvider>
+  },
+  deleteAiProvider: async (id: string, providerId: string) => {
+    return client.delete(`/v1/projects/${id}/ai-providers/${providerId}`) as Promise<void>
   },
   delete: async (id: string) => {
     return client.delete(`/v1/projects/${id}`)

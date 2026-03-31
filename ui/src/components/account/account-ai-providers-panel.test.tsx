@@ -7,6 +7,7 @@ vi.mock("@/api/users", () => ({
     listMyAiProviders: vi.fn(),
     createMyAiProvider: vi.fn(),
     updateMyAiProvider: vi.fn(),
+    deleteMyAiProvider: vi.fn(),
   },
 }))
 
@@ -76,6 +77,7 @@ describe("AccountAiProvidersPanel", () => {
         base_url: "https://api.openai.com",
         default_model_profile_key: "gpt-4.1",
         enabled: true,
+        is_default: true,
         created_at: new Date().toISOString(),
       },
     ])
@@ -87,6 +89,7 @@ describe("AccountAiProvidersPanel", () => {
         base_url: "https://api.openai.com",
         default_model_profile_key: "gpt-4.1",
         enabled: true,
+        is_default: true,
         created_at: new Date().toISOString(),
       },
     ]
@@ -97,6 +100,7 @@ describe("AccountAiProvidersPanel", () => {
       base_url: "https://api.anthropic.com",
       default_model_profile_key: "claude-sonnet-4",
       enabled: true,
+      is_default: false,
       created_at: new Date().toISOString(),
     })
     vi.mocked(usersApi.updateMyAiProvider).mockResolvedValue({
@@ -106,8 +110,10 @@ describe("AccountAiProvidersPanel", () => {
       base_url: "https://api.openai.com",
       default_model_profile_key: "gpt-4.1",
       enabled: true,
+      is_default: false,
       created_at: new Date().toISOString(),
     })
+    vi.mocked(usersApi.deleteMyAiProvider).mockResolvedValue(undefined)
 
     const container = document.createElement("div")
     document.body.appendChild(container)
@@ -118,6 +124,8 @@ describe("AccountAiProvidersPanel", () => {
     })
 
     expect(container.textContent).toContain("OpenAI Personal")
+    expect(container.textContent).toContain("Enabled")
+    expect(container.textContent).toContain("Default")
 
     const addButton = Array.from(container.querySelectorAll("button")).find((button) =>
       button.textContent?.includes("Add provider")
@@ -127,7 +135,57 @@ describe("AccountAiProvidersPanel", () => {
       addButton?.click()
     })
 
-    expect(vi.mocked(usersApi.createMyAiProvider)).toHaveBeenCalled()
+    expect(container.textContent).toContain("Provider key")
+
+    const providerKeyInput = container.querySelector('input[name="provider_key"]') as HTMLInputElement | null
+    const displayNameInput = container.querySelector('input[name="display_name"]') as HTMLInputElement | null
+    const baseUrlInput = container.querySelector('input[name="base_url"]') as HTMLInputElement | null
+    const apiKeyInput = container.querySelector('input[name="api_key"]') as HTMLInputElement | null
+    const modelProfileInput = container.querySelector('input[name="default_model_profile_key"]') as HTMLInputElement | null
+    const enabledInput = container.querySelector('input[name="enabled"]') as HTMLInputElement | null
+    const defaultInput = container.querySelector('input[name="is_default"]') as HTMLInputElement | null
+    const saveButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Save provider")
+    ) as HTMLButtonElement | undefined
+
+    await act(async () => {
+      if (providerKeyInput) {
+        providerKeyInput.value = "anthropic-user"
+        providerKeyInput.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+      if (displayNameInput) {
+        displayNameInput.value = "Anthropic Personal"
+        displayNameInput.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+      if (baseUrlInput) {
+        baseUrlInput.value = "https://api.anthropic.com"
+        baseUrlInput.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+      if (apiKeyInput) {
+        apiKeyInput.value = "test-key"
+        apiKeyInput.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+      if (modelProfileInput) {
+        modelProfileInput.value = "claude-sonnet-4"
+        modelProfileInput.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+      enabledInput?.click()
+      defaultInput?.click()
+    })
+
+    await act(async () => {
+      saveButton?.click()
+    })
+
+    expect(vi.mocked(usersApi.createMyAiProvider)).toHaveBeenCalledWith(expect.objectContaining({
+      provider_key: "anthropic-user",
+      display_name: "Anthropic Personal",
+      base_url: "https://api.anthropic.com",
+      api_key: "test-key",
+      default_model_profile_key: "claude-sonnet-4",
+      enabled: false,
+      is_default: true,
+    }))
 
     const editButton = Array.from(container.querySelectorAll("button")).find((button) =>
       button.textContent?.includes("Edit")
@@ -137,10 +195,44 @@ describe("AccountAiProvidersPanel", () => {
       editButton?.click()
     })
 
+    expect((container.querySelector('input[name="display_name"]') as HTMLInputElement | null)?.value).toBe("OpenAI Personal")
+    expect((container.querySelector('input[name="enabled"]') as HTMLInputElement | null)?.checked).toBe(true)
+    expect((container.querySelector('input[name="is_default"]') as HTMLInputElement | null)?.checked).toBe(true)
+
+    const editDisplayNameInput = container.querySelector('input[name="display_name"]') as HTMLInputElement | null
+    const updateButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Update provider")
+    ) as HTMLButtonElement | undefined
+    const editEnabledInput = container.querySelector('input[name="enabled"]') as HTMLInputElement | null
+    const editDefaultInput = container.querySelector('input[name="is_default"]') as HTMLInputElement | null
+
+    await act(async () => {
+      if (editDisplayNameInput) {
+        editDisplayNameInput.value = "OpenAI Personal Updated"
+        editDisplayNameInput.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+      editEnabledInput?.click()
+      editDefaultInput?.click()
+    })
+
+    await act(async () => {
+      updateButton?.click()
+    })
+
     expect(vi.mocked(usersApi.updateMyAiProvider)).toHaveBeenCalledWith(
       "provider-1",
-      expect.objectContaining({ display_name: "OpenAI Personal Updated" })
+      expect.objectContaining({ display_name: "OpenAI Personal Updated", enabled: false, is_default: false })
     )
+
+    const deleteButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Delete")
+    ) as HTMLButtonElement | undefined
+
+    await act(async () => {
+      deleteButton?.click()
+    })
+
+    expect(vi.mocked(usersApi.deleteMyAiProvider)).toHaveBeenCalledWith("provider-1")
 
     await act(async () => {
       root.unmount()

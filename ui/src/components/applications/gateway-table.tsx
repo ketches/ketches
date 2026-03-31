@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Edit2, ExternalLink, Globe, Lock, Network, Plus, Trash2 } from "lucide-react"
+import { Copy, Edit2, ExternalLink, Globe, GlobeLock, Lock, Network, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -10,7 +10,6 @@ import { GatewayEditor } from "@/components/applications/gateway-editor"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui/tooltip"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
+import { ColorBadge } from "../shared/color-badge"
 
 interface GatewayConfigProps {
   app: App
@@ -53,6 +53,10 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
         domain: gw.domain,
         path: gw.path,
         gateway_port: gw.gateway_port,
+        service_type: gw.service_type,
+        node_port: gw.node_port,
+        gateway_ip: gw.gateway_ip,
+        internal_address: gw.internal_address,
         exposed: gw.exposed ?? false,
         cert_id: gw.cert_id,
       }))
@@ -161,10 +165,10 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       accessorKey: "protocol",
       header: "Protocol",
       cell: ({ row }) => (
-        <Badge variant="outline" className="uppercase font-medium">
+        <ColorBadge color="gray" >
           {row.original.protocol === 'https' && <Lock className="h-3 w-3 mr-1" />}
           {row.original.protocol?.toUpperCase()}
-        </Badge>
+        </ColorBadge>
       ),
     },
     {
@@ -172,39 +176,111 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       header: "Access",
       cell: ({ row }) => (
         row.original.exposed ? (
-          <Badge variant="default" className="gap-1">
+          <ColorBadge color="blue" className="gap-1">
             <Globe className="h-3 w-3" />
             Public
-          </Badge>
+          </ColorBadge>
         ) : (
-          <Badge variant="secondary">Internal</Badge>
+          <ColorBadge color="gray" className="gap-1">
+            <GlobeLock className="h-3 w-3" />
+            Internal
+          </ColorBadge>
         )
       ),
     },
     {
-      id: "domain_or_gateway_port",
-      header: "Domain / Gateway Port",
-      cell: ({ row }) => (
-        <span className="font-mono text-xs">
-          {isHttpProtocol(row.original.protocol) && row.original.exposed ? (
-            <Button variant="link" className="p-0 h-auto text-xs" onClick={() => window.open(`${row.original.protocol}://${row.original.domain}`, '_blank')}>{row.original.protocol}://{row.original.domain || <span className="text-muted-foreground">-</span>}</Button>
-          ) : (
-            row.original.gateway_port || <span className="text-muted-foreground">{app.slug}:{row.original.port}</span>
-          )}
-        </span>
-      ),
+      id: "internal_address",
+      header: "Internal Address",
+      cell: ({ row }) => {
+        const gw = row.original
+        const addr = gw.internal_address
+        if (!addr) return <span className="text-muted-foreground text-xs">-</span>
+        const copyToClipboard = (text: string) => {
+          navigator.clipboard.writeText(text).then(() => toast.success('Copied to clipboard'))
+        }
+        return (
+          <div className="flex items-center gap-1 font-mono text-xs">
+            <span>{addr}</span>
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button variant="ghost" className="opacity-0 group-hover/row:opacity-100 transition-opacity" size="icon-sm" onClick={() => copyToClipboard(addr)} />
+                }
+              >
+                <Copy className="h-3 w-3" />
+              </TooltipTrigger>
+              <TooltipContent>Copy address</TooltipContent>
+            </Tooltip>
+          </div>
+        )
+      },
+    },
+    {
+      id: "external_access",
+      header: "External Access",
+      cell: ({ row }) => {
+        const gw = row.original
+        const isHttp = isHttpProtocol(gw.protocol)
+        if (isHttp && gw.exposed && gw.domain) {
+          return (
+            <Button variant="link" className="p-0 h-auto font-mono text-xs" onClick={() => window.open(`${gw.protocol}://${gw.domain}`, '_blank')}>
+              {gw.protocol}://{gw.domain}
+            </Button>
+          )
+        }
+        if (gw.gateway_port) {
+          return <span className="font-mono text-xs">{gw.gateway_port}</span>
+        }
+        return <span className="text-muted-foreground text-xs">-</span>
+      },
+    },
+    {
+      id: "node_port_address",
+      header: "NodePort",
+      cell: ({ row }) => {
+        const gw = row.original
+        if (!gw.gateway_ip || !gw.node_port) {
+          return <span className="text-muted-foreground text-xs">-</span>
+        }
+        const addr = `${gw.gateway_ip}:${gw.node_port}`
+        const isHttp = isHttpProtocol(gw.protocol)
+        const copyToClipboard = (text: string) => {
+          navigator.clipboard.writeText(text).then(() => toast.success('Copied to clipboard'))
+        }
+        return (
+          <div className="flex items-center gap-1 font-mono text-xs">
+            {isHttp ? (
+              <Button variant="link" className="p-0 h-auto text-xs" onClick={() => window.open(`${gw.protocol}://${addr}`, '_blank')}>{addr}</Button>
+            ) : (
+              <span>{addr}</span>
+            )}
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button variant="ghost" className="opacity-0 group-hover/row:opacity-100 transition-opacity" size="icon-sm" onClick={() => copyToClipboard(addr)} />
+                }
+              >
+                <Copy className="h-3 w-3" />
+              </TooltipTrigger>
+              <TooltipContent>Copy address</TooltipContent>
+            </Tooltip>
+          </div>
+        )
+      },
     },
     {
       accessorKey: "path",
       header: "Path",
       cell: ({ row }) => (
-        <span className="font-mono text-xs">
+        <>
           {isHttpProtocol(row.original.protocol) ? (
-            row.original.path || <span className="text-muted-foreground">-</span>
+            row.original.path || <span className="font-mono text-xs text-muted-foreground">-</span>
           ) : (
-            <span className="text-muted-foreground">-</span>
+            <span className="text-muted-foreground text-xs">-</span>
           )}
-        </span>
+        </>
       ),
     },
     {
@@ -288,7 +364,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
         </CardTitle>
         <CardDescription>Expose your application to the network</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {!isLoading && gateways.length === 0 ? (
           <EmptyState
             title="No gateways configured"

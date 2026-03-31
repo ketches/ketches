@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Key, Loader2, RefreshCw } from "lucide-react"
+import { HardDriveDownload, Key, Loader2, RefreshCw } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -17,13 +17,9 @@ import {
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { getImagePullPolicyLabel, IMAGE_PULL_POLICY_OPTIONS } from "@/lib/image-pull-policy-options"
 import type { AxiosError } from "axios"
-
-const IMAGE_PULL_POLICY_OPTIONS = [
-  { label: "IfNotPresent", value: "IfNotPresent" },
-  { label: "Always", value: "Always" },
-  { label: "Never", value: "Never" },
-]
+import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface ImageEditorProps {
   open?: boolean
@@ -43,6 +39,7 @@ export function ImageEditor({
   const setOpen = setControlledOpen || setInternalOpen
   const queryClient = useQueryClient()
   const [showCredentials, setShowCredentials] = React.useState(false)
+  const [showPullPolicy, setShowPullPolicy] = React.useState(false)
   const [imageOptionsOpen, setImageOptionsOpen] = React.useState(false)
 
   const [formData, setFormData] = React.useState({
@@ -61,6 +58,7 @@ export function ImageEditor({
         registry_password: app.registry_password || "",
       })
       setShowCredentials(Boolean(app.registry_username || app.registry_password))
+      setShowPullPolicy(Boolean(app.image_pull_policy && app.image_pull_policy !== "IfNotPresent"))
       setImageOptionsOpen(false)
     }
   }, [app, open])
@@ -136,6 +134,14 @@ export function ImageEditor({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (formData.registry_password.trim() && !formData.registry_username.trim()) {
+      toast.error("Error", {
+        description: "Registry username is required when password is provided",
+      })
+      return
+    }
+
     mutation.mutate(formData)
   }
 
@@ -151,107 +157,128 @@ export function ImageEditor({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-[3fr_1fr] gap-4">
-              <Field>
-                <div className="flex items-center gap-2">
-                  <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
-                  <div className="flex items-center gap-1 ml-auto">
-                    <Tooltip>
-                      <TooltipTrigger
-                        delay={200}
-                        render={
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="icon-sm"
-                            aria-label="Refresh image options"
-                            disabled={tagsQuery.isFetching}
-                            onClick={() => {
-                              void handleRefreshImageOptions()
-                            }}
-                          >
-                            <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
-                          </Button>
-                        }
-                      >
-                        <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
-                      </TooltipTrigger>
-                      <TooltipContent>Refresh image options</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger
-                        delay={200}
-                        render={
-                          <Button
-                            type="button"
-                            variant={showCredentials ? "default" : "secondary"}
-                            size="icon-sm"
-                            aria-label="Registry credentials"
-                            aria-pressed={showCredentials}
-                            onClick={() => setShowCredentials((prev) => !prev)}
-                            className="ml-auto"
-                          />
-                        }
-                      >
-                        <Key />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Registry Credentials</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
+            <Field>
+              <div className="flex items-center gap-2">
+                <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
+                <div className="flex items-center gap-1 ml-auto">
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon-sm"
+                          aria-label="Refresh image options"
+                          disabled={tagsQuery.isFetching}
+                          onClick={() => {
+                            void handleRefreshImageOptions()
+                          }}
+                        >
+                          <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
+                        </Button>
+                      }
+                    >
+                      <RefreshCw className={tagsQuery.isFetching ? "animate-spin" : ""} />
+                    </TooltipTrigger>
+                    <TooltipContent>Refresh image options</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          type="button"
+                          variant={showPullPolicy ? "default" : "secondary"}
+                          size="icon-sm"
+                          aria-label="Pull Policy"
+                          aria-pressed={showPullPolicy}
+                          onClick={() => setShowPullPolicy((prev) => !prev)}
+                          className="ml-auto"
+                        />
+                      }
+                    >
+                      <HardDriveDownload />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Pull Policy </p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      delay={200}
+                      render={
+                        <Button
+                          type="button"
+                          variant={showCredentials ? "default" : "secondary"}
+                          size="icon-sm"
+                          aria-label="Registry credentials"
+                          aria-pressed={showCredentials}
+                          onClick={() => setShowCredentials((prev) => !prev)}
+                          className="ml-auto"
+                        />
+                      }
+                    >
+                      <Key />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Registry Credentials</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
-                <FieldContent>
-                  <Combobox
-                    open={imageOptionsOpen}
-                    onOpenChange={setImageOptionsOpen}
+              </div>
+              <FieldContent>
+                <Combobox
+                  open={imageOptionsOpen}
+                  onOpenChange={setImageOptionsOpen}
+                  value={formData.container_image}
+                  onValueChange={handleImageOptionChange}
+                  itemToStringLabel={(value) =>
+                    imageOptions.find((option) => option.value === value)?.label ?? value ?? ""
+                  }
+                >
+                  <ComboboxInput
+                    id="container-image"
+                    name="container_image"
+                    placeholder="e.g. nginx:latest"
                     value={formData.container_image}
-                    onValueChange={handleImageOptionChange}
-                    itemToStringLabel={(value) =>
-                      imageOptions.find((option) => option.value === value)?.label ?? value ?? ""
-                    }
-                  >
-                    <ComboboxInput
-                      id="container-image"
-                      name="container_image"
-                      placeholder="e.g. nginx:latest"
-                      value={formData.container_image}
-                      onInput={(e) => handleContainerImageChange((e.target as HTMLInputElement).value)}
-                      onChange={(e) => handleContainerImageChange(e.target.value)}
-                      required
-                      className="w-full"
-                    />
-                    <ComboboxContent>
-                      <ComboboxList>
-                        {imageOptions.map((option) => (
-                          <ComboboxItem key={option.value} value={option.value}>
-                            {option.label}
-                          </ComboboxItem>
-                        ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                  {tagsQuery.isLoading && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Loading image options...
-                    </div>
-                  )}
-                  {tagsQuery.isError && (
-                    <p className="text-xs text-destructive py-1">
-                      Failed to load image options. You can still enter an image manually.
-                    </p>
-                  )}
-                </FieldContent>
-              </Field>
+                    onInput={(e) => handleContainerImageChange((e.target as HTMLInputElement).value)}
+                    onChange={(e) => handleContainerImageChange(e.target.value)}
+                    required
+                    className="w-full"
+                  />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {imageOptions.map((option) => (
+                        <ComboboxItem key={option.value} value={option.value}>
+                          {option.label}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+                {tagsQuery.isLoading && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading image options...
+                  </div>
+                )}
+                {tagsQuery.isError && (
+                  <p className="text-xs text-destructive py-1">
+                    Failed to load image options. You can still enter an image manually.
+                  </p>
+                )}
+              </FieldContent>
+            </Field>
 
+            {showPullPolicy && (
               <Field>
                 <FieldLabel htmlFor="image-pull-policy" className="h-6">Pull Policy</FieldLabel>
                 <FieldContent>
                   <Combobox
                     value={formData.image_pull_policy}
                     onValueChange={(value) => setFormData((prev) => ({ ...prev, image_pull_policy: value ?? "IfNotPresent" }))}
-                    itemToStringLabel={(v) => IMAGE_PULL_POLICY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                    itemToStringLabel={getImagePullPolicyLabel}
                   >
                     <ComboboxInput
                       id="image-pull-policy"
@@ -264,7 +291,16 @@ export function ImageEditor({
                       <ComboboxList>
                         {IMAGE_PULL_POLICY_OPTIONS.map((option) => (
                           <ComboboxItem key={option.value} value={option.value}>
-                            {option.label}
+                            <Item size="xs" className="p-0">
+                              <ItemContent>
+                                <ItemTitle className="whitespace-nowrap">
+                                  {option.label}
+                                </ItemTitle>
+                                <ItemDescription>
+                                  {option.description}
+                                </ItemDescription>
+                              </ItemContent>
+                            </Item>
                           </ComboboxItem>
                         ))}
                       </ComboboxList>
@@ -272,7 +308,7 @@ export function ImageEditor({
                   </Combobox>
                 </FieldContent>
               </Field>
-            </div>
+            )}
 
             {showCredentials && (
               <div className="grid grid-cols-2 gap-4">

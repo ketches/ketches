@@ -40,6 +40,7 @@ func Migrate() error {
 		&entities.BuilderRunEvent{},
 		&entities.BuilderWorkspace{},
 		&entities.BuilderArtifact{},
+		&entities.BuilderExport{},
 		&entities.BuilderOutputSnapshot{},
 		&entities.BuilderOutputSnapshotFile{},
 		&entities.BuildSetting{},

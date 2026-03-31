@@ -163,7 +163,8 @@ func seedBuilderOutputArtifacts(t *testing.T, session *entities.BuilderSession, 
 	now := time.Now().UTC()
 	artifacts := make([]entities.BuilderArtifact, 0, len(files))
 	for relativePath, content := range files {
-		metadataJSON, err := marshalBuilderArtifactMetadata(int64(len(content)), "dist")
+		outputRoot := strings.SplitN(relativePath, "/", 2)[0]
+		metadataJSON, err := marshalBuilderArtifactMetadata(int64(len(content)), outputRoot)
 		require.NoError(t, err)
 
 		artifacts = append(artifacts, entities.BuilderArtifact{
@@ -301,6 +302,37 @@ func TestPublishBuilderOutputSnapshot_MarksDeliveryOnlyWhenIndexHTMLMissing(t *t
 	var entryCount int64
 	require.NoError(t, db.DB.Model(&entities.BuilderOutputSnapshotFile{}).Where("snapshot_id = ? AND is_default_entry = ?", snapshot.ID, true).Count(&entryCount).Error)
 	assert.Equal(t, int64(0), entryCount)
+
+	latestSnapshot, err := GetLatestSuccessfulBuilderOutputSnapshot(context.Background(), session.ID)
+	require.NoError(t, err)
+	require.NotNil(t, latestSnapshot)
+	assert.Equal(t, snapshot.ID, latestSnapshot.ID)
+	assert.Equal(t, entities.BuilderOutputSnapshotStatusDeliveryOnly, latestSnapshot.Status)
+}
+
+func TestPublishBuilderOutputSnapshot_MarksDeliveryOnlyForNextOutputRoot(t *testing.T) {
+	setupBuilderOutputSnapshotServiceTestDB(t)
+	setBuilderOutputSnapshotServiceConfigForTest(t)
+	session, workspace, run := seedBuilderOutputSnapshotFixture(t)
+
+	sourceRoot := t.TempDir()
+	writeBuilderOutputSnapshotSourceFiles(t, sourceRoot, map[string]string{
+		".next/routes-manifest.json": "{\"version\":1}\n",
+		".next/static/app.js":        "console.log('ssr');\n",
+	})
+	seedBuilderOutputArtifacts(t, session, workspace, run, map[string]string{
+		".next/routes-manifest.json": "{\"version\":1}\n",
+		".next/static/app.js":        "console.log('ssr');\n",
+	})
+	setBuilderOutputSnapshotSourceForTest(t, sourceRoot)
+
+	snapshot, err := PublishBuilderOutputSnapshot(context.Background(), workspace, run)
+	require.NoError(t, err)
+	require.NotNil(t, snapshot)
+
+	assert.Equal(t, entities.BuilderOutputSnapshotStatusDeliveryOnly, snapshot.Status)
+	assert.Empty(t, snapshot.DefaultEntryPath)
+	assert.Equal(t, ".next", snapshot.OutputRoot)
 
 	latestSnapshot, err := GetLatestSuccessfulBuilderOutputSnapshot(context.Background(), session.ID)
 	require.NoError(t, err)

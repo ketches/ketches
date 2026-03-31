@@ -15,3 +15,7 @@ type ProjectAIProvider struct {
 	Enabled                bool      `gorm:"not null;index"`
 	IsDefault              bool      `gorm:"not null;index"`
 }
+
+func (ProjectAIProvider) TableName() string {
+	return "project_ai_providers"
+}

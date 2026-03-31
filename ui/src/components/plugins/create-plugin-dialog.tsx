@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Layers2, Zap } from "lucide-react"
+import { HardDriveDownload, Key, Layers2, Zap } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -17,15 +17,13 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Textarea } from "@/components/ui/textarea"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { getImagePullPolicyLabel, IMAGE_PULL_POLICY_OPTIONS } from "@/lib/image-pull-policy-options"
 import { cn } from "@/lib/utils"
 import type { AxiosError } from "axios"
-
-const IMAGE_PULL_POLICY_OPTIONS = [
-  { label: "IfNotPresent", value: "IfNotPresent" },
-  { label: "Always", value: "Always" },
-  { label: "Never", value: "Never" },
-]
+import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface CreatePluginDialogProps {
   open: boolean
@@ -62,6 +60,8 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
     plugin_type: "init" as "init" | "sidecar"
   })
   const [envVars, setEnvVars] = useState<KeyValuePair[]>([])
+  const [showRegistryCredentials, setShowRegistryCredentials] = useState(false)
+  const [showPullPolicy, setShowPullPolicy] = useState(false)
 
   const createMutation = useMutation({
     mutationFn: (data: any) => pluginsApi.createPlugin(projectId, data),
@@ -91,6 +91,8 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
       plugin_type: "init"
     })
     setEnvVars([])
+    setShowRegistryCredentials(false)
+    setShowPullPolicy(false)
   }
 
   const handleNameChange = (name: string) => {
@@ -109,6 +111,12 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
       toast.error("Please fill in all required fields")
       return false
     }
+
+    if (formData.registry_password.trim() && !formData.registry_username.trim()) {
+      toast.error("Registry username is required when password is provided")
+      return false
+    }
+
     return true
   }
 
@@ -226,27 +234,74 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
               </FieldContent>
             </Field>
 
-            <div className="grid grid-cols-[3fr_1fr] gap-4">
-              <Field>
-                <FieldLabel htmlFor="image">Container Image *</FieldLabel>
-                <FieldContent>
-                  <Input
+            <Field>
+              <FieldLabel htmlFor="image">Container Image *</FieldLabel>
+              <FieldContent>
+                <InputGroup>
+                  <InputGroupInput
                     id="image"
+                    name="image"
                     placeholder="docker.io/library/migrate:latest"
                     value={formData.image}
                     onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                     required
                   />
-                </FieldContent>
-              </Field>
+                  <InputGroupAddon align="inline-end">
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showPullPolicy ? "default" : "ghost"}
+                            size="icon-sm"
+                            aria-label="Pull Policy"
+                            aria-pressed={showPullPolicy}
+                            onClick={() => setShowPullPolicy((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <HardDriveDownload />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Pull Policy</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showRegistryCredentials ? "default" : "ghost"}
+                            size="icon-sm"
+                            aria-label="Registry credentials"
+                            aria-pressed={showRegistryCredentials}
+                            onClick={() => setShowRegistryCredentials((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <Key />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Registry Credentials</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </InputGroupAddon>
+                </InputGroup>
+              </FieldContent>
+            </Field>
 
+            {showPullPolicy && (
               <Field>
                 <FieldLabel htmlFor="image-pull-policy">Pull Policy</FieldLabel>
                 <FieldContent>
                   <Combobox
                     value={formData.image_pull_policy}
                     onValueChange={(value) => setFormData((prev) => ({ ...prev, image_pull_policy: value ?? "IfNotPresent" }))}
-                    itemToStringLabel={(v) => IMAGE_PULL_POLICY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                    itemToStringLabel={getImagePullPolicyLabel}
                   >
                     <ComboboxInput
                       id="image-pull-policy"
@@ -259,7 +314,16 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
                       <ComboboxList>
                         {IMAGE_PULL_POLICY_OPTIONS.map((option) => (
                           <ComboboxItem key={option.value} value={option.value}>
-                            {option.label}
+                            <Item size="xs" className="p-0">
+                              <ItemContent>
+                                <ItemTitle className="whitespace-nowrap">
+                                  {option.label}
+                                </ItemTitle>
+                                <ItemDescription>
+                                  {option.description}
+                                </ItemDescription>
+                              </ItemContent>
+                            </Item>
                           </ComboboxItem>
                         ))}
                       </ComboboxList>
@@ -267,35 +331,37 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
                   </Combobox>
                 </FieldContent>
               </Field>
-            </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel htmlFor="registry_username">Registry Username</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="registry_username"
-                    placeholder="(optional for private images)"
-                    value={formData.registry_username}
-                    onChange={(e) => setFormData({ ...formData, registry_username: e.target.value })}
-                  />
-                </FieldContent>
-              </Field>
+            {showRegistryCredentials && (
+              <div className="grid grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="registry_username">Registry Username</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="registry_username"
+                      placeholder="(optional for private images)"
+                      value={formData.registry_username}
+                      onChange={(e) => setFormData({ ...formData, registry_username: e.target.value })}
+                    />
+                  </FieldContent>
+                </Field>
 
-              <Field>
-                <FieldLabel htmlFor="registry_password">Registry Password</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="registry_password"
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="(optional for private images)"
-                    value={formData.registry_password}
-                    onChange={(e) => setFormData({ ...formData, registry_password: e.target.value })}
-                  />
-                </FieldContent>
-              </Field>
-            </div>
+                <Field>
+                  <FieldLabel htmlFor="registry_password">Registry Password</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="registry_password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="(optional for private images)"
+                      value={formData.registry_password}
+                      onChange={(e) => setFormData({ ...formData, registry_password: e.target.value })}
+                    />
+                  </FieldContent>
+                </Field>
+              </div>
+            )}
 
             <Field>
               <FieldLabel htmlFor="command">Command</FieldLabel>

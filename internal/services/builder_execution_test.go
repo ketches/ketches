@@ -62,6 +62,38 @@ func TestDetectBuilderFrontendExecutionPlan(t *testing.T) {
 		assert.Equal(t, []string{"yarn", "build"}, plan.BuildCommand)
 	})
 
+	t.Run("selects go commands from go module project", func(t *testing.T) {
+		plan, err := DetectBuilderFrontendExecutionPlan(&models.ListFilesResponse{
+			Path: "/workspace",
+			Files: []models.FileInfo{
+				{Name: "go.mod", Type: "file"},
+				{Name: "main.go", Type: "file"},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, plan)
+		assert.Equal(t, BuilderFrontendPackageManagerGo, plan.PackageManager)
+		assert.Equal(t, []string{"go", "mod", "download"}, plan.InstallCommand)
+		assert.Equal(t, []string{"sh", "-lc", "mkdir -p build && go build -o build/app ."}, plan.BuildCommand)
+	})
+
+	t.Run("selects python commands from requirements and app entrypoint", func(t *testing.T) {
+		plan, err := DetectBuilderFrontendExecutionPlan(&models.ListFilesResponse{
+			Path: "/workspace",
+			Files: []models.FileInfo{
+				{Name: "requirements.txt", Type: "file"},
+				{Name: "app.py", Type: "file"},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, plan)
+		assert.Equal(t, BuilderFrontendPackageManagerPython, plan.PackageManager)
+		assert.Equal(t, []string{"pip", "install", "-r", "requirements.txt"}, plan.InstallCommand)
+		assert.Equal(t, []string{"sh", "-lc", "mkdir -p build && if [ -f app.py ]; then cp app.py build/app.py; else cp main.py build/main.py; fi"}, plan.BuildCommand)
+	})
+
 	t.Run("fails when supported lockfile exists without package json", func(t *testing.T) {
 		plan, err := DetectBuilderFrontendExecutionPlan(&models.ListFilesResponse{
 			Path: "/workspace",
@@ -86,6 +118,34 @@ func TestDetectBuilderFrontendExecutionPlan(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, plan)
 		assert.ErrorContains(t, err, "supported frontend lockfile is required")
+	})
+
+	t.Run("fails when go.mod exists without a root main package", func(t *testing.T) {
+		plan, err := DetectBuilderFrontendExecutionPlan(&models.ListFilesResponse{
+			Path: "/workspace",
+			Files: []models.FileInfo{
+				{Name: "go.mod", Type: "file"},
+				{Name: "internal", Type: "dir"},
+			},
+		})
+
+		require.Error(t, err)
+		assert.Nil(t, plan)
+		assert.ErrorContains(t, err, "root main.go is required")
+	})
+
+	t.Run("fails when python project markers exist without a root python entrypoint", func(t *testing.T) {
+		plan, err := DetectBuilderFrontendExecutionPlan(&models.ListFilesResponse{
+			Path: "/workspace",
+			Files: []models.FileInfo{
+				{Name: "requirements.txt", Type: "file"},
+				{Name: "src", Type: "dir"},
+			},
+		})
+
+		require.Error(t, err)
+		assert.Nil(t, plan)
+		assert.ErrorContains(t, err, "root app.py or main.py is required")
 	})
 
 	t.Run("fails when multiple supported lockfiles exist", func(t *testing.T) {

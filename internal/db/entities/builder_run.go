@@ -28,31 +28,38 @@ const (
 )
 
 type BuilderRun struct {
-	ID                 string           `gorm:"type:varchar(36);primaryKey"`
-	CreatedAt          time.Time        `gorm:"autoCreateTime"`
-	UpdatedAt          time.Time        `gorm:"autoUpdateTime"`
-	SessionID          string           `gorm:"type:varchar(36);index;not null"`
-	TriggerMessageID   string           `gorm:"type:varchar(36);index;not null"`
-	WorkspaceID        *string          `gorm:"type:varchar(36);index"`
-	Status             BuilderRunStatus `gorm:"type:varchar(32);not null;default:'queued';index"`
-	Phase              *BuilderRunPhase `gorm:"type:varchar(64);default:'queued';index"`
-	AttemptCount       int              `gorm:"not null;default:0"`
-	MaxAttempts        int              `gorm:"not null;default:3"`
-	ClaimToken         *string          `gorm:"type:varchar(64);index"`
-	ClaimedAt          *time.Time       `gorm:"index"`
-	HeartbeatAt        *time.Time       `gorm:"index"`
-	TimeoutAt          *time.Time       `gorm:"index"`
-	CancelRequestedAt  *time.Time       `gorm:"index"`
-	ProviderKey        *string          `gorm:"type:varchar(128);index"`
-	ModelProfileKey    *string          `gorm:"type:varchar(128);index"`
-	ExecutorPolicyKey  *string          `gorm:"type:varchar(128);index"`
-	ExecutorHandleID   *string          `gorm:"type:varchar(36);index"`
-	RequestedBy        string           `gorm:"type:varchar(36);index;not null"`
-	InstructionSummary string           `gorm:"type:text"`
-	ExecutionLog       string           `gorm:"type:text"`
-	StartedAt          *time.Time
-	CompletedAt        *time.Time
-	ErrorCode          *string `gorm:"type:varchar(128)"`
-	ErrorClass         *string `gorm:"type:varchar(64);index"`
-	ErrorMessage       string  `gorm:"type:text"`
+	ID                       string           `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt                time.Time        `gorm:"autoCreateTime"`
+	UpdatedAt                time.Time        `gorm:"autoUpdateTime"`
+	SessionID                string           `gorm:"type:varchar(36);index;not null"`
+	TriggerMessageID         string           `gorm:"type:varchar(36);index;not null"`
+	WorkspaceID              *string          `gorm:"type:varchar(36);index"`
+	Status                   BuilderRunStatus `gorm:"type:varchar(32);not null;default:'queued';index"`
+	Phase                    *BuilderRunPhase `gorm:"type:varchar(64);default:'queued';index"`
+	AttemptCount             int              `gorm:"not null;default:0"`
+	MaxAttempts              int              `gorm:"not null;default:3"`
+	ClaimToken               *string          `gorm:"type:varchar(64);index"`
+	ClaimedAt                *time.Time       `gorm:"index"`
+	HeartbeatAt              *time.Time       `gorm:"index"`
+	TimeoutAt                *time.Time       `gorm:"index"`
+	CancelRequestedAt        *time.Time       `gorm:"index"`
+	ProviderScope            *string          `gorm:"type:varchar(32);index"`
+	ProviderKey              *string          `gorm:"type:varchar(128);index"`
+	ModelProfileKey          *string          `gorm:"type:varchar(128);index"`
+	PlannedProjectKind       *string          `gorm:"type:varchar(128);index"`
+	PlannedProjectSummary    string           `gorm:"type:text"`
+	PlannedExecutorPolicyKey *string          `gorm:"type:varchar(128);index"`
+	PlannedImageProfileKey   *string          `gorm:"type:varchar(128);index"`
+	ExecutorPolicyKey        *string          `gorm:"type:varchar(128);index"`
+	ExecutionImageProfileKey *string          `gorm:"type:varchar(128);index"`
+	ExecutionImageRef        *string          `gorm:"type:varchar(512)"`
+	ExecutorHandleID         *string          `gorm:"type:varchar(36);index"`
+	RequestedBy              string           `gorm:"type:varchar(36);index;not null"`
+	InstructionSummary       string           `gorm:"type:text"`
+	ExecutionLog             string           `gorm:"type:text"`
+	StartedAt                *time.Time
+	CompletedAt              *time.Time
+	ErrorCode                *string `gorm:"type:varchar(128)"`
+	ErrorClass               *string `gorm:"type:varchar(64);index"`
+	ErrorMessage             string  `gorm:"type:text"`
 }

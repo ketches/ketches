@@ -25,7 +25,9 @@ const options: BuilderModelOption[] = [
   },
 ]
 
-async function renderSelector(value: string | null = null) {
+async function renderSelector(
+  props: Partial<React.ComponentProps<typeof BuilderModelSelector>> = {}
+) {
   const container = document.createElement("div")
   document.body.appendChild(container)
   const root = ReactDOMClient.createRoot(container)
@@ -33,9 +35,10 @@ async function renderSelector(value: string | null = null) {
   await act(async () => {
     root.render(
       <BuilderModelSelector
-        value={value}
+        value={null}
         options={options}
         onValueChange={onValueChangeMock}
+        {...props}
       />
     )
   })
@@ -49,16 +52,32 @@ describe("BuilderModelSelector", () => {
     onValueChangeMock.mockReset()
   })
 
-  it("renders grouped model options with muted provider labels", async () => {
+  it("renders the model label and combobox input", async () => {
     const { container, root } = await renderSelector()
 
     expect(container.textContent).toContain("Model")
-    expect(container.textContent).toContain("Project models")
-    expect(container.textContent).toContain("My models")
-    expect(container.textContent).toContain("Claude 4 Sonnet")
-    expect(container.textContent).toContain("Anthropic · Project")
-    expect(container.textContent).toContain("GPT-4.1")
-    expect(container.textContent).toContain("OpenAI · User")
+    expect(container.querySelector('input[id="builder-model-selector"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="builder-model-selector-groups"]')).toBeNull()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("renders compact helper and error messaging inline", async () => {
+    const { container, root } = await renderSelector({
+      value: "project-claude-sonnet",
+      compact: true,
+      helperText: "Default from project settings",
+      errorText: "Model selection is required",
+    })
+
+    expect(container.textContent).toContain("Default from project settings")
+    expect(container.textContent).toContain("Model selection is required")
+    expect(container.querySelector('[data-testid="builder-model-selector-selection"]')?.textContent).toContain(
+      "Claude 4 Sonnet · Anthropic"
+    )
+    expect(container.querySelector('[data-slot="field-error"]')).not.toBeNull()
 
     await act(async () => {
       root.unmount()

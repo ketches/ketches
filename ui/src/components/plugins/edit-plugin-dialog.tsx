@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Layers2, Zap } from "lucide-react"
+import { HardDriveDownload, Key, Layers2, Zap } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
@@ -17,15 +17,13 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Textarea } from "@/components/ui/textarea"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { getImagePullPolicyLabel, IMAGE_PULL_POLICY_OPTIONS } from "@/lib/image-pull-policy-options"
 import { cn } from "@/lib/utils"
 import type { AxiosError } from "axios"
-
-const IMAGE_PULL_POLICY_OPTIONS = [
-  { label: "IfNotPresent", value: "IfNotPresent" },
-  { label: "Always", value: "Always" },
-  { label: "Never", value: "Never" },
-]
+import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface EditPluginDialogProps {
   plugin: any
@@ -63,6 +61,8 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
     plugin_type: "init" as "init" | "sidecar"
   })
   const [envVars, setEnvVars] = useState<KeyValuePair[]>([])
+  const [showRegistryCredentials, setShowRegistryCredentials] = useState(false)
+  const [showPullPolicy, setShowPullPolicy] = useState(false)
 
   useEffect(() => {
     if (plugin) {
@@ -78,6 +78,8 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
         plugin_type: plugin.plugin_type || "init"
       })
       setEnvVars(Array.isArray(plugin.env_vars) ? plugin.env_vars : [])
+      setShowPullPolicy((plugin.image_pull_policy || "IfNotPresent") !== "IfNotPresent")
+      setShowRegistryCredentials(Boolean(plugin.registry_username))
     }
   }, [plugin])
 
@@ -111,6 +113,12 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
       toast.error("Please fill in all required fields")
       return false
     }
+
+    if (formData.registry_password.trim() && !formData.registry_username.trim()) {
+      toast.error("Registry username is required when password is provided")
+      return false
+    }
+
     return true
   }
 
@@ -125,14 +133,12 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
       description: formData.description,
       image: formData.image,
       image_pull_policy: formData.image_pull_policy || undefined,
+      registry_username: formData.registry_username,
       command: formData.command || undefined,
       env_vars: envVars,
       plugin_type: formData.plugin_type
     }
 
-    if (formData.registry_username) {
-      payload.registry_username = formData.registry_username
-    }
     if (formData.registry_password) {
       payload.registry_password = formData.registry_password
     }
@@ -228,26 +234,73 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
               </FieldContent>
             </Field>
 
-            <div className="grid grid-cols-[3fr_1fr] gap-4">
-              <Field>
-                <FieldLabel htmlFor="edit-image">Container Image *</FieldLabel>
-                <FieldContent>
-                  <Input
+            <Field>
+              <FieldLabel htmlFor="edit-image">Container Image *</FieldLabel>
+              <FieldContent>
+                <InputGroup>
+                  <InputGroupInput
                     id="edit-image"
+                    name="image"
                     value={formData.image}
                     onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                     required
                   />
-                </FieldContent>
-              </Field>
+                  <InputGroupAddon align="inline-end">
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showPullPolicy ? "default" : "ghost"}
+                            size="icon-sm"
+                            aria-label="Pull Policy"
+                            aria-pressed={showPullPolicy}
+                            onClick={() => setShowPullPolicy((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <HardDriveDownload />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Pull Policy</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showRegistryCredentials ? "default" : "ghost"}
+                            size="icon-sm"
+                            aria-label="Registry credentials"
+                            aria-pressed={showRegistryCredentials}
+                            onClick={() => setShowRegistryCredentials((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <Key />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Registry Credentials</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </InputGroupAddon>
+                </InputGroup>
+              </FieldContent>
+            </Field>
 
+            {showPullPolicy && (
               <Field>
                 <FieldLabel htmlFor="edit-image-pull-policy">Pull Policy</FieldLabel>
                 <FieldContent>
                   <Combobox
                     value={formData.image_pull_policy}
                     onValueChange={(value) => setFormData((prev) => ({ ...prev, image_pull_policy: value ?? "IfNotPresent" }))}
-                    itemToStringLabel={(v) => IMAGE_PULL_POLICY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                    itemToStringLabel={getImagePullPolicyLabel}
                   >
                     <ComboboxInput
                       id="edit-image-pull-policy"
@@ -260,7 +313,16 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
                       <ComboboxList>
                         {IMAGE_PULL_POLICY_OPTIONS.map((option) => (
                           <ComboboxItem key={option.value} value={option.value}>
-                            {option.label}
+                            <Item size="xs" className="p-0">
+                              <ItemContent>
+                                <ItemTitle className="whitespace-nowrap">
+                                  {option.label}
+                                </ItemTitle>
+                                <ItemDescription>
+                                  {option.description}
+                                </ItemDescription>
+                              </ItemContent>
+                            </Item>
                           </ComboboxItem>
                         ))}
                       </ComboboxList>
@@ -268,34 +330,36 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
                   </Combobox>
                 </FieldContent>
               </Field>
-            </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel htmlFor="edit-registry_username">Registry Username</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="edit-registry_username"
-                    value={formData.registry_username}
-                    onChange={(e) => setFormData({ ...formData, registry_username: e.target.value })}
-                  />
-                </FieldContent>
-              </Field>
+            {showRegistryCredentials && (
+              <div className="grid grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="edit-registry_username">Registry Username</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="edit-registry_username"
+                      value={formData.registry_username}
+                      onChange={(e) => setFormData({ ...formData, registry_username: e.target.value })}
+                    />
+                  </FieldContent>
+                </Field>
 
-              <Field>
-                <FieldLabel htmlFor="edit-registry_password">Registry Password</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="edit-registry_password"
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="(leave blank to keep existing)"
-                    value={formData.registry_password}
-                    onChange={(e) => setFormData({ ...formData, registry_password: e.target.value })}
-                  />
-                </FieldContent>
-              </Field>
-            </div>
+                <Field>
+                  <FieldLabel htmlFor="edit-registry_password">Registry Password</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="edit-registry_password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="(leave blank to keep existing)"
+                      value={formData.registry_password}
+                      onChange={(e) => setFormData({ ...formData, registry_password: e.target.value })}
+                    />
+                  </FieldContent>
+                </Field>
+              </div>
+            )}
 
             <Field>
               <FieldLabel htmlFor="edit-command">Command</FieldLabel>

@@ -47,6 +47,10 @@ export interface GatewaySpec {
   domain: string
   path: string
   gateway_port?: number
+  service_type?: string
+  node_port?: number
+  gateway_ip?: string
+  internal_address?: string
   exposed: boolean
   cert_id?: string
 }

@@ -58,6 +58,7 @@ export interface UserAiProvider {
   default_model_profile_key: string
   default_model?: string
   enabled: boolean
+  is_default: boolean
   created_at: string
 }
 
@@ -68,6 +69,7 @@ export interface UpsertMyAiProviderRequest {
   api_key: string
   default_model_profile_key: string
   enabled: boolean
+  is_default: boolean
 }
 
 export const usersApi = {
@@ -101,6 +103,9 @@ export const usersApi = {
   },
   updateMyAiProvider: async (id: string, data: UpsertMyAiProviderRequest) => {
     return client.put(`/v1/users/me/ai-providers/${id}`, data) as Promise<UserAiProvider>
+  },
+  deleteMyAiProvider: async (id: string) => {
+    return client.delete(`/v1/users/me/ai-providers/${id}`) as Promise<void>
   },
   importUsers: async (file: File, type: 'json' | 'csv' | 'excel' = 'json') => {
     const formData = new FormData()

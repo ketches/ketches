@@ -2,11 +2,12 @@ import { act } from "react"
 import ReactDOMClient from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockMutate, mockInvalidateQueries, mockOnOpenChange, mockOnClose } = vi.hoisted(() => ({
+const { mockMutate, mockInvalidateQueries, mockOnOpenChange, mockOnClose, mockToastError } = vi.hoisted(() => ({
   mockMutate: vi.fn(),
   mockInvalidateQueries: vi.fn(),
   mockOnOpenChange: vi.fn(),
   mockOnClose: vi.fn(),
+  mockToastError: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-query", () => ({
@@ -34,7 +35,7 @@ vi.mock("@/api/apps", () => ({
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
-    error: vi.fn(),
+    error: mockToastError,
   },
 }))
 
@@ -256,6 +257,35 @@ describe("CreateAppDialog", () => {
     expect((container.querySelector('input[name="slug"]') as HTMLInputElement | null)?.value).toBe("custom-slug")
     expect(container.querySelector('button[data-app-type="Deployment"]')?.className).toContain("border-primary")
     expect(container.querySelector('button[data-app-type="StatefulSet"]')?.className ?? "").not.toContain("border-primary")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("prevents submit when password is provided without a registry username", async () => {
+    const { container, root } = await renderDialog()
+
+    const toggle = container.querySelector('button[aria-label="Registry credentials"]') as HTMLButtonElement | null
+    const imageInput = container.querySelector('input[placeholder*="image URL"]') as HTMLInputElement | null
+
+    expect(toggle).not.toBeNull()
+    expect(imageInput).not.toBeNull()
+
+    await clickElement(toggle as HTMLButtonElement)
+    await changeInputValue(imageInput as HTMLInputElement, "nginx:latest")
+
+    const passwordInput = container.querySelector('input[name="registry_password"]') as HTMLInputElement | null
+
+    expect(passwordInput).not.toBeNull()
+
+    await changeInputValue(passwordInput as HTMLInputElement, "secret")
+    await clickElement(container.querySelector('button[type="submit"]') as HTMLButtonElement)
+
+    expect(mockMutate).not.toHaveBeenCalled()
+    expect(mockToastError).toHaveBeenCalledWith("Error", {
+      description: "Registry username is required when password is provided",
+    })
 
     await act(async () => {
       root.unmount()

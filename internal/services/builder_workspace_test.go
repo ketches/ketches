@@ -747,6 +747,50 @@ func TestCollectBuilderBuildArtifacts(t *testing.T) {
 	assert.JSONEq(t, `{"size_bytes":2048,"output_root":"dist"}`, artifacts[1].MetadataJSON)
 }
 
+func TestCollectBuilderBuildArtifacts_SupportsNextOutputRoot(t *testing.T) {
+	setupBuilderWorkspaceServiceTestDB(t)
+	setBuilderWorkspaceServiceConfigForTest(t)
+	_, workspace, run := seedBuilderWorkspaceServiceFixture(t)
+
+	originalListBuilderWorkspaceFilesInContainer := listBuilderWorkspaceFilesInContainer
+	t.Cleanup(func() {
+		listBuilderWorkspaceFilesInContainer = originalListBuilderWorkspaceFilesInContainer
+	})
+
+	nestedListingPaths := make([]string, 0, 1)
+	listBuilderWorkspaceFilesInContainer = func(_ *models.AppContext, podName, containerName, filePath string) (*models.ListFilesResponse, error) {
+		assert.Equal(t, workspace.PodName, podName)
+		assert.Equal(t, workspace.ContainerName, containerName)
+		nestedListingPaths = append(nestedListingPaths, filePath)
+		if filePath == "/workspace/.next/static" {
+			return &models.ListFilesResponse{
+				Path: filePath,
+				Files: []models.FileInfo{
+					{Name: "app.js", Type: "file", Size: 2048},
+				},
+			}, nil
+		}
+		return nil, errors.New("unexpected nested listing path")
+	}
+
+	artifacts, err := CollectBuilderBuildArtifacts(workspace, run, &models.ListFilesResponse{
+		Path: "/workspace/.next",
+		Files: []models.FileInfo{
+			{Name: "routes-manifest.json", Type: "file", Size: 512},
+			{Name: "static", Type: "dir"},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, artifacts, 2)
+	assert.Equal(t, []string{"/workspace/.next/static"}, nestedListingPaths)
+	assert.Equal(t, "build_output", string(artifacts[0].Kind))
+	assert.Equal(t, ".next/routes-manifest.json", artifacts[0].Path)
+	assert.JSONEq(t, `{"size_bytes":512,"output_root":".next"}`, artifacts[0].MetadataJSON)
+	assert.Equal(t, "build_output", string(artifacts[1].Kind))
+	assert.Equal(t, ".next/static/app.js", artifacts[1].Path)
+	assert.JSONEq(t, `{"size_bytes":2048,"output_root":".next"}`, artifacts[1].MetadataJSON)
+}
+
 func TestWriteAgentFilesRejectsLostOwnership(t *testing.T) {
 	setupBuilderWorkspaceServiceTestDB(t)
 	setBuilderWorkspaceServiceConfigForTest(t)

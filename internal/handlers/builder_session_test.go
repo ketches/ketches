@@ -111,6 +111,9 @@ func newBuilderSessionHandlerRouter(userID, username, role string) *gin.Engine {
 	projectsRead.GET("/:projectID/builder-model-selection", GetBuilderDefaultModelSelection)
 	projectsRead.GET("/:projectID/builder-sessions", ListBuilderSessions)
 	projectsRead.GET("/:projectID/builder-sessions/:sessionID", GetBuilderSession)
+	projectsRead.GET("/:projectID/builder-sessions/:sessionID/exports", ListBuilderSessionExports)
+	projectsRead.GET("/:projectID/builder-sessions/:sessionID/exports/:exportID/promotion-plan", GetBuilderSessionExportPromotionPlan)
+	projectsRead.GET("/:projectID/builder-sessions/:sessionID/exports/:exportID/download", DownloadBuilderSessionExport)
 	projectsRead.GET("/:projectID/builder-sessions/:sessionID/preview", GetBuilderSessionPreview)
 	projectsRead.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/preview/launch", LaunchBuilderSessionPreview)
 	projectsRead.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/delivery/download", DownloadBuilderSessionSnapshot)
@@ -119,6 +122,10 @@ func newBuilderSessionHandlerRouter(userID, username, role string) *gin.Engine {
 	projectsWrite := r.Group("/api/v1/projects", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 	projectsWrite.POST("/:projectID/builder-sessions", CreateBuilderSession)
 	projectsWrite.POST("/:projectID/builder-sessions/:sessionID/messages", PostBuilderSessionMessage)
+	projectsWrite.POST("/:projectID/builder-sessions/:sessionID/exports", CreateBuilderSessionExport)
+	projectsWrite.POST("/:projectID/builder-sessions/:sessionID/exports/:exportID/promote-repository", PromoteBuilderSessionExportToCodeRepository)
+	projectsWrite.POST("/:projectID/builder-sessions/:sessionID/exports/:exportID/promote-build", PromoteBuilderSessionExportToInitialBuild)
+	projectsWrite.POST("/:projectID/builder-sessions/:sessionID/exports/:exportID/deploy-build", DeployBuilderExportBuild)
 	projectsWrite.POST("/:projectID/builder-sessions/:sessionID/runs/:runID/cancel", RequestBuilderRunCancel)
 	projectsWrite.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/logs", StreamBuilderRunLogs)
 
@@ -131,6 +138,10 @@ func newBuilderSessionDirectWriteRouter() *gin.Engine {
 	r := gin.New()
 	r.POST("/api/v1/projects/:projectID/builder-sessions", CreateBuilderSession)
 	r.POST("/api/v1/projects/:projectID/builder-sessions/:sessionID/messages", PostBuilderSessionMessage)
+	r.POST("/api/v1/projects/:projectID/builder-sessions/:sessionID/exports", CreateBuilderSessionExport)
+	r.POST("/api/v1/projects/:projectID/builder-sessions/:sessionID/exports/:exportID/promote-repository", PromoteBuilderSessionExportToCodeRepository)
+	r.POST("/api/v1/projects/:projectID/builder-sessions/:sessionID/exports/:exportID/promote-build", PromoteBuilderSessionExportToInitialBuild)
+	r.POST("/api/v1/projects/:projectID/builder-sessions/:sessionID/exports/:exportID/deploy-build", DeployBuilderExportBuild)
 	r.POST("/api/v1/projects/:projectID/builder-sessions/:sessionID/runs/:runID/cancel", RequestBuilderRunCancel)
 
 	return r
@@ -626,58 +637,100 @@ func TestListBuilderAvailableModelOptionsHandler(t *testing.T) {
 }
 
 func TestGetBuilderDefaultModelSelection(t *testing.T) {
-	setupBuilderSessionHandlerTestDB(t)
-	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
-	originalConfig := app.Config
-	app.Config = app.AppConfig{
-		BuilderProviderRegistryJSON: `[
-			{"key":"anthropic-project","base_url":"https://api.anthropic.com","api_key":"shared-secret"},
-			{"key":"openai-user","base_url":"https://api.openai.com","api_key":"secret-key"}
-		]`,
-		BuilderModelProfileRegistryJSON: `[
-			{"key":"claude-sonnet-4","model":"claude-4-sonnet"},
-			{"key":"gpt-4.1","model":"gpt-4.1"}
-		]`,
-		BuilderDefaultProviderKey:     "anthropic-project",
-		BuilderDefaultModelProfileKey: "claude-sonnet-4",
-	}
-	t.Cleanup(func() { app.Config = originalConfig })
-	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
-		ID:                     "project-provider-default",
-		ProjectID:              "project-1",
-		ProviderKey:            "anthropic-project",
-		DisplayName:            "Anthropic Shared",
-		BaseURL:                "https://api.anthropic.com",
-		APIKey:                 "shared-secret",
-		DefaultModelProfileKey: "claude-sonnet-4",
-		Enabled:                true,
-		IsDefault:              true,
-	}).Error)
-	require.NoError(t, db.DB.Create(&entities.UserAIProvider{
-		ID:                     "user-provider-default",
-		UserID:                 "viewer-1",
-		ProviderKey:            "openai-user",
-		DisplayName:            "OpenAI Personal",
-		BaseURL:                "https://api.openai.com",
-		APIKey:                 "secret-key",
-		DefaultModelProfileKey: "gpt-4.1",
-		Enabled:                true,
-		IsDefault:              true,
-	}).Error)
+	t.Run("returns project default selection", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		originalConfig := app.Config
+		app.Config = app.AppConfig{
+			BuilderProviderRegistryJSON: `[
+				{"key":"anthropic-project","base_url":"https://api.anthropic.com","api_key":"shared-secret"},
+				{"key":"openai-user","base_url":"https://api.openai.com","api_key":"secret-key"}
+			]`,
+			BuilderModelProfileRegistryJSON: `[
+				{"key":"claude-sonnet-4","model":"claude-4-sonnet"},
+				{"key":"gpt-4.1","model":"gpt-4.1"}
+			]`,
+			BuilderDefaultProviderKey:     "anthropic-project",
+			BuilderDefaultModelProfileKey: "claude-sonnet-4",
+		}
+		t.Cleanup(func() { app.Config = originalConfig })
+		require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+			ID:                     "project-provider-default",
+			ProjectID:              "project-1",
+			ProviderKey:            "anthropic-project",
+			DisplayName:            "Anthropic Shared",
+			BaseURL:                "https://api.anthropic.com",
+			APIKey:                 "shared-secret",
+			DefaultModelProfileKey: "claude-sonnet-4",
+			Enabled:                true,
+			IsDefault:              true,
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.UserAIProvider{
+			ID:                     "user-provider-default",
+			UserID:                 "viewer-1",
+			ProviderKey:            "openai-user",
+			DisplayName:            "OpenAI Personal",
+			BaseURL:                "https://api.openai.com",
+			APIKey:                 "secret-key",
+			DefaultModelProfileKey: "gpt-4.1",
+			Enabled:                true,
+			IsDefault:              true,
+		}).Error)
 
-	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-model-selection", nil)
-	w := httptest.NewRecorder()
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-model-selection", nil)
+		w := httptest.NewRecorder()
 
-	r.ServeHTTP(w, req)
+		r.ServeHTTP(w, req)
 
-	require.Equal(t, http.StatusOK, w.Code)
-	var resp builderSessionAPIResponse
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	require.Empty(t, resp.Error)
-	assert.Contains(t, string(resp.Data), "effective_default_source")
-	assert.Contains(t, string(resp.Data), "project")
-	assert.Contains(t, string(resp.Data), "anthropic-project")
+		require.Equal(t, http.StatusOK, w.Code)
+		var resp builderSessionAPIResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		require.Empty(t, resp.Error)
+		assert.Contains(t, string(resp.Data), "effective_default_source")
+		assert.Contains(t, string(resp.Data), "project")
+		assert.Contains(t, string(resp.Data), "anthropic-project")
+	})
+
+	t.Run("uses the database default selection even when aliases are not in registry config", func(t *testing.T) {
+		setupBuilderSessionHandlerTestDB(t)
+		seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleViewer)
+		require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+			ID:                     "project-provider-invalid-default",
+			ProjectID:              "project-1",
+			ProviderKey:            "missing-provider",
+			DisplayName:            "Broken Project Provider",
+			BaseURL:                "https://broken.example.com",
+			APIKey:                 "broken-secret",
+			DefaultModelProfileKey: "missing-model",
+			Enabled:                true,
+			IsDefault:              true,
+		}).Error)
+		require.NoError(t, db.DB.Create(&entities.UserAIProvider{
+			ID:                     "user-provider-valid",
+			UserID:                 "viewer-1",
+			ProviderKey:            "valid-provider",
+			DisplayName:            "Valid User Provider",
+			BaseURL:                "https://valid.example.com",
+			APIKey:                 "valid-key",
+			DefaultModelProfileKey: "valid-model",
+			Enabled:                true,
+		}).Error)
+
+		r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-model-selection", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		var resp builderSessionAPIResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		require.Empty(t, resp.Error)
+		assert.Contains(t, string(resp.Data), `"effective_default_source":"project"`)
+		assert.Contains(t, string(resp.Data), "valid-provider")
+		assert.Contains(t, string(resp.Data), "missing-provider")
+	})
 }
 
 func TestPostBuilderSessionMessageHandler(t *testing.T) {
@@ -846,6 +899,271 @@ func TestPostBuilderSessionMessageHandler(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		assert.Equal(t, "insufficient permissions", resp.Error)
 	})
+}
+
+func TestCreateBuilderSessionExportHandler(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleDeveloper)
+
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-1"},
+		Slug: "demo",
+		Name: "Demo Project",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Cluster{
+		Base:       entities.Base{ID: "cluster-1"},
+		Slug:       "cluster-1",
+		Name:       "Cluster 1",
+		KubeConfig: "apiVersion: v1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:             entities.Base{ID: "env-1"},
+		Slug:             "build-env",
+		Name:             "Build Env",
+		ProjectID:        "project-1",
+		ClusterID:        "cluster-1",
+		ClusterNamespace: "builder-ns",
+		IsBuildEnv:       true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base:           entities.Base{ID: "session-export"},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Export session",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "viewer-1",
+		LastActivityAt: time.Now().UTC(),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderWorkspace{
+		ID:            "workspace-export",
+		SessionID:     "session-export",
+		BuildEnvID:    "env-1",
+		ClusterID:     "cluster-1",
+		Namespace:     "builder-ns",
+		PodName:       "builder-workspace-session-export",
+		ContainerName: "workspace",
+		Status:        entities.BuilderWorkspaceStatusActive,
+		WorkspaceRoot: "/workspace",
+	}).Error)
+
+	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/builder-sessions/session-export/exports", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+	var resp builderSessionAPIResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Empty(t, resp.Error)
+	assert.Contains(t, string(resp.Data), `"session_id":"session-export"`)
+	assert.Contains(t, string(resp.Data), `"kind":"session_archive"`)
+}
+
+func TestListAndDownloadBuilderSessionExportsHandler(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleDeveloper)
+
+	require.NoError(t, db.DB.Create(&entities.BuilderSession{
+		Base:           entities.Base{ID: "session-export-list"},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Export list session",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "viewer-1",
+		LastActivityAt: time.Now().UTC(),
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.BuilderExport{
+		ID:          "export-1",
+		SessionID:   "session-export-list",
+		Kind:        "session_archive",
+		Status:      entities.BuilderExportStatusReady,
+		FileName:    "builder-output-run-1.tar.gz",
+		StoragePath: "builder-exports/session-export-list/builder-output-run-1.tar.gz",
+		CreatedBy:   "viewer-1",
+	}).Error)
+
+	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/session-export-list/exports", nil)
+	listW := httptest.NewRecorder()
+	r.ServeHTTP(listW, listReq)
+	require.Equal(t, http.StatusOK, listW.Code)
+	assert.Contains(t, listW.Body.String(), `"id":"export-1"`)
+
+	originalDownloadBuilderSessionExport := downloadBuilderSessionExport
+	t.Cleanup(func() {
+		downloadBuilderSessionExport = originalDownloadBuilderSessionExport
+	})
+	downloadBuilderSessionExport = func(ctx context.Context, projectID, sessionID, exportID string, writer io.Writer) error {
+		_, err := writer.Write([]byte("export-archive"))
+		return err
+	}
+
+	downloadReq := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/session-export-list/exports/export-1/download", nil)
+	downloadW := httptest.NewRecorder()
+	r.ServeHTTP(downloadW, downloadReq)
+	require.Equal(t, http.StatusOK, downloadW.Code)
+	assert.Contains(t, downloadW.Header().Get("Content-Disposition"), "builder-output-run-1.tar.gz")
+	assert.Equal(t, "export-archive", downloadW.Body.String())
+}
+
+func TestPromoteBuilderSessionExportToCodeRepositoryHandler(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleDeveloper)
+
+	originalPromoteBuilderSessionExportToCodeRepository := promoteBuilderSessionExportToCodeRepository
+	t.Cleanup(func() {
+		promoteBuilderSessionExportToCodeRepository = originalPromoteBuilderSessionExportToCodeRepository
+	})
+	promoteBuilderSessionExportToCodeRepository = func(ctx context.Context, projectID, sessionID, exportID string, req *models.PromoteBuilderExportToCodeRepositoryRequest) (*models.BuilderExportPromotionResponse, error) {
+		return &models.BuilderExportPromotionResponse{
+			Export: models.BuilderExportResponse{
+				ID:        exportID,
+				SessionID: sessionID,
+				Kind:      "session_archive",
+				Status:    "ready",
+				FileName:  "builder-output-run-1.tar.gz",
+			},
+			Repository: models.CodeRepositoryResponse{
+				ID:         "repo-1",
+				ProjectID:  projectID,
+				Name:       req.Name,
+				Slug:       req.Slug,
+				GitRepoURL: req.GitRepoURL,
+			},
+		}, nil
+	}
+
+	body := `{"name":"Builder Export Repo","slug":"builder-export-repo","git_repo_url":"https://example.com/demo.git"}`
+	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/builder-sessions/session-export/exports/export-1/promote-repository", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+	assert.Contains(t, w.Body.String(), `"id":"repo-1"`)
+	assert.Contains(t, w.Body.String(), `"slug":"builder-export-repo"`)
+}
+
+func TestGetBuilderSessionExportPromotionPlanHandler(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleDeveloper)
+
+	originalGetBuilderSessionExportPromotionPlan := getBuilderSessionExportPromotionPlan
+	t.Cleanup(func() {
+		getBuilderSessionExportPromotionPlan = originalGetBuilderSessionExportPromotionPlan
+	})
+	getBuilderSessionExportPromotionPlan = func(ctx context.Context, projectID, sessionID, exportID string) (*models.BuilderExportPromotionPlanResponse, error) {
+		return &models.BuilderExportPromotionPlanResponse{
+			Export: models.BuilderExportResponse{
+				ID:        exportID,
+				SessionID: sessionID,
+				Kind:      "session_archive",
+				Status:    "ready",
+				FileName:  "builder-output-run-1.tar.gz",
+			},
+			SourceKind:              "workspace_source",
+			PlannedProjectKind:      "go_api_service",
+			SuggestedRepositoryName: "Go API Service",
+			SuggestedRepositorySlug: "go-api-service",
+			SuggestedBuildEnvID:     "env-1",
+			CanTriggerInitialBuild:  true,
+			MissingRequirements:     []string{},
+		}, nil
+	}
+
+	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-sessions/session-export/exports/export-1/promotion-plan", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"source_kind":"workspace_source"`)
+	assert.Contains(t, w.Body.String(), `"suggested_repository_slug":"go-api-service"`)
+}
+
+func TestPromoteBuilderSessionExportToInitialBuildHandler(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleDeveloper)
+
+	originalPromoteBuilderSessionExportToInitialBuild := promoteBuilderSessionExportToInitialBuild
+	t.Cleanup(func() {
+		promoteBuilderSessionExportToInitialBuild = originalPromoteBuilderSessionExportToInitialBuild
+	})
+	promoteBuilderSessionExportToInitialBuild = func(ctx context.Context, projectID, sessionID, exportID, userID string, req *models.PromoteBuilderExportToInitialBuildRequest) (*models.BuilderExportInitialBuildPromotionResponse, error) {
+		return &models.BuilderExportInitialBuildPromotionResponse{
+			Promotion: models.BuilderExportPromotionResponse{
+				Export: models.BuilderExportResponse{
+					ID:        exportID,
+					SessionID: sessionID,
+					Kind:      "session_archive",
+					Status:    "ready",
+					FileName:  "builder-output-run-1.tar.gz",
+				},
+				Repository: models.CodeRepositoryResponse{
+					ID:         "repo-1",
+					ProjectID:  projectID,
+					Name:       req.Name,
+					Slug:       "builder-export-repo",
+					GitRepoURL: req.GitRepoURL,
+				},
+			},
+			BuildSetting: models.BuildSettingResponse{
+				ID:         "setting-1",
+				Name:       "builder-default",
+				RegistryID: req.RegistryID,
+				ImageName:  "builder-export-repo",
+			},
+			Build: models.BuildResponse{
+				ID:         "build-1",
+				BuildEnvID: req.BuildEnvID,
+				Status:     "pending",
+			},
+		}, nil
+	}
+
+	body := `{"name":"Builder Export Repo","git_repo_url":"https://example.com/demo.git","build_env_id":"env-1","registry_id":"registry-1"}`
+	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/builder-sessions/session-export/exports/export-1/promote-build", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+	assert.Contains(t, w.Body.String(), `"id":"build-1"`)
+	assert.Contains(t, w.Body.String(), `"id":"setting-1"`)
+}
+
+func TestDeployBuilderExportBuildHandler(t *testing.T) {
+	setupBuilderSessionHandlerTestDB(t)
+	seedBuilderSessionProjectMember(t, "project-1", "viewer-1", app.ProjectRoleDeveloper)
+
+	originalDeployBuilderExportBuild := deployBuilderExportBuild
+	t.Cleanup(func() {
+		deployBuilderExportBuild = originalDeployBuilderExportBuild
+	})
+	deployBuilderExportBuild = func(ctx context.Context, req *models.DeployBuilderExportBuildRequest) (*models.AppContext, error) {
+		return &models.AppContext{
+			App: entities.App{
+				Base: entities.Base{ID: "app-1"},
+				Name: "Builder App",
+				Slug: "builder-app",
+			},
+		}, nil
+	}
+
+	body := `{"repository_id":"repo-1","build_id":"build-1","target_env_id":"env-1","name":"Builder App","slug":"builder-app"}`
+	r := newBuilderSessionHandlerRouter("viewer-1", "viewer", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/builder-sessions/session-export/exports/export-1/deploy-build", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"ID":"app-1"`)
+	assert.Contains(t, w.Body.String(), `"Slug":"builder-app"`)
 }
 
 func TestListBuilderSessionsHandler(t *testing.T) {

@@ -28,6 +28,7 @@ type builderWorkspaceExecutorRequest struct {
 	BuildEnvSlug   string
 	ClusterID      string
 	Namespace      string
+	ExecutionImage string
 	StorageRequest string
 }
 
@@ -92,6 +93,7 @@ func (builderWorkspacePodExecutorV1) EnsureWorkspace(ctx context.Context, reques
 		BuildEnvID:     request.BuildEnvID,
 		BuildEnvSlug:   request.BuildEnvSlug,
 		Namespace:      request.Namespace,
+		ExecutionImage: request.ExecutionImage,
 		StorageRequest: request.StorageRequest,
 	})
 	if err != nil {

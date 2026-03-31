@@ -27,6 +27,7 @@ type AppConfig struct {
 	BuilderProviderRegistryJSON       string
 	BuilderModelProfileRegistryJSON   string
 	BuilderExecutorPolicyRegistryJSON string
+	BuilderExecutionCatalogJSON       string
 	BuilderDefaultProviderKey         string
 	BuilderDefaultModelProfileKey     string
 	BuilderDefaultExecutorPolicyKey   string
@@ -70,13 +71,14 @@ func InitConfig() {
 		BuilderProviderRegistryJSON:       getEnv("BUILDER_PROVIDER_REGISTRY_JSON", ""),
 		BuilderModelProfileRegistryJSON:   getEnv("BUILDER_MODEL_PROFILE_REGISTRY_JSON", ""),
 		BuilderExecutorPolicyRegistryJSON: getEnv("BUILDER_EXECUTOR_POLICY_REGISTRY_JSON", ""),
+		BuilderExecutionCatalogJSON:       getEnv("BUILDER_EXECUTION_CATALOG_JSON", ""),
 		BuilderDefaultProviderKey:         fallbackString(getEnv("BUILDER_DEFAULT_PROVIDER_KEY", ""), "default"),
 		BuilderDefaultModelProfileKey:     fallbackString(getEnv("BUILDER_DEFAULT_MODEL_PROFILE_KEY", ""), "builder-default"),
 		BuilderDefaultExecutorPolicyKey:   fallbackString(getEnv("BUILDER_DEFAULT_EXECUTOR_POLICY_KEY", ""), "workspace-only"),
 		BuilderAgentBaseURL:               getEnv("BUILDER_AGENT_BASE_URL", ""),
 		BuilderAgentAPIKey:                getEnv("BUILDER_AGENT_API_KEY", ""),
 		BuilderAgentModel:                 getEnv("BUILDER_AGENT_MODEL", ""),
-		BuilderWorkspaceImage:             getEnv("BUILDER_WORKSPACE_IMAGE", ""),
+		BuilderWorkspaceImage:             fallbackString(getEnv("BUILDER_WORKSPACE_IMAGE", ""), "node:22-bookworm"),
 		BuilderWorkspaceRoot:              fallbackString(getEnv("BUILDER_WORKSPACE_ROOT", ""), "/workspace"),
 		BuilderSessionTTLHours:            getEnvInt("BUILDER_SESSION_TTL_HOURS", 24),
 	}

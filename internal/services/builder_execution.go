@@ -14,9 +14,11 @@ import (
 type BuilderFrontendPackageManager string
 
 const (
-	BuilderFrontendPackageManagerPNPM BuilderFrontendPackageManager = "pnpm"
-	BuilderFrontendPackageManagerNPM  BuilderFrontendPackageManager = "npm"
-	BuilderFrontendPackageManagerYarn BuilderFrontendPackageManager = "yarn"
+	BuilderFrontendPackageManagerPNPM   BuilderFrontendPackageManager = "pnpm"
+	BuilderFrontendPackageManagerNPM    BuilderFrontendPackageManager = "npm"
+	BuilderFrontendPackageManagerYarn   BuilderFrontendPackageManager = "yarn"
+	BuilderFrontendPackageManagerGo     BuilderFrontendPackageManager = "go"
+	BuilderFrontendPackageManagerPython BuilderFrontendPackageManager = "python"
 )
 
 type BuilderFrontendExecutionPlan struct {
@@ -28,8 +30,9 @@ type BuilderFrontendExecutionPlan struct {
 type BuilderFrontendExecutionStep string
 
 const (
-	BuilderFrontendExecutionStepInstall BuilderFrontendExecutionStep = "install"
-	BuilderFrontendExecutionStepBuild   BuilderFrontendExecutionStep = "build"
+	BuilderFrontendExecutionStepInstall  BuilderFrontendExecutionStep = "install"
+	BuilderFrontendExecutionStepBuild    BuilderFrontendExecutionStep = "build"
+	BuilderFrontendExecutionStepValidate BuilderFrontendExecutionStep = "validate"
 )
 
 type BuilderFrontendCommandResult struct {
@@ -160,6 +163,11 @@ func DetectBuilderFrontendExecutionPlan(listing *models.ListFilesResponse) (*Bui
 	}
 
 	hasPackageJSON := false
+	hasGoMod := false
+	hasRootMainGo := false
+	hasRequirementsTxt := false
+	hasPyprojectToml := false
+	hasRootPythonEntry := false
 	detectedPlans := make([]builderFrontendLockfilePlan, 0, 1)
 
 	for _, file := range listing.Files {
@@ -170,6 +178,16 @@ func DetectBuilderFrontendExecutionPlan(listing *models.ListFilesResponse) (*Bui
 		switch file.Name {
 		case "package.json":
 			hasPackageJSON = true
+		case "go.mod":
+			hasGoMod = true
+		case "main.go":
+			hasRootMainGo = true
+		case "requirements.txt":
+			hasRequirementsTxt = true
+		case "pyproject.toml":
+			hasPyprojectToml = true
+		case "app.py", "main.py":
+			hasRootPythonEntry = true
 		case "pnpm-lock.yaml", "package-lock.json", "yarn.lock":
 			for _, candidate := range builderFrontendLockfilePlans {
 				if candidate.lockfileName == file.Name {
@@ -178,6 +196,32 @@ func DetectBuilderFrontendExecutionPlan(listing *models.ListFilesResponse) (*Bui
 				}
 			}
 		}
+	}
+
+	if hasGoMod {
+		if !hasRootMainGo {
+			return nil, errors.New("root main.go is required for builder go execution")
+		}
+		return &BuilderFrontendExecutionPlan{
+			PackageManager: BuilderFrontendPackageManagerGo,
+			InstallCommand: []string{"go", "mod", "download"},
+			BuildCommand:   []string{"sh", "-lc", "mkdir -p build && go build -o build/app ."},
+		}, nil
+	}
+
+	if hasRequirementsTxt || hasPyprojectToml {
+		if !hasRootPythonEntry {
+			return nil, errors.New("root app.py or main.py is required for builder python execution")
+		}
+		installCommand := []string{"pip", "install", "-r", "requirements.txt"}
+		if hasPyprojectToml && !hasRequirementsTxt {
+			installCommand = []string{"pip", "install", "."}
+		}
+		return &BuilderFrontendExecutionPlan{
+			PackageManager: BuilderFrontendPackageManagerPython,
+			InstallCommand: installCommand,
+			BuildCommand:   []string{"sh", "-lc", "mkdir -p build && if [ -f app.py ]; then cp app.py build/app.py; else cp main.py build/main.py; fi"},
+		}, nil
 	}
 
 	if len(detectedPlans) > 1 {
@@ -251,6 +295,8 @@ func builderFrontendStepStartMessage(step BuilderFrontendExecutionStep) string {
 		return "[system] installing frontend dependencies\n"
 	case BuilderFrontendExecutionStepBuild:
 		return "[system] running frontend build\n"
+	case BuilderFrontendExecutionStepValidate:
+		return "[system] running runtime validation\n"
 	default:
 		return fmt.Sprintf("[system] running %s command\n", step)
 	}

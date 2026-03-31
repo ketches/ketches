@@ -55,7 +55,6 @@ export function EditProjectDialog({
         description: project.description || "",
         collaborationEnabled: !!project.collaboration_enabled,
       })
-      setErrors({})
     }
   }, [project])
 
@@ -107,85 +106,91 @@ export function EditProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[50vw] w-full min-h-[75vh]" showCloseButton>
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
-            <DialogDescription>
-              Update the project name and description.
-            </DialogDescription>
-          </DialogHeader>
-
+      <DialogContent className="sm:max-w-3xl w-full gap-0 overflow-hidden p-0" showCloseButton>
+        <form onSubmit={handleSubmit} className="flex h-full flex-col">
           <ProjectSettingsShell activeSection={activeSection} onSectionChange={setActiveSection}>
-            {activeSection === "general" ? (
-              <div className="grid gap-4 py-4">
-                {errors.global && (
-                  <div className="text-sm font-medium text-destructive text-center">
-                    {errors.global}
-                  </div>
-                )}
-                <Field>
-                  <FieldLabel>Name *</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      placeholder="My Project"
-                      value={formData.name}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                      aria-invalid={!!errors.name}
-                    />
-                  </FieldContent>
-                  {errors.name && <FieldError><span className="text-destructive text-xs">{errors.name}</span></FieldError>}
-                </Field>
+            <div className="flex flex-col overflow-hidden">
+              <DialogHeader className="border-b px-6 py-4">
+                <DialogTitle>Edit Project</DialogTitle>
+                <DialogDescription>
+                  Update the project name and description.
+                </DialogDescription>
+              </DialogHeader>
 
-                <Field>
-                  <FieldLabel>Slug</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      value={project?.slug || ""}
-                      disabled
-                      className="bg-muted font-mono"
-                    />
-                  </FieldContent>
-                </Field>
+              <div className="flex-1 overflow-auto">
+                <div className="p-6">
+                  {activeSection === "general" ? (
+                    <div className="grid gap-4">
+                      {errors.global && (
+                        <div className="text-sm font-medium text-destructive text-center">
+                          {errors.global}
+                        </div>
+                      )}
+                      <Field>
+                        <FieldLabel>Name *</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            placeholder="My Project"
+                            value={formData.name}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                            aria-invalid={!!errors.name}
+                          />
+                        </FieldContent>
+                        {errors.name && <FieldError><span className="text-destructive text-xs">{errors.name}</span></FieldError>}
+                      </Field>
 
-                <Field>
-                  <FieldLabel>Description</FieldLabel>
-                  <FieldContent>
-                    <Textarea
-                      placeholder="Brief description..."
-                      value={formData.description}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                      className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
-                    />
-                  </FieldContent>
-                </Field>
+                      <Field>
+                        <FieldLabel>Slug</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            value={project?.slug || ""}
+                            disabled
+                            className="bg-muted font-mono"
+                          />
+                        </FieldContent>
+                      </Field>
 
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="project-edit-collaboration-enabled"
-                    checked={formData.collaborationEnabled}
-                    onCheckedChange={(v) => setFormData((prev) => ({ ...prev, collaborationEnabled: v === true }))}
-                  />
-                  <label htmlFor="project-edit-collaboration-enabled" className="cursor-pointer">
-                    Enable collaboration module for this project
-                  </label>
+                      <Field>
+                        <FieldLabel>Description</FieldLabel>
+                        <FieldContent>
+                          <Textarea
+                            placeholder="Brief description..."
+                            value={formData.description}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                            className="h-28 resize-y break-all whitespace-pre-wrap"
+                          />
+                        </FieldContent>
+                      </Field>
+
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="project-edit-collaboration-enabled"
+                          checked={formData.collaborationEnabled}
+                          onCheckedChange={(v) => setFormData((prev) => ({ ...prev, collaborationEnabled: v === true }))}
+                        />
+                        <label htmlFor="project-edit-collaboration-enabled" className="cursor-pointer">
+                          Enable collaboration module for this project
+                        </label>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeSection === "ai-providers" ? (
+                    project ? <ProjectAiProvidersPanel projectId={project.id} /> : null
+                  ) : null}
                 </div>
               </div>
-            ) : null}
 
-            {activeSection === "ai-providers" ? (
-              project ? <ProjectAiProvidersPanel projectId={project.id} /> : null
-            ) : null}
+              <DialogFooter className="border-t px-6 py-4">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={mutation.isPending}>
+                  {mutation.isPending ? "Updating..." : "Update"}
+                </Button>
+              </DialogFooter>
+            </div>
           </ProjectSettingsShell>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Updating..." : "Update"}
-            </Button>
-          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

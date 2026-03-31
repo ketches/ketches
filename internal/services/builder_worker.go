@@ -37,6 +37,7 @@ const (
 	builderWorkerWorkspaceIOClass       = "workspace_io"
 	builderWorkerExecutionPlanErrorCode = "frontend_execution_plan_failed"
 	builderWorkerExecutionErrorCode     = "frontend_execution_failed"
+	builderWorkerValidationErrorCode    = "output_validation_failed"
 	builderWorkerArtifactErrorCode      = "build_artifact_collection_failed"
 	builderWorkerExecutionPlaneClass    = "execution_plane"
 	builderWorkerCommandExitCodeMarker  = "__KETCHES_BUILDER_EXIT_CODE__:"
@@ -345,12 +346,104 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 		return err
 	}
 
+	messages, err := builderWorkerLoadConversationMessages(ctx, run.SessionID)
+	if err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerGenerationErrorCode,
+			builderWorkerUnknownErrorClass,
+			"failed to load conversation: "+err.Error(),
+			true,
+		)
+	}
+
+	if err := updateClaimedBuilderRunState(ctx, run.ID, claimToken, entities.BuilderRunPhaseGenerating, run.WorkspaceID, run.ExecutorHandleID); err != nil {
+		return err
+	}
+	if err := appendOwnedBuilderRunLogEvent(ctx, run.ID, claimToken, "[agent] generating files...\n"); err != nil {
+		return err
+	}
+
+	projectID, err := loadBuilderSessionProjectID(ctx, run.SessionID)
+	if err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerGenerationErrorCode,
+			builderWorkerUnknownErrorClass,
+			"failed to load builder session context: "+err.Error(),
+			true,
+		)
+	}
+
+	result, err := builderWorkerGenerateFiles(
+		withBuilderRunGenerationContext(ctx, projectID, run),
+		messages,
+		stringPointerValue(run.ProviderKey),
+		stringPointerValue(run.ModelProfileKey),
+	)
+	if err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerGenerationErrorCode,
+			builderWorkerUnknownErrorClass,
+			err.Error(),
+			true,
+		)
+	}
+
+	if cancelled, err := finalizeClaimedBuilderRunCancellation(ctx, run, claimToken, "[system] run cancelled after generation\n"); cancelled || err != nil {
+		return err
+	}
+
+	if result.Action == BuilderAgentActionReplyOnly {
+		return finalizeClaimedBuilderRunSuccess(
+			ctx,
+			run,
+			claimToken,
+			result.AssistantMessage,
+			"run completed: replied without workspace changes",
+		)
+	}
+
 	if err := updateClaimedBuilderRunState(ctx, run.ID, claimToken, entities.BuilderRunPhasePreparingExecutor, nil, nil); err != nil {
 		return err
 	}
 	if err := appendOwnedBuilderRunStatusEvent(ctx, run.ID, claimToken, entities.BuilderRunEventLevelInfo, "[system] preparing workspace\n"); err != nil {
 		return err
 	}
+
+	executionSelection, err := ResolveBuilderExecutionSelection(ctx, run)
+	if err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerProvisioningErrorCode,
+			builderWorkerProvisioningClass,
+			"failed to resolve execution selection: "+err.Error(),
+			false,
+		)
+	}
+	if err := PersistBuilderRunExecutionSelection(ctx, run.ID, executionSelection); err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerProvisioningErrorCode,
+			builderWorkerProvisioningClass,
+			"failed to persist execution selection: "+err.Error(),
+			false,
+		)
+	}
+	run.ExecutorPolicyKey = builderStringPtr(executionSelection.ExecutorPolicyKey)
+	run.ExecutionImageProfileKey = builderStringPtr(executionSelection.ExecutionImageProfileKey)
+	run.ExecutionImageRef = builderStringPtr(executionSelection.ExecutionImageRef)
 
 	workspace, err := builderWorkerProvisionWorkspace(ctx, run.SessionID)
 	if err != nil {
@@ -373,53 +466,6 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 
 	if cancelled, err := finalizeClaimedBuilderRunCancellation(ctx, run, claimToken, "[system] run cancelled after workspace preparation\n"); cancelled || err != nil {
 		return err
-	}
-
-	messages, err := builderWorkerLoadConversationMessages(ctx, run.SessionID)
-	if err != nil {
-		return finalizeClaimedBuilderRunFailure(
-			ctx,
-			run,
-			claimToken,
-			builderWorkerGenerationErrorCode,
-			builderWorkerUnknownErrorClass,
-			"failed to load conversation: "+err.Error(),
-			true,
-		)
-	}
-
-	if err := updateClaimedBuilderRunState(ctx, run.ID, claimToken, entities.BuilderRunPhaseGenerating, run.WorkspaceID, run.ExecutorHandleID); err != nil {
-		return err
-	}
-	if err := appendOwnedBuilderRunLogEvent(ctx, run.ID, claimToken, "[agent] generating files...\n"); err != nil {
-		return err
-	}
-
-	result, err := builderWorkerGenerateFiles(ctx, messages, stringPointerValue(run.ProviderKey), stringPointerValue(run.ModelProfileKey))
-	if err != nil {
-		return finalizeClaimedBuilderRunFailure(
-			ctx,
-			run,
-			claimToken,
-			builderWorkerGenerationErrorCode,
-			builderWorkerUnknownErrorClass,
-			err.Error(),
-			true,
-		)
-	}
-
-	if cancelled, err := finalizeClaimedBuilderRunCancellation(ctx, run, claimToken, "[system] run cancelled after generation\n"); cancelled || err != nil {
-		return err
-	}
-
-	if len(result.Files) == 0 {
-		return finalizeClaimedBuilderRunSuccess(
-			ctx,
-			run,
-			claimToken,
-			result.AssistantMessage,
-			"run completed: no files generated",
-		)
 	}
 
 	if err := updateClaimedBuilderRunState(ctx, run.ID, claimToken, entities.BuilderRunPhaseMaterializingFiles, run.WorkspaceID, run.ExecutorHandleID); err != nil {
@@ -546,6 +592,94 @@ func (w *BuilderWorker) runClaimedExecution(ctx context.Context, run *entities.B
 	}
 	if err := ensureClaimedBuilderRunOwnership(ctx, run.ID, claimToken); err != nil {
 		return err
+	}
+
+	if err := updateClaimedBuilderRunState(ctx, run.ID, claimToken, entities.BuilderRunPhaseTesting, run.WorkspaceID, run.ExecutorHandleID); err != nil {
+		return err
+	}
+	if err := appendOwnedBuilderRunStatusEvent(ctx, run.ID, claimToken, entities.BuilderRunEventLevelInfo, "[system] validating build outputs\n"); err != nil {
+		return err
+	}
+	buildArtifacts, err := listBuilderOutputArtifacts(ctx, run.ID)
+	if err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerValidationErrorCode,
+			builderWorkerExecutionPlaneClass,
+			"failed to load build artifacts for validation: "+err.Error(),
+			true,
+		)
+	}
+	if err := ValidateBuilderExecutionOutputs(run, buildArtifacts); err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerValidationErrorCode,
+			builderWorkerExecutionPlaneClass,
+			err.Error(),
+			true,
+		)
+	}
+	if err := appendOwnedBuilderRunStatusEvent(ctx, run.ID, claimToken, entities.BuilderRunEventLevelInfo, "[system] build output validation completed\n"); err != nil {
+		return err
+	}
+	if err := ensureClaimedBuilderRunOwnership(ctx, run.ID, claimToken); err != nil {
+		return err
+	}
+
+	runtimeValidationCommand, err := DetectBuilderRuntimeValidationCommand(run, buildArtifacts)
+	if err != nil {
+		return finalizeClaimedBuilderRunFailure(
+			ctx,
+			run,
+			claimToken,
+			builderWorkerValidationErrorCode,
+			builderWorkerExecutionPlaneClass,
+			err.Error(),
+			true,
+		)
+	}
+	if len(runtimeValidationCommand) > 0 {
+		if err := updateClaimedBuilderRunState(ctx, run.ID, claimToken, entities.BuilderRunPhaseTesting, run.WorkspaceID, run.ExecutorHandleID); err != nil {
+			return err
+		}
+		if err := appendOwnedBuilderRunStatusEvent(ctx, run.ID, claimToken, entities.BuilderRunEventLevelInfo, "[system] running runtime validation\n"); err != nil {
+			return err
+		}
+		commandResult, err := builderWorkerRunFrontendCommand(ctx, workspace, BuilderFrontendExecutionStepValidate, runtimeValidationCommand, func(message string) error {
+			return appendOwnedBuilderRunLogEvent(ctx, run.ID, claimToken, message)
+		})
+		if err != nil {
+			return finalizeClaimedBuilderRunFailure(
+				ctx,
+				run,
+				claimToken,
+				builderWorkerValidationErrorCode,
+				builderWorkerExecutionPlaneClass,
+				err.Error(),
+				true,
+			)
+		}
+		if commandResult.ExitCode != 0 {
+			return finalizeClaimedBuilderRunFailure(
+				ctx,
+				run,
+				claimToken,
+				builderWorkerValidationErrorCode,
+				builderWorkerExecutionPlaneClass,
+				fmt.Sprintf("validate command exited with status %d", commandResult.ExitCode),
+				true,
+			)
+		}
+		if err := appendOwnedBuilderRunStatusEvent(ctx, run.ID, claimToken, entities.BuilderRunEventLevelInfo, "[system] runtime validation completed\n"); err != nil {
+			return err
+		}
+		if err := ensureClaimedBuilderRunOwnership(ctx, run.ID, claimToken); err != nil {
+			return err
+		}
 	}
 
 	snapshotRun := *run
@@ -826,7 +960,7 @@ func detectBuilderWorkerOutputRootFromWorkspaceListing(listing *models.ListFiles
 		return "", errors.New("builder workspace listing is required")
 	}
 
-	for _, candidate := range []string{builderBuildOutputRootDist, builderBuildOutputRootBuild} {
+	for _, candidate := range []string{builderBuildOutputRootDist, builderBuildOutputRootBuild, builderBuildOutputRootNext} {
 		for _, file := range listing.Files {
 			if file.Type == "dir" && file.Name == candidate {
 				return candidate, nil

@@ -1,7 +1,6 @@
 import {
   Activity,
   Blocks,
-  Bot,
   Box,
   FolderGit2,
   GalleryVerticalEnd,
@@ -10,6 +9,7 @@ import {
   Puzzle,
   Settings2,
   ShipWheel,
+  Sparkles,
   Trash2,
   User,
   Users,
@@ -80,7 +80,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: "Container Registries", url: "/container-registries", icon: Warehouse, hidden: isViewer },
     { title: "Plugins", url: "/plugins", icon: Puzzle, hidden: isViewer },
     { title: "Members", url: "/members", icon: Users, hidden: isViewer },
-    { title: "Builder", url: `/projects/${activeProjectId}/builder-sessions`, icon: Bot, hidden: !activeProjectId },
+    { title: "Builder", url: `/projects/${activeProjectId}/builder-sessions`, icon: Sparkles, hidden: !activeProjectId },
   ]
 
   // Global group: cross-project modules

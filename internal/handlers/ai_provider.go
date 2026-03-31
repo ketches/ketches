@@ -41,6 +41,10 @@ func CreateCurrentUserAIProvider(c *gin.Context) {
 
 	provider, err := services.CreateUserAIProvider(claims.UserID, &req)
 	if err != nil {
+		if errors.Is(err, services.ErrInvalidBuilderRegistryAlias) {
+			api.Error(c, http.StatusBadRequest, err)
+			return
+		}
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -63,6 +67,10 @@ func UpdateCurrentUserAIProvider(c *gin.Context) {
 
 	provider, err := services.UpdateUserAIProvider(claims.UserID, c.Param("providerID"), &req)
 	if err != nil {
+		if errors.Is(err, services.ErrInvalidBuilderRegistryAlias) {
+			api.Error(c, http.StatusBadRequest, err)
+			return
+		}
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -108,6 +116,10 @@ func CreateProjectAIProvider(c *gin.Context) {
 
 	provider, err := services.CreateProjectAIProvider(projectID, &req)
 	if err != nil {
+		if errors.Is(err, services.ErrInvalidBuilderRegistryAlias) {
+			api.Error(c, http.StatusBadRequest, err)
+			return
+		}
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -126,6 +138,10 @@ func UpdateProjectAIProvider(c *gin.Context) {
 
 	provider, err := services.UpdateProjectAIProvider(projectID, c.Param("providerID"), &req)
 	if err != nil {
+		if errors.Is(err, services.ErrInvalidBuilderRegistryAlias) {
+			api.Error(c, http.StatusBadRequest, err)
+			return
+		}
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

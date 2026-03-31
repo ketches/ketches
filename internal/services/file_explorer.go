@@ -54,7 +54,7 @@ func execCommandWithContext(ctx context.Context, appCtx *models.AppContext, inst
 			TTY:       false,
 		}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	exec, err := newRemoteCommandExecutor(config, "POST", req.URL())
 	if err != nil {
 		return "", "", err
 	}
@@ -97,7 +97,7 @@ func execCommandWithStdin(appCtx *models.AppContext, instanceName, containerName
 			TTY:       false,
 		}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	exec, err := newRemoteCommandExecutor(config, "POST", req.URL())
 	if err != nil {
 		return "", "", err
 	}
@@ -386,15 +386,16 @@ echo "$s"`, path)
 func WriteFile(appCtx *models.AppContext, instanceName, containerName, path, content string) error {
 	path = filepath.Clean(path)
 
-	// Pre-check if the path is writable
-	if err := CheckWritable(appCtx, instanceName, containerName, path); err != nil {
-		return err
-	}
-
 	// Ensure parent directory exists
 	dir := filepath.Dir(path)
 	if dir != "/" && dir != "." {
-		execCommand(appCtx, instanceName, containerName, []string{"mkdir", "-p", dir})
+		_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"mkdir", "-p", dir})
+		if err != nil {
+			if strings.Contains(stderr, "Read-only file system") {
+				return fmt.Errorf("read-only file system: cannot create %s", dir)
+			}
+			return fmt.Errorf("failed to create parent directory: %v, stderr: %s", err, stderr)
+		}
 	}
 
 	// Use cat with stdin to write file content (handles special characters safely)

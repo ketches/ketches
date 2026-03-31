@@ -146,6 +146,40 @@ func TestBuilderExecutorContract(t *testing.T) {
 	assert.Equal(t, []string{"ensure:handle-1", "query:handle-1", "cancel:handle-1"}, fake.callLog)
 }
 
+func TestBuilderWorkspaceExecutorRequestCarriesExecutionImage(t *testing.T) {
+	fake := &fakeBuilderWorkspaceExecutor{
+		ensureSnapshot: &builderExecutorSnapshot{
+			HandleID:      "handle-1",
+			Kind:          entities.BuilderExecutorHandleKindWorkspacePod,
+			Status:        entities.BuilderExecutorHandleStatusActive,
+			ClusterID:     "cluster-1",
+			Namespace:     "builder-ns",
+			WorkloadName:  "builder-workspace-session-1",
+			ContainerName: "workspace",
+		},
+	}
+
+	var executor builderWorkspaceExecutor = fake
+	_, err := executor.EnsureWorkspace(context.Background(), builderWorkspaceExecutorRequest{
+		Handle: &entities.BuilderExecutorHandle{
+			ID:        "handle-1",
+			SessionID: "session-1",
+			Kind:      entities.BuilderExecutorHandleKindWorkspacePod,
+		},
+		SessionID:      "session-1",
+		ProjectID:      "project-1",
+		ProjectSlug:    "demo",
+		BuildEnvID:     "env-1",
+		BuildEnvSlug:   "build-env",
+		ClusterID:      "cluster-1",
+		Namespace:      "builder-ns",
+		ExecutionImage: "ghcr.io/ketches/builder-node-static:2026-03-29",
+		StorageRequest: builderWorkspaceStorageRequest,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "ghcr.io/ketches/builder-node-static:2026-03-29", fake.request.ExecutionImage)
+}
+
 func TestBuilderExecutorReconcileSnapshot(t *testing.T) {
 	t.Run("reconciles a workspace anchor from the executor snapshot", func(t *testing.T) {
 		workspace := &entities.BuilderWorkspace{

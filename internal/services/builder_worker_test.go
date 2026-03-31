@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -876,6 +877,441 @@ func TestBuilderWorkerExecutesFrontendBuildPlan(t *testing.T) {
 		assert.Equal(t, entities.BuilderRunStatusSucceeded, persistedRun.Status)
 	})
 
+	t.Run("successful go api execution collects build directory artifacts", func(t *testing.T) {
+		setupBuilderSessionServiceTestDB(t)
+		run, workspace, claimToken := seedClaimedBuilderWorkerExecutionFixture(t, "go-api-success")
+		resetBuilderWorkerExecutionHooks(t)
+		run.PlannedProjectKind = stringPtr("go_api_service")
+
+		builderWorkerProvisionWorkspace = func(ctx context.Context, sessionID string) (*entities.BuilderWorkspace, error) {
+			return workspace, nil
+		}
+		builderWorkerLoadConversationMessages = func(ctx context.Context, sessionID string) ([]BuilderAgentMessage, error) {
+			return []BuilderAgentMessage{{Role: "user", Content: "Build a Go API service."}}, nil
+		}
+		builderWorkerGenerateFiles = func(ctx context.Context, messages []BuilderAgentMessage, _ string, _ string) (*BuilderAgentResult, error) {
+			return &BuilderAgentResult{
+				AssistantMessage: "Go API build completed successfully.",
+				Files: []BuilderAgentFileWrite{
+					{Path: "go.mod", Content: "module demo\n\ngo 1.25.0\n"},
+					{Path: "main.go", Content: "package main\nfunc main() {}\n"},
+				},
+			}, nil
+		}
+		builderWorkerWriteAgentFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, actualRun *entities.BuilderRun, files []BuilderAgentFileWrite) error {
+			return nil
+		}
+
+		rootListingCalls := 0
+		builderWorkerListWorkspaceFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, requestedPath string) (*models.ListFilesResponse, error) {
+			switch requestedPath {
+			case workspace.WorkspaceRoot:
+				rootListingCalls++
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot,
+					Files: []models.FileInfo{
+						{Name: "go.mod", Type: "file", Size: 24},
+						{Name: "main.go", Type: "file", Size: 28},
+						{Name: "build", Type: "dir"},
+					},
+				}, nil
+			case workspace.WorkspaceRoot + "/build":
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot + "/build",
+					Files: []models.FileInfo{
+						{Name: "app", Type: "file", Size: 4096},
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected workspace listing path %q", requestedPath)
+				return nil, nil
+			}
+		}
+
+		observedCommands := make([]string, 0, 3)
+		builderWorkerRunFrontendCommand = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, step BuilderFrontendExecutionStep, command []string, appendLog func(string) error) (BuilderFrontendCommandResult, error) {
+			observedCommands = append(observedCommands, strings.Join(command, " "))
+			switch step {
+			case BuilderFrontendExecutionStepInstall:
+				require.NoError(t, appendLog("go mod download complete\n"))
+				return BuilderFrontendCommandResult{ExitCode: 0}, nil
+			case BuilderFrontendExecutionStepBuild:
+				require.NoError(t, appendLog("go build complete\n"))
+				return BuilderFrontendCommandResult{ExitCode: 0}, nil
+			case BuilderFrontendExecutionStepValidate:
+				require.NoError(t, appendLog("go runtime validation complete\n"))
+				return BuilderFrontendCommandResult{ExitCode: 0}, nil
+			default:
+				t.Fatalf("unexpected execution step %q", step)
+				return BuilderFrontendCommandResult{}, nil
+			}
+		}
+		builderWorkerPublishOutputSnapshot = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, actualRun *entities.BuilderRun) (*entities.BuilderOutputSnapshot, error) {
+			return &entities.BuilderOutputSnapshot{ID: "snapshot-go-api", RunID: run.ID, SessionID: run.SessionID}, nil
+		}
+
+		worker := NewBuilderWorker()
+		err := worker.runClaimedExecution(context.Background(), run, claimToken)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{
+			"go mod download",
+			"sh -lc mkdir -p build && go build -o build/app .",
+			`sh -lc PORT=18080 ./build/app >/tmp/builder-runtime.log 2>&1 & pid=$!; sleep 2; if kill -0 "$pid" 2>/dev/null; then kill "$pid"; wait "$pid" || true; exit 0; fi; wait "$pid"; status=$?; if [ -f /tmp/builder-runtime.log ]; then cat /tmp/builder-runtime.log; fi; exit ${status:-1}`,
+		}, observedCommands)
+		assert.GreaterOrEqual(t, rootListingCalls, 2)
+
+		var artifacts []entities.BuilderArtifact
+		require.NoError(t, db.DB.Where("session_id = ? AND workspace_id = ?", workspace.SessionID, workspace.ID).Order("path ASC").Find(&artifacts).Error)
+		require.Len(t, artifacts, 3)
+		assert.Equal(t, entities.BuilderArtifactKindBuildOutput, artifacts[0].Kind)
+		assert.Equal(t, "build/app", artifacts[0].Path)
+		assert.JSONEq(t, `{"size_bytes":4096,"output_root":"build"}`, artifacts[0].MetadataJSON)
+	})
+
+	t.Run("go api runtime validation failure finalizes run as failed", func(t *testing.T) {
+		setupBuilderSessionServiceTestDB(t)
+		run, workspace, claimToken := seedClaimedBuilderWorkerExecutionFixture(t, "go-api-runtime-failure")
+		resetBuilderWorkerExecutionHooks(t)
+
+		builderWorkerProvisionWorkspace = func(ctx context.Context, sessionID string) (*entities.BuilderWorkspace, error) {
+			return workspace, nil
+		}
+		builderWorkerLoadConversationMessages = func(ctx context.Context, sessionID string) ([]BuilderAgentMessage, error) {
+			return []BuilderAgentMessage{{Role: "user", Content: "Build a Go API service."}}, nil
+		}
+		run.PlannedProjectKind = stringPtr("go_api_service")
+		builderWorkerGenerateFiles = func(ctx context.Context, messages []BuilderAgentMessage, _ string, _ string) (*BuilderAgentResult, error) {
+			return &BuilderAgentResult{
+				AssistantMessage: "Go API build completed successfully.",
+				Files: []BuilderAgentFileWrite{
+					{Path: "go.mod", Content: "module demo\n\ngo 1.25.0\n"},
+					{Path: "main.go", Content: "package main\nfunc main() {}\n"},
+				},
+			}, nil
+		}
+		builderWorkerWriteAgentFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, actualRun *entities.BuilderRun, files []BuilderAgentFileWrite) error {
+			return nil
+		}
+		builderWorkerListWorkspaceFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, requestedPath string) (*models.ListFilesResponse, error) {
+			switch requestedPath {
+			case workspace.WorkspaceRoot:
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot,
+					Files: []models.FileInfo{
+						{Name: "go.mod", Type: "file", Size: 24},
+						{Name: "main.go", Type: "file", Size: 28},
+						{Name: "build", Type: "dir"},
+					},
+				}, nil
+			case workspace.WorkspaceRoot + "/build":
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot + "/build",
+					Files: []models.FileInfo{
+						{Name: "app", Type: "file", Size: 4096},
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected workspace listing path %q", requestedPath)
+				return nil, nil
+			}
+		}
+		builderWorkerRunFrontendCommand = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, step BuilderFrontendExecutionStep, command []string, appendLog func(string) error) (BuilderFrontendCommandResult, error) {
+			switch step {
+			case BuilderFrontendExecutionStepInstall, BuilderFrontendExecutionStepBuild:
+				return BuilderFrontendCommandResult{ExitCode: 0}, nil
+			case BuilderFrontendExecutionStepValidate:
+				require.NoError(t, appendLog("runtime process exited immediately\n"))
+				return BuilderFrontendCommandResult{ExitCode: 7}, nil
+			default:
+				t.Fatalf("unexpected execution step %q", step)
+				return BuilderFrontendCommandResult{}, nil
+			}
+		}
+
+		worker := NewBuilderWorker()
+		err := worker.runClaimedExecution(context.Background(), run, claimToken)
+		require.NoError(t, err)
+
+		var persistedRun entities.BuilderRun
+		require.NoError(t, db.DB.First(&persistedRun, "id = ?", run.ID).Error)
+		assert.Equal(t, entities.BuilderRunStatusFailed, persistedRun.Status)
+		assert.Contains(t, persistedRun.ErrorMessage, "validate command exited with status 7")
+	})
+
+	t.Run("successful python api execution collects build directory artifacts", func(t *testing.T) {
+		setupBuilderSessionServiceTestDB(t)
+		run, workspace, claimToken := seedClaimedBuilderWorkerExecutionFixture(t, "python-api-success")
+		resetBuilderWorkerExecutionHooks(t)
+
+		builderWorkerProvisionWorkspace = func(ctx context.Context, sessionID string) (*entities.BuilderWorkspace, error) {
+			return workspace, nil
+		}
+		builderWorkerLoadConversationMessages = func(ctx context.Context, sessionID string) ([]BuilderAgentMessage, error) {
+			return []BuilderAgentMessage{{Role: "user", Content: "Build a Python API service."}}, nil
+		}
+		run.PlannedProjectKind = stringPtr("python_api_service")
+		builderWorkerGenerateFiles = func(ctx context.Context, messages []BuilderAgentMessage, _ string, _ string) (*BuilderAgentResult, error) {
+			return &BuilderAgentResult{
+				AssistantMessage: "Python API build completed successfully.",
+				Files: []BuilderAgentFileWrite{
+					{Path: "requirements.txt", Content: "fastapi==0.116.0\n"},
+					{Path: "app.py", Content: "from fastapi import FastAPI\napp = FastAPI()\n"},
+				},
+			}, nil
+		}
+		builderWorkerWriteAgentFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, actualRun *entities.BuilderRun, files []BuilderAgentFileWrite) error {
+			return nil
+		}
+
+		rootListingCalls := 0
+		builderWorkerListWorkspaceFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, requestedPath string) (*models.ListFilesResponse, error) {
+			switch requestedPath {
+			case workspace.WorkspaceRoot:
+				rootListingCalls++
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot,
+					Files: []models.FileInfo{
+						{Name: "requirements.txt", Type: "file", Size: 16},
+						{Name: "app.py", Type: "file", Size: 44},
+						{Name: "build", Type: "dir"},
+					},
+				}, nil
+			case workspace.WorkspaceRoot + "/build":
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot + "/build",
+					Files: []models.FileInfo{
+						{Name: "app.py", Type: "file", Size: 44},
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected workspace listing path %q", requestedPath)
+				return nil, nil
+			}
+		}
+
+		observedCommands := make([]string, 0, 3)
+		builderWorkerRunFrontendCommand = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, step BuilderFrontendExecutionStep, command []string, appendLog func(string) error) (BuilderFrontendCommandResult, error) {
+			observedCommands = append(observedCommands, strings.Join(command, " "))
+			switch step {
+			case BuilderFrontendExecutionStepInstall:
+				require.NoError(t, appendLog("pip install complete\n"))
+				return BuilderFrontendCommandResult{ExitCode: 0}, nil
+			case BuilderFrontendExecutionStepBuild:
+				require.NoError(t, appendLog("python build staging complete\n"))
+				return BuilderFrontendCommandResult{ExitCode: 0}, nil
+			case BuilderFrontendExecutionStepValidate:
+				require.NoError(t, appendLog("python import validation complete\n"))
+				return BuilderFrontendCommandResult{ExitCode: 0}, nil
+			default:
+				t.Fatalf("unexpected execution step %q", step)
+				return BuilderFrontendCommandResult{}, nil
+			}
+		}
+		builderWorkerPublishOutputSnapshot = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, actualRun *entities.BuilderRun) (*entities.BuilderOutputSnapshot, error) {
+			return &entities.BuilderOutputSnapshot{ID: "snapshot-python-api", RunID: run.ID, SessionID: run.SessionID}, nil
+		}
+
+		worker := NewBuilderWorker()
+		err := worker.runClaimedExecution(context.Background(), run, claimToken)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{
+			"pip install -r requirements.txt",
+			"sh -lc mkdir -p build && if [ -f app.py ]; then cp app.py build/app.py; else cp main.py build/main.py; fi",
+			`sh -lc if [ -f build/app.py ]; then python -c "import importlib.util; path='build/app.py'; spec=importlib.util.spec_from_file_location('builder_app', path); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)"; else python -c "import importlib.util; path='build/main.py'; spec=importlib.util.spec_from_file_location('builder_app', path); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)"; fi`,
+		}, observedCommands)
+		assert.GreaterOrEqual(t, rootListingCalls, 2)
+
+		var artifacts []entities.BuilderArtifact
+		require.NoError(t, db.DB.Where("session_id = ? AND workspace_id = ?", workspace.SessionID, workspace.ID).Order("path ASC").Find(&artifacts).Error)
+		require.Len(t, artifacts, 3)
+		artifactsByPath := make(map[string]entities.BuilderArtifact, len(artifacts))
+		for _, artifact := range artifacts {
+			artifactsByPath[artifact.Path] = artifact
+		}
+		buildArtifact, ok := artifactsByPath["build/app.py"]
+		require.True(t, ok)
+		assert.Equal(t, entities.BuilderArtifactKindBuildOutput, buildArtifact.Kind)
+		assert.JSONEq(t, `{"size_bytes":44,"output_root":"build"}`, buildArtifact.MetadataJSON)
+	})
+
+	t.Run("successful node ssr execution publishes delivery-only next snapshot", func(t *testing.T) {
+		setupBuilderSessionServiceTestDB(t)
+		setBuilderOutputSnapshotServiceConfigForTest(t)
+		run, workspace, claimToken := seedClaimedBuilderWorkerExecutionFixture(t, "node-ssr-success")
+		resetBuilderWorkerExecutionHooks(t)
+
+		sourceRoot := t.TempDir()
+		writeBuilderOutputSnapshotSourceFiles(t, sourceRoot, map[string]string{
+			".next/routes-manifest.json": "{\"version\":1}\n",
+			".next/static/app.js":        "console.log('ssr');\n",
+		})
+		setBuilderOutputSnapshotSourceForTest(t, sourceRoot)
+
+		builderWorkerProvisionWorkspace = func(ctx context.Context, sessionID string) (*entities.BuilderWorkspace, error) {
+			return workspace, nil
+		}
+		builderWorkerLoadConversationMessages = func(ctx context.Context, sessionID string) ([]BuilderAgentMessage, error) {
+			return []BuilderAgentMessage{{Role: "user", Content: "Build a Next.js SSR app."}}, nil
+		}
+		run.PlannedProjectKind = stringPtr("node_ssr_app")
+		builderWorkerGenerateFiles = func(ctx context.Context, messages []BuilderAgentMessage, _ string, _ string) (*BuilderAgentResult, error) {
+			return &BuilderAgentResult{
+				AssistantMessage: "Node SSR build completed successfully.",
+				Files: []BuilderAgentFileWrite{
+					{Path: "package.json", Content: "{\"name\":\"demo\"}"},
+					{Path: "package-lock.json", Content: "{}"},
+				},
+			}, nil
+		}
+		builderWorkerWriteAgentFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, actualRun *entities.BuilderRun, files []BuilderAgentFileWrite) error {
+			return nil
+		}
+		builderWorkerListWorkspaceFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, requestedPath string) (*models.ListFilesResponse, error) {
+			switch requestedPath {
+			case workspace.WorkspaceRoot:
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot,
+					Files: []models.FileInfo{
+						{Name: "package.json", Type: "file", Size: 40},
+						{Name: "package-lock.json", Type: "file", Size: 20},
+						{Name: ".next", Type: "dir"},
+					},
+				}, nil
+			case workspace.WorkspaceRoot + "/.next":
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot + "/.next",
+					Files: []models.FileInfo{
+						{Name: "routes-manifest.json", Type: "file", Size: 14},
+						{Name: "static", Type: "dir"},
+					},
+				}, nil
+			case workspace.WorkspaceRoot + "/.next/static":
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot + "/.next/static",
+					Files: []models.FileInfo{
+						{Name: "app.js", Type: "file", Size: 19},
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected workspace listing path %q", requestedPath)
+				return nil, nil
+			}
+		}
+		builderWorkerRunFrontendCommand = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, step BuilderFrontendExecutionStep, command []string, appendLog func(string) error) (BuilderFrontendCommandResult, error) {
+			return BuilderFrontendCommandResult{ExitCode: 0}, nil
+		}
+		builderWorkerPublishOutputSnapshot = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, actualRun *entities.BuilderRun) (*entities.BuilderOutputSnapshot, error) {
+			assert.Equal(t, entities.BuilderRunStatusSucceeded, actualRun.Status)
+			return PublishBuilderOutputSnapshot(ctx, actualWorkspace, actualRun)
+		}
+
+		worker := NewBuilderWorker()
+		err := worker.runClaimedExecution(context.Background(), run, claimToken)
+		require.NoError(t, err)
+
+		var snapshots []entities.BuilderOutputSnapshot
+		require.NoError(t, db.DB.Where("run_id = ?", run.ID).Find(&snapshots).Error)
+		require.Len(t, snapshots, 1)
+		assert.Equal(t, entities.BuilderOutputSnapshotStatusDeliveryOnly, snapshots[0].Status)
+		assert.Equal(t, ".next", snapshots[0].OutputRoot)
+		assert.Empty(t, snapshots[0].DefaultEntryPath)
+	})
+
+	t.Run("successful node ssr standalone execution runs runtime validation before publishing snapshot", func(t *testing.T) {
+		setupBuilderSessionServiceTestDB(t)
+		setBuilderOutputSnapshotServiceConfigForTest(t)
+		run, workspace, claimToken := seedClaimedBuilderWorkerExecutionFixture(t, "node-ssr-standalone-success")
+		resetBuilderWorkerExecutionHooks(t)
+
+		sourceRoot := t.TempDir()
+		writeBuilderOutputSnapshotSourceFiles(t, sourceRoot, map[string]string{
+			".next/routes-manifest.json": "{\"version\":1}\n",
+			".next/standalone/server.js": "console.log('server');\n",
+			".next/static/app.js":        "console.log('ssr');\n",
+		})
+		setBuilderOutputSnapshotSourceForTest(t, sourceRoot)
+
+		builderWorkerProvisionWorkspace = func(ctx context.Context, sessionID string) (*entities.BuilderWorkspace, error) {
+			return workspace, nil
+		}
+		builderWorkerLoadConversationMessages = func(ctx context.Context, sessionID string) ([]BuilderAgentMessage, error) {
+			return []BuilderAgentMessage{{Role: "user", Content: "Build a Next.js SSR app with standalone output."}}, nil
+		}
+		run.PlannedProjectKind = stringPtr("node_ssr_app")
+		builderWorkerGenerateFiles = func(ctx context.Context, messages []BuilderAgentMessage, _ string, _ string) (*BuilderAgentResult, error) {
+			return &BuilderAgentResult{
+				AssistantMessage: "Node SSR build completed successfully.",
+				Files: []BuilderAgentFileWrite{
+					{Path: "package.json", Content: "{\"name\":\"demo\"}"},
+					{Path: "package-lock.json", Content: "{}"},
+				},
+			}, nil
+		}
+		builderWorkerWriteAgentFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, actualRun *entities.BuilderRun, files []BuilderAgentFileWrite) error {
+			return nil
+		}
+		builderWorkerListWorkspaceFiles = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, requestedPath string) (*models.ListFilesResponse, error) {
+			switch requestedPath {
+			case workspace.WorkspaceRoot:
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot,
+					Files: []models.FileInfo{
+						{Name: "package.json", Type: "file", Size: 40},
+						{Name: "package-lock.json", Type: "file", Size: 20},
+						{Name: ".next", Type: "dir"},
+					},
+				}, nil
+			case workspace.WorkspaceRoot + "/.next":
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot + "/.next",
+					Files: []models.FileInfo{
+						{Name: "routes-manifest.json", Type: "file", Size: 14},
+						{Name: "standalone", Type: "dir"},
+						{Name: "static", Type: "dir"},
+					},
+				}, nil
+			case workspace.WorkspaceRoot + "/.next/standalone":
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot + "/.next/standalone",
+					Files: []models.FileInfo{
+						{Name: "server.js", Type: "file", Size: 24},
+					},
+				}, nil
+			case workspace.WorkspaceRoot + "/.next/static":
+				return &models.ListFilesResponse{
+					Path: workspace.WorkspaceRoot + "/.next/static",
+					Files: []models.FileInfo{
+						{Name: "app.js", Type: "file", Size: 19},
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected workspace listing path %q", requestedPath)
+				return nil, nil
+			}
+		}
+
+		observedCommands := make([]string, 0, 3)
+		builderWorkerRunFrontendCommand = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, step BuilderFrontendExecutionStep, command []string, appendLog func(string) error) (BuilderFrontendCommandResult, error) {
+			observedCommands = append(observedCommands, strings.Join(command, " "))
+			return BuilderFrontendCommandResult{ExitCode: 0}, nil
+		}
+		builderWorkerPublishOutputSnapshot = func(ctx context.Context, actualWorkspace *entities.BuilderWorkspace, actualRun *entities.BuilderRun) (*entities.BuilderOutputSnapshot, error) {
+			return PublishBuilderOutputSnapshot(ctx, actualWorkspace, actualRun)
+		}
+
+		worker := NewBuilderWorker()
+		err := worker.runClaimedExecution(context.Background(), run, claimToken)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{
+			"npm ci",
+			"npm run build",
+			`sh -lc PORT=18081 node .next/standalone/server.js >/tmp/builder-runtime.log 2>&1 & pid=$!; sleep 3; if kill -0 "$pid" 2>/dev/null; then kill "$pid"; wait "$pid" || true; exit 0; fi; wait "$pid"; status=$?; if [ -f /tmp/builder-runtime.log ]; then cat /tmp/builder-runtime.log; fi; exit ${status:-1}`,
+		}, observedCommands)
+	})
+
 	t.Run("snapshot publication failure finalizes run as failed", func(t *testing.T) {
 		setupBuilderSessionServiceTestDB(t)
 		run, workspace, claimToken := seedClaimedBuilderWorkerExecutionFixture(t, "snapshot-failure")
@@ -1110,6 +1546,46 @@ func TestBuilderWorkerExecutesFrontendBuildPlan(t *testing.T) {
 		require.NoError(t, db.DB.Model(&entities.BuilderRunEvent{}).Where("run_id = ? AND kind = ?", run.ID, entities.BuilderRunEventKindPreview).Count(&previewEventCount).Error)
 		assert.Equal(t, int64(0), previewEventCount)
 	})
+}
+
+func TestBuilderWorkerRunClaimedExecutionSkipsWorkspaceProvisioningForReplyOnlyTurns(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+	run, workspace, claimToken := seedClaimedBuilderWorkerExecutionFixture(t, "provision-hook")
+	resetBuilderWorkerExecutionHooks(t)
+
+	provisionCalled := false
+	builderWorkerProvisionWorkspace = func(ctx context.Context, sessionID string) (*entities.BuilderWorkspace, error) {
+		provisionCalled = true
+		return workspace, nil
+	}
+	builderWorkerLoadConversationMessages = func(ctx context.Context, sessionID string) ([]BuilderAgentMessage, error) {
+		return []BuilderAgentMessage{{Role: "user", Content: "Build the generated app."}}, nil
+	}
+	builderWorkerGenerateFiles = func(ctx context.Context, messages []BuilderAgentMessage, _ string, _ string) (*BuilderAgentResult, error) {
+		return &BuilderAgentResult{
+			Action:           BuilderAgentActionReplyOnly,
+			AssistantMessage: "No files.",
+			Files:            nil,
+		}, nil
+	}
+
+	worker := NewBuilderWorker()
+	err := worker.runClaimedExecution(context.Background(), run, claimToken)
+	require.NoError(t, err)
+	assert.False(t, provisionCalled)
+
+	var persistedRun entities.BuilderRun
+	require.NoError(t, db.DB.First(&persistedRun, "id = ?", run.ID).Error)
+	assert.Equal(t, entities.BuilderRunStatusSucceeded, persistedRun.Status)
+	assert.NotContains(t, persistedRun.ExecutionLog, "run completed: no files generated")
+
+	var messages []entities.BuilderMessage
+	require.NoError(t, db.DB.Where("session_id = ?", run.SessionID).Order("created_at ASC, id ASC").Find(&messages).Error)
+	require.Len(t, messages, 3)
+	assert.Equal(t, entities.BuilderMessageRoleAssistant, messages[1].Role)
+	assert.Equal(t, "No files.", messages[1].Content)
+	assert.Equal(t, entities.BuilderMessageRoleSystem, messages[2].Role)
+	assert.Contains(t, messages[2].Content, "replied without workspace changes")
 }
 
 func TestBuilderWorkerCancelsDuringExecution(t *testing.T) {

@@ -99,6 +99,7 @@ func TestInitConfig_DefaultsBuilderSettings(t *testing.T) {
 	t.Setenv("BUILDER_PROVIDER_REGISTRY_JSON", "")
 	t.Setenv("BUILDER_MODEL_PROFILE_REGISTRY_JSON", "")
 	t.Setenv("BUILDER_EXECUTOR_POLICY_REGISTRY_JSON", "")
+	t.Setenv("BUILDER_EXECUTION_CATALOG_JSON", "")
 	t.Setenv("BUILDER_DEFAULT_PROVIDER_KEY", "")
 	t.Setenv("BUILDER_DEFAULT_MODEL_PROFILE_KEY", "")
 	t.Setenv("BUILDER_DEFAULT_EXECUTOR_POLICY_KEY", "")
@@ -120,6 +121,9 @@ func TestInitConfig_DefaultsBuilderSettings(t *testing.T) {
 	if Config.BuilderExecutorPolicyRegistryJSON != "" {
 		t.Fatalf("expected default builder executor policy registry JSON %q, got %q", "", Config.BuilderExecutorPolicyRegistryJSON)
 	}
+	if Config.BuilderExecutionCatalogJSON != "" {
+		t.Fatalf("expected default builder execution catalog JSON %q, got %q", "", Config.BuilderExecutionCatalogJSON)
+	}
 	if Config.BuilderDefaultProviderKey != "default" {
 		t.Fatalf("expected default builder provider key %q, got %q", "default", Config.BuilderDefaultProviderKey)
 	}
@@ -138,8 +142,8 @@ func TestInitConfig_DefaultsBuilderSettings(t *testing.T) {
 	if Config.BuilderAgentModel != "" {
 		t.Fatalf("expected default builder agent model %q, got %q", "", Config.BuilderAgentModel)
 	}
-	if Config.BuilderWorkspaceImage != "" {
-		t.Fatalf("expected default builder workspace image %q, got %q", "", Config.BuilderWorkspaceImage)
+	if Config.BuilderWorkspaceImage != "node:22-bookworm" {
+		t.Fatalf("expected default builder workspace image %q, got %q", "node:22-bookworm", Config.BuilderWorkspaceImage)
 	}
 	if Config.BuilderWorkspaceRoot != "/workspace" {
 		t.Fatalf("expected default builder workspace root %q, got %q", "/workspace", Config.BuilderWorkspaceRoot)
@@ -158,6 +162,7 @@ func TestInitConfig_UsesBuilderEnvOverrides(t *testing.T) {
 	t.Setenv("BUILDER_PROVIDER_REGISTRY_JSON", `[{"key":"default","base_url":"https://registry.example.com"}]`)
 	t.Setenv("BUILDER_MODEL_PROFILE_REGISTRY_JSON", `[{"key":"builder-default","model":"gpt-5.4"}]`)
 	t.Setenv("BUILDER_EXECUTOR_POLICY_REGISTRY_JSON", `[{"key":"workspace-only","executor_kind":"workspace_pod"}]`)
+	t.Setenv("BUILDER_EXECUTION_CATALOG_JSON", `{"image_profiles":[{"key":"node-default","image":"node:22-bookworm"}],"executor_policies":[{"key":"workspace-only","executor_kind":"workspace_pod","image_profile_key":"node-default"}]}`)
 	t.Setenv("BUILDER_DEFAULT_PROVIDER_KEY", "openai-compatible-primary")
 	t.Setenv("BUILDER_DEFAULT_MODEL_PROFILE_KEY", "builder-fast")
 	t.Setenv("BUILDER_DEFAULT_EXECUTOR_POLICY_KEY", "workspace-plus-build")
@@ -178,6 +183,9 @@ func TestInitConfig_UsesBuilderEnvOverrides(t *testing.T) {
 	}
 	if Config.BuilderExecutorPolicyRegistryJSON != `[{"key":"workspace-only","executor_kind":"workspace_pod"}]` {
 		t.Fatalf("expected builder executor policy registry JSON override %q, got %q", `[{"key":"workspace-only","executor_kind":"workspace_pod"}]`, Config.BuilderExecutorPolicyRegistryJSON)
+	}
+	if Config.BuilderExecutionCatalogJSON != `{"image_profiles":[{"key":"node-default","image":"node:22-bookworm"}],"executor_policies":[{"key":"workspace-only","executor_kind":"workspace_pod","image_profile_key":"node-default"}]}` {
+		t.Fatalf("expected builder execution catalog JSON override %q, got %q", `{"image_profiles":[{"key":"node-default","image":"node:22-bookworm"}],"executor_policies":[{"key":"workspace-only","executor_kind":"workspace_pod","image_profile_key":"node-default"}]}`, Config.BuilderExecutionCatalogJSON)
 	}
 	if Config.BuilderDefaultProviderKey != "openai-compatible-primary" {
 		t.Fatalf("expected builder default provider key override %q, got %q", "openai-compatible-primary", Config.BuilderDefaultProviderKey)

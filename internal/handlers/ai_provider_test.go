@@ -81,6 +81,20 @@ type aiProviderAPIResponse struct {
 
 func TestCurrentUserAIProviderHandlers(t *testing.T) {
 	setupAIProviderHandlerTestDB(t)
+	originalConfig := app.Config
+	app.Config = app.AppConfig{
+		BuilderProviderRegistryJSON: `[
+			{"key":"anthropic-project","base_url":"https://api.anthropic.com","api_key":"shared-secret"},
+			{"key":"openai-user","base_url":"https://api.openai.com","api_key":"secret-key"}
+		]`,
+		BuilderModelProfileRegistryJSON: `[
+			{"key":"claude-sonnet-4","model":"claude-4-sonnet"},
+			{"key":"gpt-4.1","model":"gpt-4.1"}
+		]`,
+		BuilderDefaultProviderKey:     "anthropic-project",
+		BuilderDefaultModelProfileKey: "claude-sonnet-4",
+	}
+	t.Cleanup(func() { app.Config = originalConfig })
 
 	r := newAIProviderHandlerRouter("user-1", app.UserRoleUser)
 
@@ -96,6 +110,7 @@ func TestCurrentUserAIProviderHandlers(t *testing.T) {
 		"api_key":                   "secret-key",
 		"default_model_profile_key": "gpt-4.1",
 		"enabled":                   true,
+		"is_default":                true,
 	}
 	createBody, err := json.Marshal(createReqBody)
 	require.NoError(t, err)
@@ -111,6 +126,7 @@ func TestCurrentUserAIProviderHandlers(t *testing.T) {
 
 	var created models.AIProviderResponse
 	require.NoError(t, json.Unmarshal(createResp.Data, &created))
+	assert.True(t, created.IsDefault)
 
 	updateReqBody := map[string]any{
 		"provider_key":              "openai-user",
@@ -119,6 +135,7 @@ func TestCurrentUserAIProviderHandlers(t *testing.T) {
 		"api_key":                   "secret-key-2",
 		"default_model_profile_key": "gpt-4.1",
 		"enabled":                   true,
+		"is_default":                false,
 	}
 	updateBody, err := json.Marshal(updateReqBody)
 	require.NoError(t, err)
@@ -127,6 +144,11 @@ func TestCurrentUserAIProviderHandlers(t *testing.T) {
 	updateW := httptest.NewRecorder()
 	r.ServeHTTP(updateW, updateReq)
 	require.Equal(t, http.StatusOK, updateW.Code)
+	var updateResp aiProviderAPIResponse
+	require.NoError(t, json.Unmarshal(updateW.Body.Bytes(), &updateResp))
+	var updated models.AIProviderResponse
+	require.NoError(t, json.Unmarshal(updateResp.Data, &updated))
+	assert.False(t, updated.IsDefault)
 
 	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/v1/users/me/ai-providers/"+created.ID, nil)
 	deleteW := httptest.NewRecorder()
@@ -134,8 +156,82 @@ func TestCurrentUserAIProviderHandlers(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, deleteW.Code)
 }
 
+func TestCurrentUserAIProviderHandlersAllowDirectBuilderAliases(t *testing.T) {
+	setupAIProviderHandlerTestDB(t)
+	r := newAIProviderHandlerRouter("user-1", app.UserRoleUser)
+
+	t.Run("accepts arbitrary provider alias on create", func(t *testing.T) {
+		body, err := json.Marshal(map[string]any{
+			"provider_key":              "missing-provider",
+			"display_name":              "Broken Provider",
+			"base_url":                  "https://api.example.com",
+			"api_key":                   "secret-key",
+			"default_model_profile_key": "gpt-4.1",
+			"enabled":                   true,
+			"is_default":                true,
+		})
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/users/me/ai-providers", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusCreated, w.Code)
+		assert.Contains(t, w.Body.String(), "missing-provider")
+	})
+
+	t.Run("accepts arbitrary model key on update", func(t *testing.T) {
+		provider := entities.UserAIProvider{
+			ID:                     "user-provider-1",
+			UserID:                 "user-1",
+			ProviderKey:            "openai-user",
+			DisplayName:            "OpenAI Personal",
+			BaseURL:                "https://api.openai.com",
+			APIKey:                 "secret-key",
+			DefaultModelProfileKey: "gpt-4.1",
+			Enabled:                true,
+			IsDefault:              true,
+		}
+		require.NoError(t, db.DB.Create(&provider).Error)
+
+		body, err := json.Marshal(map[string]any{
+			"provider_key":              "openai-user",
+			"display_name":              "OpenAI Personal",
+			"base_url":                  "https://api.openai.com",
+			"api_key":                   "secret-key",
+			"default_model_profile_key": "missing-model",
+			"enabled":                   true,
+			"is_default":                true,
+		})
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/users/me/ai-providers/user-provider-1", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "missing-model")
+	})
+}
+
 func TestProjectAIProviderHandlers(t *testing.T) {
 	setupAIProviderHandlerTestDB(t)
+	originalConfig := app.Config
+	app.Config = app.AppConfig{
+		BuilderProviderRegistryJSON: `[
+			{"key":"anthropic-project","base_url":"https://api.anthropic.com","api_key":"shared-secret"},
+			{"key":"openai-user","base_url":"https://api.openai.com","api_key":"secret-key"}
+		]`,
+		BuilderModelProfileRegistryJSON: `[
+			{"key":"claude-sonnet-4","model":"claude-4-sonnet"},
+			{"key":"gpt-4.1","model":"gpt-4.1"}
+		]`,
+		BuilderDefaultProviderKey:     "anthropic-project",
+		BuilderDefaultModelProfileKey: "claude-sonnet-4",
+	}
+	t.Cleanup(func() { app.Config = originalConfig })
 
 	ownerRouter := newAIProviderHandlerRouter("owner-1", app.UserRoleUser)
 	viewerRouter := newAIProviderHandlerRouter("user-1", app.UserRoleUser)
@@ -152,6 +248,7 @@ func TestProjectAIProviderHandlers(t *testing.T) {
 		"api_key":                   "shared-secret",
 		"default_model_profile_key": "claude-sonnet-4",
 		"enabled":                   true,
+		"is_default":                true,
 	}
 	createBody, err := json.Marshal(createReqBody)
 	require.NoError(t, err)
@@ -174,6 +271,7 @@ func TestProjectAIProviderHandlers(t *testing.T) {
 
 	var created models.AIProviderResponse
 	require.NoError(t, json.Unmarshal(ownerResp.Data, &created))
+	assert.True(t, created.IsDefault)
 
 	updateReqBody := map[string]any{
 		"provider_key":              "anthropic-project",
@@ -182,6 +280,7 @@ func TestProjectAIProviderHandlers(t *testing.T) {
 		"api_key":                   "shared-secret-2",
 		"default_model_profile_key": "claude-sonnet-4",
 		"enabled":                   true,
+		"is_default":                false,
 	}
 	updateBody, err := json.Marshal(updateReqBody)
 	require.NoError(t, err)
@@ -190,6 +289,11 @@ func TestProjectAIProviderHandlers(t *testing.T) {
 	ownerUpdateW := httptest.NewRecorder()
 	ownerRouter.ServeHTTP(ownerUpdateW, ownerUpdateReq)
 	require.Equal(t, http.StatusOK, ownerUpdateW.Code)
+	var ownerUpdateResp aiProviderAPIResponse
+	require.NoError(t, json.Unmarshal(ownerUpdateW.Body.Bytes(), &ownerUpdateResp))
+	var updated models.AIProviderResponse
+	require.NoError(t, json.Unmarshal(ownerUpdateResp.Data, &updated))
+	assert.False(t, updated.IsDefault)
 
 	viewerUpdateReq := httptest.NewRequest(http.MethodPut, "/api/v1/projects/project-1/ai-providers/"+created.ID, bytes.NewReader(updateBody))
 	viewerUpdateReq.Header.Set("Content-Type", "application/json")
@@ -206,6 +310,92 @@ func TestProjectAIProviderHandlers(t *testing.T) {
 	viewerDeleteW := httptest.NewRecorder()
 	viewerRouter.ServeHTTP(viewerDeleteW, viewerDeleteReq)
 	require.Equal(t, http.StatusForbidden, viewerDeleteW.Code)
+}
+
+func TestProjectAIProviderHandlersAllowDirectBuilderAliases(t *testing.T) {
+	setupAIProviderHandlerTestDB(t)
+	ownerRouter := newAIProviderHandlerRouter("owner-1", app.UserRoleUser)
+
+	t.Run("accepts arbitrary provider alias on create", func(t *testing.T) {
+		body, err := json.Marshal(map[string]any{
+			"provider_key":              "missing-provider",
+			"display_name":              "Broken Provider",
+			"base_url":                  "https://api.example.com",
+			"api_key":                   "shared-secret",
+			"default_model_profile_key": "claude-sonnet-4",
+			"enabled":                   true,
+			"is_default":                true,
+		})
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/ai-providers", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		ownerRouter.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusCreated, w.Code)
+		assert.Contains(t, w.Body.String(), "missing-provider")
+	})
+
+	t.Run("accepts arbitrary model key on update", func(t *testing.T) {
+		provider := entities.ProjectAIProvider{
+			ID:                     "project-provider-1",
+			ProjectID:              "project-1",
+			ProviderKey:            "anthropic-project",
+			DisplayName:            "Anthropic Shared",
+			BaseURL:                "https://api.anthropic.com",
+			APIKey:                 "shared-secret",
+			DefaultModelProfileKey: "claude-sonnet-4",
+			Enabled:                true,
+			IsDefault:              true,
+		}
+		require.NoError(t, db.DB.Create(&provider).Error)
+
+		body, err := json.Marshal(map[string]any{
+			"provider_key":              "anthropic-project",
+			"display_name":              "Anthropic Shared",
+			"base_url":                  "https://api.anthropic.com",
+			"api_key":                   "shared-secret",
+			"default_model_profile_key": "missing-model",
+			"enabled":                   true,
+			"is_default":                true,
+		})
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/projects/project-1/ai-providers/project-provider-1", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		ownerRouter.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "missing-model")
+	})
+}
+
+func TestBuilderAvailableModelsHandlerReturnsEnabledDatabaseProviders(t *testing.T) {
+	setupAIProviderHandlerTestDB(t)
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-invalid",
+		ProjectID:              "project-1",
+		ProviderKey:            "missing-provider",
+		DisplayName:            "Broken Project Provider",
+		BaseURL:                "https://broken.example.com",
+		APIKey:                 "broken-secret",
+		DefaultModelProfileKey: "missing-model",
+		Enabled:                true,
+	}).Error)
+
+	r := newAIProviderHandlerRouter("user-1", app.UserRoleUser)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/project-1/builder-model-options", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp aiProviderAPIResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Empty(t, resp.Error)
+	assert.Contains(t, string(resp.Data), "missing-provider")
+	assert.Contains(t, string(resp.Data), "missing-model")
 }
 
 func TestBuilderAvailableModelsHandler(t *testing.T) {

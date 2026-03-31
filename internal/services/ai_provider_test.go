@@ -7,6 +7,7 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -159,6 +160,49 @@ func TestListProjectAIProviders(t *testing.T) {
 	assert.Equal(t, "Anthropic Shared", providers[0].DisplayName)
 }
 
+func TestCreateUserAIProviderAllowsDirectProviderConfigurationWithoutRegistry(t *testing.T) {
+	setupAIProviderServiceTestDB(t)
+
+	provider, err := CreateUserAIProvider("user-1", &models.CreateAIProviderRequest{
+		ProviderKey:            "missing-provider",
+		DisplayName:            "Broken Provider",
+		BaseURL:                "https://broken.example.com",
+		APIKey:                 "broken-secret",
+		DefaultModelProfileKey: "gpt-4.1",
+		Enabled:                true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, provider)
+	assert.Equal(t, "missing-provider", provider.ProviderKey)
+}
+
+func TestUpdateProjectAIProviderAllowsDirectModelConfigurationWithoutRegistry(t *testing.T) {
+	setupAIProviderServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-1",
+		ProjectID:              "project-1",
+		ProviderKey:            "anthropic-project",
+		DisplayName:            "Anthropic Shared",
+		BaseURL:                "https://api.anthropic.com",
+		APIKey:                 "shared-secret",
+		DefaultModelProfileKey: "claude-sonnet-4",
+		Enabled:                true,
+	}).Error)
+
+	provider, err := UpdateProjectAIProvider("project-1", "project-provider-1", &models.CreateAIProviderRequest{
+		ProviderKey:            "anthropic-project",
+		DisplayName:            "Anthropic Shared",
+		BaseURL:                "https://api.anthropic.com",
+		APIKey:                 "shared-secret",
+		DefaultModelProfileKey: "missing-model",
+		Enabled:                true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, provider)
+	assert.Equal(t, "missing-model", provider.DefaultModelProfileKey)
+}
+
 func TestListBuilderAvailableModelOptions(t *testing.T) {
 	setupAIProviderServiceTestDB(t)
 
@@ -224,6 +268,195 @@ func TestListBuilderAvailableModelOptions(t *testing.T) {
 	assert.Equal(t, "OpenAI Personal", options[1].ProviderLabel)
 	assert.Equal(t, "openai-user", options[1].ProviderKey)
 	assert.Equal(t, "gpt-4.1", options[1].ModelProfileKey)
+}
+
+func TestListBuilderAvailableModelOptions_UsesDatabaseProviderRecordsWithoutRegistryConfig(t *testing.T) {
+	setupAIProviderServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-1",
+		ProjectID:              "project-1",
+		ProviderKey:            "anthropic-project",
+		DisplayName:            "Anthropic Shared",
+		BaseURL:                "https://api.anthropic.com",
+		APIKey:                 "shared-secret",
+		DefaultModelProfileKey: "claude-4-sonnet",
+		Enabled:                true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.UserAIProvider{
+		ID:                     "user-provider-1",
+		UserID:                 "user-1",
+		ProviderKey:            "openai-user",
+		DisplayName:            "OpenAI Personal",
+		BaseURL:                "https://api.openai.com",
+		APIKey:                 "secret-key",
+		DefaultModelProfileKey: "gpt-4.1",
+		Enabled:                true,
+	}).Error)
+
+	options, err := ListBuilderAvailableModelOptions("project-1", "user-1")
+	require.NoError(t, err)
+	require.Len(t, options, 2)
+
+	assert.Equal(t, "project:anthropic-project:claude-4-sonnet", options[0].Key)
+	assert.Equal(t, "claude-4-sonnet", options[0].ModelLabel)
+	assert.Equal(t, "Anthropic Shared", options[0].ProviderLabel)
+	assert.Equal(t, "project", options[0].Scope)
+	assert.Equal(t, "anthropic-project", options[0].ProviderKey)
+	assert.Equal(t, "claude-4-sonnet", options[0].ModelProfileKey)
+
+	assert.Equal(t, "user:openai-user:gpt-4.1", options[1].Key)
+	assert.Equal(t, "gpt-4.1", options[1].ModelLabel)
+	assert.Equal(t, "OpenAI Personal", options[1].ProviderLabel)
+	assert.Equal(t, "user", options[1].Scope)
+	assert.Equal(t, "openai-user", options[1].ProviderKey)
+	assert.Equal(t, "gpt-4.1", options[1].ModelProfileKey)
+}
+
+func TestListBuilderAvailableModelOptions_ReturnsAllEnabledDatabaseProviders(t *testing.T) {
+	setupAIProviderServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-valid",
+		ProjectID:              "project-1",
+		ProviderKey:            "anthropic-project",
+		DisplayName:            "Anthropic Shared",
+		BaseURL:                "https://api.anthropic.com",
+		APIKey:                 "shared-secret",
+		DefaultModelProfileKey: "claude-sonnet-4",
+		Enabled:                true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-invalid-alias",
+		ProjectID:              "project-1",
+		ProviderKey:            "missing-provider",
+		DisplayName:            "Broken Project Provider",
+		BaseURL:                "https://broken.example.com",
+		APIKey:                 "broken-secret",
+		DefaultModelProfileKey: "claude-sonnet-4",
+		Enabled:                true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.UserAIProvider{
+		ID:                     "user-provider-invalid-model",
+		UserID:                 "user-1",
+		ProviderKey:            "openai-user",
+		DisplayName:            "Broken User Provider",
+		BaseURL:                "https://api.openai.com",
+		APIKey:                 "secret-key",
+		DefaultModelProfileKey: "missing-model",
+		Enabled:                true,
+	}).Error)
+
+	options, err := ListBuilderAvailableModelOptions("project-1", "user-1")
+	require.NoError(t, err)
+	require.Len(t, options, 3)
+	assert.Equal(t, "Anthropic Shared", options[0].ProviderLabel)
+	assert.Equal(t, "anthropic-project", options[0].ProviderKey)
+	assert.Equal(t, "claude-sonnet-4", options[0].ModelProfileKey)
+	assert.Equal(t, "Broken Project Provider", options[1].ProviderLabel)
+	assert.Equal(t, "missing-provider", options[1].ProviderKey)
+	assert.Equal(t, "claude-sonnet-4", options[1].ModelProfileKey)
+	assert.Equal(t, "Broken User Provider", options[2].ProviderLabel)
+	assert.Equal(t, "openai-user", options[2].ProviderKey)
+	assert.Equal(t, "missing-model", options[2].ModelProfileKey)
+}
+func TestListBuilderAvailableModelOptionsReturnsEnabledProvidersWithoutRegistryConfig(t *testing.T) {
+	setupAIProviderServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-invalid",
+		ProjectID:              "project-1",
+		ProviderKey:            "missing-provider",
+		DisplayName:            "Broken Project Provider",
+		BaseURL:                "https://broken.example.com",
+		APIKey:                 "broken-secret",
+		DefaultModelProfileKey: "missing-model",
+		Enabled:                true,
+	}).Error)
+
+	options, err := ListBuilderAvailableModelOptions("project-1", "user-1")
+	require.NoError(t, err)
+	require.Len(t, options, 1)
+	assert.Equal(t, "project:missing-provider:missing-model", options[0].Key)
+	assert.Equal(t, "missing-model", options[0].ModelLabel)
+	assert.Equal(t, "missing-provider", options[0].ProviderKey)
+}
+
+func TestGetBuilderModelSelection_UsesDatabaseDefaultsEvenWhenAliasesAreNotInRegistry(t *testing.T) {
+	setupAIProviderServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-invalid-default",
+		ProjectID:              "project-1",
+		ProviderKey:            "missing-provider",
+		DisplayName:            "Broken Project Provider",
+		BaseURL:                "https://broken.example.com",
+		APIKey:                 "broken-secret",
+		DefaultModelProfileKey: "missing-model",
+		Enabled:                true,
+		IsDefault:              true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.UserAIProvider{
+		ID:                     "user-provider-valid",
+		UserID:                 "user-1",
+		ProviderKey:            "valid-provider",
+		DisplayName:            "Valid User Provider",
+		BaseURL:                "https://valid.example.com",
+		APIKey:                 "valid-key",
+		DefaultModelProfileKey: "valid-model",
+		Enabled:                true,
+	}).Error)
+
+	selection, err := GetBuilderModelSelection("project-1", "user-1")
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.Len(t, selection.Options, 2)
+	assert.Equal(t, "project", selection.EffectiveDefaultSource)
+	require.NotNil(t, selection.EffectiveDefaultOption)
+	assert.Equal(t, "missing-provider", selection.EffectiveDefaultOption.ProviderKey)
+	assert.Equal(t, "missing-model", selection.EffectiveDefaultOption.ModelProfileKey)
+	assert.Equal(t, "missing-provider", selection.Options[0].ProviderKey)
+	assert.Equal(t, "missing-model", selection.Options[0].ModelProfileKey)
+	assert.Equal(t, "valid-provider", selection.Options[1].ProviderKey)
+	assert.Equal(t, "valid-model", selection.Options[1].ModelProfileKey)
+}
+
+func TestGetBuilderModelSelection_UsesDatabaseDefaultWithoutRegistryConfig(t *testing.T) {
+	setupAIProviderServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
+		ID:                     "project-provider-default",
+		ProjectID:              "project-1",
+		ProviderKey:            "anthropic-project",
+		DisplayName:            "Anthropic Shared",
+		BaseURL:                "https://api.anthropic.com",
+		APIKey:                 "shared-secret",
+		DefaultModelProfileKey: "claude-4-sonnet",
+		Enabled:                true,
+		IsDefault:              true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.UserAIProvider{
+		ID:                     "user-provider-default",
+		UserID:                 "user-1",
+		ProviderKey:            "openai-user",
+		DisplayName:            "OpenAI Personal",
+		BaseURL:                "https://api.openai.com",
+		APIKey:                 "secret-key",
+		DefaultModelProfileKey: "gpt-4.1",
+		Enabled:                true,
+		IsDefault:              true,
+	}).Error)
+
+	selection, err := GetBuilderModelSelection("project-1", "user-1")
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.Len(t, selection.Options, 2)
+	assert.Equal(t, "project", selection.EffectiveDefaultSource)
+	require.NotNil(t, selection.EffectiveDefaultOption)
+	assert.Equal(t, "project:anthropic-project:claude-4-sonnet", selection.EffectiveDefaultOption.Key)
+	assert.Equal(t, "claude-4-sonnet", selection.EffectiveDefaultOption.ModelLabel)
+	assert.Equal(t, "anthropic-project", selection.EffectiveDefaultOption.ProviderKey)
+	assert.Equal(t, "claude-4-sonnet", selection.EffectiveDefaultOption.ModelProfileKey)
 }
 
 func TestResolveBuilderEffectiveDefault(t *testing.T) {
@@ -310,21 +543,8 @@ func TestResolveBuilderEffectiveDefault(t *testing.T) {
 		assert.Equal(t, "openai-user", selection.EffectiveDefaultOption.ProviderKey)
 	})
 
-	t.Run("invalid defaults are ignored", func(t *testing.T) {
+	t.Run("uses a database default even without registry config", func(t *testing.T) {
 		setupAIProviderServiceTestDB(t)
-
-		originalConfig := app.Config
-		app.Config = app.AppConfig{
-			BuilderProviderRegistryJSON: `[
-				{"key":"valid-provider","base_url":"https://valid.example.com","api_key":"valid-key"}
-			]`,
-			BuilderModelProfileRegistryJSON: `[
-				{"key":"valid-model","model":"valid-model"}
-			]`,
-			BuilderDefaultProviderKey:     "valid-provider",
-			BuilderDefaultModelProfileKey: "valid-model",
-		}
-		t.Cleanup(func() { app.Config = originalConfig })
 
 		require.NoError(t, db.DB.Create(&entities.ProjectAIProvider{
 			ID:                     "project-provider-default",
@@ -341,7 +561,10 @@ func TestResolveBuilderEffectiveDefault(t *testing.T) {
 		selection, err := ResolveBuilderEffectiveDefault("project-1", "user-1")
 		require.NoError(t, err)
 		require.NotNil(t, selection)
-		assert.Equal(t, "none", selection.EffectiveDefaultSource)
-		assert.Nil(t, selection.EffectiveDefaultOption)
+		assert.Equal(t, "project", selection.EffectiveDefaultSource)
+		require.NotNil(t, selection.EffectiveDefaultOption)
+		assert.Equal(t, "project:missing-provider:missing-model", selection.EffectiveDefaultOption.Key)
+		assert.Equal(t, "missing-provider", selection.EffectiveDefaultOption.ProviderKey)
+		assert.Equal(t, "missing-model", selection.EffectiveDefaultOption.ModelProfileKey)
 	})
 }

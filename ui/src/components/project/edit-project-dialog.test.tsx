@@ -36,6 +36,19 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+vi.mock("@/components/ui/sidebar", () => ({
+  SidebarProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Sidebar: ({ children }: { children: React.ReactNode }) => <nav>{children}</nav>,
+  SidebarContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SidebarGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SidebarGroupContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SidebarMenu: ({ children }: { children: React.ReactNode }) => <ul>{children}</ul>,
+  SidebarMenuItem: ({ children }: { children: React.ReactNode }) => <li>{children}</li>,
+  SidebarMenuButton: ({ children, onClick, isActive }: { children: React.ReactNode; onClick?: () => void; isActive?: boolean }) => (
+    <button type="button" onClick={onClick} aria-current={isActive ? "page" : undefined}>{children}</button>
+  ),
+}))
+
 import { EditProjectDialog } from "./edit-project-dialog"
 
 describe("EditProjectDialog", () => {

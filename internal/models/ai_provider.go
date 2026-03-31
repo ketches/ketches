@@ -7,6 +7,7 @@ type AIProviderResponse struct {
 	BaseURL                string `json:"base_url"`
 	DefaultModelProfileKey string `json:"default_model_profile_key"`
 	Enabled                bool   `json:"enabled"`
+	IsDefault              bool   `json:"is_default"`
 }
 
 type CreateAIProviderRequest struct {
@@ -16,6 +17,7 @@ type CreateAIProviderRequest struct {
 	APIKey                 string `json:"api_key" binding:"required"`
 	DefaultModelProfileKey string `json:"default_model_profile_key" binding:"required"`
 	Enabled                bool   `json:"enabled"`
+	IsDefault              bool   `json:"is_default"`
 }
 
 type BuilderAvailableModelOptionResponse struct {

@@ -142,11 +142,11 @@ func UpdatePlugin(pluginID string, req *models.UpdatePluginRequest) (*entities.P
 	if req.ImagePullPolicy != "" {
 		updates["image_pull_policy"] = req.ImagePullPolicy
 	}
-	if req.RegistryUsername != "" {
-		updates["registry_username"] = req.RegistryUsername
+	if req.RegistryUsername != nil {
+		updates["registry_username"] = *req.RegistryUsername
 	}
-	if req.RegistryPassword != "" {
-		updates["registry_password"] = req.RegistryPassword
+	if req.RegistryPassword != nil && *req.RegistryPassword != "" {
+		updates["registry_password"] = *req.RegistryPassword
 	}
 	if req.Command != "" {
 		updates["command"] = req.Command

@@ -1,16 +1,33 @@
 import { Plus, Sparkles } from "lucide-react"
+import * as React from "react"
 
-import { projectsApi } from "@/api/projects"
+import { projectsApi, type UpsertProjectAiProviderRequest } from "@/api/projects"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 interface ProjectAiProvidersPanelProps {
   projectId: string
 }
 
+const emptyForm: UpsertProjectAiProviderRequest = {
+  provider_key: "",
+  display_name: "",
+  base_url: "",
+  api_key: "",
+  default_model_profile_key: "",
+  enabled: true,
+  is_default: false,
+}
+
 export function ProjectAiProvidersPanel({ projectId }: ProjectAiProvidersPanelProps) {
   const queryClient = useQueryClient()
+  const [editingProviderId, setEditingProviderId] = React.useState<string | null>(null)
+  const [formOpen, setFormOpen] = React.useState(false)
+  const [formData, setFormData] = React.useState<UpsertProjectAiProviderRequest>(emptyForm)
   const { data: providers = [] } = useQuery({
     queryKey: ["projects", projectId, "ai-providers"],
     queryFn: () => projectsApi.listAiProviders(projectId),
@@ -29,30 +46,51 @@ export function ProjectAiProvidersPanel({ projectId }: ProjectAiProvidersPanelPr
       queryClient.invalidateQueries({ queryKey: ["projects", projectId, "ai-providers"] })
     },
   })
+  const deleteMutation = useMutation({
+    mutationFn: (providerId: string) => projectsApi.deleteAiProvider(projectId, providerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId, "ai-providers"] })
+    },
+  })
 
-  const handleAddProvider = async () => {
-    await createMutation.mutateAsync({
-      provider_key: "openai-project",
-      display_name: "OpenAI Shared",
-      base_url: "https://api.openai.com",
-      api_key: "shared-key",
-      default_model_profile_key: "gpt-4.1",
-      enabled: true,
-    })
+  const handleAddProvider = () => {
+    setEditingProviderId(null)
+    setFormData(emptyForm)
+    setFormOpen(true)
   }
 
-  const handleEditProvider = async (providerId: string) => {
-    await updateMutation.mutateAsync({
-      providerId,
-      data: {
-        provider_key: "anthropic-project",
-        display_name: "Anthropic Shared Updated",
-        base_url: "https://api.anthropic.com",
-        api_key: "updated-shared-key",
-        default_model_profile_key: "claude-sonnet-4",
-        enabled: true,
-      },
+  const handleEditProvider = (providerId: string) => {
+    const provider = providers.find((item) => item.id === providerId)
+    if (!provider) {
+      return
+    }
+
+    setEditingProviderId(provider.id)
+    setFormData({
+      provider_key: provider.provider_key,
+      display_name: provider.display_name,
+      base_url: provider.base_url,
+      api_key: "",
+      default_model_profile_key: provider.default_model_profile_key,
+      enabled: provider.enabled,
+      is_default: provider.is_default,
     })
+    setFormOpen(true)
+  }
+
+  const handleSaveProvider = async () => {
+    if (editingProviderId) {
+      await updateMutation.mutateAsync({ providerId: editingProviderId, data: formData })
+    } else {
+      await createMutation.mutateAsync(formData)
+    }
+    setFormOpen(false)
+    setEditingProviderId(null)
+    setFormData(emptyForm)
+  }
+
+  const handleDeleteProvider = async (providerId: string) => {
+    await deleteMutation.mutateAsync(providerId)
   }
 
   return (
@@ -73,7 +111,7 @@ export function ProjectAiProvidersPanel({ projectId }: ProjectAiProvidersPanelPr
             border={false}
           />
           <div className="flex justify-start">
-            <Button type="button" onClick={() => void handleAddProvider()}>
+            <Button type="button" onClick={handleAddProvider}>
               <Plus className="h-4 w-4" />
               Add provider
             </Button>
@@ -82,7 +120,7 @@ export function ProjectAiProvidersPanel({ projectId }: ProjectAiProvidersPanelPr
       ) : (
         <div className="space-y-3 rounded-lg border bg-background p-4">
           <div className="flex justify-end">
-            <Button type="button" onClick={() => void handleAddProvider()}>
+            <Button type="button" onClick={handleAddProvider}>
               <Plus className="h-4 w-4" />
               Add provider
             </Button>
@@ -94,14 +132,113 @@ export function ProjectAiProvidersPanel({ projectId }: ProjectAiProvidersPanelPr
                 <div className="text-xs text-muted-foreground">
                   {provider.provider_key} · {provider.default_model_profile_key}
                 </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{provider.enabled ? "Enabled" : "Disabled"}</span>
+                  {provider.is_default ? <span>Default</span> : null}
+                </div>
               </div>
-              <Button type="button" variant="outline" onClick={() => void handleEditProvider(provider.id)}>
-                Edit
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" onClick={() => handleEditProvider(provider.id)}>
+                  Edit
+                </Button>
+                <Button type="button" variant="outline" onClick={() => void handleDeleteProvider(provider.id)}>
+                  Delete
+                </Button>
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      {formOpen ? (
+        <div className="space-y-4 rounded-lg border bg-background p-4">
+          <Field>
+            <FieldLabel htmlFor="project-provider-key">Provider key</FieldLabel>
+            <FieldContent>
+              <Input
+                id="project-provider-key"
+                name="provider_key"
+                value={formData.provider_key}
+                onInput={(event) => setFormData((prev) => ({ ...prev, provider_key: (event.target as HTMLInputElement).value }))}
+              />
+            </FieldContent>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="project-provider-display-name">Display name</FieldLabel>
+            <FieldContent>
+              <Input
+                id="project-provider-display-name"
+                name="display_name"
+                value={formData.display_name}
+                onInput={(event) => setFormData((prev) => ({ ...prev, display_name: (event.target as HTMLInputElement).value }))}
+              />
+            </FieldContent>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="project-provider-base-url">Base URL</FieldLabel>
+            <FieldContent>
+              <Input
+                id="project-provider-base-url"
+                name="base_url"
+                value={formData.base_url}
+                onInput={(event) => setFormData((prev) => ({ ...prev, base_url: (event.target as HTMLInputElement).value }))}
+              />
+            </FieldContent>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="project-provider-api-key">API key</FieldLabel>
+            <FieldContent>
+              <Input
+                id="project-provider-api-key"
+                name="api_key"
+                value={formData.api_key}
+                onInput={(event) => setFormData((prev) => ({ ...prev, api_key: (event.target as HTMLInputElement).value }))}
+              />
+            </FieldContent>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="project-provider-model-profile">Default model profile key</FieldLabel>
+            <FieldContent>
+              <Input
+                id="project-provider-model-profile"
+                name="default_model_profile_key"
+                value={formData.default_model_profile_key}
+                onInput={(event) => setFormData((prev) => ({ ...prev, default_model_profile_key: (event.target as HTMLInputElement).value }))}
+              />
+            </FieldContent>
+          </Field>
+          <div className="flex items-center gap-3">
+            <Checkbox
+              id="project-provider-enabled"
+              name="enabled"
+              checked={formData.enabled}
+              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, enabled: checked === true }))}
+            />
+            <label htmlFor="project-provider-enabled" className="cursor-pointer text-sm">
+              Enabled
+            </label>
+          </div>
+          <div className="flex items-center gap-3">
+            <Checkbox
+              id="project-provider-default"
+              name="is_default"
+              checked={formData.is_default}
+              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_default: checked === true }))}
+            />
+            <label htmlFor="project-provider-default" className="cursor-pointer text-sm">
+              Set as default
+            </label>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void handleSaveProvider()}>
+              {editingProviderId ? "Update provider" : "Save provider"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

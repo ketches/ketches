@@ -57,6 +57,11 @@ export function GatewayEditor({
     { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
   ], [])
 
+  const serviceTypeOptions = React.useMemo(() => [
+    { value: "ClusterIP", label: "ClusterIP", description: "Internal only, accessible within the cluster" },
+    { value: "NodePort", label: "NodePort", description: "Exposed on a static port on every cluster node" },
+  ], [])
+
   const isEditing = gateway !== null && gateway !== undefined
 
   const [errors, setErrors] = React.useState<{
@@ -65,6 +70,7 @@ export function GatewayEditor({
     domain?: string
     path?: string
     gateway_port?: string
+    node_port?: string
   }>({})
 
   const [formData, setFormData] = React.useState<GatewaySpec>({
@@ -73,6 +79,8 @@ export function GatewayEditor({
     domain: '',
     path: '/',
     gateway_port: undefined,
+    service_type: 'ClusterIP',
+    node_port: undefined,
     exposed: false,
   })
 
@@ -121,6 +129,8 @@ export function GatewayEditor({
           domain: '',
           path: '/',
           gateway_port: undefined,
+          service_type: 'ClusterIP',
+          node_port: undefined,
           exposed: false,
         })
       }
@@ -166,6 +176,13 @@ export function GatewayEditor({
       newErrors.protocol = "Protocol is required"
     }
 
+    // Validate NodePort range when ServiceType is NodePort and a custom value is provided
+    if (formData.service_type === 'NodePort' && formData.node_port) {
+      if (formData.node_port < 30000 || formData.node_port > 32767) {
+        newErrors.node_port = "NodePort must be between 30000 and 32767"
+      }
+    }
+
     // Only validate domain/path/gateway_port when exposed is true
     if (formData.exposed) {
       if (isHttpProtocol) {
@@ -200,6 +217,11 @@ export function GatewayEditor({
 
     // Clean up fields based on protocol and exposed state
     const cleanedData = { ...formData }
+
+    // Clean up ServiceType / NodePort
+    if (cleanedData.service_type !== 'NodePort') {
+      cleanedData.node_port = undefined
+    }
 
     if (!formData.exposed) {
       // When not exposed, clear all routing-related fields
@@ -305,6 +327,67 @@ export function GatewayEditor({
                   </FieldError>
                 )}
               </Field>
+            </div>
+
+            {/* Service Type selector */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className={formData.service_type === 'NodePort' ? 'col-span-2' : 'col-span-3'}>
+                <Field>
+                  <FieldLabel>Service Type</FieldLabel>
+                  <FieldContent>
+                    <Combobox
+                      value={formData.service_type || 'ClusterIP'}
+                      onValueChange={(value: string | null) => {
+                        const st = value || 'ClusterIP'
+                        setFormData((prev) => ({
+                          ...prev,
+                          service_type: st,
+                          node_port: st !== 'NodePort' ? undefined : prev.node_port,
+                        }))
+                      }}
+                      itemToStringLabel={(v) => serviceTypeOptions.find((o) => o.value === v)?.label ?? v ?? ""}
+                    >
+                      <ComboboxInput />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {serviceTypeOptions.map((option) => (
+                            <ComboboxItem key={option.value} value={option.value}>
+                              <Item size="xs" className="p-0">
+                                <ItemContent>
+                                  <ItemTitle className="whitespace-nowrap">{option.label}</ItemTitle>
+                                  <ItemDescription>{option.description}</ItemDescription>
+                                </ItemContent>
+                              </Item>
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  </FieldContent>
+                </Field>
+              </div>
+
+              {formData.service_type === 'NodePort' && (
+                <Field>
+                  <FieldLabel>NodePort</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      placeholder="Auto"
+                      min={30000}
+                      max={32767}
+                      value={formData.node_port || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, node_port: parseInt(e.target.value) || undefined }))}
+                      aria-invalid={!!errors.node_port}
+                    />
+                  </FieldContent>
+                  {errors.node_port && (
+                    <FieldError>
+                      <span className="text-destructive text-xs">{errors.node_port}</span>
+                    </FieldError>
+                  )}
+                </Field>
+              )}
             </div>
 
             {/* Public Access Checkbox */}
@@ -484,6 +567,7 @@ export function GatewayEditor({
                 )}
               </Field>
             )}
+
           </div>
 
           <DialogFooter>

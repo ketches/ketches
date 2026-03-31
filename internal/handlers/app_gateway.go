@@ -102,6 +102,8 @@ func validateGatewayRequest(gateway any) error {
 	var domain *string
 	var path *string
 	var gatewayPort *int
+	var serviceType *string
+	var nodePort *int
 	var certID *string
 	var exposed *bool
 
@@ -112,6 +114,8 @@ func validateGatewayRequest(gateway any) error {
 		domain = &g.Domain
 		path = &g.Path
 		gatewayPort = &g.GatewayPort
+		serviceType = &g.ServiceType
+		nodePort = &g.NodePort
 		certID = &g.CertID
 		exposed = &g.Exposed
 	case *models.UpdateGatewayRequest:
@@ -120,6 +124,8 @@ func validateGatewayRequest(gateway any) error {
 		domain = &g.Domain
 		path = &g.Path
 		gatewayPort = &g.GatewayPort
+		serviceType = &g.ServiceType
+		nodePort = &g.NodePort
 		certID = &g.CertID
 		exposed = &g.Exposed
 	default:
@@ -137,6 +143,22 @@ func validateGatewayRequest(gateway any) error {
 		return errors.New("protocol must be one of: http, https, tcp, udp")
 	}
 	*protocol = proto
+
+	// ServiceType validation and NodePort range check
+	if *serviceType == "" {
+		*serviceType = "ClusterIP"
+	}
+	if *serviceType != "ClusterIP" && *serviceType != "NodePort" {
+		return errors.New("service_type must be ClusterIP or NodePort")
+	}
+	if *serviceType == "NodePort" && *nodePort != 0 {
+		if *nodePort < 30000 || *nodePort > 32767 {
+			return errors.New("node_port must be between 30000 and 32767")
+		}
+	}
+	if *serviceType != "NodePort" {
+		*nodePort = 0
+	}
 
 	// Only validate routing fields when exposed is true
 	if *exposed {

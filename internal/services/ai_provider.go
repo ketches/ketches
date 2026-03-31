@@ -2,15 +2,15 @@ package services
 
 import (
 	"errors"
-	"fmt"
 
-	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
 )
+
+var ErrInvalidBuilderRegistryAlias = errors.New("invalid builder registry alias")
 
 func CreateUserAIProvider(userID string, req *models.CreateAIProviderRequest) (*models.AIProviderResponse, error) {
 	provider := &entities.UserAIProvider{
@@ -22,6 +22,7 @@ func CreateUserAIProvider(userID string, req *models.CreateAIProviderRequest) (*
 		APIKey:                 req.APIKey,
 		DefaultModelProfileKey: req.DefaultModelProfileKey,
 		Enabled:                req.Enabled,
+		IsDefault:              req.IsDefault,
 	}
 	if err := db.DB.Create(provider).Error; err != nil {
 		return nil, err
@@ -33,6 +34,7 @@ func CreateUserAIProvider(userID string, req *models.CreateAIProviderRequest) (*
 		BaseURL:                provider.BaseURL,
 		DefaultModelProfileKey: provider.DefaultModelProfileKey,
 		Enabled:                provider.Enabled,
+		IsDefault:              provider.IsDefault,
 	}, nil
 }
 
@@ -46,6 +48,7 @@ func CreateProjectAIProvider(projectID string, req *models.CreateAIProviderReque
 		APIKey:                 req.APIKey,
 		DefaultModelProfileKey: req.DefaultModelProfileKey,
 		Enabled:                req.Enabled,
+		IsDefault:              req.IsDefault,
 	}
 	if err := db.DB.Create(provider).Error; err != nil {
 		return nil, err
@@ -57,6 +60,7 @@ func CreateProjectAIProvider(projectID string, req *models.CreateAIProviderReque
 		BaseURL:                provider.BaseURL,
 		DefaultModelProfileKey: provider.DefaultModelProfileKey,
 		Enabled:                provider.Enabled,
+		IsDefault:              provider.IsDefault,
 	}, nil
 }
 
@@ -71,6 +75,7 @@ func UpdateUserAIProvider(userID, providerID string, req *models.CreateAIProvide
 	provider.APIKey = req.APIKey
 	provider.DefaultModelProfileKey = req.DefaultModelProfileKey
 	provider.Enabled = req.Enabled
+	provider.IsDefault = req.IsDefault
 	if err := db.DB.Save(&provider).Error; err != nil {
 		return nil, err
 	}
@@ -81,6 +86,7 @@ func UpdateUserAIProvider(userID, providerID string, req *models.CreateAIProvide
 		BaseURL:                provider.BaseURL,
 		DefaultModelProfileKey: provider.DefaultModelProfileKey,
 		Enabled:                provider.Enabled,
+		IsDefault:              provider.IsDefault,
 	}, nil
 }
 
@@ -106,6 +112,7 @@ func UpdateProjectAIProvider(projectID, providerID string, req *models.CreateAIP
 	provider.APIKey = req.APIKey
 	provider.DefaultModelProfileKey = req.DefaultModelProfileKey
 	provider.Enabled = req.Enabled
+	provider.IsDefault = req.IsDefault
 	if err := db.DB.Save(&provider).Error; err != nil {
 		return nil, err
 	}
@@ -116,6 +123,7 @@ func UpdateProjectAIProvider(projectID, providerID string, req *models.CreateAIP
 		BaseURL:                provider.BaseURL,
 		DefaultModelProfileKey: provider.DefaultModelProfileKey,
 		Enabled:                provider.Enabled,
+		IsDefault:              provider.IsDefault,
 	}, nil
 }
 
@@ -132,7 +140,7 @@ func DeleteProjectAIProvider(projectID, providerID string) error {
 
 func ListUserAIProviders(userID string) ([]models.AIProviderResponse, error) {
 	var providers []entities.UserAIProvider
-	if err := db.DB.Where("user_id = ? AND enabled = ?", userID, true).Order("created_at ASC, id ASC").Find(&providers).Error; err != nil {
+	if err := db.DB.Where("user_id = ?", userID).Order("created_at ASC, id ASC").Find(&providers).Error; err != nil {
 		return nil, err
 	}
 
@@ -145,6 +153,7 @@ func ListUserAIProviders(userID string) ([]models.AIProviderResponse, error) {
 			BaseURL:                providers[i].BaseURL,
 			DefaultModelProfileKey: providers[i].DefaultModelProfileKey,
 			Enabled:                providers[i].Enabled,
+			IsDefault:              providers[i].IsDefault,
 		})
 	}
 
@@ -153,7 +162,7 @@ func ListUserAIProviders(userID string) ([]models.AIProviderResponse, error) {
 
 func ListProjectAIProviders(projectID string) ([]models.AIProviderResponse, error) {
 	var providers []entities.ProjectAIProvider
-	if err := db.DB.Where("project_id = ? AND enabled = ?", projectID, true).Order("created_at ASC, id ASC").Find(&providers).Error; err != nil {
+	if err := db.DB.Where("project_id = ?", projectID).Order("created_at ASC, id ASC").Find(&providers).Error; err != nil {
 		return nil, err
 	}
 
@@ -166,6 +175,7 @@ func ListProjectAIProviders(projectID string) ([]models.AIProviderResponse, erro
 			BaseURL:                providers[i].BaseURL,
 			DefaultModelProfileKey: providers[i].DefaultModelProfileKey,
 			Enabled:                providers[i].Enabled,
+			IsDefault:              providers[i].IsDefault,
 		})
 	}
 
@@ -175,10 +185,6 @@ func ListProjectAIProviders(projectID string) ([]models.AIProviderResponse, erro
 func ListBuilderAvailableModelOptions(projectID, userID string) ([]models.BuilderAvailableModelOptionResponse, error) {
 	if projectID == "" || userID == "" {
 		return nil, errors.New("project id and user id are required")
-	}
-	registry, err := loadBuilderProviderRegistry(app.Config)
-	if err != nil {
-		return nil, err
 	}
 
 	projectProviders, err := ListProjectAIProviders(projectID)
@@ -195,15 +201,11 @@ func ListBuilderAvailableModelOptions(projectID, userID string) ([]models.Builde
 		if !provider.Enabled {
 			continue
 		}
-		resolved, err := registry.resolveBuilderProviderProfile(provider.ProviderKey, provider.DefaultModelProfileKey)
-		if err != nil {
-			continue
-		}
 		options = append(options, models.BuilderAvailableModelOptionResponse{
-			Key:             fmt.Sprintf("project:%s:%s", provider.ProviderKey, provider.DefaultModelProfileKey),
-			ModelLabel:      resolved.ModelProfile.Model,
+			Key:             buildBuilderModelOptionKey(builderProviderScopeProject, provider.ProviderKey, provider.DefaultModelProfileKey),
+			ModelLabel:      provider.DefaultModelProfileKey,
 			ProviderLabel:   provider.DisplayName,
-			Scope:           "project",
+			Scope:           builderProviderScopeProject,
 			ProviderKey:     provider.ProviderKey,
 			ModelProfileKey: provider.DefaultModelProfileKey,
 		})
@@ -212,15 +214,11 @@ func ListBuilderAvailableModelOptions(projectID, userID string) ([]models.Builde
 		if !provider.Enabled {
 			continue
 		}
-		resolved, err := registry.resolveBuilderProviderProfile(provider.ProviderKey, provider.DefaultModelProfileKey)
-		if err != nil {
-			continue
-		}
 		options = append(options, models.BuilderAvailableModelOptionResponse{
-			Key:             fmt.Sprintf("user:%s:%s", provider.ProviderKey, provider.DefaultModelProfileKey),
-			ModelLabel:      resolved.ModelProfile.Model,
+			Key:             buildBuilderModelOptionKey(builderProviderScopeUser, provider.ProviderKey, provider.DefaultModelProfileKey),
+			ModelLabel:      provider.DefaultModelProfileKey,
 			ProviderLabel:   provider.DisplayName,
-			Scope:           "user",
+			Scope:           builderProviderScopeUser,
 			ProviderKey:     provider.ProviderKey,
 			ModelProfileKey: provider.DefaultModelProfileKey,
 		})

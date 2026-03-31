@@ -2,15 +2,17 @@ import { act, createContext, useContext } from "react"
 import ReactDOMClient from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockInvalidateQueries, mockRefetch, mockUseQuery } = vi.hoisted(() => ({
+const { mockInvalidateQueries, mockMutate, mockRefetch, mockToastError, mockUseQuery } = vi.hoisted(() => ({
   mockInvalidateQueries: vi.fn(),
+  mockMutate: vi.fn(),
   mockRefetch: vi.fn<() => Promise<{ data: { repository: string, current_tag: string, tags: string[] } }>>(),
+  mockToastError: vi.fn(),
   mockUseQuery: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-query", () => ({
   useMutation: () => ({
-    mutate: vi.fn(),
+    mutate: mockMutate,
     isPending: false,
   }),
   useQuery: mockUseQuery,
@@ -29,7 +31,7 @@ vi.mock("@/api/apps", () => ({
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
-    error: vi.fn(),
+    error: mockToastError,
   },
 }))
 
@@ -186,6 +188,15 @@ const clickElement = async (element: HTMLElement) => {
   })
 }
 
+const changeInputValue = async (input: HTMLInputElement, value: string) => {
+  await act(async () => {
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set
+    valueSetter?.call(input, value)
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+    input.dispatchEvent(new Event("change", { bubbles: true }))
+  })
+}
+
 describe("ImageEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -247,6 +258,18 @@ describe("ImageEditor", () => {
     })
   })
 
+  it("keeps pull policy collapsed when the app uses IfNotPresent", async () => {
+    const { container, root } = await renderEditor(buildApp({
+      image_pull_policy: "IfNotPresent",
+    }))
+
+    expect(container.querySelector('input[name="image_pull_policy"]')).toBeNull()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it("keeps image loading manual and opens the combobox after refreshing options", async () => {
     const { container, root } = await renderEditor(buildApp())
 
@@ -288,6 +311,31 @@ describe("ImageEditor", () => {
     await clickElement(option as HTMLButtonElement)
 
     expect((container.querySelector('input[name="container_image"]') as HTMLInputElement | null)?.value).toBe("ghcr.io/acme/demo:latest")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("prevents submit when password is provided without a registry username", async () => {
+    const { container, root } = await renderEditor(buildApp({
+      registry_username: "robot",
+    }))
+
+    const usernameInput = container.querySelector("#registry-username") as HTMLInputElement | null
+    const passwordInput = container.querySelector("#registry-password") as HTMLInputElement | null
+
+    expect(usernameInput).not.toBeNull()
+    expect(passwordInput).not.toBeNull()
+
+    await changeInputValue(usernameInput as HTMLInputElement, "")
+    await changeInputValue(passwordInput as HTMLInputElement, "secret")
+    await clickElement(container.querySelector('button[type="submit"]') as HTMLButtonElement)
+
+    expect(mockMutate).not.toHaveBeenCalled()
+    expect(mockToastError).toHaveBeenCalledWith("Error", {
+      description: "Registry username is required when password is provided",
+    })
 
     await act(async () => {
       root.unmount()

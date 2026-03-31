@@ -94,16 +94,24 @@ func CreateBuilderSession(ctx context.Context, projectID, userID string, req *mo
 		CreatedBy:    userID,
 	}
 
+	intent := AnalyzeBuilderProjectIntent(req.Prompt)
 	run := &entities.BuilderRun{
-		ID:                 uuid.New(),
-		SessionID:          session.ID,
-		TriggerMessageID:   message.ID,
-		Status:             entities.BuilderRunStatusQueued,
-		Phase:              builderRunPhaseRef(entities.BuilderRunPhaseQueued),
-		RequestedBy:        userID,
-		InstructionSummary: req.Prompt,
-		ProviderKey:        stringPointerOrNil(strings.TrimSpace(req.ProviderKey)),
-		ModelProfileKey:    stringPointerOrNil(strings.TrimSpace(req.ModelProfileKey)),
+		ID:                       uuid.New(),
+		SessionID:                session.ID,
+		TriggerMessageID:         message.ID,
+		Status:                   entities.BuilderRunStatusQueued,
+		Phase:                    builderRunPhaseRef(entities.BuilderRunPhaseQueued),
+		RequestedBy:              userID,
+		InstructionSummary:       req.Prompt,
+		ProviderScope:            stringPointerOrNil(parseBuilderModelSelectionScope(req.SelectedModelKey)),
+		ProviderKey:              stringPointerOrNil(strings.TrimSpace(req.ProviderKey)),
+		ModelProfileKey:          stringPointerOrNil(strings.TrimSpace(req.ModelProfileKey)),
+		PlannedProjectKind:       stringPointerOrNil(intent.ProjectKind),
+		PlannedProjectSummary:    intent.Summary,
+		PlannedExecutorPolicyKey: stringPointerOrNil(intent.SuggestedExecutorPolicyKey),
+		PlannedImageProfileKey:   stringPointerOrNil(intent.SuggestedImageProfileKey),
+		ExecutorPolicyKey:        stringPointerOrNil(strings.TrimSpace(req.ExecutorPolicyKey)),
+		ExecutionImageProfileKey: stringPointerOrNil(strings.TrimSpace(req.ExecutionImageProfileKey)),
 	}
 
 	err := tx.Transaction(func(tx *gorm.DB) error {
@@ -148,16 +156,24 @@ func AppendBuilderSessionMessage(ctx context.Context, projectID, sessionID, user
 		CreatedBy:    userID,
 	}
 
+	intent := AnalyzeBuilderProjectIntent(req.Content)
 	run := &entities.BuilderRun{
-		ID:                 uuid.New(),
-		SessionID:          sessionID,
-		TriggerMessageID:   message.ID,
-		Status:             entities.BuilderRunStatusQueued,
-		Phase:              builderRunPhaseRef(entities.BuilderRunPhaseQueued),
-		RequestedBy:        userID,
-		InstructionSummary: req.Content,
-		ProviderKey:        stringPointerOrNil(strings.TrimSpace(req.ProviderKey)),
-		ModelProfileKey:    stringPointerOrNil(strings.TrimSpace(req.ModelProfileKey)),
+		ID:                       uuid.New(),
+		SessionID:                sessionID,
+		TriggerMessageID:         message.ID,
+		Status:                   entities.BuilderRunStatusQueued,
+		Phase:                    builderRunPhaseRef(entities.BuilderRunPhaseQueued),
+		RequestedBy:              userID,
+		InstructionSummary:       req.Content,
+		ProviderScope:            stringPointerOrNil(parseBuilderModelSelectionScope(req.SelectedModelKey)),
+		ProviderKey:              stringPointerOrNil(strings.TrimSpace(req.ProviderKey)),
+		ModelProfileKey:          stringPointerOrNil(strings.TrimSpace(req.ModelProfileKey)),
+		PlannedProjectKind:       stringPointerOrNil(intent.ProjectKind),
+		PlannedProjectSummary:    intent.Summary,
+		PlannedExecutorPolicyKey: stringPointerOrNil(intent.SuggestedExecutorPolicyKey),
+		PlannedImageProfileKey:   stringPointerOrNil(intent.SuggestedImageProfileKey),
+		ExecutorPolicyKey:        stringPointerOrNil(strings.TrimSpace(req.ExecutorPolicyKey)),
+		ExecutionImageProfileKey: stringPointerOrNil(strings.TrimSpace(req.ExecutionImageProfileKey)),
 	}
 
 	var session entities.BuilderSession
@@ -536,6 +552,13 @@ func builderRunPhaseRef(phase entities.BuilderRunPhase) *entities.BuilderRunPhas
 	return &phase
 }
 
+func builderRunPhaseValue(phase *entities.BuilderRunPhase) string {
+	if phase == nil {
+		return ""
+	}
+	return string(*phase)
+}
+
 func builderSessionDetailQuery(tx *gorm.DB, projectID string) *gorm.DB {
 	return tx.Table("builder_sessions AS bs").
 		Select(strings.TrimSpace(`
@@ -682,19 +705,29 @@ func toBuilderMessageResponse(message *entities.BuilderMessage) models.BuilderMe
 
 func toBuilderRunResponse(run *entities.BuilderRun) models.BuilderRunResponse {
 	return models.BuilderRunResponse{
-		ID:                 run.ID,
-		SessionID:          run.SessionID,
-		TriggerMessageID:   run.TriggerMessageID,
-		WorkspaceID:        stringPointerValue(run.WorkspaceID),
-		Status:             string(run.Status),
-		RequestedBy:        run.RequestedBy,
-		InstructionSummary: run.InstructionSummary,
-		ExecutionLog:       run.ExecutionLog,
-		StartedAt:          run.StartedAt,
-		CompletedAt:        run.CompletedAt,
-		ErrorMessage:       run.ErrorMessage,
-		CreatedAt:          run.CreatedAt,
-		UpdatedAt:          run.UpdatedAt,
+		ID:                       run.ID,
+		SessionID:                run.SessionID,
+		TriggerMessageID:         run.TriggerMessageID,
+		WorkspaceID:              stringPointerValue(run.WorkspaceID),
+		Status:                   string(run.Status),
+		Phase:                    builderRunPhaseValue(run.Phase),
+		RequestedBy:              run.RequestedBy,
+		PlannedProjectKind:       stringPointerValue(run.PlannedProjectKind),
+		PlannedProjectSummary:    run.PlannedProjectSummary,
+		PlannedExecutorPolicyKey: stringPointerValue(run.PlannedExecutorPolicyKey),
+		PlannedImageProfileKey:   stringPointerValue(run.PlannedImageProfileKey),
+		ExecutorPolicyKey:        stringPointerValue(run.ExecutorPolicyKey),
+		ExecutionImageProfileKey: stringPointerValue(run.ExecutionImageProfileKey),
+		ExecutionImageRef:        stringPointerValue(run.ExecutionImageRef),
+		ErrorCode:                stringPointerValue(run.ErrorCode),
+		ErrorClass:               stringPointerValue(run.ErrorClass),
+		InstructionSummary:       run.InstructionSummary,
+		ExecutionLog:             run.ExecutionLog,
+		StartedAt:                run.StartedAt,
+		CompletedAt:              run.CompletedAt,
+		ErrorMessage:             run.ErrorMessage,
+		CreatedAt:                run.CreatedAt,
+		UpdatedAt:                run.UpdatedAt,
 	}
 }
 

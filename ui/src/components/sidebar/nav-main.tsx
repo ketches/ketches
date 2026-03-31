@@ -28,7 +28,8 @@ export function NavMenuItem({ item }: { item: NavItem }) {
       <SidebarMenuButton
         render={<Link to={item.url} />}
         isActive={isActive}
-        className={isActive ? "bg-linear-to-r/increasing from-blue-500/25 to-transparent text-primary font-medium data-[active=true]:bg-transparent" : ""}
+        // className={isActive ? "bg-linear-to-r/increasing from-blue-500/25 to-transparent text-primary font-medium data-[active=true]:bg-transparent" : ""}
+        className={isActive ? "bg-blue" : ""}
       >
         <item.icon />
         <span>{item.title}</span>

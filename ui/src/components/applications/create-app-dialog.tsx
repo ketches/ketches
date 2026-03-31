@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Database, Key, Layers } from "lucide-react"
+import { Database, HardDriveDownload, Key, Layers } from "lucide-react"
 import * as React from "react"
 import { toast as sonnerToast } from "sonner"
 
@@ -18,12 +18,14 @@ import {
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { getImagePullPolicyLabel, IMAGE_PULL_POLICY_OPTIONS } from "@/lib/image-pull-policy-options"
 import { cn } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
 import type { AxiosError } from "axios"
 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 import { deriveImageDefaults, toNameSlug } from "./create-app-dialog.utils"
 
 interface CreateAppDialogProps {
@@ -57,12 +59,6 @@ const INITIAL_FORM_DATA: CreateAppFormData = {
   registry_password: "",
 }
 
-const IMAGE_PULL_POLICY_OPTIONS = [
-  { label: "IfNotPresent", value: "IfNotPresent" },
-  { label: "Always", value: "Always" },
-  { label: "Never", value: "Never" },
-]
-
 export function CreateAppDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
@@ -76,6 +72,7 @@ export function CreateAppDialog({
   const queryClient = useQueryClient()
   const { activeEnvId } = useProjectStore()
   const [showRegistryCredentials, setShowRegistryCredentials] = React.useState(false)
+  const [showPullPolicy, setShowPullPolicy] = React.useState(false)
   const [hasEditedName, setHasEditedName] = React.useState(false)
   const [hasEditedSlug, setHasEditedSlug] = React.useState(false)
   const [hasEditedAppType, setHasEditedAppType] = React.useState(false)
@@ -94,6 +91,7 @@ export function CreateAppDialog({
     setFormData({ ...INITIAL_FORM_DATA })
     setErrors({})
     setShowRegistryCredentials(false)
+    setShowPullPolicy(false)
     setHasEditedName(false)
     setHasEditedSlug(false)
     setHasEditedAppType(false)
@@ -170,6 +168,12 @@ export function CreateAppDialog({
       newErrors.container_image = "Container image is required"
     }
 
+    if (formData.registry_password.trim() && !formData.registry_username.trim()) {
+      const errMsg = "Registry username is required when password is provided"
+      newErrors.global = errMsg
+      sonnerToast.error("Error", { description: errMsg })
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -218,76 +222,105 @@ export function CreateAppDialog({
               </div>
             )}
 
-            <div className="grid grid-cols-[3fr_1fr] gap-4">
-              <Field>
-                <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
-                <FieldContent>
-                  <InputGroup>
-                    <InputGroupInput id="container-image"
-                      name="container_image"
-                      placeholder="Enter or paste an image URL, e.g. nginx:latest or ghcr.io/org/app:1.0.0"
-                      value={formData.container_image}
-                      onChange={(e) => handleImageChange(e.target.value)}
-                      aria-invalid={!!errors.container_image} />
-                    <InputGroupAddon align="inline-end">
-                      <Tooltip>
-                        <TooltipTrigger
-                          delay={200}
-                          render={
-                            <Button
-                              type="button"
-                              variant={showRegistryCredentials ? "default" : "ghost"}
-                              size="icon-sm"
-                              aria-label="Registry credentials"
-                              aria-pressed={showRegistryCredentials}
-                              onClick={() => setShowRegistryCredentials((prev) => !prev)}
-                              className="ml-auto"
-                            />
-                          }
-                        >
-                          <Key />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Registry Credentials</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </InputGroupAddon>
-                  </InputGroup>
-                </FieldContent>
-                {errors.container_image && <FieldError><span className="text-destructive text-xs">{errors.container_image}</span></FieldError>}
-              </Field>
+            <Field>
+              <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
+              <FieldContent>
+                <InputGroup>
+                  <InputGroupInput id="container-image"
+                    name="container_image"
+                    placeholder="Enter or paste an image URL, e.g. nginx:latest or ghcr.io/org/app:1.0.0"
+                    value={formData.container_image}
+                    onChange={(e) => handleImageChange(e.target.value)}
+                    aria-invalid={!!errors.container_image} />
+                  <InputGroupAddon align="inline-end">
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showPullPolicy ? "default" : "ghost"}
+                            size="icon-sm"
+                            aria-label="Pull policy"
+                            aria-pressed={showPullPolicy}
+                            onClick={() => setShowPullPolicy((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <HardDriveDownload />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Pull Policy</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            type="button"
+                            variant={showRegistryCredentials ? "default" : "ghost"}
+                            size="icon-sm"
+                            aria-label="Registry credentials"
+                            aria-pressed={showRegistryCredentials}
+                            onClick={() => setShowRegistryCredentials((prev) => !prev)}
+                            className="ml-auto"
+                          />
+                        }
+                      >
+                        <Key />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Registry Credentials</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </InputGroupAddon>
+                </InputGroup>
+              </FieldContent>
+              {errors.container_image && <FieldError><span className="text-destructive text-xs">{errors.container_image}</span></FieldError>}
+            </Field>
 
-              <Field>
-                <FieldLabel htmlFor="image-pull-policy">Pull Policy</FieldLabel>
-                <FieldContent>
-                  <Combobox
+            {showPullPolicy && (<Field>
+              <FieldLabel htmlFor="image-pull-policy">Pull Policy</FieldLabel>
+              <FieldContent>
+                <Combobox
+                  value={formData.image_pull_policy}
+                  onValueChange={(value) => {
+                    setHasEditedPullPolicy(true)
+                    setFormData((prev) => ({ ...prev, image_pull_policy: value ?? "IfNotPresent" }))
+                  }}
+                  itemToStringLabel={getImagePullPolicyLabel}
+                >
+                  <ComboboxInput
+                    id="image-pull-policy"
+                    name="image_pull_policy"
                     value={formData.image_pull_policy}
-                    onValueChange={(value) => {
-                      setHasEditedPullPolicy(true)
-                      setFormData((prev) => ({ ...prev, image_pull_policy: value ?? "IfNotPresent" }))
-                    }}
-                    itemToStringLabel={(v) => IMAGE_PULL_POLICY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
-                  >
-                    <ComboboxInput
-                      id="image-pull-policy"
-                      name="image_pull_policy"
-                      value={formData.image_pull_policy}
-                      readOnly
-                      className="w-full cursor-pointer"
-                    />
-                    <ComboboxContent>
-                      <ComboboxList>
-                        {IMAGE_PULL_POLICY_OPTIONS.map((option) => (
-                          <ComboboxItem key={option.value} value={option.value}>
-                            {option.label}
-                          </ComboboxItem>
-                        ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                </FieldContent>
-              </Field>
-            </div>
+                    readOnly
+                    className="w-full cursor-pointer"
+                  />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {IMAGE_PULL_POLICY_OPTIONS.map((option) => (
+                        <ComboboxItem key={option.value} value={option.value}>
+                          <Item size="xs" className="p-0">
+                            <ItemContent>
+                              <ItemTitle className="whitespace-nowrap">
+                                {option.label}
+                              </ItemTitle>
+                              <ItemDescription>
+                                {option.description}
+                              </ItemDescription>
+                            </ItemContent>
+                          </Item>
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FieldContent>
+            </Field>
+            )}
 
             {showRegistryCredentials && (
               <div className="grid grid-cols-2 gap-4">

@@ -34,8 +34,8 @@ type UpdatePluginRequest struct {
 	Description      string         `json:"description"`
 	Image            string         `json:"image"`
 	ImagePullPolicy  string         `json:"image_pull_policy"`
-	RegistryUsername string         `json:"registry_username"`
-	RegistryPassword string         `json:"registry_password"`
+	RegistryUsername *string        `json:"registry_username"`
+	RegistryPassword *string        `json:"registry_password"`
 	Command          string         `json:"command"`
 	EnvVars          []PluginEnvVar `json:"env_vars"`
 	PluginType       string         `json:"plugin_type" binding:"omitempty,oneof=init sidecar"`

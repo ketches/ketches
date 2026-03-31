@@ -3,19 +3,23 @@ package models
 import "time"
 
 type CreateBuilderSessionRequest struct {
-	BuildEnvID       string `json:"build_env_id" binding:"required"`
-	Title            string `json:"title"`
-	Prompt           string `json:"prompt" binding:"required"`
-	SelectedModelKey string `json:"selected_model_key"`
-	ProviderKey      string `json:"provider_key"`
-	ModelProfileKey  string `json:"model_profile_key"`
+	BuildEnvID               string `json:"build_env_id" binding:"required"`
+	Title                    string `json:"title"`
+	Prompt                   string `json:"prompt" binding:"required"`
+	SelectedModelKey         string `json:"selected_model_key"`
+	ProviderKey              string `json:"provider_key"`
+	ModelProfileKey          string `json:"model_profile_key"`
+	ExecutorPolicyKey        string `json:"executor_policy_key"`
+	ExecutionImageProfileKey string `json:"execution_image_profile_key"`
 }
 
 type AppendBuilderSessionMessageRequest struct {
-	Content          string `json:"content" binding:"required"`
-	SelectedModelKey string `json:"selected_model_key"`
-	ProviderKey      string `json:"provider_key"`
-	ModelProfileKey  string `json:"model_profile_key"`
+	Content                  string `json:"content" binding:"required"`
+	SelectedModelKey         string `json:"selected_model_key"`
+	ProviderKey              string `json:"provider_key"`
+	ModelProfileKey          string `json:"model_profile_key"`
+	ExecutorPolicyKey        string `json:"executor_policy_key"`
+	ExecutionImageProfileKey string `json:"execution_image_profile_key"`
 }
 
 type BuilderSessionResponse struct {
@@ -70,19 +74,29 @@ type BuilderMessageResponse struct {
 }
 
 type BuilderRunResponse struct {
-	ID                 string     `json:"id"`
-	SessionID          string     `json:"session_id"`
-	TriggerMessageID   string     `json:"trigger_message_id"`
-	WorkspaceID        string     `json:"workspace_id"`
-	Status             string     `json:"status"`
-	RequestedBy        string     `json:"requested_by"`
-	InstructionSummary string     `json:"instruction_summary"`
-	ExecutionLog       string     `json:"execution_log"`
-	StartedAt          *time.Time `json:"started_at"`
-	CompletedAt        *time.Time `json:"completed_at"`
-	ErrorMessage       string     `json:"error_message"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	ID                       string     `json:"id"`
+	SessionID                string     `json:"session_id"`
+	TriggerMessageID         string     `json:"trigger_message_id"`
+	WorkspaceID              string     `json:"workspace_id"`
+	Status                   string     `json:"status"`
+	Phase                    string     `json:"phase"`
+	RequestedBy              string     `json:"requested_by"`
+	PlannedProjectKind       string     `json:"planned_project_kind"`
+	PlannedProjectSummary    string     `json:"planned_project_summary"`
+	PlannedExecutorPolicyKey string     `json:"planned_executor_policy_key"`
+	PlannedImageProfileKey   string     `json:"planned_image_profile_key"`
+	ExecutorPolicyKey        string     `json:"executor_policy_key"`
+	ExecutionImageProfileKey string     `json:"execution_image_profile_key"`
+	ExecutionImageRef        string     `json:"execution_image_ref"`
+	ErrorCode                string     `json:"error_code"`
+	ErrorClass               string     `json:"error_class"`
+	InstructionSummary       string     `json:"instruction_summary"`
+	ExecutionLog             string     `json:"execution_log"`
+	StartedAt                *time.Time `json:"started_at"`
+	CompletedAt              *time.Time `json:"completed_at"`
+	ErrorMessage             string     `json:"error_message"`
+	CreatedAt                time.Time  `json:"created_at"`
+	UpdatedAt                time.Time  `json:"updated_at"`
 }
 
 type BuilderWorkspaceSummaryResponse struct {

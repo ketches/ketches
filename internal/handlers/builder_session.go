@@ -12,6 +12,7 @@ import (
 	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
@@ -22,6 +23,13 @@ var resolveBuilderSessionSnapshot = services.ResolveBuilderSessionSnapshot
 var writeBuilderSessionSnapshotArchive = func(ctx context.Context, projectID, sessionID, runID string, writer io.Writer) error {
 	return services.DownloadBuilderSessionSnapshot(ctx, projectID, sessionID, runID, writer)
 }
+var createBuilderSessionExport = services.CreateBuilderSessionExport
+var listBuilderSessionExports = services.ListBuilderSessionExports
+var downloadBuilderSessionExport = services.DownloadBuilderSessionExport
+var getBuilderSessionExportPromotionPlan = services.GetBuilderSessionExportPromotionPlan
+var promoteBuilderSessionExportToCodeRepository = services.PromoteBuilderSessionExportToCodeRepository
+var promoteBuilderSessionExportToInitialBuild = services.PromoteBuilderSessionExportToInitialBuild
+var deployBuilderExportBuild = services.DeployBuilderExportBuild
 
 func ListBuilderSessions(c *gin.Context) {
 	projectID := c.Param("projectID")
@@ -227,6 +235,128 @@ func RequestBuilderRunCancel(c *gin.Context) {
 	}
 
 	api.Success(c, detail)
+}
+
+func CreateBuilderSessionExport(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+	userID, ok := requireBuilderSessionUserID(c)
+	if !ok {
+		return
+	}
+
+	export, err := createBuilderSessionExport(c.Request.Context(), projectID, sessionID, userID)
+	if err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	api.Created(c, export)
+}
+
+func ListBuilderSessionExports(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+
+	exports, err := listBuilderSessionExports(c.Request.Context(), projectID, sessionID)
+	if err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	api.Success(c, exports)
+}
+
+func DownloadBuilderSessionExport(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+	exportID := c.Param("exportID")
+
+	var export entities.BuilderExport
+	if err := db.DB.WithContext(c.Request.Context()).Where("id = ? AND session_id = ?", exportID, sessionID).First(&export).Error; err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	c.Header("Content-Type", "application/gzip")
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, export.FileName))
+	if err := downloadBuilderSessionExport(c.Request.Context(), projectID, sessionID, exportID, c.Writer); err != nil {
+		c.Error(err)
+	}
+}
+
+func GetBuilderSessionExportPromotionPlan(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+	exportID := c.Param("exportID")
+
+	resp, err := getBuilderSessionExportPromotionPlan(c.Request.Context(), projectID, sessionID, exportID)
+	if err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	api.Success(c, resp)
+}
+
+func PromoteBuilderSessionExportToCodeRepository(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+	exportID := c.Param("exportID")
+
+	var req models.PromoteBuilderExportToCodeRepositoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	resp, err := promoteBuilderSessionExportToCodeRepository(c.Request.Context(), projectID, sessionID, exportID, &req)
+	if err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	api.Created(c, resp)
+}
+
+func PromoteBuilderSessionExportToInitialBuild(c *gin.Context) {
+	projectID := c.Param("projectID")
+	sessionID := c.Param("sessionID")
+	exportID := c.Param("exportID")
+	userID, ok := requireBuilderSessionUserID(c)
+	if !ok {
+		return
+	}
+
+	var req models.PromoteBuilderExportToInitialBuildRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	resp, err := promoteBuilderSessionExportToInitialBuild(c.Request.Context(), projectID, sessionID, exportID, userID, &req)
+	if err != nil {
+		api.Error(c, builderSessionErrorStatus(err), err)
+		return
+	}
+
+	api.Created(c, resp)
+}
+
+func DeployBuilderExportBuild(c *gin.Context) {
+	var req models.DeployBuilderExportBuildRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	appCtx, err := deployBuilderExportBuild(c.Request.Context(), &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, appCtx)
 }
 
 func requireBuilderSessionUserID(c *gin.Context) (string, bool) {

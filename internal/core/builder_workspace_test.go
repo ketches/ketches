@@ -81,6 +81,15 @@ func TestBuildBuilderWorkspacePod_UsesBuildEnvNamespaceSessionPVCMountImageAndLa
 	if container.Image != app.Config.BuilderWorkspaceImage {
 		t.Fatalf("expected workspace image %q, got %q", app.Config.BuilderWorkspaceImage, container.Image)
 	}
+	if len(container.Command) != 3 {
+		t.Fatalf("expected long-running workspace command, got %#v", container.Command)
+	}
+	if container.Command[0] != "sh" || container.Command[1] != "-lc" {
+		t.Fatalf("expected shell-based workspace command, got %#v", container.Command)
+	}
+	if container.Command[2] != "while true; do sleep 3600; done" {
+		t.Fatalf("expected keepalive workspace command, got %#v", container.Command)
+	}
 	if !hasBuilderWorkspaceMount(container.VolumeMounts, builderWorkspaceVolumeName, app.Config.BuilderWorkspaceRoot) {
 		t.Fatalf("expected workspace mount %q on %q, got %#v", builderWorkspaceVolumeName, app.Config.BuilderWorkspaceRoot, container.VolumeMounts)
 	}
@@ -104,6 +113,21 @@ func TestBuildBuilderWorkspacePod_UsesBuildEnvNamespaceSessionPVCMountImageAndLa
 	}
 	if pod.Labels[builderSessionIDLabelKey] != spec.SessionID {
 		t.Fatalf("expected builder session label %q, got %#v", spec.SessionID, pod.Labels)
+	}
+}
+
+func TestBuildBuilderWorkspacePod_UsesExecutionImageOverrideWhenProvided(t *testing.T) {
+	setBuilderWorkspaceConfigForTest(t)
+	spec := testBuilderWorkspaceSpec()
+	spec.ExecutionImage = "ghcr.io/ketches/builder-node-static:2026-03-29"
+
+	pod, err := BuildBuilderWorkspacePod(spec)
+	if err != nil {
+		t.Fatalf("BuildBuilderWorkspacePod returned error: %v", err)
+	}
+
+	if got := pod.Spec.Containers[0].Image; got != "ghcr.io/ketches/builder-node-static:2026-03-29" {
+		t.Fatalf("expected execution image override %q, got %q", "ghcr.io/ketches/builder-node-static:2026-03-29", got)
 	}
 }
 

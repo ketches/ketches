@@ -27,6 +27,7 @@ type BuilderWorkspaceSpec struct {
 	BuildEnvID     string
 	BuildEnvSlug   string
 	Namespace      string
+	ExecutionImage string
 	StorageRequest string
 }
 
@@ -94,8 +95,9 @@ func BuildBuilderWorkspacePod(spec BuilderWorkspaceSpec) (*corev1.Pod, error) {
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:  builderWorkspaceContainerName,
-					Image: app.Config.BuilderWorkspaceImage,
+					Name:    builderWorkspaceContainerName,
+					Image:   builderWorkspaceImageRef(spec),
+					Command: []string{"sh", "-lc", "while true; do sleep 3600; done"},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      builderWorkspaceVolumeName,
@@ -116,6 +118,14 @@ func BuildBuilderWorkspacePod(spec BuilderWorkspaceSpec) (*corev1.Pod, error) {
 			},
 		},
 	}, nil
+}
+
+func builderWorkspaceImageRef(spec BuilderWorkspaceSpec) string {
+	if strings.TrimSpace(spec.ExecutionImage) != "" {
+		return strings.TrimSpace(spec.ExecutionImage)
+	}
+
+	return app.Config.BuilderWorkspaceImage
 }
 
 func builderWorkspaceLabels(spec BuilderWorkspaceSpec) map[string]string {

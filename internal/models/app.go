@@ -120,6 +120,8 @@ type CreateGatewayRequest struct {
 	Domain      string `json:"domain"`
 	Path        string `json:"path"`
 	GatewayPort int    `json:"gateway_port"`
+	ServiceType string `json:"service_type"`
+	NodePort    int    `json:"node_port"`
 	Exposed     bool   `json:"exposed"`
 	CertID      string `json:"cert_id"`
 }
@@ -130,6 +132,8 @@ type UpdateGatewayRequest struct {
 	Domain      string `json:"domain"`
 	Path        string `json:"path"`
 	GatewayPort int    `json:"gateway_port"`
+	ServiceType string `json:"service_type"`
+	NodePort    int    `json:"node_port"`
 	Exposed     bool   `json:"exposed"`
 	CertID      string `json:"cert_id"`
 }
@@ -227,17 +231,21 @@ type AppVolumeResponse struct {
 }
 
 type AppGatewayResponse struct {
-	ID          string    `json:"id"`
-	AppID       string    `json:"app_id"`
-	Port        int       `json:"port"`
-	Protocol    string    `json:"protocol"`
-	Domain      string    `json:"domain"`
-	Path        string    `json:"path"`
-	GatewayPort int       `json:"gateway_port"`
-	Exposed     bool      `json:"exposed"`
-	CertID      *string   `json:"cert_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	AppID           string    `json:"app_id"`
+	Port            int       `json:"port"`
+	Protocol        string    `json:"protocol"`
+	Domain          string    `json:"domain"`
+	Path            string    `json:"path"`
+	GatewayPort     int       `json:"gateway_port"`
+	ServiceType     string    `json:"service_type"`
+	NodePort        int       `json:"node_port"`
+	GatewayIP       string    `json:"gateway_ip"`
+	InternalAddress string    `json:"internal_address"`
+	Exposed         bool      `json:"exposed"`
+	CertID          *string   `json:"cert_id"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type AppActionRequest struct {

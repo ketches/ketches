@@ -15,3 +15,7 @@ type UserAIProvider struct {
 	Enabled                bool      `gorm:"not null;index"`
 	IsDefault              bool      `gorm:"not null;index"`
 }
+
+func (UserAIProvider) TableName() string {
+	return "user_ai_providers"
+}

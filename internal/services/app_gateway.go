@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
@@ -19,9 +20,25 @@ func ListAppGateways(appID string) ([]models.AppGatewayResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Get cluster gateway_ip and namespace via AppContext (loads env+cluster once)
+	var gatewayIP, appSlug, namespace string
+	if len(gateways) > 0 {
+		if appCtx, err := GetAppContext(context.Background(), appID); err == nil {
+			gatewayIP = appCtx.EnvContext.Cluster.GatewayIP
+			appSlug = appCtx.App.Slug
+			namespace = appCtx.EnvContext.Env.ClusterNamespace
+		}
+	}
+
 	result := make([]models.AppGatewayResponse, 0, len(gateways))
 	for _, gw := range gateways {
-		result = append(result, toAppGatewayResponse(&gw))
+		resp := toAppGatewayResponse(&gw)
+		resp.GatewayIP = gatewayIP
+		if appSlug != "" {
+			resp.InternalAddress = fmt.Sprintf("%s.%s:%d", appSlug, namespace, gw.Port)
+		}
+		result = append(result, resp)
 	}
 	return result, nil
 }
@@ -36,7 +53,11 @@ func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatew
 		Domain:      req.Domain,
 		Path:        req.Path,
 		GatewayPort: req.GatewayPort,
+		ServiceType: req.ServiceType,
 		Exposed:     req.Exposed,
+	}
+	if req.ServiceType == "NodePort" && req.NodePort != 0 {
+		entity.NodePort = req.NodePort
 	}
 	if req.CertID != "" {
 		certID := req.CertID
@@ -68,7 +89,17 @@ func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatew
 		return nil, err
 	}
 
+	// Read back actual NodePorts assigned by K8s and persist
+	if nodePorts, err := core.ReadNodePortsFromK8s(ctx, appCtx); err == nil {
+		if np, ok := nodePorts[entity.Port]; ok && entity.NodePort == 0 {
+			entity.NodePort = np
+			db.DB.Model(entity).Update("node_port", np)
+		}
+	}
+
 	res := toAppGatewayResponse(entity)
+	res.GatewayIP = appCtx.EnvContext.Cluster.GatewayIP
+	res.InternalAddress = fmt.Sprintf("%s.%s:%d", appCtx.App.Slug, appCtx.EnvContext.Env.ClusterNamespace, entity.Port)
 	return &res, nil
 }
 
@@ -100,7 +131,13 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 	gateway.Domain = req.Domain
 	gateway.Path = req.Path
 	gateway.GatewayPort = req.GatewayPort
+	gateway.ServiceType = req.ServiceType
 	gateway.Exposed = req.Exposed
+	if req.ServiceType == "NodePort" && req.NodePort != 0 {
+		gateway.NodePort = req.NodePort
+	} else if req.ServiceType != "NodePort" {
+		gateway.NodePort = 0
+	}
 	if req.CertID != "" {
 		certID := req.CertID
 		gateway.CertID = &certID
@@ -124,7 +161,17 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 		return nil, err
 	}
 
+	// Read back actual NodePorts assigned by K8s and persist
+	if nodePorts, err := core.ReadNodePortsFromK8s(ctx, appCtx); err == nil {
+		if np, ok := nodePorts[gateway.Port]; ok && gateway.NodePort == 0 {
+			gateway.NodePort = np
+			db.DB.Model(&gateway).Update("node_port", np)
+		}
+	}
+
 	res := toAppGatewayResponse(&gateway)
+	res.GatewayIP = appCtx.EnvContext.Cluster.GatewayIP
+	res.InternalAddress = fmt.Sprintf("%s.%s:%d", appCtx.App.Slug, appCtx.EnvContext.Env.ClusterNamespace, gateway.Port)
 	return &res, nil
 }
 
@@ -167,6 +214,8 @@ func toAppGatewayResponse(gw *entities.AppGateway) models.AppGatewayResponse {
 		Domain:      gw.Domain,
 		Path:        gw.Path,
 		GatewayPort: gw.GatewayPort,
+		ServiceType: gw.ServiceType,
+		NodePort:    gw.NodePort,
 		Exposed:     gw.Exposed,
 		CertID:      gw.CertID,
 		CreatedAt:   gw.CreatedAt,
