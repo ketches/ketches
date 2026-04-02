@@ -1,12 +1,17 @@
 package services
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/ketches/ketches/internal/core/exporter"
+	"github.com/ketches/ketches/internal/core/importer"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConvertAppsToMetadata(t *testing.T) {
@@ -70,7 +75,11 @@ func TestConvertAppsToMetadata(t *testing.T) {
 	assert.Equal(t, 200, meta.LimitCPU)
 	assert.Equal(t, 256, meta.LimitMemory)
 	assert.Equal(t, "user", meta.RegistryUsername)
-	assert.Equal(t, "password", meta.RegistryPassword)
+	assert.Empty(t, meta.RegistryPassword)
+
+	metadataJSON, err := json.Marshal(meta)
+	require.NoError(t, err)
+	assert.NotContains(t, string(metadataJSON), "registry_password")
 
 	assert.Len(t, meta.EnvVars, 1)
 	assert.Equal(t, "ENV_KEY", meta.EnvVars[0].Key)
@@ -119,4 +128,31 @@ func TestConflictInfoStruct(t *testing.T) {
 	}
 	assert.Equal(t, "old", ci.ExistingApp.Slug)
 	assert.Equal(t, "new", ci.NewApp.AppSlug)
+}
+
+func TestKetchesMetadataRoundTrip_OmitsRegistryPassword(t *testing.T) {
+	appCtxs := []*models.AppContext{
+		{
+			App: entities.App{
+				Name:             "test-app",
+				Slug:             "test-app",
+				AppType:          "Deployment",
+				ContainerImage:   "nginx:latest",
+				Replicas:         1,
+				RegistryUsername: "user",
+				RegistryPassword: "secret",
+			},
+		},
+	}
+
+	content, err := generateExport(convertAppContextsToMetadata(appCtxs), exporter.FormatKetches)
+	require.NoError(t, err)
+	assert.NotContains(t, content, "registry_password")
+
+	converter := &importer.KetchesMetadataConverter{}
+	apps, err := converter.Parse(content)
+	require.NoError(t, err)
+	require.Len(t, apps, 1)
+	assert.Empty(t, apps[0].RegistryPassword)
+	assert.True(t, strings.Contains(content, "registry_username"))
 }

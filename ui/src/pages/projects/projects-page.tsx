@@ -31,6 +31,7 @@ import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
+import { type AxiosError } from "axios"
 import { Clock, GalleryVerticalEnd, LayoutGrid, List as ListIcon, Loader2, LogIn, Pencil, Plus, Trash2, UserCog } from "lucide-react"
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
@@ -98,7 +99,7 @@ export function ProjectsPage() {
   const projects = projectsResponse?.items ?? []
   const paginationInfo = projectsResponse?.pagination
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<unknown, AxiosError<{ error: string }>, string>({
     mutationFn: projectsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
@@ -106,7 +107,7 @@ export function ProjectsPage() {
       setDeleteDialogOpen(false)
       setSelectedProject(null)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to delete project", {
         description: error.response?.data?.error || "Unknown error occurred"
       })

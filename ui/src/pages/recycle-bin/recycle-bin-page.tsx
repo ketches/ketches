@@ -1,3 +1,4 @@
+import { AxiosError } from "axios"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { ArchiveRestore, Box, Clock, FolderGit2, GalleryVerticalEnd, Loader2, Orbit, RotateCcw, Trash2, User } from "lucide-react"
@@ -173,7 +174,7 @@ export function RecycleBinPage() {
     return "An unknown error occurred"
   }
 
-  const restoreAppsMutation = useMutation({
+  const restoreAppsMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: (ids: string[]) => recycleBinApi.restoreApps(ids),
     onSuccess: () => {
       toast.success("Applications restored")
@@ -182,7 +183,7 @@ export function RecycleBinPage() {
       setRestoreDialogOpen(false)
       setRestoringItemId(null)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to restore applications", {
         description: error.response?.data?.error || "An unknown error occurred",
       })
@@ -190,7 +191,7 @@ export function RecycleBinPage() {
     },
   })
 
-  const deleteAppsMutation = useMutation({
+  const deleteAppsMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: (ids: string[]) => recycleBinApi.permanentlyDeleteApps(ids),
     onSuccess: () => {
       toast.success("Applications permanently deleted")
@@ -199,7 +200,7 @@ export function RecycleBinPage() {
       setDeleteDialogOpen(false)
       setDeletingItemId(null)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to delete applications", {
         description: error.response?.data?.error || "An unknown error occurred",
       })
@@ -207,7 +208,7 @@ export function RecycleBinPage() {
     },
   })
 
-  const restoreEnvsMutation = useMutation({
+  const restoreEnvsMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: (ids: string[]) => recycleBinApi.restoreEnvs(ids),
     onSuccess: () => {
       toast.success("Environments restored")
@@ -216,7 +217,7 @@ export function RecycleBinPage() {
       setRestoreDialogOpen(false)
       setRestoringItemId(null)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to restore environments", {
         description: error.response?.data?.error || "An unknown error occurred",
       })
@@ -224,7 +225,7 @@ export function RecycleBinPage() {
     },
   })
 
-  const deleteEnvsMutation = useMutation({
+  const deleteEnvsMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: async (ids: string[]) => {
       for (const id of ids) {
         const conflicts = await recycleBinApi.checkEnvDeletionConflicts(id)
@@ -242,7 +243,7 @@ export function RecycleBinPage() {
       setSelectedEnvRows({})
       setDeleteDialogOpen(false)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       if (error.message !== "Environment has deleted applications") {
         toast.error("Failed to delete environments", {
           description: error.response?.data?.error || "An unknown error occurred",
@@ -251,7 +252,7 @@ export function RecycleBinPage() {
     },
   })
 
-  const restoreProjectsMutation = useMutation({
+  const restoreProjectsMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: (ids: string[]) => recycleBinApi.restoreProjects(ids),
     onSuccess: () => {
       toast.success("Projects restored")
@@ -260,7 +261,7 @@ export function RecycleBinPage() {
       setRestoreDialogOpen(false)
       setRestoringItemId(null)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to restore projects", {
         description: error.response?.data?.error || "An unknown error occurred",
       })
@@ -268,7 +269,7 @@ export function RecycleBinPage() {
     },
   })
 
-  const deleteProjectsMutation = useMutation({
+  const deleteProjectsMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: (ids: string[]) => recycleBinApi.permanentlyDeleteProjects(ids),
     onSuccess: () => {
       toast.success("Projects permanently deleted")
@@ -277,14 +278,14 @@ export function RecycleBinPage() {
       setDeleteDialogOpen(false)
       setDeletingItemId(null)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to delete projects", {
         description: error.response?.data?.error || "An unknown error occurred",
       })
       setDeletingItemId(null)
     },
   })
-  const restoreCodeReposMutation = useMutation({
+  const restoreCodeReposMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: (ids: string[]) => recycleBinApi.restoreCodeRepos(ids),
     onSuccess: () => {
       toast.success("Code repositories restored")
@@ -293,7 +294,7 @@ export function RecycleBinPage() {
       setRestoreDialogOpen(false)
       setRestoringItemId(null)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to restore code repositories", {
         description: error.response?.data?.error || "An unknown error occurred",
       })
@@ -301,7 +302,7 @@ export function RecycleBinPage() {
     },
   })
 
-  const deleteCodeReposMutation = useMutation({
+  const deleteCodeReposMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: (ids: string[]) => recycleBinApi.permanentlyDeleteCodeRepos(ids),
     onSuccess: () => {
       toast.success("Code repositories permanently deleted")
@@ -310,7 +311,7 @@ export function RecycleBinPage() {
       setDeleteDialogOpen(false)
       setDeletingItemId(null)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to delete code repositories", {
         description: error.response?.data?.error || "An unknown error occurred",
       })
@@ -318,7 +319,7 @@ export function RecycleBinPage() {
     },
   })
 
-  const restoreUsersMutation = useMutation({
+  const restoreUsersMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: (ids: string[]) => recycleBinApi.restoreUsers(ids),
     onSuccess: () => {
       toast.success("Users restored")
@@ -335,7 +336,7 @@ export function RecycleBinPage() {
     },
   })
 
-  const deleteUsersMutation = useMutation({
+  const deleteUsersMutation = useMutation<unknown, AxiosError<{ error: string }>, string[]>({
     mutationFn: (ids: string[]) => recycleBinApi.permanentlyDeleteUsers(ids),
     onSuccess: () => {
       toast.success("Users permanently deleted")

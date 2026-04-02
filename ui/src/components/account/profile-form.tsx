@@ -32,7 +32,7 @@ export function ProfileForm({ user, onSave, isSaving = false }: ProfileFormProps
     setBio(user.bio ?? "")
   }, [user.bio, user.email, user.fullname])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     await onSave?.({ fullname, email, bio })
   }

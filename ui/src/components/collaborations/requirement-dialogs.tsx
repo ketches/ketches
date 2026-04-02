@@ -22,6 +22,7 @@ import {
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { getErrorMessage } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -88,9 +89,8 @@ export function CreateRequirementDialog({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to create requirement", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -235,9 +235,8 @@ export function EditRequirementDialog({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update requirement", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -352,9 +351,8 @@ export function DeleteRequirementDialog({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to delete requirement", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })

@@ -95,9 +95,9 @@ describe("builderSessionsApi.runLogsStreamUrl", () => {
     })
   })
 
-  it("builds an SSE URL that carries the auth token in the query string", () => {
+  it("builds an SSE URL rooted at the API base path while auth is handled by cookies", () => {
     expect(builderSessionsApi.runLogsStreamUrl("project-1", "session-1", "run-1")).toBe(
-      "/api/v1/projects/project-1/builder-sessions/session-1/runs/run-1/logs?token=token-123"
+      "/api/v1/projects/project-1/builder-sessions/session-1/runs/run-1/logs"
     )
   })
 })

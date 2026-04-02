@@ -42,7 +42,7 @@ func GetAppTopology(ctx context.Context, client *kubernetes.Clientset, appCtx *m
 	})
 
 	pods, _ := client.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
-		LabelSelector: "ketches.cn/app-slug=" + appCtx.App.Slug,
+		LabelSelector: kube.LabelAppSlug + "=" + appCtx.App.Slug,
 	})
 	for _, pod := range pods.Items {
 		podID := "pod-" + pod.Name

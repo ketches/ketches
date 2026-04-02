@@ -27,8 +27,13 @@ export interface UpdateCertificateRequest {
 }
 
 export const certificatesApi = {
-  listByCluster: async (clusterId: string, params?: PaginationParams) => {
-    return client.get(`/v1/clusters/${clusterId}/certificates`, { params }) as Promise<{ items: Certificate[], pagination: PaginationResponse }>
+  listByCluster: async (clusterId: string, params?: PaginationParams, projectId?: string) => {
+    return client.get(`/v1/clusters/${clusterId}/certificates`, {
+      params: {
+        ...params,
+        ...(projectId ? { project_id: projectId } : {}),
+      },
+    }) as Promise<{ items: Certificate[], pagination: PaginationResponse }>
   },
   createForCluster: async (clusterId: string, data: CreateCertificateRequest) => {
     return client.post(`/v1/clusters/${clusterId}/certificates`, data) as Promise<Certificate>

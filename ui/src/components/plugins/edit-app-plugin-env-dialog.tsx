@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { type AxiosError } from "axios"
 import { Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -38,7 +39,7 @@ export function EditAppPluginEnvDialog({
     }
   }, [appPlugin, open])
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<unknown, AxiosError<{ error: string }>, KeyValuePair[]>({
     mutationFn: (env_vars: KeyValuePair[]) =>
       pluginsApi.updateAppPluginEnv(appId, appPlugin!.plugin_id, env_vars),
     onSuccess: () => {
@@ -46,14 +47,14 @@ export function EditAppPluginEnvDialog({
       toast.success("Plugin environment variables updated")
       onOpenChange(false)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to update environment variables",
       })
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     updateMutation.mutate(envVars)
   }

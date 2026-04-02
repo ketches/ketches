@@ -19,7 +19,7 @@ import (
 func ListEnvs(projectID string, page, pageSize int, search string) (int64, []models.EnvResponse, error) {
 	var envs []models.EnvResponse
 	var total int64
-	query := db.DB.Model(&entities.Env{}).Select("envs.id, envs.name, envs.slug, envs.description, envs.project_id, envs.cluster_id, clusters.name as cluster_name, envs.cluster_namespace, envs.is_build_env, envs.created_at").Where("project_id = ?", projectID).Joins("JOIN clusters ON clusters.id = envs.cluster_id").Order("created_at")
+	query := db.DB.Model(&entities.Env{}).Select("envs.id, envs.name, envs.slug, envs.description, envs.project_id, envs.cluster_id, clusters.name as cluster_name, clusters.connection_status as cluster_connection_status, clusters.connection_status_reason as cluster_connection_status_reason, envs.cluster_namespace, envs.is_build_env, envs.created_at").Where("project_id = ?", projectID).Joins("JOIN clusters ON clusters.id = envs.cluster_id").Order("created_at")
 	if search != "" {
 		query = query.Where("name LIKE ? OR slug LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
@@ -200,12 +200,20 @@ func GetEnv(envID string) (*entities.Env, error) {
 func GetEnvWithProjectName(envID string) (*models.EnvResponse, error) {
 	var resp models.EnvResponse
 	if err := db.DB.Model(&entities.Env{}).
-		Select("envs.id, envs.slug, envs.name, envs.description, envs.project_id, envs.cluster_id, envs.cluster_namespace, envs.is_build_env, envs.created_at, projects.name as project_name").
+		Select("envs.id, envs.slug, envs.name, envs.description, envs.project_id, envs.cluster_id, envs.cluster_namespace, envs.is_build_env, envs.created_at, projects.name as project_name, clusters.name as cluster_name, clusters.connection_status as cluster_connection_status, clusters.connection_status_reason as cluster_connection_status_reason").
 		Joins("JOIN projects ON projects.id = envs.project_id").
+		Joins("JOIN clusters ON clusters.id = envs.cluster_id").
 		Where("envs.id = ?", envID).
 		First(&resp).Error; err != nil {
 		return nil, err
 	}
+
+	hasPrometheusIntegration, err := HasPrometheusIntegration(resp.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+	resp.HasPrometheusIntegration = hasPrometheusIntegration
+
 	return &resp, nil
 }
 

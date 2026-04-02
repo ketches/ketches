@@ -11,6 +11,11 @@ import (
 
 func ListClusterIntegrations(c *gin.Context) {
 	clusterID := c.Param("clusterID")
+	projectID := queryProjectID(c)
+
+	if requireClusterProjectAccess(c, projectID, clusterID) == nil {
+		return
+	}
 
 	integrations, err := services.ListClusterIntegrations(clusterID)
 	if err != nil {

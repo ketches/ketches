@@ -32,6 +32,7 @@ import {
   serializeBuildArgPairs,
   validateBuildArgPairs,
 } from "@/lib/build-setting-build-args"
+import { Textarea } from "@/components/ui/textarea"
 import { KeyValueInput } from "../shared/key-value-input"
 
 const PLATFORM_OPTIONS = [
@@ -90,13 +91,15 @@ export function BuildSettingSheet({
 }: BuildSettingSheetProps) {
   const [form, setForm] = React.useState<FormState>(defaultFormState)
   const [buildArgPairs, setBuildArgPairs] = React.useState<BuildArgPair[]>([])
+  const [buildArgsMode, setBuildArgsMode] = React.useState<"structured" | "advanced">("structured")
+  const [buildArgsRaw, setBuildArgsRaw] = React.useState("")
 
   React.useEffect(() => {
     if (!open) return
 
     if (mode === "edit" && setting) {
       const parsed = setting.build_arg_pairs?.length
-        ? { pairs: setting.build_arg_pairs }
+        ? { mode: "structured" as const, pairs: setting.build_arg_pairs, raw: "" }
         : parseBuildArgs(setting.build_args ?? "")
 
       setForm({
@@ -111,6 +114,8 @@ export function BuildSettingSheet({
         registry_cache_ref: setting.registry_cache_ref ?? "",
       })
       setBuildArgPairs(parsed.pairs)
+      setBuildArgsMode(parsed.mode)
+      setBuildArgsRaw(parsed.raw)
       return
     }
 
@@ -120,6 +125,8 @@ export function BuildSettingSheet({
     }
     setForm(nextForm)
     setBuildArgPairs([])
+    setBuildArgsMode("structured")
+    setBuildArgsRaw("")
   }, [mode, open, repoSlug, setting])
 
 
@@ -128,15 +135,25 @@ export function BuildSettingSheet({
       return
     }
 
-    const validationError = validateBuildArgPairs(buildArgPairs)
-    if (validationError) {
-      return
-    }
+    let finalBuildArgs = ""
+    let finalPairs: BuildArgPair[] | undefined = undefined
 
-    const normalizedPairs = buildArgPairs
-      .map((pair) => ({ key: pair.key.trim(), value: pair.value.trim() }))
-      .filter((pair) => pair.key)
-      .sort((a, b) => a.key.localeCompare(b.key))
+    if (buildArgsMode === "structured") {
+      const validationError = validateBuildArgPairs(buildArgPairs)
+      if (validationError) {
+        return
+      }
+
+      const normalizedPairs = buildArgPairs
+        .map((pair) => ({ key: pair.key.trim(), value: pair.value.trim() }))
+        .filter((pair) => pair.key)
+        .sort((a, b) => a.key.localeCompare(b.key))
+
+      finalBuildArgs = serializeBuildArgPairs(normalizedPairs)
+      finalPairs = normalizedPairs
+    } else {
+      finalBuildArgs = buildArgsRaw
+    }
 
     onSubmit({
       name: form.name.trim(),
@@ -148,8 +165,8 @@ export function BuildSettingSheet({
       platforms: form.platforms,
       registry_cache_enabled: form.registry_cache_enabled,
       registry_cache_ref: form.registry_cache_ref.trim(),
-      build_args: serializeBuildArgPairs(normalizedPairs),
-      build_arg_pairs: normalizedPairs,
+      build_args: finalBuildArgs,
+      build_arg_pairs: finalPairs,
     })
   }
 
@@ -284,14 +301,34 @@ export function BuildSettingSheet({
 
 
           <Field>
-            <FieldLabel>Build Args</FieldLabel>
+            <div className="flex items-center justify-between">
+              <FieldLabel>Build Args</FieldLabel>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-0 text-xs"
+                onClick={() => setBuildArgsMode(m => m === "structured" ? "advanced" : "structured")}
+              >
+                {buildArgsMode === "structured" ? "Switch to Advanced" : "Switch to Structured"}
+              </Button>
+            </div>
             <FieldContent>
-              <KeyValueInput
-                value={buildArgPairs}
-                onChange={setBuildArgPairs}
-                keyPlaceholder="ARG_KEY"
-                valuePlaceholder="ARG_VALUE"
-              />
+              {buildArgsMode === "advanced" ? (
+                <Textarea
+                  value={buildArgsRaw}
+                  onChange={(e) => setBuildArgsRaw(e.target.value)}
+                  placeholder="KEY=value"
+                  className="font-mono text-sm"
+                  rows={5}
+                />
+              ) : (
+                <KeyValueInput
+                  value={buildArgPairs}
+                  onChange={setBuildArgPairs}
+                  keyPlaceholder="ARG_KEY"
+                  valuePlaceholder="ARG_VALUE"
+                />
+              )}
             </FieldContent>
           </Field>
         </div>

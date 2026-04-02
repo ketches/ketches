@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { isAxiosError } from "axios"
+import { isAxiosError, type AxiosError } from "axios"
 import {
   Box,
   CircleAlert,
@@ -66,7 +66,7 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
     enabled: !!projectId,
   })
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<unknown, AxiosError<{ error: string }>, void>({
     mutationFn: () => projectsApi.delete(projectId!),
     onSuccess: () => {
       toast.success("Project deleted", {
@@ -75,7 +75,7 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
       queryClient.invalidateQueries({ queryKey: ["projects"] })
       navigate("/projects")
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to delete project", {
         description: error.response?.data?.error || "An unknown error occurred",
       })

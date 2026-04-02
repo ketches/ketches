@@ -76,16 +76,12 @@ Ketches 是一个面向企业级的开源云原生应用平台，旨在降低 Ku
 **前置条件**：Docker 24+ 并已启用 Compose V2
 
 ```bash
-# 下载 Compose 配置文件
-curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/docker-compose.yml \
-  -o docker-compose.yml
-
-# 启动所有服务（API + UI + PostgreSQL）
+curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/.env.quickstart -o .env
 docker compose up -d
-
-# 在浏览器中打开
-open http://localhost
 ```
+
+这条 QuickStart 路径仅用于本地试用。它会使用 `deploy/docker/.env.quickstart` 中的演示密钥，方便快速启动。正式环境请保持 `deploy/docker/docker-compose.yml` 的安全默认行为，并参考[生产部署说明](docs/PRODUCTION_DEPLOYMENT.md)。
 
 默认管理员账号在首次启动时自动创建，查看日志获取：
 
@@ -98,12 +94,24 @@ docker compose logs ketches-api | grep -i "admin"
 **前置条件**：Kubernetes 1.24+、Helm 3.12+
 
 ```bash
-helm upgrade --install ketches ./deploy/helm/ketches \
-  --namespace ketches \
-  --create-namespace
+helm upgrade --install ketches ./deploy/helm/ketches --namespace ketches --create-namespace -f ./deploy/helm/ketches/values-quickstart.yaml
 ```
 
-默认 UI Service 类型为 `NodePort`（`30080`）：
+这条 QuickStart 路径仅适用于本地体验集群。主 Helm Chart 仍然保持安全默认值，需要在非体验场景下显式提供真实密钥。
+
+### 原始 Kubernetes manifests
+
+**前置条件**：Kubernetes 1.24+
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/ketches/ketches/master/deploy/kubernetes/manifests.quickstart.yaml
+```
+
+这份 quickstart manifest 仅用于本地体验。它内置了演示密钥和面向 localhost 的 CORS 配置，使原始 manifest 的体验路径与其他 quickstart 方式一致。
+
+更多说明见：[`deploy/kubernetes/README.md`](deploy/kubernetes/README.md)
+
+QuickStart 下 UI Service 类型为 `NodePort`（`30080`）：
 
 ```bash
 kubectl -n ketches get svc ketches-ui
@@ -116,7 +124,7 @@ kubectl -n ketches port-forward svc/ketches-ui 8080:80
 # 浏览器打开 http://127.0.0.1:8080
 ```
 
-生产环境请务必覆盖 `config.jwtSecret`。如果使用外部数据库，请设置 `postgres.enabled=false` 并显式提供 `config.dbSource`。
+生产环境请不要复用 quickstart values 文件。请务必为 `config.jwtSecret` 和 `config.secretEncryptionKey` 提供强随机值；如果继续使用内置 PostgreSQL，还需要设置 `postgres.auth.password`，并参考[生产部署说明](docs/PRODUCTION_DEPLOYMENT.md)。如果使用外部数据库，请设置 `postgres.enabled=false`，并显式提供 `config.dbSource`（或拆分后的 `config.db*` 参数）。
 
 #### Helm Chart 仓库（GitHub Pages）
 
@@ -181,6 +189,7 @@ make dev-ui
 | `DB_SSLMODE` | `disable` | 未设置 `DB_SOURCE` 时 PostgreSQL 的 SSL 模式 |
 | `DB_AUTO_MIGRATE` | `true` | 是否在数据库初始化时执行 GORM AutoMigrate |
 | `JWT_SECRET` | *（必填）* | JWT Token 签名密钥 |
+| `SECRET_ENCRYPTION_KEY` | *（必填）* | 用于静态加密敏感数据的密钥 |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | 允许跨域的源地址，逗号分隔 |
 
 **Note**：生产环境建议设置 `DB_AUTO_MIGRATE=false`，并通过可控的迁移流程管理数据库结构变更。
@@ -195,7 +204,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=ketches
 DB_USERNAME=postgres
-DB_PASSWORD=secret
+DB_PASSWORD=<db-password>
 DB_SSLMODE=disable
 ```
 
@@ -207,7 +216,7 @@ DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=ketches
 DB_USERNAME=root
-DB_PASSWORD=secret
+DB_PASSWORD=<db-password>
 ```
 
 如果你更希望自行维护完整连接串，也仍然可以直接设置 `DB_SOURCE`。

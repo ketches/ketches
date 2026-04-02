@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,16 +16,22 @@ import (
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/internal/services"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 func GetDashboardStats(c *gin.Context) {
-	userRole := api.GetUserRole(c)
-	projectID := c.Query("project_id")
+	claims := api.GetClaims(c)
+	if claims == nil {
+		api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
+		return
+	}
 
-	if userRole == app.UserRoleAdmin {
+	projectID := queryProjectID(c)
+
+	if claims.Role == app.UserRoleAdmin {
 		stats, err := services.GetAdminDashboardStats(projectID)
 		if err != nil {
 			api.Error(c, http.StatusInternalServerError, err)
@@ -39,6 +46,10 @@ func GetDashboardStats(c *gin.Context) {
 		return
 	}
 
+	if requireProjectAccess(c, projectID) == nil {
+		return
+	}
+
 	stats, err := services.GetUserDashboardStats(projectID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
@@ -48,9 +59,13 @@ func GetDashboardStats(c *gin.Context) {
 }
 
 func GetDashboardEnvironments(c *gin.Context) {
-	projectID := c.Query("project_id")
+	projectID := queryProjectID(c)
 	if projectID == "" {
 		api.Error(c, http.StatusBadRequest, app.ErrBadRequest)
+		return
+	}
+
+	if requireProjectAccess(c, projectID) == nil {
 		return
 	}
 
@@ -69,7 +84,11 @@ func getIntegrationEndpoint(integration *entities.ClusterIntegration) (string, e
 		if err != nil {
 			return "", err
 		}
-		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
+		plaintextKubeConfig, err := secrets.DecryptString(cluster.KubeConfig)
+		if err != nil {
+			return "", err
+		}
+		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(plaintextKubeConfig))
 		if err != nil {
 			return "", err
 		}
@@ -85,6 +104,11 @@ func getIntegrationEndpoint(integration *entities.ClusterIntegration) (string, e
 
 func ProxyPrometheusQuery(c *gin.Context) {
 	clusterID := c.Param("clusterID")
+	projectID := queryProjectID(c)
+
+	if requireClusterProjectAccess(c, projectID, clusterID) == nil {
+		return
+	}
 
 	integration, err := services.GetClusterIntegrationByType(clusterID, entities.IntegrationTypePrometheus)
 	if err != nil {
@@ -131,6 +155,11 @@ func ProxyPrometheusQuery(c *gin.Context) {
 
 func ProxyPrometheusQueryRange(c *gin.Context) {
 	clusterID := c.Param("clusterID")
+	projectID := queryProjectID(c)
+
+	if requireClusterProjectAccess(c, projectID, clusterID) == nil {
+		return
+	}
 
 	integration, err := services.GetClusterIntegrationByType(clusterID, entities.IntegrationTypePrometheus)
 	if err != nil {
@@ -186,7 +215,11 @@ func executePrometheusRequest(urlStr string, integration *entities.ClusterIntegr
 		if err != nil {
 			return nil, err
 		}
-		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
+		plaintextKubeConfig, err := secrets.DecryptString(cluster.KubeConfig)
+		if err != nil {
+			return nil, err
+		}
+		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(plaintextKubeConfig))
 		if err != nil {
 			return nil, err
 		}
@@ -217,9 +250,17 @@ func executePrometheusRequest(urlStr string, integration *entities.ClusterIntegr
 
 	if integration.ServiceName == "" {
 		if integration.Token != "" {
-			req.Header.Set("Authorization", "Bearer "+integration.Token)
+			plaintextToken, err := secrets.DecryptString(integration.Token)
+			if err != nil {
+				return nil, err
+			}
+			req.Header.Set("Authorization", "Bearer "+plaintextToken)
 		} else if integration.Username != "" && integration.Password != "" {
-			req.SetBasicAuth(integration.Username, integration.Password)
+			plaintextPassword, err := secrets.DecryptString(integration.Password)
+			if err != nil {
+				return nil, err
+			}
+			req.SetBasicAuth(integration.Username, plaintextPassword)
 		}
 	}
 

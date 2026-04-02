@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -23,4 +24,16 @@ export const toTitleCase = (str: string) => {
   return str.replace(/\w\S*/g, (txt) => {
     return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
   })
+}
+
+export function getErrorMessage(error: unknown, fallback: string): string {
+  if (isAxiosError<{ error?: string }>(error)) {
+    return error.response?.data?.error || error.message || fallback
+  }
+
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return fallback
 }

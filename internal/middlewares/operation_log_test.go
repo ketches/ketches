@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -101,6 +101,33 @@ func TestOperationLogMiddlewareSignInLogsWithBodyUsername(t *testing.T) {
 	require.Len(t, logs, 1)
 	assert.Equal(t, "sign_in", logs[0].Action)
 	assert.Equal(t, "tester", logs[0].Username)
+	assert.Equal(t, entities.OperationLogSensitivityInternal, logs[0].Sensitivity)
+	assert.Contains(t, logs[0].RequestSummary, `"password":"[REDACTED]"`)
+	assert.NotContains(t, logs[0].RequestSummary, "secret")
+}
+
+func TestCaptureRequestBodyRedactsSensitiveJSONFields(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/users/sign-in",
+		bytes.NewReader([]byte(`{"username":"tester","password":"secret","nested":{"token":"abc"},"items":[{"api_key":"k1"}]}`)),
+	)
+	req.Header.Set("Content-Type", "application/json")
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = req
+
+	summary, _, username := captureRequestBody(c)
+
+	assert.Equal(t, "tester", username)
+	assert.Contains(t, summary, `"password":"[REDACTED]"`)
+	assert.Contains(t, summary, `"token":"[REDACTED]"`)
+	assert.Contains(t, summary, `"api_key":"[REDACTED]"`)
+	assert.NotContains(t, summary, "secret")
+	assert.NotContains(t, summary, `"abc"`)
+	assert.NotContains(t, summary, `"k1"`)
 }
 
 func TestCaptureRequestBodyOmitsMultipartPayload(t *testing.T) {
@@ -130,6 +157,14 @@ func TestCaptureRequestBodyOmitsMultipartPayload(t *testing.T) {
 
 func TestOperationLogRulesIncludePlatformUpdateRoutes(t *testing.T) {
 	rules := operationLogRouteRules()
+
+	signInRule, ok := rules["POST /api/v1/users/sign-in"]
+	require.True(t, ok)
+	assert.Equal(t, entities.OperationLogSensitivityInternal, signInRule.Sensitivity)
+
+	signUpRule, ok := rules["POST /api/v1/users/sign-up"]
+	require.True(t, ok)
+	assert.Equal(t, entities.OperationLogSensitivityInternal, signUpRule.Sensitivity)
 
 	configRule, ok := rules["PUT /api/v1/platform-update/config"]
 	require.True(t, ok)

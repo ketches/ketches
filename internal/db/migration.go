@@ -9,6 +9,10 @@ import (
 func Migrate() error {
 	log.Printf("Running AutoMigrate...")
 
+	if err := migrateClusterGatewayAddressToGatewayHost(); err != nil {
+		return err
+	}
+
 	if err := DB.AutoMigrate(
 		&entities.User{},
 		&entities.Cluster{},
@@ -65,4 +69,23 @@ func Migrate() error {
 	}
 
 	return nil
+}
+
+func migrateClusterGatewayAddressToGatewayHost() error {
+	if DB == nil {
+		return nil
+	}
+
+	if !DB.Migrator().HasTable(&entities.Cluster{}) {
+		return nil
+	}
+
+	hasOldColumn := DB.Migrator().HasColumn("clusters", "gateway_address")
+	hasNewColumn := DB.Migrator().HasColumn("clusters", "gateway_host")
+
+	if !hasOldColumn || hasNewColumn {
+		return nil
+	}
+
+	return DB.Migrator().RenameColumn("clusters", "gateway_address", "gateway_host")
 }

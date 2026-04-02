@@ -53,7 +53,7 @@ export function InviteMemberDialog({ projectId, onAdd }: { projectId: string; on
     enabled: open && !!projectId,
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (userIds.length === 0) return
     onAdd({ userIds, role })

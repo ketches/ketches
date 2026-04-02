@@ -62,7 +62,7 @@ export function PlatformUpdateConfigDialog({
     setForm((current) => ({ ...current, [field]: value }))
   }
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     updateMutation.mutate({

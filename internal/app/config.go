@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -20,6 +21,9 @@ type AppConfig struct {
 	DBSSLMode                         string
 	DBAutoMigrate                     bool
 	JWTSecret                         string
+	SecretEncryptionKey               string
+	BootstrapAdminUsername            string
+	BootstrapAdminPassword            string
 	CORSAllowedOrigins                string
 	BuildLogBaseDir                   string
 	BuildLogRetentionDays             int
@@ -40,6 +44,13 @@ type AppConfig struct {
 }
 
 var Config AppConfig
+
+var (
+	ErrJWTSecretNotConfigured           = errors.New("JWT_SECRET must be configured")
+	ErrSecretEncryptionKeyNotConfigured = errors.New("SECRET_ENCRYPTION_KEY must be configured")
+	ErrBootstrapAdminConfigIncomplete   = errors.New("BOOTSTRAP_ADMIN_USERNAME and BOOTSTRAP_ADMIN_PASSWORD must be configured together")
+	ErrBootstrapAdminPasswordTooShort   = errors.New("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters")
+)
 
 func InitConfig() {
 	dbDriver := getEnv("DB_DRIVER", "postgres")
@@ -63,7 +74,10 @@ func InitConfig() {
 		DBPassword:                        dbPassword,
 		DBSSLMode:                         dbSSLMode,
 		DBAutoMigrate:                     dbAutoMigrate,
-		JWTSecret:                         getEnv("JWT_SECRET", "ketches-secret-key"),
+		JWTSecret:                         strings.TrimSpace(getEnv("JWT_SECRET", "")),
+		SecretEncryptionKey:               strings.TrimSpace(getEnv("SECRET_ENCRYPTION_KEY", "")),
+		BootstrapAdminUsername:            strings.TrimSpace(getEnv("BOOTSTRAP_ADMIN_USERNAME", "")),
+		BootstrapAdminPassword:            getEnv("BOOTSTRAP_ADMIN_PASSWORD", ""),
 		CORSAllowedOrigins:                getEnv("CORS_ALLOWED_ORIGINS", ""),
 		BuildLogBaseDir:                   fallbackString(getEnv("BUILD_LOG_BASE_DIR", ""), "data/build-logs"),
 		BuildLogRetentionDays:             getEnvInt("BUILD_LOG_RETENTION_DAYS", 15),
@@ -82,6 +96,27 @@ func InitConfig() {
 		BuilderWorkspaceRoot:              fallbackString(getEnv("BUILDER_WORKSPACE_ROOT", ""), "/workspace"),
 		BuilderSessionTTLHours:            getEnvInt("BUILDER_SESSION_TTL_HOURS", 24),
 	}
+}
+
+func ValidateRuntimeConfig() error {
+	switch {
+	case Config.JWTSecret == "":
+		return ErrJWTSecretNotConfigured
+	case Config.SecretEncryptionKey == "":
+		return ErrSecretEncryptionKeyNotConfigured
+	}
+
+	hasBootstrapUsername := strings.TrimSpace(Config.BootstrapAdminUsername) != ""
+	hasBootstrapPassword := strings.TrimSpace(Config.BootstrapAdminPassword) != ""
+
+	if hasBootstrapUsername != hasBootstrapPassword {
+		return ErrBootstrapAdminConfigIncomplete
+	}
+	if hasBootstrapPassword && len(strings.TrimSpace(Config.BootstrapAdminPassword)) < 12 {
+		return ErrBootstrapAdminPasswordTooShort
+	}
+
+	return nil
 }
 
 func buildDBSource(driver, host, port, name, username, password, sslMode string) string {

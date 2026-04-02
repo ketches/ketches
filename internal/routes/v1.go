@@ -61,7 +61,7 @@ func setupV1Routes(r *gin.Engine) {
 
 			users := authorized.Group("/users")
 			{
-				users.GET("", handlers.ListUsers)
+				users.GET("", middlewares.AdminOnly(), handlers.ListUsers)
 				users.GET("/me", handlers.GetCurrentUserProfile)
 				users.PUT("/me/profile", handlers.UpdateCurrentUserProfile)
 				users.PATCH("/me/password", handlers.ChangeCurrentUserPassword)
@@ -71,9 +71,9 @@ func setupV1Routes(r *gin.Engine) {
 				users.DELETE("/me/ai-providers/:providerID", handlers.DeleteCurrentUserAIProvider)
 				users.POST("", middlewares.AdminOnly(), handlers.CreateUser)
 				users.POST("/import", middlewares.AdminOnly(), handlers.ImportUsers)
-				users.PUT("/:userID", handlers.UpdateUser)
+				users.PUT("/:userID", middlewares.AdminOnly(), handlers.UpdateUser)
 				users.PATCH("/:userID/password", middlewares.AdminOnly(), handlers.ChangeUserPassword)
-				users.DELETE("/:userID", handlers.DeleteUser)
+				users.DELETE("/:userID", middlewares.AdminOnly(), handlers.DeleteUser)
 				users.PUT("/:userID/change-role", middlewares.AdminOnly(), handlers.ChangeUserRole)
 				users.PATCH("/:userID/role", middlewares.AdminOnly(), handlers.ChangeUserRole)
 			}

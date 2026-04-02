@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type AxiosError } from "axios"
 import { ArrowDownToLine, Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -39,7 +40,7 @@ export function InstallPluginDialog({
     enabled: !!projectId
   })
 
-  const installMutation = useMutation({
+  const installMutation = useMutation<unknown, AxiosError<{ error: string }>, { pluginId: string; envVars?: { key: string, value: string }[] }>({
     mutationFn: ({ pluginId, envVars }: { pluginId: string; envVars?: { key: string, value: string }[] }) =>
       pluginsApi.installPlugin(appId, pluginId, envVars),
     onSuccess: () => {
@@ -47,7 +48,7 @@ export function InstallPluginDialog({
       queryClient.invalidateQueries({ queryKey: ["app-plugins", appId] })
       onOpenChange(false)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to install plugin", {
         description: error.response?.data?.error || "An unknown error occurred",
       })

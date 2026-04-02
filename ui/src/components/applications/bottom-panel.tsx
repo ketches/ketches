@@ -33,12 +33,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useBottomPanel } from "@/contexts/bottom-panel-context"
+import { useBottomPanel, type PanelType } from "@/contexts/bottom-panel-context"
 import { cn } from "@/lib/utils"
 
 import { FileExplorerPanel } from "./file-explorer-panel"
 import { LogPanel } from "./log-panel"
 import { TerminalPanel } from "./terminal-panel"
+
+function isPanelType(value: string): value is PanelType {
+  return value === "logs" || value === "terminal" || value === "files"
+}
 
 export function BottomPanel() {
   const {
@@ -122,7 +126,11 @@ export function BottomPanel() {
     >
       <div className="flex items-center justify-between h-10 px-4 border-b bg-muted/30">
         <div className="flex items-center gap-2">
-          <Tabs value={panelState.type} onValueChange={(v) => switchType(v as any)} className="w-auto h-7">
+          <Tabs value={panelState.type} onValueChange={(value) => {
+            if (isPanelType(value)) {
+              switchType(value)
+            }
+          }} className="w-auto h-7">
             <TabsList className="h-7">
               {!isNode && (
                 <TabsTrigger value="logs" className="text-xs">

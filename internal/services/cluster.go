@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,16 +57,21 @@ func CreateCluster(req *models.CreateClusterRequest) (*entities.Cluster, error) 
 		Slug:        req.Slug,
 		Name:        req.Name,
 		Description: req.Description,
-		KubeConfig:  req.KubeConfig,
-		GatewayIP:   req.GatewayIP,
+		GatewayHost: req.GatewayHost,
 		Enabled:     true,
 	}
+
+	encryptedKubeConfig, err := secrets.EncryptString(req.KubeConfig)
+	if err != nil {
+		return nil, err
+	}
+	cluster.KubeConfig = encryptedKubeConfig
 
 	if err := db.DB.Create(cluster).Error; err != nil {
 		return nil, err
 	}
 
-	if err := kube.GlobalClusterStore.AddClient(cluster.ID, cluster.KubeConfig); err != nil {
+	if err := kube.GlobalClusterStore.AddClient(cluster.ID, req.KubeConfig); err != nil {
 		return nil, err
 	}
 
@@ -95,15 +102,20 @@ func UpdateCluster(clusterID string, req *models.UpdateClusterRequest) (*entitie
 
 	cluster.Name = req.Name
 	cluster.Description = req.Description
-	cluster.KubeConfig = req.KubeConfig
-	cluster.GatewayIP = req.GatewayIP
+	cluster.GatewayHost = req.GatewayHost
+
+	encryptedKubeConfig, err := secrets.EncryptString(req.KubeConfig)
+	if err != nil {
+		return nil, err
+	}
+	cluster.KubeConfig = encryptedKubeConfig
 
 	if err := db.DB.Save(cluster).Error; err != nil {
 		return nil, err
 	}
 
 	if cluster.Enabled {
-		if err := kube.GlobalClusterStore.AddClient(cluster.ID, cluster.KubeConfig); err != nil {
+		if err := kube.GlobalClusterStore.AddClient(cluster.ID, req.KubeConfig); err != nil {
 			return nil, err
 		}
 	}
@@ -132,15 +144,22 @@ func UpdateClusterCredentials(clusterID string, req *models.UpdateClusterCredent
 		return nil, err
 	}
 
-	cluster.KubeConfig = req.KubeConfig
-	cluster.GatewayIP = req.GatewayIP
+	cluster.GatewayHost = req.GatewayHost
+
+	if req.KubeConfig != "" {
+		encryptedKubeConfig, err := secrets.EncryptString(req.KubeConfig)
+		if err != nil {
+			return nil, err
+		}
+		cluster.KubeConfig = encryptedKubeConfig
+	}
 
 	if err := db.DB.Save(cluster).Error; err != nil {
 		return nil, err
 	}
 
-	if cluster.Enabled {
-		if err := kube.GlobalClusterStore.AddClient(cluster.ID, cluster.KubeConfig); err != nil {
+	if cluster.Enabled && req.KubeConfig != "" {
+		if err := kube.GlobalClusterStore.AddClient(cluster.ID, req.KubeConfig); err != nil {
 			return nil, err
 		}
 	}
@@ -357,7 +376,12 @@ func ExecClusterNodeTerminal(clusterID string, nodeName string, stdin io.Reader,
 		return err
 	}
 
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
+	plaintextKubeConfig, err := secrets.DecryptString(cluster.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(plaintextKubeConfig))
 	if err != nil {
 		return err
 	}
@@ -421,7 +445,23 @@ func InitClusters() error {
 
 	for _, cluster := range clusters {
 		if cluster.Enabled {
-			if err := kube.GlobalClusterStore.AddClient(cluster.ID, cluster.KubeConfig); err != nil {
+			plaintextKubeConfig, err := secrets.DecryptString(cluster.KubeConfig)
+			if err != nil {
+				if strings.Contains(err.Error(), `ciphertext missing "enc:v1:" prefix`) {
+					plaintextKubeConfig = cluster.KubeConfig
+					encryptedKubeConfig, encryptErr := secrets.EncryptString(plaintextKubeConfig)
+					if encryptErr != nil {
+						return encryptErr
+					}
+					if saveErr := db.DB.Model(&entities.Cluster{}).Where("id = ?", cluster.ID).Update("kube_config", encryptedKubeConfig).Error; saveErr != nil {
+						return saveErr
+					}
+					cluster.KubeConfig = encryptedKubeConfig
+				} else {
+					return err
+				}
+			}
+			if err := kube.GlobalClusterStore.AddClient(cluster.ID, plaintextKubeConfig); err != nil {
 				return err
 			}
 		}
@@ -451,7 +491,13 @@ func CheckClusterConnectivity(clusterID string) {
 			return
 		}
 
-		client, err := kube.CreateClientFromKubeConfig(cluster.KubeConfig)
+		plaintextKubeConfig, decryptErr := secrets.DecryptString(cluster.KubeConfig)
+		if decryptErr != nil {
+			updateClusterConnectionStatus(clusterID, "disconnected", decryptErr.Error(), "")
+			return
+		}
+
+		client, err := kube.CreateClientFromKubeConfig(plaintextKubeConfig)
 		if err != nil {
 			updateClusterConnectionStatus(clusterID, "disconnected", err.Error(), "")
 			return
@@ -467,7 +513,7 @@ func CheckClusterConnectivity(clusterID string) {
 		}
 
 		// Get ApiServer address from config
-		config, _ := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
+		config, _ := clientcmd.RESTConfigFromKubeConfig([]byte(plaintextKubeConfig))
 		apiServer := ""
 		if config != nil {
 			apiServer = config.Host

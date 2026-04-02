@@ -28,8 +28,15 @@ import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
+import { type AxiosError } from "axios"
 import { Clock, Copy, GalleryVerticalEnd, Trash2, UserKey, Users } from "lucide-react"
 import { toast } from "sonner"
+
+const PROJECT_ROLE_SET = new Set<string>(PROJECT_ROLES)
+
+function isProjectRole(value: string | null): value is ProjectRole {
+  return value !== null && PROJECT_ROLE_SET.has(value)
+}
 
 export function MembersPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
   const queryClient = useQueryClient()
@@ -65,7 +72,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       queryClient.invalidateQueries({ queryKey: ['invitable-users', activeProjectId] })
       toast.success("Members invited successfully")
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to invite members",
       })
@@ -79,7 +86,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       queryClient.invalidateQueries({ queryKey: ['project-members', activeProjectId] })
       toast.success("Member role updated")
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to update role",
       })
@@ -93,7 +100,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       queryClient.invalidateQueries({ queryKey: ['project-members', activeProjectId] })
       toast.success("Member removed from project")
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to remove member",
       })
@@ -107,10 +114,8 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       header: ({ table }) => (
         <div className="flex items-center px-1">
           <Checkbox
-            checked={
-              (table.getIsAllPageRowsSelected() ||
-                (table.getIsSomePageRowsSelected() ? "mixed" : false)) as any
-            }
+            checked={table.getIsAllPageRowsSelected()}
+            data-state={table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected() ? "indeterminate" : undefined}
             onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
             aria-label="Select all"
           />
@@ -178,13 +183,17 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       cell: ({ row }) => {
         const member = row.original
         return isViewer ? (
-          <span className="text-xs">{ProjectRoleLabels[member.project_role as ProjectRole]}</span>
+          <span className="text-xs">{ProjectRoleLabels[member.project_role]}</span>
         ) : (
           <Combobox
             value={member.project_role}
-            onValueChange={(val: string | null) => val && updateRoleMutation.mutate({ userId: member.user_id, role: val })}
+            onValueChange={(value) => {
+              if (isProjectRole(value)) {
+                updateRoleMutation.mutate({ userId: member.user_id, role: value })
+              }
+            }}
             disabled={updateRoleMutation.isPending}
-            itemToStringLabel={(v) => ProjectRoleLabels[v as ProjectRole] ?? v ?? ""}
+            itemToStringLabel={(value) => isProjectRole(value) ? ProjectRoleLabels[value] : value ?? ""}
           >
             <ComboboxInput className="w-fit" >
               <InputGroupAddon>
@@ -197,8 +206,8 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
                   <ComboboxItem key={r} value={r}>
                     <Item size="xs" className="p-0">
                       <ItemContent>
-                        <ItemTitle>{ProjectRoleLabels[r as ProjectRole]}</ItemTitle>
-                        <ItemDescription>{ProjectRoleDescriptions[r as ProjectRole]}</ItemDescription>
+                        <ItemTitle>{ProjectRoleLabels[r]}</ItemTitle>
+                        <ItemDescription>{ProjectRoleDescriptions[r]}</ItemDescription>
                       </ItemContent>
                     </Item>
                   </ComboboxItem>

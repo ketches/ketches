@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type AxiosError } from "axios"
 import { toast } from "sonner"
 
 import { envsApi, type UpdateResourceQuotaRequest } from "@/api/envs"
@@ -16,13 +17,13 @@ export function useEnvResourceQuota(envId: string) {
 export function useUpdateEnvResourceQuotaMutation(envId: string) {
   const queryClient = useQueryClient()
 
-  return useMutation({
+  return useMutation<unknown, AxiosError<{ error: string }>, UpdateResourceQuotaRequest>({
     mutationFn: (data: UpdateResourceQuotaRequest) => envsApi.updateResourceQuota(envId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RESOURCE_QUOTA_QUERY_KEY(envId) })
       toast.success("Resource quota updated")
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to update resource quota", {
         description: error.response?.data?.error || "An unknown error occurred",
       })

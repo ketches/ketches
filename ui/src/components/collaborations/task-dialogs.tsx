@@ -133,7 +133,7 @@ export function CreateTaskDialog({
     ]
   }, [membersData?.items])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault()
     if (!formData.sprint_id) {
       toast.error("Sprint is required")
@@ -376,7 +376,7 @@ export function EditTaskDialog({
     }
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault()
     mutation.mutate(formData)
   }

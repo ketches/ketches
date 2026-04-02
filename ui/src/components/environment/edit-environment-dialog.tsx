@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { type AxiosError } from "axios"
 import { InfoIcon, Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -58,7 +59,7 @@ export function EditEnvironmentDialog({
     }
   }, [env, open])
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<Env, AxiosError<{ error: string }>, { name: string; description: string }>({
     mutationFn: (data: { name: string; description: string }) => {
       if (!env) throw new Error("No environment selected")
       return envsApi.update(env.id, data)
@@ -69,7 +70,7 @@ export function EditEnvironmentDialog({
       setOpen(false)
       onSuccess?.()
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to update environment",
       })
@@ -91,7 +92,7 @@ export function EditEnvironmentDialog({
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!validateForm()) {

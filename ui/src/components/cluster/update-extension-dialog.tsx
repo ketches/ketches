@@ -169,7 +169,7 @@ export function UpdateExtensionDialog({
     },
   })
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!extension) return
     const data: UpgradeExtensionRequest = {

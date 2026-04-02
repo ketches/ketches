@@ -20,6 +20,7 @@ import {
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Item, ItemContent, ItemTitle } from "@/components/ui/item"
+import { getErrorMessage } from "@/lib/utils"
 import Editor from "@monaco-editor/react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
@@ -147,14 +148,13 @@ export function ConfigFileEditor({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to save config file", {
-        description: err.response?.data?.error || "Unknown error",
+        description: getErrorMessage(error, "Unknown error"),
       })
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!validateForm()) return
 

@@ -1,3 +1,4 @@
+import { AxiosError } from "axios"
 import { pluginsApi, type AppPlugin } from "@/api/plugins"
 import { DataTable } from "@/components/data-table/data-table"
 import { EditAppPluginEnvDialog } from "@/components/plugins/edit-app-plugin-env-dialog"
@@ -69,7 +70,7 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
       toast.success("Plugin status updated")
       queryClient.invalidateQueries({ queryKey: ["app-plugins", appId] })
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to update plugin status", {
         description: error.response?.data?.error || "An unknown error occurred",
       })
@@ -83,7 +84,7 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
       queryClient.invalidateQueries({ queryKey: ["app-plugins", appId] })
       setPluginToUninstall(null)
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to uninstall plugin", {
         description: error.response?.data?.error || "An unknown error occurred",
       })

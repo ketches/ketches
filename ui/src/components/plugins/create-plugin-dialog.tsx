@@ -3,7 +3,7 @@ import { HardDriveDownload, Key, Layers2, Zap } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
-import { pluginsApi } from "@/api/plugins"
+import { pluginsApi, type CreatePluginRequest } from "@/api/plugins"
 import { KeyValueInput, type KeyValuePair } from "@/components/shared/key-value-input"
 import { Button } from "@/components/ui/button"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
@@ -62,9 +62,8 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
   const [envVars, setEnvVars] = useState<KeyValuePair[]>([])
   const [showRegistryCredentials, setShowRegistryCredentials] = useState(false)
   const [showPullPolicy, setShowPullPolicy] = useState(false)
-
   const createMutation = useMutation({
-    mutationFn: (data: any) => pluginsApi.createPlugin(projectId, data),
+    mutationFn: (data: CreatePluginRequest) => pluginsApi.createPlugin(projectId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins', projectId] })
       toast.success("Plugin created successfully")

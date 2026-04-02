@@ -20,6 +20,7 @@ export interface ContainerRegistry {
   namespace: string
   username: string
   password?: string
+  has_password: boolean
   scope: RegistryScope
   cluster_id?: string
   project_id?: string
@@ -50,6 +51,7 @@ export interface UpdateContainerRegistryRequest {
   namespace?: string
   username?: string
   password?: string
+  clear_password?: boolean
   is_default?: boolean
   enabled?: boolean
   description?: string

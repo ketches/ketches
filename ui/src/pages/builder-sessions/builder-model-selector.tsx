@@ -111,6 +111,7 @@ export function BuilderModelSelector({
             {selectedOption ? `${selectedOption.modelLabel} · ${selectedOption.providerLabel}` : "No model selected"}
           </span>
         </div>
+        {helperText ? <FieldDescription>{helperText}</FieldDescription> : null}
         {errorText ? <FieldError>{errorText}</FieldError> : null}
       </div>
     )

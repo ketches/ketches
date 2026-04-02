@@ -21,11 +21,10 @@ func ListAppGateways(appID string) ([]models.AppGatewayResponse, error) {
 		return nil, err
 	}
 
-	// Get cluster gateway_ip and namespace via AppContext (loads env+cluster once)
-	var gatewayIP, appSlug, namespace string
+	var gatewayHost, appSlug, namespace string
 	if len(gateways) > 0 {
 		if appCtx, err := GetAppContext(context.Background(), appID); err == nil {
-			gatewayIP = appCtx.EnvContext.Cluster.GatewayIP
+			gatewayHost = appCtx.EnvContext.Cluster.GatewayHost
 			appSlug = appCtx.App.Slug
 			namespace = appCtx.EnvContext.Env.ClusterNamespace
 		}
@@ -34,7 +33,7 @@ func ListAppGateways(appID string) ([]models.AppGatewayResponse, error) {
 	result := make([]models.AppGatewayResponse, 0, len(gateways))
 	for _, gw := range gateways {
 		resp := toAppGatewayResponse(&gw)
-		resp.GatewayIP = gatewayIP
+		resp.GatewayHost = gatewayHost
 		if appSlug != "" {
 			resp.InternalAddress = fmt.Sprintf("%s.%s:%d", appSlug, namespace, gw.Port)
 		}
@@ -98,7 +97,7 @@ func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatew
 	}
 
 	res := toAppGatewayResponse(entity)
-	res.GatewayIP = appCtx.EnvContext.Cluster.GatewayIP
+	res.GatewayHost = appCtx.EnvContext.Cluster.GatewayHost
 	res.InternalAddress = fmt.Sprintf("%s.%s:%d", appCtx.App.Slug, appCtx.EnvContext.Env.ClusterNamespace, entity.Port)
 	return &res, nil
 }
@@ -170,7 +169,7 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 	}
 
 	res := toAppGatewayResponse(&gateway)
-	res.GatewayIP = appCtx.EnvContext.Cluster.GatewayIP
+	res.GatewayHost = appCtx.EnvContext.Cluster.GatewayHost
 	res.InternalAddress = fmt.Sprintf("%s.%s:%d", appCtx.App.Slug, appCtx.EnvContext.Env.ClusterNamespace, gateway.Port)
 	return &res, nil
 }

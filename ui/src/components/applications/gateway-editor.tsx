@@ -6,7 +6,6 @@ import { toast } from "sonner"
 import { appsApi, type App, type GatewaySpec } from "@/api/apps"
 import { certificatesApi } from "@/api/certificates"
 import { clustersApi } from "@/api/clusters"
-import { envsApi } from "@/api/envs"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -29,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { getErrorMessage } from "@/lib/utils"
 
 interface GatewayEditorProps {
   app: App
@@ -84,16 +84,11 @@ export function GatewayEditor({
     exposed: false,
   })
 
-  // Fetch environment to get cluster_id, then fetch both cluster and env certificates
-  const { data: env } = useQuery({
-    queryKey: ['env', app.env_id],
-    queryFn: () => envsApi.get(app.env_id),
-    enabled: !!app.env_id && open,
-  })
+  const env = app.env
 
   const { data: clusterCertsResponse } = useQuery({
     queryKey: ['cluster-certificates', env?.cluster_id],
-    queryFn: () => certificatesApi.listByCluster(env!.cluster_id),
+    queryFn: () => certificatesApi.listByCluster(env!.cluster_id, undefined, env!.project_id),
     enabled: !!env?.cluster_id && open,
   })
 
@@ -106,7 +101,7 @@ export function GatewayEditor({
   // Check whether Gateway API is installed on the cluster.
   const { data: gatewayAPIStatus } = useQuery({
     queryKey: ['cluster-gateway-api-status', env?.cluster_id],
-    queryFn: () => clustersApi.getGatewayAPIStatus(env!.cluster_id),
+    queryFn: () => clustersApi.getGatewayAPIStatus(env!.cluster_id, env!.project_id),
     enabled: !!env?.cluster_id && open,
   })
   const gatewayAPIInstalled = gatewayAPIStatus?.installed !== false
@@ -158,9 +153,8 @@ export function GatewayEditor({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Error", {
-        description: err.response?.data?.error || `Failed to ${isEditing ? 'update' : 'create'} gateway`,
+        description: getErrorMessage(error, `Failed to ${isEditing ? 'update' : 'create'} gateway`),
       })
     },
   })
@@ -208,7 +202,7 @@ export function GatewayEditor({
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!validateForm()) {

@@ -1,5 +1,5 @@
-import { act } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { act } from "react"
 import ReactDOMClient from "react-dom/client"
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -14,43 +14,43 @@ import type {
   BuilderSessionDetail,
 } from "@/api/builder-sessions"
 
-  const {
-    listBuilderSessionsMock,
-    getBuilderSessionMock,
-    getBuilderModelSelectionMock,
-    createBuilderSessionMock,
-    postBuilderMessageMock,
-    listBuilderExportsMock,
-    createBuilderExportMock,
-    getBuilderExportPromotionPlanMock,
-    promoteBuilderExportMock,
-    promoteBuilderExportToBuildMock,
-    deployBuilderExportBuildMock,
-    downloadBuilderExportBlobMock,
-    launchBuilderPreviewMock,
-    listBuilderFilesMock,
-    readBuilderFileMock,
-    downloadTarBlobMock,
-    envsListMock,
-    pageHeaderItemsMock,
-    mockAuthState,
-    mockEventSources,
-  } = vi.hoisted(() => ({
+const {
+  listBuilderSessionsMock,
+  getBuilderSessionMock,
+  getBuilderModelSelectionMock,
+  createBuilderSessionMock,
+  postBuilderMessageMock,
+  listBuilderExportsMock,
+  createBuilderExportMock,
+  getBuilderExportPromotionPlanMock,
+  promoteBuilderExportMock,
+  promoteBuilderExportToBuildMock,
+  deployBuilderExportBuildMock,
+  downloadBuilderExportBlobMock,
+  launchBuilderPreviewMock,
+  listBuilderFilesMock,
+  readBuilderFileMock,
+  downloadTarBlobMock,
+  envsListMock,
+  pageHeaderItemsMock,
+  mockAuthState,
+  mockEventSources,
+} = vi.hoisted(() => ({
   listBuilderSessionsMock: vi.fn(),
   getBuilderSessionMock: vi.fn(),
   getBuilderModelSelectionMock: vi.fn(),
-    createBuilderSessionMock: vi.fn(),
-    postBuilderMessageMock: vi.fn(),
-    listBuilderExportsMock: vi.fn(),
-    createBuilderExportMock: vi.fn(),
-    getBuilderExportPromotionPlanMock: vi.fn(),
-    promoteBuilderExportMock: vi.fn(),
-    promoteBuilderExportToBuildMock: vi.fn(),
-    deployBuilderExportBuildMock: vi.fn(),
-    downloadBuilderExportBlobMock: vi.fn(),
-    launchBuilderPreviewMock: vi.fn(),
-    listBuilderFilesMock: vi.fn(),
-    readBuilderFileMock: vi.fn(),
+  createBuilderSessionMock: vi.fn(),
+  postBuilderMessageMock: vi.fn(),
+  listBuilderExportsMock: vi.fn(),
+  createBuilderExportMock: vi.fn(),
+  getBuilderExportPromotionPlanMock: vi.fn(),
+  promoteBuilderExportMock: vi.fn(),
+  promoteBuilderExportToBuildMock: vi.fn(),
+  deployBuilderExportBuildMock: vi.fn(),
+  downloadBuilderExportBlobMock: vi.fn(),
+  launchBuilderPreviewMock: vi.fn(),
+  listBuilderFilesMock: vi.fn(),
+  readBuilderFileMock: vi.fn(),
   downloadTarBlobMock: vi.fn(),
   envsListMock: vi.fn(),
   pageHeaderItemsMock: vi.fn(),
@@ -309,7 +309,7 @@ class MockEventSource {
     return true
   }
 
-  close() {}
+  close() { }
 
   emit(type: string, data = "") {
     for (const listener of this.listeners.get(type) ?? []) {
@@ -754,7 +754,7 @@ describe("Builder workspace routes", () => {
           Description: "",
           KubeConfig: "",
           ApiServer: "",
-          GatewayIP: "",
+          GatewayHost: "",
           Enabled: true,
           ConnectionStatus: "",
           ConnectionStatusReason: "",
@@ -1157,11 +1157,12 @@ describe("Builder workspace routes", () => {
       "/projects/project-1/builder-sessions/session-active"
     )
 
-    await settle()
+		await settle()
 
-    expect(mockEventSources).toHaveLength(1)
-    expect(mockEventSources[0]?.url).toContain("/v1/projects/project-1/builder-sessions/session-active/runs/run-active/logs?token=")
-    expect(container.textContent).toContain("Builder is working")
+		expect(mockEventSources).toHaveLength(1)
+		expect(mockEventSources[0]?.url).toContain("/api/v1/projects/project-1/builder-sessions/session-active/runs/run-active/logs")
+		expect(mockEventSources[0]?.url).not.toContain("token=")
+		expect(container.textContent).toContain("Builder is working")
 
     await act(async () => {
       mockEventSources[0]?.emit("log", "[agent] generating files...\n")

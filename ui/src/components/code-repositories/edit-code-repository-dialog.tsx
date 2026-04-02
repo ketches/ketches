@@ -22,6 +22,7 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
   const queryClient = useQueryClient()
   const [form, setForm] = React.useState<UpdateCodeRepositoryRequest>({})
   const [showCredentials, setShowCredentials] = React.useState(false)
+  const [isClearingPassword, setIsClearingPassword] = React.useState(false)
 
   React.useEffect(() => {
     if (repo && open) {
@@ -30,14 +31,19 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
         git_repo_url: repo.git_repo_url,
         git_username: repo.git_username ?? '',
         git_password: repo.git_password ?? '',
+        clear_git_password: false,
       })
       setShowCredentials(Boolean(repo.has_git_password || repo.git_username || repo.git_password))
+      setIsClearingPassword(false)
     }
   }, [repo, open])
 
   const updateMutation = useMutation({
     mutationFn: () => {
       const { ...updateData } = form
+      if (isClearingPassword && !updateData.git_password) {
+        updateData.clear_git_password = true
+      }
       return codeRepositoriesApi.update(repo!.id, updateData)
     },
     onSuccess: () => {
@@ -151,7 +157,15 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
                 <Field>
                   <FieldLabel htmlFor="git-password">Git Password / Token</FieldLabel>
                   <FieldContent>
-                    <Input
+                    {repo.has_git_password && !isClearingPassword ? (
+                      <div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
+                        <span className="text-sm text-muted-foreground">********</span>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setIsClearingPassword(true)}>
+                          Clear Password
+                        </Button>
+                      </div>
+                    ) : (
+                      <Input
                       id="git-password"
                       type="password"
                       autoComplete="new-password"
@@ -159,6 +173,7 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
                       value={form.git_password ?? ''}
                       onChange={(e) => setForm({ ...form, git_password: e.target.value })}
                     />
+                    )}
                   </FieldContent>
                 </Field>
               </div>

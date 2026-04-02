@@ -70,7 +70,7 @@ export function AddExtensionDialog({
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     const data: CreateExtensionRequest = {
       name: name.trim(),

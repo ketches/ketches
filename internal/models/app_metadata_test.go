@@ -69,6 +69,7 @@ func TestAppMetadata_Serialization(t *testing.T) {
 	data, err := json.Marshal(appMetadata)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, data)
+	assert.NotContains(t, string(data), "registry_password")
 
 	// Deserialize back
 	var loadedApp AppMetadata
@@ -153,7 +154,6 @@ func TestAppMetadata_ToCreateAppRequest(t *testing.T) {
 				LimitCPU:         200,
 				LimitMemory:      512,
 				RegistryUsername: "user",
-				RegistryPassword: "password",
 				AutoScaling: &AutoScalingMetadata{
 					MinReplicas:             1,
 					MaxReplicas:             5,
@@ -202,7 +202,6 @@ func TestAppMetadata_ToCreateAppRequest(t *testing.T) {
 				LimitCPU:         200,
 				LimitMemory:      512,
 				RegistryUsername: "user",
-				RegistryPassword: "password",
 				AutoScaling: &AutoScalingSpec{
 					MinReplicas:             1,
 					MaxReplicas:             5,

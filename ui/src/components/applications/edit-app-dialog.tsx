@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { type AxiosError } from "axios"
 import { Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast as sonnerToast } from "sonner"
@@ -57,7 +58,7 @@ export function EditAppDialog({
     }
   }, [app, open])
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<App, AxiosError<{ error: string }>, { name: string; description: string }>({
     mutationFn: (data: { name: string; description: string }) => {
       if (!app) throw new Error("No application selected")
       return appsApi.updateBasic(app.id, data)
@@ -68,7 +69,7 @@ export function EditAppDialog({
       setOpen(false)
       onSuccess?.()
     },
-    onError: (error: any) => {
+    onError: (error) => {
       sonnerToast.error("Error", {
         description: error.response?.data?.error || "Failed to update application",
       })
@@ -90,7 +91,7 @@ export function EditAppDialog({
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!validateForm()) {

@@ -1,4 +1,5 @@
 import { buildUnauthenticatedLoginHref, getCurrentRelativePath } from '@/lib/auth-redirect'
+import { clearAuthCookie, clearPersistedAuthState, getStoredAccessToken, syncAuthCookie } from '@/lib/auth-session'
 import axios, { type AxiosInstance } from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -12,15 +13,10 @@ const client: AxiosInstance = axios.create({
 })
 
 client.interceptors.request.use((config) => {
-  const authData = localStorage.getItem('auth-storage')
-  if (authData) {
-    try {
-      const { state } = JSON.parse(authData)
-      if (state.accessToken) {
-        config.headers.Authorization = `Bearer ${state.accessToken}`
-      }
-    } catch {
-    }
+  const accessToken = getStoredAccessToken()
+  if (accessToken) {
+    syncAuthCookie()
+    config.headers.Authorization = `Bearer ${accessToken}`
   }
   return config
 })
@@ -38,7 +34,8 @@ client.interceptors.response.use(
       const isAuthRequest = requestUrl.endsWith('/v1/users/sign-in') || requestUrl.endsWith('/v1/users/sign-up')
 
       if (!isAuthRequest) {
-        localStorage.removeItem('auth-storage')
+        clearAuthCookie()
+        clearPersistedAuthState()
         window.location.href = buildUnauthenticatedLoginHref(getCurrentRelativePath(window.location))
       }
     }

@@ -10,6 +10,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -72,9 +73,14 @@ func (m *AppMetadata) BuildDeployment() *appsv1.Deployment {
 	return deployment
 }
 
-func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
+func (m *AppMetadata) BuildRegistrySecret() (*corev1.Secret, error) {
 	if m.AppContext.App.RegistryUsername == "" {
-		return nil
+		return nil, nil
+	}
+
+	plaintextRegistryPassword, err := secrets.DecryptString(m.AppContext.App.RegistryPassword)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt registry password: %w", err)
 	}
 
 	registry := "https://index.docker.io/v1/"
@@ -85,12 +91,12 @@ func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
 		}
 	}
 
-	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", m.AppContext.App.RegistryUsername, m.AppContext.App.RegistryPassword)))
+	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", m.AppContext.App.RegistryUsername, plaintextRegistryPassword)))
 	dockerConfig := map[string]any{
 		"auths": map[string]any{
 			registry: map[string]any{
 				"username": m.AppContext.App.RegistryUsername,
-				"password": m.AppContext.App.RegistryPassword,
+				"password": plaintextRegistryPassword,
 				"auth":     auth,
 			},
 		},
@@ -108,7 +114,7 @@ func (m *AppMetadata) BuildRegistrySecret() *corev1.Secret {
 		Data: map[string][]byte{
 			corev1.DockerConfigJsonKey: configJSON,
 		},
-	}
+	}, nil
 }
 
 func (m *AppMetadata) buildVolumes() []corev1.Volume {

@@ -41,7 +41,7 @@
 
 | 数据库 | 驱动 | 连接字符串示例 |
 | ------ | ---- | ------------- |
-| PostgreSQL | pgx | `host=localhost port=5432 user=postgres password=xxx dbname=ketches sslmode=disable` |
+| PostgreSQL | pgx | `host=localhost port=5432 user=postgres password=<db-password> dbname=ketches sslmode=disable` |
 | MySQL | mysql | `user:password@tcp(localhost:3306)/ketches?charset=utf8mb4&parseTime=True&loc=Local` |
 
 ---
@@ -313,7 +313,7 @@ type Cluster struct {
     Name string `gorm:"type:varchar(128);not null"`
     Description string `gorm:"type:text"`
     KubeConfig  string `gorm:"type:text;not null"` // 加密存储
-    GatewayIP   string `gorm:"type:varchar(64)"`
+    GatewayHost   string `gorm:"type:varchar(64)"`
     Enabled     bool   `gorm:"type:bool;default:true"`
 }
 ```
@@ -1480,10 +1480,16 @@ metadata:
   name: ketches-config
   namespace: ketches-system
 data:
-  APP_HOST: "0.0.0.0"
-  APP_PORT: "8080"
-  APP_RUNMODE: "prod"
-  DB_TYPE: "postgres"
+  PORT: "8080"
+  LOG_LEVEL: "info"
+  DB_DRIVER: "postgres"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "ketches"
+  DB_USERNAME: "ketches"
+  DB_SSLMODE: "require"
+  DB_AUTO_MIGRATE: "true"
+  CORS_ALLOWED_ORIGINS: "https://app.example.com"
 
 ---
 apiVersion: v1
@@ -1493,8 +1499,9 @@ metadata:
   namespace: ketches-system
 type: Opaque
 stringData:
-  APP_JWT_SECRET: "your-jwt-secret-here"
-  DB_DNS: "host=postgres port=5432 user=ketches password=ketches dbname=ketches sslmode=disable"
+  JWT_SECRET: ""
+  SECRET_ENCRYPTION_KEY: ""
+  DB_PASSWORD: ""
 
 ---
 apiVersion: apps/v1
@@ -1637,7 +1644,7 @@ services:
     image: postgres:15
     environment:
       POSTGRES_USER: ketches
-      POSTGRES_PASSWORD: ketches
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"
       POSTGRES_DB: ketches
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -1653,12 +1660,17 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     environment:
-      APP_HOST: "0.0.0.0"
-      APP_PORT: "8080"
-      APP_RUNMODE: "prod"
-      APP_JWT_SECRET: "your-jwt-secret"
-      DB_TYPE: "postgres"
-      DB_DNS: "host=postgres port=5432 user=ketches password=ketches dbname=ketches sslmode=disable"
+      PORT: "8080"
+      LOG_LEVEL: "info"
+      DB_DRIVER: "postgres"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_NAME: "ketches"
+      DB_USERNAME: "ketches"
+      DB_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"
+      DB_SSLMODE: "require"
+      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET}"
+      SECRET_ENCRYPTION_KEY: "${SECRET_ENCRYPTION_KEY:?set SECRET_ENCRYPTION_KEY}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -1789,12 +1801,13 @@ GET /readyz               # 就绪检查（包含数据库连接）
 
 | 变量 | 描述 | 默认值 |
 | ---- | ---- | ------ |
-| APP_HOST | 监听地址 | 0.0.0.0 |
-| APP_PORT | 监听端口 | 8080 |
-| APP_RUNMODE | 运行模式 | dev |
-| APP_JWT_SECRET | JWT 密钥 | ketches |
-| DB_TYPE | 数据库类型 | postgres |
-| DB_DNS | 数据库连接串 | host=localhost port=5432 user=postgres password=xxx dbname=ketches sslmode=disable |
+| PORT | API 监听端口 | 8080 |
+| LOG_LEVEL | 日志级别 | info |
+| DB_DRIVER | 数据库驱动 | postgres |
+| DB_SOURCE | 完整数据库连接串（优先于拆分变量） | 空 |
+| DB_AUTO_MIGRATE | 启动时是否执行 GORM AutoMigrate | true |
+| JWT_SECRET | JWT 密钥 | 无（必填） |
+| SECRET_ENCRYPTION_KEY | 敏感数据静态加密密钥 | 无（必填） |
 
 ### B. API 错误码
 

@@ -91,8 +91,8 @@ export function CreateEnvironmentDialog({
   })
 
   const { data: clusters = [] } = useQuery<Cluster[]>({
-    queryKey: ['clusters-public'],
-    queryFn: clustersApi.listPublic,
+    queryKey: ['clusters-public', activeProjectId],
+    queryFn: () => clustersApi.listPublic(activeProjectId || undefined),
     enabled: open,
   })
 
@@ -343,7 +343,7 @@ export function CreateEnvironmentDialog({
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!validateForm()) return
     mutation.mutate(formData)

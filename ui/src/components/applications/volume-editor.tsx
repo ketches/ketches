@@ -6,7 +6,6 @@ import { toast } from "sonner"
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { clustersApi } from "@/api/clusters"
-import { envsApi } from "@/api/envs"
 import { Button } from "@/components/ui/button"
 import {
   Combobox,
@@ -26,6 +25,7 @@ import {
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
+import { getErrorMessage } from "@/lib/utils"
 
 export interface VolumeSpec {
   id?: string
@@ -87,19 +87,14 @@ export function VolumeEditor({
 
   const [errors, setErrors] = React.useState<Record<string, string>>({})
 
-  // Fetch env to get cluster_id
-  const { data: env } = useQuery({
-    queryKey: ["env", app.env_id],
-    queryFn: () => envsApi.get(app.env_id!),
-    enabled: !!app.env_id && open && formData.volume_type === "pvc",
-  })
+  const env = app.env
 
   // Fetch storage classes from cluster
   const { data: storageClasses = [] } = useQuery({
     queryKey: ["storage-classes", env?.cluster_id],
     queryFn: async () => {
       if (!env?.cluster_id) return []
-      return clustersApi.listStorageClasses(env.cluster_id)
+      return clustersApi.listStorageClasses(env.cluster_id, env.project_id)
     },
     enabled: !!env?.cluster_id && open && formData.volume_type === "pvc",
   })
@@ -174,14 +169,13 @@ export function VolumeEditor({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to save volume", {
-        description: err.response?.data?.error || "Unknown error",
+        description: getErrorMessage(error, "Unknown error"),
       })
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!validateForm()) return
 

@@ -1,3 +1,4 @@
+import { AxiosError } from "axios"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, Edit2, ExternalLink, GamepadDirectional, Loader2, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
@@ -67,6 +68,18 @@ interface ClusterIntegrationsConfigProps {
   clusterId: string
 }
 
+interface SecretClearState {
+  password: boolean
+  token: boolean
+  ca_cert: boolean
+}
+
+const defaultSecretClearState: SecretClearState = {
+  password: false,
+  token: false,
+  ca_cert: false,
+}
+
 export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConfigProps) {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = React.useState(false)
@@ -74,6 +87,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
   const [editingIntegration, setEditingIntegration] = React.useState<ClusterIntegration | null>(null)
   const [deletingIntegration, setDeletingIntegration] = React.useState<ClusterIntegration | null>(null)
   const [formData, setFormData] = React.useState<IntegrationFormData>(defaultFormData)
+  const [clearSecrets, setClearSecrets] = React.useState<SecretClearState>(defaultSecretClearState)
 
   const { data: namespaces = [] } = useQuery({
     queryKey: ["cluster-namespaces", clusterId],
@@ -106,7 +120,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
       queryClient.invalidateQueries({ queryKey: ["cluster-integrations", clusterId] })
       handleCloseDialog()
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to add integration", {
         description: error.response?.data?.error || error.message,
       })
@@ -120,7 +134,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
       queryClient.invalidateQueries({ queryKey: ["cluster-integrations", clusterId] })
       handleCloseDialog()
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to update integration", {
         description: error.response?.data?.error || error.message,
       })
@@ -135,7 +149,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
       setDeleteOpen(false)
       setDeletingIntegration(null)
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to delete integration", {
         description: error.response?.data?.error || error.message,
       })
@@ -145,6 +159,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
   const handleOpenCreate = () => {
     setEditingIntegration(null)
     setFormData(defaultFormData)
+    setClearSecrets(defaultSecretClearState)
     setDialogOpen(true)
   }
 
@@ -165,6 +180,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
       skip_tls_verify: integration.skip_tls_verify,
       enabled: integration.enabled,
     })
+    setClearSecrets(defaultSecretClearState)
     setDialogOpen(true)
   }
 
@@ -172,9 +188,10 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
     setDialogOpen(false)
     setEditingIntegration(null)
     setFormData(defaultFormData)
+    setClearSecrets(defaultSecretClearState)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     const payload: any = {
@@ -211,6 +228,12 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
     if (formData.password) payload.password = formData.password
     if (formData.token) payload.token = formData.token
     if (formData.ca_cert) payload.ca_cert = formData.ca_cert
+
+    if (editingIntegration) {
+      if (clearSecrets.password && !formData.password) payload.clear_password = true
+      if (clearSecrets.token && !formData.token) payload.clear_token = true
+      if (clearSecrets.ca_cert && !formData.ca_cert) payload.clear_ca_cert = true
+    }
 
     if (editingIntegration) {
       updateMutation.mutate({ id: editingIntegration.id, data: payload })
@@ -291,9 +314,11 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
       cell: ({ row }) => (
         <div className="flex items-center gap-1 justify-end">
           <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEdit(row.original)}>
+            <span className="sr-only">Edit integration {row.original.name}</span>
             <Edit2 className="h-3.5 w-3.5" />
           </Button>
           <Button variant="ghost" size="icon-xs" onClick={() => handleOpenDelete(row.original)}>
+            <span className="sr-only">Delete integration {row.original.name}</span>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -549,13 +574,29 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                     <Field>
                       <FieldLabel>Password (optional)</FieldLabel>
                       <FieldContent>
-                        <Input
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          type="password"
-                          autoComplete="new-password"
-                          placeholder={editingIntegration ? "Leave blank to keep current" : ""}
-                        />
+                        {editingIntegration?.has_password && !clearSecrets.password ? (
+                          <div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
+                            <span className="text-sm text-muted-foreground">********</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => setClearSecrets((prev) => ({ ...prev, password: true }))}
+                            >
+                              Clear Password
+                            </Button>
+                          </div>
+                        ) : (
+                          <Input
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder="Enter password"
+                            aria-label="Password"
+                          />
+                        )}
                       </FieldContent>
                     </Field>
                   </div>
@@ -563,23 +604,57 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                   <Field>
                     <FieldLabel>Bearer Token (optional)</FieldLabel>
                     <FieldContent>
-                      <Input
-                        value={formData.token}
-                        onChange={(e) => setFormData({ ...formData, token: e.target.value })}
-                        placeholder={editingIntegration ? "Leave blank to keep current" : ""}
-                      />
+                      {editingIntegration?.has_token && !clearSecrets.token ? (
+                        <div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
+                          <span className="text-sm text-muted-foreground">********</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => setClearSecrets((prev) => ({ ...prev, token: true }))}
+                          >
+                            Clear Token
+                          </Button>
+                        </div>
+                      ) : (
+                        <Input
+                          value={formData.token}
+                          onChange={(e) => setFormData({ ...formData, token: e.target.value })}
+                          placeholder="Enter bearer token"
+                          aria-label="Bearer Token"
+                        />
+                      )}
                     </FieldContent>
                   </Field>
 
                   <Field>
                     <FieldLabel>CA Certificate (optional)</FieldLabel>
                     <FieldContent>
-                      <Textarea
-                        value={formData.ca_cert}
-                        onChange={(e) => setFormData({ ...formData, ca_cert: e.target.value })}
-                        placeholder="-----BEGIN CERTIFICATE-----..."
-                        rows={3}
-                      />
+                      {editingIntegration?.has_ca_cert && !clearSecrets.ca_cert ? (
+                        <div className="flex min-h-24 flex-col justify-between rounded-md border border-input bg-transparent px-3 py-2 shadow-sm">
+                          <span className="text-sm text-muted-foreground">********</span>
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => setClearSecrets((prev) => ({ ...prev, ca_cert: true }))}
+                            >
+                              Clear CA Certificate
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Textarea
+                          value={formData.ca_cert}
+                          onChange={(e) => setFormData({ ...formData, ca_cert: e.target.value })}
+                          placeholder="-----BEGIN CERTIFICATE-----..."
+                          rows={3}
+                          aria-label="CA Certificate"
+                        />
+                      )}
                     </FieldContent>
                   </Field>
 

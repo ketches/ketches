@@ -16,6 +16,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
@@ -88,6 +89,10 @@ func GetContainerRegistry(id string) (*entities.ContainerRegistry, error) {
 func CreateClusterRegistry(clusterID string, req *models.CreateContainerRegistryRequest) (*entities.ContainerRegistry, error) {
 	cid := clusterID
 	skipTLS := req.SkipTLSVerify != nil && *req.SkipTLSVerify
+	encryptedPassword, err := secrets.EncryptString(req.Password)
+	if err != nil {
+		return nil, err
+	}
 	registry := &entities.ContainerRegistry{
 		ID:            uuid.New(),
 		Name:          req.Name,
@@ -96,7 +101,7 @@ func CreateClusterRegistry(clusterID string, req *models.CreateContainerRegistry
 		SkipTLSVerify: skipTLS,
 		Namespace:     req.Namespace,
 		Username:      req.Username,
-		Password:      req.Password,
+		Password:      encryptedPassword,
 		Scope:         entities.RegistryScopeCluster,
 		ClusterID:     &cid,
 		ProjectID:     "",
@@ -120,6 +125,10 @@ func CreateClusterRegistry(clusterID string, req *models.CreateContainerRegistry
 func CreateProjectContainerRegistry(projectID string, req *models.CreateContainerRegistryRequest) (*entities.ContainerRegistry, error) {
 	pid := projectID
 	skipTLS := req.SkipTLSVerify != nil && *req.SkipTLSVerify
+	encryptedPassword, err := secrets.EncryptString(req.Password)
+	if err != nil {
+		return nil, err
+	}
 	registry := &entities.ContainerRegistry{
 		ID:            uuid.New(),
 		Name:          req.Name,
@@ -128,7 +137,7 @@ func CreateProjectContainerRegistry(projectID string, req *models.CreateContaine
 		SkipTLSVerify: skipTLS,
 		Namespace:     req.Namespace,
 		Username:      req.Username,
-		Password:      req.Password,
+		Password:      encryptedPassword,
 		Scope:         entities.RegistryScopeProject,
 		ClusterID:     nil,
 		ProjectID:     pid,
@@ -171,8 +180,15 @@ func UpdateContainerRegistry(id string, req *models.UpdateContainerRegistryReque
 	if req.Username != "" {
 		registry.Username = req.Username
 	}
+	if req.ClearPassword != nil && *req.ClearPassword {
+		registry.Password = ""
+	}
 	if req.Password != "" {
-		registry.Password = req.Password
+		encryptedPassword, err := secrets.EncryptString(req.Password)
+		if err != nil {
+			return nil, err
+		}
+		registry.Password = encryptedPassword
 	}
 	if req.IsDefault != nil {
 		if *req.IsDefault {
@@ -347,7 +363,7 @@ func ToContainerRegistryResponse(r *entities.ContainerRegistry) models.Container
 		SkipTLSVerify: r.SkipTLSVerify,
 		Namespace:     r.Namespace,
 		Username:      r.Username,
-		Password:      r.Password,
+		HasPassword:   strings.TrimSpace(r.Password) != "",
 		Scope:         string(r.Scope),
 		ClusterID:     cid,
 		ProjectID:     pid,

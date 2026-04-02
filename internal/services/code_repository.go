@@ -11,6 +11,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
@@ -128,7 +129,14 @@ func CreateCodeRepository(projectID string, req *models.CreateCodeRepositoryRequ
 		Slug:        slug,
 		GitRepoURL:  req.GitRepoURL,
 		GitUsername: req.GitUsername,
-		GitPassword: req.GitPassword,
+		GitPassword: "",
+	}
+	if strings.TrimSpace(req.GitPassword) != "" {
+		encryptedPassword, err := secrets.EncryptString(req.GitPassword)
+		if err != nil {
+			return nil, fmt.Errorf("encrypt git password: %w", err)
+		}
+		repo.GitPassword = encryptedPassword
 	}
 	if err := db.DB.Create(repo).Error; err != nil {
 		return nil, err
@@ -152,7 +160,16 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 		repo.GitRepoURL = req.GitRepoURL
 	}
 	repo.GitUsername = req.GitUsername
-	repo.GitPassword = req.GitPassword
+	if req.ClearGitPassword != nil && *req.ClearGitPassword {
+		repo.GitPassword = ""
+	}
+	if strings.TrimSpace(req.GitPassword) != "" {
+		encryptedPassword, err := secrets.EncryptString(req.GitPassword)
+		if err != nil {
+			return nil, fmt.Errorf("encrypt git password: %w", err)
+		}
+		repo.GitPassword = encryptedPassword
+	}
 	if err := db.DB.Save(&repo.CodeRepository).Error; err != nil {
 		return nil, err
 	}
@@ -165,15 +182,15 @@ func DeleteCodeRepository(id string) error {
 
 func ToCodeRepositoryResponse(r *entities.CodeRepository) models.CodeRepositoryResponse {
 	resp := models.CodeRepositoryResponse{
-		ID:          r.ID,
-		ProjectID:   r.ProjectID,
-		Name:        r.Name,
-		Slug:        r.Slug,
-		GitRepoURL:  r.GitRepoURL,
-		GitUsername: r.GitUsername,
-		GitPassword: r.GitPassword,
-		CreatedAt:   r.CreatedAt,
-		UpdatedAt:   r.UpdatedAt,
+		ID:             r.ID,
+		ProjectID:      r.ProjectID,
+		Name:           r.Name,
+		Slug:           r.Slug,
+		GitRepoURL:     r.GitRepoURL,
+		GitUsername:    r.GitUsername,
+		HasGitPassword: strings.TrimSpace(r.GitPassword) != "",
+		CreatedAt:      r.CreatedAt,
+		UpdatedAt:      r.UpdatedAt,
 	}
 	return resp
 }
@@ -328,7 +345,11 @@ func ListCodeRepositoryRefs(repoID string) ([]models.GitRef, error) {
 
 	repoURL := repo.GitRepoURL
 	if repo.GitUsername != "" && repo.GitPassword != "" {
-		repoURL = injectGitCredentials(repoURL, repo.GitUsername, repo.GitPassword)
+		plaintextGitPassword, err := secrets.DecryptString(repo.GitPassword)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt git password: %w", err)
+		}
+		repoURL = injectGitCredentials(repoURL, repo.GitUsername, plaintextGitPassword)
 	}
 
 	cmd := exec.Command("git", "ls-remote", "--heads", "--tags", repoURL)

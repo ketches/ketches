@@ -1,6 +1,7 @@
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
+import { type AxiosError } from "axios"
 import {
   BrickWall,
   Clock,
@@ -89,7 +90,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
   const envs = envsResponse?.items ?? []
   const paginationInfo = envsResponse?.pagination
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<unknown, AxiosError<{ error: string }>, string>({
     mutationFn: (envId: string) => envsApi.delete(envId),
     onSuccess: () => {
       toast.success("Environment deleted", {
@@ -99,8 +100,7 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
       setDeleteDialogOpen(false)
       setDeletingEnv(null)
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to delete environment", {
         description: error.response?.data?.error || "An unknown error occurred",
       })

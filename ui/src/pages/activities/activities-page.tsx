@@ -296,9 +296,9 @@ export function ActivitiesPage() {
   }
 
   const leftToolbar = (
-    <div className="flex flex-1 items-center gap-2 pr-1">
+    <div className="flex flex-1 items-center gap-2 pr-1 overflow-x-auto min-w-0">
       <Input
-        className="w-56"
+        className="flex-1"
         placeholder={isAdmin ? "Filter by user, action, resource..." : "Filter by action, resource..."}
         value={search}
         onChange={(e) => {

@@ -32,9 +32,10 @@ func ListFavoriteApps(c context.Context, userID, envID string) ([]models.AppResp
 		return nil, err
 	}
 
+	statuses := BuildAppListStatuses(c, rows)
 	result := make([]models.AppResponse, 0, len(rows))
 	for i := range rows {
-		result = append(result, ToAppListResponse(c, &rows[i]))
+		result = append(result, ToAppListResponseWithStatus(&rows[i], statuses[rows[i].ID]))
 	}
 	return result, nil
 }

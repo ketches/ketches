@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { setAuthCookie } from "@/lib/auth-session"
 import { useAuthStore } from "@/stores/auth"
 import { ColorBadge } from "../shared/color-badge"
 
@@ -46,19 +47,19 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
     queryFn: async () => {
       const response = await appsApi.listGateways(app.id)
       // Transform backend response to match GatewaySpec
-      return response.map((gw: any) => ({
-        id: gw.id,
-        port: gw.port,
-        protocol: gw.protocol,
+        return response.map((gw: any) => ({
+          id: gw.id,
+          port: gw.port,
+          protocol: gw.protocol,
         domain: gw.domain,
         path: gw.path,
-        gateway_port: gw.gateway_port,
-        service_type: gw.service_type,
-        node_port: gw.node_port,
-        gateway_ip: gw.gateway_ip,
-        internal_address: gw.internal_address,
-        exposed: gw.exposed ?? false,
-        cert_id: gw.cert_id,
+          gateway_port: gw.gateway_port,
+          service_type: gw.service_type,
+          node_port: gw.node_port,
+          gateway_host: gw.gateway_host,
+          internal_address: gw.internal_address,
+          exposed: gw.exposed ?? false,
+          cert_id: gw.cert_id,
       }))
     }
   })
@@ -240,10 +241,10 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       header: "NodePort",
       cell: ({ row }) => {
         const gw = row.original
-        if (!gw.gateway_ip || !gw.node_port) {
+        if (!gw.gateway_host || !gw.node_port) {
           return <span className="text-muted-foreground text-xs">-</span>
         }
-        const addr = `${gw.gateway_ip}:${gw.node_port}`
+        const addr = `${gw.gateway_host}:${gw.node_port}`
         const isHttp = isHttpProtocol(gw.protocol)
         const copyToClipboard = (text: string) => {
           navigator.clipboard.writeText(text).then(() => toast.success('Copied to clipboard'))
@@ -301,7 +302,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
                       onClick={() => {
                         // Set a short-lived cookie so the backend can authenticate the
                         // proxy request without exposing the JWT in the browser address bar.
-                        document.cookie = `X-Ketches-Token=${accessToken}; path=/forward; SameSite=Strict; max-age=3600`
+                        setAuthCookie(accessToken)
                         window.open(
                           `/forward/${row.original.id}/`,
                           '_blank'

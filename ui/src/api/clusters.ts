@@ -11,25 +11,27 @@ export interface SimpleCluster {
 }
 
 export interface Cluster {
-  id: string
-  slug: string
-  name: string
-  description?: string
-  enabled?: boolean
-  kube_config?: string
-  gateway_ip?: string
-  connection_status?: string
-  connection_status_reason?: string
-  last_checked_at?: string
-  created_at?: string
+	id: string
+	slug: string
+	name: string
+	description?: string
+	enabled?: boolean
+	api_server?: string
+	has_kube_config?: boolean
+	gateway_host?: string
+	has_prometheus_integration?: boolean
+	connection_status?: string
+	connection_status_reason?: string
+	last_checked_at?: string
+	created_at?: string
 }
 
 export interface CreateClusterRequest {
-  slug: string
-  name: string
-  description?: string
-  kube_config: string
-  gateway_ip?: string
+	slug: string
+	name: string
+	description?: string
+	kube_config: string
+	gateway_host?: string
 }
 
 export interface PingClusterRequest {
@@ -41,8 +43,8 @@ export interface PingClusterResponse {
 }
 
 export interface UpdateClusterCredentialsRequest {
-  kube_config: string
-  gateway_ip?: string
+	kube_config?: string
+	gateway_host?: string
 }
 
 export interface K8sNode {
@@ -111,6 +113,25 @@ export interface ClusterService {
   ports: ClusterServicePort[]
 }
 
+export interface PrometheusMetricResult {
+  metric: Record<string, string>
+  value?: [number, string]
+  values?: [number, string][]
+}
+
+export interface PrometheusResponse {
+  resultType: string
+  result: PrometheusMetricResult[]
+}
+
+function buildProjectScopedParams(projectId?: string) {
+  if (!projectId) {
+    return undefined
+  }
+
+  return { project_id: projectId }
+}
+
 export const clustersApi = {
   list: async (params?: PaginationParams) => {
     return client.get('/v1/clusters', { params }) as Promise<{ items: Cluster[], pagination: PaginationResponse }>
@@ -120,8 +141,10 @@ export const clustersApi = {
     return client.get('/v1/clusters/simple') as Promise<SimpleCluster[]>
   },
 
-  listPublic: async () => {
-    return client.get('/v1/clusters/public') as Promise<Cluster[]>
+  listPublic: async (projectId?: string) => {
+    return client.get('/v1/clusters/public', {
+      params: buildProjectScopedParams(projectId),
+    }) as Promise<Cluster[]>
   },
 
   create: async (data: CreateClusterRequest) => {
@@ -136,8 +159,10 @@ export const clustersApi = {
     return client.get(`/v1/clusters/${id}`) as Promise<Cluster>
   },
 
-  getPublic: async (id: string) => {
-    return client.get(`/v1/clusters/${id}/public`) as Promise<Cluster>
+  getPublic: async (id: string, projectId?: string) => {
+    return client.get(`/v1/clusters/${id}/public`, {
+      params: buildProjectScopedParams(projectId),
+    }) as Promise<Cluster>
   },
 
   delete: async (id: string) => {
@@ -180,8 +205,10 @@ export const clustersApi = {
     return client.patch(`/v1/clusters/${id}/credentials`, data) as Promise<Cluster>
   },
 
-  listIntegrations: async (clusterId: string) => {
-    return client.get(`/v1/clusters/${clusterId}/integrations`) as Promise<ClusterIntegration[]>
+  listIntegrations: async (clusterId: string, projectId?: string) => {
+    return client.get(`/v1/clusters/${clusterId}/integrations`, {
+      params: buildProjectScopedParams(projectId),
+    }) as Promise<ClusterIntegration[]>
   },
 
   createIntegration: async (clusterId: string, data: CreateClusterIntegrationRequest) => {
@@ -196,15 +223,17 @@ export const clustersApi = {
     return client.delete(`/v1/clusters/${clusterId}/integrations/${integrationId}`)
   },
 
-  prometheusQuery: async (clusterId: string, query: string, time?: string) => {
+  prometheusQuery: async (clusterId: string, query: string, time?: string, projectId?: string) => {
     const params = new URLSearchParams({ query })
     if (time) params.set('time', time)
+    if (projectId) params.set('project_id', projectId)
     return client.get(`/v1/clusters/${clusterId}/prometheus/query?${params}`)
   },
 
-  prometheusQueryRange: async (clusterId: string, query: string, start: string, end: string, step: string) => {
+  prometheusQueryRange: async (clusterId: string, query: string, start: string, end: string, step: string, projectId?: string) => {
     const params = new URLSearchParams({ query, start, end, step })
-    return client.get(`/v1/clusters/${clusterId}/prometheus/query_range?${params}`)
+    if (projectId) params.set('project_id', projectId)
+    return client.get(`/v1/clusters/${clusterId}/prometheus/query_range?${params}`) as Promise<PrometheusResponse>
   },
 
   listNamespaces: async (id: string) => {
@@ -219,8 +248,10 @@ export const clustersApi = {
     return client.get(`/v1/clusters/${id}/services?namespace=${namespace}&with_ports=true`) as Promise<ClusterService[]>
   },
 
-  listStorageClasses: async (clusterId: string) => {
-    return client.get(`/v1/clusters/${clusterId}/storage-classes`) as Promise<Array<{
+  listStorageClasses: async (clusterId: string, projectId?: string) => {
+    return client.get(`/v1/clusters/${clusterId}/storage-classes`, {
+      params: buildProjectScopedParams(projectId),
+    }) as Promise<Array<{
       name: string
       provisioner: string
       isDefault: boolean
@@ -266,8 +297,10 @@ export const clustersApi = {
     client.delete(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}`) as Promise<ClusterExtension>,
 
   // Gateway API status
-  getGatewayAPIStatus: async (clusterId: string) => {
-    return client.get(`/v1/clusters/${clusterId}/gateway-api-status`) as Promise<GatewayAPIStatus>
+  getGatewayAPIStatus: async (clusterId: string, projectId?: string) => {
+    return client.get(`/v1/clusters/${clusterId}/gateway-api-status`, {
+      params: buildProjectScopedParams(projectId),
+    }) as Promise<GatewayAPIStatus>
   },
 }
 
@@ -341,18 +374,21 @@ export interface UpdateExtensionRequest {
 export type IntegrationType = 'prometheus' | 'grafana' | 'loki' | 'alertmanager'
 
 export interface ClusterIntegration {
-  id: string
-  cluster_id: string
+	id: string
+	cluster_id: string
   integration_type: IntegrationType
   name: string
   endpoint: string
   namespace?: string
   service_name?: string
-  service_port?: number
-  username?: string
-  skip_tls_verify: boolean
-  enabled: boolean
-  created_at: string
+	service_port?: number
+	username?: string
+	has_password?: boolean
+	has_token?: boolean
+	has_ca_cert?: boolean
+	skip_tls_verify: boolean
+	enabled: boolean
+	created_at: string
 }
 
 export interface CreateClusterIntegrationRequest {
@@ -371,17 +407,20 @@ export interface CreateClusterIntegrationRequest {
 }
 
 export interface UpdateClusterIntegrationRequest {
-  name?: string
-  endpoint?: string
+	name?: string
+	endpoint?: string
   namespace?: string
   service_name?: string
   service_port?: number
-  username?: string
-  password?: string
-  token?: string
-  ca_cert?: string
-  skip_tls_verify?: boolean
-  enabled?: boolean
+	username?: string
+	password?: string
+	token?: string
+	ca_cert?: string
+	clear_password?: boolean
+	clear_token?: boolean
+	clear_ca_cert?: boolean
+	skip_tls_verify?: boolean
+	enabled?: boolean
 }
 
 // GatewayAPIStatus indicates whether the Gateway API is installed on a cluster.

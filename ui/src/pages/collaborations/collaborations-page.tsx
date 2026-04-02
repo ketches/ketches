@@ -11,7 +11,7 @@ import {
   User,
   Users
 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { collaborationApi } from "@/api/collaboration"
 import {
@@ -85,13 +85,13 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
       ...sprints.map((s) => ({ label: s.name, value: s.id })),
     ]
   }, [sprintsData?.items])
-  const getSprintOptionLabel = (item: SprintOption | string) => {
+  const getSprintOptionLabel = useCallback((item: SprintOption | string) => {
     if (typeof item !== "string") {
       return item.label
     }
 
     return sprintOptions.find((opt) => opt.value === item)?.label || item || "All Sprints"
-  }
+  }, [sprintOptions])
 
   // Auto-select first active sprint when sprints load (runs only once)
   const hasAutoSelectedSprint = useRef(false)

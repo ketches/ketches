@@ -44,6 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { getErrorMessage } from "@/lib/utils"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -154,14 +155,13 @@ function ProbeEditorDialog({
       onSuccess()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to save probe", {
-        description: err.response?.data?.error || "Unknown error",
+        description: getErrorMessage(error, "Unknown error"),
       })
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     // Clean up fields not relevant to the selected mode
     const cleaned = { ...formData }
@@ -461,9 +461,8 @@ export function HealthConfig({ app }: HealthConfigProps) {
       setDeletingProbe(null)
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to delete probe", {
-        description: err.response?.data?.error || "Unknown error",
+        description: getErrorMessage(error, "Unknown error"),
       })
     },
   })

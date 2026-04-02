@@ -7,6 +7,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
 )
@@ -26,6 +27,10 @@ func CreatePlugin(req *models.CreatePluginRequest) (*entities.Plugin, error) {
 	if err != nil {
 		return nil, err
 	}
+	registryPassword, err := secrets.EncryptString(req.RegistryPassword)
+	if err != nil {
+		return nil, err
+	}
 
 	plugin := &entities.Plugin{
 		ID:               uuid.New(),
@@ -36,7 +41,7 @@ func CreatePlugin(req *models.CreatePluginRequest) (*entities.Plugin, error) {
 		Image:            req.Image,
 		ImagePullPolicy:  req.ImagePullPolicy,
 		RegistryUsername: req.RegistryUsername,
-		RegistryPassword: req.RegistryPassword,
+		RegistryPassword: registryPassword,
 		Command:          req.Command,
 		EnvVars:          string(envVarsJSON),
 		PluginType:       req.PluginType,
@@ -145,8 +150,15 @@ func UpdatePlugin(pluginID string, req *models.UpdatePluginRequest) (*entities.P
 	if req.RegistryUsername != nil {
 		updates["registry_username"] = *req.RegistryUsername
 	}
+	if req.ClearRegistryPassword != nil && *req.ClearRegistryPassword {
+		updates["registry_password"] = ""
+	}
 	if req.RegistryPassword != nil && *req.RegistryPassword != "" {
-		updates["registry_password"] = *req.RegistryPassword
+		registryPassword, err := secrets.EncryptString(*req.RegistryPassword)
+		if err != nil {
+			return nil, err
+		}
+		updates["registry_password"] = registryPassword
 	}
 	if req.Command != "" {
 		updates["command"] = req.Command

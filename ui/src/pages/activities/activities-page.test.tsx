@@ -105,6 +105,12 @@ vi.mock("sonner", () => ({
   },
 }))
 
+vi.mock("@/components/ui/tooltip", () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  TooltipTrigger: ({ render }: { render: React.ReactNode }) => <div>{render}</div>,
+}))
+
 import { ActivitiesPage } from "./activities-page"
 
 function mockActivitiesResponse(items: Array<Record<string, unknown>>) {

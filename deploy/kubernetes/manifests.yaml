@@ -10,8 +10,9 @@ metadata:
   namespace: ketches
 type: Opaque
 stringData:
-  db-password: "ketches"
-  jwt-secret: "change-this-in-production"
+  db-password: ""
+  jwt-secret: ""
+  secret-encryption-key: ""
 ---
 apiVersion: v1
 kind: Service
@@ -131,14 +132,19 @@ spec:
                   name: ketches-secrets
                   key: db-password
             - name: DB_SSLMODE
-              value: "disable"
+              value: "require"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: ketches-secrets
                   key: jwt-secret
+            - name: SECRET_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ketches-secrets
+                  key: secret-encryption-key
             - name: CORS_ALLOWED_ORIGINS
-              value: "*"
+              value: "https://app.example.com"
           resources:
             limits:
               memory: "2Gi"

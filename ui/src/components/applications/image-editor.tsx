@@ -41,6 +41,7 @@ export function ImageEditor({
   const [showCredentials, setShowCredentials] = React.useState(false)
   const [showPullPolicy, setShowPullPolicy] = React.useState(false)
   const [imageOptionsOpen, setImageOptionsOpen] = React.useState(false)
+  const [isClearingPassword, setIsClearingPassword] = React.useState(false)
 
   const [formData, setFormData] = React.useState({
     container_image: "",
@@ -49,17 +50,18 @@ export function ImageEditor({
     registry_password: "",
   })
 
-  React.useEffect(() => {
-    if (app && open) {
-      setFormData({
-        container_image: app.container_image,
-        image_pull_policy: app.image_pull_policy || "IfNotPresent",
-        registry_username: app.registry_username || "",
-        registry_password: app.registry_password || "",
-      })
-      setShowCredentials(Boolean(app.registry_username || app.registry_password))
-      setShowPullPolicy(Boolean(app.image_pull_policy && app.image_pull_policy !== "IfNotPresent"))
-      setImageOptionsOpen(false)
+	React.useEffect(() => {
+		if (app && open) {
+			setFormData({
+				container_image: app.container_image,
+				image_pull_policy: app.image_pull_policy || "IfNotPresent",
+				registry_username: app.registry_username || "",
+				registry_password: "",
+			})
+			setShowCredentials(Boolean(app.registry_username || app.has_registry_password))
+			setShowPullPolicy(Boolean(app.image_pull_policy && app.image_pull_policy !== "IfNotPresent"))
+			setImageOptionsOpen(false)
+			setIsClearingPassword(false)
     }
   }, [app, open])
 
@@ -115,7 +117,7 @@ export function ImageEditor({
   }, [app, tagsQuery])
 
   const mutation = useMutation({
-    mutationFn: (data: { container_image: string, image_pull_policy?: string, registry_username?: string, registry_password?: string }) => {
+    mutationFn: (data: { container_image: string, image_pull_policy?: string, registry_username?: string, registry_password?: string, clear_registry_password?: boolean }) => {
       if (!app) throw new Error("No application selected")
       return appsApi.updateImage(app.id, data)
     },
@@ -132,7 +134,7 @@ export function ImageEditor({
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (formData.registry_password.trim() && !formData.registry_username.trim()) {
@@ -142,7 +144,11 @@ export function ImageEditor({
       return
     }
 
-    mutation.mutate(formData)
+    const payload: any = { ...formData }
+    if (isClearingPassword && !formData.registry_password) {
+      payload.clear_registry_password = true
+    }
+    mutation.mutate(payload)
   }
 
   return (
@@ -326,7 +332,15 @@ export function ImageEditor({
                 <Field>
                   <FieldLabel htmlFor="registry-password">Registry Password</FieldLabel>
                   <FieldContent>
-                    <Input
+					{app?.has_registry_password && !isClearingPassword ? (
+                      <div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
+                        <span className="text-sm text-muted-foreground">********</span>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setIsClearingPassword(true)}>
+                          Clear Password
+                        </Button>
+                      </div>
+                    ) : (
+                      <Input
                       id="registry-password"
                       type="password"
                       autoComplete="new-password"
@@ -334,6 +348,7 @@ export function ImageEditor({
                       value={formData.registry_password}
                       onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))}
                     />
+                    )}
                   </FieldContent>
                 </Field>
               </div>

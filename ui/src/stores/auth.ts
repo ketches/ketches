@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
+import { clearAuthCookie, clearPersistedAuthState, setAuthCookie } from '@/lib/auth-session'
 
 export interface User {
   id: string
@@ -31,12 +32,12 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setAuth: (user, accessToken, refreshToken) =>
-        set({
+        (setAuthCookie(accessToken), set({
           user,
           accessToken,
           refreshToken,
           isAuthenticated: true,
-        }),
+        })),
 
       updateUser: (user) =>
         set((state) => ({
@@ -44,18 +45,19 @@ export const useAuthStore = create<AuthState>()(
         })),
 
       updateTokens: (accessToken, refreshToken) =>
-        set({ accessToken, refreshToken }),
+        (setAuthCookie(accessToken), set({ accessToken, refreshToken })),
 
       logout: () =>
-        set({
+        (clearAuthCookie(), clearPersistedAuthState(), set({
           user: null,
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
-        }),
+        })),
     }),
     {
       name: 'auth-storage',
+      storage: createJSONStorage(() => sessionStorage),
     }
   )
 )

@@ -6,6 +6,7 @@ import { CreateRequirementDialog, DeleteRequirementDialog, EditRequirementDialog
 import { flattenTree, type TreeItem } from "@/components/collaborations/tree-utils"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
+import { getErrorMessage } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import {
@@ -118,9 +119,8 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
       toast.success("Returned to backlog")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to return to backlog", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -139,9 +139,8 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
       toast.success("Requirement status updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update status", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -160,9 +159,8 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
       toast.success("Requirement priority updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update priority", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -181,9 +179,8 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
       toast.success("Requirement assignee updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update assignee", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })

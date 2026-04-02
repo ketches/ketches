@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { type AxiosError } from "axios"
 import {
   ArrowBigUpDash,
   Bug,
@@ -81,7 +82,7 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
   const [exportAppIds, setExportAppIds] = React.useState<string[]>([])
   const [_exportAppId, setExportAppId] = React.useState<string | undefined>(undefined)
 
-  const executeMutation = useMutation({
+  const executeMutation = useMutation<unknown, AxiosError<{ error: string }>, string>({
     mutationFn: async (action: string) => {
       return await appsApi.executeAction(appId, action)
     },
@@ -92,10 +93,9 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
         description: `${action} executed`,
       })
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any, action) => {
+    onError: (error, action) => {
       toast.error("Failed", {
-        description: error.response?.data?.error || `Failed to execute ${action}`,
+        description: error.response?.data?.error || error.message || `Failed to execute ${action}`,
       })
     },
   })

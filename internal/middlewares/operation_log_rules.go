@@ -17,12 +17,12 @@ func operationLogRouteRules() map[string]operationLogRule {
 		"POST /api/v1/users/sign-in": {
 			Action:       "sign_in",
 			ResourceType: "session",
-			Sensitivity:  entities.OperationLogSensitivityPublic,
+			Sensitivity:  entities.OperationLogSensitivityInternal,
 		},
 		"POST /api/v1/users/sign-up": {
 			Action:       "sign_up",
 			ResourceType: "user",
-			Sensitivity:  entities.OperationLogSensitivityPublic,
+			Sensitivity:  entities.OperationLogSensitivityInternal,
 		},
 		"PUT /api/v1/platform-update/config": {
 			Action:       "update",

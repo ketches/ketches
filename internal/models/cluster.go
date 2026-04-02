@@ -12,17 +12,19 @@ type SimpleCluster struct {
 }
 
 type ClusterResponse struct {
-	ID                     string     `json:"id"`
-	Slug                   string     `json:"slug"`
-	Name                   string     `json:"name"`
-	Description            string     `json:"description"`
-	Enabled                bool       `json:"enabled"`
-	KubeConfig             string     `json:"kube_config"`
-	GatewayIP              string     `json:"gateway_ip"`
-	ConnectionStatus       string     `json:"connection_status"`
-	ConnectionStatusReason string     `json:"connection_status_reason,omitempty"`
-	LastCheckedAt          *time.Time `json:"last_checked_at,omitempty"`
-	CreatedAt              time.Time  `json:"created_at"`
+	ID                       string     `json:"id"`
+	Slug                     string     `json:"slug"`
+	Name                     string     `json:"name"`
+	Description              string     `json:"description"`
+	Enabled                  bool       `json:"enabled"`
+	ApiServer                string     `json:"api_server,omitempty"`
+	GatewayHost              string     `json:"gateway_host"`
+	HasKubeConfig            bool       `json:"has_kube_config"`
+	HasPrometheusIntegration bool       `json:"has_prometheus_integration"`
+	ConnectionStatus         string     `json:"connection_status"`
+	ConnectionStatusReason   string     `json:"connection_status_reason,omitempty"`
+	LastCheckedAt            *time.Time `json:"last_checked_at,omitempty"`
+	CreatedAt                time.Time  `json:"created_at"`
 }
 
 type ListClusterResponse struct {
@@ -35,14 +37,14 @@ type CreateClusterRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 	KubeConfig  string `json:"kube_config" binding:"required"`
-	GatewayIP   string `json:"gateway_ip"`
+	GatewayHost string `json:"gateway_host"`
 }
 
 type UpdateClusterRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 	KubeConfig  string `json:"kube_config" binding:"required"`
-	GatewayIP   string `json:"gateway_ip"`
+	GatewayHost string `json:"gateway_host"`
 }
 
 type PingClusterRequest struct {
@@ -50,8 +52,8 @@ type PingClusterRequest struct {
 }
 
 type UpdateClusterCredentialsRequest struct {
-	KubeConfig string `json:"kube_config" binding:"required"`
-	GatewayIP  string `json:"gateway_ip"`
+	KubeConfig  string `json:"kube_config"`
+	GatewayHost string `json:"gateway_host"`
 }
 
 type ClusterServicePortResponse struct {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
@@ -36,8 +37,9 @@ func ListClusters(c *gin.Context) {
 			Name:                   cl.Name,
 			Description:            cl.Description,
 			Enabled:                cl.Enabled,
-			KubeConfig:             cl.KubeConfig,
-			GatewayIP:              cl.GatewayIP,
+			ApiServer:              cl.ApiServer,
+			GatewayHost:            cl.GatewayHost,
+			HasKubeConfig:          cl.KubeConfig != "",
 			ConnectionStatus:       cl.ConnectionStatus,
 			ConnectionStatusReason: cl.ConnectionStatusReason,
 			LastCheckedAt:          cl.LastCheckedAt,
@@ -63,13 +65,33 @@ func ListClustersSimple(c *gin.Context) {
 }
 
 func ListPublicClusters(c *gin.Context) {
-	clusters, err := services.ListClustersSimple()
+	claims := api.GetClaims(c)
+	if claims == nil {
+		api.Error(c, http.StatusUnauthorized, fmt.Errorf("unauthorized"))
+		return
+	}
+
+	projectID := queryProjectID(c)
+
+	var (
+		clusters []models.SimpleCluster
+		err      error
+	)
+
+	if claims.Role == app.UserRoleAdmin {
+		clusters, err = services.ListClustersSimple()
+	} else {
+		if requireProjectAccess(c, projectID) == nil {
+			return
+		}
+		clusters, err = services.ListProjectClustersSimple(projectID)
+	}
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	var result []models.SimpleCluster
+	result := make([]models.SimpleCluster, 0, len(clusters))
 	for _, cl := range clusters {
 		if cl.Enabled {
 			result = append(result, cl)
@@ -98,7 +120,9 @@ func CreateCluster(c *gin.Context) {
 		Name:                   cluster.Name,
 		Description:            cluster.Description,
 		Enabled:                cluster.Enabled,
-		GatewayIP:              cluster.GatewayIP,
+		ApiServer:              cluster.ApiServer,
+		GatewayHost:            cluster.GatewayHost,
+		HasKubeConfig:          cluster.KubeConfig != "",
 		ConnectionStatus:       cluster.ConnectionStatus,
 		ConnectionStatusReason: cluster.ConnectionStatusReason,
 		LastCheckedAt:          cluster.LastCheckedAt,
@@ -114,23 +138,37 @@ func GetCluster(c *gin.Context) {
 		return
 	}
 
+	hasPrometheusIntegration, err := services.HasPrometheusIntegration(clusterID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
 	api.Success(c, models.ClusterResponse{
-		ID:                     cluster.ID,
-		Slug:                   cluster.Slug,
-		Name:                   cluster.Name,
-		Description:            cluster.Description,
-		Enabled:                cluster.Enabled,
-		KubeConfig:             cluster.KubeConfig,
-		GatewayIP:              cluster.GatewayIP,
-		ConnectionStatus:       cluster.ConnectionStatus,
-		ConnectionStatusReason: cluster.ConnectionStatusReason,
-		LastCheckedAt:          cluster.LastCheckedAt,
-		CreatedAt:              cluster.CreatedAt,
+		ID:                       cluster.ID,
+		Slug:                     cluster.Slug,
+		Name:                     cluster.Name,
+		Description:              cluster.Description,
+		Enabled:                  cluster.Enabled,
+		ApiServer:                cluster.ApiServer,
+		GatewayHost:              cluster.GatewayHost,
+		HasKubeConfig:            cluster.KubeConfig != "",
+		HasPrometheusIntegration: hasPrometheusIntegration,
+		ConnectionStatus:         cluster.ConnectionStatus,
+		ConnectionStatusReason:   cluster.ConnectionStatusReason,
+		LastCheckedAt:            cluster.LastCheckedAt,
+		CreatedAt:                cluster.CreatedAt,
 	})
 }
 
 func GetPublicCluster(c *gin.Context) {
 	clusterID := c.Param("clusterID")
+	projectID := queryProjectID(c)
+
+	if requireClusterProjectAccess(c, projectID, clusterID) == nil {
+		return
+	}
+
 	cluster, err := services.GetSimpleCluster(clusterID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
@@ -142,7 +180,21 @@ func GetPublicCluster(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, cluster)
+	hasPrometheusIntegration, err := services.HasPrometheusIntegration(clusterID)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, gin.H{
+		"id":                         cluster.ID,
+		"slug":                       cluster.Slug,
+		"name":                       cluster.Name,
+		"description":                cluster.Description,
+		"enabled":                    cluster.Enabled,
+		"connection_status":          cluster.ConnectionStatus,
+		"has_prometheus_integration": hasPrometheusIntegration,
+	})
 }
 
 func UpdateCluster(c *gin.Context) {
@@ -165,7 +217,9 @@ func UpdateCluster(c *gin.Context) {
 		Name:                   cluster.Name,
 		Description:            cluster.Description,
 		Enabled:                cluster.Enabled,
-		GatewayIP:              cluster.GatewayIP,
+		ApiServer:              cluster.ApiServer,
+		GatewayHost:            cluster.GatewayHost,
+		HasKubeConfig:          cluster.KubeConfig != "",
 		ConnectionStatus:       cluster.ConnectionStatus,
 		ConnectionStatusReason: cluster.ConnectionStatusReason,
 		LastCheckedAt:          cluster.LastCheckedAt,
@@ -193,7 +247,9 @@ func UpdateClusterBasic(c *gin.Context) {
 		Name:                   cluster.Name,
 		Description:            cluster.Description,
 		Enabled:                cluster.Enabled,
-		GatewayIP:              cluster.GatewayIP,
+		ApiServer:              cluster.ApiServer,
+		GatewayHost:            cluster.GatewayHost,
+		HasKubeConfig:          cluster.KubeConfig != "",
 		ConnectionStatus:       cluster.ConnectionStatus,
 		ConnectionStatusReason: cluster.ConnectionStatusReason,
 		LastCheckedAt:          cluster.LastCheckedAt,
@@ -334,6 +390,12 @@ func ListClusterServices(c *gin.Context) {
 
 func ListStorageClasses(c *gin.Context) {
 	clusterID := c.Param("clusterID")
+	projectID := queryProjectID(c)
+
+	if requireClusterProjectAccess(c, projectID, clusterID) == nil {
+		return
+	}
+
 	storageClasses, err := services.ListStorageClasses(clusterID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
@@ -420,7 +482,9 @@ func UpdateClusterCredentials(c *gin.Context) {
 		Name:                   cluster.Name,
 		Description:            cluster.Description,
 		Enabled:                cluster.Enabled,
-		GatewayIP:              cluster.GatewayIP,
+		ApiServer:              cluster.ApiServer,
+		GatewayHost:            cluster.GatewayHost,
+		HasKubeConfig:          cluster.KubeConfig != "",
 		ConnectionStatus:       cluster.ConnectionStatus,
 		ConnectionStatusReason: cluster.ConnectionStatusReason,
 		LastCheckedAt:          cluster.LastCheckedAt,
@@ -431,6 +495,12 @@ func UpdateClusterCredentials(c *gin.Context) {
 // GetClusterGatewayAPIStatus checks whether Gateway API CRDs are installed on the cluster.
 func GetClusterGatewayAPIStatus(c *gin.Context) {
 	clusterID := c.Param("clusterID")
+	projectID := queryProjectID(c)
+
+	if requireClusterProjectAccess(c, projectID, clusterID) == nil {
+		return
+	}
+
 	installed, err := core.ClusterHasGatewayAPICRDs(clusterID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)

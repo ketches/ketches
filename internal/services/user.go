@@ -14,14 +14,9 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	defaultBootstrapAdminUsername = "ketches"
-	defaultBootstrapAdminPassword = "ketches"
-)
-
 var (
-	ErrDeleteLastAdmin       = errors.New("cannot delete the last admin user")
-	ErrDemoteLastAdmin       = errors.New("cannot demote the last admin user")
+	ErrDeleteLastAdmin        = errors.New("cannot delete the last admin user")
+	ErrDemoteLastAdmin        = errors.New("cannot demote the last admin user")
 	ErrInvalidCurrentPassword = errors.New("current password is incorrect")
 )
 
@@ -92,11 +87,7 @@ func SignIn(req *models.SignInRequest) (*entities.User, bool, error) {
 		return nil, false, errors.New("invalid username or password")
 	}
 
-	mustChangePassword := user.Role == app.UserRoleAdmin &&
-		user.Username == defaultBootstrapAdminUsername &&
-		req.Password == defaultBootstrapAdminPassword
-
-	return &user, mustChangePassword, nil
+	return &user, false, nil
 }
 
 func GetUser(userID string) (*entities.User, error) {
@@ -268,9 +259,16 @@ func permanentlyDeleteOwnedProjects(tx *gorm.DB, userID string) error {
 	return tx.Unscoped().Where("id IN ?", projectIDs).Delete(&entities.Project{}).Error
 }
 
-// EnsureBootstrapAdmin creates the built-in admin account only when no admin exists.
-// It never creates a default project for the bootstrap admin.
+// EnsureBootstrapAdmin creates the bootstrap admin account only when it is
+// explicitly configured and when no admin exists. It never creates a default
+// project for the bootstrap admin.
 func EnsureBootstrapAdmin() error {
+	bootstrapUsername := strings.TrimSpace(app.Config.BootstrapAdminUsername)
+	bootstrapPassword := strings.TrimSpace(app.Config.BootstrapAdminPassword)
+	if bootstrapUsername == "" || bootstrapPassword == "" {
+		return nil
+	}
+
 	adminCount, err := countAdmins()
 	if err != nil {
 		return err
@@ -279,17 +277,17 @@ func EnsureBootstrapAdmin() error {
 		return nil
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultBootstrapAdminPassword), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(bootstrapPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
 	admin := &entities.User{
 		Base:     entities.Base{ID: uuid.New()},
-		Username: defaultBootstrapAdminUsername,
-		Email:    buildBootstrapAdminEmail(defaultBootstrapAdminUsername),
+		Username: bootstrapUsername,
+		Email:    buildBootstrapAdminEmail(bootstrapUsername),
 		Password: string(hashedPassword),
-		Fullname: "Ketches Administrator",
+		Fullname: "Bootstrap Administrator",
 		Role:     app.UserRoleAdmin,
 	}
 

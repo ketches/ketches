@@ -3,15 +3,16 @@ import client from './client'
 import { type PaginationParams, type PaginationResponse } from './pagination'
 
 export interface Plugin {
-  id: string
-  slug: string
-  name: string
-  description: string
-  image: string
-  image_pull_policy?: string
-  registry_username: string
-  command: string
-  env_vars: { key: string, value: string }[]
+	id: string
+	slug: string
+	name: string
+	description: string
+	image: string
+	image_pull_policy?: string
+	registry_username: string
+	has_registry_password?: boolean
+	command: string
+	env_vars: { key: string, value: string }[]
   plugin_type: "init" | "sidecar"
   install_count: number
   created_at: string
@@ -54,14 +55,16 @@ export interface CreatePluginRequest {
 }
 
 export interface UpdatePluginRequest {
-  name?: string
-  description?: string
-  image?: string
-  image_pull_policy?: string
-  registry_username?: string
-  command?: string
-  env_vars?: { key: string, value: string }[]
-  plugin_type?: "init" | "sidecar"
+	name?: string
+	description?: string
+	image?: string
+	image_pull_policy?: string
+	registry_username?: string
+	registry_password?: string
+	clear_registry_password?: boolean
+	command?: string
+	env_vars?: { key: string, value: string }[]
+	plugin_type?: "init" | "sidecar"
 }
 
   export const pluginsApi = {

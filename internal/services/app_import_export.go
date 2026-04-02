@@ -291,7 +291,6 @@ func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMeta
 			LimitCPU:         app.LimitCPU,
 			LimitMemory:      app.LimitMemory,
 			RegistryUsername: app.RegistryUsername,
-			RegistryPassword: app.RegistryPassword,
 		}
 
 		if appCtx.AutoScaling != nil {

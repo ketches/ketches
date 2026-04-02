@@ -1,3 +1,4 @@
+import { AxiosError } from "axios"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
@@ -156,8 +157,7 @@ export function ApplicationList({
       queryClient.invalidateQueries({ queryKey: ['apps', envId] })
       toast.success('Favorite updated')
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error('Failed to update favorite', {
         description: error.response?.data?.error || 'An error occurred'
       })
@@ -172,8 +172,7 @@ export function ApplicationList({
       queryClient.invalidateQueries({ queryKey: ['apps', envId] })
       toast.success('Removed from group')
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error('Failed to remove from group', {
         description: error.response?.data?.error || 'An error occurred'
       })
@@ -183,8 +182,7 @@ export function ApplicationList({
   const addToGroupMutation = useMutation({
     mutationFn: async ({ groupId, appId }: { groupId: string; appId: string }) => {
       // Find the current group this app belongs to
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const currentGroup = appGroups.find((g: any) => g.apps?.some((a: any) => a.id === appId))
+      const currentGroup = appGroups.find((g: { id: string; apps?: Array<{ id: string }> }) => g.apps?.some((a: { id: string }) => a.id === appId))
       if (currentGroup && currentGroup.id !== groupId) {
         await appGroupsApi.removeApp(currentGroup.id, appId)
       }
@@ -195,8 +193,7 @@ export function ApplicationList({
       queryClient.invalidateQueries({ queryKey: ['apps', envId] })
       toast.success('Moved to group')
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error('Failed to move to group', {
         description: error.response?.data?.error || 'An error occurred'
       })
@@ -225,8 +222,7 @@ export function ApplicationList({
       setDeleteDialogOpen(false)
       setRowSelection({})
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to delete applications", {
         description: error.response?.data?.error || "An error occurred while deleting applications",
       })

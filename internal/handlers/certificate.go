@@ -12,6 +12,11 @@ import (
 // ListClusterCertificates returns paginated certificates for a cluster
 func ListClusterCertificates(c *gin.Context) {
 	clusterID := c.Param("clusterID")
+	projectID := queryProjectID(c)
+
+	if requireClusterProjectAccess(c, projectID, clusterID) == nil {
+		return
+	}
 
 	var req models.PaginationRequest
 	if err := c.ShouldBindQuery(&req); err != nil {

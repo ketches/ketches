@@ -31,7 +31,7 @@ export function OperationLogRetentionDialog({
     }
   }, [open, retentionDays])
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const parsedDays = Number(value)

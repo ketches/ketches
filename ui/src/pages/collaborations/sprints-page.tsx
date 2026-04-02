@@ -3,6 +3,7 @@ import { InlineStatusEditor } from "@/components/collaborations/inline-editors"
 import { CreateSprintDialog, EditSprintDialog } from "@/components/collaborations/sprint-dialogs"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
+import { getErrorMessage } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
@@ -72,9 +73,8 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
       setSelectedItem(null)
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to delete sprint", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
 
@@ -97,9 +97,8 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
       toast.success("Sprint status updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update status", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })

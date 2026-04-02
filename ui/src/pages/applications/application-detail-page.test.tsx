@@ -7,6 +7,16 @@ const { mockNavigate, mockSetSearchParams } = vi.hoisted(() => ({
   mockSetSearchParams: vi.fn(),
 }))
 
+const ENV = {
+  id: "env-1",
+  name: "Demo Env",
+  cluster_id: "cluster-1",
+  cluster_namespace: "demo",
+  project_id: "project-1",
+  project_name: "Demo Project",
+  has_prometheus_integration: false,
+} as const
+
 const APP = {
   id: "app-1",
   name: "Demo App",
@@ -23,16 +33,8 @@ const APP = {
   replicas: 1,
   auto_scaling: null,
   env_id: "env-1",
+  env: ENV,
   available_actions: [],
-} as const
-
-const ENV = {
-  id: "env-1",
-  name: "Demo Env",
-  cluster_id: "cluster-1",
-  cluster_namespace: "demo",
-  project_id: "project-1",
-  project_name: "Demo Project",
 } as const
 
 const INSTANCE = {
@@ -54,9 +56,6 @@ vi.mock("@tanstack/react-query", () => ({
 
     if (key === "app") {
       return { data: APP, isLoading: false, error: null }
-    }
-    if (key === "env") {
-      return { data: ENV, isLoading: false, error: null }
     }
     if (key === "envs-simple") {
       return { data: [], isLoading: false, error: null }

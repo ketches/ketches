@@ -68,7 +68,11 @@ describe("BuildLogViewer", () => {
       },
     )
     vi.stubGlobal("localStorage", {
-      getItem: () => null,
+      getItem: () => JSON.stringify({
+        state: {
+          accessToken: "token-123",
+        },
+      }),
       setItem: () => undefined,
       removeItem: () => undefined,
       clear: () => undefined,

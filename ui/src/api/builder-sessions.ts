@@ -1,5 +1,6 @@
 import client from './client'
 import { type PaginationParams, type PaginationResponse } from './pagination'
+import { getStoredAccessToken, syncAuthCookie } from '@/lib/auth-session'
 
 // --- Types ---
 
@@ -322,20 +323,6 @@ function mapBuilderModelSelection(selection: BuilderModelSelectionWire): Builder
   }
 }
 
-function getStoredAccessToken(): string {
-  const authData = localStorage.getItem('auth-storage')
-  if (!authData) {
-    return ''
-  }
-
-  try {
-    const { state } = JSON.parse(authData)
-    return state.accessToken || ''
-  } catch {
-    return ''
-  }
-}
-
 export interface BuilderSessionDetail {
   session: BuilderSession
   messages: BuilderMessage[]
@@ -471,8 +458,8 @@ export const builderSessionsApi = {
 
   runLogsStreamUrl: (projectId: string, sessionId: string, runId: string) => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-    const token = getStoredAccessToken()
-    return `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/runs/${runId}/logs?token=${encodeURIComponent(token)}`
+    syncAuthCookie()
+    return `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/runs/${runId}/logs`
   },
 
   downloadPreviewSnapshotBlob: async (projectId: string, sessionId: string, runId: string): Promise<void> => {
@@ -524,8 +511,8 @@ export const builderSessionsApi = {
 
   downloadTar: (projectId: string, sessionId: string): string => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-    const token = getStoredAccessToken()
-    return `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/files/download?path=&_token=${encodeURIComponent(token)}`
+    syncAuthCookie()
+    return `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/files/download?path=`
   },
 
   downloadTarBlob: async (projectId: string, sessionId: string): Promise<void> => {

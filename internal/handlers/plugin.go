@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
@@ -293,19 +294,20 @@ func toPluginResponse(plugin any) models.PluginResponse {
 	}
 
 	return models.PluginResponse{
-		ID:               p.ID,
-		Slug:             p.Slug,
-		Name:             p.Name,
-		Description:      p.Description,
-		Image:            p.Image,
-		ImagePullPolicy:  p.ImagePullPolicy,
-		RegistryUsername: p.RegistryUsername,
-		Command:          p.Command,
-		EnvVars:          envVars,
-		PluginType:       p.PluginType,
-		InstallCount:     p.InstallCount,
-		CreatedAt:        p.CreatedAt,
-		UpdatedAt:        p.UpdatedAt,
+		ID:                  p.ID,
+		Slug:                p.Slug,
+		Name:                p.Name,
+		Description:         p.Description,
+		Image:               p.Image,
+		ImagePullPolicy:     p.ImagePullPolicy,
+		RegistryUsername:    p.RegistryUsername,
+		HasRegistryPassword: strings.TrimSpace(p.RegistryPassword) != "",
+		Command:             p.Command,
+		EnvVars:             envVars,
+		PluginType:          p.PluginType,
+		InstallCount:        p.InstallCount,
+		CreatedAt:           p.CreatedAt,
+		UpdatedAt:           p.UpdatedAt,
 	}
 }
 

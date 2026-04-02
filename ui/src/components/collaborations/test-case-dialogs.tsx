@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { getErrorMessage } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -83,9 +84,8 @@ export function CreateTestCaseDialog({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to create test case", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -247,9 +247,8 @@ export function EditTestCaseDialog({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update test case", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -372,9 +371,8 @@ export function DeleteTestCaseDialog({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to delete test case", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -445,9 +443,8 @@ export function CreateTestRunDialog({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to record test run", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })

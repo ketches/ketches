@@ -81,7 +81,7 @@ export function EditExtensionDialog({
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     const data: UpdateExtensionRequest = {
       oci_url: ociUrl.trim() || undefined,

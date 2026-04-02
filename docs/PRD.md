@@ -481,7 +481,7 @@ User (用户)
 | 实体 | 关键属性 |
 | ---- | ------- |
 | User | username, email, password, role, fullname |
-| Cluster | slug, displayName, kubeConfig, gatewayIP, enabled |
+| Cluster | slug, displayName, kubeConfig, gatewayHost, enabled |
 | Project | slug, displayName, description |
 | Env | slug, displayName, clusterID, clusterNamespace |
 | App | slug, displayName, appType, containerImage, replicas, status |

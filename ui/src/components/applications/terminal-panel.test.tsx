@@ -195,12 +195,12 @@ describe("TerminalPanel", () => {
       vi.runAllTimers()
     })
 
-    expect(container.textContent).toContain("Session 1")
-    expect(websocketUrls).toHaveLength(1)
-    expect(websocketUrls[0]).toContain("/api/v1/clusters/cluster-1/nodes/node-a/exec")
-    expect(websocketUrls[0]).toContain("token=token-123")
-    expect(fetch).not.toHaveBeenCalled()
-    expect(websocketSends.some((value) => value.includes("\"type\":\"resize\""))).toBe(true)
+		expect(container.textContent).toContain("Session 1")
+		expect(websocketUrls).toHaveLength(1)
+		expect(websocketUrls[0]).toContain("/api/v1/clusters/cluster-1/nodes/node-a/exec")
+		expect(websocketUrls[0]).not.toContain("token=")
+		expect(fetch).not.toHaveBeenCalled()
+		expect(websocketSends.some((value) => value.includes("\"type\":\"resize\""))).toBe(true)
 
     await act(async () => {
       root.unmount()

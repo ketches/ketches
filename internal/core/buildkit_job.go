@@ -6,6 +6,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -25,7 +26,11 @@ func CreateBuildClientJob(
 	if gitRef == "" {
 		gitRef = "main"
 	}
-	gitCloneCmd := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, repo.GitPassword)
+	plaintextGitPassword, err := resolveCodeRepositoryGitPassword(repo)
+	if err != nil {
+		return nil, err
+	}
+	gitCloneCmd := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, plaintextGitPassword)
 
 	labels := map[string]string{
 		kube.LabelAppID:       appCtx.App.ID,
@@ -67,7 +72,11 @@ func CreateBuildClientJobFromCodeRepo(
 	if gitRef == "" {
 		gitRef = "main"
 	}
-	gitCloneCmd := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, repo.GitPassword)
+	plaintextGitPassword, err := resolveCodeRepositoryGitPassword(repo)
+	if err != nil {
+		return nil, err
+	}
+	gitCloneCmd := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, plaintextGitPassword)
 
 	labels := map[string]string{
 		kube.LabelEnvID:       buildEnv.ID,
@@ -202,4 +211,17 @@ func buildSettingRegistryCacheEnabled(value *bool) bool {
 		return true
 	}
 	return *value
+}
+
+func resolveCodeRepositoryGitPassword(repo *entities.CodeRepository) (string, error) {
+	if repo == nil || repo.GitUsername == "" || repo.GitPassword == "" {
+		return "", nil
+	}
+
+	plaintextGitPassword, err := secrets.DecryptString(repo.GitPassword)
+	if err != nil {
+		return "", fmt.Errorf("decrypt git password: %w", err)
+	}
+
+	return plaintextGitPassword, nil
 }

@@ -1,3 +1,4 @@
+import { AxiosError } from "axios"
 import { certificatesApi, type Certificate } from "@/api/certificates"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -77,7 +78,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
       queryClient.invalidateQueries({ queryKey: ["env-certificates", envId] })
       handleCloseDialog()
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to add certificate", {
         description: error.response?.data?.error || error.message,
       })
@@ -99,7 +100,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
       queryClient.invalidateQueries({ queryKey: ["env-certificates", envId] })
       handleCloseDialog()
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to update certificate", {
         description: error.response?.data?.error || error.message,
       })
@@ -114,7 +115,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
       setDeleteOpen(false)
       setDeletingCert(null)
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to delete certificate", {
         description: error.response?.data?.error || error.message,
       })
@@ -144,7 +145,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
     setFormData(defaultFormData)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (editingCert) {
       updateMutation.mutate({ id: editingCert.id, data: formData })

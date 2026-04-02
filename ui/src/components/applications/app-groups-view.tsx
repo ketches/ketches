@@ -16,6 +16,7 @@ import { type PaginationState } from "@tanstack/react-table"
 import { Folder, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { Separator } from '@/components/ui/separator'
 import { Label } from '../ui/label'
 import { EditAppGroupDialog } from './edit-app-group-dialog'
 interface Props { envId: string }
@@ -88,7 +89,7 @@ export function AppGroupsView({ envId }: Props) {
 
   return (
     <div className="space-y-6">
-      {groupedApps.map((group) => {
+      {groupedApps.map((group, index) => {
         return (
           <div key={group.id} className="space-y-6">
             <GroupAppList
@@ -136,9 +137,9 @@ export function AppGroupsView({ envId }: Props) {
                 </div>
               }
             />
-            {/* {index < groupedApps.length - 1 && (
+            {index < groupedApps.length - 1 && (
               <Separator className="bg-transparent border-t border-dashed border-border" />
-            )} */}
+            )}
           </div>
         )
       })}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
@@ -16,6 +15,8 @@ import (
 	wsPkg "github.com/ketches/ketches/pkg/websocket"
 	"golang.org/x/net/websocket"
 )
+
+const maxAppListPageSize = 60
 
 func StreamAppLogs(c *gin.Context) {
 	appID := c.Param("appID")
@@ -129,6 +130,9 @@ func ListApps(c *gin.Context) {
 		return
 	}
 	req.Validate()
+	if req.PageSize > maxAppListPageSize {
+		req.PageSize = maxAppListPageSize
+	}
 
 	total, apps, err := services.ListApps(envID, req.Page, req.PageSize, req.Search)
 	if err != nil {
@@ -136,16 +140,11 @@ func ListApps(c *gin.Context) {
 		return
 	}
 
+	statuses := services.BuildAppListStatuses(c.Request.Context(), apps)
 	res := make([]models.AppResponse, len(apps))
-	var wg sync.WaitGroup
-	for i, a := range apps {
-		wg.Add(1)
-		go func(i int, a models.AppListRow) {
-			defer wg.Done()
-			res[i] = services.ToAppListResponse(c.Request.Context(), &a)
-		}(i, a)
+	for i := range apps {
+		res[i] = services.ToAppListResponseWithStatus(&apps[i], statuses[apps[i].ID])
 	}
-	wg.Wait()
 
 	api.Success(c, models.ListAppResponse{
 		Items:      res,

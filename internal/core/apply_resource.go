@@ -50,7 +50,10 @@ func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 	}
 
 	if appCtx.App.RegistryUsername != "" {
-		secret := metadata.BuildRegistrySecret()
+		secret, err := metadata.BuildRegistrySecret()
+		if err != nil {
+			return err
+		}
 		if _, err := client.CoreV1().Secrets(secret.Namespace).Get(ctx, secret.Name, metav1.GetOptions{}); err != nil {
 			if errors.IsNotFound(err) {
 				if _, err := client.CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {

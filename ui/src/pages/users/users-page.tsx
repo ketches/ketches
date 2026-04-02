@@ -24,12 +24,18 @@ import { ImportUsersDialog } from "@/components/users/import-users-dialog"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
+import { type AxiosError } from "axios"
 import { Clock, Trash2, User } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 const USER_ROLES = ["admin", "user"] as const
 type UserRole = (typeof USER_ROLES)[number]
+const USER_ROLE_SET = new Set<string>(USER_ROLES)
+
+function isUserRole(value: string | null): value is UserRole {
+  return value !== null && USER_ROLE_SET.has(value)
+}
 
 const UserRoleLabels: Record<UserRole, string> = {
   admin: "Admin",
@@ -77,7 +83,7 @@ export function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success("User role updated")
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to update role",
       })
@@ -90,7 +96,7 @@ export function UsersPage() {
     onSuccess: () => {
       toast.success("Password updated successfully")
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to update password",
       })
@@ -103,7 +109,7 @@ export function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success("User deleted successfully")
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to delete user",
       })
@@ -117,10 +123,8 @@ export function UsersPage() {
       header: ({ table }) => (
         <div className="flex items-center px-1">
           <Checkbox
-            checked={
-              (table.getIsAllPageRowsSelected() ||
-                (table.getIsSomePageRowsSelected() ? "mixed" : false)) as any
-            }
+            checked={table.getIsAllPageRowsSelected()}
+            data-state={table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected() ? "indeterminate" : undefined}
             onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
             aria-label="Select all"
           />
@@ -170,14 +174,18 @@ export function UsersPage() {
       header: "Role",
       cell: ({ row }) => {
         const user = row.original
-        const isValidRole = USER_ROLES.includes(user.role as UserRole)
+        const isValidRole = isUserRole(user.role)
 
         return (
           <Combobox
             value={isValidRole ? user.role : "user"}
-            onValueChange={(val: string | null) => val && updateRoleMutation.mutate({ userId: user.id, role: val })}
+            onValueChange={(value) => {
+              if (isUserRole(value)) {
+                updateRoleMutation.mutate({ userId: user.id, role: value })
+              }
+            }}
             disabled={updateRoleMutation.isPending}
-            itemToStringLabel={(v) => UserRoleLabels[v as UserRole] ?? v ?? ""}
+            itemToStringLabel={(value) => isUserRole(value) ? UserRoleLabels[value] : value ?? ""}
           >
             <ComboboxInput className="w-40" />
             <ComboboxContent>
@@ -186,8 +194,8 @@ export function UsersPage() {
                   <ComboboxItem key={r} value={r}>
                     <Item size="xs" className="p-0">
                       <ItemContent>
-                        <ItemTitle>{UserRoleLabels[r as UserRole]}</ItemTitle>
-                        <ItemDescription>{UserRoleDescriptions[r as UserRole]}</ItemDescription>
+                        <ItemTitle>{UserRoleLabels[r]}</ItemTitle>
+                        <ItemDescription>{UserRoleDescriptions[r]}</ItemDescription>
                       </ItemContent>
                     </Item>
                   </ComboboxItem>

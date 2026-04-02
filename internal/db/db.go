@@ -12,6 +12,12 @@ import (
 
 var DB *gorm.DB
 
+func newGormConfig() *gorm.Config {
+	return &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	}
+}
+
 func InitDB() error {
 	var err error
 	var dialector gorm.Dialector
@@ -25,7 +31,7 @@ func InitDB() error {
 		return fmt.Errorf("unsupported database driver: %s", app.Config.DBDriver)
 	}
 
-	DB, err = gorm.Open(dialector)
+	DB, err = gorm.Open(dialector, newGormConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}

@@ -31,6 +31,7 @@ type UpdateContainerRegistryRequest struct {
 	Namespace     string `json:"namespace"`
 	Username      string `json:"username"`
 	Password      string `json:"password"`
+	ClearPassword *bool  `json:"clear_password,omitempty"`
 	IsDefault     *bool  `json:"is_default"`
 	Enabled       *bool  `json:"enabled"`
 	Description   string `json:"description"`
@@ -45,7 +46,8 @@ type ContainerRegistryResponse struct {
 	SkipTLSVerify bool      `json:"skip_tls_verify"`
 	Namespace     string    `json:"namespace"`
 	Username      string    `json:"username"`
-	Password      string    `json:"password,omitempty"`
+	Password      string    `json:"-"`
+	HasPassword   bool      `json:"has_password"`
 	Scope         string    `json:"scope"`
 	ClusterID     string    `json:"cluster_id,omitempty"`
 	ProjectID     string    `json:"project_id,omitempty"`

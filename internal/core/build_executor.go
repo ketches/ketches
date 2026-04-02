@@ -93,7 +93,11 @@ func CreateBuildSecretsFromCodeRepo(
 	if _, err := client.CoreV1().Secrets(namespace).Create(ctx, registrySecret, metav1.CreateOptions{}); err != nil {
 		return fmt.Errorf("failed to create registry secret: %w", err)
 	}
-	if repo.GitUsername != "" && repo.GitPassword != "" {
+	plaintextGitPassword, err := resolveCodeRepositoryGitPassword(repo)
+	if err != nil {
+		return err
+	}
+	if repo.GitUsername != "" && plaintextGitPassword != "" {
 		gitSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-git-cred", jobName),
@@ -101,7 +105,7 @@ func CreateBuildSecretsFromCodeRepo(
 				Labels:    labels,
 			},
 			Type:       corev1.SecretTypeOpaque,
-			StringData: map[string]string{"username": repo.GitUsername, "password": repo.GitPassword},
+			StringData: map[string]string{"username": repo.GitUsername, "password": plaintextGitPassword},
 		}
 		if _, err := client.CoreV1().Secrets(namespace).Create(ctx, gitSecret, metav1.CreateOptions{}); err != nil {
 			return fmt.Errorf("failed to create git secret: %w", err)
@@ -194,8 +198,13 @@ func CreateBuildSecrets(
 		return fmt.Errorf("failed to create registry secret: %w", err)
 	}
 
+	plaintextGitPassword, err := resolveCodeRepositoryGitPassword(repo)
+	if err != nil {
+		return err
+	}
+
 	// Create git credentials secret if needed
-	if repo.GitUsername != "" && repo.GitPassword != "" {
+	if repo.GitUsername != "" && plaintextGitPassword != "" {
 		gitSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-git-cred", jobName),
@@ -205,7 +214,7 @@ func CreateBuildSecrets(
 			Type: corev1.SecretTypeOpaque,
 			StringData: map[string]string{
 				"username": repo.GitUsername,
-				"password": repo.GitPassword,
+				"password": plaintextGitPassword,
 			},
 		}
 

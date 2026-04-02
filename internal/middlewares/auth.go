@@ -48,7 +48,7 @@ func Auth() gin.HandlerFunc {
 		}
 
 		if tokenString == "" {
-			tokenString = c.Query("token")
+			tokenString, _ = c.Cookie("X-Ketches-Token")
 		}
 
 		claims, user, err := verifyToken(tokenString)

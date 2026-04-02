@@ -1,7 +1,7 @@
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { isAxiosError } from "axios"
+import { isAxiosError, type AxiosError } from "axios"
 import {
   Box,
   ChartLine,
@@ -27,7 +27,6 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { appsApi } from "@/api/apps"
-import { clustersApi } from "@/api/clusters"
 import { envsApi } from "@/api/envs"
 import { ApplicationList } from "@/components/applications/application-list"
 import { EditEnvironmentDialog } from "@/components/environment/edit-environment-dialog"
@@ -98,22 +97,17 @@ export function EnvironmentDetailPage() {
     }
   }, [env?.project_id, env?.project_name, activeProjectId, setActiveContextWithNames])
 
+  const shouldLoadApps = !!envId && (activeTab === "overview" || activeTab === "applications")
   const { data: appsResponse } = useQuery({
     queryKey: ["apps", envId],
     queryFn: () => appsApi.list(envId!),
-    enabled: !!envId,
+    enabled: shouldLoadApps,
   })
   const apps = appsResponse?.items ?? []
 
-  const { data: cluster } = useQuery({
-    queryKey: ["cluster", env?.cluster_id],
-    queryFn: () => clustersApi.getPublic(env!.cluster_id),
-    enabled: !!env?.cluster_id,
-  })
-
   const safeApps = Array.isArray(apps) ? apps : []
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<unknown, AxiosError<{ error: string }>, void>({
     mutationFn: () => envsApi.delete(envId!),
     onSuccess: () => {
       toast.success("Environment deleted", {
@@ -122,7 +116,7 @@ export function EnvironmentDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["envs"] })
       navigate("/environments")
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to delete environment", {
         description: error.response?.data?.error || "An unknown error occurred",
       })
@@ -376,11 +370,11 @@ export function EnvironmentDetailPage() {
             />
             <StatCard
               title="Cluster"
-              value={cluster?.name || "Loading..."}
+              value={env.cluster_name || "Unknown"}
               icon={ShipWheel}
               color="sky"
               description={
-                cluster?.connection_status === "connected" ? (
+                env.cluster_connection_status === "connected" ? (
                   <span className="text-green-600">Connected</span>
                 ) : (
                   <span className="text-red-600">Disconnected</span>
@@ -400,6 +394,8 @@ export function EnvironmentDetailPage() {
             <CardContent>
               <EnvironmentResourceMetrics
                 clusterId={env.cluster_id}
+                projectId={env.project_id}
+                prometheusAvailable={env.has_prometheus_integration}
                 namespace={env.cluster_namespace}
                 timeRange={timeRange}
                 rangeSeconds={rangeSeconds}

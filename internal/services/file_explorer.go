@@ -11,14 +11,29 @@ import (
 	"strings"
 
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
 var newRemoteCommandExecutor = remotecommand.NewSPDYExecutor
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
+}
+
+func appContextRESTConfig(appCtx *models.AppContext) (*rest.Config, error) {
+	plaintextKubeConfig, err := secrets.DecryptString(appCtx.EnvContext.Cluster.KubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientcmd.RESTConfigFromKubeConfig([]byte(plaintextKubeConfig))
+}
 
 // execCommand executes a non-interactive command in a container and returns stdout/stderr
 func execCommand(appCtx *models.AppContext, instanceName, containerName string, command []string) (string, string, error) {
@@ -30,7 +45,7 @@ func execCommandWithContext(ctx context.Context, appCtx *models.AppContext, inst
 		ctx = context.Background()
 	}
 
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
+	config, err := appContextRESTConfig(appCtx)
 	if err != nil {
 		return "", "", err
 	}
@@ -73,7 +88,7 @@ func execCommandWithContext(ctx context.Context, appCtx *models.AppContext, inst
 
 // execCommandWithStdin executes a command in a container with stdin input
 func execCommandWithStdin(appCtx *models.AppContext, instanceName, containerName string, command []string, stdin io.Reader) (string, string, error) {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
+	config, err := appContextRESTConfig(appCtx)
 	if err != nil {
 		return "", "", err
 	}
@@ -122,7 +137,7 @@ func execCommandStreamStdoutWithContext(ctx context.Context, appCtx *models.AppC
 		ctx = context.Background()
 	}
 
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
+	config, err := appContextRESTConfig(appCtx)
 	if err != nil {
 		return err
 	}
@@ -165,7 +180,7 @@ func execCommandStreamStdoutWithContext(ctx context.Context, appCtx *models.AppC
 
 // execCommandWithStdinStream executes a command with stdin stream and stdout writer
 func execCommandWithStdinStream(appCtx *models.AppContext, instanceName, containerName string, command []string, stdin io.Reader, stdout io.Writer) error {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
+	config, err := appContextRESTConfig(appCtx)
 	if err != nil {
 		return err
 	}
@@ -221,10 +236,10 @@ func CheckWritable(appCtx *models.AppContext, instanceName, containerName, path 
 	dir := filepath.Dir(path)
 
 	// Check if the target directory is writable
-	script := fmt.Sprintf(`if [ -e "%s" ]; then
-  if [ -w "%s" ]; then exit 0; else echo "READONLY_FILE"; exit 1; fi
-elif [ -w "%s" ]; then exit 0
-else echo "READONLY_DIR"; exit 1; fi`, path, path, dir)
+	script := fmt.Sprintf(`if [ -e %s ]; then
+  if [ -w %s ]; then exit 0; else echo "READONLY_FILE"; exit 1; fi
+elif [ -w %s ]; then exit 0
+else echo "READONLY_DIR"; exit 1; fi`, shellQuote(path), shellQuote(path), shellQuote(dir))
 
 	stdout, _, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", script})
 	if err != nil {
@@ -245,13 +260,12 @@ func CompressFiles(appCtx *models.AppContext, instanceName, containerName, baseD
 	baseDir = filepath.Clean(baseDir)
 	destPath = filepath.Clean(destPath)
 
-	// Build the tar command with all file names
-	args := fmt.Sprintf(`cd "%s" && tar czf "%s"`, baseDir, destPath)
+	command := []string{"tar", "czf", destPath, "-C", baseDir}
 	for _, name := range fileNames {
-		args += fmt.Sprintf(` "%s"`, name)
+		command = append(command, filepath.Clean(name))
 	}
 
-	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", args})
+	_, stderr, err := execCommand(appCtx, instanceName, containerName, command)
 	if err != nil {
 		return fmt.Errorf("failed to compress files: %v, stderr: %s", err, stderr)
 	}
@@ -262,15 +276,14 @@ func CompressFiles(appCtx *models.AppContext, instanceName, containerName, baseD
 func CompressAndDownloadFiles(appCtx *models.AppContext, instanceName, containerName, baseDir string, fileNames []string, writer io.Writer) error {
 	baseDir = filepath.Clean(baseDir)
 
-	// Build the tar command with all file names, output to stdout
-	args := fmt.Sprintf(`cd "%s" && tar czf -`, baseDir)
+	command := []string{"tar", "czf", "-", "-C", baseDir}
 	for _, name := range fileNames {
-		args += fmt.Sprintf(` "%s"`, name)
+		command = append(command, filepath.Clean(name))
 	}
 
 	return execCommandStreamStdout(
 		appCtx, instanceName, containerName,
-		[]string{"sh", "-c", args},
+		command,
 		writer,
 	)
 }
@@ -285,7 +298,7 @@ func ListFiles(appCtx *models.AppContext, instanceName, containerName, path stri
 
 	// Use a shell script that works across most containers (bash, ash, sh)
 	// Output format: name\ttype\tsize\tmodtime\tpermissions
-	script := fmt.Sprintf(`dir="%s"
+	script := fmt.Sprintf(`dir=%s
 if [ ! -d "$dir" ]; then echo "ERROR: not a directory"; exit 1; fi
 for f in "$dir"/* "$dir"/.*; do
   [ -e "$f" ] || [ -L "$f" ] || continue
@@ -299,7 +312,7 @@ for f in "$dir"/* "$dir"/.*; do
   m=$(stat -c %%Y "$f" 2>/dev/null || stat -f %%m "$f" 2>/dev/null || echo 0)
   p=$(stat -c %%a "$f" 2>/dev/null || stat -f %%Lp "$f" 2>/dev/null || echo 644)
   printf '%%s\t%%s\t%%s\t%%s\t%%s\n' "$name" "$t" "$s" "$m" "$p"
-done`, path)
+done`, shellQuote(path))
 
 	stdout, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", script})
 	if err != nil {
@@ -343,11 +356,11 @@ func ReadFile(appCtx *models.AppContext, instanceName, containerName, path strin
 	path = filepath.Clean(path)
 
 	// First check if it's a file and get its size
-	checkScript := fmt.Sprintf(`f="%s"
+	checkScript := fmt.Sprintf(`f=%s
 if [ ! -e "$f" ]; then echo "ERROR: file not found"; exit 1; fi
 if [ -d "$f" ]; then echo "ERROR: is a directory"; exit 1; fi
 s=$(stat -c %%s "$f" 2>/dev/null || stat -f %%z "$f" 2>/dev/null || echo 0)
-echo "$s"`, path)
+echo "$s"`, shellQuote(path))
 
 	stdout, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", checkScript})
 	if err != nil {
@@ -398,10 +411,11 @@ func WriteFile(appCtx *models.AppContext, instanceName, containerName, path, con
 		}
 	}
 
-	// Use cat with stdin to write file content (handles special characters safely)
+	// Use tee with stdin so the target path stays an argv entry instead of part
+	// of a shell command string.
 	_, stderr, err := execCommandWithStdin(
 		appCtx, instanceName, containerName,
-		[]string{"sh", "-c", fmt.Sprintf(`cat > "%s"`, path)},
+		[]string{"tee", path},
 		strings.NewReader(content),
 	)
 	if err != nil {
@@ -485,6 +499,10 @@ func DownloadFile(appCtx *models.AppContext, instanceName, containerName, path s
 // UploadFile uploads a file to the container using tar
 func UploadFile(appCtx *models.AppContext, instanceName, containerName, destDir, fileName string, fileContent io.Reader, fileSize int64) error {
 	destDir = filepath.Clean(destDir)
+	fileName = filepath.Base(fileName)
+	if fileName == "." || fileName == "/" || fileName == "" {
+		fileName = "upload"
+	}
 
 	// Create a tar archive in memory containing the file
 	var tarBuf bytes.Buffer

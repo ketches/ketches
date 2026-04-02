@@ -12,6 +12,7 @@ import {
 import { CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts"
 
 import { clustersApi } from "@/api/clusters"
+import { type App } from "@/api/apps"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import {
@@ -46,15 +47,52 @@ interface InstanceResourceMetricsProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   clusterId: string
+  projectId?: string
   namespace: string
   podName: string
-  app: any
+  app?: App
+}
+
+interface MetricDataPoint {
+  time: string
+  timestamp: number
+  cpu: number
+  memory: number
+  ingress: number
+  egress: number
+  cpuUtil: number
+  memUtil: number
+  cpuRequest: number
+  cpuLimit: number
+  memRequest: number
+  memLimit: number
+}
+
+const INSTANCE_METRIC_KEYS = ["cpu", "memory", "ingress", "egress"] as const
+type InstanceMetricKey = (typeof INSTANCE_METRIC_KEYS)[number]
+
+function createInstanceMetricDataPoint(timestamp: number): MetricDataPoint {
+  return {
+    time: new Date(timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    timestamp,
+    cpu: 0,
+    memory: 0,
+    ingress: 0,
+    egress: 0,
+    cpuUtil: 0,
+    memUtil: 0,
+    cpuRequest: 0,
+    cpuLimit: 0,
+    memRequest: 0,
+    memLimit: 0,
+  }
 }
 
 export function InstanceResourceMetrics({
   open,
   onOpenChange,
   clusterId,
+  projectId,
   namespace,
   podName,
   app,
@@ -69,7 +107,7 @@ export function InstanceResourceMetrics({
       const step = timeStep
       const rateWindow = `${parseInt(timeStep) * 2}s`
 
-      const queries = {
+      const queries: Record<InstanceMetricKey, string> = {
         cpu: `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}", pod="${podName}", container!=""}[${rateWindow}])) * 1000`,
         memory: `sum(container_memory_working_set_bytes{namespace="${namespace}", pod="${podName}", container!=""}) / 1024 / 1024 / 1024`,
         ingress: `sum(rate(container_network_receive_bytes_total{namespace="${namespace}", pod="${podName}"}[${rateWindow}])) / 1024`,
@@ -77,11 +115,12 @@ export function InstanceResourceMetrics({
       }
 
       const results = await Promise.all(
-        Object.entries(queries).map(async ([key, query]) => {
+        INSTANCE_METRIC_KEYS.map(async (key) => {
+          const query = queries[key]
           try {
             const res = await clustersApi.prometheusQueryRange(
-              clusterId, query, start.toString(), now.toString(), step
-            ) as any
+              clusterId, query, start.toString(), now.toString(), step, projectId
+            )
             return { key, values: res?.result?.[0]?.values || [] }
           } catch {
             return { key, values: [] }
@@ -89,16 +128,14 @@ export function InstanceResourceMetrics({
         })
       )
 
-      const timeMap = new Map<number, any>()
+      const timeMap = new Map<number, MetricDataPoint>()
       results.forEach(({ key, values }) => {
         values.forEach(([ts, val]: [number, string]) => {
           if (!timeMap.has(ts)) {
-            timeMap.set(ts, {
-              time: new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-              timestamp: ts,
-            })
+            timeMap.set(ts, createInstanceMetricDataPoint(ts))
           }
-          timeMap.get(ts)[key] = parseFloat(val) || 0
+          const entry = timeMap.get(ts)!
+          entry[key] = parseFloat(val) || 0
         })
       })
 

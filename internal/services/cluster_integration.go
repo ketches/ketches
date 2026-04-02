@@ -4,6 +4,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
@@ -31,7 +32,34 @@ func GetClusterIntegrationByType(clusterID string, integrationType entities.Inte
 	return &integration, nil
 }
 
+func HasPrometheusIntegration(clusterID string) (bool, error) {
+	if db.DB == nil {
+		return false, nil
+	}
+
+	var count int64
+	if err := db.DB.Model(&entities.ClusterIntegration{}).
+		Where("cluster_id = ? AND integration_type = ? AND enabled = ?", clusterID, entities.IntegrationTypePrometheus, true).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func CreateClusterIntegration(clusterID string, req *models.CreateClusterIntegrationRequest) (*entities.ClusterIntegration, error) {
+	password, err := secrets.EncryptString(req.Password)
+	if err != nil {
+		return nil, err
+	}
+	token, err := secrets.EncryptString(req.Token)
+	if err != nil {
+		return nil, err
+	}
+	caCert, err := secrets.EncryptString(req.CACert)
+	if err != nil {
+		return nil, err
+	}
+
 	integration := &entities.ClusterIntegration{
 		ID:              uuid.New(),
 		ClusterID:       clusterID,
@@ -42,9 +70,9 @@ func CreateClusterIntegration(clusterID string, req *models.CreateClusterIntegra
 		ServiceName:     req.ServiceName,
 		ServicePort:     req.ServicePort,
 		Username:        req.Username,
-		Password:        req.Password,
-		Token:           req.Token,
-		CACert:          req.CACert,
+		Password:        password,
+		Token:           token,
+		CACert:          caCert,
 		SkipTLSVerify:   req.SkipTLSVerify,
 		Enabled:         req.Enabled,
 	}
@@ -80,14 +108,35 @@ func UpdateClusterIntegration(id string, req *models.UpdateClusterIntegrationReq
 	if req.Username != nil {
 		integration.Username = *req.Username
 	}
+	if req.ClearPassword != nil && *req.ClearPassword {
+		integration.Password = ""
+	}
 	if req.Password != nil {
-		integration.Password = *req.Password
+		password, err := secrets.EncryptString(*req.Password)
+		if err != nil {
+			return nil, err
+		}
+		integration.Password = password
+	}
+	if req.ClearToken != nil && *req.ClearToken {
+		integration.Token = ""
 	}
 	if req.Token != nil {
-		integration.Token = *req.Token
+		token, err := secrets.EncryptString(*req.Token)
+		if err != nil {
+			return nil, err
+		}
+		integration.Token = token
+	}
+	if req.ClearCACert != nil && *req.ClearCACert {
+		integration.CACert = ""
 	}
 	if req.CACert != nil {
-		integration.CACert = *req.CACert
+		caCert, err := secrets.EncryptString(*req.CACert)
+		if err != nil {
+			return nil, err
+		}
+		integration.CACert = caCert
 	}
 	if req.SkipTLSVerify != nil {
 		integration.SkipTLSVerify = *req.SkipTLSVerify

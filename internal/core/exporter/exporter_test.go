@@ -11,6 +11,7 @@ import (
 
 	"github.com/ketches/ketches/internal/models"
 )
+
 func TestImplementations(t *testing.T) {
 	// Verify that the generators implement the ExportGenerator interface
 	var _ ExportGenerator = &K8sManifestGenerator{}
@@ -107,11 +108,13 @@ func TestKetchesMetadataGenerator_Generate(t *testing.T) {
 
 	appMetadata := []models.AppMetadata{
 		{
-			AppName:        "Test App",
-			AppSlug:        "test-app",
-			AppType:        "Deployment",
-			ContainerImage: "nginx:latest",
-			Replicas:       2,
+			AppName:          "Test App",
+			AppSlug:          "test-app",
+			AppType:          "Deployment",
+			ContainerImage:   "nginx:latest",
+			Replicas:         2,
+			RegistryUsername: "user",
+			RegistryPassword: "secret",
 		},
 	}
 
@@ -142,6 +145,9 @@ func TestKetchesMetadataGenerator_Generate(t *testing.T) {
 	}
 	if len(metadata.Apps) > 0 && metadata.Apps[0].AppSlug != "test-app" {
 		t.Errorf("Expected AppSlug test-app, got %s", metadata.Apps[0].AppSlug)
+	}
+	if strings.Contains(got, "registry_password") {
+		t.Errorf("expected generated metadata to omit registry_password, got %s", got)
 	}
 	if metadata.ExportedAt.IsZero() {
 		t.Error("Expected ExportedAt to be set")
@@ -264,7 +270,6 @@ func TestHelmChartGenerator_Generate(t *testing.T) {
 	}
 
 }
-
 
 func TestDockerComposeGenerator_Generate(t *testing.T) {
 	generator := &DockerComposeGenerator{}
@@ -397,7 +402,6 @@ func TestDockerComposeGenerator_Generate(t *testing.T) {
 			}
 		}
 	})
-
 
 	t.Run("app with liveness probe tcpSocket", func(t *testing.T) {
 		appMetadata := []models.AppMetadata{

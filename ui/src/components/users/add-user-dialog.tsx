@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react"
 import { useState } from "react"
+import { isAxiosError } from "axios"
 
 import { usersApi, type CreateUserRequest } from "@/api/users"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,11 @@ import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/i
 
 const USER_ROLES = ["admin", "user"] as const
 type UserRole = (typeof USER_ROLES)[number]
+const USER_ROLE_SET = new Set<string>(USER_ROLES)
+
+function isUserRole(value: string | null): value is UserRole {
+  return value !== null && USER_ROLE_SET.has(value)
+}
 
 const UserRoleLabels: Record<UserRole, string> = {
   admin: "Admin",
@@ -76,7 +82,7 @@ export function AddUserDialog({ onSuccess }: AddUserDialogProps) {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!validateForm()) {
@@ -97,8 +103,14 @@ export function AddUserDialog({ onSuccess }: AddUserDialogProps) {
       })
       setErrors({})
       onSuccess?.()
-    } catch (error: any) {
-      setErrors({ submit: error.response?.data?.error || "Failed to create user" })
+    } catch (error) {
+      const submitError = isAxiosError<{ error: string }>(error)
+        ? error.response?.data?.error || error.message
+        : error instanceof Error
+          ? error.message
+          : "Failed to create user"
+
+      setErrors({ submit: submitError })
     } finally {
       setIsPending(false)
     }
@@ -200,8 +212,12 @@ export function AddUserDialog({ onSuccess }: AddUserDialogProps) {
               <FieldContent>
                 <Combobox
                   value={formData.role}
-                  onValueChange={(value) => value && setFormData({ ...formData, role: value as UserRole })}
-                  itemToStringLabel={(v) => UserRoleLabels[v as UserRole] ?? v ?? ""}
+                  onValueChange={(value) => {
+                    if (isUserRole(value)) {
+                      setFormData({ ...formData, role: value })
+                    }
+                  }}
+                  itemToStringLabel={(value) => isUserRole(value) ? UserRoleLabels[value] : value ?? ""}
                 >
                 <ComboboxInput />
                   <ComboboxContent>

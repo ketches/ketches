@@ -34,7 +34,7 @@ export function EnvResourceQuotaCard({ envId, isViewer }: EnvResourceQuotaCardPr
     }
   }, [data, dialogOpen])
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     updateMutation.mutate(
       {

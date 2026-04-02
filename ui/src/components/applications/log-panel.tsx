@@ -22,6 +22,7 @@ import {
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { getStoredAccessToken, syncAuthCookie } from "@/lib/auth-session"
 import { cn } from "@/lib/utils"
 
 import { WorkloadPanelFrame } from "./workload-panel-frame"
@@ -66,24 +67,16 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
     if (!appId || !instanceName || !containerName) return
     followTailRef.current = true
 
-    const authData = localStorage.getItem('auth-storage')
-    let token = ''
-    if (authData) {
-      try {
-        const { state } = JSON.parse(authData)
-        token = state.accessToken || ''
-      } catch (e) {
-        console.error('Failed to parse auth data:', e)
-      }
-    }
+    const token = getStoredAccessToken()
 
     if (!token) {
       toast.error("Authentication required")
       return
     }
 
+    syncAuthCookie()
     const eventSource = new EventSource(
-      `/api/v1/apps/${appId}/instances/${instanceName}/logs?container=${containerName}&tailLines=${tailLines}&timestamps=${showTimestamp}&token=${token}`
+      `/api/v1/apps/${appId}/instances/${instanceName}/logs?container=${containerName}&tailLines=${tailLines}&timestamps=${showTimestamp}`
     )
 
     eventSource.onopen = () => {

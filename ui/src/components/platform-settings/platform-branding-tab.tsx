@@ -24,7 +24,7 @@ export function PlatformBrandingTab() {
     }
   }, [data?.name, dialogOpen])
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const trimmedName = name.trim()

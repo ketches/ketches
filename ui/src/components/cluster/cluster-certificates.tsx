@@ -1,3 +1,4 @@
+import { AxiosError } from "axios"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Clock, Loader2, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react"
@@ -72,7 +73,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
       queryClient.invalidateQueries({ queryKey: ["cluster-certificates", clusterId] })
       handleCloseDialog()
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to add certificate", {
         description: error.response?.data?.error || error.message,
       })
@@ -94,7 +95,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
       queryClient.invalidateQueries({ queryKey: ["cluster-certificates", clusterId] })
       handleCloseDialog()
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to update certificate", {
         description: error.response?.data?.error || error.message,
       })
@@ -109,7 +110,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
       setDeleteOpen(false)
       setDeletingCert(null)
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to delete certificate", {
         description: error.response?.data?.error || error.message,
       })
@@ -139,7 +140,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
     setFormData(defaultFormData)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (editingCert) {
       updateMutation.mutate({ id: editingCert.id, data: formData })

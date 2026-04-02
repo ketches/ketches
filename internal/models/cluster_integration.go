@@ -12,6 +12,9 @@ type ClusterIntegrationResponse struct {
 	ServiceName     string    `json:"service_name,omitempty"`
 	ServicePort     int       `json:"service_port,omitempty"`
 	Username        string    `json:"username,omitempty"`
+	HasPassword     bool      `json:"has_password"`
+	HasToken        bool      `json:"has_token"`
+	HasCACert       bool      `json:"has_ca_cert"`
 	SkipTLSVerify   bool      `json:"skip_tls_verify"`
 	Enabled         bool      `json:"enabled"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -42,6 +45,9 @@ type UpdateClusterIntegrationRequest struct {
 	Password      *string `json:"password"`
 	Token         *string `json:"token"`
 	CACert        *string `json:"ca_cert"`
+	ClearPassword *bool   `json:"clear_password,omitempty"`
+	ClearToken    *bool   `json:"clear_token,omitempty"`
+	ClearCACert   *bool   `json:"clear_ca_cert,omitempty"`
 	SkipTLSVerify *bool   `json:"skip_tls_verify"`
 	Enabled       *bool   `json:"enabled"`
 }

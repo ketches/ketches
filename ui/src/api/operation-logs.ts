@@ -1,5 +1,6 @@
 import client from './client'
 import { type PaginationParams, type PaginationResponse } from './pagination'
+import { getStoredAccessToken } from '@/lib/auth-session'
 
 export type OperationLogSensitivity = 'public' | 'internal' | 'sensitive'
 export type OperationLogStatus = 'success' | 'failure'
@@ -72,15 +73,7 @@ export const updateOperationLogSettings = async (retentionDays: number) => {
 }
 
 export const exportOperationLogsCSV = async (params?: OperationLogListParams) => {
-  const authData = localStorage.getItem('auth-storage')
-  let token = ''
-  if (authData) {
-    try {
-      const { state } = JSON.parse(authData)
-      token = state.accessToken || ''
-    } catch {
-    }
-  }
+  const token = getStoredAccessToken()
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
   const query = new URLSearchParams()

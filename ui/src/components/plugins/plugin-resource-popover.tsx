@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { type AxiosError } from "axios"
 import { Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -40,7 +41,12 @@ export function PluginResourcePopover({
     }
   }, [open, appPlugin])
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<unknown, AxiosError<{ error: string }>, {
+    request_cpu?: number
+    limit_cpu?: number
+    request_memory?: number
+    limit_memory?: number
+  }>({
     mutationFn: (resources: {
       request_cpu?: number
       limit_cpu?: number
@@ -52,14 +58,14 @@ export function PluginResourcePopover({
       toast.success("Plugin resources updated")
       setOpen(false)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to update resources",
       })
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     updateMutation.mutate(formData)
   }

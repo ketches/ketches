@@ -4,6 +4,7 @@ import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/colla
 import { InlineAssigneeEditor, InlinePriorityEditor, InlineStatusEditor } from "@/components/collaborations/inline-editors"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
+import { getErrorMessage } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -86,9 +87,8 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
       toast.success("Requirement status updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update status", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -107,9 +107,8 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
       toast.success("Requirement priority updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update priority", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -128,9 +127,8 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
       toast.success("Assignee updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update assignee", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })

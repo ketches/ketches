@@ -147,6 +147,10 @@ describe("CollaborationsPage", () => {
       await flushPromises()
     })
 
+    await act(async () => {
+      await flushPromises()
+    })
+
     expect(sprintInput?.value).toBe(ACTIVE_SPRINT.name)
 
     await act(async () => {

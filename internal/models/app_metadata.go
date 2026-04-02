@@ -16,7 +16,7 @@ type AppMetadata struct {
 	LimitCPU         int                  `json:"limit_cpu"`
 	LimitMemory      int                  `json:"limit_memory"`
 	RegistryUsername string               `json:"registry_username,omitempty"`
-	RegistryPassword string               `json:"registry_password,omitempty"`
+	RegistryPassword string               `json:"-"`
 	EnvVars          []EnvVarMetadata     `json:"env_vars"`
 	Volumes          []VolumeMetadata     `json:"volumes"`
 	ConfigFiles      []ConfigFileMetadata `json:"config_files"`
@@ -112,7 +112,6 @@ func (m *AppMetadata) ToCreateAppRequest() *CreateAppRequest {
 		AppType:          m.AppType,
 		ContainerImage:   m.ContainerImage,
 		RegistryUsername: m.RegistryUsername,
-		RegistryPassword: m.RegistryPassword,
 		Replicas:         m.Replicas,
 		ContainerCommand: m.ContainerCommand,
 		RequestCPU:       m.RequestCPU,

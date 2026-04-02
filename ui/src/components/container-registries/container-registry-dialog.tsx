@@ -9,6 +9,7 @@ import {
   type ContainerRegistry,
   type RegistryProvider as ContainerRegistryProvider,
   type CreateContainerRegistryRequest,
+  type UpdateContainerRegistryRequest,
 } from "@/api/container-registries"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -48,7 +49,9 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
   const queryClient = useQueryClient()
   const isEdit = !!registry
 
-  const [form, setForm] = React.useState<CreateContainerRegistryRequest>({
+  const [isClearingPassword, setIsClearingPassword] = React.useState(false)
+
+  const [form, setForm] = React.useState<CreateContainerRegistryRequest & UpdateContainerRegistryRequest>({
     name: '',
     provider: 'dockerhub',
     endpoint: providerEndpointDefaults.dockerhub ?? '',
@@ -71,10 +74,12 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
         namespace: registry.namespace || '',
         username: registry.username || '',
         password: registry.password || '',
+        clear_password: false,
         is_default: registry.is_default,
         enabled: registry.enabled,
         description: registry.description || '',
       })
+      setIsClearingPassword(false)
     } else {
       setForm({
         name: '',
@@ -92,7 +97,7 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
   }, [registry, open])
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateContainerRegistryRequest) => {
+    mutationFn: (data: CreateContainerRegistryRequest & UpdateContainerRegistryRequest) => {
       if (scope === 'cluster') {
         return containerRegistriesApi.createForCluster(scopeId, data)
       }
@@ -109,8 +114,13 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
   })
 
   const updateMutation = useMutation({
-    mutationFn: (data: CreateContainerRegistryRequest) => {
-      return containerRegistriesApi.update(registry!.id, data)
+    mutationFn: (data: UpdateContainerRegistryRequest) => {
+      const payload: UpdateContainerRegistryRequest = {
+        ...data,
+        ...(isClearingPassword && !data.password ? { clear_password: true } : {}),
+      }
+
+      return containerRegistriesApi.update(registry!.id, payload)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["registries", scope, scopeId] })
@@ -261,14 +271,24 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
                 </FieldContent>
               </Field>
               <Field>
-                <FieldLabel>Password</FieldLabel>
+                <FieldLabel htmlFor="registry-password">Password</FieldLabel>
                 <FieldContent>
-                  <Input
-                    type="password"
-                    autoComplete="new-password"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  />
+                  {registry?.has_password && !isClearingPassword ? (
+                    <div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
+                      <span className="text-sm text-muted-foreground">********</span>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setIsClearingPassword(true)}>
+                        Clear Password
+                      </Button>
+                    </div>
+                  ) : (
+                    <Input
+                      id="registry-password"
+                      type="password"
+                      autoComplete="new-password"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    />
+                  )}
                 </FieldContent>
               </Field>
             </div>

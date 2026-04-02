@@ -1,5 +1,5 @@
 import { appFavoritesApi } from "@/api/app-favorite"
-import { appsApi, type App } from "@/api/apps"
+import { appsApi, type App, type AppInstance } from "@/api/apps"
 import { clustersApi } from "@/api/clusters"
 import { envsApi } from "@/api/envs"
 import { operationLogsApi, type OperationLogItem } from "@/api/operation-logs"
@@ -24,7 +24,6 @@ import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { InstanceResourceMetrics } from "@/components/monitoring/instance-resource-metrics"
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
-import { usePrometheusAvailable } from "@/components/monitoring/use-prometheus-available"
 import { useTimeRange, type TimeRange } from "@/components/monitoring/use-time-range"
 import { AppPlugins } from "@/components/plugins/app-plugins"
 import { ColorBadge } from "@/components/shared/color-badge"
@@ -56,8 +55,8 @@ import { formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
-import { isAxiosError } from "axios"
+import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
+import { isAxiosError, type AxiosError } from "axios"
 import {
   Activity,
   ArrowDown,
@@ -128,7 +127,7 @@ function ScaleAppPopover({ app }: { app: App }) {
       queryClient.invalidateQueries({ queryKey: ['app', app.id] })
       setOpen(false)
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to scale application", {
         description: error.response?.data?.error || error.message
       })
@@ -192,8 +191,39 @@ function ScaleAppPopover({ app }: { app: App }) {
   )
 }
 
-function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSeconds, step }: { clusterId: string, namespace: string, appSlug: string, app: any, timeRange: TimeRange, rangeSeconds: number, step: string }) {
-  const { available: prometheusAvailable, isLoading: prometheusLoading } = usePrometheusAvailable(clusterId)
+interface MetricDataPoint {
+  timestamp: number
+  time: string
+  cpuRequest?: number
+  cpuLimit?: number
+  memRequest?: number
+  memLimit?: number
+  [key: string]: number | string | undefined
+}
+
+function getMetricValue(point: MetricDataPoint | undefined, key: string): number {
+  const value = point?.[key]
+  return typeof value === "number" ? value : 0
+}
+
+function isInstancesViewMode(value: string): value is "table" | "card" {
+  return value === "table" || value === "card"
+}
+
+function shouldPollAppDetail(status: string | undefined): boolean {
+  switch ((status ?? "").toLowerCase()) {
+    case "starting":
+    case "updating":
+    case "stopping":
+    case "debugging":
+      return true
+    default:
+      return false
+  }
+}
+
+function AppMetrics({ clusterId, projectId, prometheusAvailable, namespace, appSlug, app, timeRange, rangeSeconds, step }: { clusterId: string, projectId?: string, prometheusAvailable?: boolean, namespace: string, appSlug: string, app: App, timeRange: TimeRange, rangeSeconds: number, step: string }) {
+  const prometheusLoading = false
 
   const { data: metricsData, isLoading } = useQuery({
     queryKey: ['app-metrics-v6', clusterId, namespace, appSlug, timeRange],
@@ -211,7 +241,7 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
       const results = await Promise.all(
         Object.entries(queries).map(async ([key, query]) => {
           try {
-            const res = await clustersApi.prometheusQueryRange(clusterId, query, start.toString(), now.toString(), step) as any
+            const res = await clustersApi.prometheusQueryRange(clusterId, query, start.toString(), now.toString(), step, projectId)
             return { key, results: res?.result || [] }
           } catch {
             return { key, results: [] }
@@ -219,21 +249,24 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
         })
       )
 
-      const timeMap = new Map<number, any>()
+      const timeMap = new Map<number, MetricDataPoint>()
       const podNames = new Set<string>()
 
       results.forEach(({ key, results: queryResults }) => {
-        queryResults.forEach((r: any) => {
+        queryResults.forEach((r) => {
           const pod = r.metric.pod
           podNames.add(pod)
-          r.values.forEach(([ts, val]: [number, string]) => {
+          r.values?.forEach(([ts, val]: [number, string]) => {
             if (!timeMap.has(ts)) {
               timeMap.set(ts, {
                 timestamp: ts,
                 time: new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
               })
             }
-            timeMap.get(ts)[`${key}_${pod}`] = parseFloat(val) || 0
+            const point = timeMap.get(ts)
+            if (point) {
+              point[`${key}_${pod}`] = parseFloat(val) || 0
+            }
           })
         })
       })
@@ -245,10 +278,12 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
         val.memLimit = (app.limit_memory || 0) / 1024
 
         podNames.forEach(pod => {
-          const cpu = val[`cpu_${pod}`] || 0
-          const mem = val[`mem_${pod}`] || 0
-          val[`cpuUtil_${pod}`] = val.cpuLimit > 0 ? (cpu / val.cpuLimit) * 100 : 0
-          val[`memUtil_${pod}`] = val.memLimit > 0 ? (mem / val.memLimit) * 100 : 0
+          const cpu = getMetricValue(val, `cpu_${pod}`)
+          const mem = getMetricValue(val, `mem_${pod}`)
+          const cpuLimit = val.cpuLimit || 0
+          const memLimit = val.memLimit || 0
+          val[`cpuUtil_${pod}`] = cpuLimit > 0 ? (cpu / cpuLimit) * 100 : 0
+          val[`memUtil_${pod}`] = memLimit > 0 ? (mem / memLimit) * 100 : 0
         })
       })
 
@@ -298,16 +333,16 @@ function AppMetrics({ clusterId, namespace, appSlug, app, timeRange, rangeSecond
   }
 
   const { chartData, pods } = metricsData
-  const lastPoint = chartData[chartData.length - 1]
+  const lastPoint = chartData.at(-1)
 
-  const totalCpu = pods.reduce((s, p) => s + (lastPoint[`cpu_${p}`] || 0), 0)
-  const totalMem = pods.reduce((s, p) => s + (lastPoint[`mem_${p}`] || 0), 0)
-  const totalIngress = pods.reduce((s, p) => s + (lastPoint[`ingress_${p}`] || 0), 0)
-  const totalEgress = pods.reduce((s, p) => s + (lastPoint[`egress_${p}`] || 0), 0)
+  const totalCpu = pods.reduce((sum, pod) => sum + getMetricValue(lastPoint, `cpu_${pod}`), 0)
+  const totalMem = pods.reduce((sum, pod) => sum + getMetricValue(lastPoint, `mem_${pod}`), 0)
+  const totalIngress = pods.reduce((sum, pod) => sum + getMetricValue(lastPoint, `ingress_${pod}`), 0)
+  const totalEgress = pods.reduce((sum, pod) => sum + getMetricValue(lastPoint, `egress_${pod}`), 0)
 
-  const maxCpu = Math.max(...chartData.flatMap(d => pods.map(p => d[`cpu_${p}`] || 0)))
-  const maxMem = Math.max(...chartData.flatMap(d => pods.map(p => d[`mem_${p}`] || 0)))
-  const maxNet = Math.max(...chartData.flatMap(d => pods.map(p => Math.max(d[`ingress_${p}`] || 0, d[`egress_${p}`] || 0))))
+  const maxCpu = Math.max(...chartData.flatMap((point) => pods.map((pod) => getMetricValue(point, `cpu_${pod}`))))
+  const maxMem = Math.max(...chartData.flatMap((point) => pods.map((pod) => getMetricValue(point, `mem_${pod}`))))
+  const maxNet = Math.max(...chartData.flatMap((point) => pods.map((pod) => Math.max(getMetricValue(point, `ingress_${pod}`), getMetricValue(point, `egress_${pod}`)))))
 
   return (
     <div className="space-y-4 min-h-125">
@@ -528,14 +563,10 @@ export function ApplicationDetailPage() {
     queryKey: ['app', appId],
     queryFn: () => appsApi.get(appId!),
     enabled: !!appId,
-    refetchInterval: 5000,
+    refetchInterval: (query) => shouldPollAppDetail((query.state.data as App | undefined)?.status) ? 5000 : false,
   })
 
-  const { data: currentEnv } = useQuery({
-    queryKey: ['env', app?.env_id],
-    queryFn: () => envsApi.get(app!.env_id!),
-    enabled: !!app?.env_id,
-  })
+  const currentEnv = app?.env
 
   const projectIdToUse = currentEnv?.project_id || activeProjectId
   const projectNameToUse = currentEnv?.project_name || activeProjectName
@@ -544,6 +575,8 @@ export function ApplicationDetailPage() {
     queryKey: ['envs-simple', projectIdToUse],
     queryFn: () => envsApi.listSimpleByProject(projectIdToUse!),
     enabled: !!projectIdToUse,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   })
 
   const safeEnvs = Array.isArray(envs) ? envs : []
@@ -552,11 +585,14 @@ export function ApplicationDetailPage() {
     queryKey: ['apps-simple', app?.env_id],
     queryFn: () => appsApi.listSimple(app!.env_id!),
     enabled: !!app?.env_id,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   })
   const { data: favoriteStatus } = useQuery({
     queryKey: ['app-favorite', appId],
     queryFn: () => appFavoritesApi.getFavoriteStatus(appId!),
     enabled: !!appId,
+    staleTime: 60 * 1000,
   })
 
   const toggleFavMutation = useMutation({
@@ -577,7 +613,7 @@ export function ApplicationDetailPage() {
     const saved = localStorage.getItem(INSTANCES_VIEW_MODE_KEY)
     return (saved === 'table' || saved === 'card') ? saved : 'table'
   })
-  const [rowSelection, setRowSelection] = React.useState({})
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [instancePagination, setInstancePagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [operationLogsPagination, setOperationLogsPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
   const [isEditImageDialogOpen, setIsEditImageDialogOpen] = React.useState(false)
@@ -596,7 +632,7 @@ export function ApplicationDetailPage() {
   }, [appId])
 
   React.useEffect(() => {
-    if (!hasSyncedContextFromAppRef.current && currentEnv && app?.env_id) {
+      if (!hasSyncedContextFromAppRef.current && currentEnv && app?.env_id) {
       if (activeProjectId !== currentEnv.project_id || activeEnvId !== app.env_id) {
         setActiveContextWithNames(currentEnv.project_id, currentEnv.project_name, app.env_id, currentEnv.name)
       }
@@ -614,7 +650,7 @@ export function ApplicationDetailPage() {
       toast.success("Instance deletion initiated")
       queryClient.invalidateQueries({ queryKey: ['app-instances', appId] })
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to delete instance", {
         description: error.response?.data?.error || error.message
       })
@@ -624,11 +660,24 @@ export function ApplicationDetailPage() {
   const { data: instances = [] } = useQuery({
     queryKey: ['app-instances', appId],
     queryFn: () => appsApi.listInstances(appId!),
-    enabled: !!appId,
-    refetchInterval: 5000,
+    enabled: !!appId && currentTab === 'overview',
+    refetchInterval: currentTab === 'overview' && shouldPollAppDetail(app?.status) ? 5000 : false,
   })
 
   const safeInstances = React.useMemo(() => (Array.isArray(instances) ? instances : []), [instances])
+  const selectedInstanceIndices = React.useMemo(
+    () => Object.entries(rowSelection)
+      .filter(([, isSelected]) => isSelected)
+      .map(([key]) => Number(key))
+      .filter((index) => Number.isInteger(index) && index >= 0),
+    [rowSelection]
+  )
+  const selectedInstanceNamesFromRows = React.useMemo(
+    () => selectedInstanceIndices
+      .map((index) => safeInstances[index]?.instance_name)
+      .filter((instanceName): instanceName is string => Boolean(instanceName)),
+    [safeInstances, selectedInstanceIndices]
+  )
 
   const { data: operationLogsResponse, isLoading: operationLogsLoading, isFetching: operationLogsFetching } = useQuery({
     queryKey: ['app-operation-logs', appId, operationLogsPagination.pageIndex, operationLogsPagination.pageSize],
@@ -636,7 +685,7 @@ export function ApplicationDetailPage() {
       page: operationLogsPagination.pageIndex + 1,
       page_size: operationLogsPagination.pageSize,
     }),
-    enabled: !!appId,
+    enabled: !!appId && currentTab === 'operations',
   })
 
   const operationLogsColumns: ColumnDef<OperationLogItem>[] = [
@@ -677,12 +726,13 @@ export function ApplicationDetailPage() {
     },
   ]
 
-  const instanceColumns: ColumnDef<any>[] = [
+  const instanceColumns: ColumnDef<AppInstance>[] = [
     {
       id: "select",
       header: ({ table }) => (
         <Checkbox
           checked={table.getIsAllPageRowsSelected()}
+          data-state={table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected() ? "indeterminate" : undefined}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label="Select all"
         />
@@ -947,7 +997,7 @@ export function ApplicationDetailPage() {
       toast.success("Bulk deletion initiated")
       queryClient.invalidateQueries({ queryKey: ['app-instances', appId] })
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to delete instances", {
         description: error.response?.data?.error || error.message
       })
@@ -1265,24 +1315,25 @@ export function ApplicationDetailPage() {
                 <Container className="h-4 w-4" /> Running Instances
               </CardTitle>
               <CardAction className="flex flex-wrap items-center justify-end gap-2">
-                {Object.keys(rowSelection).length > 0 && !isViewer && (
+                {selectedInstanceIndices.length > 0 && !isViewer && (
                   <Button
                     variant="destructive"
                     onClick={() => {
-                      const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
-                      const selectedNames = selectedIndices.map(idx => safeInstances[parseInt(idx)]?.instance_name).filter(Boolean) as string[]
-
-                      setSelectedInstanceNames(selectedNames)
+                      setSelectedInstanceNames(selectedInstanceNamesFromRows)
                       setBulkDeleteDialogOpen(true)
                     }}
                     disabled={bulkDeleteMutation.isPending}
                   >
                     <Trash2 />
-                    Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
+                    Delete ({selectedInstanceIndices.length})
                   </Button>
                 )}
                 <Tabs value={viewMode} onValueChange={(v) => {
-                  setViewMode(v as any)
+                  if (!isInstancesViewMode(v)) {
+                    return
+                  }
+
+                  setViewMode(v)
                   // Reset pagination when view mode changes
                   setInstancePagination({ pageIndex: 0, pageSize: 10 })
                 }} className="w-auto h-7">
@@ -1515,6 +1566,8 @@ export function ApplicationDetailPage() {
               <CardContent>
                 <AppMetrics
                   clusterId={currentEnv.cluster_id}
+                  projectId={projectIdToUse || undefined}
+                  prometheusAvailable={currentEnv.has_prometheus_integration}
                   namespace={currentEnv.cluster_namespace}
                   appSlug={app.slug}
                   app={app}
@@ -1688,6 +1741,7 @@ export function ApplicationDetailPage() {
         open={!!metricsInstance}
         onOpenChange={(open) => { if (!open) setMetricsInstance(null) }}
         clusterId={currentEnv?.cluster_id || ""}
+        projectId={projectIdToUse || undefined}
         namespace={currentEnv?.cluster_namespace || ""}
         podName={metricsInstance || ""}
         app={app}

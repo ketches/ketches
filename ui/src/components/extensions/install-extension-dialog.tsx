@@ -173,7 +173,7 @@ export function InstallExtensionToClusterDialog({
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!extension || !selectedClusterId) return
 

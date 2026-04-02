@@ -13,11 +13,20 @@ This chart deploys:
 
 ## Install
 
+### Quickstart (local evaluation only)
+
 ```bash
 helm upgrade --install ketches ./deploy/helm/ketches \
   --namespace ketches \
-  --create-namespace
+  --create-namespace \
+  -f ./deploy/helm/ketches/values-quickstart.yaml
 ```
+
+This quickstart file is intentionally for local evaluation only. It includes demo secrets so you can try the chart immediately.
+
+### Production / shared environments
+
+The chart requires `config.jwtSecret` and `config.secretEncryptionKey` on every install or upgrade. When the bundled PostgreSQL instance is enabled, set `postgres.auth.password` as well. See [Production Deployment Guide](../../../docs/PRODUCTION_DEPLOYMENT.md) before using this chart in shared or production environments.
 
 ## Common Overrides
 
@@ -28,13 +37,15 @@ helm upgrade --install ketches ./deploy/helm/ketches \
   --namespace ketches \
   --create-namespace \
   --set postgres.enabled=false \
+  --set config.jwtSecret="$JWT_SECRET" \
+  --set config.secretEncryptionKey="$SECRET_ENCRYPTION_KEY" \
   --set config.dbDriver=postgres \
   --set config.dbHost=my-postgres \
   --set config.dbPort=5432 \
   --set config.dbName=ketches \
   --set config.dbUsername=ketches \
-  --set config.dbPassword=secret \
-  --set config.dbSSLMode=disable
+  --set config.dbPassword="$DB_PASSWORD" \
+  --set config.dbSSLMode=require \
   --set config.dbAutoMigrate=true
 ```
 

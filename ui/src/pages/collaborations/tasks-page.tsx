@@ -8,6 +8,7 @@ import { CreateTaskDialog, EditTaskDialog } from "@/components/collaborations/ta
 import { flattenTree, type TreeItem } from "@/components/collaborations/tree-utils"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
+import { getErrorMessage } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import {
@@ -110,9 +111,8 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
       setSelectedItem(null)
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to delete task", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -127,9 +127,8 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
       toast.success("Task status updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update status", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -148,9 +147,8 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
       toast.success("Task priority updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update priority", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })
@@ -169,9 +167,8 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
       toast.success("Task assignee updated")
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to update assignee", {
-        description: err.response?.data?.error || "Unknown error occurred"
+        description: getErrorMessage(error, "Unknown error occurred")
       })
     }
   })

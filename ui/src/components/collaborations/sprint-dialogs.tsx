@@ -112,7 +112,7 @@ export function CreateSprintDialog({
 
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault()
 
     const request = createSprintRequest(formData, startDate, endDate)
@@ -309,7 +309,7 @@ export function EditSprintDialog({
 
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault()
 
     const request = createSprintRequest(formData, startDate, endDate)

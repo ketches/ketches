@@ -1,3 +1,4 @@
+import "@testing-library/jest-dom/vitest"
 import { act, createContext, useContext } from "react"
 import ReactDOMClient from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -340,5 +341,20 @@ describe("ImageEditor", () => {
     await act(async () => {
       root.unmount()
     })
+  })
+
+	it("shows clear password action when app has registry password", async () => {
+		const { container, root } = await renderEditor(buildApp({
+			registry_username: "robot",
+			has_registry_password: true,
+		} as any))
+
+		const clearBtn = Array.from(container.querySelectorAll("button")).find(b => b.textContent?.match(/clear password/i))
+		expect(clearBtn).toBeDefined()
+
+
+    await act(async () => {
+      root.unmount()
+	})
   })
 })

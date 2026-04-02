@@ -48,8 +48,9 @@ const pluginTypes = [
 ]
 
 export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: EditPluginDialogProps) {
-  const queryClient = useQueryClient()
-  const [formData, setFormData] = useState({
+	const queryClient = useQueryClient()
+	const [isClearingRegistryPassword, setIsClearingRegistryPassword] = useState(false)
+	const [formData, setFormData] = useState({
     name: "",
     slug: "",
     description: "",
@@ -77,11 +78,12 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
         command: plugin.command || "",
         plugin_type: plugin.plugin_type || "init"
       })
-      setEnvVars(Array.isArray(plugin.env_vars) ? plugin.env_vars : [])
-      setShowPullPolicy((plugin.image_pull_policy || "IfNotPresent") !== "IfNotPresent")
-      setShowRegistryCredentials(Boolean(plugin.registry_username))
-    }
-  }, [plugin])
+		setEnvVars(Array.isArray(plugin.env_vars) ? plugin.env_vars : [])
+		setShowPullPolicy((plugin.image_pull_policy || "IfNotPresent") !== "IfNotPresent")
+		setShowRegistryCredentials(Boolean(plugin.registry_username || plugin.has_registry_password))
+		setIsClearingRegistryPassword(false)
+	}
+}, [plugin])
 
   const updateMutation = useMutation({
     mutationFn: (data: any) => pluginsApi.updatePlugin(projectId, plugin.id, data),
@@ -128,20 +130,24 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
 
     if (!validateRequiredFields()) return
 
-    const payload: any = {
-      name: formData.name,
+	const payload: any = {
+		name: formData.name,
       description: formData.description,
       image: formData.image,
       image_pull_policy: formData.image_pull_policy || undefined,
       registry_username: formData.registry_username,
       command: formData.command || undefined,
       env_vars: envVars,
-      plugin_type: formData.plugin_type
-    }
+		plugin_type: formData.plugin_type
+	}
 
-    if (formData.registry_password) {
-      payload.registry_password = formData.registry_password
-    }
+	if (isClearingRegistryPassword && !formData.registry_password) {
+		payload.clear_registry_password = true
+	}
+
+	if (formData.registry_password) {
+		payload.registry_password = formData.registry_password
+	}
 
     updateMutation.mutate(payload)
   }
@@ -332,8 +338,8 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
               </Field>
             )}
 
-            {showRegistryCredentials && (
-              <div className="grid grid-cols-2 gap-4">
+				{showRegistryCredentials && (
+					<div className="grid grid-cols-2 gap-4">
                 <Field>
                   <FieldLabel htmlFor="edit-registry_username">Registry Username</FieldLabel>
                   <FieldContent>
@@ -345,21 +351,30 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
                   </FieldContent>
                 </Field>
 
-                <Field>
-                  <FieldLabel htmlFor="edit-registry_password">Registry Password</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="edit-registry_password"
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder="(leave blank to keep existing)"
-                      value={formData.registry_password}
-                      onChange={(e) => setFormData({ ...formData, registry_password: e.target.value })}
-                    />
-                  </FieldContent>
-                </Field>
-              </div>
-            )}
+						<Field>
+							<FieldLabel htmlFor="edit-registry_password">Registry Password</FieldLabel>
+							<FieldContent>
+							{plugin?.has_registry_password && !isClearingRegistryPassword ? (
+									<div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
+										<span className="text-sm text-muted-foreground">********</span>
+										<Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setIsClearingRegistryPassword(true)}>
+											Clear Password
+										</Button>
+									</div>
+								) : (
+									<Input
+										id="edit-registry_password"
+										type="password"
+										autoComplete="new-password"
+										placeholder="(leave blank to keep existing)"
+										value={formData.registry_password}
+										onChange={(e) => setFormData({ ...formData, registry_password: e.target.value })}
+									/>
+								)}
+							</FieldContent>
+						</Field>
+					</div>
+				)}
 
             <Field>
               <FieldLabel htmlFor="edit-command">Command</FieldLabel>

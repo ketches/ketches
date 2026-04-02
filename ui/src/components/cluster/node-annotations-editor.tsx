@@ -1,3 +1,4 @@
+import { AxiosError } from "axios"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus, Trash2 } from "lucide-react"
 import * as React from "react"
@@ -49,7 +50,7 @@ export function NodeAnnotationsEditor({
       toast.success("Annotations updated successfully")
       onOpenChange(false)
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to update annotations", {
         description: error.response?.data?.error || error.message,
       })

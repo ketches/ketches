@@ -151,15 +151,15 @@ export function ClustersPage() {
         </ColorBadge>
       ),
     },
-    {
-      accessorKey: "gateway_ip",
-      header: "Gateway IP",
-      cell: ({ row }) => (
-        <span className="font-mono text-xs">
-          {row.original.gateway_ip || "-"}
-        </span>
-      ),
-    },
+	    {
+		accessorKey: "gateway_host",
+		header: "Gateway Host",
+		cell: ({ row }) => (
+			<span className="font-mono text-xs">
+				{row.original.gateway_host || "-"}
+			</span>
+		),
+	    },
     {
       accessorKey: "created_at",
       header: "Added At",
@@ -431,12 +431,12 @@ export function ClustersPage() {
           </CardHeader>
           <CardContent className="space-y-4 pt-2">
             <div className="space-y-2">
-              {cluster.gateway_ip && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Network className="h-3.5 w-3.5" />
-                  <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{cluster.gateway_ip}</span>
-                </div>
-              )}
+				{cluster.gateway_host && (
+					<div className="flex items-center gap-2 text-xs text-muted-foreground">
+						<Network className="h-3.5 w-3.5" />
+						<span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{cluster.gateway_host}</span>
+					</div>
+				)}
             </div>
 
             <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">

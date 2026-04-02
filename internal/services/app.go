@@ -31,6 +31,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/containerregistry"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
@@ -113,7 +114,6 @@ func CreateApp(ctx context.Context, envID string, req *models.CreateAppRequest) 
 		ImagePullPolicy:  req.ImagePullPolicy,
 		ContainerCommand: req.ContainerCommand,
 		RegistryUsername: req.RegistryUsername,
-		RegistryPassword: req.RegistryPassword,
 		Replicas:         replicas,
 		RequestCPU:       req.RequestCPU,
 		RequestMemory:    req.RequestMemory,
@@ -122,6 +122,12 @@ func CreateApp(ctx context.Context, envID string, req *models.CreateAppRequest) 
 		AppType:          req.AppType,
 		DeployStatus:     "undeployed",
 	}
+
+	encryptedRegistryPassword, err := secrets.EncryptString(req.RegistryPassword)
+	if err != nil {
+		return nil, err
+	}
+	application.RegistryPassword = encryptedRegistryPassword
 
 	if err := db.DB.Create(application).Error; err != nil {
 		return nil, err
@@ -346,7 +352,12 @@ func ListAppImageTags(ctx context.Context, appID string) (*models.AppImageTagsRe
 		return nil, fmt.Errorf("failed to parse image reference: %w", err)
 	}
 
-	tags, err := listImageTags(repo, appCtx.App.RegistryUsername, appCtx.App.RegistryPassword)
+	plaintextRegistryPassword, err := secrets.DecryptString(appCtx.App.RegistryPassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt registry password: %w", err)
+	}
+
+	tags, err := listImageTags(repo, appCtx.App.RegistryUsername, plaintextRegistryPassword)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list image tags: %w", err)
 	}
@@ -377,8 +388,15 @@ func UpdateAppImage(ctx context.Context, appID string, req *models.UpdateAppImag
 	appCtx.App.ContainerImage = req.ContainerImage
 	appCtx.App.ImagePullPolicy = req.ImagePullPolicy
 	appCtx.App.RegistryUsername = req.RegistryUsername
+	if req.ClearRegistryPassword {
+		appCtx.App.RegistryPassword = ""
+	}
 	if req.RegistryPassword != "" {
-		appCtx.App.RegistryPassword = req.RegistryPassword
+		encryptedRegistryPassword, err := secrets.EncryptString(req.RegistryPassword)
+		if err != nil {
+			return nil, err
+		}
+		appCtx.App.RegistryPassword = encryptedRegistryPassword
 	}
 
 	if err := db.DB.Save(&appCtx.App).Error; err != nil {
@@ -664,7 +682,7 @@ func deleteAppK8sResources(ctx context.Context, appCtx *models.AppContext, keepS
 	}
 
 	ns := appCtx.EnvContext.Env.ClusterNamespace
-	appLabel := "ketches.cn/app-slug=" + appCtx.App.Slug
+	appLabel := kube.LabelAppSlug + "=" + appCtx.App.Slug
 
 	// Delete Deployment or StatefulSet
 	switch appCtx.App.AppType {
@@ -742,7 +760,7 @@ func ListAppInstances(ctx context.Context, appID string) ([]models.AppInstanceRe
 	}
 
 	pods, err := client.CoreV1().Pods(appCtx.EnvContext.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "ketches.cn/app-slug=" + appCtx.App.Slug,
+		LabelSelector: kube.LabelAppSlug + "=" + appCtx.App.Slug,
 	})
 	if err != nil {
 		return nil, err
@@ -814,7 +832,12 @@ func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName,
 }
 
 func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName string, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(appCtx.EnvContext.Cluster.KubeConfig))
+	plaintextKubeConfig, err := secrets.DecryptString(appCtx.EnvContext.Cluster.KubeConfig)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt kubeconfig: %w", err)
+	}
+
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(plaintextKubeConfig))
 	if err != nil {
 		return fmt.Errorf("failed to build kubeconfig: %w", err)
 	}
@@ -1152,26 +1175,26 @@ func ToAppResponse(c context.Context, appCtx *models.AppContext) models.AppRespo
 
 	a := &appCtx.App
 	res := models.AppResponse{
-		ID:               a.ID,
-		Slug:             a.Slug,
-		Name:             a.Name,
-		Description:      a.Description,
-		EnvID:            a.EnvID,
-		AppType:          a.AppType,
-		CodeRepositoryID: derefString(a.CodeRepositoryID),
-		ContainerImage:   a.ContainerImage,
-		ImagePullPolicy:  a.ImagePullPolicy,
-		ContainerCommand: a.ContainerCommand,
-		RegistryUsername: a.RegistryUsername,
-		RegistryPassword: a.RegistryPassword,
-		Replicas:         a.Replicas,
-		RequestCPU:       a.RequestCPU,
-		RequestMemory:    a.RequestMemory,
-		LimitCPU:         a.LimitCPU,
-		LimitMemory:      a.LimitMemory,
-		Status:           status,
-		AvailableActions: core.GetAvailableActions(app.AppStatus(status)),
-		CreatedAt:        a.CreatedAt,
+		ID:                  a.ID,
+		Slug:                a.Slug,
+		Name:                a.Name,
+		Description:         a.Description,
+		EnvID:               a.EnvID,
+		AppType:             a.AppType,
+		CodeRepositoryID:    derefString(a.CodeRepositoryID),
+		ContainerImage:      a.ContainerImage,
+		ImagePullPolicy:     a.ImagePullPolicy,
+		ContainerCommand:    a.ContainerCommand,
+		RegistryUsername:    a.RegistryUsername,
+		HasRegistryPassword: strings.TrimSpace(a.RegistryPassword) != "",
+		Replicas:            a.Replicas,
+		RequestCPU:          a.RequestCPU,
+		RequestMemory:       a.RequestMemory,
+		LimitCPU:            a.LimitCPU,
+		LimitMemory:         a.LimitMemory,
+		Status:              status,
+		AvailableActions:    core.GetAvailableActions(app.AppStatus(status)),
+		CreatedAt:           a.CreatedAt,
 	}
 
 	if appCtx.AutoScaling != nil {
@@ -1216,6 +1239,13 @@ func ToAppResponse(c context.Context, appCtx *models.AppContext) models.AppRespo
 
 	if appCtx.EnvContext.Env.ID != "" {
 		envResp := ToEnvResponse(&appCtx.EnvContext.Env)
+		envResp.ProjectName = appCtx.EnvContext.Project.Name
+		envResp.ClusterName = appCtx.EnvContext.Cluster.Name
+		envResp.ClusterConnectionStatus = appCtx.EnvContext.Cluster.ConnectionStatus
+		envResp.ClusterConnectionStatusReason = appCtx.EnvContext.Cluster.ConnectionStatusReason
+		if hasPrometheusIntegration, err := HasPrometheusIntegration(appCtx.EnvContext.Cluster.ID); err == nil {
+			envResp.HasPrometheusIntegration = hasPrometheusIntegration
+		}
 		res.Env = &envResp
 	}
 
@@ -1253,6 +1283,52 @@ func GetAppListRowStatus(ctx context.Context, row *models.AppListRow) string {
 	return status
 }
 
+type appListStatusGroupKey struct {
+	ClusterID string
+	Namespace string
+}
+
+func BuildAppListStatuses(ctx context.Context, rows []models.AppListRow) map[string]string {
+	statuses := make(map[string]string, len(rows))
+	groupedRows := make(map[appListStatusGroupKey][]models.AppListRow)
+
+	for i := range rows {
+		row := rows[i]
+		statuses[row.ID] = row.DeployStatus
+		if !shouldCalculateLiveAppStatus(row.DeployStatus) || row.ClusterID == "" || row.ClusterNamespace == "" {
+			continue
+		}
+
+		key := appListStatusGroupKey{
+			ClusterID: row.ClusterID,
+			Namespace: row.ClusterNamespace,
+		}
+		groupedRows[key] = append(groupedRows[key], row)
+	}
+
+	for key, batch := range groupedRows {
+		client, err := kube.GlobalClusterStore.GetClient(key.ClusterID)
+		if err != nil {
+			log.Printf("Failed to get cluster client for app list group %s/%s: %v", key.ClusterID, key.Namespace, err)
+			continue
+		}
+
+		liveStatuses, err := core.CalculateAppListStatuses(ctx, client, key.Namespace, batch)
+		if err != nil {
+			log.Printf("Failed to calculate batched app statuses for %s/%s: %v", key.ClusterID, key.Namespace, err)
+			continue
+		}
+
+		for _, row := range batch {
+			if liveStatus, ok := liveStatuses[row.ID]; ok {
+				statuses[row.ID] = string(liveStatus)
+			}
+		}
+	}
+
+	return statuses
+}
+
 func shouldCalculateLiveAppStatus(status string) bool {
 	// "running" was written by older deploy flows; treat it as a live-managed deployment state.
 	return status == "deployed" || status == string(app.AppStatusRunning)
@@ -1261,26 +1337,30 @@ func shouldCalculateLiveAppStatus(status string) bool {
 // ToAppListResponse converts a flat AppListRow DTO into the API AppResponse.
 func ToAppListResponse(ctx context.Context, row *models.AppListRow) models.AppResponse {
 	status := GetAppListRowStatus(ctx, row)
+	return ToAppListResponseWithStatus(row, status)
+}
+
+func ToAppListResponseWithStatus(row *models.AppListRow, status string) models.AppResponse {
 	return models.AppResponse{
-		ID:               row.ID,
-		Slug:             row.Slug,
-		Name:             row.Name,
-		Description:      row.Description,
-		EnvID:            row.EnvID,
-		AppType:          row.AppType,
-		CodeRepositoryID: derefString(row.CodeRepositoryID),
-		ContainerImage:   row.ContainerImage,
-		ContainerCommand: row.ContainerCommand,
-		RegistryUsername: row.RegistryUsername,
-		RegistryPassword: row.RegistryPassword,
-		Replicas:         row.Replicas,
-		RequestCPU:       row.RequestCPU,
-		RequestMemory:    row.RequestMemory,
-		LimitCPU:         row.LimitCPU,
-		LimitMemory:      row.LimitMemory,
-		Status:           status,
-		AvailableActions: core.GetAvailableActions(app.AppStatus(status)),
-		CreatedAt:        row.CreatedAt,
+		ID:                  row.ID,
+		Slug:                row.Slug,
+		Name:                row.Name,
+		Description:         row.Description,
+		EnvID:               row.EnvID,
+		AppType:             row.AppType,
+		CodeRepositoryID:    derefString(row.CodeRepositoryID),
+		ContainerImage:      row.ContainerImage,
+		ContainerCommand:    row.ContainerCommand,
+		RegistryUsername:    row.RegistryUsername,
+		HasRegistryPassword: strings.TrimSpace(row.RegistryPassword) != "",
+		Replicas:            row.Replicas,
+		RequestCPU:          row.RequestCPU,
+		RequestMemory:       row.RequestMemory,
+		LimitCPU:            row.LimitCPU,
+		LimitMemory:         row.LimitMemory,
+		Status:              status,
+		AvailableActions:    core.GetAvailableActions(app.AppStatus(status)),
+		CreatedAt:           row.CreatedAt,
 		Env: &models.EnvResponse{
 			ID:               row.EnvID,
 			Slug:             row.EnvSlug,
@@ -1330,12 +1410,18 @@ func GetAppTopologyResourceYaml(ctx context.Context, appID string, nodeID string
 // seedAppFromImageMetadata fetches the container image metadata and creates corresponding
 // database records for env vars, volumes, gateways, and health check probes.
 // Errors are logged and silently skipped to avoid blocking app creation.
+
 func seedAppFromImageMetadata(ctx context.Context, application *entities.App) error {
+	plaintextRegistryPassword, err := secrets.DecryptString(application.RegistryPassword)
+	if err != nil {
+		return fmt.Errorf("decrypt registry password: %w", err)
+	}
+
 	meta, err := containerregistry.FetchImageMetadata(
 		ctx,
 		application.ContainerImage,
 		application.RegistryUsername,
-		application.RegistryPassword,
+		plaintextRegistryPassword,
 	)
 	if err != nil {
 		return fmt.Errorf("fetch image metadata: %w", err)

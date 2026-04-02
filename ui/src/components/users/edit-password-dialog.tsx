@@ -27,7 +27,7 @@ export function EditPasswordDialog({ username, onSubmit, isPending }: EditPasswo
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (password && password === confirmPassword) {
       onSubmit(password)

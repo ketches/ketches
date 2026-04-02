@@ -10,6 +10,9 @@ export interface Env {
   project_name: string
   cluster_id: string
   cluster_name: string
+  cluster_connection_status?: string
+  cluster_connection_status_reason?: string
+  has_prometheus_integration?: boolean
   cluster_namespace: string
   is_build_env: boolean
   created_at: string

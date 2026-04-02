@@ -4,12 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -59,6 +59,48 @@ func TestListOperationLogsFilters(t *testing.T) {
 	assert.Equal(t, int64(1), total)
 	require.Len(t, items, 1)
 	assert.Equal(t, "alice", items[0].Username)
+}
+
+func TestListActivitiesExcludesOtherUsersInternalLogs(t *testing.T) {
+	setupOperationLogServiceTestDB(t)
+
+	require.NoError(t, CreateOperationLog(CreateOperationLogInput{
+		UserID:       "u2",
+		Username:     "bob",
+		Action:       "sign_in",
+		ResourceType: "session",
+		Status:       entities.OperationLogStatusSuccess,
+		StatusCode:   200,
+		Sensitivity:  entities.OperationLogSensitivityInternal,
+	}))
+	require.NoError(t, CreateOperationLog(CreateOperationLogInput{
+		UserID:       "u2",
+		Username:     "bob",
+		Action:       "announce",
+		ResourceType: "system",
+		Status:       entities.OperationLogStatusSuccess,
+		StatusCode:   200,
+		Sensitivity:  entities.OperationLogSensitivityPublic,
+	}))
+	require.NoError(t, CreateOperationLog(CreateOperationLogInput{
+		UserID:       "u1",
+		Username:     "alice",
+		Action:       "deploy",
+		ResourceType: "app",
+		Status:       entities.OperationLogStatusSuccess,
+		StatusCode:   200,
+		Sensitivity:  entities.OperationLogSensitivityInternal,
+	}))
+
+	total, items, err := ListActivities(models.OperationLogListRequest{
+		PaginationRequest: models.PaginationRequest{Page: 1, PageSize: 10},
+	}, "u1", false)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), total)
+	require.Len(t, items, 2)
+	assert.Equal(t, "alice", items[0].Username)
+	assert.Equal(t, "bob", items[1].Username)
+	assert.Equal(t, "announce", items[1].Action)
 }
 
 func TestListPlatformOperationLogsFiltersPlatformResourceTypes(t *testing.T) {

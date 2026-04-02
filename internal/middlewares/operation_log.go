@@ -14,6 +14,7 @@ import (
 )
 
 const maxOperationLogBodySize = 4096
+const redactedOperationLogValue = "[REDACTED]"
 
 func OperationLog() gin.HandlerFunc {
 	rules := operationLogRouteRules()
@@ -120,7 +121,10 @@ func captureRequestBody(c *gin.Context) (string, string, string) {
 	if strings.HasPrefix(contentType, "multipart/form-data") {
 		return "[multipart form data omitted]", "", ""
 	}
-	summary := strings.TrimSpace(string(body))
+	if strings.HasPrefix(contentType, "application/x-www-form-urlencoded") {
+		return "[form payload omitted]", "", ""
+	}
+
 	bodyAction := ""
 	bodyUsername := ""
 	var payload map[string]any
@@ -131,8 +135,67 @@ func captureRequestBody(c *gin.Context) (string, string, string) {
 		if value, ok := payload["username"].(string); ok {
 			bodyUsername = strings.TrimSpace(value)
 		}
+
+		sanitized, err := json.Marshal(sanitizeOperationLogValue(payload))
+		if err == nil {
+			return strings.TrimSpace(string(sanitized)), bodyAction, bodyUsername
+		}
+		return "[json payload omitted]", bodyAction, bodyUsername
 	}
-	return summary, bodyAction, bodyUsername
+	if strings.HasPrefix(contentType, "application/json") {
+		return "[json payload omitted]", bodyAction, bodyUsername
+	}
+
+	return strings.TrimSpace(string(body)), bodyAction, bodyUsername
+}
+
+func sanitizeOperationLogValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		sanitized := make(map[string]any, len(typed))
+		for key, entry := range typed {
+			if isSensitiveOperationLogField(key) {
+				sanitized[key] = redactedOperationLogValue
+				continue
+			}
+			sanitized[key] = sanitizeOperationLogValue(entry)
+		}
+		return sanitized
+	case []any:
+		sanitized := make([]any, len(typed))
+		for i := range typed {
+			sanitized[i] = sanitizeOperationLogValue(typed[i])
+		}
+		return sanitized
+	default:
+		return value
+	}
+}
+
+func isSensitiveOperationLogField(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(key)) {
+	case
+		"password",
+		"current_password",
+		"new_password",
+		"token",
+		"access_token",
+		"refresh_token",
+		"api_key",
+		"secret",
+		"secret_key",
+		"private_key",
+		"kube_config",
+		"kubeconfig",
+		"git_password",
+		"registry_password",
+		"ca_cert",
+		"cert",
+		"key":
+		return true
+	default:
+		return false
+	}
 }
 
 func resolveOperationContextIDs(c *gin.Context) (string, string, string, string) {

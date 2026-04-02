@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { type AxiosError } from "axios"
 import { Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -60,7 +61,7 @@ export function NodeTaintsEditor({
       toast.success("Taints updated successfully")
       onOpenChange(false)
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to update taints", {
         description: error.response?.data?.error || error.message,
       })
@@ -75,9 +76,8 @@ export function NodeTaintsEditor({
     setEditingTaints(editingTaints.filter((_, i) => i !== index))
   }
 
-  const handleChange = (index: number, field: string, value: string) => {
+  const handleChange = (index: number, field: "taint_key" | "taint_value" | "effect", value: string) => {
     const newList = [...editingTaints]
-    // @ts-expect-error dynamic field assignment on a typed object
     newList[index][field] = value
     setEditingTaints(newList)
   }

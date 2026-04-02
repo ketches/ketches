@@ -43,6 +43,7 @@ main
 docs/plans/*
 ui/docs/plans/*
 docs/superpowers/*
+.codex
 
 # Runtime files
 data/

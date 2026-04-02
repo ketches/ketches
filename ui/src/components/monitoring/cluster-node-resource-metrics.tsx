@@ -32,6 +32,7 @@ const netChartConfig: ChartConfig = {
 
 interface ClusterNodeResourceMetricsProps {
   clusterId: string
+  prometheusAvailable?: boolean
   nodeName?: string
   nodeIp?: string
   timeRange: TimeRange
@@ -39,9 +40,42 @@ interface ClusterNodeResourceMetricsProps {
   step: string
 }
 
-export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRange, rangeSeconds, step: timeStep }: ClusterNodeResourceMetricsProps) {
+interface MetricDataPoint {
+  time: string
+  timestamp: number
+  cpu: number
+  memory: number
+  storage: number
+  cpuUtil: number
+  memUtil: number
+  storageUtil: number
+  ingress: number
+  egress: number
+}
+
+const CLUSTER_NODE_METRIC_KEYS = ["cpu", "memory", "storage", "cpuUtil", "memUtil", "storageUtil", "ingress", "egress"] as const
+type ClusterNodeMetricKey = (typeof CLUSTER_NODE_METRIC_KEYS)[number]
+
+function createClusterNodeMetricDataPoint(timestamp: number): MetricDataPoint {
+  return {
+    time: new Date(timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    timestamp,
+    cpu: 0,
+    memory: 0,
+    storage: 0,
+    cpuUtil: 0,
+    memUtil: 0,
+    storageUtil: 0,
+    ingress: 0,
+    egress: 0,
+  }
+}
+
+export function ClusterNodeResourceMetrics({ clusterId, prometheusAvailable: initialPrometheusAvailable, nodeName, nodeIp, timeRange, rangeSeconds, step: timeStep }: ClusterNodeResourceMetricsProps) {
   const navigate = useNavigate()
-  const { available: prometheusAvailable, isLoading: prometheusLoading } = usePrometheusAvailable(clusterId)
+  const prometheusQuery = usePrometheusAvailable(clusterId)
+  const prometheusAvailable = initialPrometheusAvailable ?? prometheusQuery.available
+  const prometheusLoading = initialPrometheusAvailable === undefined ? prometheusQuery.isLoading : false
 
   const { data: metrics, isLoading, error } = useQuery({
     queryKey: ["cluster-node-metrics-v5", clusterId, nodeName, nodeIp, timeRange],
@@ -54,7 +88,7 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
       const filter = nodeName ? `, node="${nodeName}"` : ""
       const nodeIpFilter = nodeIp ? `, instance="${nodeIp}:9100"` : ""
 
-      const queries = {
+      const queries: Record<ClusterNodeMetricKey, string> = {
         cpu: `sum(rate(container_cpu_usage_seconds_total{container!=""${filter}}[${rateWindow}])) * 1000`,
         cpuUtil: `sum(rate(container_cpu_usage_seconds_total{container!=""${filter}}[${rateWindow}])) / sum(kube_node_status_allocatable{resource="cpu"${filter}}) * 100`,
         memory: `sum(container_memory_working_set_bytes{container!=""${filter}}) / 1024 / 1024 / 1024`,
@@ -66,9 +100,10 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
       }
 
       const results = await Promise.all(
-        Object.entries(queries).map(async ([key, query]) => {
+        CLUSTER_NODE_METRIC_KEYS.map(async (key) => {
+          const query = queries[key]
           try {
-            const res = await clustersApi.prometheusQueryRange(clusterId, query, start.toString(), now.toString(), step) as any
+            const res = await clustersApi.prometheusQueryRange(clusterId, query, start.toString(), now.toString(), step)
             return { key, values: res?.result?.[0]?.values || [] }
           } catch {
             return { key, values: [] }
@@ -76,16 +111,14 @@ export function ClusterNodeResourceMetrics({ clusterId, nodeName, nodeIp, timeRa
         })
       )
 
-      const timeMap = new Map<number, any>()
+      const timeMap = new Map<number, MetricDataPoint>()
       results.forEach(({ key, values }) => {
         values.forEach(([ts, val]: [number, string]) => {
           if (!timeMap.has(ts)) {
-            timeMap.set(ts, {
-              time: new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-              timestamp: ts
-            })
+            timeMap.set(ts, createClusterNodeMetricDataPoint(ts))
           }
-          timeMap.get(ts)[key] = parseFloat(val) || 0
+          const entry = timeMap.get(ts)!
+          entry[key] = parseFloat(val) || 0
         })
       })
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"testing"
 )
@@ -246,6 +247,21 @@ func TestInitConfig_UsesBuilderSnapshotBaseDirOverride(t *testing.T) {
 	}
 }
 
+func TestInitConfig_UsesSecretEncryptionKeyOverride(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	t.Setenv("SECRET_ENCRYPTION_KEY", "test-master-key")
+
+	InitConfig()
+
+	if Config.SecretEncryptionKey != "test-master-key" {
+		t.Fatalf("expected secret encryption key override %q, got %q", "test-master-key", Config.SecretEncryptionKey)
+	}
+}
+
 func TestBuildDBSourceUsesExplicitSource(t *testing.T) {
 	t.Setenv("DB_SOURCE", "custom-source")
 
@@ -279,5 +295,86 @@ func TestBuildDBSourceReturnsEmptyForUnsupportedDriver(t *testing.T) {
 
 	if result != "" {
 		t.Fatalf("expected unsupported driver to produce empty source, got %q", result)
+	}
+}
+
+func TestInitConfig_ReadsBootstrapAdminConfig(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	t.Setenv("BOOTSTRAP_ADMIN_USERNAME", "bootstrap-admin")
+	t.Setenv("BOOTSTRAP_ADMIN_PASSWORD", "bootstrap-password-123")
+
+	InitConfig()
+
+	if Config.BootstrapAdminUsername != "bootstrap-admin" {
+		t.Fatalf("expected bootstrap admin username %q, got %q", "bootstrap-admin", Config.BootstrapAdminUsername)
+	}
+	if Config.BootstrapAdminPassword != "bootstrap-password-123" {
+		t.Fatalf("expected bootstrap admin password override %q, got %q", "bootstrap-password-123", Config.BootstrapAdminPassword)
+	}
+}
+
+func TestValidateRuntimeConfig_RejectsMissingSecrets(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	Config = AppConfig{}
+
+	err := ValidateRuntimeConfig()
+	if !errors.Is(err, ErrJWTSecretNotConfigured) {
+		t.Fatalf("expected missing JWT secret error, got %v", err)
+	}
+
+	Config.JWTSecret = "0123456789abcdef0123456789abcdef"
+	err = ValidateRuntimeConfig()
+	if !errors.Is(err, ErrSecretEncryptionKeyNotConfigured) {
+		t.Fatalf("expected missing secret encryption key error, got %v", err)
+	}
+}
+
+func TestValidateRuntimeConfig_RejectsIncompleteBootstrapConfig(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	Config = AppConfig{
+		JWTSecret:              "0123456789abcdef0123456789abcdef",
+		SecretEncryptionKey:    "fedcba9876543210fedcba9876543210",
+		BootstrapAdminUsername: "bootstrap-admin",
+	}
+
+	err := ValidateRuntimeConfig()
+	if !errors.Is(err, ErrBootstrapAdminConfigIncomplete) {
+		t.Fatalf("expected incomplete bootstrap config error, got %v", err)
+	}
+
+	Config.BootstrapAdminPassword = "short"
+	err = ValidateRuntimeConfig()
+	if !errors.Is(err, ErrBootstrapAdminPasswordTooShort) {
+		t.Fatalf("expected short bootstrap password error, got %v", err)
+	}
+}
+
+func TestValidateRuntimeConfig_AllowsExplicitSecurityConfig(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	Config = AppConfig{
+		JWTSecret:              "0123456789abcdef0123456789abcdef",
+		SecretEncryptionKey:    "fedcba9876543210fedcba9876543210",
+		BootstrapAdminUsername: "bootstrap-admin",
+		BootstrapAdminPassword: "bootstrap-password-123",
+	}
+
+	if err := ValidateRuntimeConfig(); err != nil {
+		t.Fatalf("expected valid runtime config, got %v", err)
 	}
 }

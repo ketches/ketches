@@ -1,0 +1,12 @@
+# Quickstart-only overrides for local evaluation.
+# These values are intentionally convenient for trying Ketches quickly on a local cluster.
+# Do NOT reuse them in shared, staging, or production environments.
+
+config:
+  jwtSecret: ketches-quickstart-jwt-secret
+  secretEncryptionKey: ketches-quickstart-encryption-key
+  corsAllowedOrigins: http://127.0.0.1:8080,http://localhost:8080,http://127.0.0.1:30080,http://localhost:30080
+
+postgres:
+  auth:
+    password: ketches-quickstart-postgres

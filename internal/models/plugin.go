@@ -30,31 +30,33 @@ type CreatePluginRequest struct {
 }
 
 type UpdatePluginRequest struct {
-	Name             string         `json:"name"`
-	Description      string         `json:"description"`
-	Image            string         `json:"image"`
-	ImagePullPolicy  string         `json:"image_pull_policy"`
-	RegistryUsername *string        `json:"registry_username"`
-	RegistryPassword *string        `json:"registry_password"`
-	Command          string         `json:"command"`
-	EnvVars          []PluginEnvVar `json:"env_vars"`
-	PluginType       string         `json:"plugin_type" binding:"omitempty,oneof=init sidecar"`
+	Name                  string         `json:"name"`
+	Description           string         `json:"description"`
+	Image                 string         `json:"image"`
+	ImagePullPolicy       string         `json:"image_pull_policy"`
+	RegistryUsername      *string        `json:"registry_username"`
+	RegistryPassword      *string        `json:"registry_password"`
+	ClearRegistryPassword *bool          `json:"clear_registry_password,omitempty"`
+	Command               string         `json:"command"`
+	EnvVars               []PluginEnvVar `json:"env_vars"`
+	PluginType            string         `json:"plugin_type" binding:"omitempty,oneof=init sidecar"`
 }
 
 type PluginResponse struct {
-	ID               string         `json:"id"`
-	Slug             string         `json:"slug"`
-	Name             string         `json:"name"`
-	Description      string         `json:"description"`
-	Image            string         `json:"image"`
-	ImagePullPolicy  string         `json:"image_pull_policy"`
-	RegistryUsername string         `json:"registry_username"`
-	Command          string         `json:"command"`
-	EnvVars          []PluginEnvVar `json:"env_vars"`
-	PluginType       string         `json:"plugin_type"`
-	InstallCount     int            `json:"install_count"`
-	CreatedAt        time.Time      `json:"created_at"`
-	UpdatedAt        time.Time      `json:"updated_at"`
+	ID                  string         `json:"id"`
+	Slug                string         `json:"slug"`
+	Name                string         `json:"name"`
+	Description         string         `json:"description"`
+	Image               string         `json:"image"`
+	ImagePullPolicy     string         `json:"image_pull_policy"`
+	RegistryUsername    string         `json:"registry_username"`
+	HasRegistryPassword bool           `json:"has_registry_password"`
+	Command             string         `json:"command"`
+	EnvVars             []PluginEnvVar `json:"env_vars"`
+	PluginType          string         `json:"plugin_type"`
+	InstallCount        int            `json:"install_count"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
 }
 
 type ListPluginResponse struct {

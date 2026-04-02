@@ -1,4 +1,5 @@
 import client from './client'
+import type { Env } from './envs'
 import { type PaginationParams, type PaginationResponse } from './pagination'
 
 export interface SimpleApp {
@@ -49,7 +50,7 @@ export interface GatewaySpec {
   gateway_port?: number
   service_type?: string
   node_port?: number
-  gateway_ip?: string
+  gateway_host?: string
   internal_address?: string
   exposed: boolean
   cert_id?: string
@@ -68,6 +69,7 @@ export interface App {
   container_command?: string
   registry_username?: string
   registry_password?: string
+  has_registry_password?: boolean
   replicas: number
   request_cpu: number
   request_memory: number
@@ -80,11 +82,7 @@ export interface App {
   probes?: ProbeSpec[]
   gateways?: GatewaySpec[]
   created_at: string
-  env?: {
-    id: string
-    name: string
-    project_id: string
-  }
+  env?: Env
 }
 
 export interface AppInstance {
@@ -147,7 +145,7 @@ export const appsApi = {
   updateBasic: async (id: string, data: Partial<App>) => {
     return client.patch(`/v1/apps/${id}/basic`, data) as Promise<App>
   },
-  updateImage: async (id: string, data: { container_image: string, image_pull_policy?: string, registry_username?: string, registry_password?: string }) => {
+  updateImage: async (id: string, data: { container_image: string, image_pull_policy?: string, registry_username?: string, registry_password?: string, clear_registry_password?: boolean }) => {
     return client.patch(`/v1/apps/${id}/image`, data) as Promise<App>
   },
   listImageTags: async (id: string) => {

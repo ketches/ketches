@@ -17,23 +17,25 @@ type CreateCodeRepositoryRequest struct {
 }
 
 type UpdateCodeRepositoryRequest struct {
-	Name        string `json:"name"`
-	Slug        string `json:"slug"`
-	GitRepoURL  string `json:"git_repo_url"`
-	GitUsername string `json:"git_username"`
-	GitPassword string `json:"git_password"`
+	Name             string `json:"name"`
+	Slug             string `json:"slug"`
+	GitRepoURL       string `json:"git_repo_url"`
+	GitUsername      string `json:"git_username"`
+	GitPassword      string `json:"git_password"`
+	ClearGitPassword *bool  `json:"clear_git_password,omitempty"`
 }
 
 type CodeRepositoryResponse struct {
-	ID          string    `json:"id"`
-	ProjectID   string    `json:"project_id"`
-	Name        string    `json:"name"`
-	Slug        string    `json:"slug"`
-	GitRepoURL  string    `json:"git_repo_url"`
-	GitUsername string    `json:"git_username"`
-	GitPassword string    `json:"git_password"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID             string    `json:"id"`
+	ProjectID      string    `json:"project_id"`
+	Name           string    `json:"name"`
+	Slug           string    `json:"slug"`
+	GitRepoURL     string    `json:"git_repo_url"`
+	GitUsername    string    `json:"git_username"`
+	GitPassword    string    `json:"-"`
+	HasGitPassword bool      `json:"has_git_password"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type ListCodeRepositoryResponse struct {

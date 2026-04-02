@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { type AxiosError } from "axios"
 import { Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -41,7 +42,7 @@ export function NodeLabelsEditor({
     }
   }, [open])
 
-  const mutation = useMutation({
+  const mutation = useMutation<unknown, AxiosError<{ error: string }>, Record<string, string>>({
     mutationFn: (newLabels: Record<string, string>) =>
       clustersApi.updateNodeLabels(clusterId, nodeName, newLabels),
     onSuccess: () => {
@@ -49,7 +50,7 @@ export function NodeLabelsEditor({
       toast.success("Labels updated successfully")
       onOpenChange(false)
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Failed to update labels", {
         description: error.response?.data?.error || error.message,
       })

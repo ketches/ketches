@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { getErrorMessage } from "@/lib/utils"
 
 export interface EnvVarSpec {
   id?: string
@@ -93,14 +94,13 @@ export function EnvVarEditor({
       onSuccess?.()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Failed to save environment variable", {
-        description: err.response?.data?.error || "Unknown error",
+        description: getErrorMessage(error, "Unknown error"),
       })
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!validateForm()) return
 

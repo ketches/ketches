@@ -37,6 +37,7 @@ func setupEnvTestDB(t *testing.T) {
 	require.NoError(t, testDB.AutoMigrate(
 		&entities.Project{},
 		&entities.Cluster{},
+		&entities.ClusterIntegration{},
 		&entities.Env{},
 		&entities.EnvResourceQuota{},
 		&entities.Certificate{},
@@ -259,4 +260,38 @@ func TestCheckEnvNamespaceAvailability_ReturnsClusterConflict(t *testing.T) {
 	assert.False(t, res.Available)
 	assert.Equal(t, "cluster", res.Source)
 	assert.Contains(t, res.Message, "already exists in the selected cluster")
+}
+
+func TestGetEnvWithProjectNameIncludesClusterStatus(t *testing.T) {
+	setupEnvTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-1"},
+		Slug: "project-1",
+		Name: "Project 1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Cluster{
+		Base:                   entities.Base{ID: "cluster-1"},
+		Slug:                   "cluster-1",
+		Name:                   "Cluster 1",
+		KubeConfig:             "test",
+		Enabled:                true,
+		ConnectionStatus:       "connected",
+		ConnectionStatusReason: "healthy",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:             entities.Base{ID: "env-1"},
+		Slug:             "env-1",
+		Name:             "Env 1",
+		ProjectID:        "project-1",
+		ClusterID:        "cluster-1",
+		ClusterNamespace: "ns-1",
+	}).Error)
+
+	resp, err := GetEnvWithProjectName("env-1")
+	require.NoError(t, err)
+	assert.Equal(t, "Project 1", resp.ProjectName)
+	assert.Equal(t, "Cluster 1", resp.ClusterName)
+	assert.Equal(t, "connected", resp.ClusterConnectionStatus)
+	assert.Equal(t, "healthy", resp.ClusterConnectionStatusReason)
 }

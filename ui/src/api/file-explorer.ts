@@ -1,4 +1,5 @@
 import client from './client'
+import { getStoredAccessToken } from '@/lib/auth-session'
 
 export interface FileInfo {
   name: string
@@ -69,14 +70,7 @@ export const fileExplorerApi = {
   },
 
   downloadFile: async (appId: string, instanceName: string, container: string, path: string) => {
-    const authData = localStorage.getItem('auth-storage')
-    let token = ''
-    if (authData) {
-      try {
-        const { state } = JSON.parse(authData)
-        token = state.accessToken || ''
-      } catch { /* ignore */ }
-    }
+    const token = getStoredAccessToken()
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
     const params = new URLSearchParams({ container, path })
 
@@ -103,14 +97,7 @@ export const fileExplorerApi = {
   },
 
   downloadDir: async (appId: string, instanceName: string, container: string, path: string) => {
-    const authData = localStorage.getItem('auth-storage')
-    let token = ''
-    if (authData) {
-      try {
-        const { state } = JSON.parse(authData)
-        token = state.accessToken || ''
-      } catch { /* ignore */ }
-    }
+    const token = getStoredAccessToken()
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
     const params = new URLSearchParams({ container, path })
 
@@ -152,14 +139,7 @@ export const fileExplorerApi = {
   },
 
   compressAndDownload: async (appId: string, instanceName: string, container: string, baseDir: string, fileNames: string[], archiveName: string) => {
-    const authData = localStorage.getItem('auth-storage')
-    let token = ''
-    if (authData) {
-      try {
-        const { state } = JSON.parse(authData)
-        token = state.accessToken || ''
-      } catch { /* ignore */ }
-    }
+    const token = getStoredAccessToken()
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
 
     const response = await fetch(`${baseUrl}/v1/apps/${appId}/instances/${instanceName}/files/compress-download?container=${encodeURIComponent(container)}`, {

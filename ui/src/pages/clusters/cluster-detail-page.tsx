@@ -87,7 +87,7 @@ interface Node {
   }
 }
 
-function NodeMetricsPanel({ clusterId, node }: { clusterId: string; node: Node }) {
+function NodeMetricsPanel({ clusterId, prometheusAvailable, node }: { clusterId: string; prometheusAvailable?: boolean; node: Node }) {
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
   const isReady = node.status.conditions?.find((c) => c.type === "Ready")?.status === "True"
   const internalIP = node.status.addresses?.find((a) => a.type === "InternalIP")?.address
@@ -111,6 +111,7 @@ function NodeMetricsPanel({ clusterId, node }: { clusterId: string; node: Node }
       </div>
       <ClusterNodeResourceMetrics
         clusterId={clusterId}
+        prometheusAvailable={prometheusAvailable}
         nodeName={node.metadata.name}
         nodeIp={internalIP}
         timeRange={timeRange}
@@ -126,8 +127,8 @@ export function ClusterDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { openPanel } = useBottomPanel()
-  const [editOpen, setEditOpen] = React.useState(false)
-  const [deleteOpen, setDeleteOpen] = React.useState(false)
+	const [editOpen, setEditOpen] = React.useState(false)
+	const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get("tab") || "overview"
 
@@ -393,8 +394,8 @@ export function ClusterDetailPage() {
     )
   }
 
-  if (clusterError || !cluster) {
-    return (
+	if (clusterError || !cluster) {
+	return (
       <NotFoundPage
         resourceType="Cluster"
         backHref="/clusters"
@@ -550,9 +551,9 @@ export function ClusterDetailPage() {
         </Card>
       )}
 
-      <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
-        <TabsList>
-          <TabsTrigger value="overview">
+		<Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
+			<TabsList>
+				<TabsTrigger value="overview">
             <Telescope />
             Overview
           </TabsTrigger>
@@ -576,9 +577,9 @@ export function ClusterDetailPage() {
             <ShieldCheck />
             Certificates
           </TabsTrigger>
-        </TabsList>
+			</TabsList>
 
-        <TabsContent value="overview" className="space-y-4 mt-2">
+			<TabsContent value="overview" className="space-y-4 mt-2">
           <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -586,19 +587,15 @@ export function ClusterDetailPage() {
                 Cluster Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <CardContent className="space-y-4 group/card">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Slug</p>
                   <p className="text-sm font-mono">{cluster.slug}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground">Gateway IP</p>
-                  <p className="text-sm font-mono">{cluster.gateway_ip || "N/A"}</p>
-                </div>
-                <div>
                   <p className="text-xs font-medium text-muted-foreground">Status</p>
-                  <p className="text-sm">{cluster.enabled ? "Enabled" : "Disabled"}</p>
+                  <div className="flex items-center">{getConnectionStatusBadge()}</div>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Last Checked</p>
@@ -606,6 +603,33 @@ export function ClusterDetailPage() {
                     {cluster.last_checked_at ? formatDate(cluster.last_checked_at) : "Never"}
                   </p>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">API Server</p>
+                  <p className="text-sm font-mono break-all">{cluster.api_server || "Unavailable"}</p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">KubeConfig</p>
+                    <div className="opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Update KubeConfig"
+                        onClick={() => setEditOpen(true)}
+                      >
+                        <Pencil />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium">{cluster.has_kube_config ? "Configured" : "Not configured"}</p>
+                </div>
+                <div>
+						<p className="text-xs font-medium text-muted-foreground">Gateway Host</p>
+						<p className="text-sm font-mono">{cluster.gateway_host || "N/A"}</p>
+					</div>
               </div>
             </CardContent>
           </Card>
@@ -663,6 +687,7 @@ export function ClusterDetailPage() {
                     <NodeMetricsPanel
                       key={node.metadata.name}
                       clusterId={clusterId!}
+                      prometheusAvailable={cluster?.has_prometheus_integration}
                       node={node}
                     />
                   ))}
@@ -722,14 +747,15 @@ export function ClusterDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <EditClusterDialog
-        open={editOpen}
+		<EditClusterDialog
+			open={editOpen}
         onOpenChange={setEditOpen}
         cluster={cluster}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["cluster", clusterId] })
         }}
-      />
+		/>
+
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>

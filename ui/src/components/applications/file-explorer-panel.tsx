@@ -30,6 +30,7 @@ import {
   X
 } from "lucide-react"
 import * as React from "react"
+import { isAxiosError, type AxiosError } from "axios"
 import { toast } from "sonner"
 
 import { fileExplorerApi, type FileInfo } from "@/api/file-explorer"
@@ -68,7 +69,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import type { AxiosError } from "axios"
 
 // Copy text to clipboard with toast feedback
 function copyToClipboard(text: string) {
@@ -88,19 +88,19 @@ interface FileExplorerPanelProps {
 const FILE_VIEW_MODE_KEY = "file_explorer_view_mode"
 
 // Determine file icon based on extension
-function getFileIcon(name: string, type: string) {
-  if (type === "dir") return <Folder className="h-4 w-4 text-blue-400" />
-  if (type === "link") return <File className="h-4 w-4 text-purple-400" />
+function getFileIcon(name: string, type: string, className: string = "h-4 w-4") {
+  if (type === "dir") return <Folder className={`${className} text-blue-400`} />
+  if (type === "link") return <File className={`${className} text-purple-400`} />
 
   const ext = name.split(".").pop()?.toLowerCase() || ""
   const codeExts = ["js", "ts", "jsx", "tsx", "go", "py", "rs", "java", "c", "cpp", "h", "rb", "php", "sh", "bash", "zsh", "yaml", "yml", "toml", "json", "xml", "html", "css", "scss", "sql"]
   const imageExts = ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp"]
   const textExts = ["txt", "md", "log", "csv", "env", "conf", "cfg", "ini", "properties"]
 
-  if (codeExts.includes(ext)) return <FileCode className="h-4 w-4 text-emerald-400" />
-  if (imageExts.includes(ext)) return <FileImage className="h-4 w-4 text-orange-400" />
-  if (textExts.includes(ext)) return <FileClock className="h-4 w-4 text-yellow-400" />
-  return <File className="h-4 w-4 text-muted-foreground" />
+  if (codeExts.includes(ext)) return <FileCode className={`${className} text-emerald-400`} />
+  if (imageExts.includes(ext)) return <FileImage className={`${className} text-orange-400`} />
+  if (textExts.includes(ext)) return <FileClock className={`${className} text-yellow-400`} />
+  return <File className={`${className} text-muted-foreground`} />
 }
 
 // Format file size
@@ -198,6 +198,11 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
   })
 
   const pathSegments = parsePath(currentPath)
+  const fileLoadErrorMessage = isAxiosError<{ error: string }>(error)
+    ? error.response?.data?.error || error.message
+    : error instanceof Error
+      ? error.message
+      : undefined
 
   // Sort files: directories first, then by name
   const sortedFiles = React.useMemo(() => {
@@ -906,7 +911,7 @@ export function FileExplorerPanel({ appId, instanceName, containerName }: FileEx
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
             <FolderOpen className="h-8 w-8 opacity-30" />
             <p className="text-xs">Failed to load files</p>
-            <p className="text-[10px]">{(error as any)?.response?.data?.error || (error as any)?.message}</p>
+            <p className="text-[10px]">{fileLoadErrorMessage}</p>
             <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-2 h-7 text-xs">
               Retry
             </Button>
@@ -1200,7 +1205,7 @@ function FileEditorView({
 }: {
   editingFile: { path: string; content: string; originalContent: string }
   setEditingFile: (file: { path: string; content: string; originalContent: string } | null) => void
-  writeFileMutation: ReturnType<typeof useMutation<unknown, any, { path: string; content: string }>>
+  writeFileMutation: ReturnType<typeof useMutation<unknown, AxiosError<{ error: string }>, { path: string; content: string }>>
 }) {
   const hasChanges = editingFile.content !== editingFile.originalContent
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
@@ -1433,15 +1438,18 @@ function ListFileView({
   onDownload,
   onCopyPath,
 }: ListFileViewProps) {
+  const allFilesSelected = files.length > 0 && selectedFiles.size === files.length
+  const someFilesSelected = selectedFiles.size > 0 && selectedFiles.size < files.length
+
   return (
     <div className="w-full">
       {/* Header */}
       <div className="grid grid-cols-[24px_1fr_70px_100px_50px_56px] gap-2 px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b bg-muted/10">
         <div className="flex items-center justify-center">
           <Checkbox
-            checked={files.length > 0 && selectedFiles.size === files.length}
-            indeterminate={selectedFiles.size > 0 && selectedFiles.size < files.length}
-            onCheckedChange={onToggleSelectAll}
+            checked={allFilesSelected}
+            data-state={someFilesSelected ? "indeterminate" : undefined}
+            onCheckedChange={() => onToggleSelectAll()}
             className="h-3.5 w-3.5"
           />
         </div>
@@ -1594,9 +1602,7 @@ function GridFileView({
             {file.type === "dir" ? (
               <Folder className="h-8 w-8 text-blue-400" />
             ) : (
-              React.cloneElement(getFileIcon(file.name, file.type) as React.ReactElement<{ className?: string }>, {
-                className: "h-8 w-8",
-              })
+              getFileIcon(file.name, file.type, "h-8 w-8")
             )}
           </div>
           <span className="text-[10px] font-mono text-center truncate w-full" title={file.name}>

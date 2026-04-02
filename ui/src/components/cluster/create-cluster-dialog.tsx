@@ -1,3 +1,4 @@
+import { AxiosError } from "axios"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, InfoIcon, Link2, Loader2, Upload } from "lucide-react"
 import * as React from "react"
@@ -40,7 +41,7 @@ export function CreateClusterDialog({
     name?: string
     slug?: string
     kubeConfig?: string
-    gateway_ip?: string
+    gateway_host?: string
   }>({})
   const [isTestingConnection, setIsTestingConnection] = React.useState(false)
   const [connectionStatus, setConnectionStatus] = React.useState<"idle" | "success" | "error">("idle")
@@ -49,7 +50,7 @@ export function CreateClusterDialog({
     name: "",
     slug: "",
     kubeConfig: "",
-    gateway_ip: "",
+    gateway_host: "",
     description: "",
   })
 
@@ -61,11 +62,11 @@ export function CreateClusterDialog({
       setOpen(false)
       onSuccess?.()
       onClose?.()
-      setFormData({ name: "", slug: "", kubeConfig: "", gateway_ip: "", description: "" })
+      setFormData({ name: "", slug: "", kubeConfig: "", gateway_host: "", description: "" })
       setErrors({})
       setConnectionStatus("idle")
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to add cluster",
       })
@@ -83,7 +84,7 @@ export function CreateClusterDialog({
     setFormData((prev) => ({ ...prev, slug }))
   }
 
-  const extractGatewayIp = (kubeConfig: string) => {
+  const extractGatewayHost = (kubeConfig: string) => {
     try {
       const config = JSON.parse(kubeConfig)
       const clusters = config.clusters || []
@@ -109,9 +110,9 @@ export function CreateClusterDialog({
 
   const handleKubeConfigChange = (value: string) => {
     setFormData((prev) => ({ ...prev, kubeConfig: value }))
-    const gatewayIp = extractGatewayIp(value)
-    if (gatewayIp) {
-      setFormData((prev) => ({ ...prev, gateway_ip: gatewayIp }))
+    const gatewayHost = extractGatewayHost(value)
+    if (gatewayHost) {
+      setFormData((prev) => ({ ...prev, gateway_host: gatewayHost }))
     }
   }
 
@@ -152,8 +153,8 @@ export function CreateClusterDialog({
       newErrors.kubeConfig = "KubeConfig is required"
     }
 
-    if (formData.gateway_ip && !/^[\d.]+$/.test(formData.gateway_ip)) {
-      newErrors.gateway_ip = "Gateway IP format is incorrect"
+    if (formData.gateway_host && (formData.gateway_host.includes(" ") || formData.gateway_host.includes("://"))) {
+      newErrors.gateway_host = "Must be a valid hostname or IP address without protocol"
     }
 
     setErrors(newErrors)
@@ -173,17 +174,24 @@ export function CreateClusterDialog({
       await clustersApi.ping({ kube_config: formData.kubeConfig })
       setConnectionStatus("success")
       toast.success("Connection test successful")
-    } catch (error: any) {
-      setConnectionStatus("error")
-      toast.error("Connection Failed", {
-        description: error.response?.data?.error || "Unable to connect to cluster",
-      })
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        setConnectionStatus("error")
+        toast.error("Connection Failed", {
+          description: (error.response?.data as { error?: string })?.error || "Unable to connect to cluster",
+        })
+      } else {
+        setConnectionStatus("error")
+        toast.error("Connection Failed", {
+          description: "Unable to connect to cluster",
+        })
+      }
     } finally {
       setIsTestingConnection(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!validateForm()) {
@@ -195,7 +203,7 @@ export function CreateClusterDialog({
       name: formData.name,
       description: formData.description,
       kube_config: formData.kubeConfig,
-      gateway_ip: formData.gateway_ip,
+      gateway_host: formData.gateway_host,
     })
   }
 
@@ -282,7 +290,7 @@ export function CreateClusterDialog({
                     <TooltipContent side="top" align="start" className="max-w-64">
                       <p className="text-xs">Kubernetes config file content (JSON or YAML).</p>
                       <p className="text-xs mt-1">Supports upload JSON or YAML format file.</p>
-                      <p className="text-xs mt-1">Auto-extracts Gateway IP from apiServer.</p>
+                      <p className="text-xs mt-1">Auto-extracts Gateway Host from apiServer.</p>
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
@@ -315,7 +323,7 @@ export function CreateClusterDialog({
 
             <Field>
               <FieldLabel>
-                Gateway IP
+                Gateway Host
                 <Tooltip>
                   <TooltipTrigger
                     tabIndex={-1}
@@ -334,14 +342,14 @@ export function CreateClusterDialog({
               <FieldContent>
                 <Input
                   placeholder="192.168.1.1"
-                  value={formData.gateway_ip}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, gateway_ip: e.target.value }))}
-                  aria-invalid={!!errors.gateway_ip}
+                  value={formData.gateway_host}
+					onChange={(e) => setFormData((prev) => ({ ...prev, gateway_host: e.target.value }))}
+					aria-invalid={!!errors.gateway_host}
                 />
               </FieldContent>
-              {errors.gateway_ip && (
+				{errors.gateway_host && (
                 <FieldError>
-                  <span className="text-destructive text-xs">{errors.gateway_ip}</span>
+					<span className="text-destructive text-xs">{errors.gateway_host}</span>
                 </FieldError>
               )}
             </Field>

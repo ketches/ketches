@@ -13,6 +13,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/concurrency"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
@@ -631,6 +632,11 @@ func newHelmActionConfig(clusterID, namespace string) (*action.Configuration, fu
 		return nil, func() {}, err
 	}
 
+	plaintextKubeConfig, err := secrets.DecryptString(cluster.KubeConfig)
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("failed to decrypt kubeconfig: %w", err)
+	}
+
 	// Write kubeconfig to a temp file since ConfigFlags expects a path.
 	f, err := os.CreateTemp("", "ketches-kubeconfig-*")
 	if err != nil {
@@ -639,14 +645,14 @@ func newHelmActionConfig(clusterID, namespace string) (*action.Configuration, fu
 	cleanup := func() {
 		_ = os.Remove(f.Name())
 	}
-	if _, err := f.WriteString(cluster.KubeConfig); err != nil {
+	if _, err := f.WriteString(plaintextKubeConfig); err != nil {
 		cleanup()
 		return nil, func() {}, fmt.Errorf("failed to write kubeconfig: %w", err)
 	}
 	_ = f.Close()
 
 	// Validate the kubeconfig is parseable.
-	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeConfig))
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(plaintextKubeConfig))
 	if err != nil {
 		cleanup()
 		return nil, func() {}, fmt.Errorf("invalid kubeconfig for cluster %q: %w", clusterID, err)

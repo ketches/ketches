@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { getErrorMessage } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
@@ -156,9 +157,8 @@ export function KanbanBoard({ tasks, projectId, onCreateChild, onEdit, onDelete 
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: string } } }
       toast.error("Transition failed", {
-        description: err.response?.data?.error || "This status transition is not allowed",
+        description: getErrorMessage(error, "This status transition is not allowed"),
       })
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
     },

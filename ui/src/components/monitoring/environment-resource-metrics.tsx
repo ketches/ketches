@@ -27,15 +27,42 @@ const netChartConfig: ChartConfig = {
 
 interface EnvironmentResourceMetricsProps {
   clusterId: string
+  projectId?: string
+  prometheusAvailable?: boolean
   namespace: string
   timeRange: TimeRange
   rangeSeconds: number
   step: string
 }
 
-export function EnvironmentResourceMetrics({ clusterId, namespace, timeRange, rangeSeconds, step: timeStep }: EnvironmentResourceMetricsProps) {
+interface MetricDataPoint {
+  time: string
+  timestamp: number
+  cpu: number
+  memory: number
+  ingress: number
+  egress: number
+}
+
+const ENVIRONMENT_METRIC_KEYS = ["cpu", "memory", "ingress", "egress"] as const
+type EnvironmentMetricKey = (typeof ENVIRONMENT_METRIC_KEYS)[number]
+
+function createEnvironmentMetricDataPoint(timestamp: number): MetricDataPoint {
+  return {
+    time: new Date(timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    timestamp,
+    cpu: 0,
+    memory: 0,
+    ingress: 0,
+    egress: 0,
+  }
+}
+
+export function EnvironmentResourceMetrics({ clusterId, projectId, prometheusAvailable: initialPrometheusAvailable, namespace, timeRange, rangeSeconds, step: timeStep }: EnvironmentResourceMetricsProps) {
   const navigate = useNavigate()
-  const { available: prometheusAvailable, isLoading: prometheusLoading } = usePrometheusAvailable(clusterId)
+  const prometheusQuery = usePrometheusAvailable(clusterId, projectId)
+  const prometheusAvailable = initialPrometheusAvailable ?? prometheusQuery.available
+  const prometheusLoading = initialPrometheusAvailable === undefined ? prometheusQuery.isLoading : false
 
   const { data: metrics, isLoading, error } = useQuery({
     queryKey: ["env-metrics-v2", clusterId, namespace, timeRange],
@@ -45,7 +72,7 @@ export function EnvironmentResourceMetrics({ clusterId, namespace, timeRange, ra
       const step = timeStep
       const rateWindow = `${parseInt(timeStep) * 2}s`
 
-      const queries = {
+      const queries: Record<EnvironmentMetricKey, string> = {
         cpu: `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}"}[${rateWindow}])) * 1000`,
         memory: `sum(container_memory_working_set_bytes{namespace="${namespace}"}) / 1024 / 1024 / 1024`,
         ingress: `sum(rate(container_network_receive_bytes_total{namespace="${namespace}"}[${rateWindow}])) / 1024`,
@@ -53,9 +80,10 @@ export function EnvironmentResourceMetrics({ clusterId, namespace, timeRange, ra
       }
 
       const results = await Promise.all(
-        Object.entries(queries).map(async ([key, query]) => {
+        ENVIRONMENT_METRIC_KEYS.map(async (key) => {
+          const query = queries[key]
           try {
-            const res = await clustersApi.prometheusQueryRange(clusterId, query, start.toString(), now.toString(), step) as any
+            const res = await clustersApi.prometheusQueryRange(clusterId, query, start.toString(), now.toString(), step, projectId)
             return { key, values: res?.result?.[0]?.values || [] }
           } catch {
             return { key, values: [] }
@@ -63,16 +91,14 @@ export function EnvironmentResourceMetrics({ clusterId, namespace, timeRange, ra
         })
       )
 
-      const timeMap = new Map<number, any>()
+      const timeMap = new Map<number, MetricDataPoint>()
       results.forEach(({ key, values }) => {
         values.forEach(([ts, val]: [number, string]) => {
           if (!timeMap.has(ts)) {
-            timeMap.set(ts, {
-              time: new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-              timestamp: ts
-            })
+            timeMap.set(ts, createEnvironmentMetricDataPoint(ts))
           }
-          timeMap.get(ts)[key] = parseFloat(val) || 0
+          const entry = timeMap.get(ts)!
+          entry[key] = parseFloat(val) || 0
         })
       })
 

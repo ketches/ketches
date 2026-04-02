@@ -76,16 +76,12 @@ Ketches is an enterprise-grade, open-source cloud-native application platform de
 **Prerequisites**: Docker 24+ with Compose V2
 
 ```bash
-# Download the compose file
-curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/docker-compose.yml \
-  -o docker-compose.yml
-
-# Start all services (API + UI + PostgreSQL)
+curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/.env.quickstart -o .env
 docker compose up -d
-
-# Open in your browser
-open http://localhost
 ```
+
+This quickstart path is for local evaluation only. It uses checked-in demo secrets from `deploy/docker/.env.quickstart` so you can get running immediately. For real environments, keep `deploy/docker/docker-compose.yml` as-is and follow the production guide: [Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md).
 
 The default admin credentials are created during the first run — check the API container logs:
 
@@ -98,12 +94,24 @@ docker compose logs ketches-api | grep -i "admin"
 **Prerequisites**: Kubernetes 1.24+, Helm 3.12+
 
 ```bash
-helm upgrade --install ketches ./deploy/helm/ketches \
-  --namespace ketches \
-  --create-namespace
+helm upgrade --install ketches ./deploy/helm/ketches --namespace ketches --create-namespace -f ./deploy/helm/ketches/values-quickstart.yaml
 ```
 
-The default UI service type is `NodePort` (`30080`):
+This quickstart path is intended for local evaluation clusters only. The main Helm chart remains secure-by-default and expects you to provide real secrets for non-quickstart usage.
+
+### Raw Kubernetes manifests
+
+**Prerequisites**: Kubernetes 1.24+
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/ketches/ketches/master/deploy/kubernetes/manifests.quickstart.yaml
+```
+
+This quickstart manifest is for local evaluation only. It bakes in demo secrets and localhost-friendly CORS values so raw-manifest installs behave like the other quickstart paths.
+
+More details: [`deploy/kubernetes/README.md`](deploy/kubernetes/README.md)
+
+The quickstart UI service type is `NodePort` (`30080`):
 
 ```bash
 kubectl -n ketches get svc ketches-ui
@@ -116,7 +124,7 @@ kubectl -n ketches port-forward svc/ketches-ui 8080:80
 # open http://127.0.0.1:8080
 ```
 
-For production, remember to override `config.jwtSecret`. If you use an external database, set `postgres.enabled=false` and provide `config.dbSource`.
+For production, do not reuse the quickstart values file. Provide strong values for `config.jwtSecret` and `config.secretEncryptionKey`, set `postgres.auth.password` when using the bundled PostgreSQL instance, and review [Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md). If you use an external database, set `postgres.enabled=false` and provide `config.dbSource` (or the split `config.db*` values).
 
 #### Helm Chart Repository (GitHub Pages)
 
@@ -181,6 +189,7 @@ All configuration is done via environment variables. A `.env` file is optional f
 | `DB_SSLMODE` | `disable` | PostgreSQL SSL mode when `DB_SOURCE` is not set |
 | `DB_AUTO_MIGRATE` | `true` | Whether to run GORM AutoMigrate during database initialization |
 | `JWT_SECRET` | *(required)* | Secret key for signing JWT tokens |
+| `SECRET_ENCRYPTION_KEY` | *(required)* | Encryption key for sensitive values stored at rest |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | Comma-separated allowed CORS origins |
 
 **Note**: For production environments, set `DB_AUTO_MIGRATE=false` and manage schema migrations through a controlled migration process.
@@ -195,7 +204,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=ketches
 DB_USERNAME=postgres
-DB_PASSWORD=secret
+DB_PASSWORD=<db-password>
 DB_SSLMODE=disable
 ```
 
@@ -207,7 +216,7 @@ DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=ketches
 DB_USERNAME=root
-DB_PASSWORD=secret
+DB_PASSWORD=<db-password>
 ```
 
 If you prefer, you can still provide a complete `DB_SOURCE` directly.

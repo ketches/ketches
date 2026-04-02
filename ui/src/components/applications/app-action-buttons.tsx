@@ -14,6 +14,7 @@ import {
   Undo
 } from "lucide-react"
 import * as React from "react"
+import { type AxiosError } from "axios"
 import { toast } from "sonner"
 
 import { appsApi, type ActionMetadata } from "@/api/apps"
@@ -58,7 +59,7 @@ export function AppActionButtons({ appId, actions, onDeleteSuccess }: AppActionB
   const queryClient = useQueryClient()
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
 
-  const executeMutation = useMutation({
+  const executeMutation = useMutation<unknown, AxiosError<{ error: string }>, string>({
     mutationFn: async (action: string) => {
       return await appsApi.executeAction(appId, action)
     },
@@ -78,9 +79,9 @@ export function AppActionButtons({ appId, actions, onDeleteSuccess }: AppActionB
         })
       }
     },
-    onError: (error: any, action) => {
+    onError: (error, action) => {
       toast.error("Action failed", {
-        description: error.response?.data?.error || `Failed to execute "${action}"`,
+        description: error.response?.data?.error || error.message || `Failed to execute "${action}"`,
       })
     },
   })
@@ -112,7 +113,7 @@ export function AppActionButtons({ appId, actions, onDeleteSuccess }: AppActionB
           return (
             <Button
               key={action.action}
-              variant={isDestructive ? "outline" : action.variant as any}
+              variant={isDestructive ? "outline" : action.variant}
               onClick={() => handleAction(action.action)}
               disabled={executeMutation.isPending}
               className={isDestructive ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}

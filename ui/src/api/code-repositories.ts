@@ -41,6 +41,7 @@ export interface UpdateCodeRepositoryRequest {
   git_repo_url?: string
   git_username?: string
   git_password?: string
+  clear_git_password?: boolean
 }
 
 export interface BuildSetting {

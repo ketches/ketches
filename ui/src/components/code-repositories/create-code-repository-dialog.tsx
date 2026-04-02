@@ -69,7 +69,7 @@ export function CreateCodeRepositoryDialog({ open, onOpenChange, projectId, onSu
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!form.git_repo_url?.trim()) {
       toast.error('Git Repository URL is required')

@@ -7,6 +7,7 @@ metadata:
 type: Opaque
 stringData:
   jwt-secret: {{ required "values.config.jwtSecret is required" .Values.config.jwtSecret | quote }}
+  secret-encryption-key: {{ required "values.config.secretEncryptionKey is required" .Values.config.secretEncryptionKey | quote }}
   {{- if .Values.config.dbSource }}
   db-source: {{ .Values.config.dbSource | quote }}
   {{- else }}

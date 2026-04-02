@@ -28,17 +28,20 @@ type EnvNamespaceAvailabilityResponse struct {
 }
 
 type EnvResponse struct {
-	ID               string    `json:"id"`
-	Slug             string    `json:"slug"`
-	Name             string    `json:"name"`
-	Description      string    `json:"description"`
-	ProjectID        string    `json:"project_id"`
-	ClusterID        string    `json:"cluster_id"`
-	ClusterName      string    `json:"cluster_name"`
-	ProjectName      string    `json:"project_name"`
-	ClusterNamespace string    `json:"cluster_namespace"`
-	IsBuildEnv       bool      `json:"is_build_env"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID                            string    `json:"id"`
+	Slug                          string    `json:"slug"`
+	Name                          string    `json:"name"`
+	Description                   string    `json:"description"`
+	ProjectID                     string    `json:"project_id"`
+	ClusterID                     string    `json:"cluster_id"`
+	ClusterName                   string    `json:"cluster_name"`
+	ClusterConnectionStatus       string    `json:"cluster_connection_status"`
+	ClusterConnectionStatusReason string    `json:"cluster_connection_status_reason,omitempty"`
+	HasPrometheusIntegration      bool      `json:"has_prometheus_integration"`
+	ProjectName                   string    `json:"project_name"`
+	ClusterNamespace              string    `json:"cluster_namespace"`
+	IsBuildEnv                    bool      `json:"is_build_env"`
+	CreatedAt                     time.Time `json:"created_at"`
 }
 
 type ListEnvResponse struct {

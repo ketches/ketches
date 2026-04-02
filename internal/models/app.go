@@ -139,30 +139,31 @@ type UpdateGatewayRequest struct {
 }
 
 type AppResponse struct {
-	ID               string           `json:"id"`
-	Slug             string           `json:"slug"`
-	Name             string           `json:"name"`
-	Description      string           `json:"description"`
-	EnvID            string           `json:"env_id"`
-	Env              *EnvResponse     `json:"env,omitempty"`
-	AppType          string           `json:"app_type"`
-	CodeRepositoryID string           `json:"code_repository_id,omitempty"` // when set, app was deployed from this code repo
-	ContainerImage   string           `json:"container_image"`
-	ImagePullPolicy  string           `json:"image_pull_policy"`
-	ContainerCommand string           `json:"container_command"`
-	RegistryUsername string           `json:"registry_username"`
-	RegistryPassword string           `json:"registry_password"`
-	Replicas         int              `json:"replicas"`
-	RequestCPU       int              `json:"request_cpu"`
-	RequestMemory    int              `json:"request_memory"`
-	LimitCPU         int              `json:"limit_cpu"`
-	LimitMemory      int              `json:"limit_memory"`
-	Status           string           `json:"status"`
-	AvailableActions []ActionMetadata `json:"available_actions"`
-	AutoScaling      *AutoScalingSpec `json:"auto_scaling"`
-	SchedulingRule   *SchedulingSpec  `json:"scheduling_rule"`
-	Probes           []ProbeSpec      `json:"probes"`
-	CreatedAt        time.Time        `json:"created_at"`
+	ID                  string           `json:"id"`
+	Slug                string           `json:"slug"`
+	Name                string           `json:"name"`
+	Description         string           `json:"description"`
+	EnvID               string           `json:"env_id"`
+	Env                 *EnvResponse     `json:"env,omitempty"`
+	AppType             string           `json:"app_type"`
+	CodeRepositoryID    string           `json:"code_repository_id,omitempty"` // when set, app was deployed from this code repo
+	ContainerImage      string           `json:"container_image"`
+	ImagePullPolicy     string           `json:"image_pull_policy"`
+	ContainerCommand    string           `json:"container_command"`
+	RegistryUsername    string           `json:"registry_username"`
+	RegistryPassword    string           `json:"-"`
+	HasRegistryPassword bool             `json:"has_registry_password"`
+	Replicas            int              `json:"replicas"`
+	RequestCPU          int              `json:"request_cpu"`
+	RequestMemory       int              `json:"request_memory"`
+	LimitCPU            int              `json:"limit_cpu"`
+	LimitMemory         int              `json:"limit_memory"`
+	Status              string           `json:"status"`
+	AvailableActions    []ActionMetadata `json:"available_actions"`
+	AutoScaling         *AutoScalingSpec `json:"auto_scaling"`
+	SchedulingRule      *SchedulingSpec  `json:"scheduling_rule"`
+	Probes              []ProbeSpec      `json:"probes"`
+	CreatedAt           time.Time        `json:"created_at"`
 }
 
 type ListAppResponse struct {
@@ -240,7 +241,7 @@ type AppGatewayResponse struct {
 	GatewayPort     int       `json:"gateway_port"`
 	ServiceType     string    `json:"service_type"`
 	NodePort        int       `json:"node_port"`
-	GatewayIP       string    `json:"gateway_ip"`
+	GatewayHost     string    `json:"gateway_host"`
 	InternalAddress string    `json:"internal_address"`
 	Exposed         bool      `json:"exposed"`
 	CertID          *string   `json:"cert_id"`
@@ -288,10 +289,11 @@ type AppTopologyResponse struct {
 }
 
 type UpdateAppImageRequest struct {
-	ContainerImage   string `json:"container_image" binding:"required"`
-	ImagePullPolicy  string `json:"image_pull_policy"`
-	RegistryUsername string `json:"registry_username"`
-	RegistryPassword string `json:"registry_password"`
+	ContainerImage        string `json:"container_image" binding:"required"`
+	ImagePullPolicy       string `json:"image_pull_policy"`
+	RegistryUsername      string `json:"registry_username"`
+	RegistryPassword      string `json:"registry_password"`
+	ClearRegistryPassword bool   `json:"clear_registry_password,omitempty"`
 }
 
 type AppImageTagsResponse struct {

@@ -36,6 +36,9 @@ func main() {
 	defer stop()
 
 	app.InitConfig()
+	if err := app.ValidateRuntimeConfig(); err != nil {
+		log.Fatalf("invalid runtime configuration: %v", err)
+	}
 
 	if err := db.InitDB(); err != nil {
 		log.Fatalf("failed to initialize database: %v", err)

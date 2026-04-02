@@ -61,6 +61,38 @@ func TestGetAppListRowStatus_RecalculatesLiveStatusWhenDeployStatusStoredAsRunni
 	require.Equal(t, string(app.AppStatusStopped), status)
 }
 
+func TestBuildAppListStatuses_BatchesManagedResourcesByNamespace(t *testing.T) {
+	server, counts := newBatchedAppStatusKubeAPIServer(t)
+	defer server.Close()
+
+	clusterID := registerAppStatusTestCluster(t, server.URL)
+
+	statuses := BuildAppListStatuses(context.Background(), []models.AppListRow{
+		{
+			ID:               "app-1",
+			Slug:             "app-a",
+			AppType:          app.AppTypeDeployment,
+			ClusterID:        clusterID,
+			ClusterNamespace: "test-ns",
+			DeployStatus:     app.AppStatusRunning,
+		},
+		{
+			ID:               "app-2",
+			Slug:             "app-b",
+			AppType:          app.AppTypeStatefulSet,
+			ClusterID:        clusterID,
+			ClusterNamespace: "test-ns",
+			DeployStatus:     "deployed",
+		},
+	})
+
+	require.Equal(t, string(app.AppStatusRunning), statuses["app-1"])
+	require.Equal(t, string(app.AppStatusDebugging), statuses["app-2"])
+	require.Equal(t, 1, counts.pods)
+	require.Equal(t, 1, counts.deployments)
+	require.Equal(t, 1, counts.statefulSets)
+}
+
 func registerAppStatusTestCluster(t *testing.T, serverURL string) string {
 	t.Helper()
 
@@ -127,7 +159,7 @@ func newAppStatusKubeAPIServer(t *testing.T) *httptest.Server {
 		switch r.URL.Path {
 		case "/api/v1/namespaces/test-ns/pods":
 			require.Equal(t, "GET", r.Method)
-			require.Equal(t, "ketches.cn/app-slug=test-app", r.URL.Query().Get("labelSelector"))
+			require.Equal(t, kube.LabelAppSlug+"=test-app", r.URL.Query().Get("labelSelector"))
 			require.NoError(t, json.NewEncoder(w).Encode(podList))
 		case "/apis/apps/v1/namespaces/test-ns/deployments/test-app":
 			require.Equal(t, "GET", r.Method)
@@ -136,6 +168,120 @@ func newAppStatusKubeAPIServer(t *testing.T) *httptest.Server {
 			http.NotFound(w, r)
 		}
 	}))
+}
+
+type batchedAppStatusRequestCount struct {
+	pods         int
+	deployments  int
+	statefulSets int
+}
+
+func newBatchedAppStatusKubeAPIServer(t *testing.T) (*httptest.Server, *batchedAppStatusRequestCount) {
+	t.Helper()
+
+	counts := &batchedAppStatusRequestCount{}
+	expectedSelector := kube.LabelManagedBy + "=true," + kube.LabelAppSlug + " in (app-a,app-b)"
+
+	deploymentList := &appsv1.DeploymentList{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "apps/v1",
+			Kind:       "DeploymentList",
+		},
+		Items: []appsv1.Deployment{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "app-a",
+					Namespace: "test-ns",
+					Labels: map[string]string{
+						kube.LabelManagedBy: "true",
+						kube.LabelAppSlug:   "app-a",
+					},
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: int32Ptr(1),
+				},
+				Status: appsv1.DeploymentStatus{
+					Replicas:          1,
+					ReadyReplicas:     1,
+					AvailableReplicas: 1,
+					UpdatedReplicas:   1,
+				},
+			},
+		},
+	}
+
+	statefulSetList := &appsv1.StatefulSetList{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "apps/v1",
+			Kind:       "StatefulSetList",
+		},
+		Items: []appsv1.StatefulSet{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "app-b",
+					Namespace: "test-ns",
+					Labels: map[string]string{
+						kube.LabelManagedBy: "true",
+						kube.LabelAppSlug:   "app-b",
+					},
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: int32Ptr(1),
+				},
+				Status: appsv1.StatefulSetStatus{
+					Replicas:        1,
+					ReadyReplicas:   1,
+					UpdatedReplicas: 1,
+				},
+			},
+		},
+	}
+
+	podList := &corev1.PodList{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "PodList",
+		},
+		Items: []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "app-b-0",
+					Namespace: "test-ns",
+					Labels: map[string]string{
+						kube.LabelManagedBy: "true",
+						kube.LabelAppSlug:   "app-b",
+						kube.LabelDebugging: "true",
+					},
+				},
+			},
+		},
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.URL.Path {
+		case "/api/v1/namespaces/test-ns/pods":
+			counts.pods++
+			require.Equal(t, "GET", r.Method)
+			require.Equal(t, expectedSelector, r.URL.Query().Get("labelSelector"))
+			require.NoError(t, json.NewEncoder(w).Encode(podList))
+		case "/apis/apps/v1/namespaces/test-ns/deployments":
+			counts.deployments++
+			require.Equal(t, "GET", r.Method)
+			require.Equal(t, expectedSelector, r.URL.Query().Get("labelSelector"))
+			require.NoError(t, json.NewEncoder(w).Encode(deploymentList))
+		case "/apis/apps/v1/namespaces/test-ns/statefulsets":
+			counts.statefulSets++
+			require.Equal(t, "GET", r.Method)
+			require.Equal(t, expectedSelector, r.URL.Query().Get("labelSelector"))
+			require.NoError(t, json.NewEncoder(w).Encode(statefulSetList))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+
+	return server, counts
 }
 
 func int32Ptr(v int32) *int32 {

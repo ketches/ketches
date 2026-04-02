@@ -13,11 +13,12 @@ config:
   dbName: ""
   dbUsername: ""
   dbPassword: ""
-  dbSSLMode: disable
+  dbSSLMode: require
   dbAutoMigrate: true
-  corsAllowedOrigins: "*"
+  corsAllowedOrigins: "https://app.example.com"
   backendUrl: ""
-  jwtSecret: change-this-in-production
+  jwtSecret: ""
+  secretEncryptionKey: ""
   buildLogBaseDir: /app/data/build-logs
   buildLogRetentionDays: 15
 
@@ -101,7 +102,7 @@ postgres:
   auth:
     database: ketches
     username: ketches
-    password: ketches
+    password: ""
   persistence:
     enabled: true
     accessModes:

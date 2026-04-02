@@ -88,6 +88,10 @@ func SignIn(c *gin.Context) {
 }
 
 func ListUsers(c *gin.Context) {
+	if requireAdminClaims(c) == nil {
+		return
+	}
+
 	// Parse query parameters
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
@@ -132,6 +136,10 @@ func ListUsers(c *gin.Context) {
 }
 
 func UpdateUser(c *gin.Context) {
+	if requireAdminClaims(c) == nil {
+		return
+	}
+
 	userID := c.Param("userID")
 	var req struct {
 		Fullname string `json:"fullname"`
@@ -240,6 +248,10 @@ func ChangeCurrentUserPassword(c *gin.Context) {
 }
 
 func ChangeUserPassword(c *gin.Context) {
+	if requireAdminClaims(c) == nil {
+		return
+	}
+
 	userID := c.Param("userID")
 
 	var req models.ChangeUserPasswordRequest
@@ -257,6 +269,10 @@ func ChangeUserPassword(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
+	if requireAdminClaims(c) == nil {
+		return
+	}
+
 	userID := c.Param("userID")
 	if err := services.DeleteUser(userID); err != nil {
 		if errors.Is(err, services.ErrDeleteLastAdmin) {
@@ -270,6 +286,10 @@ func DeleteUser(c *gin.Context) {
 }
 
 func ChangeUserRole(c *gin.Context) {
+	if requireAdminClaims(c) == nil {
+		return
+	}
+
 	userID := c.Param("userID")
 	var req models.ChangeUserRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -289,6 +309,10 @@ func ChangeUserRole(c *gin.Context) {
 }
 
 func CreateUser(c *gin.Context) {
+	if requireAdminClaims(c) == nil {
+		return
+	}
+
 	var req models.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
@@ -313,6 +337,10 @@ func CreateUser(c *gin.Context) {
 }
 
 func ImportUsers(c *gin.Context) {
+	if requireAdminClaims(c) == nil {
+		return
+	}
+
 	// Get the file from the request
 	file, err := c.FormFile("file")
 	if err != nil {
