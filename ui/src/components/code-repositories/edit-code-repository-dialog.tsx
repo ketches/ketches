@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Key, Loader2 } from "lucide-react"
+import { Key, Loader2, X } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -158,21 +158,35 @@ export function EditCodeRepositoryDialog({ open, onOpenChange, repo, onSuccess }
                   <FieldLabel htmlFor="git-password">Git Password / Token</FieldLabel>
                   <FieldContent>
                     {repo.has_git_password && !isClearingPassword ? (
-                      <div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
-                        <span className="text-sm text-muted-foreground">********</span>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setIsClearingPassword(true)}>
-                          Clear Password
-                        </Button>
-                      </div>
+                      <InputGroup>
+                        <InputGroupInput
+                          id="git-password"
+                          type="password"
+                          autoComplete="new-password"
+                          value={form.git_password ?? "********"}
+                          readOnly
+                        />
+                        <InputGroupAddon align="inline-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Clear password"
+                            onClick={() => setIsClearingPassword(true)}
+                          >
+                            <X />
+                          </Button>
+                        </InputGroupAddon>
+                      </InputGroup>
                     ) : (
                       <Input
-                      id="git-password"
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder="Enter password/token"
-                      value={form.git_password ?? ''}
-                      onChange={(e) => setForm({ ...form, git_password: e.target.value })}
-                    />
+                        id="git-password"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Enter password/token"
+                        value={form.git_password ?? ''}
+                        onChange={(e) => setForm({ ...form, git_password: e.target.value })}
+                      />
                     )}
                   </FieldContent>
                 </Field>

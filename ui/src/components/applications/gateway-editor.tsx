@@ -135,6 +135,17 @@ export function GatewayEditor({
 
   const isHttpProtocol = formData.protocol === 'http' || formData.protocol === 'https'
   const isHttpsProtocol = formData.protocol === 'https'
+  const supportsPublicExposure = isHttpProtocol
+
+  React.useEffect(() => {
+    if (!supportsPublicExposure && formData.exposed) {
+      setFormData((prev) => ({
+        ...prev,
+        exposed: false,
+        gateway_port: undefined,
+      }))
+    }
+  }, [formData.exposed, supportsPublicExposure])
 
   const saveMutation = useMutation({
     mutationFn: (data: GatewaySpec) => {
@@ -291,7 +302,19 @@ export function GatewayEditor({
                 <FieldContent>
                   <Combobox
                     value={formData.protocol}
-                    onValueChange={(value: string | null) => value && setFormData((prev) => ({ ...prev, protocol: value }))}
+                    onValueChange={(value: string | null) => {
+                      if (!value) {
+                        return
+                      }
+
+                      const nextSupportsPublicExposure = value === "http" || value === "https"
+                      setFormData((prev) => ({
+                        ...prev,
+                        protocol: value,
+                        exposed: nextSupportsPublicExposure ? prev.exposed : false,
+                        gateway_port: nextSupportsPublicExposure ? prev.gateway_port : undefined,
+                      }))
+                    }}
                     itemToStringLabel={(v) => protocolOptions.find((opt) => opt.value === v)?.label ?? v ?? ""}
                   >
                     <ComboboxInput />
@@ -387,27 +410,39 @@ export function GatewayEditor({
             {/* Public Access Checkbox */}
             <Field orientation="horizontal" className="flex items-center gap-2">
               <FieldContent>
-                <Tooltip>
-                  <TooltipTrigger
-                    tabIndex={-1}
-                    render={
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={formData.exposed}
-                          onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, exposed: !!checked }))}
-                          disabled={!gatewayAPIInstalled}
-                        />
-                        <label htmlFor="exposed" className={`cursor-pointer ${!gatewayAPIInstalled ? 'text-muted-foreground' : ''}`}>Enable public access</label>
-                      </div>
-                    }
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={supportsPublicExposure ? formData.exposed : false}
+                    onCheckedChange={(checked) => {
+                      if (!supportsPublicExposure) {
+                        return
+                      }
+                      setFormData((prev) => ({ ...prev, exposed: !!checked }))
+                    }}
+                    disabled={!gatewayAPIInstalled || !supportsPublicExposure}
                   />
-                  <TooltipContent side="top" align="start" className="max-w-64">
-                    {gatewayAPIInstalled
-                      ? <p className="text-xs">When enabled, creates routes to expose this service externally.</p>
-                      : <p className="text-xs">Gateway API is not installed on this cluster. Contact your administrator to install the gateway extension.</p>
-                    }
-                  </TooltipContent>
-                </Tooltip>
+                  <label
+                    htmlFor="exposed"
+                    className={`cursor-pointer ${!gatewayAPIInstalled || !supportsPublicExposure ? 'text-muted-foreground' : ''}`}
+                  >
+                    Enable public access
+                  </label>
+                  {!supportsPublicExposure && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        tabIndex={-1}
+                        render={
+                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
+                            <InfoIcon className="h-3.5 w-3.5" />
+                          </button>
+                        }
+                      />
+                      <TooltipContent side="top" align="start" className="max-w-64">
+                        <p className="text-xs">Public access is currently available only for HTTP/HTTPS gateways. TCP/UDP public exposure is not supported yet.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
               </FieldContent>
             </Field>
 

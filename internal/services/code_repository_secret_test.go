@@ -129,3 +129,32 @@ func TestUpdateCodeRepository_StoresEncryptedGitPassword(t *testing.T) {
 	assert.NotEqual(t, "next-secret", stored.GitPassword)
 	assert.True(t, strings.HasPrefix(stored.GitPassword, "enc:v1:"))
 }
+
+func TestGetCodeRepositoryMigratesLegacyPlaintextGitPassword(t *testing.T) {
+	setupCodeRepositoryServiceTestDB(t)
+	seedCodeRepositoryProject(t)
+
+	require.NoError(t, db.DB.Create(&entities.CodeRepository{
+		Base:        entities.Base{ID: "repo-legacy"},
+		ProjectID:   "project-1",
+		Name:        "legacy-repo",
+		Slug:        "legacy-repo",
+		GitRepoURL:  "https://example.com/demo.git",
+		GitUsername: "demo",
+		GitPassword: "legacy-plaintext-password",
+	}).Error)
+
+	repo, err := GetCodeRepository("repo-legacy")
+
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+	assert.True(t, strings.HasPrefix(repo.GitPassword, "enc:v1:"))
+
+	var stored entities.CodeRepository
+	require.NoError(t, db.DB.First(&stored, "id = ?", "repo-legacy").Error)
+	assert.True(t, strings.HasPrefix(stored.GitPassword, "enc:v1:"))
+
+	decrypted, err := secrets.DecryptString(stored.GitPassword)
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-plaintext-password", decrypted)
+}

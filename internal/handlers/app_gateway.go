@@ -179,14 +179,7 @@ func validateGatewayRequest(gateway any) error {
 			// Clear TCP/UDP fields
 			*gatewayPort = 0
 		} else {
-			// TCP/UDP requires gateway port
-			if *gatewayPort < 1 || *gatewayPort > 65535 {
-				return errors.New("gateway_port is required and must be between 1 and 65535 for TCP/UDP when exposed")
-			}
-			// Clear HTTP/HTTPS fields
-			*domain = ""
-			*path = ""
-			*certID = ""
+			return errors.New("public access is currently supported only for HTTP/HTTPS gateways")
 		}
 	} else {
 		// When not exposed, clear all routing fields

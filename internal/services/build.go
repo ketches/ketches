@@ -158,8 +158,8 @@ func DeployBuild(ctx context.Context, buildID string) (*entities.Build, error) {
 	if err := db.DB.First(&setting, "id = ?", build.BuildSettingID).Error; err != nil {
 		return nil, err
 	}
-	var registry entities.ContainerRegistry
-	if err := db.DB.First(&registry, "id = ?", setting.RegistryID).Error; err != nil {
+	registry, err := GetContainerRegistry(setting.RegistryID)
+	if err != nil {
 		return nil, err
 	}
 

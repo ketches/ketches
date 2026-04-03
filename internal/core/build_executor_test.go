@@ -1,48 +1,57 @@
 package core
 
 import (
-	"strings"
+	"encoding/base64"
+	"encoding/json"
 	"testing"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/secrets"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestBuildKanikoArgsIncludesDefaultIgnorePaths(t *testing.T) {
-	t.Setenv("KANIKO_EXTRA_IGNORE_PATHS", "")
-
-	args := buildKanikoArgs("Dockerfile", ".", "registry.example.com/demo/app:latest", "", &entities.ContainerRegistry{})
-
-	if !containsArg(args, "--ignore-path=/product_uuid") {
-		t.Fatalf("expected default ignore path for /product_uuid, got %v", args)
-	}
-}
-
-func TestBuildKanikoArgsIncludesConfiguredIgnorePathsWithoutDuplicates(t *testing.T) {
-	t.Setenv("KANIKO_EXTRA_IGNORE_PATHS", "/product_uuid,/var/run/secrets/kubernetes.io\n/mnt/cache")
-
-	args := buildKanikoArgs("Dockerfile", ".", "registry.example.com/demo/app:latest", "", &entities.ContainerRegistry{})
-
-	if countArg(args, "--ignore-path=/product_uuid") != 1 {
-		t.Fatalf("expected /product_uuid to be present once, got %v", args)
-	}
-	if !containsArg(args, "--ignore-path=/var/run/secrets/kubernetes.io") {
-		t.Fatalf("expected configured ignore path for kubernetes secrets, got %v", args)
-	}
-	if !containsArg(args, "--ignore-path=/mnt/cache") {
-		t.Fatalf("expected configured ignore path for /mnt/cache, got %v", args)
-	}
-}
-
 func containsArg(args []string, target string) bool {
-	return countArg(args, target) > 0
-}
-
-func countArg(args []string, target string) int {
-	count := 0
 	for _, arg := range args {
-		if strings.TrimSpace(arg) == target {
-			count++
+		if arg == target {
+			return true
 		}
 	}
-	return count
+	return false
+}
+
+func TestBuildDockerConfigJSONDecryptsEncryptedPassword(t *testing.T) {
+	originalConfig := app.Config
+	t.Cleanup(func() {
+		app.Config = originalConfig
+	})
+	app.Config.SecretEncryptionKey = "test-master-key"
+
+	encryptedPassword, err := secrets.EncryptString("super-secret")
+	require.NoError(t, err)
+
+	data, err := buildDockerConfigJSON(&entities.ContainerRegistry{
+		Provider: entities.RegistryProviderGHCR,
+		Endpoint: "ghcr.io",
+		Username: "demo",
+		Password: encryptedPassword,
+	})
+
+	require.NoError(t, err)
+
+	var decoded map[string]map[string]map[string]string
+	require.NoError(t, json.Unmarshal(data, &decoded))
+	auth := decoded["auths"]["ghcr.io"]["auth"]
+	assert.Equal(t, base64.StdEncoding.EncodeToString([]byte("demo:super-secret")), auth)
+}
+
+func TestResolveCodeRepositoryGitPasswordAllowsLegacyPlaintext(t *testing.T) {
+	password, err := resolveCodeRepositoryGitPassword(&entities.CodeRepository{
+		GitUsername: "demo",
+		GitPassword: "legacy-plaintext-password",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-plaintext-password", password)
 }

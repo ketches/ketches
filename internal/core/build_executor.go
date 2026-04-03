@@ -13,6 +13,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -81,7 +82,10 @@ func CreateBuildSecretsFromCodeRepo(
 	jobName := fmt.Sprintf("build-%s-%d", jobSlug, build.BuildNumber)
 	namespace := buildEnv.ClusterNamespace
 
-	dockerConfigJSON := buildDockerConfigJSON(registry)
+	dockerConfigJSON, err := buildDockerConfigJSON(registry)
+	if err != nil {
+		return err
+	}
 	registrySecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-build-registry", jobName),
@@ -182,7 +186,10 @@ func CreateBuildSecrets(
 	namespace := buildEnv.ClusterNamespace
 
 	// Create docker config secret for registry auth
-	dockerConfigJSON := buildDockerConfigJSON(registry)
+	dockerConfigJSON, err := buildDockerConfigJSON(registry)
+	if err != nil {
+		return err
+	}
 	registrySecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-build-registry", jobName),
@@ -498,13 +505,18 @@ func withDefaultPlatformBuildArgs(args []string) []string {
 	return args
 }
 
-func buildDockerConfigJSON(registry *entities.ContainerRegistry) []byte {
+func buildDockerConfigJSON(registry *entities.ContainerRegistry) ([]byte, error) {
 	endpoint := registry.Endpoint
 	if registry.Provider == entities.RegistryProviderDockerHub {
 		endpoint = "https://index.docker.io/v1/"
 	}
 
-	auth := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", registry.Username, registry.Password))
+	plaintextPassword, _, err := secrets.DecryptStringCompat(registry.Password)
+	if err != nil {
+		return nil, app.WrapError("decrypt registry password", err)
+	}
+
+	auth := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", registry.Username, plaintextPassword))
 
 	config := map[string]any{
 		"auths": map[string]any{
@@ -515,7 +527,7 @@ func buildDockerConfigJSON(registry *entities.ContainerRegistry) []byte {
 	}
 
 	data, _ := json.Marshal(config)
-	return data
+	return data, nil
 }
 
 func buildGitCloneCommand(repoURL, ref, username, password string) ([]string, []string) {

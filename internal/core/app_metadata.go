@@ -78,7 +78,7 @@ func (m *AppMetadata) BuildRegistrySecret() (*corev1.Secret, error) {
 		return nil, nil
 	}
 
-	plaintextRegistryPassword, err := secrets.DecryptString(m.AppContext.App.RegistryPassword)
+	plaintextRegistryPassword, _, err := secrets.DecryptStringCompat(m.AppContext.App.RegistryPassword)
 	if err != nil {
 		return nil, app.WrapErrorf(err, "decrypt registry password: %w", err)
 	}

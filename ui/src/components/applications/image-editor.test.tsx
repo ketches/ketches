@@ -1,4 +1,3 @@
-import "@testing-library/jest-dom/vitest"
 import { act, createContext, useContext } from "react"
 import ReactDOMClient from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -347,10 +346,19 @@ describe("ImageEditor", () => {
 		const { container, root } = await renderEditor(buildApp({
 			registry_username: "robot",
 			has_registry_password: true,
-		} as any))
+		}))
 
-		const clearBtn = Array.from(container.querySelectorAll("button")).find(b => b.textContent?.match(/clear password/i))
-		expect(clearBtn).toBeDefined()
+		const clearBtn = container.querySelector('button[aria-label="Clear password"]') as HTMLButtonElement | null
+		expect(clearBtn).not.toBeNull()
+		expect(clearBtn?.textContent).toBe("")
+
+		await clickElement(clearBtn as HTMLButtonElement)
+
+		expect(container.querySelector('button[aria-label="Clear password"]')).toBeNull()
+		const passwordInput = container.querySelector("#registry-password") as HTMLInputElement | null
+		expect(passwordInput).not.toBeNull()
+		expect(passwordInput?.readOnly).toBe(false)
+		expect(passwordInput?.value).toBe("")
 
 
     await act(async () => {

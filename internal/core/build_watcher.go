@@ -13,6 +13,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,6 +37,22 @@ type BuildWatcher struct {
 
 var GlobalBuildWatcher = &BuildWatcher{
 	watching: make(map[string]context.CancelFunc),
+}
+
+func migrateLegacyBuildWatcherRegistryPassword(registry *entities.ContainerRegistry) error {
+	encryptedPassword, migrated, err := secrets.EncryptStringIfNeeded(registry.Password)
+	if err != nil {
+		return err
+	}
+	if !migrated {
+		return nil
+	}
+
+	if err := db.DB.Model(&entities.ContainerRegistry{}).Where("id = ?", registry.ID).Update("password", encryptedPassword).Error; err != nil {
+		return err
+	}
+	registry.Password = encryptedPassword
+	return nil
 }
 
 // StartWatching begins monitoring a build job.
@@ -377,6 +394,10 @@ func handleAutoDeploy(build *entities.Build) {
 		slog.Error(fmt.Sprintf("Auto deploy: failed to get registry: %v", err))
 		return
 	}
+	if err := migrateLegacyBuildWatcherRegistryPassword(&registry); err != nil {
+		slog.Error(fmt.Sprintf("Auto deploy: failed to migrate registry password: %v", err))
+		return
+	}
 
 	// Find the BuildDeployment for this app-scoped build
 	var appBD entities.BuildDeployment
@@ -474,6 +495,11 @@ func handleCodeRepoBuildDeploy(build *entities.Build, bd *entities.BuildDeployme
 	if err := db.DB.First(&repoRegistry, "id = ?", setting.RegistryID).Error; err != nil {
 		slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get registry: %v", err))
 		markBuildDeploymentFailed(bd, "failed to get registry")
+		return
+	}
+	if err := migrateLegacyBuildWatcherRegistryPassword(&repoRegistry); err != nil {
+		slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to migrate registry password: %v", err))
+		markBuildDeploymentFailed(bd, "failed to migrate registry password")
 		return
 	}
 

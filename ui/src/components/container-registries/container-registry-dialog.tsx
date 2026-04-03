@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Link2, Loader2 } from "lucide-react"
+import { Link2, Loader2, X } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -23,7 +23,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 
 import { Textarea } from "@/components/ui/textarea"
 import type { AxiosError } from "axios"
@@ -274,12 +274,26 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
                 <FieldLabel htmlFor="registry-password">Password</FieldLabel>
                 <FieldContent>
                   {registry?.has_password && !isClearingPassword ? (
-                    <div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
-                      <span className="text-sm text-muted-foreground">********</span>
-                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setIsClearingPassword(true)}>
-                        Clear Password
-                      </Button>
-                    </div>
+                    <InputGroup>
+                      <InputGroupInput
+                        id="registry-password"
+                        type="password"
+                        autoComplete="new-password"
+                        value={form.password || "********"}
+                        readOnly
+                      />
+                      <InputGroupAddon align="inline-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Clear password"
+                          onClick={() => setIsClearingPassword(true)}
+                        >
+                          <X />
+                        </Button>
+                      </InputGroupAddon>
+                    </InputGroup>
                   ) : (
                     <Input
                       id="registry-password"

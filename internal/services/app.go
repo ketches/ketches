@@ -319,6 +319,21 @@ func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 	return core.ApplyApp(ctx, appCtx)
 }
 
+var applyAppFn = ApplyApp
+
+func migrateLegacyRegistryPassword(application *entities.App) error {
+	encryptedPassword, migrated, err := secrets.EncryptStringIfNeeded(application.RegistryPassword)
+	if err != nil {
+		return app.WrapErrorf(err, "encrypt legacy registry password: %w", err)
+	}
+	if !migrated {
+		return nil
+	}
+
+	application.RegistryPassword = encryptedPassword
+	return nil
+}
+
 func UpdateAppBasic(ctx context.Context, appID string, req *models.UpdateBasicInfoRequest) (*models.AppContext, error) {
 	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
@@ -352,7 +367,7 @@ func ListAppImageTags(ctx context.Context, appID string) (*models.AppImageTagsRe
 		return nil, app.WrapErrorf(err, "failed to parse image reference: %w", err)
 	}
 
-	plaintextRegistryPassword, err := secrets.DecryptString(appCtx.App.RegistryPassword)
+	plaintextRegistryPassword, _, err := secrets.DecryptStringCompat(appCtx.App.RegistryPassword)
 	if err != nil {
 		return nil, app.WrapErrorf(err, "failed to decrypt registry password: %w", err)
 	}
@@ -385,6 +400,9 @@ func UpdateAppImage(ctx context.Context, appID string, req *models.UpdateAppImag
 		return nil, err
 	}
 
+	appBefore := appCtx.App
+	imageChanged := appBefore.ContainerImage != req.ContainerImage
+
 	appCtx.App.ContainerImage = req.ContainerImage
 	appCtx.App.ImagePullPolicy = req.ImagePullPolicy
 	appCtx.App.RegistryUsername = req.RegistryUsername
@@ -398,13 +416,22 @@ func UpdateAppImage(ctx context.Context, appID string, req *models.UpdateAppImag
 		}
 		appCtx.App.RegistryPassword = encryptedRegistryPassword
 	}
+	if err := migrateLegacyRegistryPassword(&appCtx.App); err != nil {
+		return nil, err
+	}
 
 	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
 
-	if err := ApplyApp(ctx, appCtx); err != nil {
+	if err := applyAppFn(ctx, appCtx); err != nil {
 		return nil, err
+	}
+
+	if imageChanged {
+		if err := RecordDeployment(&appBefore, &appCtx.App, "manual", "system", "Container image updated", nil); err != nil {
+			return nil, err
+		}
 	}
 
 	return appCtx, nil
@@ -1024,23 +1051,9 @@ func executeRedeployAction(ctx context.Context, appCtx *models.AppContext) (*mod
 }
 
 func executeRollbackAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: Implement rollback logic, such as using Deployment's revision history or StatefulSet's update strategy to rollback to previous version
-	switch appCtx.App.AppType {
-	case app.AppTypeDeployment:
-		if _, err := client.AppsV1().Deployments(appCtx.EnvContext.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{}); err != nil {
-			return nil, err
-		}
-	case app.AppTypeStatefulSet:
-		if _, err := client.AppsV1().StatefulSets(appCtx.EnvContext.Env.ClusterNamespace).Get(ctx, appCtx.App.Slug, metav1.GetOptions{}); err != nil {
-			return nil, err
-		}
-	}
-
-	return appCtx, nil
+	_ = ctx
+	_ = appCtx
+	return nil, errors.New("rollback requires a deployment history target")
 }
 
 func executeDebugAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
@@ -1412,7 +1425,7 @@ func GetAppTopologyResourceYaml(ctx context.Context, appID string, nodeID string
 // Errors are logged and silently skipped to avoid blocking app creation.
 
 func seedAppFromImageMetadata(ctx context.Context, application *entities.App) error {
-	plaintextRegistryPassword, err := secrets.DecryptString(application.RegistryPassword)
+	plaintextRegistryPassword, _, err := secrets.DecryptStringCompat(application.RegistryPassword)
 	if err != nil {
 		return app.WrapErrorf(err, "decrypt registry password: %w", err)
 	}

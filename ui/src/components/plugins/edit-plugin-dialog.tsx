@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { HardDriveDownload, Key, Layers2, Zap } from "lucide-react"
+import { HardDriveDownload, Key, Layers2, X, Zap } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
@@ -355,12 +355,26 @@ export function EditPluginDialog({ plugin, projectId, open, onOpenChange }: Edit
 							<FieldLabel htmlFor="edit-registry_password">Registry Password</FieldLabel>
 							<FieldContent>
 							{plugin?.has_registry_password && !isClearingRegistryPassword ? (
-									<div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
-										<span className="text-sm text-muted-foreground">********</span>
-										<Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setIsClearingRegistryPassword(true)}>
-											Clear Password
-										</Button>
-									</div>
+									<InputGroup>
+										<InputGroupInput
+											id="edit-registry_password"
+											type="password"
+											autoComplete="new-password"
+											value={formData.registry_password || "********"}
+											readOnly
+										/>
+										<InputGroupAddon align="inline-end">
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon-sm"
+												aria-label="Clear password"
+												onClick={() => setIsClearingRegistryPassword(true)}
+											>
+												<X />
+											</Button>
+										</InputGroupAddon>
+									</InputGroup>
 								) : (
 									<Input
 										id="edit-registry_password"

@@ -134,13 +134,13 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
             <History className="h-4 w-4" />
             Deployment History
           </CardTitle>
-          <CardDescription>Track all deployment changes and rollback when needed</CardDescription>
+          <CardDescription>Track image version changes and rollback to a previous image when needed</CardDescription>
         </CardHeader>
         <CardContent>
           {(histories || []).length === 0 ? (
             <EmptyState
               title="No deployment history yet"
-              description="Deployment history will appear here when you update the application"
+              description="Deployment history will appear here when you update the application image"
               icon={History}
             />
           ) : (
@@ -162,8 +162,8 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
           <DialogHeader>
             <DialogTitle>Rollback Deployment</DialogTitle>
             <DialogDescription>
-              Are you sure you want to rollback to this deployment? This will restore the previous image and
-              configuration.
+              Are you sure you want to rollback to this deployment? This will restore only the previous image
+              version. Other configuration changes are not rolled back.
             </DialogDescription>
           </DialogHeader>
           {selectedHistory && (
@@ -171,18 +171,6 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Image:</span>
                 <span className="font-mono text-xs">{selectedHistory.image_before}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Replicas:</span>
-                <span>{selectedHistory.replicas_before}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">CPU Request:</span>
-                <span>{selectedHistory.request_cpu_before}m</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Memory Request:</span>
-                <span>{selectedHistory.request_memory_before}Mi</span>
               </div>
             </div>
           )}

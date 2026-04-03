@@ -1,5 +1,5 @@
-import * as React from "react"
 import { Bot, Settings } from "lucide-react"
+import * as React from "react"
 
 import {
   Sidebar,

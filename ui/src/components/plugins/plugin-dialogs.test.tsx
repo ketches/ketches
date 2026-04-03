@@ -143,6 +143,7 @@ type PluginRecord = {
   image: string
   image_pull_policy?: string
   registry_username?: string
+  has_registry_password?: boolean
   command?: string
   plugin_type?: "init" | "sidecar"
   env_vars?: Array<{ key: string, value: string }>
@@ -381,6 +382,33 @@ describe("Plugin dialogs", () => {
     expect(mockMutate).toHaveBeenCalledWith(expect.objectContaining({
       registry_username: "",
     }))
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows a clear password icon on edit and restores an editable password input after clicking it", async () => {
+    const { container, root } = await renderEditDialog(buildPlugin({
+      registry_username: "robot",
+      has_registry_password: true,
+    }))
+
+    const clearButton = container.querySelector('button[aria-label="Clear password"]') as HTMLButtonElement | null
+    expect(clearButton).not.toBeNull()
+    expect(clearButton?.textContent).toBe("")
+
+    const passwordInputBefore = container.querySelector("#edit-registry_password") as HTMLInputElement | null
+    expect(passwordInputBefore).not.toBeNull()
+    expect(passwordInputBefore?.readOnly).toBe(true)
+
+    await clickElement(clearButton as HTMLButtonElement)
+
+    const passwordInputAfter = container.querySelector("#edit-registry_password") as HTMLInputElement | null
+    expect(passwordInputAfter).not.toBeNull()
+    expect(passwordInputAfter?.readOnly).toBe(false)
+    expect(passwordInputAfter?.disabled).toBe(false)
+    expect(container.querySelector('button[aria-label="Clear password"]')).toBeNull()
 
     await act(async () => {
       root.unmount()

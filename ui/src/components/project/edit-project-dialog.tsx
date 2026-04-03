@@ -107,7 +107,7 @@ export function EditProjectDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-3xl w-full gap-0 overflow-hidden p-0" showCloseButton>
-        <form onSubmit={handleSubmit} className="flex h-full flex-col">
+        <form onSubmit={handleSubmit} className="flex flex-col">
           <ProjectSettingsShell activeSection={activeSection} onSectionChange={setActiveSection}>
             <div className="flex flex-col overflow-hidden">
               <DialogHeader className="border-b px-6 py-4">

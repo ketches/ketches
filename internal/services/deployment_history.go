@@ -10,6 +10,8 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
+var applyAppContextFn = core.ApplyApp
+
 func ListDeploymentHistory(appID string, page, pageSize int) (int64, []entities.DeploymentHistory, error) {
 	var total int64
 	var histories []entities.DeploymentHistory
@@ -77,21 +79,16 @@ func RollbackDeployment(appID, historyID string) (*entities.App, error) {
 	}
 
 	appCtx.App.ContainerImage = history.ImageBefore
-	appCtx.App.Replicas = history.ReplicasBefore
-	appCtx.App.RequestCPU = history.RequestCPUBefore
-	appCtx.App.RequestMemory = history.RequestMemoryBefore
-	appCtx.App.LimitCPU = history.LimitCPUBefore
-	appCtx.App.LimitMemory = history.LimitMemoryBefore
 
 	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
 
-	if err := core.ApplyApp(context.Background(), appCtx); err != nil {
+	if err := applyAppContextFn(context.Background(), appCtx); err != nil {
 		return nil, err
 	}
 
-	if err := RecordDeployment(appBefore, &appCtx.App, "rollback", "system", "Rollback to previous deployment", nil); err != nil {
+	if err := RecordDeployment(appBefore, &appCtx.App, "rollback", "system", "Rollback to previous image version only", nil); err != nil {
 		return nil, err
 	}
 

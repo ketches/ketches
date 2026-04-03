@@ -223,7 +223,7 @@ func resolveCodeRepositoryGitPassword(repo *entities.CodeRepository) (string, er
 		return "", nil
 	}
 
-	plaintextGitPassword, err := secrets.DecryptString(repo.GitPassword)
+	plaintextGitPassword, _, err := secrets.DecryptStringCompat(repo.GitPassword)
 	if err != nil {
 		return "", app.WrapError("decrypt git password", err)
 	}

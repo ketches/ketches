@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { HardDriveDownload, Key, Loader2, RefreshCw } from "lucide-react"
+import { HardDriveDownload, Key, Loader2, RefreshCw, X } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { getImagePullPolicyLabel, IMAGE_PULL_POLICY_OPTIONS } from "@/lib/image-pull-policy-options"
 import type { AxiosError } from "axios"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface ImageEditorProps {
@@ -50,18 +51,18 @@ export function ImageEditor({
     registry_password: "",
   })
 
-	React.useEffect(() => {
-		if (app && open) {
-			setFormData({
-				container_image: app.container_image,
-				image_pull_policy: app.image_pull_policy || "IfNotPresent",
-				registry_username: app.registry_username || "",
-				registry_password: "",
-			})
-			setShowCredentials(Boolean(app.registry_username || app.has_registry_password))
-			setShowPullPolicy(Boolean(app.image_pull_policy && app.image_pull_policy !== "IfNotPresent"))
-			setImageOptionsOpen(false)
-			setIsClearingPassword(false)
+  React.useEffect(() => {
+    if (app && open) {
+      setFormData({
+        container_image: app.container_image,
+        image_pull_policy: app.image_pull_policy || "IfNotPresent",
+        registry_username: app.registry_username || "",
+        registry_password: "",
+      })
+      setShowCredentials(Boolean(app.registry_username || app.has_registry_password))
+      setShowPullPolicy(Boolean(app.image_pull_policy && app.image_pull_policy !== "IfNotPresent"))
+      setImageOptionsOpen(false)
+      setIsClearingPassword(false)
     }
   }, [app, open])
 
@@ -332,22 +333,37 @@ export function ImageEditor({
                 <Field>
                   <FieldLabel htmlFor="registry-password">Registry Password</FieldLabel>
                   <FieldContent>
-					{app?.has_registry_password && !isClearingPassword ? (
-                      <div className="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
-                        <span className="text-sm text-muted-foreground">********</span>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setIsClearingPassword(true)}>
-                          Clear Password
-                        </Button>
-                      </div>
+                    {app?.has_registry_password && !isClearingPassword ? (
+                      <InputGroup>
+                        <InputGroupInput id="registry-password"
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder="Registry password"
+                          value={formData.registry_password}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))} />
+                        <InputGroupAddon align="inline-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Clear password"
+                            aria-pressed={showPullPolicy}
+                            onClick={() => setIsClearingPassword(true)}
+                            className="ml-auto"
+                          >
+                            <X />
+                          </Button>
+                        </InputGroupAddon>
+                      </InputGroup>
                     ) : (
                       <Input
-                      id="registry-password"
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder="Registry password"
-                      value={formData.registry_password}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))}
-                    />
+                        id="registry-password"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Registry password"
+                        value={formData.registry_password}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, registry_password: e.target.value }))}
+                      />
                     )}
                   </FieldContent>
                 </Field>
