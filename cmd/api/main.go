@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -29,7 +29,7 @@ func init() {
 
 func main() {
 	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
-		log.Fatalf("failed to load .env file: %v", err)
+		fatal("failed to load .env file", err)
 	}
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -37,23 +37,23 @@ func main() {
 
 	app.InitConfig()
 	if err := app.ValidateRuntimeConfig(); err != nil {
-		log.Fatalf("invalid runtime configuration: %v", err)
+		fatal("invalid runtime configuration", err)
 	}
 
 	if err := db.InitDB(); err != nil {
-		log.Fatalf("failed to initialize database: %v", err)
+		fatal("failed to initialize database", err)
 	}
 
 	if err := services.EnsureBootstrapAdmin(); err != nil {
-		log.Fatalf("failed to ensure bootstrap admin: %v", err)
+		fatal("failed to ensure bootstrap admin", err)
 	}
 
 	if err := services.EnsureBuiltinExtensions(); err != nil {
-		log.Fatalf("failed to ensure builtin extensions: %v", err)
+		fatal("failed to ensure builtin extensions", err)
 	}
 
 	if err := services.InitClusters(); err != nil {
-		log.Fatalf("failed to initialize clusters: %v", err)
+		fatal("failed to initialize clusters", err)
 	}
 	nodeTerminalCleanupDone := services.StartClusterNodeTerminalCleanupLoop(rootCtx)
 
@@ -62,7 +62,7 @@ func main() {
 	core.GlobalBuildWatcher.RecoverActiveBuilds()
 	services.GlobalBuilderWorker.SetParentContext(rootCtx)
 	if err := services.GlobalBuilderWorker.RecoverActiveRuns(rootCtx); err != nil {
-		log.Fatalf("failed to recover builder worker state: %v", err)
+		fatal("failed to recover builder worker state", err)
 	}
 	services.GlobalBuilderWorker.Start()
 	go func() {
@@ -70,7 +70,7 @@ func main() {
 		defer cancel()
 
 		if err := core.RecoverTerminalBuildLogArchives(recoveryCtx); err != nil && recoveryCtx.Err() == nil {
-			log.Printf("failed to recover terminal build log archives: %v", err)
+			slog.Error("failed to recover terminal build log archives", "error", err)
 		}
 	}()
 	go core.StartBuildLogMaintenance(rootCtx)
@@ -78,10 +78,10 @@ func main() {
 	r := gin.Default()
 	routes.SetupRoutes(r)
 
-	log.Printf("server starting on :%s", app.Config.Port)
+	slog.Info("server starting", "port", app.Config.Port)
 	listener, err := net.Listen("tcp", ":"+app.Config.Port)
 	if err != nil {
-		log.Fatalf("failed to listen on :%s: %v", app.Config.Port, err)
+		fatal(fmt.Sprintf("failed to listen on :%s", app.Config.Port), err)
 	}
 
 	srv := &http.Server{
@@ -90,7 +90,7 @@ func main() {
 	}
 
 	if err := runServer(rootCtx, srv, listener, serverShutdownTimeout); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+		fatal("failed to start server", err)
 	}
 
 	// Restore default signal handling so a second interrupt can force-exit if shutdown stalls.
@@ -102,8 +102,13 @@ func main() {
 	core.GlobalBuildWatcher.StopAll()
 	services.GlobalBuilderWorker.Stop()
 	if err := waitForGracefulShutdown(shutdownCtx, nodeTerminalCleanupDone, core.GlobalBuildWatcher.Wait, services.GlobalBuilderWorker.Wait); err != nil {
-		log.Printf("graceful shutdown incomplete: %v", err)
+		slog.Error("graceful shutdown incomplete", "error", err)
 	}
+}
+
+func fatal(message string, err error) {
+	slog.Error(message, "error", err)
+	os.Exit(1)
 }
 
 func runServer(ctx context.Context, srv *http.Server, listener net.Listener, shutdownTimeout time.Duration) error {
@@ -144,7 +149,7 @@ func waitForGracefulShutdown(
 		select {
 		case <-nodeTerminalCleanupDone:
 		case <-ctx.Done():
-			return fmt.Errorf("node terminal cleanup loop did not stop before timeout: %w", ctx.Err())
+			return app.WrapError("node terminal cleanup loop did not stop before timeout", ctx.Err())
 		}
 	}
 
@@ -158,7 +163,7 @@ func waitForGracefulShutdown(
 		select {
 		case <-done:
 		case <-ctx.Done():
-			return fmt.Errorf("build watchers did not stop before timeout: %w", ctx.Err())
+			return app.WrapError("build watchers did not stop before timeout", ctx.Err())
 		}
 	}
 
@@ -172,7 +177,7 @@ func waitForGracefulShutdown(
 		select {
 		case <-done:
 		case <-ctx.Done():
-			return fmt.Errorf("builder worker did not stop before timeout: %w", ctx.Err())
+			return app.WrapError("builder worker did not stop before timeout", ctx.Err())
 		}
 	}
 

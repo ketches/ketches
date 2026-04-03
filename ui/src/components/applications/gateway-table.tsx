@@ -20,8 +20,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useProjectRole } from "@/hooks/useProjectRole"
-import { setAuthCookie } from "@/lib/auth-session"
-import { useAuthStore } from "@/stores/auth"
 import { ColorBadge } from "../shared/color-badge"
 
 interface GatewayConfigProps {
@@ -32,7 +30,6 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
   const isViewer = projectRole === 'viewer'
-  const accessToken = useAuthStore((state) => state.accessToken)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingGateway, setEditingGateway] = React.useState<GatewaySpec | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -300,9 +297,6 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => {
-                        // Set a short-lived cookie so the backend can authenticate the
-                        // proxy request without exposing the JWT in the browser address bar.
-                        setAuthCookie(accessToken)
                         window.open(
                           `/forward/${row.original.id}/`,
                           '_blank'

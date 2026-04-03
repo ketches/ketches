@@ -20,11 +20,24 @@ type AppConfig struct {
 	DBPassword                        string
 	DBSSLMode                         string
 	DBAutoMigrate                     bool
+	DBMaxIdleConns                    int
+	DBMaxOpenConns                    int
+	DBConnMaxLifetimeMinutes          int
+	DBConnMaxIdleTimeMinutes          int
 	JWTSecret                         string
+	JWTIssuer                         string
+	JWTAudience                       string
+	AccessTokenTTLMinutes             int
+	RefreshTokenTTLHours              int
 	SecretEncryptionKey               string
 	BootstrapAdminUsername            string
 	BootstrapAdminPassword            string
 	CORSAllowedOrigins                string
+	SMTPHost                          string
+	SMTPPort                          int
+	SMTPUsername                      string
+	SMTPPassword                      string
+	SMTPFrom                          string
 	BuildLogBaseDir                   string
 	BuildLogRetentionDays             int
 	BuilderSnapshotBaseDir            string
@@ -74,11 +87,24 @@ func InitConfig() {
 		DBPassword:                        dbPassword,
 		DBSSLMode:                         dbSSLMode,
 		DBAutoMigrate:                     dbAutoMigrate,
+		DBMaxIdleConns:                    getEnvInt("DB_MAX_IDLE_CONNS", 10),
+		DBMaxOpenConns:                    getEnvInt("DB_MAX_OPEN_CONNS", 50),
+		DBConnMaxLifetimeMinutes:          getEnvInt("DB_CONN_MAX_LIFETIME_MINUTES", 60),
+		DBConnMaxIdleTimeMinutes:          getEnvInt("DB_CONN_MAX_IDLE_TIME_MINUTES", 30),
 		JWTSecret:                         strings.TrimSpace(getEnv("JWT_SECRET", "")),
+		JWTIssuer:                         fallbackString(getEnv("JWT_ISSUER", ""), "ketches"),
+		JWTAudience:                       fallbackString(getEnv("JWT_AUDIENCE", ""), "ketches-ui"),
+		AccessTokenTTLMinutes:             getEnvInt("ACCESS_TOKEN_TTL_MINUTES", 15),
+		RefreshTokenTTLHours:              getEnvInt("REFRESH_TOKEN_TTL_HOURS", 24*7),
 		SecretEncryptionKey:               strings.TrimSpace(getEnv("SECRET_ENCRYPTION_KEY", "")),
 		BootstrapAdminUsername:            strings.TrimSpace(getEnv("BOOTSTRAP_ADMIN_USERNAME", "")),
 		BootstrapAdminPassword:            getEnv("BOOTSTRAP_ADMIN_PASSWORD", ""),
 		CORSAllowedOrigins:                getEnv("CORS_ALLOWED_ORIGINS", ""),
+		SMTPHost:                          strings.TrimSpace(getEnv("SMTP_HOST", "")),
+		SMTPPort:                          getEnvInt("SMTP_PORT", 587),
+		SMTPUsername:                      strings.TrimSpace(getEnv("SMTP_USERNAME", "")),
+		SMTPPassword:                      getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:                          strings.TrimSpace(getEnv("SMTP_FROM", "")),
 		BuildLogBaseDir:                   fallbackString(getEnv("BUILD_LOG_BASE_DIR", ""), "data/build-logs"),
 		BuildLogRetentionDays:             getEnvInt("BUILD_LOG_RETENTION_DAYS", 15),
 		BuilderSnapshotBaseDir:            fallbackString(getEnv("BUILDER_SNAPSHOT_BASE_DIR", ""), "data/builder-previews"),
@@ -114,6 +140,24 @@ func ValidateRuntimeConfig() error {
 	}
 	if hasBootstrapPassword && len(strings.TrimSpace(Config.BootstrapAdminPassword)) < 12 {
 		return ErrBootstrapAdminPasswordTooShort
+	}
+	if Config.AccessTokenTTLMinutes < 1 {
+		Config.AccessTokenTTLMinutes = 15
+	}
+	if Config.RefreshTokenTTLHours < 1 {
+		Config.RefreshTokenTTLHours = 24 * 7
+	}
+	if Config.DBMaxIdleConns < 1 {
+		Config.DBMaxIdleConns = 10
+	}
+	if Config.DBMaxOpenConns < 1 {
+		Config.DBMaxOpenConns = 50
+	}
+	if Config.DBConnMaxLifetimeMinutes < 1 {
+		Config.DBConnMaxLifetimeMinutes = 60
+	}
+	if Config.DBConnMaxIdleTimeMinutes < 1 {
+		Config.DBConnMaxIdleTimeMinutes = 30
 	}
 
 	return nil

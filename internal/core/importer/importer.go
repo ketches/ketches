@@ -5,16 +5,15 @@ import (
 	"io"
 	"strings"
 
+	appcore "github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/models"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/api/resource"
+	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
-
-
 
 // ImportConverter defines the interface for converting different formats to AppMetadata.
 type ImportConverter interface {
@@ -29,7 +28,7 @@ type DockerComposeConverter struct{}
 func (c *DockerComposeConverter) Parse(content string) ([]models.AppMetadata, error) {
 	var compose dockerCompose
 	if err := yaml.Unmarshal([]byte(content), &compose); err != nil {
-		return nil, fmt.Errorf("failed to parse docker compose: %w", err)
+		return nil, appcore.WrapErrorf(err, "failed to parse docker compose: %w", err)
 	}
 
 	var apps []models.AppMetadata
@@ -88,7 +87,7 @@ func (c *DockerComposeConverter) Parse(content string) ([]models.AppMetadata, er
 // Validate validates the parsed metadata.
 func (c *DockerComposeConverter) Validate(appMetadatas []models.AppMetadata) error {
 	if len(appMetadatas) == 0 {
-		return fmt.Errorf("no apps found in metadata")
+		return appcore.NewErrorf("no apps found in metadata")
 	}
 	return nil
 }
@@ -98,16 +97,16 @@ type dockerCompose struct {
 }
 
 type dockerService struct {
-	Image       string            `json:"image"`
-	Command     interface{}       `json:"command,omitempty"`
-	Ports       []string          `json:"ports,omitempty"`
-	Environment interface{}       `json:"environment,omitempty"`
-	Volumes     []string          `json:"volumes,omitempty"`
-	Deploy      *dockerDeploy     `json:"deploy,omitempty"`
+	Image       string        `json:"image"`
+	Command     interface{}   `json:"command,omitempty"`
+	Ports       []string      `json:"ports,omitempty"`
+	Environment interface{}   `json:"environment,omitempty"`
+	Volumes     []string      `json:"volumes,omitempty"`
+	Deploy      *dockerDeploy `json:"deploy,omitempty"`
 }
 
 type dockerDeploy struct {
-	Replicas int              `json:"replicas,omitempty"`
+	Replicas  int              `json:"replicas,omitempty"`
 	Resources *dockerResources `json:"resources,omitempty"`
 }
 
@@ -115,7 +114,6 @@ type dockerResources struct {
 	Limits       map[string]string `json:"limits,omitempty"`
 	Reservations map[string]string `json:"reservations,omitempty"`
 }
-
 
 // K8sManifestConverter parses Kubernetes Manifest YAML.
 type K8sManifestConverter struct{}
@@ -132,7 +130,7 @@ func (c *K8sManifestConverter) Parse(content string) ([]models.AppMetadata, erro
 			if err == io.EOF {
 				break
 			}
-			return nil, fmt.Errorf("failed to decode yaml: %w", err)
+			return nil, appcore.WrapErrorf(err, "failed to decode yaml: %w", err)
 		}
 
 		kind, ok := raw["kind"].(string)
@@ -153,7 +151,7 @@ func (c *K8sManifestConverter) Parse(content string) ([]models.AppMetadata, erro
 		case "Deployment":
 			var deploy appsv1.Deployment
 			if err := yaml.Unmarshal(objBytes, &deploy); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal deployment: %w", err)
+				return nil, appcore.WrapErrorf(err, "failed to unmarshal deployment: %w", err)
 			}
 			metaName = deploy.Name
 			podSpec = deploy.Spec.Template.Spec
@@ -166,7 +164,7 @@ func (c *K8sManifestConverter) Parse(content string) ([]models.AppMetadata, erro
 		case "StatefulSet":
 			var sts appsv1.StatefulSet
 			if err := yaml.Unmarshal(objBytes, &sts); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal statefulset: %w", err)
+				return nil, appcore.WrapErrorf(err, "failed to unmarshal statefulset: %w", err)
 			}
 			metaName = sts.Name
 			podSpec = sts.Spec.Template.Spec
@@ -247,11 +245,10 @@ func (c *K8sManifestConverter) Parse(content string) ([]models.AppMetadata, erro
 // Validate validates the parsed metadata.
 func (c *K8sManifestConverter) Validate(appMetadatas []models.AppMetadata) error {
 	if len(appMetadatas) == 0 {
-		return fmt.Errorf("no apps found in metadata")
+		return appcore.NewErrorf("no apps found in metadata")
 	}
 	return nil
 }
-
 
 // KetchesMetadataConverter parses Ketches metadata JSON/YAML.
 type KetchesMetadataConverter struct{}
@@ -262,7 +259,7 @@ func (c *KetchesMetadataConverter) Parse(content string) ([]models.AppMetadata, 
 
 	// Try parsing as JSON first, then YAML (yaml.Unmarshal handles both actually, but let's be safe)
 	if err := yaml.Unmarshal([]byte(content), &file); err != nil {
-		return nil, fmt.Errorf("failed to parse content: %w", err)
+		return nil, appcore.WrapErrorf(err, "failed to parse content: %w", err)
 	}
 
 	return file.Apps, nil
@@ -271,7 +268,7 @@ func (c *KetchesMetadataConverter) Parse(content string) ([]models.AppMetadata, 
 // Validate validates the parsed metadata.
 func (c *KetchesMetadataConverter) Validate(appMetadatas []models.AppMetadata) error {
 	if len(appMetadatas) == 0 {
-		return fmt.Errorf("no apps found in metadata")
+		return appcore.NewErrorf("no apps found in metadata")
 	}
 	return nil
 }

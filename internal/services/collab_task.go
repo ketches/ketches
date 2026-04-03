@@ -1,9 +1,9 @@
 package services
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -66,10 +66,10 @@ func CreateTask(projectID, userID string, req *models.CreateTaskRequest) (*entit
 	if req.ParentTaskID != "" {
 		parent, err := GetTask(projectID, req.ParentTaskID)
 		if err != nil {
-			return nil, fmt.Errorf("parent task not found: %w", err)
+			return nil, app.WrapErrorf(err, "parent task not found: %w", err)
 		}
 		if parent.Depth >= entities.MaxCollabDepth {
-			return nil, fmt.Errorf("maximum nesting depth (%d) exceeded", entities.MaxCollabDepth)
+			return nil, app.NewErrorf("maximum nesting depth (%d) exceeded", entities.MaxCollabDepth)
 		}
 		depth = parent.Depth + 1
 	}
@@ -152,7 +152,7 @@ func TransitionTask(projectID, taskID, userID string, req *models.TaskTransition
 
 	targets, ok := allowedTaskTransitions[task.Status]
 	if !ok {
-		return nil, fmt.Errorf("no transitions allowed from status %q", task.Status)
+		return nil, app.NewErrorf("no transitions allowed from status %q", task.Status)
 	}
 
 	allowed := false
@@ -163,7 +163,7 @@ func TransitionTask(projectID, taskID, userID string, req *models.TaskTransition
 		}
 	}
 	if !allowed {
-		return nil, fmt.Errorf("transition from %q to %q is not allowed", task.Status, req.Status)
+		return nil, app.NewErrorf("transition from %q to %q is not allowed", task.Status, req.Status)
 	}
 
 	task.Status = req.Status

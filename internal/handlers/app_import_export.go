@@ -1,14 +1,15 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 
 	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
-	"github.com/ketches/ketches/internal/services"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core/exporter"
+	"github.com/ketches/ketches/internal/services"
 )
 
 type ImportRequest struct {
@@ -32,7 +33,7 @@ func ImportApps(c *gin.Context) {
 	case "dockercompose", "kubernetes", "ketches":
 		// valid
 	default:
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("invalid type: %s", req.Type))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("invalid type: %s", req.Type))
 		return
 	}
 
@@ -46,7 +47,7 @@ func ImportApps(c *gin.Context) {
 	case "rename", "ask", "error":
 		// valid
 	default:
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("invalid conflict_strategy: %s", req.ConflictStrategy))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("invalid conflict_strategy: %s", req.ConflictStrategy))
 		return
 	}
 
@@ -59,14 +60,13 @@ func ImportApps(c *gin.Context) {
 	api.Success(c, result)
 }
 
-
 // ExportApps handles single application export
 func ExportApps(c *gin.Context) {
 	appID := c.Param("appID")
 	format := c.Query("format")
 
 	if format == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("format parameter is required"))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("format parameter is required"))
 		return
 	}
 
@@ -94,7 +94,6 @@ func respondWithExport(c *gin.Context, format exporter.ExportFormat, content str
 	}
 }
 
-
 // ExportEnvApps handles environment applications export
 func ExportEnvApps(c *gin.Context) {
 	envID := c.Param("envID")
@@ -102,7 +101,7 @@ func ExportEnvApps(c *gin.Context) {
 	appIDsStr := c.Query("app_ids")
 
 	if format == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("format parameter is required"))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("format parameter is required"))
 		return
 	}
 

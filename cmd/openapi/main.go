@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -44,6 +46,5 @@ func main() {
 	if err := os.WriteFile(filepath.Join("openapi", "openapi.yaml"), yamlBytes, 0o644); err != nil {
 		log.Fatalf("failed to write openapi.yaml: %v", err)
 	}
-
-	log.Printf("openapi docs generated: %s, %s", filepath.Join("openapi", "openapi.json"), filepath.Join("openapi", "openapi.yaml"))
+	slog.Info(fmt.Sprintf("openapi docs generated: %s, %s", filepath.Join("openapi", "openapi.json"), filepath.Join("openapi", "openapi.yaml")))
 }

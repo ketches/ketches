@@ -30,12 +30,15 @@ func setupV1Routes(r *gin.Engine) {
 
 		users := v1.Group("/users")
 		{
+			users.GET("/sign-up/config", handlers.GetSignUpConfig)
+			users.POST("/sign-up/verification-code", handlers.RequestSignUpVerificationCode)
 			users.POST("/sign-up", handlers.SignUp)
 			users.POST("/sign-in", handlers.SignIn)
+			users.POST("/refresh-token", middlewares.CSRF(), handlers.RefreshToken)
 		}
 
 		authorized := v1.Group("")
-		authorized.Use(middlewares.Auth())
+		authorized.Use(middlewares.Auth(), middlewares.CSRF())
 		{
 			authorized.GET("/activities", handlers.ListActivities)
 			authorized.GET("/operation-logs", middlewares.AdminOnly(), handlers.ListOperationLogs)
@@ -49,6 +52,8 @@ func setupV1Routes(r *gin.Engine) {
 			authorized.POST("/platform-update/rollout", middlewares.AdminOnly(), handlers.TriggerPlatformRollout)
 			authorized.GET("/platform-settings/branding", middlewares.AdminOnly(), handlers.GetPlatformBranding)
 			authorized.PUT("/platform-settings/branding", middlewares.AdminOnly(), handlers.UpdatePlatformBranding)
+			authorized.GET("/platform-settings/public-sign-up", middlewares.AdminOnly(), handlers.GetPublicSignUpSettings)
+			authorized.PUT("/platform-settings/public-sign-up", middlewares.AdminOnly(), handlers.UpdatePublicSignUpSettings)
 
 			// ── Notifications (user-scoped) ────────────────────────────
 			notifications := authorized.Group("/notifications")
@@ -63,6 +68,7 @@ func setupV1Routes(r *gin.Engine) {
 			{
 				users.GET("", middlewares.AdminOnly(), handlers.ListUsers)
 				users.GET("/me", handlers.GetCurrentUserProfile)
+				users.POST("/logout", handlers.SignOut)
 				users.PUT("/me/profile", handlers.UpdateCurrentUserProfile)
 				users.PATCH("/me/password", handlers.ChangeCurrentUserPassword)
 				users.GET("/me/ai-providers", handlers.ListCurrentUserAIProviders)
@@ -73,8 +79,8 @@ func setupV1Routes(r *gin.Engine) {
 				users.POST("/import", middlewares.AdminOnly(), handlers.ImportUsers)
 				users.PUT("/:userID", middlewares.AdminOnly(), handlers.UpdateUser)
 				users.PATCH("/:userID/password", middlewares.AdminOnly(), handlers.ChangeUserPassword)
+				users.PATCH("/:userID/lock", middlewares.AdminOnly(), handlers.UpdateUserLock)
 				users.DELETE("/:userID", middlewares.AdminOnly(), handlers.DeleteUser)
-				users.PUT("/:userID/change-role", middlewares.AdminOnly(), handlers.ChangeUserRole)
 				users.PATCH("/:userID/role", middlewares.AdminOnly(), handlers.ChangeUserRole)
 			}
 
@@ -343,9 +349,9 @@ func setupV1Routes(r *gin.Engine) {
 			extensions.Use(middlewares.AdminOnly())
 			{
 				extensions.GET("", handlers.ListExtensions)
-				extensions.POST("", middlewares.AdminOnly(), handlers.CreateExtension)
-				extensions.DELETE("/:extensionID", middlewares.AdminOnly(), handlers.DeleteExtension)
-				extensions.PUT("/:extensionID", middlewares.AdminOnly(), handlers.UpdateExtension)
+				extensions.POST("", handlers.CreateExtension)
+				extensions.DELETE("/:extensionID", handlers.DeleteExtension)
+				extensions.PUT("/:extensionID", handlers.UpdateExtension)
 				extensions.GET("/:extensionID/versions", handlers.ListExtensionVersions)
 				extensions.GET("/:extensionID/versions/:version/values", handlers.GetExtensionValues)
 				extensions.GET("/:extensionID/installed-clusters", handlers.GetInstalledClustersForExtension)

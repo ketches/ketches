@@ -1,13 +1,14 @@
 package services
 
 import (
-	"fmt"
+	"errors"
 	"net/url"
 	"os/exec"
 	"path"
 	"regexp"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -106,6 +107,10 @@ func GetCodeRepository(id string) (*CodeRepositoryWithProject, error) {
 }
 
 func CreateCodeRepository(projectID string, req *models.CreateCodeRepositoryRequest) (*CodeRepositoryWithProject, error) {
+	if err := validateGitRepositoryURL(req.GitRepoURL); err != nil {
+		return nil, err
+	}
+
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		name = RepoNameFromURL(req.GitRepoURL)
@@ -119,7 +124,7 @@ func CreateCodeRepository(projectID string, req *models.CreateCodeRepositoryRequ
 
 	var existing entities.CodeRepository
 	if err := db.DB.Where("project_id = ? AND slug = ?", projectID, slug).First(&existing).Error; err == nil {
-		return nil, fmt.Errorf("code repository with slug %s already exists in the project", slug)
+		return nil, app.NewErrorf("code repository with slug %s already exists in the project", slug)
 	}
 
 	repo := &entities.CodeRepository{
@@ -134,7 +139,7 @@ func CreateCodeRepository(projectID string, req *models.CreateCodeRepositoryRequ
 	if strings.TrimSpace(req.GitPassword) != "" {
 		encryptedPassword, err := secrets.EncryptString(req.GitPassword)
 		if err != nil {
-			return nil, fmt.Errorf("encrypt git password: %w", err)
+			return nil, app.WrapError("encrypt git password", err)
 		}
 		repo.GitPassword = encryptedPassword
 	}
@@ -157,6 +162,9 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 		repo.Slug = RepoSlugFromName(req.Slug)
 	}
 	if req.GitRepoURL != "" {
+		if err := validateGitRepositoryURL(req.GitRepoURL); err != nil {
+			return nil, err
+		}
 		repo.GitRepoURL = req.GitRepoURL
 	}
 	repo.GitUsername = req.GitUsername
@@ -166,7 +174,7 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 	if strings.TrimSpace(req.GitPassword) != "" {
 		encryptedPassword, err := secrets.EncryptString(req.GitPassword)
 		if err != nil {
-			return nil, fmt.Errorf("encrypt git password: %w", err)
+			return nil, app.WrapError("encrypt git password", err)
 		}
 		repo.GitPassword = encryptedPassword
 	}
@@ -342,12 +350,15 @@ func ListCodeRepositoryRefs(repoID string) ([]models.GitRef, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := validateGitRepositoryURL(repo.GitRepoURL); err != nil {
+		return nil, err
+	}
 
 	repoURL := repo.GitRepoURL
 	if repo.GitUsername != "" && repo.GitPassword != "" {
 		plaintextGitPassword, err := secrets.DecryptString(repo.GitPassword)
 		if err != nil {
-			return nil, fmt.Errorf("decrypt git password: %w", err)
+			return nil, app.WrapError("decrypt git password", err)
 		}
 		repoURL = injectGitCredentials(repoURL, repo.GitUsername, plaintextGitPassword)
 	}
@@ -355,7 +366,7 @@ func ListCodeRepositoryRefs(repoID string) ([]models.GitRef, error) {
 	cmd := exec.Command("git", "ls-remote", "--heads", "--tags", repoURL)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list refs: %s", strings.TrimSpace(string(output)))
+		return nil, errors.New("failed to list refs: " + strings.TrimSpace(string(output)))
 	}
 
 	var refs []models.GitRef

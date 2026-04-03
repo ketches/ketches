@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/ketches/ketches/internal/app"
@@ -40,7 +39,7 @@ func loadBuilderExecutionCatalog(config app.AppConfig) (*builderExecutionCatalog
 	if strings.TrimSpace(config.BuilderExecutionCatalogJSON) != "" {
 		var catalogConfig builderExecutionCatalogConfig
 		if err := json.Unmarshal([]byte(config.BuilderExecutionCatalogJSON), &catalogConfig); err != nil {
-			return nil, fmt.Errorf("parse builder execution catalog: %w", err)
+			return nil, app.WrapErrorf(err, "parse builder execution catalog: %w", err)
 		}
 		return normalizeBuilderExecutionCatalog(catalogConfig, config.BuilderDefaultExecutorPolicyKey)
 	}
@@ -140,13 +139,13 @@ func normalizeBuilderExecutionCatalog(config builderExecutionCatalogConfig, lega
 		imageProfile.Image = strings.TrimSpace(imageProfile.Image)
 		imageProfile.Description = strings.TrimSpace(imageProfile.Description)
 		if imageProfile.Key == "" {
-			return nil, fmt.Errorf("builder image profile key is required")
+			return nil, app.NewErrorf("builder image profile key is required")
 		}
 		if imageProfile.Image == "" {
-			return nil, fmt.Errorf("builder image profile %q image is required", imageProfile.Key)
+			return nil, app.NewErrorf("builder image profile %q image is required", imageProfile.Key)
 		}
 		if _, exists := imageProfiles[imageProfile.Key]; exists {
-			return nil, fmt.Errorf("duplicate builder image profile key %q", imageProfile.Key)
+			return nil, app.NewErrorf("duplicate builder image profile key %q", imageProfile.Key)
 		}
 		imageProfiles[imageProfile.Key] = imageProfile
 	}
@@ -157,19 +156,19 @@ func normalizeBuilderExecutionCatalog(config builderExecutionCatalogConfig, lega
 		executorPolicy.ExecutorKind = strings.TrimSpace(executorPolicy.ExecutorKind)
 		executorPolicy.ImageProfileKey = strings.TrimSpace(executorPolicy.ImageProfileKey)
 		if executorPolicy.Key == "" {
-			return nil, fmt.Errorf("builder executor policy key is required")
+			return nil, app.NewErrorf("builder executor policy key is required")
 		}
 		if executorPolicy.ImageProfileKey == "" {
-			return nil, fmt.Errorf("builder executor policy %q image profile key is required", executorPolicy.Key)
+			return nil, app.NewErrorf("builder executor policy %q image profile key is required", executorPolicy.Key)
 		}
 		if _, exists := executorPolicies[executorPolicy.Key]; exists {
-			return nil, fmt.Errorf("duplicate builder executor policy key %q", executorPolicy.Key)
+			return nil, app.NewErrorf("duplicate builder executor policy key %q", executorPolicy.Key)
 		}
 		if err := validateBuilderExecutorKind(executorPolicy.ExecutorKind); err != nil {
-			return nil, fmt.Errorf("builder executor policy %q: %w", executorPolicy.Key, err)
+			return nil, app.WrapErrorf(err, "builder executor policy %q: %w", executorPolicy.Key, err)
 		}
 		if _, exists := imageProfiles[executorPolicy.ImageProfileKey]; !exists {
-			return nil, fmt.Errorf("builder executor policy %q references unknown image profile %q", executorPolicy.Key, executorPolicy.ImageProfileKey)
+			return nil, app.NewErrorf("builder executor policy %q references unknown image profile %q", executorPolicy.Key, executorPolicy.ImageProfileKey)
 		}
 		executorPolicies[executorPolicy.Key] = executorPolicy
 	}
@@ -181,10 +180,10 @@ func normalizeBuilderExecutionCatalog(config builderExecutionCatalogConfig, lega
 		}
 	}
 	if defaultImageProfileKey == "" {
-		return nil, fmt.Errorf("builder default image profile key is required")
+		return nil, app.NewErrorf("builder default image profile key is required")
 	}
 	if _, exists := imageProfiles[defaultImageProfileKey]; !exists {
-		return nil, fmt.Errorf("unknown builder default image profile key %q", defaultImageProfileKey)
+		return nil, app.NewErrorf("unknown builder default image profile key %q", defaultImageProfileKey)
 	}
 
 	defaultExecutorPolicyKey := strings.TrimSpace(config.DefaultExecutorPolicyKey)
@@ -197,10 +196,10 @@ func normalizeBuilderExecutionCatalog(config builderExecutionCatalogConfig, lega
 		}
 	}
 	if defaultExecutorPolicyKey == "" {
-		return nil, fmt.Errorf("builder default executor policy key is required")
+		return nil, app.NewErrorf("builder default executor policy key is required")
 	}
 	if _, exists := executorPolicies[defaultExecutorPolicyKey]; !exists {
-		return nil, fmt.Errorf("unknown builder default executor policy key %q", defaultExecutorPolicyKey)
+		return nil, app.NewErrorf("unknown builder default executor policy key %q", defaultExecutorPolicyKey)
 	}
 
 	return &builderExecutionCatalog{
@@ -218,6 +217,6 @@ func validateBuilderExecutorKind(kind string) error {
 		string(entities.BuilderExecutorHandleKindSandbox):
 		return nil
 	default:
-		return fmt.Errorf("unsupported builder executor kind %q", kind)
+		return app.NewErrorf("unsupported builder executor kind %q", kind)
 	}
 }

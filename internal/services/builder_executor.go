@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db/entities"
 	corev1 "k8s.io/api/core/v1"
@@ -66,7 +66,7 @@ var getBuilderWorkspaceExecutor = func(kind entities.BuilderExecutorHandleKind) 
 	case entities.BuilderExecutorHandleKindWorkspacePod:
 		return builderWorkspacePodExecutorV1{}, nil
 	default:
-		return nil, fmt.Errorf("builder workspace executor kind %q is not supported", kind)
+		return nil, app.NewErrorf("builder workspace executor kind %q is not supported", kind)
 	}
 }
 

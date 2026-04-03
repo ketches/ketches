@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
@@ -119,7 +120,7 @@ func validateEnvNamespace(namespace string) error {
 	}
 
 	if validationErrors := validation.IsDNS1123Label(namespace); len(validationErrors) > 0 {
-		return fmt.Errorf("namespace %q is invalid: %s", namespace, strings.Join(validationErrors, ", "))
+		return app.NewErrorf("namespace %q is invalid: %s", namespace, strings.Join(validationErrors, ", "))
 	}
 
 	return nil

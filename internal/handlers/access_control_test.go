@@ -12,6 +12,7 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/middlewares"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -113,7 +114,7 @@ func TestListUsersRejectsNonAdmin(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(accessControlClaimsMiddleware("user-1", "alice", app.UserRoleUser))
-	r.GET("/api/v1/users", ListUsers)
+	r.GET("/api/v1/users", middlewares.AdminOnly(), ListUsers)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/users?page=1&page_size=10", nil)
 	w := httptest.NewRecorder()
@@ -129,7 +130,7 @@ func TestUpdateUserRejectsNonAdmin(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(accessControlClaimsMiddleware("user-2", "bob", app.UserRoleUser))
-	r.PUT("/api/v1/users/:userID", UpdateUser)
+	r.PUT("/api/v1/users/:userID", middlewares.AdminOnly(), UpdateUser)
 
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/users/user-1", strings.NewReader(`{"fullname":"Changed"}`))
 	req.Header.Set("Content-Type", "application/json")

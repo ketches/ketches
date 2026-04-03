@@ -1,6 +1,6 @@
 import client from './client'
 import { type PaginationParams, type PaginationResponse } from './pagination'
-import { getStoredAccessToken, syncAuthCookie } from '@/lib/auth-session'
+import { authenticatedFetch } from '@/lib/auth-session'
 
 // --- Types ---
 
@@ -429,13 +429,9 @@ export const builderSessionsApi = {
   },
 
   downloadExportBlob: async (projectId: string, sessionId: string, exportId: string): Promise<void> => {
-    const token = getStoredAccessToken()
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/exports/${exportId}/download`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
     )
     if (!response.ok) {
       throw new Error(`Download failed: ${response.statusText}`)
@@ -458,18 +454,13 @@ export const builderSessionsApi = {
 
   runLogsStreamUrl: (projectId: string, sessionId: string, runId: string) => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-    syncAuthCookie()
     return `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/runs/${runId}/logs`
   },
 
   downloadPreviewSnapshotBlob: async (projectId: string, sessionId: string, runId: string): Promise<void> => {
-    const token = getStoredAccessToken()
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/runs/${runId}/delivery/download`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
     )
     if (!response.ok) {
       throw new Error(`Download failed: ${response.statusText}`)
@@ -511,18 +502,13 @@ export const builderSessionsApi = {
 
   downloadTar: (projectId: string, sessionId: string): string => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-    syncAuthCookie()
     return `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/files/download?path=`
   },
 
   downloadTarBlob: async (projectId: string, sessionId: string): Promise<void> => {
-    const token = getStoredAccessToken()
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${baseUrl}/v1/projects/${projectId}/builder-sessions/${sessionId}/files/download?path=`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
     )
     if (!response.ok) {
       throw new Error(`Download failed: ${response.statusText}`)

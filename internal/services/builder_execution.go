@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 )
@@ -230,7 +231,7 @@ func DetectBuilderFrontendExecutionPlan(listing *models.ListFilesResponse) (*Bui
 			lockfiles = append(lockfiles, detectedPlan.lockfileName)
 		}
 		sort.Strings(lockfiles)
-		return nil, fmt.Errorf("multiple supported frontend lockfiles detected: %s", strings.Join(lockfiles, ", "))
+		return nil, app.NewErrorf("multiple supported frontend lockfiles detected: %s", strings.Join(lockfiles, ", "))
 	}
 
 	if len(detectedPlans) == 0 {
@@ -256,7 +257,7 @@ func executeBuilderFrontendStep(ctx context.Context, command []string, step Buil
 		return err
 	}
 	if len(command) == 0 {
-		return fmt.Errorf("%s command is required", step)
+		return app.NewErrorf("%s command is required", step)
 	}
 
 	if err := eventWriter.AppendStatus(ctx, entities.BuilderRunEventLevelInfo, builderFrontendStepStartMessage(step)); err != nil {

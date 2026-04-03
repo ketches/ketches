@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core/exporter"
 	"github.com/ketches/ketches/internal/core/importer"
 	"github.com/ketches/ketches/internal/db"
@@ -40,7 +41,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 	case "ketches":
 		converter = &importer.KetchesMetadataConverter{}
 	default:
-		return nil, fmt.Errorf("unsupported import type: %s", importType)
+		return nil, app.NewErrorf("unsupported import type: %s", importType)
 	}
 
 	appMetadatas, err := converter.Parse(content)
@@ -65,7 +66,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 
 		if exists {
 			if conflictStrategy == "error" {
-				return nil, fmt.Errorf("application with slug %s already exists", appMeta.AppSlug)
+				return nil, app.NewErrorf("application with slug %s already exists", appMeta.AppSlug)
 			} else if conflictStrategy == "ask" {
 				result.Conflicts = append(result.Conflicts, ConflictInfo{
 					ExistingApp: &existingApp,
@@ -95,7 +96,7 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 
 		createdApp, err := CreateApp(context.Background(), envID, createReq)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create app %s: %w", appMeta.AppName, err)
+			return nil, app.WrapErrorf(err, "failed to create app %s: %w", appMeta.AppName, err)
 		}
 
 		// Add EnvVars
@@ -268,7 +269,7 @@ func generateExport(appMetadatas []models.AppMetadata, format exporter.ExportFor
 	case exporter.FormatDockerCompose:
 		generator = &exporter.DockerComposeGenerator{}
 	default:
-		return "", fmt.Errorf("unsupported export format: %s", format)
+		return "", app.NewErrorf("unsupported export format: %s", format)
 	}
 
 	return generator.Generate(appMetadatas)

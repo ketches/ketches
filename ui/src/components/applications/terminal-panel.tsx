@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { getStoredAccessToken, syncAuthCookie } from "@/lib/auth-session"
+import { hasPersistedAuthSession } from "@/lib/auth-session"
 import { cn } from "@/lib/utils"
 import { Plus, Terminal, X } from "lucide-react"
 import * as React from "react"
@@ -292,9 +292,7 @@ function TerminalInstance({
       safeFit()
     }, 0)
 
-    const token = getStoredAccessToken()
-
-    if (!token) {
+    if (!hasPersistedAuthSession()) {
       xterm.writeln("\r\n\x1b[38;5;196m● Authentication required\x1b[0m")
       onConnectionStateChangeRef.current("disconnected")
       return () => {
@@ -310,7 +308,6 @@ function TerminalInstance({
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
     const wsHost = import.meta.env.DEV ? "localhost:8080" : window.location.host
-    syncAuthCookie()
     const path = targetType === "node"
       ? `/api/v1/clusters/${encodeURIComponent(appId)}/nodes/${encodeURIComponent(instanceName)}/exec`
       : `/api/v1/apps/${encodeURIComponent(appId)}/instances/${encodeURIComponent(instanceName)}/exec?${new URLSearchParams({ container: containerName }).toString()}`

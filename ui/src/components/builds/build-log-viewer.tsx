@@ -1,7 +1,7 @@
 import { codeRepositoriesApi } from "@/api/code-repositories"
 import { BuildStatusBadge } from "@/components/builds/build-status-badge"
 import { useTheme } from "@/components/theme-provider/theme-provider"
-import { getStoredAccessToken, syncAuthCookie } from "@/lib/auth-session"
+import { hasPersistedAuthSession } from "@/lib/auth-session"
 import { parseBuildLogAnsi, type BuildLogDecoration } from "@/lib/build-log-ansi"
 import Editor, { type Monaco, type OnMount } from "@monaco-editor/react"
 import { useQuery } from "@tanstack/react-query"
@@ -216,14 +216,12 @@ export function BuildLogViewer({ buildId, repoId }: BuildLogViewerProps) {
     hasInitializedTailRef.current = false
     decorationIdsRef.current = []
 
-    const token = getStoredAccessToken()
-    if (!token) return
+    if (!hasPersistedAuthSession()) return
 
     const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
-    syncAuthCookie()
     const url = `${apiBase}/v1/code-repositories/${repoId}/builds/${buildId}/logs`
 
-    const eventSource = new EventSource(url)
+    const eventSource = new EventSource(url, { withCredentials: true })
 
     eventSource.addEventListener('log', (event) => {
       queueLogChunk(event.data)

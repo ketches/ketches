@@ -63,11 +63,7 @@ export function LoginForm({
         setDefaultPasswordNotice(null);
         try {
             const response = await authApi.signIn(data);
-            setAuth(
-                response.user,
-                response.access_token,
-                response.refresh_token,
-            );
+            setAuth(response.user);
             setDefaultPasswordNotice(response.default_password_notice || null);
             if (response.user.role === "admin") {
                 void platformUpdateApi.check({ mode: "auto" }).catch(() => undefined);

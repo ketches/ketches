@@ -2,7 +2,6 @@ package kube
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -105,7 +104,7 @@ func (s *ClusterStore) RemoveClient(clusterID string) {
 func newHTTPProxyClient(restConfig *rest.Config) (*http.Client, error) {
 	tlsCfg, err := rest.TLSConfigFor(restConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build TLS config for HTTP proxy client: %w", err)
+		return nil, app.WrapErrorf(err, "failed to build TLS config for HTTP proxy client: %w", err)
 	}
 	if tlsCfg == nil {
 		tlsCfg = &tls.Config{} // plain HTTP cluster — still use a typed transport

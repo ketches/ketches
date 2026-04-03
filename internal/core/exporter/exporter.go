@@ -24,9 +24,9 @@ import (
 type ExportFormat string
 
 const (
-	FormatKubernetes ExportFormat = "kubernetes"
-	FormatKetches    ExportFormat = "ketches"
-	FormatHelm       ExportFormat = "helm"
+	FormatKubernetes    ExportFormat = "kubernetes"
+	FormatKetches       ExportFormat = "ketches"
+	FormatHelm          ExportFormat = "helm"
 	FormatDockerCompose ExportFormat = "dockercompose"
 )
 
@@ -364,7 +364,6 @@ func (g *HelmChartGenerator) Generate(appMetadatas []models.AppMetadata) (string
 		}
 	}
 
-
 	if err := zipWriter.Close(); err != nil {
 		return "", err
 	}
@@ -516,7 +515,6 @@ spec:
   selector:
     {{- include "app.selectorLabels" . | nindent 4 }}
 `
-
 
 // Docker Compose data structures
 type dockerComposeFile struct {

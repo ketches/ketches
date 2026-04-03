@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/kube"
@@ -87,7 +86,7 @@ func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 				// For StatefulSet, PVCs are created by the StatefulSet controller based on the volumeClaimTemplates
 				// So we don't need to create them here. Just ensure they are defined in the volumeClaimTemplates.
 			default:
-				return fmt.Errorf("unsupported app type '%s' for volume '%s'", appCtx.App.AppType, v.Slug)
+				return app.NewErrorf("unsupported app type '%s' for volume '%s'", appCtx.App.AppType, v.Slug)
 			}
 		}
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	appcore "github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
@@ -20,13 +21,13 @@ func GetHomeDir(c *gin.Context) {
 	containerName := c.Query("container")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -46,7 +47,7 @@ func CompressFiles(c *gin.Context) {
 	containerName := c.Query("container")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
@@ -58,7 +59,7 @@ func CompressFiles(c *gin.Context) {
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -77,7 +78,7 @@ func CompressAndDownloadFiles(c *gin.Context) {
 	containerName := c.Query("container")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
@@ -89,7 +90,7 @@ func CompressAndDownloadFiles(c *gin.Context) {
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -97,7 +98,7 @@ func CompressAndDownloadFiles(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, req.ArchiveName))
 
 	if err := services.CompressAndDownloadFiles(app, instanceName, containerName, req.BaseDir, req.FileNames, c.Writer); err != nil {
-		c.Error(fmt.Errorf("failed to compress and download: %v", err))
+		c.Error(appcore.NewErrorf("failed to compress and download: %v", err))
 	}
 }
 
@@ -109,13 +110,13 @@ func ListFiles(c *gin.Context) {
 	path := c.Query("path")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -136,18 +137,18 @@ func ReadFile(c *gin.Context) {
 	path := c.Query("path")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
 	if path == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("path parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("path parameter is required"))
 		return
 	}
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -167,7 +168,7 @@ func WriteFile(c *gin.Context) {
 	containerName := c.Query("container")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
@@ -179,7 +180,7 @@ func WriteFile(c *gin.Context) {
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -198,7 +199,7 @@ func MkdirInContainer(c *gin.Context) {
 	containerName := c.Query("container")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
@@ -210,7 +211,7 @@ func MkdirInContainer(c *gin.Context) {
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -229,7 +230,7 @@ func DeleteFileInContainer(c *gin.Context) {
 	containerName := c.Query("container")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
@@ -241,7 +242,7 @@ func DeleteFileInContainer(c *gin.Context) {
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -260,7 +261,7 @@ func MoveFileInContainer(c *gin.Context) {
 	containerName := c.Query("container")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
@@ -272,7 +273,7 @@ func MoveFileInContainer(c *gin.Context) {
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -291,7 +292,7 @@ func CopyFileInContainer(c *gin.Context) {
 	containerName := c.Query("container")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
@@ -303,7 +304,7 @@ func CopyFileInContainer(c *gin.Context) {
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -323,25 +324,25 @@ func DownloadFile(c *gin.Context) {
 	path := c.Query("path")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
 	if path == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("path parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("path parameter is required"))
 		return
 	}
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
 	// Stream the tar output to a buffer, then extract the actual file from it
 	var tarBuf bytes.Buffer
 	if err := services.DownloadFile(app, instanceName, containerName, path, &tarBuf); err != nil {
-		api.Error(c, http.StatusInternalServerError, fmt.Errorf("failed to download file: %v", err))
+		api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("failed to download file: %v", err))
 		return
 	}
 
@@ -369,7 +370,7 @@ func DownloadFile(c *gin.Context) {
 	}
 
 	if _, err := io.Copy(c.Writer, tr); err != nil {
-		c.Error(fmt.Errorf("failed to stream file: %v", err))
+		c.Error(appcore.NewErrorf("failed to stream file: %v", err))
 	}
 }
 
@@ -381,24 +382,24 @@ func DownloadFileDir(c *gin.Context) {
 	path := c.Query("path")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
 	if path == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("path parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("path parameter is required"))
 		return
 	}
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
 	var tarBuf bytes.Buffer
 	if err := services.DownloadFile(app, instanceName, containerName, path, &tarBuf); err != nil {
-		api.Error(c, http.StatusInternalServerError, fmt.Errorf("failed to download: %v", err))
+		api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("failed to download: %v", err))
 		return
 	}
 
@@ -408,7 +409,7 @@ func DownloadFileDir(c *gin.Context) {
 	c.Header("Content-Length", fmt.Sprintf("%d", tarBuf.Len()))
 
 	if _, err := io.Copy(c.Writer, &tarBuf); err != nil {
-		c.Error(fmt.Errorf("failed to stream archive: %v", err))
+		c.Error(appcore.NewErrorf("failed to stream archive: %v", err))
 	}
 }
 
@@ -463,7 +464,7 @@ func UploadFile(c *gin.Context) {
 	destDir := c.Query("path")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
@@ -473,19 +474,19 @@ func UploadFile(c *gin.Context) {
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("file parameter is required: %v", err))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("file parameter is required: %v", err))
 		return
 	}
 	defer file.Close()
 
 	if err := services.UploadFile(app, instanceName, containerName, destDir, header.Filename, file, header.Size); err != nil {
-		api.Error(c, http.StatusInternalServerError, fmt.Errorf("failed to upload file: %v", err))
+		api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("failed to upload file: %v", err))
 		return
 	}
 

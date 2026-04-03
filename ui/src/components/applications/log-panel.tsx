@@ -22,7 +22,7 @@ import {
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { getStoredAccessToken, syncAuthCookie } from "@/lib/auth-session"
+import { hasPersistedAuthSession } from "@/lib/auth-session"
 import { cn } from "@/lib/utils"
 
 import { WorkloadPanelFrame } from "./workload-panel-frame"
@@ -67,16 +67,14 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
     if (!appId || !instanceName || !containerName) return
     followTailRef.current = true
 
-    const token = getStoredAccessToken()
-
-    if (!token) {
+    if (!hasPersistedAuthSession()) {
       toast.error("Authentication required")
       return
     }
 
-    syncAuthCookie()
     const eventSource = new EventSource(
-      `/api/v1/apps/${appId}/instances/${instanceName}/logs?container=${containerName}&tailLines=${tailLines}&timestamps=${showTimestamp}`
+      `/api/v1/apps/${appId}/instances/${instanceName}/logs?container=${containerName}&tailLines=${tailLines}&timestamps=${showTimestamp}`,
+      { withCredentials: true }
     )
 
     eventSource.onopen = () => {

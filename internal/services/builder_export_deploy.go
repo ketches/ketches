@@ -2,8 +2,8 @@ package services
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/models"
 )
 
@@ -14,7 +14,7 @@ var deployCodeRepositoryBuildForBuilderExport = func(ctx context.Context, repoID
 
 func DeployBuilderExportBuild(ctx context.Context, req *models.DeployBuilderExportBuildRequest) (*models.AppContext, error) {
 	if req == nil {
-		return nil, fmt.Errorf("builder export deploy request is required")
+		return nil, app.NewErrorf("builder export deploy request is required")
 	}
 
 	appCtx, err := deployCodeRepositoryBuildForBuilderExport(ctx, req.RepositoryID, req.BuildID, &models.DeployCodeRepositoryBuildRequest{

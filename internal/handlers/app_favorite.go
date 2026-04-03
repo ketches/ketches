@@ -18,7 +18,7 @@ func ListFavoriteApps(c *gin.Context) {
 		api.Error(c, http.StatusUnauthorized, nil)
 		return
 	}
-	favorites, err := services.ListFavoriteApps(c.Request.Context(),claims.UserID, envID)
+	favorites, err := services.ListFavoriteApps(c.Request.Context(), claims.UserID, envID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

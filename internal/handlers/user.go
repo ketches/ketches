@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -25,19 +24,15 @@ func SignUp(c *gin.Context) {
 
 	user, err := services.SignUp(&req)
 	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+		status := http.StatusBadRequest
+		if errors.Is(err, services.ErrPublicSignUpDisabled) {
+			status = http.StatusForbidden
+		}
+		api.Error(c, status, err)
 		return
 	}
 
-	api.Created(c, models.UserResponse{
-		ID:        user.ID,
-		Username:  user.Username,
-		Email:     user.Email,
-		Fullname:  user.Fullname,
-		Bio:       user.Bio,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-	})
+	api.Created(c, toUserResponse(user))
 }
 
 func SignIn(c *gin.Context) {
@@ -49,34 +44,21 @@ func SignIn(c *gin.Context) {
 
 	user, mustChangePassword, err := services.SignIn(&req)
 	if err != nil {
-		api.Error(c, http.StatusUnauthorized, err)
+		status := http.StatusUnauthorized
+		if errors.Is(err, services.ErrAccountLocked) {
+			status = http.StatusForbidden
+		}
+		api.Error(c, status, err)
 		return
 	}
 
-	accessToken, err := app.GenerateAccessToken(user)
-	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	refreshToken, err := app.GenerateRefreshToken(user)
-	if err != nil {
+	if err := issueUserSession(c, user, mustChangePassword); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
 	api.Success(c, models.SignInResponse{
-		User: models.UserResponse{
-			ID:        user.ID,
-			Username:  user.Username,
-			Email:     user.Email,
-			Fullname:  user.Fullname,
-			Bio:       user.Bio,
-			Role:      user.Role,
-			CreatedAt: user.CreatedAt,
-		},
-		AccessToken:        accessToken,
-		RefreshToken:       refreshToken,
+		User:               toUserResponse(user),
 		MustChangePassword: mustChangePassword,
 		DefaultPasswordNotice: func() string {
 			if mustChangePassword {
@@ -88,27 +70,14 @@ func SignIn(c *gin.Context) {
 }
 
 func ListUsers(c *gin.Context) {
-	if requireAdminClaims(c) == nil {
+	var req models.PaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
+	req.Validate()
 
-	// Parse query parameters
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
-	search := c.Query("search")
-
-	// Validate pagination parameters
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-
-	total, users, err := services.ListUsers(page, pageSize, search)
+	total, users, err := services.ListUsers(req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -116,30 +85,18 @@ func ListUsers(c *gin.Context) {
 
 	var res []models.UserResponse
 	for _, u := range users {
-		res = append(res, models.UserResponse{
-			ID:        u.ID,
-			Username:  u.Username,
-			Email:     u.Email,
-			Fullname:  u.Fullname,
-			Bio:       u.Bio,
-			Role:      u.Role,
-			CreatedAt: u.CreatedAt,
-		})
+		res = append(res, toUserResponse(&u))
 	}
 
 	api.Success(c, models.ListUsersResponse{
 		Total:    total,
-		Page:     page,
-		PageSize: pageSize,
+		Page:     req.Page,
+		PageSize: req.PageSize,
 		Users:    res,
 	})
 }
 
 func UpdateUser(c *gin.Context) {
-	if requireAdminClaims(c) == nil {
-		return
-	}
-
 	userID := c.Param("userID")
 	var req struct {
 		Fullname string `json:"fullname"`
@@ -154,18 +111,15 @@ func UpdateUser(c *gin.Context) {
 
 	user, err := services.UpdateUser(userID, req.Fullname, req.Email, req.Bio, req.Phone)
 	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, services.ErrEmailAlreadyExists) {
+			status = http.StatusBadRequest
+		}
+		api.Error(c, status, err)
 		return
 	}
 
-	api.Success(c, models.UserResponse{
-		ID:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-		Fullname: user.Fullname,
-		Bio:      user.Bio,
-		Role:     user.Role,
-	})
+	api.Success(c, toUserResponse(user))
 }
 
 func GetCurrentUserProfile(c *gin.Context) {
@@ -181,15 +135,7 @@ func GetCurrentUserProfile(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, models.UserResponse{
-		ID:        user.ID,
-		Username:  user.Username,
-		Email:     user.Email,
-		Fullname:  user.Fullname,
-		Bio:       user.Bio,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-	})
+	api.Success(c, toUserResponse(user))
 }
 
 func UpdateCurrentUserProfile(c *gin.Context) {
@@ -207,19 +153,15 @@ func UpdateCurrentUserProfile(c *gin.Context) {
 
 	user, err := services.UpdateCurrentUserProfile(claims.UserID, req.Fullname, req.Email, req.Bio)
 	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, services.ErrEmailAlreadyExists) {
+			status = http.StatusBadRequest
+		}
+		api.Error(c, status, err)
 		return
 	}
 
-	api.Success(c, models.UserResponse{
-		ID:        user.ID,
-		Username:  user.Username,
-		Email:     user.Email,
-		Fullname:  user.Fullname,
-		Bio:       user.Bio,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-	})
+	api.Success(c, toUserResponse(user))
 }
 
 func ChangeCurrentUserPassword(c *gin.Context) {
@@ -237,7 +179,7 @@ func ChangeCurrentUserPassword(c *gin.Context) {
 
 	if err := services.ChangeCurrentUserPassword(claims.UserID, req.CurrentPassword, req.NewPassword); err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, services.ErrInvalidCurrentPassword) {
+		if errors.Is(err, services.ErrInvalidCurrentPassword) || errors.Is(err, services.ErrWeakPassword) {
 			status = http.StatusBadRequest
 		}
 		api.Error(c, status, err)
@@ -248,10 +190,6 @@ func ChangeCurrentUserPassword(c *gin.Context) {
 }
 
 func ChangeUserPassword(c *gin.Context) {
-	if requireAdminClaims(c) == nil {
-		return
-	}
-
 	userID := c.Param("userID")
 
 	var req models.ChangeUserPasswordRequest
@@ -261,7 +199,11 @@ func ChangeUserPassword(c *gin.Context) {
 	}
 
 	if err := services.ChangeUserPassword(userID, req.Password); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, services.ErrWeakPassword) {
+			status = http.StatusBadRequest
+		}
+		api.Error(c, status, err)
 		return
 	}
 
@@ -269,10 +211,6 @@ func ChangeUserPassword(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
-	if requireAdminClaims(c) == nil {
-		return
-	}
-
 	userID := c.Param("userID")
 	if err := services.DeleteUser(userID); err != nil {
 		if errors.Is(err, services.ErrDeleteLastAdmin) {
@@ -286,10 +224,6 @@ func DeleteUser(c *gin.Context) {
 }
 
 func ChangeUserRole(c *gin.Context) {
-	if requireAdminClaims(c) == nil {
-		return
-	}
-
 	userID := c.Param("userID")
 	var req models.ChangeUserRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -309,10 +243,6 @@ func ChangeUserRole(c *gin.Context) {
 }
 
 func CreateUser(c *gin.Context) {
-	if requireAdminClaims(c) == nil {
-		return
-	}
-
 	var req models.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
@@ -321,26 +251,19 @@ func CreateUser(c *gin.Context) {
 
 	user, err := services.CreateUser(&req)
 	if err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+		status := http.StatusInternalServerError
+		switch {
+		case errors.Is(err, services.ErrWeakPassword), errors.Is(err, services.ErrUsernameAlreadyExists), errors.Is(err, services.ErrEmailAlreadyExists):
+			status = http.StatusBadRequest
+		}
+		api.Error(c, status, err)
 		return
 	}
 
-	api.Created(c, models.UserResponse{
-		ID:        user.ID,
-		Username:  user.Username,
-		Email:     user.Email,
-		Fullname:  user.Fullname,
-		Bio:       user.Bio,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-	})
+	api.Created(c, toUserResponse(user))
 }
 
 func ImportUsers(c *gin.Context) {
-	if requireAdminClaims(c) == nil {
-		return
-	}
-
 	// Get the file from the request
 	file, err := c.FormFile("file")
 	if err != nil {

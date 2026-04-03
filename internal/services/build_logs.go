@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
@@ -100,11 +101,11 @@ func streamActiveBuildLogs(c *gin.Context, build *entities.Build) error {
 
 	buildEnv, err := GetEnv(build.BuildEnvID)
 	if err != nil {
-		return fmt.Errorf("failed to load build environment: %w", err)
+		return app.WrapErrorf(err, "failed to load build environment: %w", err)
 	}
 	client, err := getBuildLogsClusterClient(buildEnv.ClusterID)
 	if err != nil {
-		return fmt.Errorf("failed to get cluster client: %w", err)
+		return app.WrapErrorf(err, "failed to get cluster client: %w", err)
 	}
 
 	pods, err := client.CoreV1().Pods(build.JobNamespace).List(requestCtx, metav1.ListOptions{
@@ -155,7 +156,7 @@ func streamActiveBuildLogs(c *gin.Context, build *entities.Build) error {
 		}
 
 		if err := streamSSELogReader(c, stream); err != nil {
-			log.Printf("Build log stream error %s: %v", containerName, err)
+			slog.Error(fmt.Sprintf("Build log stream error %s: %v", containerName, err))
 		}
 		stream.Close()
 	}

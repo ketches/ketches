@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
@@ -125,17 +125,17 @@ func ListDeployedAppsByEnvironment(c *gin.Context) {
 	buildSettingID := c.Param("settingID")
 	envID := c.Query("env_id")
 	if envID == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("env_id is required"))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("env_id is required"))
 		return
 	}
 
 	setting, err := services.GetBuildSetting(buildSettingID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("build setting not found"))
+		api.Error(c, http.StatusNotFound, app.NewErrorf("build setting not found"))
 		return
 	}
 	if setting.CodeRepositoryID == nil || *setting.CodeRepositoryID != repoID {
-		api.Error(c, http.StatusForbidden, fmt.Errorf("build setting does not belong to this code repository"))
+		api.Error(c, http.StatusForbidden, app.NewErrorf("build setting does not belong to this code repository"))
 		return
 	}
 
@@ -288,7 +288,7 @@ func DeleteRepoBuildSetting(c *gin.Context) {
 		return
 	}
 	if s.CodeRepositoryID == nil || *s.CodeRepositoryID != repoID {
-		api.Error(c, http.StatusForbidden, fmt.Errorf("setting does not belong to this repository"))
+		api.Error(c, http.StatusForbidden, app.NewErrorf("setting does not belong to this repository"))
 		return
 	}
 	if err := services.DeleteRepoBuildSetting(settingID); err != nil {

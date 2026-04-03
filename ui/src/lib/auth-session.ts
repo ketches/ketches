@@ -1,10 +1,10 @@
 const AUTH_STORAGE_KEY = "auth-storage"
-const AUTH_COOKIE_NAME = "X-Ketches-Token"
+const CSRF_COOKIE_NAME = "X-Ketches-CSRF"
+const CSRF_HEADER_NAME = "X-CSRF-Token"
 
 type PersistedAuthState = {
   state?: {
-    accessToken?: string | null
-    refreshToken?: string | null
+    isAuthenticated?: boolean
   }
 }
 
@@ -32,51 +32,65 @@ function parsePersistedAuthState(rawValue: string | null): PersistedAuthState | 
   }
 }
 
-function secureCookieSuffix(): string {
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    return "; Secure"
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") {
+    return null
   }
-  return ""
+
+  const encodedName = encodeURIComponent(name)
+  const cookies = document.cookie.split(";")
+  for (const cookie of cookies) {
+    const trimmedCookie = cookie.trim()
+    if (!trimmedCookie.startsWith(`${encodedName}=`)) {
+      continue
+    }
+    return decodeURIComponent(trimmedCookie.slice(encodedName.length + 1))
+  }
+
+  return null
 }
 
-export function getStoredAccessToken(): string {
+export function hasPersistedAuthSession(): boolean {
   const sessionState = parsePersistedAuthState(getStorageValue(typeof window !== "undefined" ? window.sessionStorage : null))
-  if (sessionState?.state?.accessToken) {
-    return sessionState.state.accessToken
+  if (sessionState?.state?.isAuthenticated) {
+    return true
   }
 
   const localState = parsePersistedAuthState(getStorageValue(typeof window !== "undefined" ? window.localStorage : null))
-  return localState?.state?.accessToken ?? ""
+  return !!localState?.state?.isAuthenticated
 }
 
-export function setAuthCookie(token: string | null | undefined): void {
-  if (typeof document === "undefined") {
-    return
-  }
-
-  if (!token) {
-    clearAuthCookie()
-    return
-  }
-
-  document.cookie = `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; SameSite=Strict${secureCookieSuffix()}`
+export function getCSRFToken(): string {
+  return readCookie(CSRF_COOKIE_NAME) ?? ""
 }
 
-export function syncAuthCookie(): string {
-  const token = getStoredAccessToken()
-  setAuthCookie(token)
-  return token
+export function shouldAttachCSRF(method?: string): boolean {
+  const normalizedMethod = (method ?? "GET").toUpperCase()
+  return !["GET", "HEAD", "OPTIONS", "TRACE"].includes(normalizedMethod)
 }
 
-export function clearAuthCookie(): void {
-  if (typeof document === "undefined") {
-    return
+export function applyCSRFHeader(headers: Headers, method?: string): Headers {
+  if (!shouldAttachCSRF(method)) {
+    return headers
   }
 
-  const suffix = `Max-Age=0; SameSite=Strict${secureCookieSuffix()}`
-  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; ${suffix}`
-  document.cookie = `${AUTH_COOKIE_NAME}=; path=/api; ${suffix}`
-  document.cookie = `${AUTH_COOKIE_NAME}=; path=/forward; ${suffix}`
+  const csrfToken = getCSRFToken()
+  if (csrfToken) {
+    headers.set(CSRF_HEADER_NAME, csrfToken)
+  }
+
+  return headers
+}
+
+export async function authenticatedFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers)
+  applyCSRFHeader(headers, init.method)
+
+  return fetch(input, {
+    ...init,
+    headers,
+    credentials: "include",
+  })
 }
 
 export function clearPersistedAuthState(): void {

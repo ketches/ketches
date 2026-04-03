@@ -636,7 +636,7 @@ export function BuilderWorkspaceShell() {
     }
 
     const streamUrl = builderSessionsApi.runLogsStreamUrl(projectId, sessionId, activeStreamingRun.id)
-    const eventSource = new EventSource(streamUrl)
+    const eventSource = new EventSource(streamUrl, { withCredentials: true })
 
     setStreamingRunId(activeStreamingRun.id)
     setStreamingLog("")

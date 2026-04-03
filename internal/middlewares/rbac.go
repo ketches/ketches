@@ -3,7 +3,7 @@ package middlewares
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -40,7 +40,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 	if envID := c.Param("envID"); envID != "" {
 		var env entities.Env
 		if err := db.DB.Select("project_id").Where("id = ?", envID).First(&env).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup by envID %q failed: %v", envID, err)
+			slog.Debug("resolveProjectID env lookup failed", "envID", envID, "error", err)
 			return "", false
 		}
 		return env.ProjectID, true
@@ -53,7 +53,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 			Joins("JOIN apps ON apps.env_id = envs.id").
 			Where("apps.id = ?", appID).
 			First(&env).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup by appID %q failed: %v", appID, err)
+			slog.Debug("resolveProjectID app lookup failed", "appID", appID, "error", err)
 			return "", false
 		}
 		return env.ProjectID, true
@@ -69,28 +69,28 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 		case strings.HasPrefix(path, "/api/v1/env-vars/"):
 			var r entities.AppEnvVar
 			if err := db.DB.Select("app_id").Where("id = ?", resourceID).First(&r).Error; err != nil {
-				log.Printf("resolveProjectID: DB lookup AppEnvVar %q failed: %v", resourceID, err)
+				slog.Debug("resolveProjectID env var lookup failed", "resourceID", resourceID, "error", err)
 				return "", false
 			}
 			appID = r.AppID
 		case strings.HasPrefix(path, "/api/v1/volumes/"):
 			var r entities.AppVolume
 			if err := db.DB.Select("app_id").Where("id = ?", resourceID).First(&r).Error; err != nil {
-				log.Printf("resolveProjectID: DB lookup AppVolume %q failed: %v", resourceID, err)
+				slog.Debug("resolveProjectID volume lookup failed", "resourceID", resourceID, "error", err)
 				return "", false
 			}
 			appID = r.AppID
 		case strings.HasPrefix(path, "/api/v1/config-files/"):
 			var r entities.AppConfigFile
 			if err := db.DB.Select("app_id").Where("id = ?", resourceID).First(&r).Error; err != nil {
-				log.Printf("resolveProjectID: DB lookup AppConfigFile %q failed: %v", resourceID, err)
+				slog.Debug("resolveProjectID config file lookup failed", "resourceID", resourceID, "error", err)
 				return "", false
 			}
 			appID = r.AppID
 		case strings.HasPrefix(path, "/api/v1/gateways/"):
 			var r entities.AppGateway
 			if err := db.DB.Select("app_id").Where("id = ?", resourceID).First(&r).Error; err != nil {
-				log.Printf("resolveProjectID: DB lookup AppGateway %q failed: %v", resourceID, err)
+				slog.Debug("resolveProjectID gateway lookup failed", "resourceID", resourceID, "error", err)
 				return "", false
 			}
 			appID = r.AppID
@@ -104,7 +104,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 			Joins("JOIN apps ON apps.env_id = envs.id").
 			Where("apps.id = ?", appID).
 			First(&env).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup via appID %q (flat resource) failed: %v", appID, err)
+			slog.Debug("resolveProjectID flat resource app lookup failed", "appID", appID, "error", err)
 			return "", false
 		}
 		return env.ProjectID, true
@@ -113,7 +113,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 	if gatewayID := c.Param("gatewayID"); gatewayID != "" {
 		var gateway entities.AppGateway
 		if err := db.DB.Select("app_id").Where("id = ?", gatewayID).First(&gateway).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup AppGateway %q failed: %v", gatewayID, err)
+			slog.Debug("resolveProjectID gatewayID lookup failed", "gatewayID", gatewayID, "error", err)
 			return "", false
 		}
 
@@ -122,7 +122,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 			Joins("JOIN apps ON apps.env_id = envs.id").
 			Where("apps.id = ?", gateway.AppID).
 			First(&env).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup via gatewayID %q failed: %v", gatewayID, err)
+			slog.Debug("resolveProjectID gateway env lookup failed", "gatewayID", gatewayID, "error", err)
 			return "", false
 		}
 		return env.ProjectID, true
@@ -132,7 +132,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 	if registryID := c.Param("registryID"); registryID != "" {
 		var registry entities.ContainerRegistry
 		if err := db.DB.Select("project_id").Where("id = ?", registryID).First(&registry).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup ContainerRegistry %q failed: %v", registryID, err)
+			slog.Debug("resolveProjectID registry lookup failed", "registryID", registryID, "error", err)
 			return "", false
 		}
 		// Cluster-scoped registries have no project context — skip RBAC check
@@ -146,7 +146,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 	if repoID := c.Param("repoID"); repoID != "" {
 		var repo entities.CodeRepository
 		if err := db.DB.Select("project_id").Where("id = ?", repoID).First(&repo).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup CodeRepository %q failed: %v", repoID, err)
+			slog.Debug("resolveProjectID repository lookup failed", "repoID", repoID, "error", err)
 			return "", false
 		}
 		return repo.ProjectID, true
@@ -160,7 +160,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 			Joins("JOIN code_repositories ON code_repositories.id = build_settings.code_repository_id").
 			Where("build_settings.id = ?", settingID).
 			First(&repo).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup via settingID %q failed: %v", settingID, err)
+			slog.Debug("resolveProjectID build setting lookup failed", "settingID", settingID, "error", err)
 			return "", false
 		}
 		return repo.ProjectID, true
@@ -173,7 +173,7 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 			Joins("JOIN app_groups ON app_groups.env_id = envs.id").
 			Where("app_groups.id = ?", groupID).
 			First(&env).Error; err != nil {
-			log.Printf("resolveProjectID: DB lookup AppGroup %q failed: %v", groupID, err)
+			slog.Debug("resolveProjectID app group lookup failed", "groupID", groupID, "error", err)
 			return "", false
 		}
 		return env.ProjectID, true

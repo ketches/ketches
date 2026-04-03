@@ -7,6 +7,7 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -86,7 +87,7 @@ func TestChangeCurrentUserPasswordRejectsWrongCurrentPassword(t *testing.T) {
 	setupUserAccountServiceTestDB(t)
 	seedAccountTestUser(t, "user-1", "alice", "secret123", app.UserRoleUser)
 
-	err := ChangeCurrentUserPassword("user-1", "wrong-password", "new-secret123")
+	err := ChangeCurrentUserPassword("user-1", "wrong-password", "New-secret#123")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrInvalidCurrentPassword)
 }
@@ -95,22 +96,45 @@ func TestChangeCurrentUserPasswordUpdatesHash(t *testing.T) {
 	setupUserAccountServiceTestDB(t)
 	seedAccountTestUser(t, "user-1", "alice", "secret123", app.UserRoleUser)
 
-	err := ChangeCurrentUserPassword("user-1", "secret123", "new-secret123")
+	err := ChangeCurrentUserPassword("user-1", "secret123", "New-secret#123")
 	require.NoError(t, err)
 
 	var persisted entities.User
 	require.NoError(t, db.DB.First(&persisted, "id = ?", "user-1").Error)
-	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(persisted.Password), []byte("new-secret123")))
+	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(persisted.Password), []byte("New-secret#123")))
 }
 
 func TestAdminChangeUserPasswordUpdatesHash(t *testing.T) {
 	setupUserAccountServiceTestDB(t)
 	seedAccountTestUser(t, "user-1", "alice", "secret123", app.UserRoleUser)
 
-	err := ChangeUserPassword("user-1", "admin-reset123")
+	err := ChangeUserPassword("user-1", "Admin-reset#123")
 	require.NoError(t, err)
 
 	var persisted entities.User
 	require.NoError(t, db.DB.First(&persisted, "id = ?", "user-1").Error)
-	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(persisted.Password), []byte("admin-reset123")))
+	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(persisted.Password), []byte("Admin-reset#123")))
+}
+
+func TestChangeUserPasswordRejectsWeakPassword(t *testing.T) {
+	setupUserAccountServiceTestDB(t)
+	seedAccountTestUser(t, "user-1", "alice", "secret123", app.UserRoleUser)
+
+	err := ChangeUserPassword("user-1", "weakpass")
+	require.ErrorIs(t, err, ErrWeakPassword)
+}
+
+func TestSignInRejectsLockedAccount(t *testing.T) {
+	setupUserAccountServiceTestDB(t)
+	user := seedAccountTestUser(t, "user-1", "alice", "Password#123", app.UserRoleUser)
+	require.NoError(t, db.DB.Model(&entities.User{}).Where("id = ?", user.ID).Updates(map[string]any{
+		"is_locked": true,
+		"locked_at": user.CreatedAt,
+	}).Error)
+
+	_, _, err := SignIn(&models.SignInRequest{
+		Username: "alice",
+		Password: "Password#123",
+	})
+	require.ErrorIs(t, err, ErrAccountLocked)
 }

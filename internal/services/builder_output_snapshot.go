@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"mime"
 	"os"
@@ -54,7 +53,7 @@ func PublishBuilderOutputSnapshot(ctx context.Context, workspace *entities.Build
 		return nil, errors.New("builder workspace id must match builder run workspace id")
 	}
 	if run.Status != entities.BuilderRunStatusSucceeded {
-		return nil, fmt.Errorf("builder run must be succeeded to publish output snapshot: %s", run.Status)
+		return nil, app.NewErrorf("builder run must be succeeded to publish output snapshot: %s", run.Status)
 	}
 
 	existingSnapshot, err := getBuilderOutputSnapshotByRunID(ctx, run.ID)
@@ -104,10 +103,10 @@ func PublishBuilderOutputSnapshot(ctx context.Context, workspace *entities.Build
 	snapshot.StoragePath = storagePath
 
 	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
-		return nil, fmt.Errorf("create snapshot directory: %w", err)
+		return nil, app.WrapErrorf(err, "create snapshot directory: %w", err)
 	}
 	if err := os.MkdirAll(filepath.Dir(tmpPath), 0o755); err != nil {
-		return nil, fmt.Errorf("create temporary snapshot directory: %w", err)
+		return nil, app.WrapErrorf(err, "create temporary snapshot directory: %w", err)
 	}
 	_ = os.RemoveAll(tmpPath)
 	defer os.RemoveAll(tmpPath)
@@ -116,7 +115,7 @@ func PublishBuilderOutputSnapshot(ctx context.Context, workspace *entities.Build
 		return nil, err
 	}
 	if err := os.Rename(tmpPath, absPath); err != nil {
-		return nil, fmt.Errorf("finalize snapshot directory: %w", err)
+		return nil, app.WrapErrorf(err, "finalize snapshot directory: %w", err)
 	}
 
 	if err := db.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -141,7 +140,7 @@ func PublishBuilderOutputSnapshot(ctx context.Context, workspace *entities.Build
 	}); err != nil {
 		cleanupErr := os.RemoveAll(absPath)
 		if cleanupErr != nil && !errors.Is(cleanupErr, os.ErrNotExist) {
-			return nil, fmt.Errorf("cleanup failed publish snapshot directory: %w", cleanupErr)
+			return nil, app.WrapErrorf(cleanupErr, "cleanup failed publish snapshot directory: %w", cleanupErr)
 		}
 
 		existingSnapshot, existingErr := getBuilderOutputSnapshotByRunID(ctx, run.ID)
@@ -392,7 +391,7 @@ func planBuilderOutputSnapshotFiles(artifacts []entities.BuilderArtifact) (strin
 		if outputRoot == "" {
 			outputRoot = artifactOutputRoot
 		} else if outputRoot != artifactOutputRoot {
-			return "", nil, 0, "", fmt.Errorf("builder output artifacts span multiple roots: %s and %s", outputRoot, artifactOutputRoot)
+			return "", nil, 0, "", app.NewErrorf("builder output artifacts span multiple roots: %s and %s", outputRoot, artifactOutputRoot)
 		}
 
 		contentType := mime.TypeByExtension(path.Ext(validatedRelativePath))
@@ -436,7 +435,7 @@ func writeBuilderOutputSnapshotFiles(ctx context.Context, workspace *entities.Bu
 
 		fileDir := filepath.Join(tmpRoot, filepath.FromSlash(path.Dir(plan.RelativePath)))
 		if err := os.MkdirAll(fileDir, 0o755); err != nil {
-			return fmt.Errorf("create snapshot file directory: %w", err)
+			return app.WrapErrorf(err, "create snapshot file directory: %w", err)
 		}
 
 		finalTmpPath := filepath.Join(tmpRoot, filepath.FromSlash(plan.RelativePath))
@@ -445,22 +444,22 @@ func writeBuilderOutputSnapshotFiles(ctx context.Context, workspace *entities.Bu
 
 		tempFile, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 		if err != nil {
-			return fmt.Errorf("create snapshot file: %w", err)
+			return app.WrapErrorf(err, "create snapshot file: %w", err)
 		}
 
 		streamErr := streamBuilderOutputSnapshotSourceFile(ctx, workspace, plan.RelativePath, tempFile)
 		closeErr := tempFile.Close()
 		if streamErr != nil {
 			_ = os.Remove(tempFilePath)
-			return fmt.Errorf("copy snapshot source file %s: %w", plan.RelativePath, streamErr)
+			return app.WrapErrorf(streamErr, "copy snapshot source file %s: %w", plan.RelativePath, streamErr)
 		}
 		if closeErr != nil {
 			_ = os.Remove(tempFilePath)
-			return fmt.Errorf("close snapshot file %s: %w", plan.RelativePath, closeErr)
+			return app.WrapErrorf(closeErr, "close snapshot file %s: %w", plan.RelativePath, closeErr)
 		}
 		if err := os.Rename(tempFilePath, finalTmpPath); err != nil {
 			_ = os.Remove(tempFilePath)
-			return fmt.Errorf("finalize snapshot file %s: %w", plan.RelativePath, err)
+			return app.WrapErrorf(err, "finalize snapshot file %s: %w", plan.RelativePath, err)
 		}
 
 		plan.StoragePath = path.Join(storagePath, plan.RelativePath)

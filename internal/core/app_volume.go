@@ -2,8 +2,8 @@ package core
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
@@ -14,7 +14,7 @@ import (
 // SyncVolumeToK8s synchronizes a volume to Kubernetes (creates/updates PVC for persistent volumes)
 func SyncVolumeToK8s(ctx context.Context, appCtx *models.AppContext, volume *entities.AppVolume) error {
 	if appCtx.EnvContext.Env.ClusterID == "" {
-		return fmt.Errorf("app environment has no cluster configured")
+		return app.NewErrorf("app environment has no cluster configured")
 	}
 
 	// Only create PVC for pvc type volumes
@@ -52,7 +52,7 @@ func SyncVolumeToK8s(ctx context.Context, appCtx *models.AppContext, volume *ent
 // DeleteVolumeFromK8s deletes a PVC from Kubernetes
 func DeleteVolumeFromK8s(ctx context.Context, appCtx *models.AppContext, volume *entities.AppVolume) error {
 	if appCtx.EnvContext.Env.ClusterID == "" {
-		return fmt.Errorf("app environment has no cluster configured")
+		return app.NewErrorf("app environment has no cluster configured")
 	}
 
 	// Only delete PVC for pvc type volumes

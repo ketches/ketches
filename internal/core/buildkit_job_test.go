@@ -127,6 +127,50 @@ func TestCreateBuildClientJob_MountsWorkspaceAndDockerConfig(t *testing.T) {
 	}
 }
 
+func TestCreateBuildClientJob_PassesGitRefAndURLAsShellArgs(t *testing.T) {
+	job, err := CreateBuildClientJobFromCodeRepo(
+		&entities.Build{ID: "build-1", BuildNumber: 7, GitRef: `main; touch /tmp/pwned`, ImageFullName: "demo/api:v1.2.3"},
+		&entities.CodeRepository{Name: "demo-api", GitRepoURL: "https://github.com/example/demo-api.git?x=$(touch /tmp/pwned)"},
+		&entities.BuildSetting{
+			ID:                   "setting-1",
+			Name:                 "default",
+			GitRef:               "main",
+			DockerfilePath:       "apps/api/Dockerfile",
+			BuildContext:         "apps/api",
+			ImageName:            "demo/api",
+			Platforms:            "linux/amd64",
+			RegistryCacheEnabled: coreBoolPtr(true),
+		},
+		&entities.ContainerRegistry{
+			Provider: entities.RegistryProviderGHCR,
+			Endpoint: "ghcr.io",
+		},
+		&entities.Env{Base: entities.Base{ID: "env-1"}, Slug: "dev", ClusterNamespace: "project-dev", ClusterID: "cluster-1"},
+		&entities.Project{Base: entities.Base{ID: "project-1"}, Slug: "demo"},
+		"demo-api-default",
+	)
+	if err != nil {
+		t.Fatalf("CreateBuildClientJobFromCodeRepo returned error: %v", err)
+	}
+
+	initContainer := job.Spec.Template.Spec.InitContainers[0]
+	if len(initContainer.Command) < 3 {
+		t.Fatalf("expected shell wrapper command, got %#v", initContainer.Command)
+	}
+	if got := initContainer.Command[2]; got == `main; touch /tmp/pwned` || got == "https://github.com/example/demo-api.git?x=$(touch /tmp/pwned)" {
+		t.Fatalf("expected shell script to avoid direct interpolation, got %q", got)
+	}
+	if len(initContainer.Args) < 2 {
+		t.Fatalf("expected git ref and URL to be passed via shell args, got %#v", initContainer.Args)
+	}
+	if initContainer.Args[len(initContainer.Args)-2] != `main; touch /tmp/pwned` {
+		t.Fatalf("expected git ref in args, got %#v", initContainer.Args)
+	}
+	if initContainer.Args[len(initContainer.Args)-1] != "https://github.com/example/demo-api.git?x=$(touch /tmp/pwned)" {
+		t.Fatalf("expected git URL in args, got %#v", initContainer.Args)
+	}
+}
+
 func hasMount(mounts []corev1.VolumeMount, name, mountPath string) bool {
 	for _, mount := range mounts {
 		if mount.Name == name && mount.MountPath == mountPath {

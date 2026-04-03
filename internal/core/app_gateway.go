@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
@@ -18,7 +19,7 @@ import (
 // It creates/updates Service and HTTPRoute/TCPRoute resources as needed
 func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 	if appCtx.EnvContext.Env.ClusterID == "" {
-		return fmt.Errorf("app environment has no cluster configured")
+		return app.NewErrorf("app environment has no cluster configured")
 	}
 
 	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
@@ -78,7 +79,7 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 				return err
 			}
 			if !hasGWAPI {
-				return fmt.Errorf("Gateway API CRDs are not installed on cluster %s", appCtx.EnvContext.Env.ClusterID)
+				return app.NewErrorf("Gateway API CRDs are not installed on cluster %s", appCtx.EnvContext.Env.ClusterID)
 			}
 			// Ensure the env-level Gateway exists before creating HTTPRoute.
 			if err := EnsureEnvGateway(ctx, &appCtx.EnvContext, nil); err != nil {
@@ -123,7 +124,7 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 // DeleteGatewayFromK8s removes Gateway API resources from Kubernetes
 func DeleteGatewayFromK8s(ctx context.Context, appCtx *models.AppContext, gateway *entities.AppGateway) error {
 	if appCtx.EnvContext.Env.ClusterID == "" {
-		return fmt.Errorf("app environment has no cluster configured")
+		return app.NewErrorf("app environment has no cluster configured")
 	}
 
 	gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID)

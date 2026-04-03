@@ -1,5 +1,5 @@
 import client from './client'
-import { getStoredAccessToken } from '@/lib/auth-session'
+import { authenticatedFetch } from '@/lib/auth-session'
 
 export interface FileInfo {
   name: string
@@ -70,13 +70,10 @@ export const fileExplorerApi = {
   },
 
   downloadFile: async (appId: string, instanceName: string, container: string, path: string) => {
-    const token = getStoredAccessToken()
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
     const params = new URLSearchParams({ container, path })
 
-    const response = await fetch(`${baseUrl}/v1/apps/${appId}/instances/${instanceName}/files/download?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await authenticatedFetch(`${baseUrl}/v1/apps/${appId}/instances/${instanceName}/files/download?${params}`)
 
     if (!response.ok) {
       throw new Error(`Download failed: ${response.statusText}`)
@@ -97,13 +94,10 @@ export const fileExplorerApi = {
   },
 
   downloadDir: async (appId: string, instanceName: string, container: string, path: string) => {
-    const token = getStoredAccessToken()
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
     const params = new URLSearchParams({ container, path })
 
-    const response = await fetch(`${baseUrl}/v1/apps/${appId}/instances/${instanceName}/files/download-dir?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await authenticatedFetch(`${baseUrl}/v1/apps/${appId}/instances/${instanceName}/files/download-dir?${params}`)
 
     if (!response.ok) {
       throw new Error(`Download failed: ${response.statusText}`)
@@ -139,13 +133,11 @@ export const fileExplorerApi = {
   },
 
   compressAndDownload: async (appId: string, instanceName: string, container: string, baseDir: string, fileNames: string[], archiveName: string) => {
-    const token = getStoredAccessToken()
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
 
-    const response = await fetch(`${baseUrl}/v1/apps/${appId}/instances/${instanceName}/files/compress-download?container=${encodeURIComponent(container)}`, {
+    const response = await authenticatedFetch(`${baseUrl}/v1/apps/${appId}/instances/${instanceName}/files/compress-download?container=${encodeURIComponent(container)}`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ baseDir, fileNames, archiveName }),

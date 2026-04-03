@@ -2,9 +2,9 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/kube"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -249,7 +249,7 @@ func buildkitRequiresBinfmt(platforms string) bool {
 
 func validateBuildkitStatefulSetReadiness(sts *appsv1.StatefulSet) error {
 	if sts == nil {
-		return fmt.Errorf("BuildKit builder is not ready in namespace %s. Wait for StatefulSet %s to become Ready before retrying.", buildkitNamespaceName, buildkitStatefulSetName)
+		return app.NewErrorf("BuildKit builder is not ready in namespace %s. Wait for StatefulSet %s to become Ready before retrying.", buildkitNamespaceName, buildkitStatefulSetName)
 	}
 
 	desiredReplicas := int32(1)
@@ -257,7 +257,7 @@ func validateBuildkitStatefulSetReadiness(sts *appsv1.StatefulSet) error {
 		desiredReplicas = *sts.Spec.Replicas
 	}
 	if sts.Status.ReadyReplicas < desiredReplicas {
-		return fmt.Errorf("BuildKit builder is not ready in namespace %s. Wait for StatefulSet %s to become Ready before retrying.", buildkitNamespaceName, buildkitStatefulSetName)
+		return app.NewErrorf("BuildKit builder is not ready in namespace %s. Wait for StatefulSet %s to become Ready before retrying.", buildkitNamespaceName, buildkitStatefulSetName)
 	}
 	return nil
 }
@@ -267,7 +267,7 @@ func validateBinfmtDaemonSetReadiness(platforms string, ds *appsv1.DaemonSet) er
 		return nil
 	}
 	if ds == nil || ds.Status.DesiredNumberScheduled == 0 || ds.Status.NumberReady < ds.Status.DesiredNumberScheduled {
-		return fmt.Errorf("Multi-arch build requires binfmt/QEMU support, but DaemonSet %s is not ready in namespace %s.", buildkitBinfmtDaemonSetName, buildkitNamespaceName)
+		return app.NewErrorf("Multi-arch build requires binfmt/QEMU support, but DaemonSet %s is not ready in namespace %s.", buildkitBinfmtDaemonSetName, buildkitNamespaceName)
 	}
 	return nil
 }
@@ -279,7 +279,7 @@ func buildkitNodeName(pods []corev1.Pod) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("BuildKit builder Pod is not ready in namespace %s. Wait for Pod from StatefulSet %s to become Ready before retrying.", buildkitNamespaceName, buildkitStatefulSetName)
+	return "", app.NewErrorf("BuildKit builder Pod is not ready in namespace %s. Wait for Pod from StatefulSet %s to become Ready before retrying.", buildkitNamespaceName, buildkitStatefulSetName)
 }
 
 func validateBinfmtPodReadinessOnNode(platforms, nodeName string, pods []corev1.Pod) error {
@@ -296,7 +296,7 @@ func validateBinfmtPodReadinessOnNode(platforms, nodeName string, pods []corev1.
 		}
 	}
 
-	return fmt.Errorf("Multi-arch build requires binfmt/QEMU support on builder node %s, but Pod for DaemonSet %s is not Ready in namespace %s.", nodeName, buildkitBinfmtDaemonSetName, buildkitNamespaceName)
+	return app.NewErrorf("Multi-arch build requires binfmt/QEMU support on builder node %s, but Pod for DaemonSet %s is not Ready in namespace %s.", nodeName, buildkitBinfmtDaemonSetName, buildkitNamespaceName)
 }
 
 func podReady(pod *corev1.Pod) bool {

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
@@ -25,22 +24,14 @@ func ListAppGroups(c *gin.Context) {
 func ListSpecificGroupedApps(c *gin.Context) {
 	groupID := c.Param("groupID")
 
-	page := 1
-	pageSize := 10
-	search := c.Query("search")
-
-	if p := c.Query("page"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil && v > 0 {
-			page = v
-		}
+	req := models.DefaultPaginationRequest()
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
 	}
-	if ps := c.Query("page_size"); ps != "" {
-		if v, err := strconv.Atoi(ps); err == nil && v > 0 {
-			pageSize = v
-		}
-	}
+	req.Validate()
 
-	total, apps, err := services.ListSpecificGroupedApps(c.Request.Context(), groupID, page, pageSize, search)
+	total, apps, err := services.ListSpecificGroupedApps(c.Request.Context(), groupID, req.Page, req.PageSize, req.Search)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -48,7 +39,7 @@ func ListSpecificGroupedApps(c *gin.Context) {
 
 	api.Success(c, models.ListAppResponse{
 		Items:      apps,
-		Pagination: models.BuildPaginationResponse(total, page, pageSize),
+		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
 	})
 }
 

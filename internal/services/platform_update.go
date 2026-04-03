@@ -81,7 +81,7 @@ func GetPlatformUpdateConfig() (*models.PlatformUpdateConfig, error) {
 
 	var cfg models.PlatformUpdateConfig
 	if err := json.Unmarshal([]byte(setting.Value), &cfg); err != nil {
-		return nil, fmt.Errorf("failed to decode platform update config: %w", err)
+		return nil, app.WrapErrorf(err, "failed to decode platform update config: %w", err)
 	}
 
 	normalized, err := normalizePlatformUpdateConfig(&cfg)
@@ -99,7 +99,7 @@ func UpdatePlatformUpdateConfig(cfg *models.PlatformUpdateConfig, _ *app.Claims)
 
 	payload, err := json.Marshal(normalized)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode platform update config: %w", err)
+		return nil, app.WrapErrorf(err, "failed to encode platform update config: %w", err)
 	}
 
 	setting, err := getSystemSetting(platformUpdateConfigSettingKey)
@@ -283,22 +283,22 @@ func TriggerPlatformRollout(req *models.TriggerPlatformRolloutRequest, claims *a
 
 	client, err := platformUpdateNewKubeClientForConfig(inClusterConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create in-cluster kubernetes client: %w", err)
+		return nil, app.WrapErrorf(err, "failed to create in-cluster kubernetes client: %w", err)
 	}
 
 	apiVersions, err := platformUpdateAvailableVersions(cfg.API.ImageRepository)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list API image tags: %w", err)
+		return nil, app.WrapErrorf(err, "failed to list API image tags: %w", err)
 	}
 	uiVersions, err := platformUpdateAvailableVersions(cfg.UI.ImageRepository)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list UI image tags: %w", err)
+		return nil, app.WrapErrorf(err, "failed to list UI image tags: %w", err)
 	}
 	if !slices.Contains(apiVersions, apiVersion) {
-		return nil, fmt.Errorf("API version %q is not available", apiVersion)
+		return nil, app.NewErrorf("API version %q is not available", apiVersion)
 	}
 	if !slices.Contains(uiVersions, uiVersion) {
-		return nil, fmt.Errorf("UI version %q is not available", uiVersion)
+		return nil, app.NewErrorf("UI version %q is not available", uiVersion)
 	}
 
 	ctx := context.Background()
@@ -348,7 +348,7 @@ func TriggerPlatformRollout(req *models.TriggerPlatformRolloutRequest, claims *a
 		result.RollbackSucceeded = rollbackErr == nil
 		logPlatformRolloutEvent(claims, entities.OperationLogStatusFailure, err.Error(), result, true, rollbackErr == nil)
 		if rollbackErr != nil {
-			return nil, fmt.Errorf("%w; UI rollback failed: %v", err, rollbackErr)
+			return nil, app.WrapErrorf(err, "%w; UI rollback failed: %v", err, rollbackErr)
 		}
 		return nil, err
 	}
@@ -394,7 +394,7 @@ func normalizePlatformUpdateConfig(cfg *models.PlatformUpdateConfig) (*models.Pl
 		{Config: normalized.UI, Name: "UI"},
 	} {
 		if target.Config.ImageRepository == "" || target.Config.Namespace == "" || target.Config.DeploymentName == "" || target.Config.ContainerName == "" {
-			return nil, fmt.Errorf("%s rollout target is incomplete", target.Name)
+			return nil, app.NewErrorf("%s rollout target is incomplete", target.Name)
 		}
 	}
 
@@ -425,7 +425,7 @@ func maybeCreatePlatformUpdateNotifications(status *models.PlatformUpdateStatus)
 		"ui_latest_version":   status.UI.LatestVersion,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to encode platform update notification payload: %w", err)
+		return app.WrapErrorf(err, "failed to encode platform update notification payload: %w", err)
 	}
 
 	return db.DB.Transaction(func(tx *gorm.DB) error {
@@ -469,7 +469,7 @@ func getPlatformUpdateNotificationState() (*platformUpdateNotificationState, err
 
 	var state platformUpdateNotificationState
 	if err := json.Unmarshal([]byte(setting.Value), &state); err != nil {
-		return nil, fmt.Errorf("failed to decode platform update notification state: %w", err)
+		return nil, app.WrapErrorf(err, "failed to decode platform update notification state: %w", err)
 	}
 	return &state, nil
 }
@@ -477,7 +477,7 @@ func getPlatformUpdateNotificationState() (*platformUpdateNotificationState, err
 func savePlatformUpdateNotificationState(tx *gorm.DB, state platformUpdateNotificationState) error {
 	payload, err := json.Marshal(state)
 	if err != nil {
-		return fmt.Errorf("failed to encode platform update notification state: %w", err)
+		return app.WrapErrorf(err, "failed to encode platform update notification state: %w", err)
 	}
 
 	var setting entities.SystemSetting
@@ -577,9 +577,9 @@ func platformUpdateLoadDeployment(ctx context.Context, client platformUpdateKube
 	deployment, err := client.AppsV1().Deployments(target.Namespace).Get(ctx, target.DeploymentName, metav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			return nil, fmt.Errorf("deployment %s/%s not found", target.Namespace, target.DeploymentName)
+			return nil, app.NewErrorf("deployment %s/%s not found", target.Namespace, target.DeploymentName)
 		}
-		return nil, fmt.Errorf("failed to get deployment %s/%s: %w", target.Namespace, target.DeploymentName, err)
+		return nil, app.WrapErrorf(err, "failed to get deployment %s/%s: %w", target.Namespace, target.DeploymentName, err)
 	}
 	if _, err := findContainerImage(deployment.Spec.Template.Spec.Containers, target.ContainerName); err != nil {
 		return nil, err
@@ -593,7 +593,7 @@ func findContainerImage(containers []corev1.Container, containerName string) (st
 			return container.Image, nil
 		}
 	}
-	return "", fmt.Errorf("container %q not found", containerName)
+	return "", app.NewErrorf("container %q not found", containerName)
 }
 
 func extractImageTag(containers []corev1.Container, containerName string) string {
@@ -630,7 +630,7 @@ func platformUpdatePatchDeploymentImage(ctx context.Context, client platformUpda
 			return err
 		}
 	}
-	return fmt.Errorf("container %q not found", target.ContainerName)
+	return app.NewErrorf("container %q not found", target.ContainerName)
 }
 
 func platformUpdatePhaseForComponent(component models.PlatformUpdateComponentStatus, canRollout bool) string {

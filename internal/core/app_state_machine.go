@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/ketches/ketches/internal/app"
 )
@@ -220,12 +219,12 @@ var stateTransitions = map[app.AppStatus]map[app.AppAction]StateTransition{
 func ValidateStateTransition(currentStatus app.AppStatus, action app.AppAction) (*StateTransition, error) {
 	statusTransitions, ok := stateTransitions[currentStatus]
 	if !ok {
-		return nil, fmt.Errorf("%w: no transitions defined for status %s", ErrInvalidStateTransition, currentStatus)
+		return nil, app.WrapErrorf(ErrInvalidStateTransition, "%w: no transitions defined for status %s", ErrInvalidStateTransition, currentStatus)
 	}
 
 	transition, ok := statusTransitions[action]
 	if !ok {
-		return nil, fmt.Errorf("%w: action '%s' not allowed in status '%s'", ErrActionNotAllowedInState, action, currentStatus)
+		return nil, app.WrapErrorf(ErrActionNotAllowedInState, "%w: action '%s' not allowed in status '%s'", ErrActionNotAllowedInState, action, currentStatus)
 	}
 
 	return &transition, nil

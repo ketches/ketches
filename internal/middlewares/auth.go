@@ -6,30 +6,27 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/services"
 )
 
-func verifyToken(tokenString string) (*app.Claims, any, error) {
+func verifyToken(tokenString, expectedTokenType string) (*app.Claims, any, error) {
 	if tokenString == "" {
-		return nil, nil, jwt.ErrTokenSignatureInvalid
+		return nil, nil, errors.New("token is required")
 	}
 
-	claims := &app.Claims{}
-
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
-		return []byte(app.Config.JWTSecret), nil
-	})
-
-	if err != nil || !token.Valid {
-		return nil, nil, jwt.ErrTokenSignatureInvalid
+	claims, err := app.ParseToken(tokenString, expectedTokenType)
+	if err != nil {
+		return nil, nil, errors.New("invalid token")
 	}
 
 	user, err := services.GetUser(claims.UserID)
 	if err != nil || user == nil {
 		return nil, nil, errors.New("user not found")
+	}
+	if user.IsLocked {
+		return nil, nil, services.ErrAccountLocked
 	}
 
 	return claims, user, nil
@@ -48,10 +45,13 @@ func Auth() gin.HandlerFunc {
 		}
 
 		if tokenString == "" {
-			tokenString, _ = c.Cookie("X-Ketches-Token")
+			tokenString, _ = c.Cookie(app.AccessTokenCookieName)
+		}
+		if tokenString == "" {
+			tokenString, _ = c.Cookie(app.LegacyAuthCookieName)
 		}
 
-		claims, user, err := verifyToken(tokenString)
+		claims, user, err := verifyToken(tokenString, app.TokenTypeAccess)
 		if err != nil {
 			api.Error(c, http.StatusUnauthorized, err)
 			c.Abort()
@@ -66,11 +66,12 @@ func Auth() gin.HandlerFunc {
 
 func ForwardAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// X-Ketches-Token cookie is used by the gateway quick-access feature so
-		// the JWT never appears in the browser address bar.
-		tokenString, _ := c.Cookie("X-Ketches-Token")
+		tokenString, _ := c.Cookie(app.AccessTokenCookieName)
+		if tokenString == "" {
+			tokenString, _ = c.Cookie(app.LegacyAuthCookieName)
+		}
 
-		claims, user, err := verifyToken(tokenString)
+		claims, user, err := verifyToken(tokenString, app.TokenTypeAccess)
 		if err != nil {
 			api.Error(c, http.StatusUnauthorized, err)
 			c.Abort()
@@ -87,13 +88,13 @@ func AdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, ok := c.Get("claims")
 		if !ok {
-			api.Error(c, http.StatusUnauthorized, jwt.ErrTokenSignatureInvalid)
+			api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
 			c.Abort()
 			return
 		}
 
 		if claims.(*app.Claims).Role != app.UserRoleAdmin {
-			api.Error(c, http.StatusForbidden, jwt.ErrTokenSignatureInvalid)
+			api.Error(c, http.StatusForbidden, errors.New("forbidden"))
 			c.Abort()
 			return
 		}

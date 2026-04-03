@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
@@ -220,7 +221,7 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	// 2. Validate protocol
 	proto := strings.ToLower(gateway.Protocol)
 	if proto != "http" && proto != "https" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("quick access is only available for HTTP/HTTPS gateways"))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("quick access is only available for HTTP/HTTPS gateways"))
 		return
 	}
 
@@ -256,7 +257,7 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	// 7. Forward request
 	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, targetURL, c.Request.Body)
 	if err != nil {
-		api.Error(c, http.StatusInternalServerError, fmt.Errorf("failed to build proxy request: %w", err))
+		api.Error(c, http.StatusInternalServerError, app.WrapErrorf(err, "failed to build proxy request: %w", err))
 		return
 	}
 
@@ -290,7 +291,7 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	// 8. Execute and stream response
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		api.Error(c, http.StatusBadGateway, fmt.Errorf("upstream request failed: %w", err))
+		api.Error(c, http.StatusBadGateway, app.WrapErrorf(err, "upstream request failed: %w", err))
 		return
 	}
 	defer resp.Body.Close()

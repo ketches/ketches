@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"sort"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -72,7 +73,7 @@ func EnsureBuiltinExtensions() error {
 
 func runBuiltinExtensionUpserts(items []builtinExtensionSeed) error {
 	if err := concurrency.Run(items, 0, upsertBuiltinExtension); err != nil {
-		return fmt.Errorf("builtin extension upsert failed: %w", err)
+		return app.WrapErrorf(err, "builtin extension upsert failed: %w", err)
 	}
 	return nil
 }
@@ -93,12 +94,12 @@ func upsertBuiltinExtension(ext builtinExtensionSeed) error {
 				CreatedBy:   nil,
 			}
 			if err := tx.Create(item).Error; err != nil {
-				return fmt.Errorf("failed to seed built-in extension %q: %w", ext.Name, err)
+				return app.WrapErrorf(err, "failed to seed built-in extension %q: %w", ext.Name, err)
 			}
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("failed to query extension %q: %w", ext.Name, err)
+			return app.WrapErrorf(err, "failed to query extension %q: %w", ext.Name, err)
 		}
 
 		updates := map[string]any{
@@ -109,7 +110,7 @@ func upsertBuiltinExtension(ext builtinExtensionSeed) error {
 			"builtin":      true,
 		}
 		if err := tx.Model(&entities.Extension{}).Where("id = ?", existing.ID).Updates(updates).Error; err != nil {
-			return fmt.Errorf("failed to update built-in extension %q: %w", ext.Name, err)
+			return app.WrapErrorf(err, "failed to update built-in extension %q: %w", ext.Name, err)
 		}
 		return nil
 	})
@@ -119,7 +120,7 @@ func upsertBuiltinExtension(ext builtinExtensionSeed) error {
 func ListExtensions() ([]models.Extension, error) {
 	var items []entities.Extension
 	if err := db.DB.Order("builtin DESC, created_at ASC").Find(&items).Error; err != nil {
-		return nil, fmt.Errorf("failed to list extensions: %w", err)
+		return nil, app.WrapErrorf(err, "failed to list extensions: %w", err)
 	}
 
 	// Count installs per extension from the cluster_extensions table (fast, no Helm calls).
@@ -152,7 +153,7 @@ func GetExtension(extensionID string) (*models.Extension, error) {
 	var item entities.Extension
 	if err := db.DB.Where("id = ?", extensionID).First(&item).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("extension not found")
+			return nil, app.NewErrorf("extension not found")
 		}
 		return nil, err
 	}
@@ -165,7 +166,7 @@ func GetExtensionEntity(extensionID string) (*entities.Extension, error) {
 	var item entities.Extension
 	if err := db.DB.Where("id = ?", extensionID).First(&item).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("extension not found")
+			return nil, app.NewErrorf("extension not found")
 		}
 		return nil, err
 	}
@@ -176,7 +177,7 @@ func GetExtensionEntity(extensionID string) (*entities.Extension, error) {
 func CreateExtension(req *models.CreateExtensionRequest, createdBy string) (*models.Extension, error) {
 	var existing entities.Extension
 	if err := db.DB.Where("name = ?", req.Name).First(&existing).Error; err == nil {
-		return nil, fmt.Errorf("extension with name %q already exists", req.Name)
+		return nil, app.NewErrorf("extension with name %q already exists", req.Name)
 	}
 	item := &entities.Extension{
 		ID:          uuid.New(),
@@ -189,7 +190,7 @@ func CreateExtension(req *models.CreateExtensionRequest, createdBy string) (*mod
 		CreatedBy:   toNullableString(createdBy),
 	}
 	if err := db.DB.Create(item).Error; err != nil {
-		return nil, fmt.Errorf("failed to create extension: %w", err)
+		return nil, app.WrapErrorf(err, "failed to create extension: %w", err)
 	}
 	m := toExtensionModel(item)
 	return &m, nil
@@ -200,12 +201,12 @@ func DeleteExtension(extensionID string) error {
 	var item entities.Extension
 	if err := db.DB.Where("id = ?", extensionID).First(&item).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("extension not found")
+			return app.NewErrorf("extension not found")
 		}
 		return err
 	}
 	if item.Builtin {
-		return fmt.Errorf("built-in extensions cannot be deleted")
+		return app.NewErrorf("built-in extensions cannot be deleted")
 	}
 	return db.DB.Delete(&item).Error
 }
@@ -215,12 +216,12 @@ func UpdateExtension(extensionID string, req *models.UpdateExtensionRequest) (*m
 	var item entities.Extension
 	if err := db.DB.Where("id = ?", extensionID).First(&item).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("extension not found")
+			return nil, app.NewErrorf("extension not found")
 		}
 		return nil, err
 	}
 	if item.Builtin {
-		return nil, fmt.Errorf("built-in extensions cannot be modified")
+		return nil, app.NewErrorf("built-in extensions cannot be modified")
 	}
 	if req.DisplayName != "" {
 		item.DisplayName = req.DisplayName
@@ -233,7 +234,7 @@ func UpdateExtension(extensionID string, req *models.UpdateExtensionRequest) (*m
 	}
 	item.IconURL = req.IconURL
 	if err := db.DB.Save(&item).Error; err != nil {
-		return nil, fmt.Errorf("failed to update extension: %w", err)
+		return nil, app.WrapErrorf(err, "failed to update extension: %w", err)
 	}
 	m := toExtensionModel(&item)
 	return &m, nil
@@ -263,7 +264,7 @@ func GetInstalledClustersForExtension(extensionID string) ([]models.InstalledClu
 		Where("ce.extension_id = ? AND ce.deleted_at IS NULL AND c.deleted_at IS NULL", extensionID).
 		Scan(&rows).Error
 	if err != nil {
-		return nil, fmt.Errorf("failed to query installed clusters: %w", err)
+		return nil, app.WrapErrorf(err, "failed to query installed clusters: %w", err)
 	}
 
 	result := make([]models.InstalledCluster, 0, len(rows))
@@ -291,7 +292,7 @@ func ListExtensionVersions(extensionID string) ([]models.ExtensionVersionInfo, e
 	repo := strings.TrimPrefix(item.OCIUrl, "oci://")
 	tags, err := crane.ListTags(repo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list versions for %q: %w", item.OCIUrl, err)
+		return nil, app.WrapErrorf(err, "failed to list versions for %q: %w", item.OCIUrl, err)
 	}
 
 	// Sort descending (newest first) using simple string sort; semver sorting
@@ -315,13 +316,13 @@ func GetExtensionValues(extensionID, version string) (string, error) {
 	// Pull the chart to a temp directory and load it.
 	dir, err := os.MkdirTemp("", "ketches-ext-values-*")
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp dir: %w", err)
+		return "", app.WrapErrorf(err, "failed to create temp dir: %w", err)
 	}
 	defer os.RemoveAll(dir)
 
 	regClient, err := registry.NewClient()
 	if err != nil {
-		return "", fmt.Errorf("failed to create registry client: %w", err)
+		return "", app.WrapErrorf(err, "failed to create registry client: %w", err)
 	}
 
 	p := action.NewPullWithOpts(action.WithConfig(&action.Configuration{
@@ -335,13 +336,13 @@ func GetExtensionValues(extensionID, version string) (string, error) {
 
 	// Pull the OCI chart.
 	if _, err := p.Run(item.OCIUrl); err != nil {
-		return "", fmt.Errorf("failed to pull chart %q version %q: %w", item.OCIUrl, version, err)
+		return "", app.WrapErrorf(err, "failed to pull chart %q version %q: %w", item.OCIUrl, version, err)
 	}
 
 	// The chart is extracted to dir/<chart-name>/
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return "", fmt.Errorf("failed to read extracted chart dir: %w", err)
+		return "", app.WrapErrorf(err, "failed to read extracted chart dir: %w", err)
 	}
 	var chartDir string
 	for _, e := range entries {
@@ -351,12 +352,12 @@ func GetExtensionValues(extensionID, version string) (string, error) {
 		}
 	}
 	if chartDir == "" {
-		return "", fmt.Errorf("no chart directory found after pull")
+		return "", app.NewErrorf("no chart directory found after pull")
 	}
 
 	chrt, err := loader.Load(chartDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to load chart: %w", err)
+		return "", app.WrapErrorf(err, "failed to load chart: %w", err)
 	}
 
 	// Return the raw values.yaml from the chart files.
@@ -370,7 +371,7 @@ func GetExtensionValues(extensionID, version string) (string, error) {
 	if len(chrt.Values) > 0 {
 		out, err := yaml.Marshal(chrt.Values)
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal values: %w", err)
+			return "", app.WrapErrorf(err, "failed to marshal values: %w", err)
 		}
 		return string(out), nil
 	}
@@ -381,7 +382,7 @@ func GetExtensionValues(extensionID, version string) (string, error) {
 func ListClusterExtensions(clusterID string) ([]models.ClusterExtension, error) {
 	var records []entities.ClusterExtension
 	if err := db.DB.Where("cluster_id = ?", clusterID).Find(&records).Error; err != nil {
-		return nil, fmt.Errorf("failed to list cluster extensions: %w", err)
+		return nil, app.WrapErrorf(err, "failed to list cluster extensions: %w", err)
 	}
 	result := make([]models.ClusterExtension, 0, len(records))
 	for _, r := range records {
@@ -395,7 +396,7 @@ func GetClusterExtension(clusterID, id string) (*models.ClusterExtension, error)
 	var record entities.ClusterExtension
 	if err := db.DB.Where("cluster_id = ? AND id = ?", clusterID, id).First(&record).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("cluster extension not found")
+			return nil, app.NewErrorf("cluster extension not found")
 		}
 		return nil, err
 	}
@@ -408,7 +409,7 @@ func GetClusterExtension(clusterID, id string) (*models.ClusterExtension, error)
 func InstallClusterExtension(clusterID string, req *models.InstallExtensionRequest, installedBy string) (*models.ClusterExtension, error) {
 	ext, err := GetExtensionEntity(req.ExtensionID)
 	if err != nil {
-		return nil, fmt.Errorf("extension not found: %w", err)
+		return nil, app.WrapErrorf(err, "extension not found: %w", err)
 	}
 
 	namespace := req.Namespace
@@ -420,7 +421,7 @@ func InstallClusterExtension(clusterID string, req *models.InstallExtensionReque
 	var existing entities.ClusterExtension
 	if err := db.DB.Where("cluster_id = ? AND namespace = ? AND extension_id = ? AND deleted_at IS NULL",
 		clusterID, namespace, req.ExtensionID).First(&existing).Error; err == nil {
-		return nil, fmt.Errorf("extension already installed in namespace %q", namespace)
+		return nil, app.NewErrorf("extension already installed in namespace %q", namespace)
 	}
 
 	record := &entities.ClusterExtension{
@@ -436,7 +437,7 @@ func InstallClusterExtension(clusterID string, req *models.InstallExtensionReque
 		InstalledBy: toNullableString(installedBy),
 	}
 	if err := db.DB.Create(record).Error; err != nil {
-		return nil, fmt.Errorf("failed to create cluster extension record: %w", err)
+		return nil, app.WrapErrorf(err, "failed to create cluster extension record: %w", err)
 	}
 
 	go func() {
@@ -559,13 +560,13 @@ func UninstallClusterExtension(clusterID, id string) error {
 		"phase":         "uninstalling",
 		"error_message": "",
 	}).Error; err != nil {
-		return fmt.Errorf("failed to update cluster extension status: %w", err)
+		return app.WrapErrorf(err, "failed to update cluster extension status: %w", err)
 	}
 
 	go func() {
 		actionConfig, cleanup, err := newHelmActionConfig(clusterID, namespace)
 		if err != nil {
-			log.Printf("[extension] failed to init helm config for uninstall: %v", err)
+			slog.Error(fmt.Sprintf("[extension] failed to init helm config for uninstall: %v", err))
 			db.DB.Model(record).Updates(map[string]any{
 				"status":        string(entities.ClusterExtensionStatusFailed),
 				"error_message": err.Error(),
@@ -576,7 +577,7 @@ func UninstallClusterExtension(clusterID, id string) error {
 
 		uninstaller := action.NewUninstall(actionConfig)
 		if _, err := uninstaller.Run(releaseName); err != nil {
-			log.Printf("[extension] helm uninstall %q failed: %v", releaseName, err)
+			slog.Error(fmt.Sprintf("[extension] helm uninstall %q failed: %v", releaseName, err))
 			db.DB.Model(record).Updates(map[string]any{
 				"status":        string(entities.ClusterExtensionStatusFailed),
 				"error_message": err.Error(),
@@ -596,7 +597,7 @@ func getClusterExtensionEntity(clusterID, id string) (*entities.ClusterExtension
 	var record entities.ClusterExtension
 	if err := db.DB.Where("cluster_id = ? AND id = ?", clusterID, id).First(&record).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("cluster extension not found")
+			return nil, app.NewErrorf("cluster extension not found")
 		}
 		return nil, err
 	}
@@ -634,20 +635,20 @@ func newHelmActionConfig(clusterID, namespace string) (*action.Configuration, fu
 
 	plaintextKubeConfig, err := secrets.DecryptString(cluster.KubeConfig)
 	if err != nil {
-		return nil, func() {}, fmt.Errorf("failed to decrypt kubeconfig: %w", err)
+		return nil, func() {}, app.WrapErrorf(err, "failed to decrypt kubeconfig: %w", err)
 	}
 
 	// Write kubeconfig to a temp file since ConfigFlags expects a path.
 	f, err := os.CreateTemp("", "ketches-kubeconfig-*")
 	if err != nil {
-		return nil, func() {}, fmt.Errorf("failed to create temp kubeconfig file: %w", err)
+		return nil, func() {}, app.WrapErrorf(err, "failed to create temp kubeconfig file: %w", err)
 	}
 	cleanup := func() {
 		_ = os.Remove(f.Name())
 	}
 	if _, err := f.WriteString(plaintextKubeConfig); err != nil {
 		cleanup()
-		return nil, func() {}, fmt.Errorf("failed to write kubeconfig: %w", err)
+		return nil, func() {}, app.WrapErrorf(err, "failed to write kubeconfig: %w", err)
 	}
 	_ = f.Close()
 
@@ -655,7 +656,7 @@ func newHelmActionConfig(clusterID, namespace string) (*action.Configuration, fu
 	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(plaintextKubeConfig))
 	if err != nil {
 		cleanup()
-		return nil, func() {}, fmt.Errorf("invalid kubeconfig for cluster %q: %w", clusterID, err)
+		return nil, func() {}, app.WrapErrorf(err, "invalid kubeconfig for cluster %q: %w", clusterID, err)
 	}
 	_ = restConfig
 
@@ -668,17 +669,17 @@ func newHelmActionConfig(clusterID, namespace string) (*action.Configuration, fu
 
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(cfgFlags, namespace, "secrets", func(format string, v ...any) {
-		log.Printf("[helm] "+format, v...)
+		slog.Info(fmt.Sprintf("[helm] "+format, v...))
 	}); err != nil {
 		cleanup()
-		return nil, func() {}, fmt.Errorf("failed to init helm action config: %w", err)
+		return nil, func() {}, app.WrapErrorf(err, "failed to init helm action config: %w", err)
 	}
 
 	// Attach a registry client for OCI pulls.
 	regClient, err := registry.NewClient()
 	if err != nil {
 		cleanup()
-		return nil, func() {}, fmt.Errorf("failed to create registry client: %w", err)
+		return nil, func() {}, app.WrapErrorf(err, "failed to create registry client: %w", err)
 	}
 	actionConfig.RegistryClient = regClient
 
@@ -689,7 +690,7 @@ func newHelmActionConfig(clusterID, namespace string) (*action.Configuration, fu
 func pullChart(ociUrl, version string, regClient *registry.Client) (*chart.Chart, error) {
 	dir, err := os.MkdirTemp("", "ketches-helm-pull-*")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp dir: %w", err)
+		return nil, app.WrapErrorf(err, "failed to create temp dir: %w", err)
 	}
 	defer os.RemoveAll(dir)
 
@@ -705,12 +706,12 @@ func pullChart(ociUrl, version string, regClient *registry.Client) (*chart.Chart
 	}
 
 	if _, err := p.Run(ociUrl); err != nil {
-		return nil, fmt.Errorf("failed to pull chart %q version %q: %w", ociUrl, version, err)
+		return nil, app.WrapErrorf(err, "failed to pull chart %q version %q: %w", ociUrl, version, err)
 	}
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read extracted chart dir: %w", err)
+		return nil, app.WrapErrorf(err, "failed to read extracted chart dir: %w", err)
 	}
 	var chartDir string
 	for _, e := range entries {
@@ -720,7 +721,7 @@ func pullChart(ociUrl, version string, regClient *registry.Client) (*chart.Chart
 		}
 	}
 	if chartDir == "" {
-		return nil, fmt.Errorf("no chart directory found after pull for %q", ociUrl)
+		return nil, app.NewErrorf("no chart directory found after pull for %q", ociUrl)
 	}
 
 	return loader.Load(chartDir)

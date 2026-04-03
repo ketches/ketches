@@ -1,4 +1,4 @@
-import { getStoredAccessToken, syncAuthCookie } from "@/lib/auth-session"
+import { hasPersistedAuthSession } from "@/lib/auth-session"
 import * as React from "react"
 
 interface LogViewerProps {
@@ -11,12 +11,10 @@ export function LogViewer({ appId, instanceName, containerName }: LogViewerProps
   const [logs, setLogs] = React.useState<string[]>([])
   const logEndRef = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
-    const token = getStoredAccessToken()
-    if (!token) return
+    if (!hasPersistedAuthSession()) return
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    syncAuthCookie()
     const ws = new WebSocket(`${protocol}//${host}/api/v1/apps/${appId}/instances/${instanceName}/logs?container=${containerName}`)
 
     ws.onmessage = (event) => {

@@ -7,6 +7,8 @@ export interface User {
   fullname?: string
   bio?: string
   role: string
+  is_locked: boolean
+  locked_at?: string | null
   created_at: string
 }
 
@@ -125,5 +127,8 @@ export const usersApi = {
   },
   updatePassword: async (id: string, password: string) => {
     return client.patch(`/v1/users/${id}/password`, { password }) as Promise<void>
+  },
+  updateLock: async (id: string, locked: boolean, reason = "") => {
+    return client.patch(`/v1/users/${id}/lock`, { locked, reason }) as Promise<User>
   },
 }

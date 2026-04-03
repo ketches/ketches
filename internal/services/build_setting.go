@@ -1,11 +1,13 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"sort"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -152,7 +154,7 @@ func DeleteRepoBuildSetting(id string) error {
 		return err
 	}
 	if count > 0 {
-		return fmt.Errorf("cannot delete: %d active build(s) are using this setting", count)
+		return app.NewErrorf("cannot delete: %d active build(s) are using this setting", count)
 	}
 	return db.DB.Delete(&entities.BuildSetting{}, "id = ?", id).Error
 }
@@ -219,10 +221,10 @@ func normalizeStructuredBuildArgs(raw string, pairs []models.BuildArgPair) (stri
 	for _, pair := range pairs {
 		key := strings.TrimSpace(pair.Key)
 		if key == "" {
-			return "", nil, fmt.Errorf("build arg key is required")
+			return "", nil, errors.New("build arg key is required")
 		}
 		if _, exists := seen[key]; exists {
-			return "", nil, fmt.Errorf("duplicate build arg key %q", key)
+			return "", nil, app.NewErrorf("duplicate build arg key %q", key)
 		}
 		seen[key] = struct{}{}
 		normalizedPairs = append(normalizedPairs, models.BuildArgPair{
@@ -286,6 +288,13 @@ func buildSettingRegistryCacheEnabled(value *bool) bool {
 }
 
 func TestGitConnection(req *models.TestGitConnectionRequest) *models.TestGitConnectionResponse {
+	if err := validateGitRepositoryURL(req.GitRepoURL); err != nil {
+		return &models.TestGitConnectionResponse{
+			Success: false,
+			Message: err.Error(),
+		}
+	}
+
 	repoURL := req.GitRepoURL
 	if req.GitUsername != "" && req.GitPassword != "" {
 		repoURL = injectGitCredentials(repoURL, req.GitUsername, req.GitPassword)

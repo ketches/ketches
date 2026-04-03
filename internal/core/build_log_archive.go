@@ -50,19 +50,19 @@ func PersistBuildLogs(ctx context.Context, buildID string) error {
 
 	var buildEnv entities.Env
 	if err := db.DB.First(&buildEnv, "id = ?", build.BuildEnvID).Error; err != nil {
-		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to load build environment: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, app.WrapErrorf(err, "failed to load build environment: %w", err))
 	}
 
 	client, err := getBuildLogClusterClient(buildEnv.ClusterID)
 	if err != nil {
-		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to get cluster client: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, app.WrapErrorf(err, "failed to get cluster client: %w", err))
 	}
 
 	pods, err := client.CoreV1().Pods(build.JobNamespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("job-name=%s", build.JobName),
 	})
 	if err != nil {
-		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to list build pods: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, app.WrapErrorf(err, "failed to list build pods: %w", err))
 	}
 	if len(pods.Items) == 0 {
 		return persistBuildLogFailure(&build, entities.BuildLogPersistSourceUnavailable, errBuildLogSourceUnavailable)
@@ -74,16 +74,16 @@ func PersistBuildLogs(ctx context.Context, buildID string) error {
 	}
 
 	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
-		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to create archive directory: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, app.WrapErrorf(err, "failed to create archive directory: %w", err))
 	}
 	if err := os.MkdirAll(filepath.Dir(tmpPath), 0o755); err != nil {
-		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to create temporary archive directory: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, app.WrapErrorf(err, "failed to create temporary archive directory: %w", err))
 	}
 	_ = os.Remove(tmpPath)
 
 	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 	if err != nil {
-		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to create temporary archive file: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, app.WrapErrorf(err, "failed to create temporary archive file: %w", err))
 	}
 
 	logSize, err := writeBuildPodLogsToArchive(ctx, client, build.JobNamespace, &pods.Items[0], tmpFile)
@@ -98,10 +98,10 @@ func PersistBuildLogs(ctx context.Context, buildID string) error {
 	}
 	if closeErr != nil {
 		_ = os.Remove(tmpPath)
-		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to close temporary archive file: %w", closeErr))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, app.WrapErrorf(closeErr, "failed to close temporary archive file: %w", closeErr))
 	}
 	if err := os.Rename(tmpPath, absPath); err != nil {
-		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, fmt.Errorf("failed to finalize archive file: %w", err))
+		return persistBuildLogFailure(&build, entities.BuildLogPersistFailed, app.WrapErrorf(err, "failed to finalize archive file: %w", err))
 	}
 
 	now := time.Now()
@@ -157,7 +157,7 @@ func writeBuildPodLogsToArchive(
 		written, copyErr := io.Copy(dst, stream)
 		stream.Close()
 		if copyErr != nil {
-			return 0, fmt.Errorf("failed to copy logs for container %s: %w", containerName, copyErr)
+			return 0, app.WrapErrorf(copyErr, "failed to copy logs for container %s: %w", containerName, copyErr)
 		}
 		totalWritten += written
 	}

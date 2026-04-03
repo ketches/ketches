@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/secrets"
 	corev1 "k8s.io/api/core/v1"
@@ -245,12 +246,12 @@ else echo "READONLY_DIR"; exit 1; fi`, shellQuote(path), shellQuote(path), shell
 	if err != nil {
 		msg := strings.TrimSpace(stdout)
 		if msg == "READONLY_FILE" {
-			return fmt.Errorf("file is on a read-only file system")
+			return app.NewErrorf("file is on a read-only file system")
 		}
 		if msg == "READONLY_DIR" {
-			return fmt.Errorf("directory is on a read-only file system")
+			return app.NewErrorf("directory is on a read-only file system")
 		}
-		return fmt.Errorf("path is not writable")
+		return app.NewErrorf("path is not writable")
 	}
 	return nil
 }
@@ -267,7 +268,7 @@ func CompressFiles(appCtx *models.AppContext, instanceName, containerName, baseD
 
 	_, stderr, err := execCommand(appCtx, instanceName, containerName, command)
 	if err != nil {
-		return fmt.Errorf("failed to compress files: %v, stderr: %s", err, stderr)
+		return app.NewErrorf("failed to compress files: %v, stderr: %s", err, stderr)
 	}
 	return nil
 }
@@ -317,9 +318,9 @@ done`, shellQuote(path))
 	stdout, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", script})
 	if err != nil {
 		if strings.Contains(stderr, "ERROR: not a directory") {
-			return nil, fmt.Errorf("path is not a directory: %s", path)
+			return nil, app.NewErrorf("path is not a directory: %s", path)
 		}
-		return nil, fmt.Errorf("failed to list files: %v, stderr: %s", err, stderr)
+		return nil, app.NewErrorf("failed to list files: %v, stderr: %s", err, stderr)
 	}
 
 	files := []models.FileInfo{}
@@ -369,9 +370,9 @@ echo "$s"`, shellQuote(path))
 			if msg == "" {
 				msg = strings.TrimSpace(stdout)
 			}
-			return nil, fmt.Errorf("%s", msg)
+			return nil, app.NewErrorf("%s", msg)
 		}
-		return nil, fmt.Errorf("failed to check file: %v", err)
+		return nil, app.NewErrorf("failed to check file: %v", err)
 	}
 
 	size, _ := strconv.ParseInt(strings.TrimSpace(stdout), 10, 64)
@@ -379,13 +380,13 @@ echo "$s"`, shellQuote(path))
 	// Limit file size to 5MB for text reading
 	const maxReadSize = 5 * 1024 * 1024
 	if size > maxReadSize {
-		return nil, fmt.Errorf("file too large to read: %d bytes (max %d bytes)", size, maxReadSize)
+		return nil, app.NewErrorf("file too large to read: %d bytes (max %d bytes)", size, maxReadSize)
 	}
 
 	// Read the file content
 	content, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"cat", path})
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v, stderr: %s", err, stderr)
+		return nil, app.NewErrorf("failed to read file: %v, stderr: %s", err, stderr)
 	}
 
 	return &models.ReadFileResponse{
@@ -405,9 +406,9 @@ func WriteFile(appCtx *models.AppContext, instanceName, containerName, path, con
 		_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"mkdir", "-p", dir})
 		if err != nil {
 			if strings.Contains(stderr, "Read-only file system") {
-				return fmt.Errorf("read-only file system: cannot create %s", dir)
+				return app.NewErrorf("read-only file system: cannot create %s", dir)
 			}
-			return fmt.Errorf("failed to create parent directory: %v, stderr: %s", err, stderr)
+			return app.NewErrorf("failed to create parent directory: %v, stderr: %s", err, stderr)
 		}
 	}
 
@@ -420,9 +421,9 @@ func WriteFile(appCtx *models.AppContext, instanceName, containerName, path, con
 	)
 	if err != nil {
 		if strings.Contains(stderr, "Read-only file system") {
-			return fmt.Errorf("read-only file system: cannot write to %s", path)
+			return app.NewErrorf("read-only file system: cannot write to %s", path)
 		}
-		return fmt.Errorf("failed to write file: %v, stderr: %s", err, stderr)
+		return app.NewErrorf("failed to write file: %v, stderr: %s", err, stderr)
 	}
 
 	return nil
@@ -434,7 +435,7 @@ func MkdirInContainer(appCtx *models.AppContext, instanceName, containerName, pa
 
 	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"mkdir", "-p", path})
 	if err != nil {
-		return fmt.Errorf("failed to create directory: %v, stderr: %s", err, stderr)
+		return app.NewErrorf("failed to create directory: %v, stderr: %s", err, stderr)
 	}
 
 	return nil
@@ -446,12 +447,12 @@ func DeleteFileInContainer(appCtx *models.AppContext, instanceName, containerNam
 
 	// Safety: prevent deleting root
 	if path == "/" || path == "" {
-		return fmt.Errorf("cannot delete root directory")
+		return app.NewErrorf("cannot delete root directory")
 	}
 
 	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"rm", "-rf", path})
 	if err != nil {
-		return fmt.Errorf("failed to delete: %v, stderr: %s", err, stderr)
+		return app.NewErrorf("failed to delete: %v, stderr: %s", err, stderr)
 	}
 
 	return nil
@@ -464,7 +465,7 @@ func MoveFileInContainer(appCtx *models.AppContext, instanceName, containerName,
 
 	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"mv", source, destination})
 	if err != nil {
-		return fmt.Errorf("failed to move: %v, stderr: %s", err, stderr)
+		return app.NewErrorf("failed to move: %v, stderr: %s", err, stderr)
 	}
 
 	return nil
@@ -477,7 +478,7 @@ func CopyFileInContainer(appCtx *models.AppContext, instanceName, containerName,
 
 	_, stderr, err := execCommand(appCtx, instanceName, containerName, []string{"cp", "-r", source, destination})
 	if err != nil {
-		return fmt.Errorf("failed to copy: %v, stderr: %s", err, stderr)
+		return app.NewErrorf("failed to copy: %v, stderr: %s", err, stderr)
 	}
 
 	return nil
@@ -514,13 +515,13 @@ func UploadFile(appCtx *models.AppContext, instanceName, containerName, destDir,
 		Size: fileSize,
 	}
 	if err := tw.WriteHeader(header); err != nil {
-		return fmt.Errorf("failed to write tar header: %v", err)
+		return app.NewErrorf("failed to write tar header: %v", err)
 	}
 	if _, err := io.Copy(tw, fileContent); err != nil {
-		return fmt.Errorf("failed to write tar content: %v", err)
+		return app.NewErrorf("failed to write tar content: %v", err)
 	}
 	if err := tw.Close(); err != nil {
-		return fmt.Errorf("failed to close tar writer: %v", err)
+		return app.NewErrorf("failed to close tar writer: %v", err)
 	}
 
 	// Extract the tar archive in the destination directory

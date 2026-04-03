@@ -1,8 +1,7 @@
 package services
 
 import (
-	"fmt"
-
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -97,10 +96,10 @@ func CreateRequirement(projectID, userID string, req *models.CreateRequirementRe
 	if req.ParentRequirementID != "" {
 		parent, err := GetRequirement(projectID, req.ParentRequirementID)
 		if err != nil {
-			return nil, fmt.Errorf("parent requirement not found: %w", err)
+			return nil, app.WrapErrorf(err, "parent requirement not found: %w", err)
 		}
 		if parent.Depth >= entities.MaxCollabDepth {
-			return nil, fmt.Errorf("maximum nesting depth (%d) exceeded", entities.MaxCollabDepth)
+			return nil, app.NewErrorf("maximum nesting depth (%d) exceeded", entities.MaxCollabDepth)
 		}
 		depth = parent.Depth + 1
 	}
@@ -169,7 +168,7 @@ func TransitionRequirement(projectID, reqID, userID string, req *models.Requirem
 
 	targets, ok := allowedRequirementTransitions[entity.Status]
 	if !ok {
-		return nil, fmt.Errorf("no transitions allowed from status %q", entity.Status)
+		return nil, app.NewErrorf("no transitions allowed from status %q", entity.Status)
 	}
 
 	allowed := false
@@ -180,7 +179,7 @@ func TransitionRequirement(projectID, reqID, userID string, req *models.Requirem
 		}
 	}
 	if !allowed {
-		return nil, fmt.Errorf("transition from %q to %q is not allowed", entity.Status, req.Status)
+		return nil, app.NewErrorf("transition from %q to %q is not allowed", entity.Status, req.Status)
 	}
 
 	entity.Status = req.Status

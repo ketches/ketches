@@ -88,7 +88,7 @@ describe("builderSessionsApi.runLogsStreamUrl", () => {
       getItem: vi.fn(() =>
         JSON.stringify({
           state: {
-            accessToken: "token-123",
+            isAuthenticated: true,
           },
         })
       ),

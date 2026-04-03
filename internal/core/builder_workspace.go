@@ -61,7 +61,7 @@ func BuildBuilderWorkspacePVC(spec BuilderWorkspaceSpec) (*corev1.PersistentVolu
 
 	storageRequest, err := resource.ParseQuantity(strings.TrimSpace(spec.StorageRequest))
 	if err != nil {
-		return nil, fmt.Errorf("builder workspace storage request %q is invalid: %w", spec.StorageRequest, err)
+		return nil, app.WrapErrorf(err, "builder workspace storage request %q is invalid: %w", spec.StorageRequest, err)
 	}
 
 	return &corev1.PersistentVolumeClaim{
@@ -166,7 +166,7 @@ func validateBuilderWorkspacePodSpec(spec BuilderWorkspaceSpec) error {
 
 func validateBuilderWorkspaceName(sessionID string) error {
 	if validationErrors := validation.IsDNS1123Subdomain(builderWorkspacePVCName(sessionID)); len(validationErrors) > 0 {
-		return fmt.Errorf(
+		return app.NewErrorf(
 			"builder workspace session ID %q is invalid for resource names: %s",
 			sessionID,
 			strings.Join(validationErrors, ", "),

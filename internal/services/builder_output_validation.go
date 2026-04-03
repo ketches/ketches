@@ -1,18 +1,18 @@
 package services
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 )
 
 func ValidateBuilderExecutionOutputs(run *entities.BuilderRun, artifacts []entities.BuilderArtifact) error {
 	if run == nil {
-		return fmt.Errorf("builder run is required")
+		return app.NewErrorf("builder run is required")
 	}
 	if len(artifacts) == 0 {
-		return fmt.Errorf("builder output artifacts are required")
+		return app.NewErrorf("builder output artifacts are required")
 	}
 
 	projectKind := strings.TrimSpace(stringPointerValue(run.PlannedProjectKind))
@@ -21,22 +21,22 @@ func ValidateBuilderExecutionOutputs(run *entities.BuilderRun, artifacts []entit
 		if hasBuilderArtifactPath(artifacts, "build/app") {
 			return nil
 		}
-		return fmt.Errorf("go api validation failed: build/app artifact is required")
+		return app.NewErrorf("go api validation failed: build/app artifact is required")
 	case "python_api_service":
 		if hasBuilderArtifactPath(artifacts, "build/app.py") || hasBuilderArtifactPath(artifacts, "build/main.py") {
 			return nil
 		}
-		return fmt.Errorf("python api validation failed: build/app.py or build/main.py artifact is required")
+		return app.NewErrorf("python api validation failed: build/app.py or build/main.py artifact is required")
 	case "node_ssr_app":
 		if hasBuilderArtifactPathPrefix(artifacts, ".next/") {
 			return nil
 		}
-		return fmt.Errorf("node ssr validation failed: .next output is required")
+		return app.NewErrorf("node ssr validation failed: .next output is required")
 	case "full_stack_app", "static_frontend_app", "":
 		if hasBuilderArtifactPath(artifacts, "dist/index.html") || hasBuilderArtifactPath(artifacts, "build/index.html") {
 			return nil
 		}
-		return fmt.Errorf("static frontend validation failed: index.html build output is required")
+		return app.NewErrorf("static frontend validation failed: index.html build output is required")
 	default:
 		return nil
 	}

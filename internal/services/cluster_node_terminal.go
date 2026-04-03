@@ -3,11 +3,12 @@ package services
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -165,7 +166,7 @@ func ensureNodeTerminalPod(ctx context.Context, pods corev1client.PodInterface, 
 	pod, err := pods.Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("get node terminal pod %s: %w", podName, err)
+			return nil, app.WrapErrorf(err, "get node terminal pod %s: %w", podName, err)
 		}
 
 		pod, err = createNodeTerminalPod(ctx, pods, nodeName, podName, now)
@@ -192,12 +193,12 @@ func createNodeTerminalPod(ctx context.Context, pods corev1client.PodInterface, 
 		return pod, nil
 	}
 	if !apierrors.IsAlreadyExists(err) {
-		return nil, fmt.Errorf("create node terminal pod %s: %w", podName, err)
+		return nil, app.WrapErrorf(err, "create node terminal pod %s: %w", podName, err)
 	}
 
 	pod, getErr := pods.Get(ctx, podName, metav1.GetOptions{})
 	if getErr != nil {
-		return nil, fmt.Errorf("get node terminal pod %s after create race: %w", podName, getErr)
+		return nil, app.WrapErrorf(getErr, "get node terminal pod %s after create race: %w", podName, getErr)
 	}
 
 	return pod, nil
@@ -205,7 +206,7 @@ func createNodeTerminalPod(ctx context.Context, pods corev1client.PodInterface, 
 
 func touchNodeTerminalPodActivity(ctx context.Context, pods corev1client.PodInterface, pod *corev1.Pod, now time.Time) (*corev1.Pod, error) {
 	if pod == nil {
-		return nil, fmt.Errorf("node terminal pod is nil")
+		return nil, app.NewErrorf("node terminal pod is nil")
 	}
 
 	updated := pod.DeepCopy()
@@ -216,7 +217,7 @@ func touchNodeTerminalPodActivity(ctx context.Context, pods corev1client.PodInte
 
 	updatedPod, err := pods.Update(ctx, updated, metav1.UpdateOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("update node terminal pod %s activity: %w", updated.Name, err)
+		return nil, app.WrapErrorf(err, "update node terminal pod %s activity: %w", updated.Name, err)
 	}
 
 	return updatedPod, nil
@@ -232,16 +233,16 @@ func waitForNodeTerminalPodRunning(ctx context.Context, pods corev1client.PodInt
 			if apierrors.IsNotFound(err) {
 				select {
 				case <-ctx.Done():
-					return nil, fmt.Errorf("node terminal pod %s disappeared before becoming ready: %w", podName, ctx.Err())
+					return nil, app.WrapErrorf(ctx.Err(), "node terminal pod %s disappeared before becoming ready: %w", podName, ctx.Err())
 				case <-ticker.C:
 					continue
 				}
 			}
-			return nil, fmt.Errorf("get node terminal pod %s while waiting for readiness: %w", podName, err)
+			return nil, app.WrapErrorf(err, "get node terminal pod %s while waiting for readiness: %w", podName, err)
 		}
 
 		if shouldRecreateNodeTerminalPod(pod, nodeName) {
-			return nil, fmt.Errorf("node terminal pod %s became unhealthy before it was ready", podName)
+			return nil, app.NewErrorf("node terminal pod %s became unhealthy before it was ready", podName)
 		}
 		if pod.Status.Phase == corev1.PodRunning {
 			return pod, nil
@@ -249,7 +250,7 @@ func waitForNodeTerminalPodRunning(ctx context.Context, pods corev1client.PodInt
 
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("node terminal pod %s did not become ready within %s: %w", podName, nodeTerminalStartupTimeout, ctx.Err())
+			return nil, app.WrapErrorf(ctx.Err(), "node terminal pod %s did not become ready within %s: %w", podName, nodeTerminalStartupTimeout, ctx.Err())
 		case <-ticker.C:
 		}
 	}
@@ -259,7 +260,7 @@ func deleteNodeTerminalPod(ctx context.Context, pods corev1client.PodInterface, 
 	gracePeriodSeconds := int64(0)
 	err := pods.Delete(ctx, podName, metav1.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds})
 	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("delete node terminal pod %s: %w", podName, err)
+		return app.WrapErrorf(err, "delete node terminal pod %s: %w", podName, err)
 	}
 	return nil
 }
@@ -269,7 +270,7 @@ func cleanupIdleNodeTerminalPods(ctx context.Context, pods corev1client.PodInter
 		LabelSelector: fmt.Sprintf("%s=%s", nodeTerminalLabelKey, nodeTerminalLabelValue),
 	})
 	if err != nil {
-		return fmt.Errorf("list node terminal pods: %w", err)
+		return app.WrapErrorf(err, "list node terminal pods: %w", err)
 	}
 
 	for _, item := range podList.Items {
@@ -332,7 +333,7 @@ func runClusterNodeTerminalCleanupLoop(
 func cleanupClusterNodeTerminalPodsAcrossClusters(now time.Time) {
 	clusters, err := ListClustersSimple()
 	if err != nil {
-		log.Printf("node terminal cleanup: failed to list clusters: %v", err)
+		slog.Error(fmt.Sprintf("node terminal cleanup: failed to list clusters: %v", err))
 		return
 	}
 
@@ -343,12 +344,12 @@ func cleanupClusterNodeTerminalPodsAcrossClusters(now time.Time) {
 
 		client, err := kube.GlobalClusterStore.GetClient(cluster.ID)
 		if err != nil {
-			log.Printf("node terminal cleanup: failed to get cluster client %s: %v", cluster.ID, err)
+			slog.Error(fmt.Sprintf("node terminal cleanup: failed to get cluster client %s: %v", cluster.ID, err))
 			continue
 		}
 
 		if err := cleanupIdleNodeTerminalPods(context.Background(), client.CoreV1().Pods(nodeTerminalNamespace), now); err != nil {
-			log.Printf("node terminal cleanup: failed for cluster %s: %v", cluster.ID, err)
+			slog.Error(fmt.Sprintf("node terminal cleanup: failed for cluster %s: %v", cluster.ID, err))
 		}
 	}
 }

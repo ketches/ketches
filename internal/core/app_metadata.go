@@ -80,7 +80,7 @@ func (m *AppMetadata) BuildRegistrySecret() (*corev1.Secret, error) {
 
 	plaintextRegistryPassword, err := secrets.DecryptString(m.AppContext.App.RegistryPassword)
 	if err != nil {
-		return nil, fmt.Errorf("decrypt registry password: %w", err)
+		return nil, app.WrapErrorf(err, "decrypt registry password: %w", err)
 	}
 
 	registry := "https://index.docker.io/v1/"

@@ -163,7 +163,7 @@ describe("TerminalPanel", () => {
     window.history.replaceState({}, "", "/clusters/test")
     localStorage.setItem("auth-storage", JSON.stringify({
       state: {
-        accessToken: "token-123",
+        isAuthenticated: true,
       },
     }))
   })

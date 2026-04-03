@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/ketches/ketches/internal/app"
@@ -19,7 +18,7 @@ type builderResolvedExecutionSelection struct {
 
 func ResolveBuilderExecutionSelection(ctx context.Context, run *entities.BuilderRun) (*builderResolvedExecutionSelection, error) {
 	if run == nil {
-		return nil, fmt.Errorf("builder run is required")
+		return nil, app.NewErrorf("builder run is required")
 	}
 
 	catalog, err := loadBuilderExecutionCatalog(app.Config)
@@ -39,7 +38,7 @@ func ResolveBuilderExecutionSelection(ctx context.Context, run *entities.Builder
 
 	policy, ok := catalog.ExecutorPolicies[resolvedPolicyKey]
 	if !ok {
-		return nil, fmt.Errorf("unknown builder executor policy key %q", resolvedPolicyKey)
+		return nil, app.NewErrorf("unknown builder executor policy key %q", resolvedPolicyKey)
 	}
 
 	resolvedImageProfileKey := strings.TrimSpace(stringPointerValue(run.ExecutionImageProfileKey))
@@ -54,7 +53,7 @@ func ResolveBuilderExecutionSelection(ctx context.Context, run *entities.Builder
 
 	imageProfile, ok := catalog.ImageProfiles[resolvedImageProfileKey]
 	if !ok {
-		return nil, fmt.Errorf("unknown builder image profile key %q", resolvedImageProfileKey)
+		return nil, app.NewErrorf("unknown builder image profile key %q", resolvedImageProfileKey)
 	}
 
 	return &builderResolvedExecutionSelection{
@@ -67,10 +66,10 @@ func ResolveBuilderExecutionSelection(ctx context.Context, run *entities.Builder
 
 func PersistBuilderRunExecutionSelection(ctx context.Context, runID string, selection *builderResolvedExecutionSelection) error {
 	if strings.TrimSpace(runID) == "" {
-		return fmt.Errorf("builder run id is required")
+		return app.NewErrorf("builder run id is required")
 	}
 	if selection == nil {
-		return fmt.Errorf("builder execution selection is required")
+		return app.NewErrorf("builder execution selection is required")
 	}
 
 	return db.DB.WithContext(ctx).Model(&entities.BuilderRun{}).

@@ -25,7 +25,7 @@ import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { type AxiosError } from "axios"
-import { Clock, Trash2, User } from "lucide-react"
+import { Clock, Lock, LockOpen, Trash2, User } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
@@ -99,6 +99,20 @@ export function UsersPage() {
     onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Error", {
         description: error.response?.data?.error || "Failed to update password",
+      })
+    }
+  })
+
+  const updateLockMutation = useMutation({
+    mutationFn: ({ userId, locked }: { userId: string; locked: boolean }) =>
+      usersApi.updateLock(userId, locked),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      toast.success(variables.locked ? "User locked" : "User unlocked")
+    },
+    onError: (error: AxiosError<{ error: string }>) => {
+      toast.error("Error", {
+        description: error.response?.data?.error || "Failed to update lock state",
       })
     }
   })
@@ -207,6 +221,15 @@ export function UsersPage() {
       },
     },
     {
+      accessorKey: "is_locked",
+      header: "Status",
+      cell: ({ row }) => {
+        return row.original.is_locked
+          ? <span className="text-xs font-medium text-amber-600">Locked</span>
+          : <span className="text-xs font-medium text-emerald-600">Active</span>
+      },
+    },
+    {
       accessorKey: "created_at",
       header: "Registered At",
       cell: ({ row }) => {
@@ -225,6 +248,23 @@ export function UsersPage() {
         const user = row.original
         return (
           <div className="flex justify-end gap-2">
+            <Tooltip>
+              <TooltipTrigger
+                delay={200}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => updateLockMutation.mutate({ userId: user.id, locked: !user.is_locked })}
+                    disabled={updateLockMutation.isPending || user.role === 'admin'}
+                  />
+                }
+              >
+                {user.is_locked ? <LockOpen /> : <Lock />}
+                <span className="sr-only">{user.is_locked ? "Unlock user" : "Lock user"}</span>
+              </TooltipTrigger>
+              <TooltipContent>{user.is_locked ? "Unlock user" : "Lock user"}</TooltipContent>
+            </Tooltip>
             <EditPasswordDialog
               userId={user.id}
               username={user.username}

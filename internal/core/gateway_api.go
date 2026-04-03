@@ -2,8 +2,8 @@ package core
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
@@ -120,7 +120,7 @@ func BuildEnvGateway(envCtx *models.EnvContext, certs []entities.Certificate) *g
 				kube.LabelEnvSlug:     env.Slug,
 				kube.LabelProjectID:   envCtx.Project.ID,
 				kube.LabelProjectSlug: envCtx.Project.Slug,
-				kube.LabelManagedBy:      "true",
+				kube.LabelManagedBy:   "true",
 			},
 		},
 		Spec: gatewayv1.GatewaySpec{
@@ -136,7 +136,7 @@ func EnsureEnvGateway(ctx context.Context, envCtx *models.EnvContext, certs []en
 	env := envCtx.Env
 	hasGW, err := ClusterHasGatewayCRD(env.ClusterID)
 	if err != nil {
-		return fmt.Errorf("checking gateway CRD: %w", err)
+		return app.WrapErrorf(err, "checking gateway CRD: %w", err)
 	}
 	if !hasGW {
 		// Gateway API not installed — nothing to do.

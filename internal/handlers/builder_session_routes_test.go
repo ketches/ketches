@@ -229,6 +229,10 @@ func newBuilderSessionRouteRequest(t *testing.T, method, path, body string, user
 		token, err := app.GenerateAccessToken(user)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+token)
+		if method != http.MethodGet && method != http.MethodHead && method != http.MethodOptions && method != http.MethodTrace {
+			req.AddCookie(&http.Cookie{Name: app.CSRFCookieName, Value: "builder-session-route-csrf"})
+			req.Header.Set(app.CSRFHeaderName, "builder-session-route-csrf")
+		}
 	}
 	return req
 }

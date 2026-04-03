@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -34,7 +34,7 @@ type builderExportPromotionMetadata struct {
 
 func PromoteBuilderSessionExportToCodeRepository(ctx context.Context, projectID, sessionID, exportID string, req *models.PromoteBuilderExportToCodeRepositoryRequest) (*models.BuilderExportPromotionResponse, error) {
 	if req == nil {
-		return nil, fmt.Errorf("builder export promotion request is required")
+		return nil, app.NewErrorf("builder export promotion request is required")
 	}
 
 	session, err := loadBuilderSession(db.DB.WithContext(ctx), projectID, sessionID)
@@ -106,7 +106,7 @@ func PromoteBuilderSessionExportToCodeRepository(ctx context.Context, projectID,
 
 func extractBuilderExportArchive(ctx context.Context, projectID, sessionID, exportID, destDir string) error {
 	if strings.TrimSpace(destDir) == "" {
-		return fmt.Errorf("builder export destination directory is required")
+		return app.NewErrorf("builder export destination directory is required")
 	}
 
 	var archive bytes.Buffer
@@ -132,7 +132,7 @@ func extractBuilderExportArchive(ctx context.Context, projectID, sessionID, expo
 
 		targetPath := filepath.Join(destDir, filepath.Clean(header.Name))
 		if !strings.HasPrefix(targetPath, destDir) {
-			return fmt.Errorf("unsafe builder export archive path %q", header.Name)
+			return app.NewErrorf("unsafe builder export archive path %q", header.Name)
 		}
 
 		switch header.Typeflag {
@@ -169,7 +169,7 @@ func initializeBuilderPromotionRepository(dir string) error {
 	}
 	for _, command := range commands {
 		if output, err := runBuilderExportGitCommand(dir, command...); err != nil {
-			return fmt.Errorf("git %s failed: %s", strings.Join(command, " "), strings.TrimSpace(string(output)))
+			return app.NewErrorf("git %s failed: %s", strings.Join(command, " "), strings.TrimSpace(string(output)))
 		}
 	}
 	return nil
@@ -177,10 +177,10 @@ func initializeBuilderPromotionRepository(dir string) error {
 
 func pushBuilderPromotionRepository(dir, repoURL string) error {
 	if output, err := runBuilderExportGitCommand(dir, "remote", "add", "origin", repoURL); err != nil {
-		return fmt.Errorf("git remote add failed: %s", strings.TrimSpace(string(output)))
+		return app.NewErrorf("git remote add failed: %s", strings.TrimSpace(string(output)))
 	}
 	if output, err := runBuilderExportGitCommand(dir, "push", "-u", "origin", "main"); err != nil {
-		return fmt.Errorf("git push failed: %s", strings.TrimSpace(string(output)))
+		return app.NewErrorf("git push failed: %s", strings.TrimSpace(string(output)))
 	}
 	return nil
 }

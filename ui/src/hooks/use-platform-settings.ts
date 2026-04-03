@@ -4,10 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   platformSettingsApi,
   type PlatformBranding,
+  type PublicSignUpSettings,
   type UpdatePlatformBrandingRequest,
 } from "@/api/platform-settings"
 
 export const PLATFORM_BRANDING_QUERY_KEY = ["platform-settings", "branding"] as const
+export const PUBLIC_SIGN_UP_QUERY_KEY = ["platform-settings", "public-sign-up"] as const
 const PLATFORM_BRANDING_STORAGE_KEY = "platform-branding"
 
 interface CachedPlatformBranding {
@@ -100,6 +102,25 @@ export function useUpdatePlatformBrandingMutation() {
 
       queryClient.setQueryData(PLATFORM_BRANDING_QUERY_KEY, branding)
       queryClient.invalidateQueries({ queryKey: PLATFORM_BRANDING_QUERY_KEY })
+    },
+  })
+}
+
+export function usePublicSignUpSettings() {
+  return useQuery({
+    queryKey: PUBLIC_SIGN_UP_QUERY_KEY,
+    queryFn: platformSettingsApi.getPublicSignUpSettings,
+  })
+}
+
+export function useUpdatePublicSignUpSettingsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: PublicSignUpSettings) => platformSettingsApi.updatePublicSignUpSettings(data),
+    onSuccess: async (settings) => {
+      queryClient.setQueryData(PUBLIC_SIGN_UP_QUERY_KEY, settings)
+      queryClient.invalidateQueries({ queryKey: PUBLIC_SIGN_UP_QUERY_KEY })
     },
   })
 }

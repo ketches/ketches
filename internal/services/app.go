@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"path"
 	"strings"
 
@@ -169,7 +169,7 @@ func CreateApp(ctx context.Context, envID string, req *models.CreateAppRequest) 
 	// Attempt to seed app configuration from image metadata; failure is non-fatal.
 	if req.SeedImageMetadata {
 		if err := seedAppFromImageMetadata(ctx, application); err != nil {
-			log.Printf("warn: image metadata seed skipped for app %s: %v", application.Slug, err)
+			slog.Warn(fmt.Sprintf("warn: image metadata seed skipped for app %s: %v", application.Slug, err))
 		}
 	}
 
@@ -349,17 +349,17 @@ func ListAppImageTags(ctx context.Context, appID string) (*models.AppImageTagsRe
 	// Parse the repository from the full image reference (e.g. "nginx:1.25" → "index.docker.io/library/nginx")
 	repo, currentTag, err := parseImageRepository(image)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse image reference: %w", err)
+		return nil, app.WrapErrorf(err, "failed to parse image reference: %w", err)
 	}
 
 	plaintextRegistryPassword, err := secrets.DecryptString(appCtx.App.RegistryPassword)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt registry password: %w", err)
+		return nil, app.WrapErrorf(err, "failed to decrypt registry password: %w", err)
 	}
 
 	tags, err := listImageTags(repo, appCtx.App.RegistryUsername, plaintextRegistryPassword)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list image tags: %w", err)
+		return nil, app.WrapErrorf(err, "failed to list image tags: %w", err)
 	}
 
 	var result []string
@@ -599,11 +599,11 @@ func BatchDeleteApps(ctx context.Context, ids []string) error {
 	var errs []error
 	for _, id := range ids {
 		if err := DeleteApp(ctx, id); err != nil {
-			errs = append(errs, fmt.Errorf("failed to delete app %s: %w", id, err))
+			errs = append(errs, app.WrapErrorf(err, "failed to delete app %s: %w", id, err))
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to delete %d app(s): %v", len(errs), errs[0])
+		return app.NewErrorf("failed to delete %d app(s): %v", len(errs), errs[0])
 	}
 	return nil
 }
@@ -826,7 +826,7 @@ func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName,
 	req := client.CoreV1().Pods(appCtx.EnvContext.Env.ClusterNamespace).GetLogs(instanceName, podLogOptions)
 	stream, err := req.Stream(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open log stream: %w", err)
+		return nil, app.WrapErrorf(err, "failed to open log stream: %w", err)
 	}
 	return stream, nil
 }
@@ -834,17 +834,17 @@ func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName,
 func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName string, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
 	plaintextKubeConfig, err := secrets.DecryptString(appCtx.EnvContext.Cluster.KubeConfig)
 	if err != nil {
-		return fmt.Errorf("failed to decrypt kubeconfig: %w", err)
+		return app.WrapErrorf(err, "failed to decrypt kubeconfig: %w", err)
 	}
 
 	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(plaintextKubeConfig))
 	if err != nil {
-		return fmt.Errorf("failed to build kubeconfig: %w", err)
+		return app.WrapErrorf(err, "failed to build kubeconfig: %w", err)
 	}
 
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("failed to create kubernetes client: %w", err)
+		return app.WrapErrorf(err, "failed to create kubernetes client: %w", err)
 	}
 
 	req := client.CoreV1().RESTClient().Post().
@@ -863,7 +863,7 @@ func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName str
 
 	executor, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 	if err != nil {
-		return fmt.Errorf("failed to create SPDY executor: %w", err)
+		return app.WrapErrorf(err, "failed to create SPDY executor: %w", err)
 	}
 
 	streamOptions := remotecommand.StreamOptions{
@@ -877,7 +877,7 @@ func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName str
 	}
 
 	if err := executor.StreamWithContext(context.Background(), streamOptions); err != nil {
-		return fmt.Errorf("failed to stream exec session: %w", err)
+		return app.WrapErrorf(err, "failed to stream exec session: %w", err)
 	}
 
 	return nil
@@ -1257,7 +1257,7 @@ func GetAppStatus(c context.Context, appCtx *models.AppContext) string {
 	if shouldCalculateLiveAppStatus(status) {
 		calculatedStatus, err := core.CalculateAppStatus(c, appCtx)
 		if err != nil {
-			log.Printf("Failed to calculate app status for app %s: %v", appCtx.App.ID, err)
+			slog.Error(fmt.Sprintf("Failed to calculate app status for app %s: %v", appCtx.App.ID, err))
 		}
 		status = string(calculatedStatus)
 	}
@@ -1271,12 +1271,12 @@ func GetAppListRowStatus(ctx context.Context, row *models.AppListRow) string {
 	if shouldCalculateLiveAppStatus(status) && row.ClusterID != "" {
 		client, err := kube.GlobalClusterStore.GetClient(row.ClusterID)
 		if err != nil {
-			log.Printf("Failed to get cluster client for app %s: %v", row.ID, err)
+			slog.Error(fmt.Sprintf("Failed to get cluster client for app %s: %v", row.ID, err))
 			return status
 		}
 		calculatedStatus, err := core.CalculateAppListStatus(ctx, client, row.ID, row.Slug, row.AppType, row.ClusterNamespace, row.Replicas)
 		if err != nil {
-			log.Printf("Failed to calculate app status for app %s: %v", row.ID, err)
+			slog.Error(fmt.Sprintf("Failed to calculate app status for app %s: %v", row.ID, err))
 		}
 		status = string(calculatedStatus)
 	}
@@ -1309,13 +1309,13 @@ func BuildAppListStatuses(ctx context.Context, rows []models.AppListRow) map[str
 	for key, batch := range groupedRows {
 		client, err := kube.GlobalClusterStore.GetClient(key.ClusterID)
 		if err != nil {
-			log.Printf("Failed to get cluster client for app list group %s/%s: %v", key.ClusterID, key.Namespace, err)
+			slog.Error(fmt.Sprintf("Failed to get cluster client for app list group %s/%s: %v", key.ClusterID, key.Namespace, err))
 			continue
 		}
 
 		liveStatuses, err := core.CalculateAppListStatuses(ctx, client, key.Namespace, batch)
 		if err != nil {
-			log.Printf("Failed to calculate batched app statuses for %s/%s: %v", key.ClusterID, key.Namespace, err)
+			slog.Error(fmt.Sprintf("Failed to calculate batched app statuses for %s/%s: %v", key.ClusterID, key.Namespace, err))
 			continue
 		}
 
@@ -1414,7 +1414,7 @@ func GetAppTopologyResourceYaml(ctx context.Context, appID string, nodeID string
 func seedAppFromImageMetadata(ctx context.Context, application *entities.App) error {
 	plaintextRegistryPassword, err := secrets.DecryptString(application.RegistryPassword)
 	if err != nil {
-		return fmt.Errorf("decrypt registry password: %w", err)
+		return app.WrapErrorf(err, "decrypt registry password: %w", err)
 	}
 
 	meta, err := containerregistry.FetchImageMetadata(
@@ -1424,7 +1424,7 @@ func seedAppFromImageMetadata(ctx context.Context, application *entities.App) er
 		plaintextRegistryPassword,
 	)
 	if err != nil {
-		return fmt.Errorf("fetch image metadata: %w", err)
+		return app.WrapErrorf(err, "fetch image metadata: %w", err)
 	}
 
 	// Seed EnvVars — skip if the key already exists (unique constraint)

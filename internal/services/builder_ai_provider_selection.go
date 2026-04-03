@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"gorm.io/gorm"
@@ -84,7 +85,7 @@ func loadBuilderSessionProjectID(ctx context.Context, sessionID string) (string,
 		Where("id = ?", sessionID).
 		First(&session).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", fmt.Errorf("builder session %s not found", sessionID)
+			return "", app.NewErrorf("builder session %s not found", sessionID)
 		}
 		return "", err
 	}
@@ -146,7 +147,7 @@ func resolveBuilderAIProviderForExecutionTx(
 	case "":
 		return resolveUnscopedBuilderAIProviderTx(tx, projectID, userID, resolvedProviderKey, resolvedModelProfileKey)
 	default:
-		return nil, fmt.Errorf("unsupported builder provider scope %q", resolvedScope)
+		return nil, app.NewErrorf("unsupported builder provider scope %q", resolvedScope)
 	}
 }
 
@@ -207,7 +208,7 @@ func resolveUnscopedBuilderAIProviderTx(
 
 	switch {
 	case projectFound && userFound:
-		return nil, fmt.Errorf(
+		return nil, app.NewErrorf(
 			"ambiguous builder provider selection for provider %q and model %q; send selected_model_key to preserve project or user scope",
 			providerKey,
 			modelProfileKey,
@@ -217,7 +218,7 @@ func resolveUnscopedBuilderAIProviderTx(
 	case userFound:
 		return userProvider, nil
 	default:
-		return nil, fmt.Errorf(
+		return nil, app.NewErrorf(
 			"builder provider selection not found for provider %q and model %q",
 			providerKey,
 			modelProfileKey,

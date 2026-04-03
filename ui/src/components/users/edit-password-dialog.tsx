@@ -14,6 +14,7 @@ import {
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { PASSWORD_POLICY_MESSAGE, isStrongPassword } from "@/lib/password-policy"
 
 interface EditPasswordDialogProps {
   userId: string
@@ -37,7 +38,7 @@ export function EditPasswordDialog({ username, onSubmit, isPending }: EditPasswo
     }
   }
 
-  const isValid = password.length >= 6 && password === confirmPassword
+  const isValid = isStrongPassword(password) && password === confirmPassword
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -81,9 +82,12 @@ export function EditPasswordDialog({ username, onSubmit, isPending }: EditPasswo
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter new password (min 6 characters)"
+                  placeholder="Enter new password"
                 />
               </FieldContent>
+              {password && !isStrongPassword(password) && (
+                <FieldError>{PASSWORD_POLICY_MESSAGE}</FieldError>
+              )}
             </Field>
             <Field>
               <FieldLabel htmlFor="confirm-password">Confirm Password *</FieldLabel>

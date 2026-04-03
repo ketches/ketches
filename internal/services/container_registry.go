@@ -13,6 +13,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	remoteTransport "github.com/google/go-containerregistry/pkg/v1/remote/transport"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -328,7 +329,7 @@ func resolveRegistryHost(provider, endpoint string) (string, bool, error) {
 
 	u, err := url.Parse(raw)
 	if err != nil {
-		return "", false, fmt.Errorf("invalid endpoint: %w", err)
+		return "", false, app.WrapErrorf(err, "invalid endpoint: %w", err)
 	}
 	if u.Host == "" {
 		return "", false, errors.New("invalid endpoint: missing host")

@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
+import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Combobox,
@@ -23,6 +23,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item"
+import { PASSWORD_POLICY_MESSAGE, isStrongPassword } from "@/lib/password-policy"
 
 
 
@@ -74,8 +75,8 @@ export function AddUserDialog({ onSuccess }: AddUserDialogProps) {
     }
     if (!formData.password) {
       newErrors.password = "Password is required"
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters"
+    } else if (!isStrongPassword(formData.password)) {
+      newErrors.password = PASSWORD_POLICY_MESSAGE
     }
 
     setErrors(newErrors)
@@ -202,9 +203,10 @@ export function AddUserDialog({ onSuccess }: AddUserDialogProps) {
                   autoComplete="new-password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Enter password (min 6 characters)"
+                  placeholder="Enter password"
                 />
               </FieldContent>
+              <FieldDescription>{PASSWORD_POLICY_MESSAGE}</FieldDescription>
               {errors.password && <FieldError>{errors.password}</FieldError>}
             </Field>
             <Field>

@@ -2,7 +2,8 @@ package openapi
 
 import (
 	"encoding/json"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,7 +35,7 @@ func RegisterRoutes(r *gin.Engine, cfg Config) {
 
 		if devMode {
 			if err := os.MkdirAll("openapi", 0o755); err != nil {
-				log.Printf("openapi: failed to create output dir in dev mode: %v", err)
+				slog.Error(fmt.Sprintf("openapi: failed to create output dir in dev mode: %v", err))
 			} else {
 				_ = os.WriteFile(filepath.Join("openapi", "openapi.json"), jsonBytes, 0o644)
 				_ = os.WriteFile(filepath.Join("openapi", "openapi.yaml"), yamlBytes, 0o644)
@@ -49,7 +50,7 @@ func RegisterRoutes(r *gin.Engine, cfg Config) {
 		var err error
 		cached, err = generate()
 		if err != nil {
-			log.Printf("openapi: failed to generate initial docs: %v", err)
+			slog.Error(fmt.Sprintf("openapi: failed to generate initial docs: %v", err))
 		}
 	}
 

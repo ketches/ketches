@@ -130,7 +130,7 @@ func TestChangeCurrentUserPassword(t *testing.T) {
 	group.Use(userClaimsMiddleware("user-1", "alice", app.UserRoleUser))
 	group.PATCH("/me/password", ChangeCurrentUserPassword)
 
-	req := httptest.NewRequest(http.MethodPatch, "/api/v1/users/me/password", strings.NewReader(`{"current_password":"secret123","new_password":"new-secret123"}`))
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/users/me/password", strings.NewReader(`{"current_password":"secret123","new_password":"New-secret#123"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -139,7 +139,7 @@ func TestChangeCurrentUserPassword(t *testing.T) {
 
 	var persisted entities.User
 	require.NoError(t, db.DB.First(&persisted, "id = ?", "user-1").Error)
-	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(persisted.Password), []byte("new-secret123")))
+	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(persisted.Password), []byte("New-secret#123")))
 }
 
 func TestAdminChangeUserPassword(t *testing.T) {
@@ -152,7 +152,7 @@ func TestAdminChangeUserPassword(t *testing.T) {
 	group.Use(userClaimsMiddleware("admin-1", "admin", app.UserRoleAdmin))
 	group.PATCH("/:userID/password", middlewares.AdminOnly(), ChangeUserPassword)
 
-	req := httptest.NewRequest(http.MethodPatch, "/api/v1/users/user-1/password", strings.NewReader(`{"password":"admin-reset123"}`))
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/users/user-1/password", strings.NewReader(`{"password":"Admin-reset#123"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -161,5 +161,5 @@ func TestAdminChangeUserPassword(t *testing.T) {
 
 	var persisted entities.User
 	require.NoError(t, db.DB.First(&persisted, "id = ?", "user-1").Error)
-	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(persisted.Password), []byte("admin-reset123")))
+	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(persisted.Password), []byte("Admin-reset#123")))
 }

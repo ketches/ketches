@@ -1,26 +1,31 @@
-import { authApi } from "@/api/auth"
-import { Button } from "@/components/ui/button"
-import {
-  Field,
-  FieldContent,
-  FieldError,
-  FieldGroup,
-  FieldLabel
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { useQuery } from "@tanstack/react-query"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import * as z from "zod"
 
+import { authApi } from "@/api/auth"
+import { Button } from "@/components/ui/button"
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { PASSWORD_POLICY_MESSAGE, isStrongPassword } from "@/lib/password-policy"
+import { cn } from "@/lib/utils"
+
 const signupSchema = z.object({
   fullname: z.string().min(1, "Full name is required"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().refine(isStrongPassword, PASSWORD_POLICY_MESSAGE),
+  verificationCode: z.string().length(6, "Enter the 6-digit verification code"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -36,33 +41,110 @@ export function SignupForm({
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSendingCode, setIsSendingCode] = useState(false)
+  const [resendAfterSeconds, setResendAfterSeconds] = useState(0)
+
+  const signUpConfigQuery = useQuery({
+    queryKey: ["sign-up-config"],
+    queryFn: authApi.getSignUpConfig,
+  })
 
   const {
     register,
+    getValues,
     handleSubmit,
     formState: { errors },
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
   })
 
+  useEffect(() => {
+    if (resendAfterSeconds <= 0) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setResendAfterSeconds((current) => Math.max(0, current - 1))
+    }, 1000)
+
+    return () => window.clearTimeout(timer)
+  }, [resendAfterSeconds])
+
+  const handleSendVerificationCode = async () => {
+    const email = getValues("email")
+    if (!email) {
+      setError("Enter your email address before requesting a verification code")
+      return
+    }
+
+    setIsSendingCode(true)
+    setError(null)
+    try {
+      const response = await authApi.sendSignUpVerificationCode({ email })
+      setResendAfterSeconds(response.resend_after_seconds)
+      toast.success("Verification code sent", {
+        description: "Check your email inbox for the 6-digit code.",
+      })
+    } catch (err: any) {
+      const errMsg = err.response?.data?.error || "Failed to send verification code"
+      setError(errMsg)
+      toast.error("Verification Failed", {
+        description: errMsg,
+      })
+    } finally {
+      setIsSendingCode(false)
+    }
+  }
+
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true)
     setError(null)
     try {
-      await authApi.signUp(data)
+      await authApi.signUp({
+        fullname: data.fullname,
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        verification_code: data.verificationCode,
+      })
       toast.success("Account created", {
-        description: "You can now sign in with your credentials."
+        description: "You can now sign in with your credentials.",
       })
       navigate("/login")
     } catch (err: any) {
       const errMsg = err.response?.data?.error || "Failed to create account"
       setError(errMsg)
       toast.error("Registration Failed", {
-        description: errMsg
+        description: errMsg,
       })
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (signUpConfigQuery.isLoading) {
+    return (
+      <div className={cn("text-center text-sm text-muted-foreground", className)}>
+        Loading registration settings...
+      </div>
+    )
+  }
+
+  if (signUpConfigQuery.data && !signUpConfigQuery.data.enabled) {
+    return (
+      <div className={cn("space-y-3 text-center", className)}>
+        <h1 className="text-2xl font-bold">Public registration is disabled</h1>
+        <p className="text-sm text-muted-foreground">
+          Contact an administrator if you need an account.
+        </p>
+        <div className="text-xs">
+          Already have an account?{" "}
+          <Link to="/login" className="underline underline-offset-4 font-medium">
+            Sign in
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -75,7 +157,7 @@ export function SignupForm({
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Create your account</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Fill in the form below to create your account
+            Verify your email, then complete the registration form.
           </p>
         </div>
         {error && (
@@ -111,16 +193,42 @@ export function SignupForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="email">Email</FieldLabel>
-          <FieldContent>
+          <FieldContent className="flex gap-2">
             <Input
               id="email"
               type="email"
               placeholder="m@example.com"
               {...register("email")}
             />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSendingCode || resendAfterSeconds > 0}
+              onClick={handleSendVerificationCode}
+            >
+              {isSendingCode ? "Sending..." : resendAfterSeconds > 0 ? `Resend in ${resendAfterSeconds}s` : "Send Code"}
+            </Button>
           </FieldContent>
+          <FieldDescription>
+            Verification codes stay valid for 300 seconds.
+          </FieldDescription>
           {errors.email && (
             <FieldError>{errors.email.message}</FieldError>
+          )}
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="verificationCode">Verification Code</FieldLabel>
+          <FieldContent>
+            <Input
+              id="verificationCode"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="123456"
+              {...register("verificationCode")}
+            />
+          </FieldContent>
+          {errors.verificationCode && (
+            <FieldError>{errors.verificationCode.message}</FieldError>
           )}
         </Field>
         <Field>
@@ -133,6 +241,7 @@ export function SignupForm({
               {...register("password")}
             />
           </FieldContent>
+          <FieldDescription>{PASSWORD_POLICY_MESSAGE}</FieldDescription>
           {errors.password && (
             <FieldError>{errors.password.message}</FieldError>
           )}
@@ -155,19 +264,12 @@ export function SignupForm({
             {isLoading ? "Creating Account..." : "Create Account"}
           </Button>
         </Field>
-        {/* <FieldSeparator>Or continue with</FieldSeparator> */}
         <Field>
-          {/* <Button variant="outline" type="button" disabled={isLoading} className="gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4">
-              <path
-                d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
-                fill="currentColor"
-              />
-            </svg>
-            Sign up with GitHub
-          </Button> */}
           <div className="text-center text-xs">
-            Already have an account? <Link to="/login" className="underline underline-offset-4 font-medium">Sign in</Link>
+            Already have an account?{" "}
+            <Link to="/login" className="underline underline-offset-4 font-medium">
+              Sign in
+            </Link>
           </div>
         </Field>
       </FieldGroup>

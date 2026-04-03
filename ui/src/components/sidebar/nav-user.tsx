@@ -1,5 +1,6 @@
 import { useState } from "react"
 
+import { authApi } from "@/api/auth"
 import {
   Bell,
   ChevronsUpDown,
@@ -72,6 +73,7 @@ export function NavUser({
 
   const handleLogout = () => {
     markManualLogout()
+    void authApi.logout().catch(() => undefined)
     logout()
     navigate("/login", { replace: true })
   }

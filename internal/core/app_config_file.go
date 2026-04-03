@@ -2,8 +2,8 @@ package core
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -13,7 +13,7 @@ import (
 // SyncConfigMapToK8s synchronizes config files to a Kubernetes ConfigMap
 func SyncConfigMapToK8s(ctx context.Context, appCtx *models.AppContext) error {
 	if appCtx.EnvContext.Env.ClusterID == "" {
-		return fmt.Errorf("app environment has no cluster configured")
+		return app.NewErrorf("app environment has no cluster configured")
 	}
 
 	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)

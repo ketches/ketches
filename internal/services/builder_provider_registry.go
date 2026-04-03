@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/ketches/ketches/internal/app"
@@ -64,7 +63,7 @@ func (r *builderProviderRegistry) resolveBuilderProviderProfile(providerKey, mod
 
 	provider, ok := r.providers[resolvedProviderKey]
 	if !ok {
-		return builderResolvedProviderProfile{}, fmt.Errorf("unknown builder provider alias %q", resolvedProviderKey)
+		return builderResolvedProviderProfile{}, app.NewErrorf("unknown builder provider alias %q", resolvedProviderKey)
 	}
 
 	resolvedModelProfileKey := strings.TrimSpace(modelProfileKey)
@@ -74,7 +73,7 @@ func (r *builderProviderRegistry) resolveBuilderProviderProfile(providerKey, mod
 
 	modelProfile, ok := r.modelProfiles[resolvedModelProfileKey]
 	if !ok {
-		return builderResolvedProviderProfile{}, fmt.Errorf("unknown builder model profile alias %q", resolvedModelProfileKey)
+		return builderResolvedProviderProfile{}, app.NewErrorf("unknown builder model profile alias %q", resolvedModelProfileKey)
 	}
 
 	return builderResolvedProviderProfile{
@@ -87,7 +86,7 @@ func loadBuilderProviderDefinitions(config app.AppConfig) (map[string]builderPro
 	if strings.TrimSpace(config.BuilderProviderRegistryJSON) != "" {
 		var providers []builderProviderDefinition
 		if err := json.Unmarshal([]byte(config.BuilderProviderRegistryJSON), &providers); err != nil {
-			return nil, fmt.Errorf("parse builder provider registry: %w", err)
+			return nil, app.WrapErrorf(err, "parse builder provider registry: %w", err)
 		}
 
 		return indexBuilderProviders(providers)
@@ -112,7 +111,7 @@ func loadBuilderModelProfileDefinitions(config app.AppConfig) (map[string]builde
 	if strings.TrimSpace(config.BuilderModelProfileRegistryJSON) != "" {
 		var modelProfiles []builderModelProfileDefinition
 		if err := json.Unmarshal([]byte(config.BuilderModelProfileRegistryJSON), &modelProfiles); err != nil {
-			return nil, fmt.Errorf("parse builder model profile registry: %w", err)
+			return nil, app.WrapErrorf(err, "parse builder model profile registry: %w", err)
 		}
 
 		return indexBuilderModelProfiles(modelProfiles)
@@ -140,13 +139,13 @@ func indexBuilderProviders(providers []builderProviderDefinition) (map[string]bu
 		provider.APIKey = strings.TrimSpace(provider.APIKey)
 
 		if provider.Key == "" {
-			return nil, fmt.Errorf("builder provider key is required")
+			return nil, app.NewErrorf("builder provider key is required")
 		}
 		if provider.BaseURL == "" {
-			return nil, fmt.Errorf("builder provider %q base URL is required", provider.Key)
+			return nil, app.NewErrorf("builder provider %q base URL is required", provider.Key)
 		}
 		if _, exists := indexed[provider.Key]; exists {
-			return nil, fmt.Errorf("duplicate builder provider alias %q", provider.Key)
+			return nil, app.NewErrorf("duplicate builder provider alias %q", provider.Key)
 		}
 
 		indexed[provider.Key] = provider
@@ -162,13 +161,13 @@ func indexBuilderModelProfiles(modelProfiles []builderModelProfileDefinition) (m
 		modelProfile.Model = strings.TrimSpace(modelProfile.Model)
 
 		if modelProfile.Key == "" {
-			return nil, fmt.Errorf("builder model profile key is required")
+			return nil, app.NewErrorf("builder model profile key is required")
 		}
 		if modelProfile.Model == "" {
-			return nil, fmt.Errorf("builder model profile %q model is required", modelProfile.Key)
+			return nil, app.NewErrorf("builder model profile %q model is required", modelProfile.Key)
 		}
 		if _, exists := indexed[modelProfile.Key]; exists {
-			return nil, fmt.Errorf("duplicate builder model profile alias %q", modelProfile.Key)
+			return nil, app.NewErrorf("duplicate builder model profile alias %q", modelProfile.Key)
 		}
 
 		indexed[modelProfile.Key] = modelProfile

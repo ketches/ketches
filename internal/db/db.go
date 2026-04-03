@@ -1,8 +1,9 @@
 package db
 
 import (
-	"fmt"
-	"log"
+	"database/sql"
+	"log/slog"
+	"time"
 
 	"github.com/ketches/ketches/internal/app"
 	"gorm.io/driver/mysql"
@@ -28,20 +29,48 @@ func InitDB() error {
 	case "mysql":
 		dialector = mysql.Open(app.Config.DBSource)
 	default:
-		return fmt.Errorf("unsupported database driver: %s", app.Config.DBDriver)
+		return app.NewErrorf("unsupported database driver: %s", app.Config.DBDriver)
 	}
 
 	DB, err = gorm.Open(dialector, newGormConfig())
 	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
+		return app.WrapError("failed to connect to database", err)
 	}
 
 	if app.Config.DBAutoMigrate {
 		if err := Migrate(); err != nil {
-			return fmt.Errorf("failed to migrate database: %w", err)
+			return app.WrapError("failed to migrate database", err)
 		}
 	}
 
-	log.Printf("successfully connected to %s database", app.Config.DBDriver)
+	if err := configureConnectionPool(DB); err != nil {
+		return app.WrapError("configure database connection pool", err)
+	}
+
+	slog.Info("database connected", "driver", app.Config.DBDriver)
 	return nil
+}
+
+func configureConnectionPool(gormDB *gorm.DB) error {
+	if gormDB == nil {
+		return nil
+	}
+
+	sqlDB, err := gormDB.DB()
+	if err != nil {
+		return err
+	}
+	applyPoolConfig(sqlDB)
+	return nil
+}
+
+func applyPoolConfig(sqlDB *sql.DB) {
+	if sqlDB == nil {
+		return
+	}
+
+	sqlDB.SetMaxIdleConns(app.Config.DBMaxIdleConns)
+	sqlDB.SetMaxOpenConns(app.Config.DBMaxOpenConns)
+	sqlDB.SetConnMaxLifetime(time.Duration(app.Config.DBConnMaxLifetimeMinutes) * time.Minute)
+	sqlDB.SetConnMaxIdleTime(time.Duration(app.Config.DBConnMaxIdleTimeMinutes) * time.Minute)
 }

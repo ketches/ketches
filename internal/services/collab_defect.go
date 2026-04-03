@@ -1,8 +1,7 @@
 package services
 
 import (
-	"fmt"
-
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -70,7 +69,7 @@ func CreateDefect(projectID, userID string, req *models.CreateDefectRequest) (*e
 			SprintID:    req.SprintID,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to auto-create task for defect: %w", err)
+			return nil, app.WrapErrorf(err, "failed to auto-create task for defect: %w", err)
 		}
 		req.TaskID = autoTask.ID
 	}
@@ -144,7 +143,7 @@ func TransitionDefect(projectID, defectID, userID string, req *models.DefectTran
 
 	targets, ok := allowedDefectTransitions[defect.Status]
 	if !ok {
-		return nil, fmt.Errorf("no transitions allowed from status %q", defect.Status)
+		return nil, app.NewErrorf("no transitions allowed from status %q", defect.Status)
 	}
 
 	allowed := false
@@ -155,7 +154,7 @@ func TransitionDefect(projectID, defectID, userID string, req *models.DefectTran
 		}
 	}
 	if !allowed {
-		return nil, fmt.Errorf("transition from %q to %q is not allowed", defect.Status, req.Status)
+		return nil, app.NewErrorf("transition from %q to %q is not allowed", defect.Status, req.Status)
 	}
 
 	defect.Status = req.Status
@@ -180,23 +179,23 @@ func TransitionDefect(projectID, defectID, userID string, req *models.DefectTran
 func validateDefectLinks(projectID, requirementID, taskID, testCaseID, testRunID string) error {
 	if requirementID != "" {
 		if _, err := GetRequirement(projectID, requirementID); err != nil {
-			return fmt.Errorf("cross-project link is not allowed for requirement_id")
+			return app.NewErrorf("cross-project link is not allowed for requirement_id")
 		}
 	}
 	if taskID != "" {
 		if _, err := GetTask(projectID, taskID); err != nil {
-			return fmt.Errorf("cross-project link is not allowed for task_id")
+			return app.NewErrorf("cross-project link is not allowed for task_id")
 		}
 	}
 	if testCaseID != "" {
 		if _, err := GetTestCase(projectID, testCaseID); err != nil {
-			return fmt.Errorf("cross-project link is not allowed for test_case_id")
+			return app.NewErrorf("cross-project link is not allowed for test_case_id")
 		}
 	}
 	if testRunID != "" {
 		var tr entities.CollabTestRun
 		if err := db.DB.Where("id = ? AND project_id = ?", testRunID, projectID).First(&tr).Error; err != nil {
-			return fmt.Errorf("cross-project link is not allowed for test_run_id")
+			return app.NewErrorf("cross-project link is not allowed for test_run_id")
 		}
 	}
 

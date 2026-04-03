@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
@@ -63,7 +64,7 @@ func CreateBuildSecretsFromCodeRepo(
 ) error {
 	client, err := kube.GlobalClusterStore.GetClient(buildEnv.ClusterID)
 	if err != nil {
-		return fmt.Errorf("failed to get cluster client: %w", err)
+		return app.WrapError("failed to get cluster client", err)
 	}
 
 	labels := map[string]string{
@@ -91,7 +92,7 @@ func CreateBuildSecretsFromCodeRepo(
 		Data: map[string][]byte{"config.json": dockerConfigJSON},
 	}
 	if _, err := client.CoreV1().Secrets(namespace).Create(ctx, registrySecret, metav1.CreateOptions{}); err != nil {
-		return fmt.Errorf("failed to create registry secret: %w", err)
+		return app.WrapError("failed to create registry secret", err)
 	}
 	plaintextGitPassword, err := resolveCodeRepositoryGitPassword(repo)
 	if err != nil {
@@ -108,7 +109,7 @@ func CreateBuildSecretsFromCodeRepo(
 			StringData: map[string]string{"username": repo.GitUsername, "password": plaintextGitPassword},
 		}
 		if _, err := client.CoreV1().Secrets(namespace).Create(ctx, gitSecret, metav1.CreateOptions{}); err != nil {
-			return fmt.Errorf("failed to create git secret: %w", err)
+			return app.WrapError("failed to create git secret", err)
 		}
 	}
 	return nil
@@ -127,13 +128,13 @@ func SubmitBuildJobFromCodeRepo(
 ) (string, string, error) {
 	client, err := kube.GlobalClusterStore.GetClient(buildEnv.ClusterID)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get cluster client: %w", err)
+		return "", "", app.WrapError("failed to get cluster client", err)
 	}
 	if err := EnsureClusterBuildkitInfrastructure(ctx, buildEnv.ClusterID); err != nil {
-		return "", "", fmt.Errorf("failed to ensure buildkit infrastructure: %w", err)
+		return "", "", app.WrapError("failed to ensure buildkit infrastructure", err)
 	}
 	if err := EnsureBuildkitBuildPrerequisites(ctx, buildEnv.ClusterID, setting.Platforms); err != nil {
-		return "", "", fmt.Errorf("failed to validate buildkit readiness: %w", err)
+		return "", "", app.WrapError("failed to validate buildkit readiness", err)
 	}
 	if err := CreateBuildSecretsFromCodeRepo(ctx, build, repo, registry, buildEnv, project, jobSlug); err != nil {
 		return "", "", err
@@ -144,7 +145,7 @@ func SubmitBuildJobFromCodeRepo(
 	}
 	createdJob, err := client.BatchV1().Jobs(buildEnv.ClusterNamespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create build job: %w", err)
+		return "", "", app.WrapError("failed to create build job", err)
 	}
 	return createdJob.Name, createdJob.Namespace, nil
 }
@@ -162,7 +163,7 @@ func CreateBuildSecrets(
 	appSlug := appCtx.App.Slug
 	client, err := kube.GlobalClusterStore.GetClient(buildEnv.ClusterID)
 	if err != nil {
-		return fmt.Errorf("failed to get cluster client: %w", err)
+		return app.WrapError("failed to get cluster client", err)
 	}
 
 	labels := map[string]string{
@@ -195,7 +196,7 @@ func CreateBuildSecrets(
 	}
 
 	if _, err := client.CoreV1().Secrets(namespace).Create(ctx, registrySecret, metav1.CreateOptions{}); err != nil {
-		return fmt.Errorf("failed to create registry secret: %w", err)
+		return app.WrapError("failed to create registry secret", err)
 	}
 
 	plaintextGitPassword, err := resolveCodeRepositoryGitPassword(repo)
@@ -219,7 +220,7 @@ func CreateBuildSecrets(
 		}
 
 		if _, err := client.CoreV1().Secrets(namespace).Create(ctx, gitSecret, metav1.CreateOptions{}); err != nil {
-			return fmt.Errorf("failed to create git secret: %w", err)
+			return app.WrapError("failed to create git secret", err)
 		}
 	}
 
@@ -238,13 +239,13 @@ func SubmitBuildJob(
 ) (string, string, error) {
 	client, err := kube.GlobalClusterStore.GetClient(buildEnv.ClusterID)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get cluster client: %w", err)
+		return "", "", app.WrapError("failed to get cluster client", err)
 	}
 	if err := EnsureClusterBuildkitInfrastructure(ctx, buildEnv.ClusterID); err != nil {
-		return "", "", fmt.Errorf("failed to ensure buildkit infrastructure: %w", err)
+		return "", "", app.WrapError("failed to ensure buildkit infrastructure", err)
 	}
 	if err := EnsureBuildkitBuildPrerequisites(ctx, buildEnv.ClusterID, setting.Platforms); err != nil {
-		return "", "", fmt.Errorf("failed to validate buildkit readiness: %w", err)
+		return "", "", app.WrapError("failed to validate buildkit readiness", err)
 	}
 
 	// Create secrets first
@@ -260,7 +261,7 @@ func SubmitBuildJob(
 
 	createdJob, err := client.BatchV1().Jobs(buildEnv.ClusterNamespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create build job: %w", err)
+		return "", "", app.WrapError("failed to create build job", err)
 	}
 
 	return createdJob.Name, createdJob.Namespace, nil
@@ -517,17 +518,14 @@ func buildDockerConfigJSON(registry *entities.ContainerRegistry) []byte {
 	return data
 }
 
-func buildGitCloneCommand(repoURL, ref, username, password string) string {
+func buildGitCloneCommand(repoURL, ref, username, password string) ([]string, []string) {
 	cloneURL := convertSSHToHTTPS(repoURL)
 	if username != "" && password != "" {
 		cloneURL = injectGitCredentials(cloneURL, username, password)
 	}
 
-	// Clone the repo, checkout the specified ref
-	return fmt.Sprintf(
-		"git clone --depth 1 --branch %s %s /workspace || (git clone %s /workspace && cd /workspace && git checkout %s)",
-		ref, cloneURL, cloneURL, ref,
-	)
+	script := `git clone --depth 1 --branch "$1" "$2" /workspace || (git clone "$2" /workspace && cd /workspace && git checkout "$1")`
+	return []string{"sh", "-eu", "-c", script}, []string{"ketches-git-clone", ref, cloneURL}
 }
 
 func convertSSHToHTTPS(repoURL string) string {

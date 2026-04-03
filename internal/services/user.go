@@ -18,6 +18,8 @@ var (
 	ErrDeleteLastAdmin        = errors.New("cannot delete the last admin user")
 	ErrDemoteLastAdmin        = errors.New("cannot demote the last admin user")
 	ErrInvalidCurrentPassword = errors.New("current password is incorrect")
+	ErrUsernameAlreadyExists  = errors.New("username already exists")
+	ErrEmailAlreadyExists     = errors.New("email already exists")
 )
 
 func createDefaultProject(tx *gorm.DB, user *entities.User) error {
@@ -48,6 +50,18 @@ func createDefaultProject(tx *gorm.DB, user *entities.User) error {
 }
 
 func SignUp(req *models.SignUpRequest) (*entities.User, error) {
+	if req == nil {
+		return nil, errors.New("signup request is required")
+	}
+	if err := ValidatePassword(req.Password); err != nil {
+		return nil, err
+	}
+
+	email, err := normalizeEmailAddress(req.Email)
+	if err != nil {
+		return nil, err
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -55,16 +69,26 @@ func SignUp(req *models.SignUpRequest) (*entities.User, error) {
 
 	user := &entities.User{
 		Base:     entities.Base{ID: uuid.New()},
-		Username: req.Username,
-		Email:    req.Email,
+		Username: strings.TrimSpace(req.Username),
+		Email:    email,
 		Password: string(hashedPassword),
-		Fullname: req.Fullname,
+		Fullname: strings.TrimSpace(req.Fullname),
 		Role:     app.UserRoleUser,
 	}
 
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(user).Error; err != nil {
+		enabled, err := GetPublicSignUpEnabled()
+		if err != nil {
 			return err
+		}
+		if !enabled {
+			return ErrPublicSignUpDisabled
+		}
+		if err := consumeSignupVerificationCode(tx, req.Email, req.VerificationCode); err != nil {
+			return err
+		}
+		if err := tx.Create(user).Error; err != nil {
+			return mapUserWriteError(err)
 		}
 
 		return createDefaultProject(tx, user)
@@ -81,6 +105,9 @@ func SignIn(req *models.SignInRequest) (*entities.User, bool, error) {
 	var user entities.User
 	if err := db.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
 		return nil, false, errors.New("invalid username or password")
+	}
+	if user.IsLocked {
+		return nil, false, ErrAccountLocked
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
@@ -140,7 +167,7 @@ func UpdateCurrentUserProfile(userID, fullname, email, bio string) (*entities.Us
 	user.Bio = strings.TrimSpace(bio)
 
 	if err := db.DB.Save(user).Error; err != nil {
-		return nil, err
+		return nil, mapUserWriteError(err)
 	}
 	return user, nil
 }
@@ -157,7 +184,7 @@ func UpdateUser(userID, fullname, email, bio, phone string) (*entities.User, err
 	user.Phone = phone
 
 	if err := db.DB.Save(user).Error; err != nil {
-		return nil, err
+		return nil, mapUserWriteError(err)
 	}
 	return user, nil
 }
@@ -176,12 +203,19 @@ func ChangeCurrentUserPassword(userID, currentPassword, newPassword string) erro
 }
 
 func ChangeUserPassword(userID, newPassword string) error {
+	if err := ValidatePassword(newPassword); err != nil {
+		return err
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	return db.DB.Model(&entities.User{}).Where("id = ?", userID).Update("password", string(hashedPassword)).Error
+	return db.DB.Model(&entities.User{}).Where("id = ?", userID).Updates(map[string]any{
+		"password":      string(hashedPassword),
+		"refresh_token": "",
+	}).Error
 }
 
 // countAdmins returns the number of admin users in the system.
@@ -399,6 +433,18 @@ func ChangeUserRole(userID string, role string) error {
 }
 
 func CreateUser(req *models.CreateUserRequest) (*entities.User, error) {
+	if req == nil {
+		return nil, errors.New("create user request is required")
+	}
+	if err := ValidatePassword(req.Password); err != nil {
+		return nil, err
+	}
+
+	email, err := normalizeEmailAddress(req.Email)
+	if err != nil {
+		return nil, err
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -406,17 +452,17 @@ func CreateUser(req *models.CreateUserRequest) (*entities.User, error) {
 
 	user := &entities.User{
 		Base:     entities.Base{ID: uuid.New()},
-		Username: req.Username,
-		Email:    req.Email,
+		Username: strings.TrimSpace(req.Username),
+		Email:    email,
 		Password: string(hashedPassword),
-		Fullname: req.Fullname,
-		Phone:    req.Phone,
+		Fullname: strings.TrimSpace(req.Fullname),
+		Phone:    strings.TrimSpace(req.Phone),
 		Role:     req.Role,
 	}
 
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(user).Error; err != nil {
-			return err
+			return mapUserWriteError(err)
 		}
 
 		return createDefaultProject(tx, user)
@@ -466,4 +512,58 @@ func BatchImportUsers(requests []models.CreateUserRequest) (*models.BatchImportR
 	}
 
 	return response, nil
+}
+
+func SetUserLockState(userID string, locked bool, reason string) (*entities.User, error) {
+	if _, err := GetUser(userID); err != nil {
+		return nil, err
+	}
+
+	updates := map[string]any{
+		"is_locked":     locked,
+		"locked_reason": strings.TrimSpace(reason),
+	}
+	if locked {
+		now := currentTime()
+		updates["locked_at"] = &now
+		updates["refresh_token"] = ""
+	} else {
+		updates["locked_at"] = nil
+		updates["locked_reason"] = ""
+	}
+
+	if err := db.DB.Model(&entities.User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
+		return nil, err
+	}
+
+	return GetUser(userID)
+}
+
+func mapUserWriteError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	lower := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(lower, "users.username"), strings.Contains(lower, "username"):
+		if isUniqueConstraintError(lower) {
+			return ErrUsernameAlreadyExists
+		}
+	case strings.Contains(lower, "users.email"), strings.Contains(lower, "email"):
+		if isUniqueConstraintError(lower) {
+			return ErrEmailAlreadyExists
+		}
+	}
+
+	if isUniqueConstraintError(lower) {
+		return errors.New("user already exists")
+	}
+	return err
+}
+
+func isUniqueConstraintError(lowerErr string) bool {
+	return strings.Contains(lowerErr, "unique constraint") ||
+		strings.Contains(lowerErr, "duplicate key") ||
+		strings.Contains(lowerErr, "error 1062")
 }

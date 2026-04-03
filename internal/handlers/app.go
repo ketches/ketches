@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/app"
+	appcore "github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
@@ -24,7 +26,7 @@ func StreamAppLogs(c *gin.Context) {
 	containerName := c.Query("container")
 
 	if containerName == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("container parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("container parameter is required"))
 		return
 	}
 
@@ -42,7 +44,7 @@ func StreamAppLogs(c *gin.Context) {
 
 	app, err := services.GetAppContext(c.Request.Context(), appID)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("app not found: %v", err))
+		api.Error(c, http.StatusNotFound, appcore.WrapError("app not found", err))
 		return
 	}
 
@@ -50,7 +52,7 @@ func StreamAppLogs(c *gin.Context) {
 	r := c.Request
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		api.Error(c, http.StatusInternalServerError, fmt.Errorf("streaming unsupported"))
+		api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("streaming unsupported"))
 		return
 	}
 
@@ -101,7 +103,7 @@ func ExecAppContainerTerminal(c *gin.Context) {
 
 	conn, err := wsPkg.NewConn(w, r)
 	if err != nil {
-		c.Error(fmt.Errorf("failed to upgrade to websocket: %v", err))
+		c.Error(appcore.NewErrorf("failed to upgrade to websocket: %v", err))
 		return
 	}
 	defer conn.Close()
@@ -508,7 +510,7 @@ func GetAppTopologyResourceYaml(c *gin.Context) {
 func GetImageMetadata(c *gin.Context) {
 	image := c.Query("image")
 	if image == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("image query parameter is required"))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("image query parameter is required"))
 		return
 	}
 
@@ -517,7 +519,7 @@ func GetImageMetadata(c *gin.Context) {
 
 	meta, err := containerregistry.FetchImageMetadata(c.Request.Context(), image, username, password)
 	if err != nil {
-		api.Error(c, http.StatusBadGateway, fmt.Errorf("failed to fetch image metadata: %w", err))
+		api.Error(c, http.StatusBadGateway, app.WrapErrorf(err, "failed to fetch image metadata: %w", err))
 		return
 	}
 

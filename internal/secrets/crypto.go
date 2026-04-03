@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"fmt"
 	"strings"
 
 	"github.com/ketches/ketches/internal/app"
@@ -26,17 +25,17 @@ func EncryptString(plaintext string) (string, error) {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", fmt.Errorf("create cipher: %w", err)
+		return "", app.WrapErrorf(err, "create cipher: %w", err)
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "", fmt.Errorf("create gcm: %w", err)
+		return "", app.WrapErrorf(err, "create gcm: %w", err)
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
-		return "", fmt.Errorf("read nonce: %w", err)
+		return "", app.WrapErrorf(err, "read nonce: %w", err)
 	}
 
 	sealed := gcm.Seal(nil, nonce, []byte(plaintext), nil)
@@ -51,7 +50,7 @@ func DecryptString(value string) (string, error) {
 	}
 
 	if !strings.HasPrefix(value, encryptedPrefix) {
-		return "", fmt.Errorf("ciphertext missing %q prefix", encryptedPrefix)
+		return "", app.NewErrorf("ciphertext missing %q prefix", encryptedPrefix)
 	}
 
 	key, err := encryptionKey()
@@ -61,22 +60,22 @@ func DecryptString(value string) (string, error) {
 
 	payload, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(value, encryptedPrefix))
 	if err != nil {
-		return "", fmt.Errorf("decode ciphertext: %w", err)
+		return "", app.WrapErrorf(err, "decode ciphertext: %w", err)
 	}
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", fmt.Errorf("create cipher: %w", err)
+		return "", app.WrapErrorf(err, "create cipher: %w", err)
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "", fmt.Errorf("create gcm: %w", err)
+		return "", app.WrapErrorf(err, "create gcm: %w", err)
 	}
 
 	nonceSize := gcm.NonceSize()
 	if len(payload) < nonceSize {
-		return "", fmt.Errorf("ciphertext too short")
+		return "", app.NewErrorf("ciphertext too short")
 	}
 
 	nonce := payload[:nonceSize]
@@ -84,7 +83,7 @@ func DecryptString(value string) (string, error) {
 
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return "", fmt.Errorf("decrypt ciphertext: %w", err)
+		return "", app.WrapErrorf(err, "decrypt ciphertext: %w", err)
 	}
 
 	return string(plaintext), nil
@@ -92,7 +91,7 @@ func DecryptString(value string) (string, error) {
 
 func encryptionKey() ([]byte, error) {
 	if strings.TrimSpace(app.Config.SecretEncryptionKey) == "" {
-		return nil, fmt.Errorf("secret encryption key is not configured")
+		return nil, app.NewErrorf("secret encryption key is not configured")
 	}
 
 	sum := sha256.Sum256([]byte(app.Config.SecretEncryptionKey))

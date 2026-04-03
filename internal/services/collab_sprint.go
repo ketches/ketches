@@ -1,10 +1,10 @@
 package services
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -15,7 +15,7 @@ import (
 func parseDate(s string) (*time.Time, error) {
 	t, err := time.Parse("2006-01-02", s)
 	if err != nil {
-		return nil, fmt.Errorf("invalid date format: %s", s)
+		return nil, app.NewErrorf("invalid date format: %s", s)
 	}
 	return &t, nil
 }

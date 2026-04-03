@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
@@ -97,7 +98,7 @@ func CancelBuild(buildID string) (*entities.Build, error) {
 	core.GlobalBuildWatcher.StopWatching(buildID)
 
 	if err := persistBuildLogs(context.Background(), buildID); err != nil {
-		log.Printf("Failed to persist build logs before cancel: %v", err)
+		slog.Error(fmt.Sprintf("Failed to persist build logs before cancel: %v", err))
 	}
 
 	// Cancel the K8s job
@@ -112,7 +113,7 @@ func CancelBuild(buildID string) (*entities.Build, error) {
 			build.JobName,
 			build.JobNamespace,
 		); err != nil {
-			log.Printf("Failed to cancel build job: %v", err)
+			slog.Error(fmt.Sprintf("Failed to cancel build job: %v", err))
 		}
 	}
 
@@ -193,7 +194,7 @@ func DeployBuild(ctx context.Context, buildID string) (*entities.Build, error) {
 			"error_message": err.Error(),
 			"deployed_at":   &now,
 		})
-		return nil, fmt.Errorf("failed to deploy: %w", err)
+		return nil, app.WrapErrorf(err, "failed to deploy: %w", err)
 	}
 
 	// Update deploy status
@@ -365,22 +366,22 @@ func ListDeployedAppsByEnvironmentAndBuildSetting(envID, buildSettingID string) 
 func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRepositoryBuildRequest) (*entities.Build, error) {
 	repo, err := GetCodeRepository(repoID)
 	if err != nil {
-		return nil, fmt.Errorf("code repository not found: %w", err)
+		return nil, app.WrapErrorf(err, "code repository not found: %w", err)
 	}
 	setting, err := GetBuildSetting(req.BuildSettingID)
 	if err != nil {
-		return nil, fmt.Errorf("build setting not found: %w", err)
+		return nil, app.WrapErrorf(err, "build setting not found: %w", err)
 	}
 	if setting.CodeRepositoryID == nil || *setting.CodeRepositoryID != repoID {
 		return nil, errors.New("build setting does not belong to this code repository")
 	}
 	registry, err := GetContainerRegistry(setting.RegistryID)
 	if err != nil {
-		return nil, fmt.Errorf("container registry not found: %w", err)
+		return nil, app.WrapErrorf(err, "container registry not found: %w", err)
 	}
 	buildEnv, err := GetEnv(req.BuildEnvID)
 	if err != nil {
-		return nil, fmt.Errorf("build environment not found: %w", err)
+		return nil, app.WrapErrorf(err, "build environment not found: %w", err)
 	}
 	if buildEnv.ProjectID != repo.ProjectID {
 		return nil, errors.New("build environment must belong to the same project as the code repository")
@@ -388,7 +389,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 
 	project, err := GetProject(repo.ProjectID)
 	if err != nil {
-		return nil, fmt.Errorf("project not found: %w", err)
+		return nil, app.WrapErrorf(err, "project not found: %w", err)
 	}
 
 	var activeCount int64
@@ -469,7 +470,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 			DeployedBy: "auto",
 		}
 		if err := db.DB.Create(buildDeployment).Error; err != nil {
-			log.Printf("TriggerCodeRepositoryBuild: failed to create build deployment record: %v", err)
+			slog.Error(fmt.Sprintf("TriggerCodeRepositoryBuild: failed to create build deployment record: %v", err))
 		}
 	}
 
@@ -487,7 +488,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 	)
 	if err != nil {
 		core.MarkBuildFailed(build.ID, err.Error())
-		return nil, fmt.Errorf("failed to submit build job: %w", err)
+		return nil, app.WrapErrorf(err, "failed to submit build job: %w", err)
 	}
 
 	build.JobName = jobName
@@ -521,7 +522,7 @@ func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req 
 	}
 	targetEnv, err := GetEnv(req.TargetEnvID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("target environment not found: %w", err)
+		return nil, nil, app.WrapErrorf(err, "target environment not found: %w", err)
 	}
 	if targetEnv.ProjectID != repo.ProjectID {
 		return nil, nil, errors.New("target environment must belong to the same project")
@@ -529,7 +530,7 @@ func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req 
 
 	setting, err := GetBuildSetting(build.BuildSettingID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("build setting not found: %w", err)
+		return nil, nil, app.WrapErrorf(err, "build setting not found: %w", err)
 	}
 	registry, err := GetContainerRegistry(setting.RegistryID)
 	if err != nil {
@@ -540,7 +541,7 @@ func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req 
 	if req.AppID != "" {
 		appCtx, err = GetAppContext(ctx, req.AppID)
 		if err != nil {
-			return nil, nil, fmt.Errorf("app not found: %w", err)
+			return nil, nil, app.WrapErrorf(err, "app not found: %w", err)
 		}
 		if appCtx.App.EnvID != req.TargetEnvID {
 			return nil, nil, errors.New("app does not belong to the target environment")
@@ -564,7 +565,7 @@ func DeployCodeRepositoryBuild(ctx context.Context, repoID, buildID string, req 
 	}
 
 	if err := core.ApplyApp(ctx, appCtx); err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy: %w", err)
+		return nil, nil, app.WrapErrorf(err, "failed to deploy: %w", err)
 	}
 	appCtx.App.DeployStatus = "deployed"
 	db.DB.Model(&appCtx.App).Update("deploy_status", "deployed")

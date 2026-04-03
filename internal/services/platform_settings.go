@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/ketches/ketches/internal/app"
@@ -64,7 +63,7 @@ func loadStoredPlatformBranding() (*storedPlatformBranding, error) {
 
 	var branding storedPlatformBranding
 	if err := json.Unmarshal([]byte(setting.Value), &branding); err != nil {
-		return nil, fmt.Errorf("failed to decode platform branding: %w", err)
+		return nil, app.WrapErrorf(err, "failed to decode platform branding: %w", err)
 	}
 	if strings.TrimSpace(branding.Name) == "" {
 		branding.Name = platformBrandingDefaultName
@@ -75,7 +74,7 @@ func loadStoredPlatformBranding() (*storedPlatformBranding, error) {
 func saveStoredPlatformBranding(branding *storedPlatformBranding) error {
 	payload, err := json.Marshal(branding)
 	if err != nil {
-		return fmt.Errorf("failed to encode platform branding: %w", err)
+		return app.WrapErrorf(err, "failed to encode platform branding: %w", err)
 	}
 
 	setting, err := getSystemSetting(platformBrandingSettingKey)

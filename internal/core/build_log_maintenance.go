@@ -3,7 +3,8 @@ package core
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -45,7 +46,7 @@ func RecoverTerminalBuildLogArchives(ctx context.Context) error {
 				return nil
 			}
 			if err := PersistBuildLogs(ctx, builds[i].ID); err != nil {
-				log.Printf("Build log maintenance: failed to recover archive for build %s: %v", builds[i].ID, err)
+				slog.Error(fmt.Sprintf("Build log maintenance: failed to recover archive for build %s: %v", builds[i].ID, err))
 			}
 		}
 	}
@@ -72,7 +73,7 @@ func DeleteExpiredBuildLogs(ctx context.Context, now time.Time) error {
 
 func StartBuildLogMaintenance(ctx context.Context) {
 	if err := DeleteExpiredBuildLogs(ctx, time.Now().UTC()); err != nil && ctx.Err() == nil {
-		log.Printf("Build log maintenance: failed to delete expired archives: %v", err)
+		slog.Error(fmt.Sprintf("Build log maintenance: failed to delete expired archives: %v", err))
 	}
 
 	ticker := time.NewTicker(buildLogMaintenanceInterval)
@@ -84,7 +85,7 @@ func StartBuildLogMaintenance(ctx context.Context) {
 			return
 		case tickTime := <-ticker.C:
 			if err := DeleteExpiredBuildLogs(ctx, tickTime); err != nil {
-				log.Printf("Build log maintenance: failed to delete expired archives: %v", err)
+				slog.Error(fmt.Sprintf("Build log maintenance: failed to delete expired archives: %v", err))
 			}
 		}
 	}

@@ -37,3 +37,27 @@ func UpdatePlatformBranding(c *gin.Context) {
 	}
 	api.Success(c, branding)
 }
+
+func GetPublicSignUpSettings(c *gin.Context) {
+	enabled, err := services.GetPublicSignUpEnabled()
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.Success(c, models.PublicSignUpSettingsResponse{Enabled: enabled})
+}
+
+func UpdatePublicSignUpSettings(c *gin.Context) {
+	var request models.UpdatePublicSignUpSettingsRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.UpdatePublicSignUpEnabled(request.Enabled); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, models.PublicSignUpSettingsResponse{Enabled: request.Enabled})
+}

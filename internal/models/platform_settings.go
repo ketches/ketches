@@ -7,3 +7,11 @@ type UpdatePlatformBrandingRequest struct {
 type PlatformBrandingResponse struct {
 	Name string `json:"name"`
 }
+
+type PublicSignUpSettingsResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+type UpdatePublicSignUpSettingsRequest struct {
+	Enabled bool `json:"enabled"`
+}

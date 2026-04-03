@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -112,7 +112,7 @@ func ProxyPrometheusQuery(c *gin.Context) {
 
 	integration, err := services.GetClusterIntegrationByType(clusterID, entities.IntegrationTypePrometheus)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("prometheus integration not configured for this cluster"))
+		api.Error(c, http.StatusNotFound, app.NewErrorf("prometheus integration not configured for this cluster"))
 		return
 	}
 
@@ -120,7 +120,7 @@ func ProxyPrometheusQuery(c *gin.Context) {
 	queryTime := c.Query("time")
 
 	if query == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("query parameter is required"))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("query parameter is required"))
 		return
 	}
 
@@ -163,7 +163,7 @@ func ProxyPrometheusQueryRange(c *gin.Context) {
 
 	integration, err := services.GetClusterIntegrationByType(clusterID, entities.IntegrationTypePrometheus)
 	if err != nil {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("prometheus integration not configured for this cluster"))
+		api.Error(c, http.StatusNotFound, app.NewErrorf("prometheus integration not configured for this cluster"))
 		return
 	}
 
@@ -173,7 +173,7 @@ func ProxyPrometheusQueryRange(c *gin.Context) {
 	step := c.Query("step")
 
 	if query == "" || start == "" || end == "" || step == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("query, start, end, and step parameters are required"))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("query, start, end, and step parameters are required"))
 		return
 	}
 
@@ -239,12 +239,11 @@ func executePrometheusRequest(urlStr string, integration *entities.ClusterIntegr
 		Timeout:   30 * time.Second,
 		Transport: transport,
 	}
-
-	log.Printf("Prometheus request: %s", urlStr)
+	slog.Debug(fmt.Sprintf("Prometheus request: %s", urlStr))
 
 	req, err := http.NewRequest("GET", urlStr, nil)
 	if err != nil {
-		log.Printf("Failed to create request: %v", err)
+		slog.Error(fmt.Sprintf("Failed to create request: %v", err))
 		return nil, err
 	}
 
@@ -266,25 +265,25 @@ func executePrometheusRequest(urlStr string, integration *entities.ClusterIntegr
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("Prometheus request failed: %v", err)
+		slog.Error(fmt.Sprintf("Prometheus request failed: %v", err))
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("Failed to read response body: %v", err)
+		slog.Error(fmt.Sprintf("Failed to read response body: %v", err))
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Prometheus returned status %d: %s", resp.StatusCode, string(body))
-		return nil, fmt.Errorf("prometheus returned status %d: %s", resp.StatusCode, string(body))
+		slog.Info(fmt.Sprintf("Prometheus returned status %d: %s", resp.StatusCode, string(body)))
+		return nil, app.NewErrorf("prometheus returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result any
 	if err := json.Unmarshal(body, &result); err != nil {
-		log.Printf("Failed to parse response JSON: %v, body: %s", err, string(body))
+		slog.Error(fmt.Sprintf("Failed to parse response JSON: %v, body: %s", err, string(body)))
 		return nil, err
 	}
 

@@ -67,6 +67,7 @@ describe("AccountDialog", () => {
       email: "demo@example.com",
       bio: "Bio",
       role: "user",
+      is_locked: false,
       created_at: new Date().toISOString(),
     })
   })

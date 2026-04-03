@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path"
 	"strings"
+
+	"github.com/ketches/ketches/internal/app"
 )
 
 const buildkitServiceAddress = "tcp://ketches-buildkitd.ketches-build.svc.cluster.local:1234"
@@ -49,7 +51,7 @@ func resolveDockerfileLocalPaths(buildContext, dockerfilePath string) (contextDi
 	}
 
 	if path.IsAbs(contextDir) || path.IsAbs(dockerfilePath) {
-		return "", "", "", fmt.Errorf("absolute build paths are not supported")
+		return "", "", "", app.NewErrorf("absolute build paths are not supported")
 	}
 
 	filename = path.Base(dockerfilePath)

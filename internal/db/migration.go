@@ -1,13 +1,13 @@
 package db
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/ketches/ketches/internal/db/entities"
 )
 
 func Migrate() error {
-	log.Printf("Running AutoMigrate...")
+	slog.Info("running database automigrate")
 
 	if err := migrateClusterGatewayAddressToGatewayHost(); err != nil {
 		return err
@@ -15,6 +15,7 @@ func Migrate() error {
 
 	if err := DB.AutoMigrate(
 		&entities.User{},
+		&entities.SignupVerificationCode{},
 		&entities.Cluster{},
 		&entities.ClusterIntegration{},
 		&entities.Project{},

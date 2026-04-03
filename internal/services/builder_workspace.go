@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"path"
 	"strings"
@@ -490,7 +489,7 @@ func detectBuilderBuildOutputRoot(workspace *entities.BuilderWorkspace, listing 
 	case builderBuildOutputRootDist, builderBuildOutputRootBuild, builderBuildOutputRootNext:
 		return segments[0], nil
 	default:
-		return "", fmt.Errorf("unsupported builder build output root: %s", artifactBasePath)
+		return "", app.NewErrorf("unsupported builder build output root: %s", artifactBasePath)
 	}
 }
 
@@ -773,7 +772,7 @@ func resolveBuilderWorkspacePath(workspaceRoot, requestedPath string) (string, e
 		return cleanWorkspaceRoot, nil
 	}
 	if strings.HasPrefix(normalizedRequestedPath, "~") {
-		return "", fmt.Errorf("%w: %s", ErrBuilderAgentUnsafeFilePath, requestedPath)
+		return "", app.WrapErrorf(ErrBuilderAgentUnsafeFilePath, "%w: %s", ErrBuilderAgentUnsafeFilePath, requestedPath)
 	}
 
 	var candidatePath string
@@ -784,7 +783,7 @@ func resolveBuilderWorkspacePath(workspaceRoot, requestedPath string) (string, e
 	}
 
 	if candidatePath != cleanWorkspaceRoot && !strings.HasPrefix(candidatePath, cleanWorkspaceRoot+"/") {
-		return "", fmt.Errorf("%w: %s", ErrBuilderAgentUnsafeFilePath, requestedPath)
+		return "", app.WrapErrorf(ErrBuilderAgentUnsafeFilePath, "%w: %s", ErrBuilderAgentUnsafeFilePath, requestedPath)
 	}
 
 	return candidatePath, nil

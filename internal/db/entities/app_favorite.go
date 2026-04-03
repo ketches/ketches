@@ -10,5 +10,4 @@ type AppFavorite struct {
 	UserID    string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_user_env_app_fav;index"`
 	EnvID     string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_user_env_app_fav;index"`
 	AppID     string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_user_env_app_fav;index"`
-
 }

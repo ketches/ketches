@@ -2,9 +2,9 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/models"
 )
 
@@ -14,10 +14,10 @@ var triggerBuilderExportInitialBuild = TriggerCodeRepositoryBuild
 
 func PromoteBuilderSessionExportToInitialBuild(ctx context.Context, projectID, sessionID, exportID, userID string, req *models.PromoteBuilderExportToInitialBuildRequest) (*models.BuilderExportInitialBuildPromotionResponse, error) {
 	if req == nil {
-		return nil, fmt.Errorf("builder export initial build request is required")
+		return nil, app.NewErrorf("builder export initial build request is required")
 	}
 	if strings.TrimSpace(userID) == "" {
-		return nil, fmt.Errorf("builder export initial build user is required")
+		return nil, app.NewErrorf("builder export initial build user is required")
 	}
 
 	promotion, err := promoteBuilderExportToRepositoryForBuild(ctx, projectID, sessionID, exportID, &models.PromoteBuilderExportToCodeRepositoryRequest{

@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"path"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -164,7 +165,7 @@ func (w *BuilderWorker) Wait() {
 
 func (w *BuilderWorker) run(ctx context.Context) {
 	if err := w.processAvailableWork(ctx); err != nil && ctx.Err() == nil {
-		log.Printf("builder worker initial scan failed: %v", err)
+		slog.Error(fmt.Sprintf("builder worker initial scan failed: %v", err))
 	}
 
 	ticker := time.NewTicker(w.pollInterval)
@@ -179,7 +180,7 @@ func (w *BuilderWorker) run(ctx context.Context) {
 				if ctx.Err() != nil {
 					return
 				}
-				log.Printf("builder worker scan failed: %v", err)
+				slog.Error(fmt.Sprintf("builder worker scan failed: %v", err))
 			}
 		}
 	}
@@ -203,7 +204,7 @@ func (w *BuilderWorker) processAvailableWork(ctx context.Context) error {
 			if ctx.Err() != nil || errors.Is(err, context.Canceled) {
 				return ctx.Err()
 			}
-			log.Printf("builder worker failed processing run %s: %v", claimedRun.ID, err)
+			slog.Error(fmt.Sprintf("builder worker failed processing run %s: %v", claimedRun.ID, err))
 		}
 	}
 }
@@ -857,7 +858,7 @@ func parseBuilderWorkerFrontendCommandOutput(stdout string) (string, int, error)
 	exitCodeText := strings.TrimPrefix(markerLine, builderWorkerCommandExitCodeMarker)
 	exitCode, err := strconv.Atoi(exitCodeText)
 	if err != nil {
-		return "", 0, fmt.Errorf("parse builder frontend command exit code: %w", err)
+		return "", 0, app.WrapErrorf(err, "parse builder frontend command exit code: %w", err)
 	}
 
 	return trimmedOutput[:markerStart], exitCode, nil

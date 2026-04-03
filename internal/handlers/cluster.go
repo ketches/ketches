@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -46,8 +46,7 @@ func ListClusters(c *gin.Context) {
 			CreatedAt:              cl.CreatedAt,
 		})
 	}
-
-	log.Printf("Listing clusters: found %d records out of %d total", len(res), total)
+	slog.Debug(fmt.Sprintf("Listing clusters: found %d records out of %d total", len(res), total))
 	api.Success(c, models.ListClusterResponse{
 		Items:      res,
 		Pagination: models.BuildPaginationResponse(total, req.Page, req.PageSize),
@@ -67,7 +66,7 @@ func ListClustersSimple(c *gin.Context) {
 func ListPublicClusters(c *gin.Context) {
 	claims := api.GetClaims(c)
 	if claims == nil {
-		api.Error(c, http.StatusUnauthorized, fmt.Errorf("unauthorized"))
+		api.Error(c, http.StatusUnauthorized, app.NewErrorf("unauthorized"))
 		return
 	}
 
@@ -176,7 +175,7 @@ func GetPublicCluster(c *gin.Context) {
 	}
 
 	if !cluster.Enabled {
-		api.Error(c, http.StatusNotFound, fmt.Errorf("cluster not found"))
+		api.Error(c, http.StatusNotFound, app.NewErrorf("cluster not found"))
 		return
 	}
 
@@ -365,7 +364,7 @@ func ListClusterServices(c *gin.Context) {
 	clusterID := c.Param("clusterID")
 	namespace := c.Query("namespace")
 	if namespace == "" {
-		api.Error(c, http.StatusBadRequest, fmt.Errorf("namespace is required"))
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("namespace is required"))
 		return
 	}
 
@@ -413,7 +412,7 @@ func ExecClusterNodeTerminal(c *gin.Context) {
 
 	conn, err := wsPkg.NewConn(w, r)
 	if err != nil {
-		c.Error(fmt.Errorf("failed to upgrade to websocket: %v", err))
+		c.Error(app.NewErrorf("failed to upgrade to websocket: %v", err))
 		return
 	}
 	defer conn.Close()

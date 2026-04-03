@@ -25,11 +25,15 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 # ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM alpine:3.21
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata && \
+    addgroup -S ketches && \
+    adduser -S -D -h /app -G ketches ketches
 
 WORKDIR /app
 
-COPY --from=builder /app/ketches .
+COPY --from=builder --chown=ketches:ketches /app/ketches .
+
+USER ketches
 
 EXPOSE 8080
 

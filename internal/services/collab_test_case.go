@@ -1,9 +1,9 @@
 package services
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -100,7 +100,7 @@ func DeleteTestCase(projectID, testCaseID string) error {
 func CreateTestRun(projectID, testCaseID, userID string, req *models.CreateTestRunRequest) (*entities.CollabTestRun, error) {
 	tc, err := GetTestCase(projectID, testCaseID)
 	if err != nil {
-		return nil, fmt.Errorf("cross-project link is not allowed for test_case_id")
+		return nil, app.NewErrorf("cross-project link is not allowed for test_case_id")
 	}
 
 	tr := &entities.CollabTestRun{
@@ -123,12 +123,12 @@ func CreateTestRun(projectID, testCaseID, userID string, req *models.CreateTestR
 func validateTestCaseLinks(projectID, requirementID, taskID string) error {
 	if requirementID != "" {
 		if _, err := GetRequirement(projectID, requirementID); err != nil {
-			return fmt.Errorf("cross-project link is not allowed for requirement_id")
+			return app.NewErrorf("cross-project link is not allowed for requirement_id")
 		}
 	}
 	if taskID != "" {
 		if _, err := GetTask(projectID, taskID); err != nil {
-			return fmt.Errorf("cross-project link is not allowed for task_id")
+			return app.NewErrorf("cross-project link is not allowed for task_id")
 		}
 	}
 	return nil

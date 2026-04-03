@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
@@ -30,7 +31,7 @@ func CreateBuildClientJob(
 	if err != nil {
 		return nil, err
 	}
-	gitCloneCmd := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, plaintextGitPassword)
+	gitCloneCommand, gitCloneArgs := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, plaintextGitPassword)
 
 	labels := map[string]string{
 		kube.LabelAppID:       appCtx.App.ID,
@@ -51,7 +52,8 @@ func CreateBuildClientJob(
 		setting,
 		registry,
 		buildEnv.ClusterNamespace,
-		gitCloneCmd,
+		gitCloneCommand,
+		gitCloneArgs,
 		labels,
 	)
 }
@@ -76,7 +78,7 @@ func CreateBuildClientJobFromCodeRepo(
 	if err != nil {
 		return nil, err
 	}
-	gitCloneCmd := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, plaintextGitPassword)
+	gitCloneCommand, gitCloneArgs := buildGitCloneCommand(repo.GitRepoURL, gitRef, repo.GitUsername, plaintextGitPassword)
 
 	labels := map[string]string{
 		kube.LabelEnvID:       buildEnv.ID,
@@ -96,7 +98,8 @@ func CreateBuildClientJobFromCodeRepo(
 		setting,
 		registry,
 		buildEnv.ClusterNamespace,
-		gitCloneCmd,
+		gitCloneCommand,
+		gitCloneArgs,
 		labels,
 	)
 }
@@ -108,7 +111,8 @@ func createBuildClientJob(
 	setting *entities.BuildSetting,
 	registry *entities.ContainerRegistry,
 	namespace string,
-	gitCloneCmd string,
+	gitCloneCommand []string,
+	gitCloneArgs []string,
 	labels map[string]string,
 ) (*batchv1.Job, error) {
 	imageDestination := resolveImageDestination(registry, setting.ImageName, build.ImageFullName)
@@ -154,7 +158,8 @@ func createBuildClientJob(
 						{
 							Name:    "git-clone",
 							Image:   GitCloneImage,
-							Command: []string{"sh", "-c", gitCloneCmd},
+							Command: gitCloneCommand,
+							Args:    gitCloneArgs,
 							VolumeMounts: []corev1.VolumeMount{
 								{Name: "workspace", MountPath: "/workspace"},
 							},
@@ -220,7 +225,7 @@ func resolveCodeRepositoryGitPassword(repo *entities.CodeRepository) (string, er
 
 	plaintextGitPassword, err := secrets.DecryptString(repo.GitPassword)
 	if err != nil {
-		return "", fmt.Errorf("decrypt git password: %w", err)
+		return "", app.WrapError("decrypt git password", err)
 	}
 
 	return plaintextGitPassword, nil

@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
@@ -34,7 +35,7 @@ func ListClusters(page, pageSize int, search string) (int64, []entities.Cluster,
 	if err := query.Order("created_at").Offset((page - 1) * pageSize).Limit(pageSize).Find(&clusters).Error; err != nil {
 		return 0, nil, err
 	}
-	log.Printf("Service ListClusters: found %d clusters out of %d total", len(clusters), total)
+	slog.Debug(fmt.Sprintf("Service ListClusters: found %d clusters out of %d total", len(clusters), total))
 	return total, clusters, nil
 }
 
@@ -49,7 +50,7 @@ func ListClustersSimple() ([]models.SimpleCluster, error) {
 func CreateCluster(req *models.CreateClusterRequest) (*entities.Cluster, error) {
 	var existing entities.Cluster
 	if err := db.DB.Where("slug = ?", req.Slug).First(&existing).Error; err == nil {
-		return nil, fmt.Errorf("cluster with slug %s already exists", req.Slug)
+		return nil, app.NewErrorf("cluster with slug %s already exists", req.Slug)
 	}
 
 	cluster := &entities.Cluster{
@@ -390,7 +391,7 @@ func ExecClusterNodeTerminal(clusterID string, nodeName string, stdin io.Reader,
 	now := nodeTerminalNow()
 	pod, err := ensureNodeTerminalPod(context.Background(), pods, nodeName, now)
 	if err != nil {
-		return fmt.Errorf("failed to prepare node terminal pod: %w", err)
+		return app.WrapErrorf(err, "failed to prepare node terminal pod: %w", err)
 	}
 
 	waitCtx, cancel := context.WithTimeout(context.Background(), nodeTerminalStartupTimeout)
@@ -399,7 +400,7 @@ func ExecClusterNodeTerminal(clusterID string, nodeName string, stdin io.Reader,
 	pod, err = waitForNodeTerminalPodRunning(waitCtx, pods, nodeName, pod.Name)
 	if err != nil {
 		if deleteErr := deleteNodeTerminalPod(context.Background(), pods, pod.Name); deleteErr != nil {
-			log.Printf("ExecClusterNodeTerminal: failed to delete unhealthy pod %s: %v", pod.Name, deleteErr)
+			slog.Error(fmt.Sprintf("ExecClusterNodeTerminal: failed to delete unhealthy pod %s: %v", pod.Name, deleteErr))
 		}
 		return err
 	}
@@ -440,8 +441,7 @@ func InitClusters() error {
 	if err := db.DB.Find(&clusters).Error; err != nil {
 		return err
 	}
-
-	log.Printf("InitClusters: found %d clusters to initialize", len(clusters))
+	slog.Info(fmt.Sprintf("InitClusters: found %d clusters to initialize", len(clusters)))
 
 	for _, cluster := range clusters {
 		if cluster.Enabled {
@@ -487,7 +487,7 @@ func CheckClusterConnectivity(clusterID string) {
 	go func() {
 		cluster, err := GetCluster(clusterID)
 		if err != nil {
-			log.Printf("CheckClusterConnectivity: failed to get cluster %s: %v", clusterID, err)
+			slog.Error(fmt.Sprintf("CheckClusterConnectivity: failed to get cluster %s: %v", clusterID, err))
 			return
 		}
 
@@ -535,14 +535,14 @@ func updateClusterConnectionStatus(clusterID, status, reason, apiServer string) 
 	}
 
 	if err := db.DB.Model(&entities.Cluster{}).Where("id = ?", clusterID).Updates(updates).Error; err != nil {
-		log.Printf("Failed to update cluster %s connection status: %v", clusterID, err)
+		slog.Error(fmt.Sprintf("Failed to update cluster %s connection status: %v", clusterID, err))
 	}
 }
 
 func CheckAllClustersConnectivity() {
 	clusters, err := ListClustersSimple()
 	if err != nil {
-		log.Printf("CheckAllClustersConnectivity: failed to list clusters: %v", err)
+		slog.Error(fmt.Sprintf("CheckAllClustersConnectivity: failed to list clusters: %v", err))
 		return
 	}
 

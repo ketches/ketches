@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -129,7 +128,7 @@ func GenerateBuilderFilesWithSelection(ctx context.Context, messages []BuilderAg
 		if readErr != nil {
 			return nil, readErr
 		}
-		return nil, fmt.Errorf("builder agent request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, app.NewErrorf("builder agent request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
 	result, err := decodeBuilderAgentResponse(resp.Body, protocol)
@@ -213,7 +212,7 @@ func resolveBuilderAgentProtocol(baseURL string) (builderAgentProtocol, error) {
 
 	parsedURL, err := url.Parse(resolvedBaseURL)
 	if err != nil {
-		return "", fmt.Errorf("parse builder provider base URL: %w", err)
+		return "", app.WrapErrorf(err, "parse builder provider base URL: %w", err)
 	}
 
 	normalizedPath := strings.ToLower(strings.TrimRight(parsedURL.Path, "/"))
@@ -305,7 +304,7 @@ func newBuilderAgentRequest(ctx context.Context, protocol builderAgentProtocol, 
 			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("unsupported builder agent protocol %q", protocol)
+		return nil, app.NewErrorf("unsupported builder agent protocol %q", protocol)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(requestBody))
@@ -472,7 +471,7 @@ func validateBuilderAgentResult(result *BuilderAgentResult) error {
 			return errors.New("generate_files builder agent result must include at least one file")
 		}
 	default:
-		return fmt.Errorf("unsupported builder agent action %q", result.Action)
+		return app.NewErrorf("unsupported builder agent action %q", result.Action)
 	}
 
 	for i := range result.Files {
@@ -505,17 +504,17 @@ func validateBuilderAgentFilePath(filePath string) (string, error) {
 		return "", errors.New("file path is required")
 	}
 	if strings.HasPrefix(normalized, "/") || strings.HasPrefix(normalized, "~") {
-		return "", fmt.Errorf("%w: %s", ErrBuilderAgentUnsafeFilePath, filePath)
+		return "", app.WrapErrorf(ErrBuilderAgentUnsafeFilePath, "%w: %s", ErrBuilderAgentUnsafeFilePath, filePath)
 	}
 
 	segments := strings.Split(normalized, "/")
 	for _, segment := range segments {
 		if segment == "" || segment == "." || segment == ".." {
-			return "", fmt.Errorf("%w: %s", ErrBuilderAgentUnsafeFilePath, filePath)
+			return "", app.WrapErrorf(ErrBuilderAgentUnsafeFilePath, "%w: %s", ErrBuilderAgentUnsafeFilePath, filePath)
 		}
 	}
 	if len(normalized) > maxBuilderRelativePathLength {
-		return "", fmt.Errorf("%w: %s", ErrBuilderAgentUnsafeFilePath, filePath)
+		return "", app.WrapErrorf(ErrBuilderAgentUnsafeFilePath, "%w: %s", ErrBuilderAgentUnsafeFilePath, filePath)
 	}
 
 	return path.Clean(normalized), nil

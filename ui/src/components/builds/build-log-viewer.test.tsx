@@ -70,7 +70,7 @@ describe("BuildLogViewer", () => {
     vi.stubGlobal("localStorage", {
       getItem: () => JSON.stringify({
         state: {
-          accessToken: "token-123",
+          isAuthenticated: true,
         },
       }),
       setItem: () => undefined,

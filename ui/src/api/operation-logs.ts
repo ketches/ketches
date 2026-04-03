@@ -1,6 +1,6 @@
 import client from './client'
 import { type PaginationParams, type PaginationResponse } from './pagination'
-import { getStoredAccessToken } from '@/lib/auth-session'
+import { authenticatedFetch } from '@/lib/auth-session'
 
 export type OperationLogSensitivity = 'public' | 'internal' | 'sensitive'
 export type OperationLogStatus = 'success' | 'failure'
@@ -73,8 +73,6 @@ export const updateOperationLogSettings = async (retentionDays: number) => {
 }
 
 export const exportOperationLogsCSV = async (params?: OperationLogListParams) => {
-  const token = getStoredAccessToken()
-
   const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
   const query = new URLSearchParams()
   if (params?.page) query.set('page', String(params.page))
@@ -89,11 +87,7 @@ export const exportOperationLogsCSV = async (params?: OperationLogListParams) =>
   if (params?.end) query.set('end', params.end)
   query.set('export', 'true')
 
-  const response = await fetch(`${baseUrl}/v1/operation-logs?${query.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
+  const response = await authenticatedFetch(`${baseUrl}/v1/operation-logs?${query.toString()}`)
 
   if (!response.ok) {
     throw new Error(`Export failed: ${response.statusText}`)
