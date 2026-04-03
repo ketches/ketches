@@ -13,23 +13,6 @@ import (
 
 var errForbidden = errors.New("forbidden")
 
-func requireAdminClaims(c *gin.Context) *app.Claims {
-	claims := api.GetClaims(c)
-	if claims == nil {
-		api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
-		c.Abort()
-		return nil
-	}
-
-	if claims.Role != app.UserRoleAdmin {
-		api.Error(c, http.StatusForbidden, errForbidden)
-		c.Abort()
-		return nil
-	}
-
-	return claims
-}
-
 func requireProjectAccess(c *gin.Context, projectID string) *app.Claims {
 	claims := api.GetClaims(c)
 	if claims == nil {

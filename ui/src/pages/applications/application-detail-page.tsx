@@ -1,5 +1,5 @@
 import { appFavoritesApi } from "@/api/app-favorite"
-import { appsApi, type App, type AppInstance } from "@/api/apps"
+import { appsApi, type App } from "@/api/apps"
 import { envsApi } from "@/api/envs"
 import { operationLogsApi } from "@/api/operation-logs"
 import { TopologyView } from "@/components/applications/app-topology-view"

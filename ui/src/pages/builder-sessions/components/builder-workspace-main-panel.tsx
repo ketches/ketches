@@ -77,7 +77,7 @@ function ConversationMessage({ message }: { message: BuilderMessage }) {
         {isUserMessage ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
       </div>
       <div
-        className={`max-w-3xl rounded-[1.25rem] px-4 py-2.5 text-sm ${isUserMessage ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/55 text-foreground"}`}
+        className={`max-w-3xl rounded-4xl px-4 py-2.5 text-sm ${isUserMessage ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/55 text-foreground"}`}
       >
         {message.content}
       </div>
@@ -102,7 +102,7 @@ function StreamingConversationMessage({
       </div>
       <div
         data-testid="builder-streaming-message"
-        className="max-w-3xl rounded-[1.25rem] bg-muted/55 px-4 py-3 text-sm text-foreground"
+        className="max-w-3xl rounded-4xl bg-muted/55 px-4 py-3 text-sm text-foreground"
       >
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -110,7 +110,7 @@ function StreamingConversationMessage({
         </div>
         <div className="mt-2">
           {hasLog ? (
-            <pre className="whitespace-pre-wrap break-words text-sm text-foreground">{streamingLog}</pre>
+            <pre className="whitespace-pre-wrap wrap-break-word text-sm text-foreground">{streamingLog}</pre>
           ) : (
             <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />

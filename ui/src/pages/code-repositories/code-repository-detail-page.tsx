@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useQueryClient } from "@tanstack/react-query"
-import { CircleAlert, Copy, FolderGit2, Footprints, Info, Pencil, Play, Rocket, Share2, Telescope } from "lucide-react"
+import { CircleAlert, Copy, Footprints, Info, Play, Rocket, Share2, Telescope } from "lucide-react"
 import * as React from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -158,8 +158,10 @@ export function CodeRepositoryDetailPage() {
                       className="opacity-0 transition-opacity group-hover/card:opacity-100"
                       onClick={(event) => {
                         event.stopPropagation()
-                        navigator.clipboard.writeText(detail.repo.git_repo_url)
-                        toast.success("Git URL copied to clipboard")
+                        if (detail.repo) {
+                          navigator.clipboard.writeText(detail.repo.git_repo_url)
+                          toast.success("Git URL copied to clipboard")
+                        }
                       }}
                     >
                       <Copy />
