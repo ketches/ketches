@@ -1,11 +1,11 @@
 import * as React from "react"
 import { toast } from "sonner"
 
-import { usePlatformUpdateConfigQuery, useUpdatePlatformUpdateConfigMutation } from "@/hooks/use-platform-update"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { usePlatformUpdateConfigQuery, useUpdatePlatformUpdateConfigMutation } from "@/hooks/use-platform-update"
 
 interface PlatformUpdateConfigDialogProps {
   open: boolean
@@ -93,7 +93,7 @@ export function PlatformUpdateConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-180 max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
             <DialogTitle>Platform Update Targets</DialogTitle>

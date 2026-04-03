@@ -44,19 +44,19 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
     queryFn: async () => {
       const response = await appsApi.listGateways(app.id)
       // Transform backend response to match GatewaySpec
-        return response.map((gw: any) => ({
-          id: gw.id,
-          port: gw.port,
-          protocol: gw.protocol,
+      return response.map((gw: GatewaySpec) => ({
+        id: gw.id,
+        port: gw.port,
+        protocol: gw.protocol,
         domain: gw.domain,
         path: gw.path,
-          gateway_port: gw.gateway_port,
-          service_type: gw.service_type,
-          node_port: gw.node_port,
-          gateway_host: gw.gateway_host,
-          internal_address: gw.internal_address,
-          exposed: gw.exposed ?? false,
-          cert_id: gw.cert_id,
+        gateway_port: gw.gateway_port,
+        service_type: gw.service_type,
+        node_port: gw.node_port,
+        gateway_host: gw.gateway_host,
+        internal_address: gw.internal_address,
+        exposed: gw.exposed ?? false,
+        cert_id: gw.cert_id,
       }))
     }
   })

@@ -56,6 +56,78 @@ export interface GatewaySpec {
   cert_id?: string
 }
 
+export interface AppCreateRequest {
+  name: string
+  slug: string
+  app_type: "Deployment" | "StatefulSet"
+  container_image: string
+  image_pull_policy?: string
+  registry_username?: string
+  registry_password?: string
+  replicas: number
+  request_cpu: number
+  request_memory: number
+  limit_cpu: number
+  limit_memory: number
+  description: string
+  deploy?: boolean
+  seed_image_metadata?: boolean
+}
+
+export interface AppVolume {
+  id?: string
+  slug: string
+  volume_type: string
+  status?: string
+  mount_path: string
+  sub_path?: string
+  storage_class?: string
+  capacity?: number
+  access_modes?: string
+  volume_mode?: string
+}
+
+export type AppVolumeRequest = Omit<AppVolume, "status">
+
+export interface AppEnvVar {
+  id?: string
+  key: string
+  value: string
+}
+
+export type AppEnvVarRequest = AppEnvVar
+
+export interface AppConfigFile {
+  id?: string
+  slug: string
+  mount_path: string
+  file_mode: string
+  content: string
+}
+
+export type AppConfigFileRequest = AppConfigFile
+
+export interface AppImportConflict {
+  name?: string
+  slug?: string
+  type?: string
+  conflict_type?: string
+  message?: string
+  [key: string]: unknown
+}
+
+export interface AppImportResponse {
+  imported: { name: string, slug: string, status: string }[]
+  conflicts: AppImportConflict[]
+}
+
+export interface AppExportResponse {
+  yaml?: string
+  metadata?: string
+  chart?: string
+  compose?: string
+}
+
 export interface App {
   id: string
   slug: string
@@ -130,7 +202,7 @@ export const appsApi = {
   listSimple: async (envId: string) => {
     return client.get(`/v1/envs/${envId}/apps/simple`) as Promise<SimpleApp[]>
   },
-  create: async (envId: string, data: any) => {
+  create: async (envId: string, data: AppCreateRequest) => {
     return client.post(`/v1/envs/${envId}/apps`, data) as Promise<App>
   },
   get: async (id: string) => {
@@ -185,43 +257,43 @@ export const appsApi = {
     return client.get(`/v1/apps/${appId}/instances/${instanceName}/events`) as Promise<AppEvent[]>
   },
   listVolumes: async (id: string) => {
-    return client.get(`/v1/apps/${id}/volumes`) as Promise<any[]>
+    return client.get(`/v1/apps/${id}/volumes`) as Promise<AppVolume[]>
   },
-  addVolume: async (id: string, data: any) => {
+  addVolume: async (id: string, data: AppVolumeRequest) => {
     return client.post(`/v1/apps/${id}/volumes`, data)
   },
-  updateVolume: async (volumeId: string, data: any) => {
+  updateVolume: async (volumeId: string, data: AppVolumeRequest) => {
     return client.put(`/v1/volumes/${volumeId}`, data)
   },
   deleteVolume: async (volumeId: string) => {
     return client.delete(`/v1/volumes/${volumeId}`)
   },
   listEnvVars: async (id: string) => {
-    return client.get(`/v1/apps/${id}/env-vars`) as Promise<any[]>
+    return client.get(`/v1/apps/${id}/env-vars`) as Promise<AppEnvVar[]>
   },
-  addEnvVar: async (id: string, data: any) => {
+  addEnvVar: async (id: string, data: AppEnvVarRequest) => {
     return client.post(`/v1/apps/${id}/env-vars`, data)
   },
-  updateEnvVar: async (varId: string, data: any) => {
+  updateEnvVar: async (varId: string, data: AppEnvVarRequest) => {
     return client.put(`/v1/env-vars/${varId}`, data)
   },
   deleteEnvVar: async (varId: string) => {
     return client.delete(`/v1/env-vars/${varId}`)
   },
   listConfigFiles: async (id: string) => {
-    return client.get(`/v1/apps/${id}/config-files`) as Promise<any[]>
+    return client.get(`/v1/apps/${id}/config-files`) as Promise<AppConfigFile[]>
   },
-  addConfigFile: async (id: string, data: any) => {
+  addConfigFile: async (id: string, data: AppConfigFileRequest) => {
     return client.post(`/v1/apps/${id}/config-files`, data)
   },
-  updateConfigFile: async (id: string, data: any) => {
+  updateConfigFile: async (id: string, data: AppConfigFileRequest) => {
     return client.put(`/v1/config-files/${id}`, data)
   },
   deleteConfigFile: async (id: string) => {
     return client.delete(`/v1/config-files/${id}`)
   },
   listGateways: async (id: string) => {
-    return client.get(`/v1/apps/${id}/gateways`) as Promise<any[]>
+    return client.get(`/v1/apps/${id}/gateways`) as Promise<GatewaySpec[]>
   },
   addGateway: async (id: string, data: GatewaySpec) => {
     return client.post(`/v1/apps/${id}/gateways`, data)
@@ -257,21 +329,18 @@ export const appsApi = {
     content: string
     conflict_strategy?: 'rename' | 'ask' | 'error'
   }) => {
-    return client.post(`/v1/envs/${envId}/apps/import`, data) as Promise<{
-      imported: { name: string, slug: string, status: string }[]
-      conflicts: any[]
-    }>
+    return client.post(`/v1/envs/${envId}/apps/import`, data) as Promise<AppImportResponse>
   },
 
   exportApps: async (appId: string, format: 'kubernetes' | 'ketches' | 'helm' | 'dockercompose') => {
     return client.get(`/v1/apps/${appId}/export`, {
       params: { format }
-    }) as Promise<{ yaml?: string, metadata?: string, chart?: string, compose?: string }>
+    }) as Promise<AppExportResponse>
   },
 
   exportEnvApps: async (envId: string, format: 'kubernetes' | 'ketches' | 'helm' | 'dockercompose', appIds?: string[]) => {
     return client.get(`/v1/envs/${envId}/apps/export`, {
       params: { format, app_ids: appIds?.join(',') }
-    }) as Promise<{ yaml?: string, metadata?: string, chart?: string, compose?: string }>
+    }) as Promise<AppExportResponse>
   }
 }

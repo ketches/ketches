@@ -11,41 +11,42 @@ import {
 import { Toaster } from "@/components/ui/sonner"
 import { BottomPanelProvider } from "@/contexts/bottom-panel-context"
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context"
-import { ActivitiesPage } from "@/pages/activities/activities-page"
-import { ApplicationDetailPage } from "@/pages/applications/application-detail-page"
-import { ApplicationsPage } from "@/pages/applications/applications-page"
 import { LoginPage } from "@/pages/auth/login-page"
 import { SignupPage } from "@/pages/auth/signup-page"
-import { ClusterDetailPage } from "@/pages/clusters/cluster-detail-page"
-import { ClusterNodeDetailPage } from "@/pages/clusters/cluster-node-detail-page"
-import { ClustersPage } from "@/pages/clusters/clusters-page"
-import { CodeRepositoriesPage } from "@/pages/code-repositories/code-repositories-page"
-import { CodeRepositoryDetailPage } from "@/pages/code-repositories/code-repository-detail-page"
-import { CollaborationsPage } from "@/pages/collaborations/collaborations-page"
-import { ContainerRegistriesPage } from "@/pages/container-registries/container-registries-page"
-import { DashboardPage } from "@/pages/dashboard/dashboard-page"
-import { EnvironmentDetailPage } from "@/pages/environments/environment-detail-page"
-import { EnvironmentsPage } from "@/pages/environments/environments-page"
-import { ExtensionsPage } from "@/pages/extensions/extensions-page"
-import { MembersPage } from "@/pages/members/members-page"
-import { PlatformSettingsPage } from "@/pages/platform-settings/platform-settings-page"
-import { PluginsPage } from "@/pages/plugins/plugins-page"
-import { BuilderSessionsPage } from "@/pages/builder-sessions/builder-sessions-page"
-import { BuilderWorkbenchPage } from "@/pages/builder-sessions/builder-workbench-page"
-import { ProjectDetailPage } from "@/pages/projects/project-detail-page"
-import { ProjectsPage } from "@/pages/projects/projects-page"
-import { RecycleBinPage } from "@/pages/recycle-bin/recycle-bin-page"
-import { UsersPage } from "@/pages/users/users-page"
 import { useAuthStore } from "@/stores/auth"
 import * as React from "react"
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom"
 
-function AdminRoute({ children }: { children: React.ReactNode }) {
+const DashboardPage = React.lazy(() => import("@/pages/dashboard/dashboard-page").then((module) => ({ default: module.DashboardPage })))
+const ProjectsPage = React.lazy(() => import("@/pages/projects/projects-page").then((module) => ({ default: module.ProjectsPage })))
+const ProjectDetailPage = React.lazy(() => import("@/pages/projects/project-detail-page").then((module) => ({ default: module.ProjectDetailPage })))
+const BuilderSessionsPage = React.lazy(() => import("@/pages/builder-sessions/builder-sessions-page").then((module) => ({ default: module.BuilderSessionsPage })))
+const BuilderWorkbenchPage = React.lazy(() => import("@/pages/builder-sessions/builder-workbench-page").then((module) => ({ default: module.BuilderWorkbenchPage })))
+const CollaborationsPage = React.lazy(() => import("@/pages/collaborations/collaborations-page").then((module) => ({ default: module.CollaborationsPage })))
+const ActivitiesPage = React.lazy(() => import("@/pages/activities/activities-page").then((module) => ({ default: module.ActivitiesPage })))
+const EnvironmentsPage = React.lazy(() => import("@/pages/environments/environments-page").then((module) => ({ default: module.EnvironmentsPage })))
+const EnvironmentDetailPage = React.lazy(() => import("@/pages/environments/environment-detail-page").then((module) => ({ default: module.EnvironmentDetailPage })))
+const ApplicationsPage = React.lazy(() => import("@/pages/applications/applications-page").then((module) => ({ default: module.ApplicationsPage })))
+const ApplicationDetailPage = React.lazy(() => import("@/pages/applications/application-detail-page").then((module) => ({ default: module.ApplicationDetailPage })))
+const CodeRepositoriesPage = React.lazy(() => import("@/pages/code-repositories/code-repositories-page").then((module) => ({ default: module.CodeRepositoriesPage })))
+const CodeRepositoryDetailPage = React.lazy(() => import("@/pages/code-repositories/code-repository-detail-page").then((module) => ({ default: module.CodeRepositoryDetailPage })))
+const ContainerRegistriesPage = React.lazy(() => import("@/pages/container-registries/container-registries-page").then((module) => ({ default: module.ContainerRegistriesPage })))
+const ClustersPage = React.lazy(() => import("@/pages/clusters/clusters-page").then((module) => ({ default: module.ClustersPage })))
+const ClusterDetailPage = React.lazy(() => import("@/pages/clusters/cluster-detail-page").then((module) => ({ default: module.ClusterDetailPage })))
+const ClusterNodeDetailPage = React.lazy(() => import("@/pages/clusters/cluster-node-detail-page").then((module) => ({ default: module.ClusterNodeDetailPage })))
+const UsersPage = React.lazy(() => import("@/pages/users/users-page").then((module) => ({ default: module.UsersPage })))
+const ExtensionsPage = React.lazy(() => import("@/pages/extensions/extensions-page").then((module) => ({ default: module.ExtensionsPage })))
+const PlatformSettingsPage = React.lazy(() => import("@/pages/platform-settings/platform-settings-page").then((module) => ({ default: module.PlatformSettingsPage })))
+const PluginsPage = React.lazy(() => import("@/pages/plugins/plugins-page").then((module) => ({ default: module.PluginsPage })))
+const MembersPage = React.lazy(() => import("@/pages/members/members-page").then((module) => ({ default: module.MembersPage })))
+const RecycleBinPage = React.lazy(() => import("@/pages/recycle-bin/recycle-bin-page").then((module) => ({ default: module.RecycleBinPage })))
+
+function AdminRoute({ children }: { children?: React.ReactNode }) {
   const user = useAuthStore((state) => state.user)
   if (user?.role !== 'admin') {
     return <Navigate to="/" replace />
   }
-  return <>{children}</>
+  return <>{children ?? <Outlet />}</>
 }
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -89,6 +90,26 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   )
 }
 
+function ProtectedPageFallback() {
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
+      Loading page...
+    </div>
+  )
+}
+
+function ProtectedLayoutRoute() {
+  return (
+    <ProtectedRoute>
+      <DashboardLayout>
+        <React.Suspense fallback={<ProtectedPageFallback />}>
+          <Outlet />
+        </React.Suspense>
+      </DashboardLayout>
+    </ProtectedRoute>
+  )
+}
+
 export function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
@@ -99,127 +120,34 @@ export function App() {
             <Route path="/login" element={<AuthRoute><LoginPage /></AuthRoute>} />
             <Route path="/signup" element={<AuthRoute><SignupPage /></AuthRoute>} />
 
-            <Route path="/" element={
-              <ProtectedRoute>
-                <DashboardLayout><DashboardPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/projects" element={
-              <ProtectedRoute>
-                <DashboardLayout><ProjectsPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/projects/:projectId" element={
-              <ProtectedRoute>
-                <DashboardLayout><ProjectDetailPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/projects/:projectId/builder-sessions" element={
-              <ProtectedRoute>
-                <DashboardLayout><BuilderSessionsPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/projects/:projectId/builder-sessions/:sessionId" element={
-              <ProtectedRoute>
-                <DashboardLayout><BuilderWorkbenchPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/collaborations" element={
-              <ProtectedRoute>
-                <DashboardLayout><CollaborationsPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/activities" element={
-              <ProtectedRoute>
-                <DashboardLayout><ActivitiesPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/environments" element={
-              <ProtectedRoute>
-                <DashboardLayout><EnvironmentsPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/environments/:envId" element={
-              <ProtectedRoute>
-                <DashboardLayout><EnvironmentDetailPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/applications" element={
-              <ProtectedRoute>
-                <DashboardLayout><ApplicationsPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/applications/:appId" element={
-              <ProtectedRoute>
-                <DashboardLayout><ApplicationDetailPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/code-repositories" element={
-              <ProtectedRoute>
-                <DashboardLayout><CodeRepositoriesPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/code-repositories/:repoId" element={
-              <ProtectedRoute>
-                <DashboardLayout><CodeRepositoryDetailPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/container-registries" element={
-              <ProtectedRoute>
-                <DashboardLayout><ContainerRegistriesPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/clusters" element={
-              <ProtectedRoute>
-                <DashboardLayout><ClustersPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/clusters/:clusterId" element={
-              <ProtectedRoute>
-                <DashboardLayout><ClusterDetailPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/clusters/:clusterId/nodes/:nodeName" element={
-              <ProtectedRoute>
-                <DashboardLayout><ClusterNodeDetailPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/users" element={
-              <ProtectedRoute>
-                <AdminRoute>
-                  <DashboardLayout><UsersPage /></DashboardLayout>
-                </AdminRoute>
-              </ProtectedRoute>
-            } />
-            <Route path="/extensions" element={
-              <ProtectedRoute>
-                <AdminRoute>
-                  <DashboardLayout><ExtensionsPage /></DashboardLayout>
-                </AdminRoute>
-              </ProtectedRoute>
-            } />
-            <Route path="/platform-settings" element={
-              <ProtectedRoute>
-                <AdminRoute>
-                  <DashboardLayout><PlatformSettingsPage /></DashboardLayout>
-                </AdminRoute>
-              </ProtectedRoute>
-            } />
-            <Route path="/plugins" element={
-              <ProtectedRoute>
-                <DashboardLayout><PluginsPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/members" element={
-              <ProtectedRoute>
-                <DashboardLayout><MembersPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/recycle-bin" element={
-              <ProtectedRoute>
-                <DashboardLayout><RecycleBinPage /></DashboardLayout>
-              </ProtectedRoute>
-            } />
+            <Route element={<ProtectedLayoutRoute />}>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+              <Route path="/projects/:projectId/builder-sessions" element={<BuilderSessionsPage />} />
+              <Route path="/projects/:projectId/builder-sessions/:sessionId" element={<BuilderWorkbenchPage />} />
+              <Route path="/collaborations" element={<CollaborationsPage />} />
+              <Route path="/activities" element={<ActivitiesPage />} />
+              <Route path="/environments" element={<EnvironmentsPage />} />
+              <Route path="/environments/:envId" element={<EnvironmentDetailPage />} />
+              <Route path="/applications" element={<ApplicationsPage />} />
+              <Route path="/applications/:appId" element={<ApplicationDetailPage />} />
+              <Route path="/code-repositories" element={<CodeRepositoriesPage />} />
+              <Route path="/code-repositories/:repoId" element={<CodeRepositoryDetailPage />} />
+              <Route path="/container-registries" element={<ContainerRegistriesPage />} />
+              <Route path="/clusters" element={<ClustersPage />} />
+              <Route path="/clusters/:clusterId" element={<ClusterDetailPage />} />
+              <Route path="/clusters/:clusterId/nodes/:nodeName" element={<ClusterNodeDetailPage />} />
+              <Route path="/plugins" element={<PluginsPage />} />
+              <Route path="/members" element={<MembersPage />} />
+              <Route path="/recycle-bin" element={<RecycleBinPage />} />
+
+              <Route element={<AdminRoute />}>
+                <Route path="/users" element={<UsersPage />} />
+                <Route path="/extensions" element={<ExtensionsPage />} />
+                <Route path="/platform-settings" element={<PlatformSettingsPage />} />
+              </Route>
+            </Route>
           </Routes>
         </BrowserRouter>
       </BreadcrumbProvider>

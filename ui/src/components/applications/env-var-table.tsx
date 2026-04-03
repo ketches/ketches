@@ -4,7 +4,7 @@ import { Edit2, Key, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import type { App } from "@/api/apps"
+import type { App, AppEnvVar } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { useProjectRole } from "@/hooks/useProjectRole"
 
@@ -51,7 +51,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
     queryFn: async () => {
       const response = await appsApi.listEnvVars(app.id)
       // Transform backend response to match EnvVarSpec
-      return response.map((ev: any) => ({
+      return response.map((ev: AppEnvVar) => ({
         id: ev.id,
         key: ev.key,
         value: ev.value,

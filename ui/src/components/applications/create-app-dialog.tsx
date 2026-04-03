@@ -3,7 +3,7 @@ import { Database, HardDriveDownload, Key, Layers } from "lucide-react"
 import * as React from "react"
 import { toast as sonnerToast } from "sonner"
 
-import { appsApi, type App } from "@/api/apps"
+import { appsApi, type App, type AppCreateRequest } from "@/api/apps"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
@@ -99,7 +99,8 @@ export function CreateAppDialog({
   }, [])
 
   const mutation = useMutation<App, AxiosError<{ error: string }>, CreateAppFormData>({
-    mutationFn: (data) => appsApi.create(activeEnvId!, {
+    mutationFn: (data) => {
+      const payload: AppCreateRequest = {
       name: data.name,
       slug: data.slug,
       app_type: data.app_type,
@@ -115,7 +116,10 @@ export function CreateAppDialog({
       description: data.description,
       deploy: data.deploy,
       seed_image_metadata: true,
-    }),
+      }
+
+      return appsApi.create(activeEnvId!, payload)
+    },
     onSuccess: (app) => {
       queryClient.invalidateQueries({ queryKey: ['apps', activeEnvId] })
       sonnerToast.success("Application deployed successfully")

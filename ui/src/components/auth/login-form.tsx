@@ -1,4 +1,4 @@
-import { authApi } from "@/api/auth";
+import { authApi, type SignInRequest } from "@/api/auth";
 import { platformUpdateApi } from "@/api/platform-update";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +62,8 @@ export function LoginForm({
         setError(null);
         setDefaultPasswordNotice(null);
         try {
-            const response = await authApi.signIn(data);
+            const payload: SignInRequest = data;
+            const response = await authApi.signIn(payload);
             setAuth(response.user);
             setDefaultPasswordNotice(response.default_password_notice || null);
             if (response.user.role === "admin") {

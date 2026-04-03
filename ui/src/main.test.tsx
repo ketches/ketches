@@ -1,12 +1,14 @@
 import type { ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type { QueryClient } from "@tanstack/react-query"
 
-const { createRootMock, renderMock } = vi.hoisted(() => {
+const { createRootMock, queryClientProviderMock, renderMock } = vi.hoisted(() => {
   const renderMock = vi.fn()
 
   return {
     createRootMock: vi.fn(() => ({ render: renderMock })),
+    queryClientProviderMock: vi.fn(),
     renderMock,
   }
 })
@@ -14,6 +16,19 @@ const { createRootMock, renderMock } = vi.hoisted(() => {
 vi.mock("react-dom/client", () => ({
   createRoot: createRootMock,
 }))
+
+vi.mock("@tanstack/react-query", async () => {
+  const actual = await vi.importActual<typeof import("@tanstack/react-query")>("@tanstack/react-query")
+
+  return {
+    ...actual,
+    QueryClientProvider: ({ children, client }: { children: ReactNode; client: QueryClient }) => {
+      queryClientProviderMock({ client })
+
+      return <div data-testid="query-client-provider">{children}</div>
+    },
+  }
+})
 
 vi.mock("./App.tsx", () => ({
   default: () => <div data-testid="app-root">app</div>,
@@ -30,6 +45,7 @@ describe("main bootstrap", () => {
     document.body.innerHTML = ""
     renderMock.mockReset()
     createRootMock.mockClear()
+    queryClientProviderMock.mockReset()
     vi.resetModules()
   })
 
@@ -50,5 +66,15 @@ describe("main bootstrap", () => {
     expect(markup.indexOf('data-testid="tooltip-provider"')).toBeLessThan(
       markup.indexOf('data-testid="app-root"')
     )
+
+    expect(queryClientProviderMock).toHaveBeenCalledOnce()
+
+    const queryClient = queryClientProviderMock.mock.calls[0][0].client as QueryClient
+    const queryDefaults = queryClient.getDefaultOptions().queries
+
+    expect(queryDefaults?.retry).toBe(false)
+    expect(queryDefaults?.refetchOnWindowFocus).toBe(false)
+    expect(queryDefaults?.staleTime).toBe(30_000)
+    expect(queryDefaults?.refetchOnMount).toBe(false)
   })
 })

@@ -5,8 +5,9 @@ import { useForm } from "react-hook-form"
 import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import * as z from "zod"
+import { isAxiosError } from "axios"
 
-import { authApi } from "@/api/auth"
+import { authApi, type SignUpRequest, type SignUpVerificationCodeRequest } from "@/api/auth"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -80,13 +81,16 @@ export function SignupForm({
     setIsSendingCode(true)
     setError(null)
     try {
-      const response = await authApi.sendSignUpVerificationCode({ email })
+      const payload: SignUpVerificationCodeRequest = { email }
+      const response = await authApi.sendSignUpVerificationCode(payload)
       setResendAfterSeconds(response.resend_after_seconds)
       toast.success("Verification code sent", {
         description: "Check your email inbox for the 6-digit code.",
       })
-    } catch (err: any) {
-      const errMsg = err.response?.data?.error || "Failed to send verification code"
+    } catch (err: unknown) {
+      const errMsg = isAxiosError<{ error?: string }>(err)
+        ? err.response?.data?.error || "Failed to send verification code"
+        : "Failed to send verification code"
       setError(errMsg)
       toast.error("Verification Failed", {
         description: errMsg,
@@ -100,19 +104,22 @@ export function SignupForm({
     setIsLoading(true)
     setError(null)
     try {
-      await authApi.signUp({
+      const payload: SignUpRequest = {
         fullname: data.fullname,
         username: data.username,
         email: data.email,
         password: data.password,
         verification_code: data.verificationCode,
-      })
+      }
+      await authApi.signUp(payload)
       toast.success("Account created", {
         description: "You can now sign in with your credentials.",
       })
       navigate("/login")
-    } catch (err: any) {
-      const errMsg = err.response?.data?.error || "Failed to create account"
+    } catch (err: unknown) {
+      const errMsg = isAxiosError<{ error?: string }>(err)
+        ? err.response?.data?.error || "Failed to create account"
+        : "Failed to create account"
       setError(errMsg)
       toast.error("Registration Failed", {
         description: errMsg,

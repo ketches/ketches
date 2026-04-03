@@ -1,9 +1,7 @@
 import { appFavoritesApi } from "@/api/app-favorite"
 import { appsApi, type App, type AppInstance } from "@/api/apps"
-import { clustersApi } from "@/api/clusters"
 import { envsApi } from "@/api/envs"
-import { operationLogsApi, type OperationLogItem } from "@/api/operation-logs"
-import { AppActionButtons } from "@/components/applications/app-action-buttons"
+import { operationLogsApi } from "@/api/operation-logs"
 import { TopologyView } from "@/components/applications/app-topology-view"
 import { AutoScalingConfig } from "@/components/applications/auto-scaling-config"
 import { CommandConfig } from "@/components/applications/command-config"
@@ -18,197 +16,55 @@ import { SchedulingConfig } from "@/components/applications/scheduling-config"
 import { VolumesTable } from "@/components/applications/volumes-table"
 import { BuildList } from "@/components/builds/build-list"
 import { UnifiedBuildDeployDialog } from "@/components/code-repositories/unified-build-deploy-dialog"
-import { DataTable } from "@/components/data-table/data-table"
 import { DeploymentHistoryList } from "@/components/deployments/deployment-history-list"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
-import { InstanceResourceMetrics } from "@/components/monitoring/instance-resource-metrics"
-import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
-import { useTimeRange, type TimeRange } from "@/components/monitoring/use-time-range"
+import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { AppPlugins } from "@/components/plugins/app-plugins"
-import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
-import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { useBottomPanel } from "@/contexts/bottom-panel-context"
 import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useProjectRole } from "@/hooks/useProjectRole"
-import { getAppStatusColor } from "@/lib/app-status"
-import { formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
+import { type PaginationState, type RowSelectionState } from "@tanstack/react-table"
 import { isAxiosError, type AxiosError } from "axios"
 import {
-  Activity,
-  ArrowDown,
-  ArrowUp,
   Box,
-  ChartLine,
   ChevronsUpDown,
   CircleAlert,
-  Clock,
-  ClockCheck,
-  CloudCog,
   Cog,
-  Container,
-  Copy,
-  Cpu,
-  Diff,
-  Edit2,
   ExternalLink,
-  FileClock,
   FileCog,
   FolderGit2,
-  FolderOpen,
   Footprints,
   GalleryVerticalEnd,
   Hammer,
   HardDrive,
-  Info,
   Key,
-  Layers,
-  Layers2,
-  LayoutGrid,
-  List,
-  Loader2,
-  MemoryStick,
   Network,
   Orbit,
-  Pencil,
   Puzzle,
-  RotateCw,
   Ruler,
-  Server,
   Share2,
-  Star,
   Telescope,
-  Terminal as TerminalIcon,
-  Trash2,
-  Zap
 } from "lucide-react"
 import * as React from "react"
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
-
-function ScaleAppPopover({ app }: { app: App }) {
-  const [replicas, setReplicas] = React.useState(app.replicas)
-  const [open, setOpen] = React.useState(false)
-  const queryClient = useQueryClient()
-
-  React.useEffect(() => {
-    setReplicas(app.replicas)
-  }, [app.replicas])
-
-  const scaleMutation = useMutation({
-    mutationFn: (count: number) => appsApi.updateReplicas(app.id, count),
-    onSuccess: () => {
-      toast.success(`Application scaling to ${replicas} replicas initiated`)
-      queryClient.invalidateQueries({ queryKey: ['app', app.id] })
-      setOpen(false)
-    },
-    onError: (error: AxiosError<{ error: string }>) => {
-      toast.error("Failed to scale application", {
-        description: error.response?.data?.error || error.message
-      })
-    }
-  })
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger>
-        <Button>
-          <Diff />
-          Scale: {app.replicas}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm">Scale Application</h4>
-            <p className="text-xs text-muted-foreground">
-              Change the number of desired replicas.
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setReplicas(Math.max(0, replicas - 1))}
-              disabled={replicas <= 0}
-            >
-              -
-            </Button>
-            <Input
-              type="number"
-              value={replicas}
-              onChange={(e) => setReplicas(parseInt(e.target.value) || 0)}
-              className="text-center font-bold text-lg"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setReplicas(replicas + 1)}
-            >
-              +
-            </Button>
-          </div>
-          {app.auto_scaling && (
-            <p className="text-[10px] text-destructive font-medium">
-              Warning: AutoScaling is enabled. Manual scaling might be overridden by the autoscaler.
-            </p>
-          )}
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)} className="flex-1">Cancel</Button>
-            <Button size="sm" onClick={() => scaleMutation.mutate(replicas)} disabled={scaleMutation.isPending} className="flex-1">
-              {scaleMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Scale
-            </Button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-interface MetricDataPoint {
-  timestamp: number
-  time: string
-  cpuRequest?: number
-  cpuLimit?: number
-  memRequest?: number
-  memLimit?: number
-  [key: string]: number | string | undefined
-}
-
-function getMetricValue(point: MetricDataPoint | undefined, key: string): number {
-  const value = point?.[key]
-  return typeof value === "number" ? value : 0
-}
-
-function isInstancesViewMode(value: string): value is "table" | "card" {
-  return value === "table" || value === "card"
-}
+import { ApplicationDetailHeader } from "./components/application-detail-header"
+import { ApplicationOperationsTab } from "./components/application-operations-tab"
+import { ApplicationOverviewTab } from "./components/application-overview-tab"
+import { InstanceEventsDialog } from "./components/instance-events-dialog"
+import { useApplicationDetailTabs } from "./hooks/use-application-detail-tabs"
 
 function shouldPollAppDetail(status: string | undefined): boolean {
   switch ((status ?? "").toLowerCase()) {
@@ -222,335 +78,12 @@ function shouldPollAppDetail(status: string | undefined): boolean {
   }
 }
 
-function AppMetrics({ clusterId, projectId, prometheusAvailable, namespace, appSlug, app, timeRange, rangeSeconds, step }: { clusterId: string, projectId?: string, prometheusAvailable?: boolean, namespace: string, appSlug: string, app: App, timeRange: TimeRange, rangeSeconds: number, step: string }) {
-  const prometheusLoading = false
-
-  const { data: metricsData, isLoading } = useQuery({
-    queryKey: ['app-metrics-v6', clusterId, namespace, appSlug, timeRange],
-    queryFn: async () => {
-      const now = Math.floor(Date.now() / 1000)
-      const start = now - rangeSeconds
-
-      const queries = {
-        cpu: `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}", pod=~"${appSlug}-.*", container!=""}[5m])) by (pod) * 1000`,
-        mem: `sum(container_memory_working_set_bytes{namespace="${namespace}", pod=~"${appSlug}-.*", container!=""}) by (pod) / 1024 / 1024 / 1024`,
-        ingress: `sum(rate(container_network_receive_bytes_total{namespace="${namespace}", pod=~"${appSlug}-.*"}[5m])) by (pod) / 1024`,
-        egress: `sum(rate(container_network_transmit_bytes_total{namespace="${namespace}", pod=~"${appSlug}-.*"}[5m])) by (pod) / 1024`,
-      }
-
-      const results = await Promise.all(
-        Object.entries(queries).map(async ([key, query]) => {
-          try {
-            const res = await clustersApi.prometheusQueryRange(clusterId, query, start.toString(), now.toString(), step, projectId)
-            return { key, results: res?.result || [] }
-          } catch {
-            return { key, results: [] }
-          }
-        })
-      )
-
-      const timeMap = new Map<number, MetricDataPoint>()
-      const podNames = new Set<string>()
-
-      results.forEach(({ key, results: queryResults }) => {
-        queryResults.forEach((r) => {
-          const pod = r.metric.pod
-          podNames.add(pod)
-          r.values?.forEach(([ts, val]: [number, string]) => {
-            if (!timeMap.has(ts)) {
-              timeMap.set(ts, {
-                timestamp: ts,
-                time: new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-              })
-            }
-            const point = timeMap.get(ts)
-            if (point) {
-              point[`${key}_${pod}`] = parseFloat(val) || 0
-            }
-          })
-        })
-      })
-
-      timeMap.forEach((val) => {
-        val.cpuRequest = app.request_cpu || 0
-        val.cpuLimit = app.limit_cpu || 0
-        val.memRequest = (app.request_memory || 0) / 1024
-        val.memLimit = (app.limit_memory || 0) / 1024
-
-        podNames.forEach(pod => {
-          const cpu = getMetricValue(val, `cpu_${pod}`)
-          const mem = getMetricValue(val, `mem_${pod}`)
-          const cpuLimit = val.cpuLimit || 0
-          const memLimit = val.memLimit || 0
-          val[`cpuUtil_${pod}`] = cpuLimit > 0 ? (cpu / cpuLimit) * 100 : 0
-          val[`memUtil_${pod}`] = memLimit > 0 ? (mem / memLimit) * 100 : 0
-        })
-      })
-
-      return {
-        chartData: Array.from(timeMap.values()).sort((a, b) => a.timestamp - b.timestamp),
-        pods: Array.from(podNames),
-      }
-    },
-    refetchInterval: 30000,
-    enabled: !!clusterId && !!namespace && !!appSlug && !!app,
-  })
-
-  if (prometheusLoading) {
-    return (
-      <div className="min-h-125 flex items-center justify-center">
-        <Skeleton className="h-64 w-full" />
-      </div>
-    )
-  }
-
-  if (prometheusAvailable === false) {
-    return (
-      <EmptyState
-        title="Prometheus Not Available"
-        description="The cluster does not have a Prometheus integration configured. Please contact your administrator to enable Prometheus monitoring."
-        icon={Activity}
-      />
-    )
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-125 flex items-center justify-center">
-        <Skeleton className="h-64 w-full" />
-      </div>
-    )
-  }
-
-  if (!metricsData || metricsData.chartData.length === 0) {
-    return (
-      <EmptyState
-        title="No Metrics Data"
-        description="No monitoring data is available for this application. Metrics will appear once the application is running and producing data."
-        icon={Activity}
-      />
-    )
-  }
-
-  const { chartData, pods } = metricsData
-  const lastPoint = chartData.at(-1)
-
-  const totalCpu = pods.reduce((sum, pod) => sum + getMetricValue(lastPoint, `cpu_${pod}`), 0)
-  const totalMem = pods.reduce((sum, pod) => sum + getMetricValue(lastPoint, `mem_${pod}`), 0)
-  const totalIngress = pods.reduce((sum, pod) => sum + getMetricValue(lastPoint, `ingress_${pod}`), 0)
-  const totalEgress = pods.reduce((sum, pod) => sum + getMetricValue(lastPoint, `egress_${pod}`), 0)
-
-  const maxCpu = Math.max(...chartData.flatMap((point) => pods.map((pod) => getMetricValue(point, `cpu_${pod}`))))
-  const maxMem = Math.max(...chartData.flatMap((point) => pods.map((pod) => getMetricValue(point, `mem_${pod}`))))
-  const maxNet = Math.max(...chartData.flatMap((point) => pods.map((pod) => Math.max(getMetricValue(point, `ingress_${pod}`), getMetricValue(point, `egress_${pod}`)))))
-
-  return (
-    <div className="space-y-4 min-h-125">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader>
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1"><Cpu className="h-3 w-3" />CPU Usage</span>
-              <span className="font-mono text-xs text-muted-foreground">{totalCpu.toFixed(2)} mCores (Total)</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={{}} className="h-40 w-full">
-              <LineChart data={chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={40} domain={[0, () => Math.max(maxCpu * 1.2, (app.request_cpu || 0) * 1.1)]} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                {pods.map((p, i) => <Line key={p} name={p} dataKey={`cpu_${p}`} type="monotone" stroke={`var(--chart-${(i % 5) + 1})`} strokeWidth={2} dot={false} />)}
-                <Line name="Request" dataKey="cpuRequest" type="stepAfter" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-                <Line name="Limit" dataKey="cpuLimit" type="stepAfter" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="2 2" dot={false} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1"><Cpu className="h-3 w-3" />CPU Utilization</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={{}} className="h-40 w-full">
-              <LineChart data={chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} domain={[0, 'auto']} />
-                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                {pods.map((p, i) => <Line key={p} name={p} dataKey={`cpuUtil_${p}`} type="monotone" stroke={`var(--chart-${(i % 5) + 1})`} strokeWidth={2} dot={false} />)}
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1"><MemoryStick className="h-3 w-3" />Memory Usage</span>
-              <span className="font-mono text-xs text-muted-foreground">{totalMem.toFixed(2)} GiB (Total)</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={{}} className="h-40 w-full">
-              <LineChart data={chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={40} domain={[0, () => Math.max(maxMem * 1.2, (app.request_memory / 1024 || 0) * 1.1)]} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                {pods.map((p, i) => <Line key={p} name={p} dataKey={`mem_${p}`} type="monotone" stroke={`var(--chart-${(i % 5) + 1})`} strokeWidth={2} dot={false} />)}
-                <Line name="Request" dataKey="memRequest" type="stepAfter" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-                <Line name="Limit" dataKey="memLimit" type="stepAfter" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="2 2" dot={false} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1"><ChartLine className="h-3 w-3" />Memory Utilization</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={{}} className="h-40 w-full">
-              <LineChart data={chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} domain={[0, 'auto']} />
-                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                {pods.map((p, i) => <Line key={p} name={p} dataKey={`memUtil_${p}`} type="monotone" stroke={`var(--chart-${(i % 5) + 1})`} strokeWidth={2} dot={false} />)}
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1"><Network className="h-3 w-3" />Network Ingress</span>
-              <span className="text-primary flex items-center gap-0.5"><ArrowDown className="h-2 w-2" />{totalIngress.toFixed(1)} KB/s</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={{}} className="h-40 w-full">
-              <LineChart data={chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={40} domain={[0, () => maxNet * 1.2]} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                {pods.flatMap((p, i) => [
-                  <Line key={`${p}-in`} name={`${p} In`} dataKey={`ingress_${p}`} type="monotone" stroke={`var(--chart-${(i % 5) + 1})`} strokeWidth={2} dot={false} />
-                ])}
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription className="flex items-center justify-between">
-              <span className="flex items-center gap-1"><Network className="h-3 w-3" />Network Egress</span>
-              <span className="text-chart-2 flex items-center gap-0.5"><ArrowUp className="h-2 w-2" />{totalEgress.toFixed(1)} KB/s</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <ChartContainer config={{}} className="h-40 w-full">
-              <LineChart data={chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={40} domain={[0, () => maxNet * 1.2]} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                {pods.flatMap((p, i) => [
-                  <Line key={`${p}-out`} name={`${p} Out`} dataKey={`egress_${p}`} type="monotone" stroke={`var(--chart-${(i % 5) + 1})`} strokeWidth={2} strokeDasharray={2} dot={false} />
-                ])}
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
-
-function InstanceEventsDialog({ appId, instanceName, open, onOpenChange }: { appId: string, instanceName: string, open: boolean, onOpenChange: (open: boolean) => void }) {
-  const { data: events = [], isLoading } = useQuery({
-    queryKey: ['instance-events', appId, instanceName],
-    queryFn: () => appsApi.listInstanceEvents(appId, instanceName),
-    enabled: !!appId && !!instanceName && open,
-  })
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-240 max-h-[80vh] max-h[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Instance Events: {instanceName}</DialogTitle>
-          <DialogDescription>
-            Recent events related to this instance, such as scaling actions, health status changes, and lifecycle events.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex-1 overflow-auto py-4">
-          <DataTable
-            columns={[
-              {
-                accessorKey: "type",
-                header: "Type",
-                cell: ({ row }) => (
-                  <ColorBadge color={row.original.type === "Normal" ? "blue" : "red"}>
-                    {row.original.type}
-                  </ColorBadge>
-                )
-              },
-              { accessorKey: "reason", header: "Reason" },
-              {
-                accessorKey: "message",
-                header: "Message",
-                cell: ({ row }) => (
-                  <div className="text-xs break-all whitespace-normal">
-                    {row.original.message}
-                  </div>
-                )
-              },
-              {
-                accessorKey: "count",
-                header: "Count",
-                cell: ({ row }) => <span className="text-xs font-mono">{row.original.count}</span>
-              },
-              {
-                accessorKey: "created_at",
-                header: "Last Seen",
-                cell: ({ row }) => <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(row.original.created_at)}</span>
-              }
-            ]}
-            data={events}
-            isLoading={isLoading}
-            hidePagination
-            emptyContent={
-              <EmptyState
-                title=""
-                description="No events found for this instance."
-                icon={Activity}
-                border={false}
-              />
-            }
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-const INSTANCES_VIEW_MODE_KEY = "instances_view_mode"
-
 export function ApplicationDetailPage() {
   const navigate = useNavigate()
   const { appId } = useParams()
-  const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
 
-  const currentTab = searchParams.get("tab") || "overview"
+  const { currentTab, setCurrentTab, viewMode, setViewMode } = useApplicationDetailTabs()
   const { openPanel } = useBottomPanel()
   const { activeProjectId, activeEnvId, activeProjectName, setActiveContextWithNames } = useProjectStore()
   const projectRole = useProjectRole()
@@ -609,10 +142,6 @@ export function ApplicationDetailPage() {
 
   const safeApps = Array.isArray(apps) ? apps : []
 
-  const [viewMode, setViewMode] = React.useState<'table' | 'card'>(() => {
-    const saved = localStorage.getItem(INSTANCES_VIEW_MODE_KEY)
-    return (saved === 'table' || saved === 'card') ? saved : 'table'
-  })
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [instancePagination, setInstancePagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [operationLogsPagination, setOperationLogsPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
@@ -632,17 +161,13 @@ export function ApplicationDetailPage() {
   }, [appId])
 
   React.useEffect(() => {
-      if (!hasSyncedContextFromAppRef.current && currentEnv && app?.env_id) {
+    if (!hasSyncedContextFromAppRef.current && currentEnv && app?.env_id) {
       if (activeProjectId !== currentEnv.project_id || activeEnvId !== app.env_id) {
         setActiveContextWithNames(currentEnv.project_id, currentEnv.project_name, app.env_id, currentEnv.name)
       }
       hasSyncedContextFromAppRef.current = true
     }
   }, [currentEnv, app?.env_id, activeProjectId, activeEnvId, setActiveContextWithNames])
-
-  React.useEffect(() => {
-    localStorage.setItem(INSTANCES_VIEW_MODE_KEY, viewMode)
-  }, [viewMode])
 
   const deleteInstanceMutation = useMutation({
     mutationFn: (instanceName: string) => appsApi.deleteInstance(appId!, instanceName),
@@ -687,307 +212,6 @@ export function ApplicationDetailPage() {
     }),
     enabled: !!appId && currentTab === 'operations',
   })
-
-  const operationLogsColumns: ColumnDef<OperationLogItem>[] = [
-    {
-      accessorKey: "created_at",
-      header: "Time",
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">{formatDate(row.original.created_at)}</span>
-      ),
-    },
-    {
-      accessorKey: "username",
-      header: "User",
-    },
-    {
-      accessorKey: "action",
-      header: "Action",
-      cell: ({ row }) => <span className="text-sm font-medium">{row.original.action}</span>,
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <Badge variant={row.original.status === 'success' ? 'secondary' : 'destructive'}>
-          {row.original.status}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "sensitivity",
-      header: "Sensitivity",
-      cell: ({ row }) => <span className="text-xs uppercase text-muted-foreground">{row.original.sensitivity}</span>,
-    },
-    {
-      accessorKey: "client_ip",
-      header: "IP",
-      cell: ({ row }) => <span className="font-mono text-xs">{row.original.client_ip || '-'}</span>,
-    },
-  ]
-
-  const instanceColumns: ColumnDef<AppInstance>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          data-state={table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected() ? "indeterminate" : undefined}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
-      accessorKey: "instance_name",
-      header: "Instance",
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-mono text-xs font-medium">{row.original.instance_name}</span>
-          {row.original.ip && (
-            <span className="font-mono text-[10px] text-muted-foreground">{row.original.ip}</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const status = row.original.status
-        const isRunning = status === "Running"
-        return (
-          <ColorBadge color={isRunning ? "green" : "gray"}>
-            {status}
-          </ColorBadge>
-        )
-      },
-    },
-    {
-      id: "containers",
-      header: "Containers",
-      cell: ({ row }) => {
-        const initCount = row.original.init_container_count
-        const containerCount = row.original.container_count
-        return (
-          <div className="flex items-center gap-3">
-            {initCount > 0 && (
-              <div className="flex items-center gap-1.5 text-muted-foreground" title="Init Containers">
-                <Zap className="h-3.5 w-3.5" />
-                <span>{initCount}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 text-muted-foreground" title="Containers">
-              <Layers2 className="h-3.5 w-3.5" />
-              <span>{containerCount}</span>
-            </div>
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "restart_count",
-      header: "Restarts",
-      cell: ({ row }) => (
-        <span className={`text-xs font-mono ${row.original.restart_count > 0 ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
-          {row.original.restart_count || 0}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "eventCount",
-      header: "Events",
-      cell: ({ row }) => (
-        <Button
-          variant="link"
-          size="icon-sm"
-          className="text-primary"
-          onClick={(e) => {
-            e.stopPropagation()
-            setSelectedInstanceForEvents(row.original.instance_name)
-          }}
-        >
-          <ClockCheck />
-        </Button>
-      ),
-    },
-    {
-      accessorKey: "node_name",
-      header: "Node",
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground">{row.original.node_name}</span>
-          {row.original.node_ip && (
-            <span className="font-mono text-[10px] text-muted-foreground/60">{row.original.node_ip}</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "running_duration",
-      header: "Age",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1.5 text-muted-foreground">
-          <Clock className="h-3.5 w-3.5" />
-          <span className="text-xs">{row.original.running_duration}</span>
-        </div>
-      ),
-    },
-    {
-      id: "actions",
-      header: () => <div className="text-right">Actions</div>,
-      cell: ({ row }) => {
-        const instance = row.original
-        const appContainerName = app?.slug ? `${app.slug}-app` : ""
-        const containers = instance.containers || [appContainerName]
-        const defaultContainer = containers.includes(appContainerName) ? appContainerName : containers[0]
-        return (
-          <div className="flex items-center justify-end gap-1">
-            <Tooltip>
-              <TooltipTrigger
-                delay={200}
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setMetricsInstance(instance.instance_name)
-                    }}
-                  />
-                }
-              >
-                <ChartLine />
-              </TooltipTrigger>
-              <TooltipContent>View Metrics</TooltipContent>
-            </Tooltip>
-            {!isViewer && (
-              <Tooltip>
-                <TooltipTrigger
-                  delay={200}
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (app) {
-                          openPanel({
-                            type: "logs",
-                            appId: app.id,
-                            appName: app.name,
-                            instanceName: instance.instance_name,
-                            containerName: defaultContainer,
-                            containers,
-                            initContainers: instance.init_containers,
-                          })
-                        }
-                      }}
-                    />
-                  }
-                >
-                  <FileClock />
-                </TooltipTrigger>
-                <TooltipContent>View Logs</TooltipContent>
-              </Tooltip>
-            )}
-            {!isViewer && (
-              <Tooltip>
-                <TooltipTrigger
-                  delay={200}
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (app) {
-                          openPanel({
-                            type: "terminal",
-                            appId: app.id,
-                            appName: app.name,
-                            instanceName: instance.instance_name,
-                            containerName: defaultContainer,
-                            containers,
-                            initContainers: instance.init_containers,
-                          })
-                        }
-                      }}
-                    />
-                  }
-                >
-                  <TerminalIcon />
-                </TooltipTrigger>
-                <TooltipContent>Open Terminal</TooltipContent>
-              </Tooltip>
-            )}
-            {!isViewer && (
-              <Tooltip>
-                <TooltipTrigger
-                  delay={200}
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (app) {
-                          openPanel({
-                            type: "files",
-                            appId: app.id,
-                            appName: app.name,
-                            instanceName: instance.instance_name,
-                            containerName: defaultContainer,
-                            containers,
-                            initContainers: instance.init_containers,
-                          })
-                        }
-                      }}
-                    />
-                  }
-                >
-                  <FolderOpen />
-                </TooltipTrigger>
-                <TooltipContent>File Explorer</TooltipContent>
-              </Tooltip>
-            )}
-            {!isViewer && (
-              <Tooltip>
-                <TooltipTrigger
-                  delay={200}
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setDeletingInstanceName(instance.instance_name)
-                        setDeleteInstanceDialogOpen(true)
-                      }}
-                      disabled={deleteInstanceMutation.isPending}
-                    />
-                  }
-                >
-                  <Trash2 />
-                </TooltipTrigger>
-                <TooltipContent>Delete Instance</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        )
-      },
-    },
-  ]
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (instanceNames: string[]) => {
@@ -1122,74 +346,16 @@ export function ApplicationDetailPage() {
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
 
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 rounded-lg text-primary">
-              <Box className="h-8 w-8" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight">{app.name}</h1>
-                <ColorBadge color={getAppStatusColor(app.status)}>
-                  {app.status.toUpperCase()}
-                </ColorBadge>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="font-mono">{app.slug}</span>
-                <span>•</span>
-                {app.description ? (
-                  <span className="truncate">{app.description}</span>
-                ) : (
-                  <span className="italic">No description</span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {!isViewer && (
-              <Tooltip>
-                <TooltipTrigger
-                  delay={200}
-                  render={
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => toggleFavMutation.mutate()}
-                    />
-                  }
-                >
-                  <Star className={`h-4 w-4 ${favoriteStatus?.is_favorite ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
-                  <span className="sr-only">
-                    {favoriteStatus?.is_favorite ? "Remove from favorites" : "Add to favorites"}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {favoriteStatus?.is_favorite ? "Remove from favorites" : "Add to favorites"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {!isViewer && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsEditAppDialogOpen(true)}
-              >
-                <Pencil />
-              </Button>
-            )}
-            {!isViewer && app?.available_actions && app.available_actions.length > 0 && (
-              <AppActionButtons
-                appId={app.id}
-                actions={app.available_actions}
-                onDeleteSuccess={() => navigate('/applications')}
-              />
-            )}
-          </div>
-        </div>
-      </div>
+      <ApplicationDetailHeader
+        app={app}
+        isViewer={isViewer}
+        isFavorite={favoriteStatus?.is_favorite ?? false}
+        onToggleFavorite={() => toggleFavMutation.mutate()}
+        onEdit={() => setIsEditAppDialogOpen(true)}
+        onDeleteSuccess={() => navigate("/applications")}
+      />
 
-      <Tabs value={currentTab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
+      <Tabs value={currentTab} onValueChange={setCurrentTab}>
         <TabsList>
           <TabsTrigger value="overview"><Telescope />Overview</TabsTrigger>
           <TabsTrigger value="topology"><Share2 />Topology</TabsTrigger>
@@ -1205,379 +371,75 @@ export function ApplicationDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="group/card space-y-4 mt-2">
-          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Info className="h-4 w-4" />
-                Application Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Slug</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-mono">{app.slug}</p>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                      onClick={() => {
-                        navigator.clipboard.writeText(app.slug)
-                        toast.success("Copied to clipboard")
-                      }}
-                    >
-                      <Copy />
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Image</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-mono truncate">{app.container_image}</p>
-                    {app.registry_username && (
-                      <Key className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    )}
-                    {!isViewer && (
-                      <Tooltip>
-                        <TooltipTrigger
-                          delay={200}
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={() => setIsEditImageDialogOpen(true)}
-                            />
-                          }
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </TooltipTrigger>
-                        <TooltipContent>Edit Image</TooltipContent>
-                      </Tooltip>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                      onClick={() => {
-                        navigator.clipboard.writeText(app.container_image)
-                        toast.success("Copied to clipboard")
-                      }}
-                    >
-                      <Copy />
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Created At</p>
-                  <p className="text-sm">{app.created_at ? formatDate(app.created_at) : "N/A"}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="CPU"
-              value={`${app.request_cpu} / ${app.limit_cpu} m`}
-              icon={Cpu}
-              color="amber"
-              description="Request / Limit"
-            />
-            <StatCard
-              title="Memory"
-              value={`${app.request_memory} / ${app.limit_memory} Mi`}
-              icon={MemoryStick}
-              color="amber"
-              description="Request / Limit"
-            />
-            <StatCard
-              title="Deploy Type"
-              value={app.app_type}
-              icon={CloudCog}
-            />
-            <StatCard
-              title="Replicas"
-              value={app.replicas}
-              icon={Layers}
-              color="sky"
-              description={
-                <>
-                  Desired {app.auto_scaling ? `(AS: ${app.auto_scaling.min_replicas}-${app.auto_scaling.max_replicas})` : ""}
-                </>
-              }
-            />
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Container className="h-4 w-4" /> Running Instances
-              </CardTitle>
-              <CardAction className="flex flex-wrap items-center justify-end gap-2">
-                {selectedInstanceIndices.length > 0 && !isViewer && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      setSelectedInstanceNames(selectedInstanceNamesFromRows)
-                      setBulkDeleteDialogOpen(true)
-                    }}
-                    disabled={bulkDeleteMutation.isPending}
-                  >
-                    <Trash2 />
-                    Delete ({selectedInstanceIndices.length})
-                  </Button>
-                )}
-                <Tabs value={viewMode} onValueChange={(v) => {
-                  if (!isInstancesViewMode(v)) {
-                    return
-                  }
-
-                  setViewMode(v)
-                  // Reset pagination when view mode changes
-                  setInstancePagination({ pageIndex: 0, pageSize: 10 })
-                }} className="w-auto h-7">
-                  <TabsList>
-                    <TabsTrigger value="table" className="px-2">
-                      <List />
-                    </TabsTrigger>
-                    <TabsTrigger value="card">
-                      <LayoutGrid />
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                {!isViewer && <ScaleAppPopover app={app} />}
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              {safeInstances.length === 0 ? (
-                <EmptyState
-                  title="No instances running"
-                  description="The application might be scaled to zero or not yet deployed."
-                  icon={Container}
-                />
-              ) : viewMode === 'table' ? (
-                <DataTable
-                  columns={instanceColumns}
-                  data={safeInstances}
-                  isLoading={isLoading}
-                  rowSelection={rowSelection}
-                  onRowSelectionChange={setRowSelection}
-                  pagination={instancePagination}
-                  onPaginationChange={setInstancePagination}
-                  hidePagination
-                />
-
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {safeInstances.map((instance) => {
-                    const isRunning = instance.status === "Running"
-                    const appContainerName = app?.slug ? `${app.slug}-app` : ""
-                    const containers = instance.containers || [appContainerName]
-                    const defaultContainer = containers.includes(appContainerName) ? appContainerName : containers[0]
-
-                    return (
-                      <Card key={instance.instance_name} className="group/card hover:shadow-md transition-shadow cursor-pointer">
-                        <CardHeader>
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-3 min-w-0">
-                              <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
-                                <AvatarFallback className="rounded-lg text-lg font-bold">
-                                  {instance.instance_name.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex flex-col min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <CardTitle className="font-mono text-xs font-semibold truncate" title={instance.instance_name}>
-                                    {instance.instance_name}
-                                  </CardTitle>
-                                  <ColorBadge color={isRunning ? "green" : "gray"} className="text-[10px] px-1.5 py-0 shrink-0">
-                                    {instance.status.toUpperCase()}
-                                  </ColorBadge>
-                                </div>
-                                <CardDescription className="font-mono text-[10px] truncate">
-                                  {instance.ip || 'No IP assigned'}
-                                </CardDescription>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setMetricsInstance(instance.instance_name)
-                                }}
-                                title="View Metrics"
-                              >
-                                <ChartLine />
-                              </Button>
-                              {!isViewer && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (app) {
-                                      openPanel({
-                                        type: "logs",
-                                        appId: app.id,
-                                        appName: app.name,
-                                        instanceName: instance.instance_name,
-                                        containerName: defaultContainer,
-                                        containers,
-                                        initContainers: instance.init_containers,
-                                      })
-                                    }
-                                  }}
-                                  title="View Logs"
-                                >
-                                  <FileClock />
-                                </Button>
-                              )}
-                              {!isViewer && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (app) {
-                                      openPanel({
-                                        type: "terminal",
-                                        appId: app.id,
-                                        appName: app.name,
-                                        instanceName: instance.instance_name,
-                                        containerName: defaultContainer,
-                                        containers,
-                                        initContainers: instance.init_containers,
-                                      })
-                                    }
-                                  }}
-                                  title="Open Terminal"
-                                >
-                                  <TerminalIcon />
-                                </Button>
-                              )}
-                              {!isViewer && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (app) {
-                                      openPanel({
-                                        type: "files",
-                                        appId: app.id,
-                                        appName: app.name,
-                                        instanceName: instance.instance_name,
-                                        containerName: defaultContainer,
-                                        containers,
-                                        initContainers: instance.init_containers,
-                                      })
-                                    }
-                                  }}
-                                  title="File Explorer"
-                                >
-                                  <FolderOpen />
-                                </Button>
-                              )}
-                              {!isViewer && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setDeletingInstanceName(instance.instance_name)
-                                    setDeleteInstanceDialogOpen(true)
-                                  }}
-                                  disabled={deleteInstanceMutation.isPending}
-                                  title="Delete Instance"
-                                >
-                                  <Trash2 />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4 pt-2">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <Server className="h-3.5 w-3.5" />
-                                <span className="truncate" title={instance.node_name}>{instance.node_name}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <div className="flex items-center gap-3">
-                                {instance.init_container_count > 0 && (
-                                  <div className="flex items-center gap-1.5" title="Init Containers">
-                                    <Zap className="h-3.5 w-3.5" />
-                                    <span>{instance.init_container_count}</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center gap-1.5" title="Containers">
-                                  <Layers2 className="h-3.5 w-3.5" />
-                                  <span>{instance.container_count}</span>
-                                </div>
-                                <div className={`flex items-center gap-1.5 ${instance.restart_count > 0 ? 'text-destructive font-bold' : ''}`} title="Restarts">
-                                  <RotateCw className="h-3 w-3" />
-                                  <span>{instance.restart_count || 0}</span>
-                                </div>
-                              </div>
-                              <Button
-                                variant="link"
-                                className="p-0 h-auto text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setSelectedInstanceForEvents(instance.instance_name)
-                                }}
-                              >
-                                <ClockCheck className="h-3 w-3" />Events
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="h-3 w-3" />
-                              <span>{instance.running_duration}</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {currentEnv && (
-            <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <ChartLine className="h-4 w-4" />
-                  Metrics
-                </CardTitle>
-                <CardAction>
-                  <MetricsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
-                </CardAction>
-              </CardHeader>
-              <CardContent>
-                <AppMetrics
-                  clusterId={currentEnv.cluster_id}
-                  projectId={projectIdToUse || undefined}
-                  prometheusAvailable={currentEnv.has_prometheus_integration}
-                  namespace={currentEnv.cluster_namespace}
-                  appSlug={app.slug}
-                  app={app}
-                  timeRange={timeRange}
-                  rangeSeconds={rangeSeconds}
-                  step={step}
-                />
-              </CardContent>
-            </Card>
-          )}
+          <ApplicationOverviewTab
+            app={app}
+            currentEnv={currentEnv}
+            projectIdToUse={projectIdToUse || undefined}
+            isViewer={isViewer}
+            isLoading={isLoading}
+            viewMode={viewMode}
+            onViewModeChange={(value) => {
+              setViewMode(value)
+              setInstancePagination({ pageIndex: 0, pageSize: 10 })
+            }}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            instancePagination={instancePagination}
+            onInstancePaginationChange={setInstancePagination}
+            safeInstances={safeInstances}
+            selectedInstanceNamesFromRows={selectedInstanceNamesFromRows}
+            selectedInstanceCount={selectedInstanceIndices.length}
+            timeRange={timeRange}
+            onTimeRangeChange={setTimeRange}
+            rangeSeconds={rangeSeconds}
+            step={step}
+            deleteInstancePending={deleteInstanceMutation.isPending}
+            metricsInstance={metricsInstance}
+            onMetricsInstanceChange={setMetricsInstance}
+            onOpenLogs={(instance, containerName) => {
+              openPanel({
+                type: "logs",
+                appId: app.id,
+                appName: app.name,
+                instanceName: instance.instance_name,
+                containerName,
+                containers: instance.containers,
+                initContainers: instance.init_containers,
+              })
+            }}
+            onOpenTerminal={(instance, containerName) => {
+              openPanel({
+                type: "terminal",
+                appId: app.id,
+                appName: app.name,
+                instanceName: instance.instance_name,
+                containerName,
+                containers: instance.containers,
+                initContainers: instance.init_containers,
+              })
+            }}
+            onOpenFiles={(instance, containerName) => {
+              openPanel({
+                type: "files",
+                appId: app.id,
+                appName: app.name,
+                instanceName: instance.instance_name,
+                containerName,
+                containers: instance.containers,
+                initContainers: instance.init_containers,
+              })
+            }}
+            onOpenInstanceEvents={setSelectedInstanceForEvents}
+            onRequestDeleteInstance={(instanceName) => {
+              setDeletingInstanceName(instanceName)
+              setDeleteInstanceDialogOpen(true)
+            }}
+            onRequestBulkDelete={(instanceNames) => {
+              setSelectedInstanceNames(instanceNames)
+              setBulkDeleteDialogOpen(true)
+            }}
+            onEditImage={() => setIsEditImageDialogOpen(true)}
+          />
         </TabsContent>
 
         <TabsContent value="topology" className="space-y-4 mt-2">
@@ -1598,36 +460,14 @@ export function ApplicationDetailPage() {
         </TabsContent>
 
         <TabsContent value="operations" className="space-y-4 mt-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Footprints className="h-4 w-4" />
-                Operation Logs
-              </CardTitle>
-              <CardDescription>
-                Track recent operations executed against this application.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {(operationLogsResponse?.items?.length ?? 0) === 0 && !operationLogsLoading && !operationLogsFetching ? (
-                <EmptyState
-                  title="No operation logs"
-                  description="Operations for this application will appear here."
-                  icon={Footprints}
-                />
-              ) : (
-                <DataTable
-                  columns={operationLogsColumns}
-                  data={operationLogsResponse?.items ?? []}
-                  isLoading={operationLogsLoading || operationLogsFetching}
-                  pagination={operationLogsPagination}
-                  onPaginationChange={setOperationLogsPagination}
-                  totalCount={operationLogsResponse?.pagination.total ?? 0}
-                  manualPagination
-                />
-              )}
-            </CardContent>
-          </Card>
+          <ApplicationOperationsTab
+            items={operationLogsResponse?.items ?? []}
+            isLoading={operationLogsLoading}
+            isFetching={operationLogsFetching}
+            pagination={operationLogsPagination}
+            onPaginationChange={setOperationLogsPagination}
+            totalCount={operationLogsResponse?.pagination.total ?? 0}
+          />
         </TabsContent>
 
         <TabsContent value="resources" className="space-y-4 mt-2">
@@ -1736,16 +576,6 @@ export function ApplicationDetailPage() {
           onOpenChange={(open) => !open && setSelectedInstanceForEvents(null)}
         />
       )}
-
-      <InstanceResourceMetrics
-        open={!!metricsInstance}
-        onOpenChange={(open) => { if (!open) setMetricsInstance(null) }}
-        clusterId={currentEnv?.cluster_id || ""}
-        projectId={projectIdToUse || undefined}
-        namespace={currentEnv?.cluster_namespace || ""}
-        podName={metricsInstance || ""}
-        app={app}
-      />
 
       <AlertDialog open={deleteInstanceDialogOpen} onOpenChange={setDeleteInstanceDialogOpen}>
         <AlertDialogContent>

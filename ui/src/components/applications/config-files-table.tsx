@@ -4,7 +4,7 @@ import { Edit2, FileCog, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import type { App } from "@/api/apps"
+import type { App, AppConfigFile } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { useProjectRole } from "@/hooks/useProjectRole"
 
@@ -53,7 +53,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
     queryKey: ["app-config-files", app.id],
     queryFn: async () => {
       const response = await appsApi.listConfigFiles(app.id)
-      return response.map((cf: any) => ({
+      return response.map((cf: AppConfigFile) => ({
         id: cf.id,
         slug: cf.slug,
         mount_path: cf.mount_path,

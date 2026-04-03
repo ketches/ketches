@@ -4,7 +4,7 @@ import { CheckCircle, CircleAlert, CircleX, Edit2, HardDrive, Plus, Trash2, type
 import * as React from "react"
 import { toast } from "sonner"
 
-import type { App } from "@/api/apps"
+import type { App, AppVolume } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { useProjectRole } from "@/hooks/useProjectRole"
 
@@ -72,7 +72,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
     queryFn: async () => {
       const response = await appsApi.listVolumes(app.id)
       // Transform backend response to match VolumeSpec
-      return response.map((vol: any) => ({
+      return response.map((vol: AppVolume) => ({
         id: vol.id,
         slug: vol.slug,
         volume_type: vol.volume_type || "pvc",
