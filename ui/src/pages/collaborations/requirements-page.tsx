@@ -77,8 +77,9 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
     enabled: !!projectId,
   })
 
-  const requirements = response?.items || []
+  const requirements = useMemo(() => response?.items ?? [], [response?.items])
   const totalCount = response?.pagination?.total || 0
+  const hasActiveFilters = Boolean(search.trim() || statusFilter || priorityFilter || assigneeFilter)
 
   // Flatten tree for display
   const tableData = useMemo(() => {
@@ -322,7 +323,16 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
       {<DataTable
         columns={columns}
         data={tableData}
+        sourceDataCount={totalCount}
         isLoading={isLoading}
+        sourceEmptyContent={
+          <EmptyState
+            title="No requirements yet"
+            description="Create your first requirement to start planning work."
+            icon={FileText}
+          />
+        }
+        useStandaloneEmptyState={!hasActiveFilters}
         manualPagination
         totalCount={totalCount}
         pagination={pagination}
@@ -331,7 +341,7 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
         emptyContent={
           <EmptyState
             title=""
-            description="No results."
+            description="No matching results."
             icon={FileText}
             border={false}
           />

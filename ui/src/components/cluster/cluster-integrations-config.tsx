@@ -339,34 +339,31 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : integrations.length === 0 ? (
-            <EmptyState
-              title="No integrations configured"
-              description="Add Prometheus, Grafana, or other integrations to enable monitoring"
-              icon={GamepadDirectional}
-              actionText="Add Integration"
-              onAction={handleOpenCreate}
-              actionIcon={Plus}
-            />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={integrations}
-              isLoading={isLoading}
-              searchKey="name"
-              searchPlaceholder="Filter integrations..."
-              rightToolbar={() => (
-                <Button onClick={handleOpenCreate}>
-                  <Plus />
-                  Add Integration
-                </Button>
-              )}
-            />
-          )}
+          <DataTable
+            columns={columns}
+            data={integrations}
+            sourceDataCount={integrations.length}
+            isLoading={isLoading}
+            searchKey="name"
+            searchPlaceholder="Filter integrations..."
+            sourceEmptyContent={(
+              <EmptyState
+                title="No integrations configured"
+                description="Add Prometheus, Grafana, or other integrations to enable monitoring"
+                icon={GamepadDirectional}
+                actionText="Add Integration"
+                onAction={handleOpenCreate}
+                actionIcon={Plus}
+              />
+            )}
+            useStandaloneEmptyState
+            rightToolbar={() => (
+              <Button onClick={handleOpenCreate}>
+                <Plus />
+                Add Integration
+              </Button>
+            )}
+          />
         </CardContent>
       </Card>
 

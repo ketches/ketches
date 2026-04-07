@@ -218,30 +218,31 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isLoading && (!certificates || certificates.length === 0) ? (
-            <EmptyState
-              title="No certificates configured"
-              description="Add a TLS certificate to enable HTTPS gateways"
-              icon={ShieldCheck}
-              actionText="Add Certificate"
-              onAction={handleOpenCreate}
-              actionIcon={Plus}
-            />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={certificates}
-              isLoading={isLoading}
-              searchKey="name"
-              searchPlaceholder="Filter certificates..."
-              rightToolbar={() => (
-                <Button onClick={handleOpenCreate}>
-                  <Plus />
-                  Add Certificate
-                </Button>
-              )}
-            />
-          )}
+          <DataTable
+            columns={columns}
+            data={certificates}
+            sourceDataCount={certificates?.length ?? 0}
+            isLoading={isLoading}
+            searchKey="name"
+            searchPlaceholder="Filter certificates..."
+            sourceEmptyContent={(
+              <EmptyState
+                title="No certificates configured"
+                description="Add a TLS certificate to enable HTTPS gateways"
+                icon={ShieldCheck}
+                actionText="Add Certificate"
+                onAction={handleOpenCreate}
+                actionIcon={Plus}
+              />
+            )}
+            useStandaloneEmptyState
+            rightToolbar={() => (
+              <Button onClick={handleOpenCreate}>
+                <Plus />
+                Add Certificate
+              </Button>
+            )}
+          />
         </CardContent>
       </Card>
 

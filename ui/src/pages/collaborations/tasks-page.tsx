@@ -82,12 +82,13 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
     enabled: !!projectId,
   })
 
-  const tasks = response?.items || []
+  const tasks = useMemo(() => response?.items ?? [], [response?.items])
   const totalCount = response?.pagination?.total || 0
 
   const tableData = useMemo(() => {
     return flattenTree(tasks, expandedIds)
   }, [tasks, expandedIds])
+  const hasActiveFilters = Boolean(search.trim() || statusFilter || priorityFilter || assigneeFilter)
 
   const toggleExpand = (id: string) => {
     const newSet = new Set(expandedIds)
@@ -376,7 +377,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
           {!isLoading && tasks.length === 0 ? (
             <EmptyState
               title=""
-              description="No results."
+              description={hasActiveFilters ? "No matching results." : "No tasks yet."}
               icon={ListTodo}
             />
           ) : (
@@ -393,7 +394,17 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
         <DataTable
           columns={columns}
           data={tableData}
+          sourceDataCount={totalCount}
           isLoading={isLoading}
+          sourceEmptyContent={
+            <EmptyState
+              title="No tasks yet"
+              description="Create your first task to start tracking work."
+              icon={CheckSquare}
+              border={false}
+            />
+          }
+          useStandaloneEmptyState={!hasActiveFilters}
           manualPagination
           totalCount={totalCount}
           pagination={pagination}
@@ -402,7 +413,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
           emptyContent={
             <EmptyState
               title=""
-              description="No results."
+              description="No matching results."
               icon={CheckSquare}
               border={false}
             />

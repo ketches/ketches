@@ -69,8 +69,18 @@ export function InstanceEventsDialog({
               },
             ]}
             data={events}
+            sourceDataCount={events.length}
             isLoading={isLoading}
             hidePagination
+            sourceEmptyContent={(
+              <EmptyState
+                title=""
+                description="No events found for this instance."
+                icon={Activity}
+                border={false}
+              />
+            )}
+            useStandaloneEmptyState
             emptyContent={(
               <EmptyState
                 title=""

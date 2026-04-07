@@ -60,7 +60,7 @@ export function EmptyState({
 export function EmptyEnvironmentState({ onAction }: { onAction?: () => void }) {
   return (
     <EmptyState
-      title="No environments found"
+      title="No environments yet"
       description="Create your first environment to start managing your deployments and applications."
       icon={Orbit}
       actionText="Create Environment"
@@ -81,7 +81,7 @@ export function EmptyApplicationState({
 }) {
   return (
     <EmptyState
-      title="No applications found"
+      title="No applications yet"
       description={environmentName ? `Create your first application in ${environmentName}.` : "Select an environment to create applications."}
       icon={Box}
       actionText="Create Application"
@@ -108,8 +108,8 @@ export function EmptyClusterState({ onAction }: { onAction?: () => void }) {
 export function EmptyCodeRepositoryState({ onAction }: { onAction?: () => void }) {
   return (
     <EmptyState
-      title="No code repositories"
-      description="Add a Git repository to manage build settings and deploy to environments."
+      title="No code repositories yet"
+      description="Add your first repository to manage build settings and deployments."
       icon={FolderGit2}
       actionText="Add Repository"
       onAction={onAction}
@@ -121,8 +121,8 @@ export function EmptyCodeRepositoryState({ onAction }: { onAction?: () => void }
 export function EmptyRegistryState({ onAction }: { onAction?: () => void }) {
   return (
     <EmptyState
-      title="No container registries"
-      description="Add a container registry to push and pull images for builds and deployments."
+      title="No registries yet"
+      description="Add your first registry to support builds and deployments."
       icon={Warehouse}
       actionText="Add Registry"
       onAction={onAction}

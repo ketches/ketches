@@ -302,43 +302,43 @@ export function ExtensionsPage() {
   return (
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
-
-      {safeItems.length === 0 && !searchQuery ? (
-        <EmptyState
-          title="No extensions found"
-          description="Add OCI-based Helm chart extensions to make them available for installation on clusters."
-          icon={Blocks}
-          actionText="Add Extension"
-          onAction={() => setAddOpen(true)}
-          actionIcon={Plus}
-        />
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Extensions</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage OCI-based Helm chart extensions
-              </p>
-            </div>
-          </div>
-          <DataTable
-            columns={columns}
-            data={filteredItems}
-            isLoading={isLoading}
-            viewMode={viewMode}
-            onRefresh={refetch}
-            manualPagination
-            totalCount={filteredItems.length}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            leftToolbar={() => leftToolbar}
-            rightToolbar={() => rightToolbar}
-            renderCard={(item) => (
-              <Card
-                key={item.id}
-                className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10"
-              >
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Extensions</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage OCI-based Helm chart extensions
+          </p>
+        </div>
+      </div>
+      <DataTable
+        columns={columns}
+        data={filteredItems}
+        sourceDataCount={safeItems.length}
+        isLoading={isLoading}
+        sourceEmptyContent={(
+          <EmptyState
+            title="No extensions yet"
+            description="Add your first extension to make it available for installation on clusters."
+            icon={Blocks}
+            actionText="Add Extension"
+            onAction={() => setAddOpen(true)}
+            actionIcon={Plus}
+          />
+        )}
+        useStandaloneEmptyState={!searchQuery.trim()}
+        viewMode={viewMode}
+        onRefresh={refetch}
+        manualPagination
+        totalCount={filteredItems.length}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        leftToolbar={() => leftToolbar}
+        rightToolbar={() => rightToolbar}
+        renderCard={(item) => (
+          <Card
+            key={item.id}
+            className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10"
+          >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 min-w-0">
@@ -456,11 +456,9 @@ export function ExtensionsPage() {
                     </Button>
                   </div>
                 </CardContent>
-              </Card >
-            )}
-          />
-        </>
-      )}
+          </Card >
+        )}
+      />
 
       <AddExtensionDialog open={addOpen} onOpenChange={setAddOpen} />
 

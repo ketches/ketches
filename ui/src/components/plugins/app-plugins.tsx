@@ -286,18 +286,23 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
         </CardAction>
       </CardHeader>
       <CardContent>
-        {!isLoading && appPlugins.length === 0 ? (
-          <EmptyState
-            title="No plugins installed"
-            description="Browse available plugins to extend your application capabilities."
-            icon={Puzzle}
-            actionText="Browse Plugins"
-            onAction={() => setInstallOpen(true)}
-            actionIcon={ScanSearch}
-          />
-        ) : (
-          <DataTable columns={columns} data={appPlugins} isLoading={isLoading} />
-        )}
+        <DataTable
+          columns={columns}
+          data={appPlugins}
+          sourceDataCount={appPlugins.length}
+          isLoading={isLoading}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No plugins installed"
+              description="Browse available plugins to extend your application capabilities."
+              icon={Puzzle}
+              actionText="Browse Plugins"
+              onAction={() => setInstallOpen(true)}
+              actionIcon={ScanSearch}
+            />
+          )}
+          useStandaloneEmptyState
+        />
       </CardContent>
 
       <InstallPluginDialog

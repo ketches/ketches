@@ -29,7 +29,100 @@ describe("DataTable", () => {
       )
     })
 
-    expect(container.textContent).toContain("No results.")
+    expect(container.textContent).toContain("No matching results.")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("renders a loading skeleton before the first empty-state decision", async () => {
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DataTable
+          columns={[
+            {
+              accessorKey: "name",
+              header: "Name",
+            },
+          ]}
+          data={[]}
+          sourceDataCount={0}
+          isLoading
+          useStandaloneEmptyState
+        />,
+      )
+    })
+
+    expect(container.innerHTML).not.toBe("")
+    expect(container.textContent).not.toContain("Name")
+    expect(container.textContent).not.toContain("No matching results.")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("renders a standalone empty state when source data is empty after loading", async () => {
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DataTable
+          columns={[
+            {
+              accessorKey: "name",
+              header: "Name",
+            },
+          ]}
+          data={[]}
+          sourceDataCount={0}
+          useStandaloneEmptyState
+          sourceEmptyContent={<div>No source rows</div>}
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain("No source rows")
+    expect(container.textContent).not.toContain("Name")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("keeps the table visible when only the filtered result is empty", async () => {
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DataTable
+          columns={[
+            {
+              accessorKey: "name",
+              header: "Name",
+            },
+          ]}
+          data={[]}
+          sourceDataCount={2}
+          useStandaloneEmptyState
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain("Name")
+    expect(container.textContent).toContain("No matching results.")
 
     await act(async () => {
       root.unmount()

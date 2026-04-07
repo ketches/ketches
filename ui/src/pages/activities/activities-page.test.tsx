@@ -66,7 +66,7 @@ vi.mock("@/components/data-table/data-table", () => ({
       <div data-testid="left-toolbar">{leftToolbar?.()}</div>
       <div data-testid="right-toolbar">{rightToolbar?.()}</div>
       <div data-testid="table-body">
-        {Array.isArray(data) && data.length > 0 ? "has-data" : emptyContent ?? "No results."}
+        {Array.isArray(data) && data.length > 0 ? "has-data" : emptyContent ?? "No matching results."}
       </div>
     </div>
   ),

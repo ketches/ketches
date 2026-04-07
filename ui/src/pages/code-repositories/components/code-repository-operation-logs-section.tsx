@@ -74,23 +74,24 @@ export function CodeRepositoryOperationLogsSection({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {operationLogs.length === 0 && !isLoading && !isFetching ? (
-          <EmptyState
-            title="No operation logs"
-            description="Operations for this code repository will appear here."
-            icon={Footprints}
-          />
-        ) : (
-          <DataTable
-            columns={columns}
-            data={operationLogs}
-            isLoading={isLoading || isFetching}
-            pagination={pagination}
-            onPaginationChange={onPaginationChange}
-            totalCount={totalCount}
-            manualPagination
-          />
-        )}
+        <DataTable
+          columns={columns}
+          data={operationLogs}
+          sourceDataCount={totalCount}
+          isLoading={isLoading || isFetching}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No operation logs"
+              description="Operations for this code repository will appear here."
+              icon={Footprints}
+            />
+          )}
+          useStandaloneEmptyState
+          pagination={pagination}
+          onPaginationChange={onPaginationChange}
+          totalCount={totalCount}
+          manualPagination
+        />
       </CardContent>
     </Card>
   )

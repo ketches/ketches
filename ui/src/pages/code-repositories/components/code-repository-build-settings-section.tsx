@@ -111,30 +111,29 @@ export function CodeRepositoryBuildSettingsSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {buildSettings.length > 0 && !isViewer ? (
-          <div className="flex items-center justify-end">
+        <DataTable
+          columns={columns}
+          data={buildSettings}
+          sourceDataCount={buildSettings.length}
+          isLoading={isLoading}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No build settings"
+              description="Add a build setting to start building images from this repository."
+              icon={Hammer}
+              actionText={!isViewer ? "Create build setting" : undefined}
+              onAction={!isViewer ? onCreate : undefined}
+              actionIcon={!isViewer ? Plus : undefined}
+            />
+          )}
+          useStandaloneEmptyState
+          rightToolbar={!isViewer ? () => (
             <Button onClick={onCreate}>
               <Plus />
               Create
             </Button>
-          </div>
-        ) : null}
-        {buildSettings.length === 0 ? (
-          <EmptyState
-            title="No build settings"
-            description="Add a build setting to start building images from this repository."
-            icon={Hammer}
-            actionText={!isViewer ? "Create build setting" : undefined}
-            onAction={!isViewer ? onCreate : undefined}
-            actionIcon={!isViewer ? Plus : undefined}
-          />
-        ) : (
-          <DataTable
-            columns={columns}
-            data={buildSettings}
-            isLoading={isLoading}
-          />
-        )}
+          ) : undefined}
+        />
       </CardContent>
     </Card>
   )

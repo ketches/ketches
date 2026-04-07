@@ -74,6 +74,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
 
   const requirements = response?.items || []
   const totalCount = response?.pagination?.total || 0
+  const hasActiveFilters = Boolean(search.trim() || statusFilter || priorityFilter || assigneeFilter)
 
   const selectedIds = Object.keys(rowSelection)
 
@@ -271,6 +272,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
       {<DataTable
         columns={columns}
         data={requirements}
+        sourceDataCount={totalCount}
         isLoading={isLoading}
         manualPagination
         totalCount={totalCount}
@@ -279,10 +281,18 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
         onRefresh={() => refetch()}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
+        sourceEmptyContent={
+          <EmptyState
+            title="No backlog items yet"
+            description="Requirements moved to backlog will appear here."
+            icon={Archive}
+          />
+        }
+        useStandaloneEmptyState={!hasActiveFilters}
         emptyContent={
           <EmptyState
             title=""
-            description="No results."
+            description="No matching results."
             icon={Logs}
             border={false}
           />

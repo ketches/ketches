@@ -70,6 +70,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
 
   const defects = response?.items || []
   const totalCount = response?.pagination?.total || 0
+  const hasActiveFilters = Boolean(search.trim() || statusFilter || priorityFilter || assigneeFilter)
 
   const transitionDefectMutation = useMutation({
     mutationFn: ({ defectId, status }: { defectId: string; status: string }) => {
@@ -256,7 +257,16 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
       {<DataTable
         columns={columns}
         data={defects}
+        sourceDataCount={totalCount}
         isLoading={isLoading}
+        sourceEmptyContent={
+          <EmptyState
+            title="No defects yet"
+            description="Defects will appear here once issues are reported."
+            icon={Bug}
+          />
+        }
+        useStandaloneEmptyState={!hasActiveFilters}
         manualPagination
         totalCount={totalCount}
         pagination={pagination}
@@ -265,7 +275,7 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
         emptyContent={
           <EmptyState
             title=""
-            description="No results."
+            description="No matching results."
             icon={Bug}
             border={false}
           />

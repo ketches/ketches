@@ -295,60 +295,60 @@ export function VolumesTable({ app }: VolumesTableProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!isLoading && volumes.length === 0 ? (
-          <EmptyState
-            title="No volumes configured"
-            description="Add storage volumes for your application."
-            icon={HardDrive}
-            actionText="Add Volume"
-            onAction={handleAdd}
-            actionIcon={Plus}
-          />
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <Input
-                className="flex flex-1 max-w-sm min-w-75"
-                placeholder="Filter by slug, mount path..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-
-              <div className="flex items-center gap-2">
-                {Object.keys(rowSelection).length > 0 && !isViewer && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
-                      const selectedIds = selectedIndices.map(idx => filteredVolumes[parseInt(idx)]?.id).filter(Boolean) as string[]
-
-                      setSelectedVolumeIds(selectedIds)
-                      setBulkDeleteDialogOpen(true)
-                    }}
-                    disabled={bulkDeleteMutation.isPending}
-                  >
-                    <Trash2 />
-                    Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
-                  </Button>
-                )}
-                {!isViewer && (
-                  <Button onClick={handleAdd}>
-                    <Plus />
-                    Add Volume
-                  </Button>
-                )}
-              </div>
-            </div>
-            <DataTable
-              columns={volumeColumns}
-              data={filteredVolumes}
-              isLoading={isLoading}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              hidePagination
+        <DataTable
+          columns={volumeColumns}
+          data={filteredVolumes}
+          sourceDataCount={volumes.length}
+          isLoading={isLoading}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No volumes configured"
+              description="Add storage volumes for your application."
+              icon={HardDrive}
+              actionText="Add Volume"
+              onAction={handleAdd}
+              actionIcon={Plus}
             />
-          </>
-        )}
+          )}
+          useStandaloneEmptyState
+          leftToolbar={() => (
+            <Input
+              className="flex flex-1 max-w-sm min-w-75"
+              placeholder="Filter by slug, mount path..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )}
+          batchActions={() => (
+            Object.keys(rowSelection).length > 0 && !isViewer ? (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
+                  const selectedIds = selectedIndices.map(idx => filteredVolumes[parseInt(idx)]?.id).filter(Boolean) as string[]
+
+                  setSelectedVolumeIds(selectedIds)
+                  setBulkDeleteDialogOpen(true)
+                }}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                <Trash2 />
+                Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
+              </Button>
+            ) : null
+          )}
+          rightToolbar={() => (
+            !isViewer ? (
+              <Button onClick={handleAdd}>
+                <Plus />
+                Add Volume
+              </Button>
+            ) : null
+          )}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          hidePagination
+        />
       </CardContent>
 
       <VolumeEditor

@@ -58,6 +58,7 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
 
   const testCases = response?.items || []
   const totalCount = response?.pagination?.total || 0
+  const hasActiveFilters = Boolean(search.trim())
 
   const handleEdit = (item: TestCase) => {
     setSelectedItem(item)
@@ -142,7 +143,16 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
       {<DataTable
         columns={columns}
         data={testCases}
+        sourceDataCount={totalCount}
         isLoading={isLoading}
+        sourceEmptyContent={
+          <EmptyState
+            title="No test cases yet"
+            description="Create your first test case to start validating behavior."
+            icon={TestTube}
+          />
+        }
+        useStandaloneEmptyState={!hasActiveFilters}
         manualPagination
         totalCount={totalCount}
         pagination={pagination}
@@ -151,7 +161,7 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
         emptyContent={
           <EmptyState
             title=""
-            description="No results."
+            description="No matching results."
             icon={FlaskConical}
             border={false}
           />

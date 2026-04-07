@@ -216,26 +216,27 @@ export function BuildList({ appId }: BuildListProps) {
           <CardDescription>View and manage builds for this application</CardDescription>
         </CardHeader>
         <CardContent>
-          {!isLoading && (!builds || builds.length === 0) ? (
-            <EmptyState
-              title="No builds yet"
-              description={repoId
-                ? "Click \"Build\" to trigger the first build"
-                : "Configure build settings above to get started"}
-              icon={Package}
-            />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={builds}
-              isLoading={isLoading}
-              onRefresh={refetch}
-              manualPagination
-              pagination={pagination}
-              onPaginationChange={setPagination}
-              totalCount={totalCount}
-            />
-          )}
+          <DataTable
+            columns={columns}
+            data={builds}
+            sourceDataCount={totalCount}
+            isLoading={isLoading}
+            sourceEmptyContent={(
+              <EmptyState
+                title="No builds yet"
+                description={repoId
+                  ? "Click \"Build\" to trigger the first build"
+                  : "Configure build settings above to get started"}
+                icon={Package}
+              />
+            )}
+            useStandaloneEmptyState
+            onRefresh={refetch}
+            manualPagination
+            pagination={pagination}
+            onPaginationChange={setPagination}
+            totalCount={totalCount}
+          />
         </CardContent>
       </Card>
 

@@ -184,19 +184,20 @@ export function CodeRepositoryBuildsSection({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {builds.length === 0 ? (
-          <EmptyState
-            title="No builds yet"
-            description="Trigger a build from a configuration above to see the history here."
-            icon={FileClock}
-          />
-        ) : (
-          <DataTable
-            columns={columns}
-            data={builds}
-            isLoading={isLoading}
-          />
-        )}
+        <DataTable
+          columns={columns}
+          data={builds}
+          sourceDataCount={builds.length}
+          isLoading={isLoading}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No builds yet"
+              description="Trigger a build from a configuration above to see the history here."
+              icon={FileClock}
+            />
+          )}
+          useStandaloneEmptyState
+        />
       </CardContent>
     </Card>
   )

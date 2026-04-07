@@ -130,19 +130,20 @@ export function CodeRepositoryDeploymentsSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {deployments.length === 0 ? (
-          <EmptyState
-            title="No deployment history"
-            description="Deploy a successful build to an environment to see it here."
-            icon={History}
-          />
-        ) : (
-          <DataTable
-            columns={columns}
-            data={deployments}
-            isLoading={isLoading}
-          />
-        )}
+        <DataTable
+          columns={columns}
+          data={deployments}
+          sourceDataCount={deployments.length}
+          isLoading={isLoading}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No deployment history"
+              description="Deploy a successful build to an environment to see it here."
+              icon={History}
+            />
+          )}
+          useStandaloneEmptyState
+        />
       </CardContent>
     </Card>
   )

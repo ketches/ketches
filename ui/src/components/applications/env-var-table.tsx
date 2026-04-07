@@ -221,70 +221,70 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!isLoading && envVars.length === 0 ? (
-          <EmptyState
-            title="No environment variables configured"
-            description="Add environment variables for your application."
-            icon={Key}
-            actionText="Add Variable"
-            onAction={handleAdd}
-            actionIcon={Plus}
-          />
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <Input
-                className="flex flex-1 max-w-sm min-w-75"
-                placeholder="Filter by key, value..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-
-              <div className="flex items-center gap-2">
-                {Object.keys(rowSelection).length > 0 && !isViewer && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      const selectedIndices = Object.keys(rowSelection).filter(
-                        (key) => rowSelection[key as keyof typeof rowSelection]
-                      )
-                      const selectedIds = selectedIndices
-                        .map((idx) => filteredEnvVars[parseInt(idx)]?.id)
-                        .filter(Boolean) as string[]
-
-                      setSelectedEnvVarIds(selectedIds)
-                      setBulkDeleteDialogOpen(true)
-                    }}
-                    disabled={bulkDeleteMutation.isPending}
-                  >
-                    <Trash2 />
-                    Delete (
-                    {
-                      Object.keys(rowSelection).filter(
-                        (key) => rowSelection[key as keyof typeof rowSelection]
-                      ).length
-                    }
-                    )
-                  </Button>
-                )}
-                {!isViewer && (
-                  <Button onClick={handleAdd}>
-                    <Plus />
-                    Add Variable
-                  </Button>
-                )}
-              </div>
-            </div>
-            <DataTable
-              columns={envVarColumns}
-              data={filteredEnvVars}
-              isLoading={isLoading}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              hidePagination
+        <DataTable
+          columns={envVarColumns}
+          data={filteredEnvVars}
+          sourceDataCount={envVars.length}
+          isLoading={isLoading}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No environment variables configured"
+              description="Add environment variables for your application."
+              icon={Key}
+              actionText="Add Variable"
+              onAction={handleAdd}
+              actionIcon={Plus}
             />
-          </>
-        )}
+          )}
+          useStandaloneEmptyState
+          leftToolbar={() => (
+            <Input
+              className="flex flex-1 max-w-sm min-w-75"
+              placeholder="Filter by key, value..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )}
+          batchActions={() => (
+            Object.keys(rowSelection).length > 0 && !isViewer ? (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const selectedIndices = Object.keys(rowSelection).filter(
+                    (key) => rowSelection[key as keyof typeof rowSelection]
+                  )
+                  const selectedIds = selectedIndices
+                    .map((idx) => filteredEnvVars[parseInt(idx)]?.id)
+                    .filter(Boolean) as string[]
+
+                  setSelectedEnvVarIds(selectedIds)
+                  setBulkDeleteDialogOpen(true)
+                }}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                <Trash2 />
+                Delete (
+                {
+                  Object.keys(rowSelection).filter(
+                    (key) => rowSelection[key as keyof typeof rowSelection]
+                  ).length
+                }
+                )
+              </Button>
+            ) : null
+          )}
+          rightToolbar={() => (
+            !isViewer ? (
+              <Button onClick={handleAdd}>
+                <Plus />
+                Add Variable
+              </Button>
+            ) : null
+          )}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          hidePagination
+        />
       </CardContent>
 
       <EnvVarEditor

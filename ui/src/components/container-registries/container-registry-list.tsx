@@ -130,30 +130,31 @@ export function ContainerRegistryList({ scope, scopeId }: ContainerRegistryListP
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!containerRegistries || containerRegistries.length === 0 ? (
-            <EmptyState
-              title="No container registries configured"
-              description="Add a registry to enable container image builds"
-              icon={Warehouse}
-              actionText="Add Registry"
-              onAction={() => { setEditRegistry(null); setShowDialog(true) }}
-              actionIcon={Plus}
-            />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={containerRegistries}
-              isLoading={isLoading}
-              searchKey="name"
-              searchPlaceholder="Filter registries..."
-              rightToolbar={() => (
-                <Button onClick={() => { setEditRegistry(null); setShowDialog(true) }}>
-                  <Plus />
-                  Add Registry
-                </Button>
-              )}
-            />
-          )}
+          <DataTable
+            columns={columns}
+            data={containerRegistries}
+            sourceDataCount={containerRegistries.length}
+            isLoading={isLoading}
+            searchKey="name"
+            searchPlaceholder="Filter registries..."
+            sourceEmptyContent={(
+              <EmptyState
+                title="No container registries configured"
+                description="Add a registry to enable container image builds"
+                icon={Warehouse}
+                actionText="Add Registry"
+                onAction={() => { setEditRegistry(null); setShowDialog(true) }}
+                actionIcon={Plus}
+              />
+            )}
+            useStandaloneEmptyState
+            rightToolbar={() => (
+              <Button onClick={() => { setEditRegistry(null); setShowDialog(true) }}>
+                <Plus />
+                Add Registry
+              </Button>
+            )}
+          />
         </CardContent>
       </Card>
 

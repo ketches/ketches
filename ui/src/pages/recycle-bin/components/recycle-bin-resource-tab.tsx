@@ -1,4 +1,4 @@
-import { type LucideIcon, Loader2 } from "lucide-react"
+import { type LucideIcon } from "lucide-react"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import type { Dispatch, ReactNode, SetStateAction } from "react"
 
@@ -48,29 +48,20 @@ export function RecycleBinResourceTab<T>({
   pagination,
   onPaginationChange,
 }: RecycleBinResourceTabProps<T>) {
-  if (isLoading && data.length === 0) {
-    return (
-      <div className="flex min-h-100 flex-1 flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (!isLoading && data.length === 0) {
-    return (
-      <EmptyState
-        title={title}
-        description={description}
-        icon={icon}
-      />
-    )
-  }
-
   return (
     <DataTable
       columns={columns}
       data={data}
+      sourceDataCount={totalCount}
       isLoading={isLoading || isFetching}
+      sourceEmptyContent={(
+        <EmptyState
+          title={title}
+          description={description}
+          icon={icon}
+        />
+      )}
+      useStandaloneEmptyState
       leftToolbar={leftToolbar}
       batchActions={batchActions}
       rowSelection={rowSelection}

@@ -321,37 +321,31 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Loading extensions...
-              </p>
-            </div>
-          ) : safeClusterExtensions.length === 0 ? (
-            <EmptyState
-              title="No Extensions Installed"
-              description="Browse the extension to discover and install extensions for this cluster."
-              icon={Blocks}
-              actionText="Install Extension"
-              onAction={() => setBrowseOpen(true)}
-              actionIcon={Download}
-            />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={safeClusterExtensions}
-              isLoading={isLoading}
-              searchKey="release_name"
-              searchPlaceholder="Filter extensions..."
-              leftToolbar={() => (
-                <Button onClick={() => setBrowseOpen(true)}>
-                  <Download />
-                  Install Extension
-                </Button>
-              )}
-            />
-          )}
+          <DataTable
+            columns={columns}
+            data={safeClusterExtensions}
+            sourceDataCount={safeClusterExtensions.length}
+            isLoading={isLoading}
+            searchKey="release_name"
+            searchPlaceholder="Filter extensions..."
+            sourceEmptyContent={(
+              <EmptyState
+                title="No Extensions Installed"
+                description="Browse the extension to discover and install extensions for this cluster."
+                icon={Blocks}
+                actionText="Install Extension"
+                onAction={() => setBrowseOpen(true)}
+                actionIcon={Download}
+              />
+            )}
+            useStandaloneEmptyState
+            leftToolbar={() => (
+              <Button onClick={() => setBrowseOpen(true)}>
+                <Download />
+                Install Extension
+              </Button>
+            )}
+          />
         </CardContent>
       </Card>
 
@@ -366,26 +360,22 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            </div>
-          ) : availableExtensions.length === 0 ? (
-            <EmptyState
-              title="All Extensions Installed"
-              description="All available extensions are already installed on this cluster."
-              icon={Blocks}
-            />
-          ) : (
-            <DataTable
-              columns={extensionColumns}
-              data={availableExtensions}
-              isLoading={loading}
-              searchKey="name"
-              searchPlaceholder="Filter available extensions..."
-            />
-          )}
+          <DataTable
+            columns={extensionColumns}
+            data={availableExtensions}
+            sourceDataCount={availableExtensions.length}
+            isLoading={loading}
+            searchKey="name"
+            searchPlaceholder="Filter available extensions..."
+            sourceEmptyContent={(
+              <EmptyState
+                title="All Extensions Installed"
+                description="All available extensions are already installed on this cluster."
+                icon={Blocks}
+              />
+            )}
+            useStandaloneEmptyState
+          />
         </CardContent>
       </Card>
 

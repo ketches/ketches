@@ -137,23 +137,24 @@ export function DeploymentHistoryList({ appId }: DeploymentHistoryListProps) {
           <CardDescription>Track image version changes and rollback to a previous image when needed</CardDescription>
         </CardHeader>
         <CardContent>
-          {(histories || []).length === 0 ? (
-            <EmptyState
-              title="No deployment history yet"
-              description="Deployment history will appear here when you update the application image"
-              icon={History}
-            />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={histories}
-              isLoading={isLoading}
-              manualPagination
-              pagination={pagination}
-              onPaginationChange={setPagination}
-              totalCount={totalCount}
-            />
-          )}
+          <DataTable
+            columns={columns}
+            data={histories}
+            sourceDataCount={totalCount}
+            isLoading={isLoading}
+            sourceEmptyContent={(
+              <EmptyState
+                title="No deployment history yet"
+                description="Deployment history will appear here when you update the application image"
+                icon={History}
+              />
+            )}
+            useStandaloneEmptyState
+            manualPagination
+            pagination={pagination}
+            onPaginationChange={setPagination}
+            totalCount={totalCount}
+          />
         </CardContent>
       </Card>
 

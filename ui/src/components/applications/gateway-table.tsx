@@ -360,60 +360,60 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
         <CardDescription>Expose your application to the network</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!isLoading && gateways.length === 0 ? (
-          <EmptyState
-            title="No gateways configured"
-            description="Add a gateway to expose your application to the network."
-            icon={Network}
-            actionText={!isViewer ? "Add Gateway" : undefined}
-            onAction={!isViewer ? handleAdd : undefined}
-            actionIcon={Plus}
-          />
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <Input
-                className="flex flex-1 max-w-sm min-w-75"
-                placeholder="Filter by port, protocol, domain, path..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-
-              <div className="flex items-center gap-2">
-                {Object.keys(rowSelection).length > 0 && !isViewer && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
-                      const selectedIds = selectedIndices.map(idx => filteredGateways[parseInt(idx)]?.id).filter(Boolean) as string[]
-
-                      setSelectedGatewayIds(selectedIds)
-                      setBulkDeleteDialogOpen(true)
-                    }}
-                    disabled={bulkDeleteMutation.isPending}
-                  >
-                    <Trash2 />
-                    Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
-                  </Button>
-                )}
-                {!isViewer && (
-                  <Button onClick={handleAdd}>
-                    <Plus />
-                    Add Gateway
-                  </Button>
-                )}
-              </div>
-            </div>
-            <DataTable
-              columns={gatewayColumns}
-              data={filteredGateways}
-              isLoading={isLoading}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              hidePagination
+        <DataTable
+          columns={gatewayColumns}
+          data={filteredGateways}
+          sourceDataCount={gateways.length}
+          isLoading={isLoading}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No gateways configured"
+              description="Add a gateway to expose your application to the network."
+              icon={Network}
+              actionText={!isViewer ? "Add Gateway" : undefined}
+              onAction={!isViewer ? handleAdd : undefined}
+              actionIcon={Plus}
             />
-          </>
-        )}
+          )}
+          useStandaloneEmptyState
+          leftToolbar={() => (
+            <Input
+              className="flex flex-1 max-w-sm min-w-75"
+              placeholder="Filter by port, protocol, domain, path..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )}
+          batchActions={() => (
+            Object.keys(rowSelection).length > 0 && !isViewer ? (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
+                  const selectedIds = selectedIndices.map(idx => filteredGateways[parseInt(idx)]?.id).filter(Boolean) as string[]
+
+                  setSelectedGatewayIds(selectedIds)
+                  setBulkDeleteDialogOpen(true)
+                }}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                <Trash2 />
+                Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
+              </Button>
+            ) : null
+          )}
+          rightToolbar={() => (
+            !isViewer ? (
+              <Button onClick={handleAdd}>
+                <Plus />
+                Add Gateway
+              </Button>
+            ) : null
+          )}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          hidePagination
+        />
       </CardContent>
 
       <GatewayEditor

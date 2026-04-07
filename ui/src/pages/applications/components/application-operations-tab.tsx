@@ -62,8 +62,6 @@ export function ApplicationOperationsTab({
   onPaginationChange,
   totalCount,
 }: ApplicationOperationsTabProps) {
-  const isEmpty = items.length === 0 && !isLoading && !isFetching
-
   return (
     <Card>
       <CardHeader>
@@ -76,23 +74,24 @@ export function ApplicationOperationsTab({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {isEmpty ? (
-          <EmptyState
-            title="No operation logs"
-            description="Operations for this application will appear here."
-            icon={Footprints}
-          />
-        ) : (
-          <DataTable
-            columns={operationLogsColumns}
-            data={items}
-            isLoading={isLoading || isFetching}
-            pagination={pagination}
-            onPaginationChange={onPaginationChange}
-            totalCount={totalCount}
-            manualPagination
-          />
-        )}
+        <DataTable
+          columns={operationLogsColumns}
+          data={items}
+          sourceDataCount={totalCount}
+          isLoading={isLoading || isFetching}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No operation logs"
+              description="Operations for this application will appear here."
+              icon={Footprints}
+            />
+          )}
+          useStandaloneEmptyState
+          pagination={pagination}
+          onPaginationChange={onPaginationChange}
+          totalCount={totalCount}
+          manualPagination
+        />
       </CardContent>
     </Card>
   )

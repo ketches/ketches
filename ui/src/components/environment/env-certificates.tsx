@@ -243,30 +243,31 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isLoading && (!certificates || certificates.length === 0) ? (
-            <EmptyState
-              title="No certificates configured"
-              description="Add a TLS certificate to enable HTTPS gateways"
-              icon={ShieldCheck}
-              actionText={isViewer ? "" : "Add Certificate"}
-              onAction={isViewer ? undefined : handleOpenCreate}
-              actionIcon={isViewer ? undefined : Plus}
-            />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={certificates}
-              isLoading={isLoading}
-              searchKey="name"
-              searchPlaceholder="Filter certificates..."
-              rightToolbar={!isViewer ? () => (
-                <Button onClick={handleOpenCreate}>
-                  <Plus />
-                  Add Certificate
-                </Button>
-              ) : undefined}
-            />
-          )}
+          <DataTable
+            columns={columns}
+            data={certificates}
+            sourceDataCount={certificates?.length ?? 0}
+            isLoading={isLoading}
+            searchKey="name"
+            searchPlaceholder="Filter certificates..."
+            sourceEmptyContent={(
+              <EmptyState
+                title="No certificates configured"
+                description="Add a TLS certificate to enable HTTPS gateways"
+                icon={ShieldCheck}
+                actionText={isViewer ? undefined : "Add Certificate"}
+                onAction={isViewer ? undefined : handleOpenCreate}
+                actionIcon={isViewer ? undefined : Plus}
+              />
+            )}
+            useStandaloneEmptyState
+            rightToolbar={!isViewer ? () => (
+              <Button onClick={handleOpenCreate}>
+                <Plus />
+                Add Certificate
+              </Button>
+            ) : undefined}
+          />
         </CardContent>
       </Card>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

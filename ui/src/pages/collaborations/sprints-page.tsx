@@ -60,6 +60,7 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
 
   const sprints = response?.items || []
   const totalCount = response?.pagination?.total || 0
+  const hasActiveFilters = Boolean(search.trim())
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
@@ -189,7 +190,16 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
       {<DataTable
         columns={columns}
         data={sprints}
+        sourceDataCount={totalCount}
         isLoading={isLoading}
+        sourceEmptyContent={
+          <EmptyState
+            title="No sprints yet"
+            description="Create your first sprint to plan iteration work."
+            icon={CalendarRange}
+          />
+        }
+        useStandaloneEmptyState={!hasActiveFilters}
         manualPagination
         totalCount={totalCount}
         pagination={pagination}
@@ -198,7 +208,7 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
         emptyContent={
           <EmptyState
             title=""
-            description="No results."
+            description="No matching results."
             icon={Goal}
             border={false}
           />

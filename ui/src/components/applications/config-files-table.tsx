@@ -228,60 +228,60 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!isLoading && configFiles.length === 0 ? (
-          <EmptyState
-            title="No config files configured"
-            description="Add configuration files to mount into your application."
-            icon={FileCog}
-            actionText="Add Config File"
-            onAction={handleAdd}
-            actionIcon={Plus}
-          />
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <Input
-                className="flex flex-1 max-w-sm min-w-75"
-                placeholder="Filter by slug, mount path..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-
-              <div className="flex items-center gap-2">
-                {Object.keys(rowSelection).length > 0 && !isViewer && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
-                      const selectedIds = selectedIndices.map(idx => filteredConfigFiles[parseInt(idx)]?.id).filter(Boolean) as string[]
-
-                      setSelectedConfigFileIds(selectedIds)
-                      setBulkDeleteDialogOpen(true)
-                    }}
-                    disabled={bulkDeleteMutation.isPending}
-                  >
-                    <Trash2 />
-                    Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
-                  </Button>
-                )}
-                {!isViewer && (
-                  <Button onClick={handleAdd}>
-                    <Plus />
-                    Add Config File
-                  </Button>
-                )}
-              </div>
-            </div>
-            <DataTable
-              columns={configFileColumns}
-              data={filteredConfigFiles}
-              isLoading={isLoading}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              hidePagination
+        <DataTable
+          columns={configFileColumns}
+          data={filteredConfigFiles}
+          sourceDataCount={configFiles.length}
+          isLoading={isLoading}
+          sourceEmptyContent={(
+            <EmptyState
+              title="No config files configured"
+              description="Add configuration files to mount into your application."
+              icon={FileCog}
+              actionText="Add Config File"
+              onAction={handleAdd}
+              actionIcon={Plus}
             />
-          </>
-        )}
+          )}
+          useStandaloneEmptyState
+          leftToolbar={() => (
+            <Input
+              className="flex flex-1 max-w-sm min-w-75"
+              placeholder="Filter by slug, mount path..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )}
+          batchActions={() => (
+            Object.keys(rowSelection).length > 0 && !isViewer ? (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const selectedIndices = Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection])
+                  const selectedIds = selectedIndices.map(idx => filteredConfigFiles[parseInt(idx)]?.id).filter(Boolean) as string[]
+
+                  setSelectedConfigFileIds(selectedIds)
+                  setBulkDeleteDialogOpen(true)
+                }}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                <Trash2 />
+                Delete ({Object.keys(rowSelection).filter(key => rowSelection[key as keyof typeof rowSelection]).length})
+              </Button>
+            ) : null
+          )}
+          rightToolbar={() => (
+            !isViewer ? (
+              <Button onClick={handleAdd}>
+                <Plus />
+                Add Config File
+              </Button>
+            ) : null
+          )}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          hidePagination
+        />
       </CardContent>
 
       <ConfigFileEditor

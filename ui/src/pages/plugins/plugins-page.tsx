@@ -33,7 +33,6 @@ import {
   Image,
   LayoutGrid,
   List as ListIcon,
-  Loader2,
   Pencil,
   Plus,
   Puzzle,
@@ -266,151 +265,6 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
     </div>
   )
 
-  const isEmptyPlugins = !isLoading && safePlugins.length === 0 && !searchQuery.trim()
-
-  const renderPluginsTable = (loading: boolean) => (
-    <DataTable
-      columns={columns}
-      data={safePlugins}
-      isLoading={loading}
-      viewMode={viewMode}
-      onRefresh={refetch}
-      manualPagination
-      totalCount={paginationInfo?.total || 0}
-      pagination={pagination}
-      onPaginationChange={setPagination}
-      leftToolbar={() => leftToolbar}
-      rightToolbar={() => rightToolbar}
-      renderCard={(plugin) => (
-        <Card
-          key={plugin.id}
-          className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10"
-        >
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3 min-w-0">
-                <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
-                  <AvatarFallback className="rounded-lg text-lg font-bold">
-                    {plugin.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <CardTitle className="text-base font-semibold truncate">{plugin.name}</CardTitle>
-                    <ColorBadge color={plugin.plugin_type === "init" ? "blue" : "purple"} className="text-[10px] px-1.5 py-0 shrink-0">
-                      {plugin.plugin_type.toUpperCase()}
-                    </ColorBadge>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                    <span>{plugin.slug}</span>
-                    <span>•</span>
-                    {plugin.description ? (
-                      <span className="truncate">{plugin.description}</span>
-                    ) : (
-                      <span className="italic">No description</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {!isViewer && (
-                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <Tooltip>
-                    <TooltipTrigger
-                      delay={200}
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingPlugin(plugin)
-                            setEditDialogOpen(true)
-                          }}
-                        />
-                      }
-                    >
-                      <Pencil />
-                    </TooltipTrigger>
-                    <TooltipContent>Edit plugin</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger
-                      delay={200}
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeletingPlugin(plugin)
-                            setDeleteDialogOpen(true)
-                          }}
-                        />
-                      }
-                    >
-                      <Trash2 />
-                    </TooltipTrigger>
-                    <TooltipContent>Delete plugin</TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Image className="h-3.5 w-3.5" />
-                <span className="font-mono">
-                  {plugin.image}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigator.clipboard.writeText(plugin.image)
-                    toast.success("Image address copied to clipboard")
-                  }}
-                >
-                  <Copy />
-                </Button>
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                {plugin.install_count > 0 ? (
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto font-normal"
-                    onClick={() => setSelectedPlugin(plugin)}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    {plugin.install_count} installs
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    disabled
-                    className="p-0 h-auto font-normal"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    {plugin.install_count} installs
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-3 w-3" />
-                <span>Created at {formatDate(plugin.created_at)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    />
-  )
-
   return (
     <div className="flex flex-col flex-1 gap-6">
       {!projectIdProp && <PageHeader items={breadcrumbs} />}
@@ -426,22 +280,158 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
         </div>
       )}
 
-      {isLoading && safePlugins.length === 0 ? (
-        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : isEmptyPlugins ? (
-        <EmptyState
-          title="No plugins found"
-          description="Get started by creating your first plugin."
-          icon={Puzzle}
-          actionText={!isViewer ? "Create Plugin" : undefined}
-          onAction={!isViewer ? () => setCreateDialogOpen(true) : undefined}
-          actionIcon={!isViewer ? Plus : undefined}
-        />
-      ) : (
-        renderPluginsTable(false)
-      )}
+      <DataTable
+        columns={columns}
+        data={safePlugins}
+        sourceDataCount={paginationInfo?.total || 0}
+        isLoading={isLoading}
+        sourceEmptyContent={(
+          <EmptyState
+            title="No plugins yet"
+            description="Create your first plugin to start extending the platform."
+            icon={Puzzle}
+            actionText={!isViewer ? "Create Plugin" : undefined}
+            onAction={!isViewer ? () => setCreateDialogOpen(true) : undefined}
+            actionIcon={!isViewer ? Plus : undefined}
+          />
+        )}
+        useStandaloneEmptyState={!searchQuery.trim()}
+        viewMode={viewMode}
+        onRefresh={refetch}
+        manualPagination
+        totalCount={paginationInfo?.total || 0}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        leftToolbar={() => leftToolbar}
+        rightToolbar={() => rightToolbar}
+        renderCard={(plugin) => (
+          <Card
+            key={plugin.id}
+            className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10"
+          >
+            <CardHeader>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
+                    <AvatarFallback className="rounded-lg text-lg font-bold">
+                      {plugin.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-base font-semibold truncate">{plugin.name}</CardTitle>
+                      <ColorBadge color={plugin.plugin_type === "init" ? "blue" : "purple"} className="text-[10px] px-1.5 py-0 shrink-0">
+                        {plugin.plugin_type.toUpperCase()}
+                      </ColorBadge>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                      <span>{plugin.slug}</span>
+                      <span>•</span>
+                      {plugin.description ? (
+                        <span className="truncate">{plugin.description}</span>
+                      ) : (
+                        <span className="italic">No description</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {!isViewer && (
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingPlugin(plugin)
+                              setEditDialogOpen(true)
+                            }}
+                          />
+                        }
+                      >
+                        <Pencil />
+                      </TooltipTrigger>
+                      <TooltipContent>Edit plugin</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDeletingPlugin(plugin)
+                              setDeleteDialogOpen(true)
+                            }}
+                          />
+                        }
+                      >
+                        <Trash2 />
+                      </TooltipTrigger>
+                      <TooltipContent>Delete plugin</TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Image className="h-3.5 w-3.5" />
+                  <span className="font-mono">
+                    {plugin.image}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigator.clipboard.writeText(plugin.image)
+                      toast.success("Image address copied to clipboard")
+                    }}
+                  >
+                    <Copy />
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  {plugin.install_count > 0 ? (
+                    <Button
+                      variant="link"
+                      className="p-0 h-auto font-normal"
+                      onClick={() => setSelectedPlugin(plugin)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      {plugin.install_count} installs
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      disabled
+                      className="p-0 h-auto font-normal"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      {plugin.install_count} installs
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  <span>Created at {formatDate(plugin.created_at)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      />
 
       <CreatePluginDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} projectId={activeProjectId!} />
 

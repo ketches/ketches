@@ -8,7 +8,6 @@ import {
   LayoutGrid,
   Link,
   List as ListIcon,
-  Loader2,
   Pencil,
   Plus,
   Star,
@@ -289,139 +288,6 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
     )
   }
 
-  const isEmptyRegistries = !isLoading && safeRegistries.length === 0 && !searchQuery.trim()
-
-  const renderRegistriesTable = (loading: boolean) => (
-    <DataTable
-      columns={columns}
-      data={safeRegistries}
-      isLoading={loading}
-      viewMode={viewMode}
-      onRefresh={refetch}
-      manualPagination
-      totalCount={paginationInfo?.total || 0}
-      pagination={pagination}
-      onPaginationChange={setPagination}
-      leftToolbar={() => leftToolbar}
-      rightToolbar={() => rightToolbar}
-      renderCard={(reg) => (
-        <Card
-          key={reg.id}
-          className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10"
-        >
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3 min-w-0">
-                <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
-                  <AvatarFallback className="rounded-lg text-lg font-bold">
-                    {reg.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <CardTitle className="text-base font-semibold truncate">
-                      {reg.name}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      {reg.is_default && (
-                        <Star className="h-3.5 w-3.5 text-primary fill-primary shrink-0" />
-                      )}
-                      <ColorBadge color={reg.enabled ? "green" : "gray"} >{reg.enabled ? "Enabled" : "Disabled"}</ColorBadge>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
-                    {reg.description ? (
-                      <span className="truncate">{reg.description}</span>
-                    ) : (
-                      <span className="italic">No description</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                {!isViewer && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      delay={200}
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => {
-                            setEditingRegistry(reg)
-                            setEditDialogOpen(true)
-                          }}
-                        />
-                      }
-                    >
-                      <div className="flex items-center">
-                        <Pencil />
-                        <span className="sr-only">Edit</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>Edit registry</TooltipContent>
-                  </Tooltip>
-                )}
-                {!isViewer && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      delay={200}
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            setDeletingRegistry(reg)
-                            setDeleteDialogOpen(true)
-                          }}
-                        />
-                      }
-                    >
-                      <div className="flex items-center">
-                        <Trash2 />
-                        <span className="sr-only">Delete</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>Delete registry</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Link className="h-3.5 w-3.5" />
-                <span className="font-mono">
-                  {reg.endpoint}
-                </span>
-                <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover/card:opacity-100 transition-opacity" onClick={() => {
-                  navigator.clipboard.writeText(reg.endpoint)
-                  toast.success("Endpoint copied to clipboard")
-                }}
-                >
-                  <Copy />
-                </Button>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Handbag className="h-3.5 w-3.5" />
-                {registryProviderLabels[reg.provider]}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-3 w-3" />
-                <span>Created at {formatDate(reg.created_at)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    />
-  )
-
   return (
     <div className="flex flex-col flex-1 gap-6">
       {!projectIdProp && <PageHeader items={breadcrumbs} />}
@@ -437,20 +303,146 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
         </div>
       )}
 
-      {isLoading && safeRegistries.length === 0 ? (
-        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : isEmptyRegistries ? (
-        <EmptyState
-          title="No registries yet"
-          description="Add a container registry to provide images for builds and deployments."
-          icon={Warehouse}
-          actionText={!isViewer ? "Add Registry" : undefined}
-          onAction={!isViewer ? () => setCreateOpen(true) : undefined}
-          actionIcon={!isViewer ? Plus : undefined}
-        />
-      ) : renderRegistriesTable(false)}
+      <DataTable
+        columns={columns}
+        data={safeRegistries}
+        sourceDataCount={paginationInfo?.total || 0}
+        isLoading={isLoading}
+        sourceEmptyContent={(
+          <EmptyState
+            title="No registries yet"
+            description="Add your first registry to support builds and deployments."
+            icon={Warehouse}
+            actionText={!isViewer ? "Add Registry" : undefined}
+            onAction={!isViewer ? () => setCreateOpen(true) : undefined}
+            actionIcon={!isViewer ? Plus : undefined}
+          />
+        )}
+        useStandaloneEmptyState={!searchQuery.trim()}
+        viewMode={viewMode}
+        onRefresh={refetch}
+        manualPagination
+        totalCount={paginationInfo?.total || 0}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        leftToolbar={() => leftToolbar}
+        rightToolbar={() => rightToolbar}
+        renderCard={(reg) => (
+          <Card
+            key={reg.id}
+            className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10"
+          >
+            <CardHeader>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none shrink-0">
+                    <AvatarFallback className="rounded-lg text-lg font-bold">
+                      {reg.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-base font-semibold truncate">
+                        {reg.name}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        {reg.is_default && (
+                          <Star className="h-3.5 w-3.5 text-primary fill-primary shrink-0" />
+                        )}
+                        <ColorBadge color={reg.enabled ? "green" : "gray"} >{reg.enabled ? "Enabled" : "Disabled"}</ColorBadge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate font-mono">
+                      {reg.description ? (
+                        <span className="truncate">{reg.description}</span>
+                      ) : (
+                        <span className="italic">No description</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {!isViewer && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => {
+                              setEditingRegistry(reg)
+                              setEditDialogOpen(true)
+                            }}
+                          />
+                        }
+                      >
+                        <div className="flex items-center">
+                          <Pencil />
+                          <span className="sr-only">Edit</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit registry</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {!isViewer && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        delay={200}
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              setDeletingRegistry(reg)
+                              setDeleteDialogOpen(true)
+                            }}
+                          />
+                        }
+                      >
+                        <div className="flex items-center">
+                          <Trash2 />
+                          <span className="sr-only">Delete</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete registry</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Link className="h-3.5 w-3.5" />
+                  <span className="font-mono">
+                    {reg.endpoint}
+                  </span>
+                  <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover/card:opacity-100 transition-opacity" onClick={() => {
+                    navigator.clipboard.writeText(reg.endpoint)
+                    toast.success("Endpoint copied to clipboard")
+                  }}
+                  >
+                    <Copy />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Handbag className="h-3.5 w-3.5" />
+                  {registryProviderLabels[reg.provider]}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  <span>Created at {formatDate(reg.created_at)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      />
 
       <ContainerRegistryDialog
         open={createOpen}

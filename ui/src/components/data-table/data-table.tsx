@@ -20,6 +20,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -42,6 +43,7 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[] | null | undefined
+  sourceDataCount?: number
   searchKey?: string
   searchPlaceholder?: string
   rightToolbar?: (table: TanstackTable<TData>) => React.ReactNode
@@ -55,8 +57,12 @@ interface DataTableProps<TData, TValue> {
   viewMode?: "list" | "card"
   borderless?: boolean
   isLoading?: boolean
-  // Custom empty state rendered in place of "No results." when data is empty
+  // Custom empty state rendered in place of the default filtered-empty state
   emptyContent?: React.ReactNode
+  // Standalone empty state rendered instead of the table when the source data is empty
+  sourceEmptyContent?: React.ReactNode
+  // Render a standalone empty state when source data is empty after loading
+  useStandaloneEmptyState?: boolean
   // Pagination
   pagination?: PaginationState
   onPaginationChange?: OnChangeFn<PaginationState>
@@ -73,6 +79,7 @@ import { type PaginationState } from "@tanstack/react-table"
 export function DataTable<TData, TValue>({
   columns,
   data,
+  sourceDataCount,
   searchKey,
   searchPlaceholder = "Filter...",
   rightToolbar: rightToolbar,
@@ -87,6 +94,8 @@ export function DataTable<TData, TValue>({
   borderless = true,
   isLoading = false,
   emptyContent,
+  sourceEmptyContent,
+  useStandaloneEmptyState = false,
   pagination: paginationProp,
   onPaginationChange: onPaginationChangeProp,
   totalCount,
@@ -115,6 +124,7 @@ export function DataTable<TData, TValue>({
   const pagination = paginationProp ?? internalPagination
   const onPaginationChange = onPaginationChangeProp ?? setInternalPagination
   const normalizedData = Array.isArray(data) ? data : []
+  const effectiveSourceDataCount = sourceDataCount ?? normalizedData.length
 
   const table = useReactTable({
     data: normalizedData,
@@ -145,6 +155,8 @@ export function DataTable<TData, TValue>({
   const effectiveTotal = manualPagination ? (totalCount ?? 0) : normalizedData.length
   // Show pagination only when data exceeds the minimum page size
   const shouldShowPagination = !hidePagination && effectiveTotal > minPageSize
+  const showInitialLoadingState = isLoading && effectiveSourceDataCount === 0
+  const showStandaloneEmptyState = useStandaloneEmptyState && !isLoading && effectiveSourceDataCount === 0
 
   // Handle go-to-page navigation
   const handleGoToPage = () => {
@@ -185,18 +197,8 @@ export function DataTable<TData, TValue>({
   const hasToolbar = searchKey || rightToolbar || batchActions || leftToolbar || viewMode === "card"
   const visibleColumnCount = Math.max(table.getVisibleLeafColumns().length, 1)
 
-  const listLoadingRow = (
-    <TableRow>
-      <TableCell colSpan={visibleColumnCount}>
-        <div className="h-24 flex flex-col items-center justify-center text-muted-foreground space-y-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="text-xs">Loading...</span>
-        </div>
-      </TableCell>
-    </TableRow>
-  )
-
   const showRefreshOverlay = isRefreshing && !isLoading
+  const showLoadingOverlay = isLoading && effectiveSourceDataCount > 0
 
   const handleRefresh = async () => {
     if (!onRefresh || isRefreshing) {
@@ -214,10 +216,34 @@ export function DataTable<TData, TValue>({
   const listEmptyRow = (
     <TableRow>
       <TableCell colSpan={visibleColumnCount}>
-        {emptyContent ?? <EmptyState title="" description="No results." icon={Info} border={false} />}
+        {emptyContent ?? <EmptyState title="" description="No matching results." icon={Info} border={false} />}
       </TableCell>
     </TableRow>
   )
+
+  const loadingSkeleton = (
+    <div>
+      <Skeleton
+        className={cn(
+          "w-full rounded-xl bg-muted/10",
+          viewMode === "list" ? "h-44" : "h-52",
+          borderless && "rounded-xl"
+        )}
+      />
+    </div>
+  )
+
+  if (showInitialLoadingState) {
+    return loadingSkeleton
+  }
+
+  if (showStandaloneEmptyState) {
+    return (
+      <div>
+        {sourceEmptyContent ?? emptyContent ?? <EmptyState title="" description="No matching results." icon={Info} />}
+      </div>
+    )
+  }
 
   return (
     <div className="group/datatable space-y-4">
@@ -276,38 +302,36 @@ export function DataTable<TData, TValue>({
                 ))}
               </TableHeader>
               <TableBody>
-                {isLoading
-                  ? listLoadingRow
-                  : table.getRowModel().rows?.length
-                    ? table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && "selected"}
-                        onClick={() => onRowClick?.(row.original)}
-                        className={cn(
-                          "group/card group/row",
-                          onRowClick ? "cursor-pointer" : "",
-                          getRowClassName?.(row.original)
-                        )}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                    : listEmptyRow}
+                {table.getRowModel().rows?.length
+                  ? table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      onClick={() => onRowClick?.(row.original)}
+                      className={cn(
+                        "group/card group/row",
+                        onRowClick ? "cursor-pointer" : "",
+                        getRowClassName?.(row.original)
+                      )}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                  : listEmptyRow}
               </TableBody>
             </Table>
-            {showRefreshOverlay && (
+            {(showRefreshOverlay || showLoadingOverlay) && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/55 backdrop-blur-[1px]">
                 <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Refreshing...</span>
+                  <span>{showRefreshOverlay ? "Refreshing..." : "Loading..."}</span>
                 </div>
               </div>
             )}
@@ -342,16 +366,16 @@ export function DataTable<TData, TValue>({
                 </div>
               ) : (
                 <div className="col-span-full flex items-center">
-                  <EmptyState title="" description="No results." icon={Info} />
+                  <EmptyState title="" description="No matching results." icon={Info} />
                 </div>
               )
             )}
           </div>
-          {showRefreshOverlay && (
+          {(showRefreshOverlay || showLoadingOverlay) && (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md bg-background/55 backdrop-blur-[1px]">
               <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Refreshing...</span>
+                <span>{showRefreshOverlay ? "Refreshing..." : "Loading..."}</span>
               </div>
             </div>
           )}
