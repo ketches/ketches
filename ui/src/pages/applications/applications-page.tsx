@@ -22,7 +22,7 @@ import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useQuery } from "@tanstack/react-query"
-import { Box, ChevronsUpDown, FolderTree, GalleryVerticalEnd, List, Loader2, Orbit, Plus, Star, Upload } from "lucide-react"
+import { Box, ChevronsUpDown, FolderPlus, FolderTree, GalleryVerticalEnd, List, Loader2, Orbit, Plus, Star, Upload } from "lucide-react"
 import * as React from "react"
 
 export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
@@ -171,20 +171,26 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
                   </ComboboxContent>
                 </Combobox>
               ) : (
-                <TabsList>
-                  <TabsTrigger value="all"><List />All</TabsTrigger>
-                  <TabsTrigger value="groups"><FolderTree />Groups</TabsTrigger>
-                  <TabsTrigger value="favorites"><Star />Favorites</TabsTrigger>
-                </TabsList>
-              )}
-              {!isViewer && (
                 <div className="flex items-center gap-2">
-                  {activeTab === 'groups' && !projectIdProp && (
-                    <Button variant="outline" onClick={() => setCreateGroupDialogOpen(true)}>
-                      <Plus />
+                  <TabsList>
+                    <TabsTrigger value="all"><List />All</TabsTrigger>
+                    <TabsTrigger value="favorites"><Star />Favorites</TabsTrigger>
+                    <TabsTrigger value="groups"><FolderTree />Groups</TabsTrigger>
+                  </TabsList>
+                  {!isViewer && activeTab === 'groups' && (
+                    <Button
+                      variant="outline"
+                      className="border-dashed"
+                      onClick={() => setCreateGroupDialogOpen(true)}
+                    >
+                      <FolderPlus />
                       Add Group
                     </Button>
                   )}
+                </div>
+              )}
+              {!isViewer && (
+                <div className="flex items-center gap-2">
                   <Button onClick={() => setCreateAppDialogOpen(true)}>
                     <Plus />
                     Create Application

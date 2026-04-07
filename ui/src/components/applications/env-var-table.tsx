@@ -46,7 +46,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = React.useState(false)
   const [selectedEnvVarIds, setSelectedEnvVarIds] = React.useState<string[]>([])
 
-  const { data: envVars = [], isLoading } = useQuery({
+  const { data: envVars = [], isLoading, refetch } = useQuery({
     queryKey: ["app-env-vars", app.id],
     queryFn: async () => {
       const response = await appsApi.listEnvVars(app.id)
@@ -283,6 +283,7 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
           )}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
+          onRefresh={() => refetch()}
           hidePagination
         />
       </CardContent>

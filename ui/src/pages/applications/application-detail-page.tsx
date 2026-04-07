@@ -182,7 +182,7 @@ export function ApplicationDetailPage() {
     }
   })
 
-  const { data: instances = [] } = useQuery({
+  const { data: instances = [], isLoading: instancesLoading, isFetching: instancesFetching, refetch: refetchInstances } = useQuery({
     queryKey: ['app-instances', appId],
     queryFn: () => appsApi.listInstances(appId!),
     enabled: !!appId && currentTab === 'overview',
@@ -377,6 +377,9 @@ export function ApplicationDetailPage() {
             projectIdToUse={projectIdToUse || undefined}
             isViewer={isViewer}
             isLoading={isLoading}
+            instancesLoading={instancesLoading}
+            instancesFetching={instancesFetching}
+            onRefreshInstances={() => refetchInstances()}
             viewMode={viewMode}
             onViewModeChange={(value) => {
               setViewMode(value)

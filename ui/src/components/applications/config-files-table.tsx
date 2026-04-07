@@ -49,7 +49,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = React.useState(false)
   const [selectedConfigFileIds, setSelectedConfigFileIds] = React.useState<string[]>([])
 
-  const { data: configFiles = [], isLoading } = useQuery({
+  const { data: configFiles = [], isLoading, refetch } = useQuery({
     queryKey: ["app-config-files", app.id],
     queryFn: async () => {
       const response = await appsApi.listConfigFiles(app.id)
@@ -280,6 +280,7 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
           )}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
+          onRefresh={() => refetch()}
           hidePagination
         />
       </CardContent>

@@ -67,7 +67,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = React.useState(false)
   const [selectedVolumeIds, setSelectedVolumeIds] = React.useState<string[]>([])
 
-  const { data: volumes = [], isLoading } = useQuery({
+  const { data: volumes = [], isLoading, refetch } = useQuery({
     queryKey: ["app-volumes", app.id],
     queryFn: async () => {
       const response = await appsApi.listVolumes(app.id)
@@ -347,6 +347,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
           )}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
+          onRefresh={() => refetch()}
           hidePagination
         />
       </CardContent>

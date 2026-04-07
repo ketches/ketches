@@ -39,7 +39,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = React.useState(false)
   const [selectedGatewayIds, setSelectedGatewayIds] = React.useState<string[]>([])
 
-  const { data: gateways = [], isLoading } = useQuery({
+  const { data: gateways = [], isLoading, refetch } = useQuery({
     queryKey: ['app-gateways', app.id],
     queryFn: async () => {
       const response = await appsApi.listGateways(app.id)
@@ -412,6 +412,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
           )}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
+          onRefresh={() => refetch()}
           hidePagination
         />
       </CardContent>

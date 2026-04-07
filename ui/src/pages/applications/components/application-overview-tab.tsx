@@ -12,6 +12,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/utils"
 import { type OnChangeFn, type PaginationState, type RowSelectionState, type ColumnDef } from "@tanstack/react-table"
 import {
@@ -30,6 +31,7 @@ import {
   Layers2,
   LayoutGrid,
   List,
+  RefreshCw,
   MemoryStick,
   RotateCw,
   Server,
@@ -38,6 +40,7 @@ import {
   Zap,
   FolderOpen,
 } from "lucide-react"
+import * as React from "react"
 import { toast } from "sonner"
 
 import { ApplicationMetrics } from "./application-metrics"
@@ -49,6 +52,9 @@ interface ApplicationOverviewTabProps {
   projectIdToUse?: string
   isViewer: boolean
   isLoading: boolean
+  instancesLoading: boolean
+  instancesFetching: boolean
+  onRefreshInstances: () => void
   viewMode: "table" | "card"
   onViewModeChange: (value: "table" | "card") => void
   rowSelection: RowSelectionState
@@ -170,6 +176,9 @@ export function ApplicationOverviewTab({
   projectIdToUse,
   isViewer,
   isLoading,
+  instancesLoading,
+  instancesFetching,
+  onRefreshInstances,
   viewMode,
   onViewModeChange,
   rowSelection,
@@ -194,6 +203,22 @@ export function ApplicationOverviewTab({
   onRequestBulkDelete,
   onEditImage,
 }: ApplicationOverviewTabProps) {
+  const [isRefreshingInstances, setIsRefreshingInstances] = React.useState(false)
+  const showInstancesRefreshOverlay = isRefreshingInstances && !instancesLoading
+
+  const handleRefreshInstances = async () => {
+    if (isRefreshingInstances) {
+      return
+    }
+
+    try {
+      setIsRefreshingInstances(true)
+      await Promise.resolve(onRefreshInstances())
+    } finally {
+      setIsRefreshingInstances(false)
+    }
+  }
+
   const instanceColumns: ColumnDef<AppInstance>[] = [
     {
       id: "select",
@@ -435,6 +460,15 @@ export function ApplicationOverviewTab({
                 Delete ({selectedInstanceCount})
               </Button>
             )}
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="Refresh instances"
+              disabled={instancesLoading || isRefreshingInstances}
+              onClick={handleRefreshInstances}
+            >
+              <RefreshCw className={cn((isRefreshingInstances || instancesFetching) && "animate-spin")} />
+            </Button>
             <Tabs
               value={viewMode}
               onValueChange={(value) => {
@@ -444,15 +478,15 @@ export function ApplicationOverviewTab({
                 onViewModeChange(value)
               }}
               className="w-auto h-7"
-            >
-              <TabsList>
-                <TabsTrigger value="table" className="px-2">
-                  <List />
-                </TabsTrigger>
+              >
+                <TabsList>
+                  <TabsTrigger value="table" className="px-2">
+                    <List />
+                  </TabsTrigger>
                 <TabsTrigger value="card">
                   <LayoutGrid />
                 </TabsTrigger>
-              </TabsList>
+                </TabsList>
             </Tabs>
             {!isViewer && <ApplicationScalePopover app={app} />}
           </CardAction>
@@ -464,104 +498,116 @@ export function ApplicationOverviewTab({
               description="The application might be scaled to zero or not yet deployed."
               icon={Container}
             />
-          ) : viewMode === "table" ? (
-            <DataTable
-              columns={instanceColumns}
-              data={safeInstances}
-              isLoading={isLoading}
-              rowSelection={rowSelection}
-              onRowSelectionChange={onRowSelectionChange}
-              pagination={instancePagination}
-              onPaginationChange={onInstancePaginationChange}
-              hidePagination
-            />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {safeInstances.map((instance) => {
-                const defaultContainer = getDefaultContainerName(app, instance)
+            <div className="relative">
+              {viewMode === "table" ? (
+                <DataTable
+                  columns={instanceColumns}
+                  data={safeInstances}
+                  isLoading={isLoading || instancesLoading}
+                  rowSelection={rowSelection}
+                  onRowSelectionChange={onRowSelectionChange}
+                  pagination={instancePagination}
+                  onPaginationChange={onInstancePaginationChange}
+                  hidePagination
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {safeInstances.map((instance) => {
+                    const defaultContainer = getDefaultContainerName(app, instance)
 
-                return (
-                  <Card key={instance.instance_name} className="group/card hover:shadow-md transition-shadow cursor-pointer">
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
-                            <AvatarFallback className="rounded-lg text-lg font-bold">
-                              {instance.instance_name.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <CardTitle className="font-mono text-xs font-semibold truncate" title={instance.instance_name}>
-                                {instance.instance_name}
-                              </CardTitle>
-                              <ColorBadge color={instance.status === "Running" ? "green" : "gray"} className="text-[10px] px-1.5 py-0 shrink-0">
-                                {instance.status.toUpperCase()}
-                              </ColorBadge>
-                            </div>
-                            <CardDescription className="font-mono text-[10px] truncate">
-                              {instance.ip || "No IP assigned"}
-                            </CardDescription>
-                          </div>
-                        </div>
-                        <InstanceActionButtons
-                          isViewer={isViewer}
-                          deleteInstancePending={deleteInstancePending}
-                          onMetrics={() => onMetricsInstanceChange(instance.instance_name)}
-                          onLogs={() => onOpenLogs(instance, defaultContainer)}
-                          onTerminal={() => onOpenTerminal(instance, defaultContainer)}
-                          onFiles={() => onOpenFiles(instance, defaultContainer)}
-                          onDelete={() => onRequestDeleteInstance(instance.instance_name)}
-                        />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4 pt-2">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <Server className="h-3.5 w-3.5" />
-                            <span className="truncate" title={instance.node_name}>{instance.node_name}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex items-center gap-3">
-                            {instance.init_container_count > 0 && (
-                              <div className="flex items-center gap-1.5" title="Init Containers">
-                                <Zap className="h-3.5 w-3.5" />
-                                <span>{instance.init_container_count}</span>
+                    return (
+                      <Card key={instance.instance_name} className="group/card hover:shadow-md transition-shadow cursor-pointer">
+                        <CardHeader>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <Avatar className="h-10 w-10 rounded-lg bg-primary/10 text-primary border-none">
+                                <AvatarFallback className="rounded-lg text-lg font-bold">
+                                  {instance.instance_name.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <CardTitle className="font-mono text-xs font-semibold truncate" title={instance.instance_name}>
+                                    {instance.instance_name}
+                                  </CardTitle>
+                                  <ColorBadge color={instance.status === "Running" ? "green" : "gray"} className="text-[10px] px-1.5 py-0 shrink-0">
+                                    {instance.status.toUpperCase()}
+                                  </ColorBadge>
+                                </div>
+                                <CardDescription className="font-mono text-[10px] truncate">
+                                  {instance.ip || "No IP assigned"}
+                                </CardDescription>
                               </div>
-                            )}
-                            <div className="flex items-center gap-1.5" title="Containers">
-                              <Layers2 className="h-3.5 w-3.5" />
-                              <span>{instance.container_count}</span>
                             </div>
-                            <div className={`flex items-center gap-1.5 ${instance.restart_count > 0 ? "text-destructive font-bold" : ""}`} title="Restarts">
-                              <RotateCw className="h-3 w-3" />
-                              <span>{instance.restart_count || 0}</span>
+                            <InstanceActionButtons
+                              isViewer={isViewer}
+                              deleteInstancePending={deleteInstancePending}
+                              onMetrics={() => onMetricsInstanceChange(instance.instance_name)}
+                              onLogs={() => onOpenLogs(instance, defaultContainer)}
+                              onTerminal={() => onOpenTerminal(instance, defaultContainer)}
+                              onFiles={() => onOpenFiles(instance, defaultContainer)}
+                              onDelete={() => onRequestDeleteInstance(instance.instance_name)}
+                            />
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4 pt-2">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <Server className="h-3.5 w-3.5" />
+                                <span className="truncate" title={instance.node_name}>{instance.node_name}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <div className="flex items-center gap-3">
+                                {instance.init_container_count > 0 && (
+                                  <div className="flex items-center gap-1.5" title="Init Containers">
+                                    <Zap className="h-3.5 w-3.5" />
+                                    <span>{instance.init_container_count}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1.5" title="Containers">
+                                  <Layers2 className="h-3.5 w-3.5" />
+                                  <span>{instance.container_count}</span>
+                                </div>
+                                <div className={`flex items-center gap-1.5 ${instance.restart_count > 0 ? "text-destructive font-bold" : ""}`} title="Restarts">
+                                  <RotateCw className="h-3 w-3" />
+                                  <span>{instance.restart_count || 0}</span>
+                                </div>
+                              </div>
+                              <Button
+                                variant="link"
+                                className="p-0 h-auto text-xs"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  onOpenInstanceEvents(instance.instance_name)
+                                }}
+                              >
+                                <ClockCheck className="h-3 w-3" />Events
+                              </Button>
                             </div>
                           </div>
-                          <Button
-                            variant="link"
-                            className="p-0 h-auto text-xs"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              onOpenInstanceEvents(instance.instance_name)
-                            }}
-                          >
-                            <ClockCheck className="h-3 w-3" />Events
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3 w-3" />
-                          <span>{instance.running_duration}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
+                          <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground/60 border-t pt-2">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3" />
+                              <span>{instance.running_duration}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
+              {showInstancesRefreshOverlay && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md bg-background/55 backdrop-blur-[1px]">
+                  <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Refreshing...</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
