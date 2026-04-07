@@ -66,7 +66,7 @@ describe("EditPluginDialog", () => {
   })
 
   it("shows a clear password icon for stored registry credentials", async () => {
-    const { container, root } = await renderDialog({
+    const { root } = await renderDialog({
       id: "plugin-1",
       name: "My Plugin",
       slug: "my-plugin",

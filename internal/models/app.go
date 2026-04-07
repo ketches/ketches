@@ -204,6 +204,11 @@ type AppEnvVarResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type AppEnvVarRequest struct {
+	Key   string `json:"key" binding:"required"`
+	Value string `json:"value"`
+}
+
 type AppConfigFileResponse struct {
 	ID        string    `json:"id"`
 	AppID     string    `json:"app_id"`
@@ -288,6 +293,10 @@ type AppTopologyResponse struct {
 	Edges []AppTopologyEdge `json:"edges"`
 }
 
+type AppTopologyResourceYAMLResponse struct {
+	YAML string `json:"yaml"`
+}
+
 type UpdateAppImageRequest struct {
 	ContainerImage        string `json:"container_image" binding:"required"`
 	ImagePullPolicy       string `json:"image_pull_policy"`
@@ -327,6 +336,24 @@ type UpdateAppSchedulingRequest struct {
 
 type UpdateAppCommandRequest struct {
 	ContainerCommand string `json:"container_command"`
+}
+
+type BatchDeleteAppsRequest struct {
+	IDs []string `json:"ids" binding:"required"`
+}
+
+type AppImportRequest struct {
+	Type             string `json:"type" binding:"required"`
+	Content          string `json:"content" binding:"required"`
+	ConflictStrategy string `json:"conflict_strategy"`
+}
+
+type AppExportResponse struct {
+	YAML     string `json:"yaml,omitempty"`
+	Metadata string `json:"metadata,omitempty"`
+	Chart    string `json:"chart,omitempty"`
+	Compose  string `json:"compose,omitempty"`
+	Content  string `json:"content,omitempty"`
 }
 
 // AppListRow is a flattened DTO for listing apps via JOIN queries.

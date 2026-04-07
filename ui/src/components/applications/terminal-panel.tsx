@@ -200,9 +200,9 @@ function TerminalInstance({
     let isDisposed = false
     let isIntentionalSocketClose = false
     let isTerminalOpened = false
-    let initialFitTimer: ReturnType<typeof window.setTimeout> | null = null
-    let connectTimer: ReturnType<typeof window.setTimeout> | null = null
-    let openRetryTimer: ReturnType<typeof window.setTimeout> | null = null
+    let initialFitTimer: number | null = null
+    let connectTimer: number | null = null
+    let openRetryTimer: number | null = null
     let openRaf: number | null = null
 
     const xterm = new XTerm({

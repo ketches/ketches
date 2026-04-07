@@ -5,7 +5,7 @@ import { CheckCircle, FolderGit2, GalleryVerticalEnd, Hammer, Play, Rocket } fro
 import * as React from "react"
 import { toast } from "sonner"
 
-import { codeRepositoriesApi, type BuildSetting } from "@/api/code-repositories"
+import { codeRepositoriesApi } from "@/api/code-repositories"
 import { operationLogsApi } from "@/api/operation-logs"
 import { projectsApi } from "@/api/projects"
 import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"

@@ -1,5 +1,5 @@
 import { type ColumnDef } from "@tanstack/react-table"
-import { Clock, Copy, ExternalLink, GitBranch, History, Lock, Globe, GlobeLock, Rocket } from "lucide-react"
+import { Clock, Copy, ExternalLink, GitBranch, History, Rocket } from "lucide-react"
 import { toast } from "sonner"
 import * as React from "react"
 

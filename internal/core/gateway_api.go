@@ -28,12 +28,6 @@ func ClusterHasGatewayCRD(clusterID string) (bool, error) {
 	return clusterHasCRD(clusterID, gatewayAPIGroup+"/"+gatewayAPIVersion)
 }
 
-// ClusterHasHTTPRouteCRD reports whether the cluster identified by clusterID has
-// the Gateway API HTTPRoute CRD installed.
-func ClusterHasHTTPRouteCRD(clusterID string) (bool, error) {
-	return clusterHasCRD(clusterID, gatewayAPIGroup+"/"+gatewayAPIVersion)
-}
-
 // ClusterHasGatewayAPICRDs checks whether both the Gateway and HTTPRoute CRDs
 // are installed on the cluster. Both resources belong to the same group/version,
 // so a single discovery call is used.

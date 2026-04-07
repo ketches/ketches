@@ -13,8 +13,8 @@ export function useApplicationDetailTabs() {
   const [searchParams, setSearchParams] = useSearchParams()
   const currentTab = searchParams.get("tab") || "overview"
   const [viewMode, setViewModeState] = React.useState<ApplicationInstancesViewMode>(() => {
-    const saved = localStorage.getItem(INSTANCES_VIEW_MODE_KEY)
-    return isInstancesViewMode(saved ?? "") ? saved : "table"
+    const saved = localStorage.getItem(INSTANCES_VIEW_MODE_KEY) ?? ""
+    return isInstancesViewMode(saved) ? saved : "table"
   })
 
   React.useEffect(() => {

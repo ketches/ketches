@@ -31,7 +31,7 @@ func BuildResourceQuota(namespace string, quota *models.UpdateResourceQuotaReque
 	}
 }
 
-func BuildDefaultResourceQuota(namespace string) *corev1.ResourceQuota {
+func buildDefaultResourceQuota(namespace string) *corev1.ResourceQuota {
 	return &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ResourceQuotaName,
@@ -55,7 +55,7 @@ func CreateDefaultResourceQuota(ctx context.Context, clusterID, namespace string
 		return err
 	}
 
-	rq := BuildDefaultResourceQuota(namespace)
+	rq := buildDefaultResourceQuota(namespace)
 	_, err = client.CoreV1().ResourceQuotas(namespace).Create(ctx, rq, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {

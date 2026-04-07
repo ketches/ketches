@@ -1,48 +1,33 @@
 import client from "./client"
+import type { OperationRequestBody, OperationResponseData, WithRequired } from "./generated/helpers"
 
-export interface SignInResponse {
-  user: {
-    id: string
-    username: string
-    email: string
-    fullname: string
-    bio?: string
-    role: string
-  }
-  must_change_password: boolean
-  default_password_notice: string
+export type SignInRequest = OperationRequestBody<"/api/v1/users/sign-in", "post">
+type GeneratedSignInResponse = OperationResponseData<"/api/v1/users/sign-in", "post">
+type GeneratedUser = NonNullable<GeneratedSignInResponse["user"]>
+
+export type SignInResponse = WithRequired<
+  GeneratedSignInResponse,
+  "user" | "must_change_password" | "default_password_notice"
+> & {
+  user: WithRequired<GeneratedUser, "id" | "username" | "email" | "fullname" | "role">
 }
 
-export interface SignInRequest {
-  username: string
-  password: string
-}
+export type SignUpRequest = OperationRequestBody<"/api/v1/users/sign-up", "post">
+export type SignUpResponse = OperationResponseData<"/api/v1/users/sign-up", "post", 201>
 
-export interface SignUpRequest {
-  fullname: string
-  username: string
-  email: string
-  password: string
-  verification_code: string
-}
+export type SignUpConfigResponse = WithRequired<
+  OperationResponseData<"/api/v1/users/sign-up/config", "get">,
+  "enabled"
+>
 
-export interface SignUpResponse {
-  success: boolean
-  message?: string
-}
-
-export interface SignUpConfigResponse {
-  enabled: boolean
-}
-
-export interface SignUpVerificationCodeRequest {
-  email: string
-}
-
-export interface SignUpVerificationCodeResponse {
-  expires_in_seconds: number
-  resend_after_seconds: number
-}
+export type SignUpVerificationCodeRequest = OperationRequestBody<
+  "/api/v1/users/sign-up/verification-code",
+  "post"
+>
+export type SignUpVerificationCodeResponse = WithRequired<
+  OperationResponseData<"/api/v1/users/sign-up/verification-code", "post">,
+  "expires_in_seconds" | "resend_after_seconds"
+>
 
 export const authApi = {
   signIn: async (data: SignInRequest) => {
@@ -59,5 +44,5 @@ export const authApi = {
   },
   logout: async () => {
     return client.post("/v1/users/logout", {}) as Promise<void>
-  }
+  },
 }

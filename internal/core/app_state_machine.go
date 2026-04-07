@@ -242,19 +242,3 @@ func GetAllowedActions(status app.AppStatus) []app.AppAction {
 	}
 	return actions
 }
-
-func GetIntermediateStatus(currentStatus app.AppStatus, action app.AppAction) (app.AppStatus, error) {
-	transition, err := ValidateStateTransition(currentStatus, action)
-	if err != nil {
-		return "", err
-	}
-	return transition.IntermediateStatus, nil
-}
-
-func GetFinalStatus(currentStatus app.AppStatus, action app.AppAction) (app.AppStatus, error) {
-	transition, err := ValidateStateTransition(currentStatus, action)
-	if err != nil {
-		return "", err
-	}
-	return transition.FinalStatus, nil
-}

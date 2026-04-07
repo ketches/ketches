@@ -22,15 +22,6 @@ import {
   MessageSquare,
   Orbit,
   Sparkles,
-  Bot,
-  User,
-  Brain,
-  GalleryVerticalEnd,
-  FolderGit2,
-  Play,
-  Hammer,
-  Rocket,
-  CheckCircle,
   ChevronsUpDown,
 } from "lucide-react"
 import * as React from "react"
@@ -809,37 +800,6 @@ export function useBuilderWorkspaceSession() {
     : buildEnvs.length > 0
       ? "Select a build environment before your first send"
       : "No build environments available"
-
-  const overviewStats = [
-    {
-      title: "Conversations",
-      value: sessions.length,
-      icon: MessageSquare,
-      description: "Builder sessions",
-      color: "blue" as const,
-    },
-    {
-      title: "Build Environments",
-      value: buildEnvs.length,
-      icon: Orbit,
-      description: "Available workspaces",
-      color: "sky" as const,
-    },
-    {
-      title: "Exports",
-      value: sessionExports.length,
-      icon: Hammer,
-      description: "Generated artifacts",
-      color: "purple" as const,
-    },
-    {
-      title: "Runs",
-      value: selectedRuns.length,
-      icon: Play,
-      description: "Current session runs",
-      color: selectedRuns.some((run) => run.status === "succeeded") ? "green" : "gray" as const,
-    },
-  ]
 
   return {
     projectId,

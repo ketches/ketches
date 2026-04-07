@@ -362,9 +362,7 @@ func DeleteApp(c *gin.Context) {
 }
 
 func BatchDeleteApps(c *gin.Context) {
-	var req struct {
-		IDs []string `json:"ids" binding:"required"`
-	}
+	var req models.BatchDeleteAppsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
@@ -501,7 +499,7 @@ func GetAppTopologyResourceYaml(c *gin.Context) {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
-	api.Success(c, gin.H{"yaml": yamlStr})
+	api.Success(c, models.AppTopologyResourceYAMLResponse{YAML: yamlStr})
 }
 
 // GetImageMetadata fetches and returns container image metadata (ENV, VOLUME, EXPOSE, HEALTHCHECK).

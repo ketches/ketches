@@ -124,10 +124,6 @@ func SubscribeBuilderRunEvents(runID string) (<-chan entities.BuilderRunEvent, f
 	}
 }
 
-func AppendBuilderRunLogEvent(ctx context.Context, runID, message string) (*entities.BuilderRunEvent, error) {
-	return AppendBuilderRunExecutionLogEvent(ctx, runID, nil, message)
-}
-
 func AppendBuilderRunStatusEvent(ctx context.Context, runID string, level entities.BuilderRunEventLevel, message string) (*entities.BuilderRunEvent, error) {
 	return AppendBuilderRunExecutionStatusEvent(ctx, runID, nil, level, message)
 }

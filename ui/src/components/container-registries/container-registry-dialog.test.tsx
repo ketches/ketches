@@ -62,7 +62,7 @@ describe("ContainerRegistryDialog", () => {
   })
 
   it("shows a clear password icon and restores an editable input after clicking it", async () => {
-    const { container, root } = await renderDialog({
+    const { root } = await renderDialog({
       id: "registry-1",
       name: "My Registry",
       provider: "ghcr",

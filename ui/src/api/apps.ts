@@ -1,15 +1,30 @@
-import client from './client'
-import type { Env } from './envs'
-import { type PaginationParams, type PaginationResponse } from './pagination'
+import client from "./client"
+import type { Env } from "./envs"
+import type {
+  OperationRequestBody,
+  OperationResponseData,
+  WithRequired,
+} from "./generated/helpers"
+import type { PaginationParams, PaginationResponse } from "./pagination"
 
-export interface SimpleApp {
-  id: string
-  name: string
-  slug: string
-  description: string
-  status: string
-  code_repository_id: string
-}
+type GeneratedSimpleApp = OperationResponseData<"/api/v1/envs/{envID}/apps/simple", "get">[number]
+type GeneratedApp = OperationResponseData<"/api/v1/apps/{appID}", "get">
+type GeneratedAppInstance = OperationResponseData<"/api/v1/apps/{appID}/instances", "get">[number]
+type GeneratedAppEvent = OperationResponseData<
+  "/api/v1/apps/{appID}/instances/{instanceName}/events",
+  "get"
+>[number]
+type GeneratedAppVolume = OperationResponseData<"/api/v1/apps/{appID}/volumes", "get">[number]
+type GeneratedAppEnvVar = OperationResponseData<"/api/v1/apps/{appID}/env-vars", "get">[number]
+type GeneratedAppConfigFile = OperationResponseData<"/api/v1/apps/{appID}/config-files", "get">[number]
+type GeneratedActionMetadata = NonNullable<
+  OperationResponseData<"/api/v1/apps/{appID}/available-actions", "get">["actions"]
+>[number]
+
+export type SimpleApp = WithRequired<
+  GeneratedSimpleApp,
+  "id" | "name" | "slug" | "description" | "status"
+>
 
 export interface AutoScalingSpec {
   min_replicas: number
@@ -27,8 +42,8 @@ export interface SchedulingSpec {
 }
 
 export interface ProbeSpec {
-  type: 'liveness' | 'readiness' | 'startup'
-  probe_mode: 'httpGet' | 'tcpSocket' | 'exec'
+  type: "liveness" | "readiness" | "startup"
+  probe_mode: "httpGet" | "tcpSocket" | "exec"
   enabled: boolean
   http_get_path?: string
   http_get_port?: number
@@ -53,28 +68,16 @@ export interface GatewaySpec {
   gateway_host?: string
   internal_address?: string
   exposed: boolean
-  cert_id?: string
+  cert_id?: string | null
 }
 
-export interface AppCreateRequest {
-  name: string
-  slug: string
-  app_type: "Deployment" | "StatefulSet"
-  container_image: string
-  image_pull_policy?: string
-  registry_username?: string
-  registry_password?: string
-  replicas: number
-  request_cpu: number
-  request_memory: number
-  limit_cpu: number
-  limit_memory: number
-  description: string
-  deploy?: boolean
-  seed_image_metadata?: boolean
-}
+export type AppCreateRequest = OperationRequestBody<"/api/v1/envs/{envID}/apps", "post">
 
-export interface AppVolume {
+export type AppVolume = WithRequired<
+  GeneratedAppVolume,
+  "slug" | "volume_type" | "mount_path"
+>
+export interface AppVolumeRequest {
   id?: string
   slug: string
   volume_type: string
@@ -87,117 +90,115 @@ export interface AppVolume {
   volume_mode?: string
 }
 
-export type AppVolumeRequest = Omit<AppVolume, "status">
+export type AppEnvVar = WithRequired<GeneratedAppEnvVar, "key" | "value">
+export type AppEnvVarRequest = OperationRequestBody<"/api/v1/apps/{appID}/env-vars", "post">
 
-export interface AppEnvVar {
-  id?: string
-  key: string
-  value: string
-}
+export type AppConfigFile = WithRequired<
+  GeneratedAppConfigFile,
+  "slug" | "mount_path" | "content"
+>
+export type AppConfigFileRequest = OperationRequestBody<"/api/v1/apps/{appID}/config-files", "post">
 
-export type AppEnvVarRequest = AppEnvVar
+export type AppImportResponse = OperationResponseData<"/api/v1/envs/{envID}/apps/import", "post">
+export type AppImportConflict = NonNullable<AppImportResponse["conflicts"]>[number]
+export type AppExportResponse = OperationResponseData<"/api/v1/apps/{appID}/export", "get">
 
-export interface AppConfigFile {
-  id?: string
-  slug: string
-  mount_path: string
-  file_mode: string
-  content: string
-}
-
-export type AppConfigFileRequest = AppConfigFile
-
-export interface AppImportConflict {
-  name?: string
-  slug?: string
-  type?: string
-  conflict_type?: string
-  message?: string
-  [key: string]: unknown
-}
-
-export interface AppImportResponse {
-  imported: { name: string, slug: string, status: string }[]
-  conflicts: AppImportConflict[]
-}
-
-export interface AppExportResponse {
-  yaml?: string
-  metadata?: string
-  chart?: string
-  compose?: string
-}
-
-export interface App {
-  id: string
-  slug: string
-  name: string
-  description: string
-  env_id: string
-  app_type: string
-  code_repository_id?: string
-  container_image: string
-  image_pull_policy?: string
-  container_command?: string
-  registry_username?: string
-  registry_password?: string
-  has_registry_password?: boolean
-  replicas: number
-  request_cpu: number
-  request_memory: number
-  limit_cpu: number
-  limit_memory: number
-  status: string
+export type App = WithRequired<
+  GeneratedApp,
+  | "id"
+  | "slug"
+  | "name"
+  | "description"
+  | "env_id"
+  | "app_type"
+  | "container_image"
+  | "replicas"
+  | "request_cpu"
+  | "request_memory"
+  | "limit_cpu"
+  | "limit_memory"
+  | "status"
+  | "created_at"
+> & {
   available_actions: ActionMetadata[]
-  auto_scaling?: AutoScalingSpec
-  scheduling_rule?: SchedulingSpec
+  auto_scaling?: AutoScalingSpec | null
+  scheduling_rule?: SchedulingSpec | null
   probes?: ProbeSpec[]
   gateways?: GatewaySpec[]
-  created_at: string
   env?: Env
+  registry_password?: string
 }
 
-export interface AppInstance {
-  instance_name: string
-  status: string
-  ip: string
-  init_container_count: number
-  init_containers: string[]
-  container_count: number
-  containers: string[]
-  node_name: string
-  node_ip: string
-  restart_count: number
-  running_duration: string
-  created_at: string
-}
+export type AppInstance = WithRequired<
+  GeneratedAppInstance,
+  | "instance_name"
+  | "status"
+  | "ip"
+  | "init_container_count"
+  | "init_containers"
+  | "container_count"
+  | "containers"
+  | "node_name"
+  | "node_ip"
+  | "restart_count"
+  | "running_duration"
+  | "created_at"
+>
 
-export interface AppEvent {
-  type: string
-  reason: string
-  message: string
-  from: string
-  count: number
-  created_at: string
-}
+export type AppEvent = WithRequired<
+  GeneratedAppEvent,
+  "type" | "reason" | "message" | "from" | "count" | "created_at"
+>
 
-export interface ActionMetadata {
-  action: string
-  label: string
-  icon: string
-  category: 'primary' | 'secondary'
-  variant: 'default' | 'destructive' | 'outline'
+export type ActionMetadata = WithRequired<
+  GeneratedActionMetadata,
+  "action" | "label" | "icon" | "category" | "variant"
+> & {
+  category: "primary" | "secondary"
+  variant: "default" | "destructive" | "outline"
 }
 
 export interface AvailableActionsResponse {
   actions: ActionMetadata[]
 }
 
+type AppsListResponse = {
+  items: App[]
+  pagination: PaginationResponse
+}
+
+type AppImageTagsResponse = WithRequired<
+  OperationResponseData<"/api/v1/apps/{appID}/image-tags", "get">,
+  "repository" | "current_tag" | "tags"
+>
+interface AppTopologyNode {
+  id: string
+  type: string
+  name: string
+  status?: string
+  metadata?: Record<string, string>
+}
+
+interface AppTopologyEdge {
+  source: string
+  target: string
+  type?: string
+}
+
+interface AppTopologyResponse {
+  nodes: AppTopologyNode[]
+  edges: AppTopologyEdge[]
+}
+
+interface AppTopologyResourceYamlResponse {
+  yaml: string
+}
+
 export const appsApi = {
   list: async (envId: string, params?: PaginationParams) => {
     return client.get(`/v1/envs/${envId}/apps`, {
-      params
-    }) as Promise<{ items: App[], pagination: PaginationResponse }>
+      params,
+    }) as Promise<AppsListResponse>
   },
   listSimple: async (envId: string) => {
     return client.get(`/v1/envs/${envId}/apps/simple`) as Promise<SimpleApp[]>
@@ -212,21 +213,27 @@ export const appsApi = {
     return client.delete(`/v1/apps/${id}`)
   },
   batchDelete: async (ids: string[]) => {
-    return client.post('/v1/apps/batch-delete', { ids })
+    return client.post("/v1/apps/batch-delete", { ids })
   },
   updateBasic: async (id: string, data: Partial<App>) => {
     return client.patch(`/v1/apps/${id}/basic`, data) as Promise<App>
   },
-  updateImage: async (id: string, data: { container_image: string, image_pull_policy?: string, registry_username?: string, registry_password?: string, clear_registry_password?: boolean }) => {
+  updateImage: async (
+    id: string,
+    data: OperationRequestBody<"/api/v1/apps/{appID}/image", "patch">
+  ) => {
     return client.patch(`/v1/apps/${id}/image`, data) as Promise<App>
   },
   listImageTags: async (id: string) => {
-    return client.get(`/v1/apps/${id}/image-tags`) as Promise<{ repository: string, current_tag: string, tags: string[] }>
+    return client.get(`/v1/apps/${id}/image-tags`) as Promise<AppImageTagsResponse>
   },
   updateReplicas: async (id: string, replicas: number) => {
     return client.patch(`/v1/apps/${id}/replicas`, { replicas }) as Promise<App>
   },
-  updateResources: async (id: string, data: { request_cpu: number, request_memory: number, limit_cpu: number, limit_memory: number }) => {
+  updateResources: async (
+    id: string,
+    data: OperationRequestBody<"/api/v1/apps/{appID}/resources", "patch">
+  ) => {
     return client.patch(`/v1/apps/${id}/resources`, data) as Promise<App>
   },
   updateAutoScaling: async (id: string, auto_scaling: AutoScalingSpec | null) => {
@@ -305,42 +312,32 @@ export const appsApi = {
     return client.delete(`/v1/gateways/${gatewayId}`)
   },
   getTopology: async (id: string) => {
-    return client.get(`/v1/apps/${id}/topology`) as Promise<{
-      nodes: {
-        id: string
-        type: string
-        name: string
-        status?: string
-        metadata?: Record<string, string>
-      }[]
-      edges: {
-        source: string
-        target: string
-        type?: string
-      }[]
-    }>
+    return client.get(`/v1/apps/${id}/topology`) as Promise<AppTopologyResponse>
   },
   getTopologyResourceYaml: async (appId: string, nodeId: string) => {
-    return client.get(`/v1/apps/${appId}/topology/nodes/${nodeId}/resource-yaml`) as Promise<{ yaml: string }>
+    return client.get(`/v1/apps/${appId}/topology/nodes/${nodeId}/resource-yaml`) as Promise<AppTopologyResourceYamlResponse>
   },
-
-  importApps: async (envId: string, data: {
-    type: 'dockercompose' | 'kubernetes' | 'ketches'
-    content: string
-    conflict_strategy?: 'rename' | 'ask' | 'error'
-  }) => {
+  importApps: async (
+    envId: string,
+    data: OperationRequestBody<"/api/v1/envs/{envID}/apps/import", "post">
+  ) => {
     return client.post(`/v1/envs/${envId}/apps/import`, data) as Promise<AppImportResponse>
   },
-
-  exportApps: async (appId: string, format: 'kubernetes' | 'ketches' | 'helm' | 'dockercompose') => {
+  exportApps: async (
+    appId: string,
+    format: "kubernetes" | "ketches" | "helm" | "dockercompose"
+  ) => {
     return client.get(`/v1/apps/${appId}/export`, {
-      params: { format }
+      params: { format },
     }) as Promise<AppExportResponse>
   },
-
-  exportEnvApps: async (envId: string, format: 'kubernetes' | 'ketches' | 'helm' | 'dockercompose', appIds?: string[]) => {
+  exportEnvApps: async (
+    envId: string,
+    format: "kubernetes" | "ketches" | "helm" | "dockercompose",
+    appIds?: string[]
+  ) => {
     return client.get(`/v1/envs/${envId}/apps/export`, {
-      params: { format, app_ids: appIds?.join(',') }
+      params: { format, app_ids: appIds?.join(",") },
     }) as Promise<AppExportResponse>
-  }
+  },
 }

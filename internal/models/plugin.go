@@ -73,13 +73,6 @@ type UpdateAppPluginEnvRequest struct {
 	EnvVars []PluginEnvVar `json:"env_vars" binding:"required"`
 }
 
-type UpdateAppPluginResourcesRequest struct {
-	RequestCPU    *int `json:"request_cpu"`
-	LimitCPU      *int `json:"limit_cpu"`
-	RequestMemory *int `json:"request_memory"`
-	LimitMemory   *int `json:"limit_memory"`
-}
-
 type AppPluginResponse struct {
 	ID        string         `json:"id"`
 	AppID     string         `json:"app_id"`

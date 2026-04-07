@@ -60,7 +60,7 @@ describe("EditCodeRepositoryDialog", () => {
   })
 
   it("shows a clear password icon and restores an editable input after clicking it", async () => {
-    const { container, root } = await renderDialog({
+    const { root } = await renderDialog({
       id: "repo-1",
       name: "My Repo",
       git_repo_url: "https://github.com/my/repo.git",

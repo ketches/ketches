@@ -12,11 +12,3 @@ func GetClaims(c *gin.Context) *app.Claims {
 	}
 	return claims.(*app.Claims)
 }
-
-func GetUserRole(c *gin.Context) string {
-	claims := GetClaims(c)
-	if claims == nil {
-		return ""
-	}
-	return claims.Role
-}

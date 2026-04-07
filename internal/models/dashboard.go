@@ -21,19 +21,3 @@ type EnvironmentResourceUsage struct {
 	MemoryLimit     float64 `json:"memory_limit"`
 	PodCount        int     `json:"pod_count"`
 }
-
-type DashboardResourceUsageResponse struct {
-	Environments []EnvironmentResourceUsage `json:"environments"`
-}
-
-type PrometheusQueryRequest struct {
-	Query string `json:"query" binding:"required"`
-	Time  string `json:"time"`
-}
-
-type PrometheusQueryRangeRequest struct {
-	Query string `json:"query" binding:"required"`
-	Start string `json:"start" binding:"required"`
-	End   string `json:"end" binding:"required"`
-	Step  string `json:"step" binding:"required"`
-}

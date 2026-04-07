@@ -45,7 +45,7 @@ build: ## Build the backend binary
 	CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/api
 
 build-ui: ## Build the frontend (requires Node.js)
-	cd ui && npm run build
+	cd ui && pnpm run build
 
 build-all: build build-ui ## Build both backend and frontend
 
@@ -65,7 +65,7 @@ lint: ## Lint Go source code (requires golangci-lint)
 	golangci-lint run ./...
 
 lint-ui: ## Lint frontend source code
-	cd ui && npm run lint
+	cd ui && pnpm run lint
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Development
@@ -74,10 +74,11 @@ run: ## Run the backend API locally (reads .env)
 	go run ./cmd/api
 
 dev-ui: ## Start the frontend Vite dev server
-	cd ui && npm run dev
+	cd ui && pnpm run dev
 
 openapi: ## Generate openapi/openapi.json and openapi/openapi.yaml
 	go run ./cmd/openapi
+	cd ui && pnpm run generate:api-types
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Docker — single-arch (fast local builds)

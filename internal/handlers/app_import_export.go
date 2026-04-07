@@ -9,20 +9,15 @@ import (
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core/exporter"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
-
-type ImportRequest struct {
-	Type             string `json:"type" binding:"required"`
-	Content          string `json:"content" binding:"required"`
-	ConflictStrategy string `json:"conflict_strategy"`
-}
 
 // ImportApps handles application import
 func ImportApps(c *gin.Context) {
 	envID := c.Param("envID")
 
-	var req ImportRequest
+	var req models.AppImportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
@@ -80,18 +75,22 @@ func ExportApps(c *gin.Context) {
 }
 
 func respondWithExport(c *gin.Context, format exporter.ExportFormat, content string) {
+	response := models.AppExportResponse{}
+
 	switch format {
 	case exporter.FormatKubernetes:
-		api.Success(c, gin.H{"yaml": content})
+		response.YAML = content
 	case exporter.FormatKetches:
-		api.Success(c, gin.H{"metadata": content})
+		response.Metadata = content
 	case exporter.FormatHelm:
-		api.Success(c, gin.H{"chart": content})
+		response.Chart = content
 	case exporter.FormatDockerCompose:
-		api.Success(c, gin.H{"compose": content})
+		response.Compose = content
 	default:
-		api.Success(c, gin.H{"content": content})
+		response.Content = content
 	}
+
+	api.Success(c, response)
 }
 
 // ExportEnvApps handles environment applications export

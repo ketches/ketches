@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
 
@@ -21,10 +22,7 @@ func ListAppEnvVars(c *gin.Context) {
 
 func CreateAppEnvVar(c *gin.Context) {
 	appID := c.Param("appID")
-	var req struct {
-		Key   string `json:"key" binding:"required"`
-		Value string `json:"value"`
-	}
+	var req models.AppEnvVarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return
@@ -44,10 +42,7 @@ func CreateAppEnvVar(c *gin.Context) {
 
 func UpdateAppEnvVar(c *gin.Context) {
 	id := c.Param("id")
-	var req struct {
-		Key   string `json:"key"`
-		Value string `json:"value"`
-	}
+	var req models.AppEnvVarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
 		return

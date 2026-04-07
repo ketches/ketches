@@ -13,10 +13,11 @@ var nonAlnum = regexp.MustCompile(`[^a-zA-Z0-9]+`)
 
 // Config controls top-level OpenAPI metadata.
 type Config struct {
-	Title       string
-	Description string
-	Version     string
-	ServerURL   string
+	Title          string
+	Description    string
+	Version        string
+	ServerURL      string
+	OperationSpecs []OperationSpec
 }
 
 // BuildFromGinEngine builds an OpenAPI 3.0.3 document from gin routes.
@@ -43,6 +44,16 @@ func BuildFromGinEngine(r *gin.Engine, cfg Config) map[string]any {
 	})
 
 	paths := map[string]any{}
+	operationSpecs := buildOperationSpecIndex(cfg.OperationSpecs)
+	schemas := map[string]any{
+		"ErrorResponse": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"error": map[string]any{"type": "string"},
+			},
+		},
+	}
+	schemaBuilder := newSchemaBuilder(schemas)
 	for _, route := range routes {
 		if route.Path == "/openapi.json" || route.Path == "/openapi.yaml" {
 			continue
@@ -64,14 +75,17 @@ func BuildFromGinEngine(r *gin.Engine, cfg Config) map[string]any {
 			"tags":        []string{tag},
 			"responses": map[string]any{
 				"200": map[string]any{"description": "OK"},
-				"400": map[string]any{"description": "Bad Request"},
-				"401": map[string]any{"description": "Unauthorized"},
-				"403": map[string]any{"description": "Forbidden"},
-				"500": map[string]any{"description": "Internal Server Error"},
+				"400": errorResponseSpec("Bad Request"),
+				"401": errorResponseSpec("Unauthorized"),
+				"403": errorResponseSpec("Forbidden"),
+				"500": errorResponseSpec("Internal Server Error"),
 			},
 		}
 		if len(parameters) > 0 {
 			op["parameters"] = parameters
+		}
+		if spec, ok := operationSpecs[operationSpecKey(route.Method, oasPath)]; ok {
+			applyOperationSpec(op, spec, schemaBuilder)
 		}
 		if requiresAuth(oasPath) {
 			op["security"] = []any{
@@ -101,6 +115,7 @@ func BuildFromGinEngine(r *gin.Engine, cfg Config) map[string]any {
 					"bearerFormat": "JWT",
 				},
 			},
+			"schemas": schemas,
 		},
 	}
 
@@ -168,12 +183,28 @@ func requiresAuth(path string) bool {
 	}
 
 	publicPaths := map[string]bool{
-		"/api/v1/version":       true,
-		"/api/v1/users/sign-in": true,
-		"/api/v1/users/sign-up": true,
+		"/api/v1/version":                         true,
+		"/api/v1/users/sign-in":                   true,
+		"/api/v1/users/sign-up":                   true,
+		"/api/v1/users/sign-up/config":            true,
+		"/api/v1/users/sign-up/verification-code": true,
+		"/api/v1/users/refresh-token":             true,
 	}
 	if publicPaths[path] {
 		return false
 	}
 	return true
+}
+
+func errorResponseSpec(description string) map[string]any {
+	return map[string]any{
+		"description": description,
+		"content": map[string]any{
+			"application/json": map[string]any{
+				"schema": map[string]any{
+					"$ref": "#/components/schemas/ErrorResponse",
+				},
+			},
+		},
+	}
 }
