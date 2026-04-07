@@ -1,5 +1,7 @@
 import { type App, type AppInstance } from "@/api/apps"
 import { DataTable } from "@/components/data-table/data-table"
+import { RefreshButtonIcon, RefreshIndicator } from "@/components/data-table/refresh-indicator"
+import { useRefreshAction } from "@/components/data-table/use-refresh-action"
 import { InstanceResourceMetrics } from "@/components/monitoring/instance-resource-metrics"
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { type TimeRange } from "@/components/monitoring/use-time-range"
@@ -12,7 +14,6 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/utils"
 import { type OnChangeFn, type PaginationState, type RowSelectionState, type ColumnDef } from "@tanstack/react-table"
 import {
@@ -31,7 +32,6 @@ import {
   Layers2,
   LayoutGrid,
   List,
-  RefreshCw,
   MemoryStick,
   RotateCw,
   Server,
@@ -40,7 +40,6 @@ import {
   Zap,
   FolderOpen,
 } from "lucide-react"
-import * as React from "react"
 import { toast } from "sonner"
 
 import { ApplicationMetrics } from "./application-metrics"
@@ -203,21 +202,10 @@ export function ApplicationOverviewTab({
   onRequestBulkDelete,
   onEditImage,
 }: ApplicationOverviewTabProps) {
-  const [isRefreshingInstances, setIsRefreshingInstances] = React.useState(false)
-  const showInstancesRefreshOverlay = isRefreshingInstances && !instancesLoading
-
-  const handleRefreshInstances = async () => {
-    if (isRefreshingInstances) {
-      return
-    }
-
-    try {
-      setIsRefreshingInstances(true)
-      await Promise.resolve(onRefreshInstances())
-    } finally {
-      setIsRefreshingInstances(false)
-    }
-  }
+  const refreshAction = useRefreshAction({
+    onRefresh: onRefreshInstances,
+    isLoading: instancesLoading,
+  })
 
   const instanceColumns: ColumnDef<AppInstance>[] = [
     {
@@ -464,10 +452,10 @@ export function ApplicationOverviewTab({
               variant="secondary"
               size="icon"
               aria-label="Refresh instances"
-              disabled={instancesLoading || isRefreshingInstances}
-              onClick={handleRefreshInstances}
+              disabled={instancesLoading || refreshAction.isRefreshing}
+              onClick={refreshAction.handleRefresh}
             >
-              <RefreshCw className={cn((isRefreshingInstances || instancesFetching) && "animate-spin")} />
+              <RefreshButtonIcon spinning={refreshAction.isRefreshing || instancesFetching} />
             </Button>
             <Tabs
               value={viewMode}
@@ -505,6 +493,7 @@ export function ApplicationOverviewTab({
                   columns={instanceColumns}
                   data={safeInstances}
                   isLoading={isLoading || instancesLoading}
+                  refreshState={refreshAction}
                   rowSelection={rowSelection}
                   onRowSelectionChange={onRowSelectionChange}
                   pagination={instancePagination}
@@ -600,12 +589,9 @@ export function ApplicationOverviewTab({
                   })}
                 </div>
               )}
-              {showInstancesRefreshOverlay && (
+              {viewMode === "card" && refreshAction.showRefreshOverlay && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md bg-background/55 backdrop-blur-[1px]">
-                  <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Refreshing...</span>
-                  </div>
+                  <RefreshIndicator />
                 </div>
               )}
             </div>

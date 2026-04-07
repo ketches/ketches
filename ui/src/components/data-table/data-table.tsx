@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Info, Loader2, RefreshCw } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Info, Loader2 } from "lucide-react"
 
 import {
   Combobox,
@@ -39,6 +39,8 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
+import { RefreshButtonIcon, RefreshIndicator } from "@/components/data-table/refresh-indicator"
+import { useRefreshAction } from "@/components/data-table/use-refresh-action"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -51,6 +53,10 @@ interface DataTableProps<TData, TValue> {
   batchActions?: (table: TanstackTable<TData>) => React.ReactNode
   onRowClick?: (data: TData) => void
   onRefresh?: () => void
+  refreshState?: {
+    isRefreshing: boolean
+    handleRefresh: () => void | Promise<unknown>
+  }
   hidePagination?: boolean
   getRowClassName?: (data: TData) => string
   renderCard?: (data: TData, table: TanstackTable<TData>) => React.ReactNode
@@ -87,6 +93,7 @@ export function DataTable<TData, TValue>({
   batchActions,
   onRowClick,
   onRefresh,
+  refreshState,
   hidePagination = false,
   getRowClassName,
   renderCard,
@@ -103,7 +110,6 @@ export function DataTable<TData, TValue>({
   rowSelection: controlledRowSelection,
   onRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
-  const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -170,48 +176,44 @@ export function DataTable<TData, TValue>({
   // Card mode: select-all checkbox and selected count shown in toolbar
   // Card mode: select-all shown on DataTable hover or when rows are selected
   const hasSelection = table.getFilteredSelectedRowModel().rows.length > 0
-  const cardSelectAll = viewMode === "card" && batchActions ? (
-    <label className={cn(
-      "flex items-center gap-2 cursor-pointer transition-opacity",
-      hasSelection ? "opacity-100" : "opacity-0 group-hover/datatable:opacity-100"
-    )}>
-      <Checkbox
-        checked={
-          (table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() ? "mixed" : false)) as boolean | undefined
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-      />
-      <p className="text-xs font-medium text-muted-foreground">Select all</p>
-    </label>
-  ) : null
-
   const selectedCountBadge = hasSelection ? (
     <i className="text-xs text-muted-foreground">
       {table.getFilteredSelectedRowModel().rows.length} of{" "}
       {table.getFilteredRowModel().rows.length} row(s) selected.
     </i>
   ) : null
+  const cardToolbarSelection = viewMode === "card" && batchActions ? (
+    <div
+      className={cn(
+        "flex items-center gap-3 transition-opacity",
+        hasSelection ? "opacity-100" : "opacity-0 group-hover/datatable:opacity-100"
+      )}
+    >
+      <label className="flex items-center gap-2 cursor-pointer">
+        <Checkbox
+          checked={
+            (table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() ? "mixed" : false)) as boolean | undefined
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        />
+        <p className="text-xs font-medium text-muted-foreground">Select all</p>
+      </label>
+      {selectedCountBadge}
+    </div>
+  ) : null
 
   // Determine whether toolbar should be rendered
   const hasToolbar = searchKey || rightToolbar || batchActions || leftToolbar || viewMode === "card"
   const visibleColumnCount = Math.max(table.getVisibleLeafColumns().length, 1)
-
+  const internalRefreshAction = useRefreshAction({
+    onRefresh,
+    isLoading,
+  })
+  const isRefreshing = refreshState?.isRefreshing ?? internalRefreshAction.isRefreshing
   const showRefreshOverlay = isRefreshing && !isLoading
+  const handleRefresh = refreshState?.handleRefresh ?? internalRefreshAction.handleRefresh
   const showLoadingOverlay = isLoading && effectiveSourceDataCount > 0
-
-  const handleRefresh = async () => {
-    if (!onRefresh || isRefreshing) {
-      return
-    }
-
-    try {
-      setIsRefreshing(true)
-      await Promise.resolve(onRefresh())
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
 
   const listEmptyRow = (
     <TableRow>
@@ -249,20 +251,21 @@ export function DataTable<TData, TValue>({
     <div className="group/datatable space-y-4">
       {hasToolbar && (
         <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-1 items-center gap-2">
-            {searchKey && (
-              <Input
-                placeholder={searchPlaceholder}
-                value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
-                onChange={(event) =>
-                  table.getColumn(searchKey)?.setFilterValue(event.target.value)
-                }
-                className="flex flex-1 max-w-sm min-w-75"
-              />
-            )}
-            {leftToolbar?.(table)}
-            {viewMode === "card" && cardSelectAll}
-            {viewMode === "card" && selectedCountBadge}
+          <div className="flex flex-1 items-center gap-2 min-w-0">
+            <div className="flex flex-1 items-center gap-2 min-w-0">
+              {searchKey && (
+                <Input
+                  placeholder={searchPlaceholder}
+                  value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+                  onChange={(event) =>
+                    table.getColumn(searchKey)?.setFilterValue(event.target.value)
+                  }
+                  className="flex flex-1 max-w-sm min-w-75"
+                />
+              )}
+              {leftToolbar?.(table)}
+            </div>
+            {cardToolbarSelection}
           </div>
           <div className="flex items-center gap-2">
             {batchActions?.(table)}
@@ -272,7 +275,7 @@ export function DataTable<TData, TValue>({
                 onClick={handleRefresh}
                 disabled={isRefreshing || isLoading}
               >
-                <RefreshCw className={cn(isRefreshing && "animate-spin")} />
+                <RefreshButtonIcon spinning={isRefreshing} />
               </Button>
             )}
             {rightToolbar?.(table)}
@@ -329,10 +332,14 @@ export function DataTable<TData, TValue>({
             </Table>
             {(showRefreshOverlay || showLoadingOverlay) && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/55 backdrop-blur-[1px]">
-                <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{showRefreshOverlay ? "Refreshing..." : "Loading..."}</span>
-                </div>
+                {showRefreshOverlay ? (
+                  <RefreshIndicator />
+                ) : (
+                  <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading...</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -373,10 +380,14 @@ export function DataTable<TData, TValue>({
           </div>
           {(showRefreshOverlay || showLoadingOverlay) && (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md bg-background/55 backdrop-blur-[1px]">
-              <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{showRefreshOverlay ? "Refreshing..." : "Loading..."}</span>
-              </div>
+              {showRefreshOverlay ? (
+                <RefreshIndicator />
+              ) : (
+                <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              )}
             </div>
           )}
         </div>
