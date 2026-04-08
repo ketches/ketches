@@ -3,7 +3,6 @@ import { Fragment } from "react"
 import { Link } from "react-router-dom"
 
 import { NotificationBell } from "@/components/notifications/notification-bell"
-import { PlatformUpdateBell } from "@/components/platform-updates/platform-update-bell"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -44,7 +43,6 @@ export function AppHeader() {
           ))}
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <PlatformUpdateBell />
           <NotificationBell />
         </div>
       </div>

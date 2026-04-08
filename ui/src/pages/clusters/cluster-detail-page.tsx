@@ -11,6 +11,7 @@ import {
   Cpu,
   GamepadDirectional,
   Info,
+  Key,
   Link2,
   Loader2,
   MemoryStick,
@@ -41,6 +42,7 @@ import { ClusterNodeResourceMetrics } from "@/components/monitoring/cluster-node
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
+import { BreadcrumbSkeleton, DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
 import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
@@ -127,8 +129,8 @@ export function ClusterDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { openPanel } = useBottomPanel()
-	const [editOpen, setEditOpen] = React.useState(false)
-	const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get("tab") || "overview"
 
@@ -387,15 +389,28 @@ export function ClusterDetailPage() {
 
   if (clusterLoading) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center gap-2">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading cluster...</p>
+      <div className="flex flex-col flex-1 gap-6">
+        <BreadcrumbSkeleton />
+        <DetailHeroSkeleton showBadge actions={3} />
+        <TabsSkeleton count={6} />
+        <InfoCardSkeleton fields={6} />
+        <StatCardsSkeleton count={4} columnsClassName="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4" />
+        <PanelCardSkeleton
+          titleWidth="w-36"
+          descriptionWidth="w-64"
+          contentHeight="h-72"
+        />
+        <PanelCardSkeleton
+          titleWidth="w-28"
+          descriptionWidth="w-72"
+          contentHeight="h-64"
+        />
       </div>
     )
   }
 
-	if (clusterError || !cluster) {
-	return (
+  if (clusterError || !cluster) {
+    return (
       <NotFoundPage
         resourceType="Cluster"
         backHref="/clusters"
@@ -551,9 +566,9 @@ export function ClusterDetailPage() {
         </Card>
       )}
 
-		<Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
-			<TabsList>
-				<TabsTrigger value="overview">
+      <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
+        <TabsList>
+          <TabsTrigger value="overview">
             <Telescope />
             Overview
           </TabsTrigger>
@@ -577,9 +592,9 @@ export function ClusterDetailPage() {
             <ShieldCheck />
             Certificates
           </TabsTrigger>
-			</TabsList>
+        </TabsList>
 
-			<TabsContent value="overview" className="space-y-4 mt-2">
+        <TabsContent value="overview" className="space-y-4 mt-2">
           <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -607,29 +622,67 @@ export function ClusterDetailPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">API Server</p>
-                  <p className="text-sm font-mono break-all">{cluster.api_server || "Unavailable"}</p>
-                </div>
-                <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-xs font-medium text-muted-foreground">KubeConfig</p>
-                    <div className="opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100">
+                    <p className="text-sm font-mono break-all">{cluster.api_server || "Unavailable"}</p>
+                    {cluster.api_server && (
                       <Button
-                        type="button"
                         variant="ghost"
                         size="icon-sm"
-                        aria-label="Update KubeConfig"
-                        onClick={() => setEditOpen(true)}
+                        className="opacity-0 transition-opacity group-hover/card:opacity-100"
+                        onClick={() => {
+                          const apiServer = cluster.api_server
+                          if (!apiServer) {
+                            return
+                          }
+                          navigator.clipboard.writeText(apiServer)
+                          toast.success("API server copied to clipboard")
+                        }}
                       >
-                        <Pencil />
+                        <Copy />
                       </Button>
-                    </div>
+                    )}
                   </div>
-                  <p className="text-sm font-medium">{cluster.has_kube_config ? "Configured" : "Not configured"}</p>
                 </div>
                 <div>
-						<p className="text-xs font-medium text-muted-foreground">Gateway Host</p>
-						<p className="text-sm font-mono">{cluster.gateway_host || "N/A"}</p>
-					</div>
+                  <p className="text-xs font-medium text-muted-foreground">KubeConfig</p>
+                  <div className="flex items-center gap-2">
+                    <ColorBadge color={cluster.has_kube_config ? "green" : "red"}>
+                      {cluster.has_kube_config ? "Configured" : "Not Configured"}
+                    </ColorBadge>
+                    {/* <p className="text-sm font-medium">{cluster.has_kube_config ? "Configured" : "Not configured"}</p> */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setEditOpen(true)}
+                    >
+                      <Key className="h-4 w-4" />
+                      {cluster.has_kube_config ? "Edit KubeConfig" : "Configure KubeConfig"}
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Gateway Host</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-mono">{cluster.gateway_host || "N/A"}</p>
+                    {cluster.gateway_host && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="opacity-0 transition-opacity group-hover/card:opacity-100"
+                        onClick={() => {
+                          const gatewayHost = cluster.gateway_host
+                          if (!gatewayHost) {
+                            return
+                          }
+                          navigator.clipboard.writeText(gatewayHost)
+                          toast.success("Gateway host copied to clipboard")
+                        }}
+                      >
+                        <Copy />
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -747,14 +800,14 @@ export function ClusterDetailPage() {
         </TabsContent>
       </Tabs>
 
-		<EditClusterDialog
-			open={editOpen}
+      <EditClusterDialog
+        open={editOpen}
         onOpenChange={setEditOpen}
         cluster={cluster}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["cluster", clusterId] })
         }}
-		/>
+      />
 
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

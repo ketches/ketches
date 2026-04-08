@@ -22,11 +22,11 @@ import { PageHeader } from "@/components/layout/page-header"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { AppPlugins } from "@/components/plugins/app-plugins"
 import { EmptyState } from "@/components/shared/empty-state"
+import { BreadcrumbSkeleton, DetailHeroSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useBottomPanel } from "@/contexts/bottom-panel-context"
 import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
@@ -230,36 +230,18 @@ export function ApplicationDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col flex-1 gap-6 animate-pulse">
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-4 w-32" />
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-14 w-14 rounded-lg" />
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-4 w-32" />
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <Skeleton className="h-6 w-20" />
-              <div className="flex gap-2">
-                <Skeleton className="h-9 w-24" />
-                <Skeleton className="h-9 w-24" />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-100" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-          <Skeleton className="h-64 w-full" />
-        </div>
+      <div className="flex flex-col flex-1 gap-6">
+        <BreadcrumbSkeleton />
+        <DetailHeroSkeleton showBadge actions={3} />
+        <TabsSkeleton count={11} />
+        <StatCardsSkeleton count={4} columnsClassName="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4" />
+        <PanelCardSkeleton titleWidth="w-40" contentHeight="h-72" />
+        <PanelCardSkeleton
+          titleWidth="w-24"
+          actionWidth="w-32"
+          contentHeight="h-80"
+          className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent"
+        />
       </div>
     )
   }

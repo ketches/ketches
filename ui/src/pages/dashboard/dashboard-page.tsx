@@ -8,7 +8,6 @@ import {
   FolderGit2,
   GalleryVerticalEnd,
   LayoutDashboard,
-  Loader2,
   Orbit,
   Puzzle,
   ShipWheel,
@@ -27,6 +26,7 @@ import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-r
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyEnvironmentState } from "@/components/shared/empty-state"
+import { PageHeadingSkeleton, PanelCardSkeleton, StatCardsSkeleton } from "@/components/shared/page-skeletons"
 import { StatCard } from "@/components/shared/stat-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -82,9 +82,14 @@ function AdminDashboard() {
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <>
+          <StatCardsSkeleton count={5} columnsClassName="grid gap-4 md:grid-cols-2 lg:grid-cols-5" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <PanelCardSkeleton titleWidth="w-32" descriptionWidth="w-44" contentHeight="h-72" />
+            <PanelCardSkeleton titleWidth="w-28" descriptionWidth="w-40" contentHeight="h-72" />
+          </div>
+          <PanelCardSkeleton titleWidth="w-24" descriptionWidth="w-56" contentHeight="h-56" />
+        </>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -276,18 +281,26 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
       {!projectIdProp && <PageHeader items={[{ label: "Dashboard", icon: LayoutDashboard }]} />}
 
       {!projectIdProp && (
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{project?.name || (statsLoading ? "Loading..." : "No Project Selected")}</h1>
-            <p className="text-sm text-muted-foreground mt-1">Overview of your project resources</p>
+        statsLoading ? <PageHeadingSkeleton titleWidth="w-48" descriptionWidth="w-64" /> : (
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">{project?.name || "No Project Selected"}</h1>
+              <p className="text-sm text-muted-foreground mt-1">Overview of your project resources</p>
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {statsLoading ? (
-        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <>
+          <StatCardsSkeleton count={5} columnsClassName="grid gap-4 md:grid-cols-5" />
+          <PanelCardSkeleton
+            titleWidth="w-40"
+            descriptionWidth="w-80"
+            contentHeight="h-96"
+            className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent"
+          />
+        </>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-5">

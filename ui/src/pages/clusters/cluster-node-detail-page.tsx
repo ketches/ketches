@@ -5,11 +5,11 @@ import {
   ChartLine,
   ChevronsUpDown,
   CircleSlash,
+  Copy,
   Cpu,
   HardDrive,
   Info,
   Layers,
-  Loader2,
   MemoryStick,
   PaintBucket,
   PcCase,
@@ -34,6 +34,7 @@ import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-r
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
+import { BreadcrumbSkeleton, DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
 import { StatCard } from "@/components/shared/stat-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -103,9 +104,18 @@ export function ClusterNodeDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center gap-2">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading node details...</p>
+      <div className="flex flex-col flex-1 gap-6">
+        <BreadcrumbSkeleton />
+        <DetailHeroSkeleton showBadge actions={2} />
+        <TabsSkeleton count={4} />
+        <InfoCardSkeleton fields={7} />
+        <StatCardsSkeleton count={4} columnsClassName="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4" />
+        <PanelCardSkeleton
+          titleWidth="w-32"
+          actionWidth="w-32"
+          contentHeight="h-80"
+          className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent"
+        />
       </div>
     )
   }
@@ -210,46 +220,44 @@ export function ClusterNodeDetailPage() {
             <PcCase className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{nodeName}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">{nodeName}</h1>
+              {isUnschedulable && (
+                <ColorBadge color="yellow">SchedulingDisabled</ColorBadge>
+              )}
+              <ColorBadge color={isReady ? "green" : "red"}>
+                {isReady ? "Ready" : "NotReady"}
+              </ColorBadge>
+            </div>
             <p className="text-sm font-mono text-muted-foreground">{getRole()}</p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex gap-2">
-            {isUnschedulable && (
-              <ColorBadge color="yellow">SchedulingDisabled</ColorBadge>
-            )}
-            <ColorBadge color={isReady ? "green" : "red"}>
-              {isReady ? "Ready" : "NotReady"}
-            </ColorBadge>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => cordonMutation.mutate(!isUnschedulable)}
-              disabled={cordonMutation.isPending}
-            >
-              <CircleSlash />
-              {isUnschedulable ? "Uncordon" : "Cordon"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                openPanel({
-                  type: "terminal",
-                  targetType: "node",
-                  appId: clusterId!,
-                  appName: cluster.name,
-                  instanceName: nodeName!,
-                  containerName: "shell",
-                  containers: ["shell"],
-                })
-              }}
-            >
-              <TerminalIcon />
-              Terminal
-            </Button>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => cordonMutation.mutate(!isUnschedulable)}
+            disabled={cordonMutation.isPending}
+          >
+            <CircleSlash />
+            {isUnschedulable ? "Uncordon" : "Cordon"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              openPanel({
+                type: "terminal",
+                targetType: "node",
+                appId: clusterId!,
+                appName: cluster.name,
+                instanceName: nodeName!,
+                containerName: "shell",
+                containers: ["shell"],
+              })
+            }}
+          >
+            <TerminalIcon />
+            Terminal
+          </Button>
         </div>
       </div>
 
@@ -283,11 +291,41 @@ export function ClusterNodeDetailPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Internal IP</p>
-                  <p className="text-sm font-mono">{internalIP || "N/A"}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-mono">{internalIP || "N/A"}</p>
+                    {internalIP && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="opacity-0 transition-opacity group-hover/card:opacity-100"
+                        onClick={() => {
+                          navigator.clipboard.writeText(internalIP)
+                          toast.success("Internal IP copied to clipboard")
+                        }}
+                      >
+                        <Copy />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Host Name</p>
-                  <p className="text-sm font-mono">{hostIP}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-mono">{hostIP}</p>
+                    {hostIP && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="opacity-0 transition-opacity group-hover/card:opacity-100"
+                        onClick={() => {
+                          navigator.clipboard.writeText(hostIP)
+                          toast.success("Host name copied to clipboard")
+                        }}
+                      >
+                        <Copy />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Kubelet Version</p>

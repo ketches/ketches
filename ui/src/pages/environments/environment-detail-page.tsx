@@ -11,7 +11,6 @@ import {
   GalleryVerticalEnd,
   Hammer,
   Info,
-  Loader2,
   Orbit,
   Pencil,
   RefreshCw,
@@ -38,6 +37,7 @@ import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { EmptyState } from "@/components/shared/empty-state"
+import { BreadcrumbSkeleton, DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
 import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -95,7 +95,7 @@ export function EnvironmentDetailPage() {
       }
       hasSyncedProjectFromEnvRef.current = true
     }
-  }, [env?.project_id, env?.project_name, activeProjectId, setActiveContextWithNames])
+  }, [env?.project_id, env?.project_name, env?.id, env?.name, activeProjectId, activeEnvId, setActiveContextWithNames])
 
   const shouldLoadApps = !!envId && (activeTab === "overview" || activeTab === "applications")
   const { data: appsResponse } = useQuery({
@@ -125,9 +125,18 @@ export function EnvironmentDetailPage() {
 
   if (envLoading) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center gap-2">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading environment...</p>
+      <div className="flex flex-col flex-1 gap-6">
+        <BreadcrumbSkeleton />
+        <DetailHeroSkeleton actions={3} />
+        <TabsSkeleton count={4} />
+        <InfoCardSkeleton fields={4} />
+        <StatCardsSkeleton count={3} columnsClassName="grid grid-cols-1 gap-4 md:grid-cols-3" />
+        <PanelCardSkeleton
+          titleWidth="w-24"
+          actionWidth="w-32"
+          contentHeight="h-80"
+          className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent"
+        />
       </div>
     )
   }
