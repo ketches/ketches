@@ -14,6 +14,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/utils"
 import { type OnChangeFn, type PaginationState, type RowSelectionState, type ColumnDef } from "@tanstack/react-table"
 import {
@@ -206,6 +207,34 @@ export function ApplicationOverviewTab({
     onRefresh: onRefreshInstances,
     isLoading: instancesLoading,
   })
+  const hasCardSelection = selectedInstanceCount > 0
+  const isAllInstancesSelected = safeInstances.length > 0 && selectedInstanceCount === safeInstances.length
+  const isSomeInstancesSelected = selectedInstanceCount > 0 && selectedInstanceCount < safeInstances.length
+
+  const handleToggleAllInstances = (checked: boolean) => {
+    if (checked) {
+      onRowSelectionChange(
+        Object.fromEntries(safeInstances.map((_, index) => [index.toString(), true]))
+      )
+      return
+    }
+
+    onRowSelectionChange({})
+  }
+
+  const handleToggleInstance = (index: number, checked: boolean) => {
+    onRowSelectionChange((previous) => {
+      const nextSelection = { ...previous }
+
+      if (checked) {
+        nextSelection[index] = true
+      } else {
+        delete nextSelection[index]
+      }
+
+      return nextSelection
+    })
+  }
 
   const instanceColumns: ColumnDef<AppInstance>[] = [
     {
@@ -439,7 +468,28 @@ export function ApplicationOverviewTab({
             <Container className="h-4 w-4" /> Running Instances
           </CardTitle>
           <CardAction className="flex flex-wrap items-center justify-end gap-2">
-            {selectedInstanceCount > 0 && !isViewer && (
+            {viewMode === "table" && selectedInstanceCount > 0 && !isViewer && (
+              <Button
+                variant="destructive"
+                onClick={() => onRequestBulkDelete(selectedInstanceNamesFromRows)}
+              >
+                <Trash2 />
+                Delete ({selectedInstanceCount})
+              </Button>
+            )}
+            {!isViewer && viewMode === "card" && (
+              <label className={cn(
+                "flex items-center gap-2 cursor-pointer transition-opacity",
+                hasCardSelection ? "opacity-100" : "opacity-0 group-hover/card:opacity-100"
+              )}>
+                <Checkbox
+                  checked={(isAllInstancesSelected || (isSomeInstancesSelected ? "mixed" : false)) as boolean | undefined}
+                  onCheckedChange={(value) => handleToggleAllInstances(!!value)}
+                />
+                <p className="text-xs font-medium text-muted-foreground">Select all</p>
+              </label>
+            )}
+            {viewMode === "card" && selectedInstanceCount > 0 && !isViewer && (
               <Button
                 variant="destructive"
                 onClick={() => onRequestBulkDelete(selectedInstanceNamesFromRows)}
@@ -502,11 +552,27 @@ export function ApplicationOverviewTab({
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {safeInstances.map((instance) => {
+                  {safeInstances.map((instance, index) => {
                     const defaultContainer = getDefaultContainerName(app, instance)
+                    const isSelected = !!rowSelection[index]
 
                     return (
-                      <Card key={instance.instance_name} className="group/card hover:shadow-md transition-shadow cursor-pointer">
+                      <div key={instance.instance_name} className="relative group/instance-card">
+                        {!isViewer && (
+                          <div className={cn(
+                            "absolute top-2 left-2 z-10 transition-opacity",
+                            isSelected ? "opacity-100" : "opacity-0 group-hover/instance-card:opacity-100",
+                            hasCardSelection ? "opacity-100" : ""
+                          )}>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(value) => handleToggleInstance(index, !!value)}
+                              aria-label="Select row"
+                              className="bg-background"
+                            />
+                          </div>
+                        )}
+                        <Card className="group/card hover:shadow-md transition-shadow cursor-pointer">
                         <CardHeader>
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex items-start gap-3 min-w-0">
@@ -584,7 +650,8 @@ export function ApplicationOverviewTab({
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
+                        </Card>
+                      </div>
                     )
                   })}
                 </div>
