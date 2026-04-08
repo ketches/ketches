@@ -138,7 +138,7 @@ export function CodeRepositoryDetailPage() {
           <TabsTrigger value="deploy"><Rocket />Deploy</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="group/card mt-2 space-y-4">
+        <TabsContent value="overview" className="mt-2 space-y-4">
           <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">

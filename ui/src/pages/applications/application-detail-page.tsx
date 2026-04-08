@@ -370,7 +370,7 @@ export function ApplicationDetailPage() {
           {!isViewer && <TabsTrigger value="advanced"><Cog />Advanced</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="overview" className="group/card space-y-4 mt-2">
+        <TabsContent value="overview" className="space-y-4 mt-2">
           <ApplicationOverviewTab
             app={app}
             currentEnv={currentEnv}
