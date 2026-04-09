@@ -22,7 +22,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { AppPlugins } from "@/components/plugins/app-plugins"
 import { EmptyState } from "@/components/shared/empty-state"
-import { BreadcrumbSkeleton, DetailHeroSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
+import { DetailHeroSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -231,7 +231,6 @@ export function ApplicationDetailPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col flex-1 gap-6">
-        <BreadcrumbSkeleton />
         <DetailHeroSkeleton showBadge actions={3} />
         <TabsSkeleton count={11} />
         <StatCardsSkeleton count={4} columnsClassName="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4" />

@@ -1,13 +1,19 @@
-import { Plus, Sparkles } from "lucide-react"
+import { Copy, Edit2, Plus, Sparkles, Trash2 } from "lucide-react"
 import * as React from "react"
 
 import { usersApi, type UpsertMyAiProviderRequest } from "@/api/users"
+import { DataTable } from "@/components/data-table/data-table"
+import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ColumnDef } from "@tanstack/react-table"
+import { toast } from "sonner"
 
 const emptyForm: UpsertMyAiProviderRequest = {
   provider_key: "",
@@ -24,26 +30,27 @@ export function AccountAiProvidersPanel() {
   const [editingProviderId, setEditingProviderId] = React.useState<string | null>(null)
   const [formOpen, setFormOpen] = React.useState(false)
   const [formData, setFormData] = React.useState<UpsertMyAiProviderRequest>(emptyForm)
-  const { data: providers = [] } = useQuery({
-    queryKey: ["users", "me", "ai-providers"],
+  const { data: providers = [], isLoading, refetch } = useQuery({
+    queryKey: ["users", "me", "self", "ai-providers"],
     queryFn: usersApi.listMyAiProviders,
+    enabled: true,
   })
   const createMutation = useMutation({
     mutationFn: usersApi.createMyAiProvider,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users", "me", "ai-providers"] })
+      queryClient.invalidateQueries({ queryKey: ["users", "me", "self", "ai-providers"] })
     },
   })
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof usersApi.updateMyAiProvider>[1] }) => usersApi.updateMyAiProvider(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users", "me", "ai-providers"] })
+      queryClient.invalidateQueries({ queryKey: ["users", "me", "self", "ai-providers"] })
     },
   })
   const deleteMutation = useMutation({
     mutationFn: usersApi.deleteMyAiProvider,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users", "me", "ai-providers"] })
+      queryClient.invalidateQueries({ queryKey: ["users", "me", "self", "ai-providers"] })
     },
   })
 
@@ -87,65 +94,166 @@ export function AccountAiProvidersPanel() {
     await deleteMutation.mutateAsync(providerId)
   }
 
+  const providerColumns: ColumnDef<(typeof providers)[number]>[] = [
+    {
+      accessorKey: "display_name",
+      header: "Provider",
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-medium">{row.original.display_name}</span>
+          <span className="text-xs text-muted-foreground">{row.original.provider_key}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "base_url",
+      header: "Base URL",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground truncate block max-w-100">
+            {row.original.base_url}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="opacity-0 group-hover/row:opacity-100 transition-opacity"
+            onClick={() => {
+              navigator.clipboard.writeText(row.original.base_url)
+              toast.success("Base URL copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "default_model_profile_key",
+      header: "Default Model",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {row.original.default_model_profile_key}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="opacity-0 group-hover/row:opacity-100 transition-opacity"
+            onClick={() => {
+              navigator.clipboard.writeText(row.original.default_model_profile_key)
+              toast.success("Default model copied to clipboard")
+            }}
+          >
+            <Copy />
+          </Button>
+        </div>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <ColorBadge color={row.original.enabled ? "green" : "gray"}>
+            {row.original.enabled ? "Enabled" : "Disabled"}
+          </ColorBadge>
+          {row.original.is_default ? (
+            <ColorBadge color="blue">
+              Default
+            </ColorBadge>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-1">
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => handleEditProvider(row.original.id)}
+                />
+              }
+            >
+              <div className="flex items-center">
+                <Edit2 />
+                <span className="sr-only">Edit</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Edit provider</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              delay={200}
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => void handleDeleteProvider(row.original.id)}
+                />
+              }
+            >
+              <div className="flex items-center">
+                <Trash2 />
+                <span className="sr-only">Delete</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Delete provider</TooltipContent>
+          </Tooltip>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-sm font-medium">Personal AI providers</h2>
-        <p className="text-sm text-muted-foreground">
-          Configure your personal AI providers for Builder sessions and future AI-powered workflows.
-        </p>
-      </div>
-
-      {providers.length === 0 ? (
-        <div className="space-y-4 rounded-lg border border-dashed bg-muted/20 p-4">
+      <DataTable
+        columns={providerColumns}
+        data={providers}
+        sourceDataCount={providers.length}
+        isLoading={isLoading}
+        searchKey="display_name"
+        searchPlaceholder="Filter providers..."
+        sourceEmptyContent={(
           <EmptyState
-            title="No personal AI providers configured yet"
+            title="No AI providers yet"
             description="Add your first provider to make personal models available in Builder."
             icon={Sparkles}
-            border={false}
+            actionText="Add Provider"
+            onAction={handleAddProvider}
+            actionIcon={Plus}
           />
-          <div className="flex justify-start">
-            <Button type="button" onClick={handleAddProvider}>
-              <Plus className="h-4 w-4" />
-              Add provider
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3 rounded-lg border bg-background p-4">
-          <div className="flex justify-end">
-            <Button type="button" onClick={handleAddProvider}>
-              <Plus className="h-4 w-4" />
-              Add provider
-            </Button>
-          </div>
-          {providers.map((provider) => (
-            <div key={provider.id} className="flex items-center justify-between rounded-md border p-3">
-              <div className="space-y-1">
-                <div className="text-sm font-medium">{provider.display_name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {provider.provider_key} · {provider.default_model_profile_key}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{provider.enabled ? "Enabled" : "Disabled"}</span>
-                  {provider.is_default ? <span>Default</span> : null}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" onClick={() => handleEditProvider(provider.id)}>
-                  Edit
-                </Button>
-                <Button type="button" variant="outline" onClick={() => void handleDeleteProvider(provider.id)}>
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        )}
+        useStandaloneEmptyState
+        rightToolbar={() => (
+          <Button type="button" onClick={handleAddProvider}>
+            <Plus className="h-4 w-4" />
+            Add Provider
+          </Button>
+        )}
+        onRefresh={() => refetch()}
+      />
 
-      {formOpen ? (
-        <div className="space-y-4 rounded-lg border bg-background p-4">
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingProviderId ? "Edit AI Provider" : "Add AI Provider"}</DialogTitle>
+            <DialogDescription>
+              Configure a personal AI provider for Builder sessions and future AI workflows.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
           <Field>
             <FieldLabel htmlFor="account-provider-key">Provider key</FieldLabel>
             <FieldContent>
@@ -223,16 +331,17 @@ export function AccountAiProvidersPanel() {
               Set as default
             </label>
           </div>
-          <div className="flex items-center justify-end gap-2">
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancel
             </Button>
             <Button type="button" onClick={() => void handleSaveProvider()}>
-              {editingProviderId ? "Update provider" : "Save provider"}
+              {editingProviderId ? "Update Provider" : "Save Provider"}
             </Button>
+          </DialogFooter>
           </div>
-        </div>
-      ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -24,6 +24,7 @@ const BuilderSessionsPage = React.lazy(() => import("@/pages/builder-sessions/bu
 const BuilderWorkbenchPage = React.lazy(() => import("@/pages/builder-sessions/builder-workbench-page").then((module) => ({ default: module.BuilderWorkbenchPage })))
 const CollaborationsPage = React.lazy(() => import("@/pages/collaborations/collaborations-page").then((module) => ({ default: module.CollaborationsPage })))
 const ActivitiesPage = React.lazy(() => import("@/pages/activities/activities-page").then((module) => ({ default: module.ActivitiesPage })))
+const AccountPage = React.lazy(() => import("@/pages/account/account-page").then((module) => ({ default: module.AccountPage })))
 const EnvironmentsPage = React.lazy(() => import("@/pages/environments/environments-page").then((module) => ({ default: module.EnvironmentsPage })))
 const EnvironmentDetailPage = React.lazy(() => import("@/pages/environments/environment-detail-page").then((module) => ({ default: module.EnvironmentDetailPage })))
 const ApplicationsPage = React.lazy(() => import("@/pages/applications/applications-page").then((module) => ({ default: module.ApplicationsPage })))
@@ -128,6 +129,7 @@ export function App() {
               <Route path="/projects/:projectId/builder-sessions/:sessionId" element={<BuilderWorkbenchPage />} />
               <Route path="/collaborations" element={<CollaborationsPage />} />
               <Route path="/activities" element={<ActivitiesPage />} />
+              <Route path="/account" element={<AccountPage />} />
               <Route path="/environments" element={<EnvironmentsPage />} />
               <Route path="/environments/:envId" element={<EnvironmentDetailPage />} />
               <Route path="/applications" element={<ApplicationsPage />} />

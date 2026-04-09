@@ -42,7 +42,7 @@ import { ClusterNodeResourceMetrics } from "@/components/monitoring/cluster-node
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
-import { BreadcrumbSkeleton, DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
+import { DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
 import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
@@ -390,7 +390,6 @@ export function ClusterDetailPage() {
   if (clusterLoading) {
     return (
       <div className="flex flex-col flex-1 gap-6">
-        <BreadcrumbSkeleton />
         <DetailHeroSkeleton showBadge actions={3} />
         <TabsSkeleton count={6} />
         <InfoCardSkeleton fields={6} />

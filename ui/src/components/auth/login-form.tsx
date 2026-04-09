@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { isAxiosError } from "axios";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -34,6 +35,7 @@ export function LoginForm({
     const navigate = useNavigate();
     const location = useLocation();
     const setAuth = useAuthStore((state) => state.setAuth);
+    const queryClient = useQueryClient();
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [defaultPasswordNotice, setDefaultPasswordNotice] = useState<
@@ -64,6 +66,7 @@ export function LoginForm({
         try {
             const payload: SignInRequest = data;
             const response = await authApi.signIn(payload);
+            queryClient.clear();
             setAuth(response.user);
             setDefaultPasswordNotice(response.default_password_notice || null);
             if (response.user.role === "admin") {

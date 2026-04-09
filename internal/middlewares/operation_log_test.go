@@ -23,7 +23,7 @@ func setupOperationLogMiddlewareTestDB(t *testing.T) {
 	t.Cleanup(func() { db.DB = originalDB })
 	testDB, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true})
 	require.NoError(t, err)
-	require.NoError(t, testDB.AutoMigrate(&entities.OperationLog{}))
+	require.NoError(t, testDB.AutoMigrate(&entities.OperationLog{}, &entities.User{}))
 	db.DB = testDB
 }
 
@@ -77,6 +77,13 @@ func TestOperationLogMiddlewareSkipsUnmappedRoute(t *testing.T) {
 
 func TestOperationLogMiddlewareSignInLogsWithBodyUsername(t *testing.T) {
 	setupOperationLogMiddlewareTestDB(t)
+	require.NoError(t, db.DB.Create(&entities.User{
+		Base:     entities.Base{ID: "user-1"},
+		Username: "tester",
+		Email:    "tester@example.com",
+		Password: "hashed-password",
+		Role:     "user",
+	}).Error)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(OperationLog())
@@ -101,6 +108,9 @@ func TestOperationLogMiddlewareSignInLogsWithBodyUsername(t *testing.T) {
 	require.Len(t, logs, 1)
 	assert.Equal(t, "sign_in", logs[0].Action)
 	assert.Equal(t, "tester", logs[0].Username)
+	if assert.NotNil(t, logs[0].UserID) {
+		assert.Equal(t, "user-1", *logs[0].UserID)
+	}
 	assert.Equal(t, entities.OperationLogSensitivityInternal, logs[0].Sensitivity)
 	assert.Contains(t, logs[0].RequestSummary, `"password":"[REDACTED]"`)
 	assert.NotContains(t, logs[0].RequestSummary, "secret")

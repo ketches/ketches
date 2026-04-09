@@ -243,7 +243,7 @@ describe("ActivitiesPage", () => {
     const searchInput = container.querySelector('input[placeholder="Filter by user, action, resource..."]')
 
     expect(toolbarWrapper).not.toBeNull()
-    expect(toolbarWrapper?.className).toContain("overflow-x-auto")
+    expect(toolbarWrapper?.className).toContain("flex-wrap")
     expect(toolbarWrapper?.className).toContain("min-w-0")
     expect(searchInput?.className).toContain("flex-1")
 

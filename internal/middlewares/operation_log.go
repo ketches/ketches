@@ -81,6 +81,12 @@ func OperationLog() gin.HandlerFunc {
 			input.Username = claims.Username
 		} else if bodyUsername != "" {
 			input.Username = bodyUsername
+			if status == entities.OperationLogStatusSuccess {
+				user, err := services.GetUserByUsername(bodyUsername)
+				if err == nil && user != nil {
+					input.UserID = user.ID
+				}
+			}
 		}
 		if input.Username == "" {
 			input.Username = "anonymous"

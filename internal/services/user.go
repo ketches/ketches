@@ -125,6 +125,14 @@ func GetUser(userID string) (*entities.User, error) {
 	return &user, nil
 }
 
+func GetUserByUsername(username string) (*entities.User, error) {
+	var user entities.User
+	if err := db.DB.Where("username = ?", strings.TrimSpace(username)).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func ListUsers(page, pageSize int, search string) (int64, []entities.User, error) {
 	var users []entities.User
 	var total int64

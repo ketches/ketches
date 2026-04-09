@@ -101,6 +101,10 @@ vi.mock("@/pages/activities/activities-page", () => ({
   ActivitiesPage: () => <div data-testid="activities-page">activities-page</div>,
 }))
 
+vi.mock("@/pages/account/account-page", () => ({
+  AccountPage: () => <div data-testid="account-page">account-page</div>,
+}))
+
 vi.mock("@/pages/environments/environments-page", () => ({
   EnvironmentsPage: () => <div data-testid="environments-page">environments-page</div>,
 }))

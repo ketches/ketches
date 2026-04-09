@@ -1,5 +1,3 @@
-import { useState } from "react"
-
 import { authApi } from "@/api/auth"
 import {
   Bell,
@@ -13,7 +11,6 @@ import {
   UserCog
 } from "lucide-react"
 
-import { AccountDialog } from "@/components/account/account-dialog"
 import { NotificationDialog } from "@/components/notifications/notification-dialog"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import {
@@ -44,6 +41,7 @@ import {
 import { useNotifications } from "@/hooks/use-notifications"
 import { markManualLogout } from "@/lib/auth-redirect"
 import { useAuthStore } from "@/stores/auth"
+import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 
 export function NavUser({
@@ -58,11 +56,11 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const { setTheme } = useTheme()
   const theme = useTheme().theme
-  const [accountDialogOpen, setAccountDialogOpen] = useState(false)
   const { unreadCount, dialogOpen: notifDialogOpen, setDialogOpen: setNotifDialogOpen } = useNotifications()
 
   const authUser = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
 
   const user = {
@@ -74,6 +72,7 @@ export function NavUser({
   const handleLogout = () => {
     markManualLogout()
     void authApi.logout().catch(() => undefined)
+    queryClient.clear()
     logout()
     navigate("/login", { replace: true })
   }
@@ -123,7 +122,7 @@ export function NavUser({
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => setAccountDialogOpen(true)}>
+                <DropdownMenuItem onClick={() => navigate("/account")}>
                   <UserCog className="mr-2" />
                   Account
                 </DropdownMenuItem>
@@ -200,16 +199,6 @@ export function NavUser({
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-      <AccountDialog
-        open={accountDialogOpen}
-        onOpenChange={setAccountDialogOpen}
-        user={{
-          fullname: authUser?.fullname || authUser?.username || initialUser.name,
-          email: authUser?.email || initialUser.email,
-          bio: authUser?.bio || "",
-          avatar: initialUser.avatar,
-        }}
-      />
       <NotificationDialog
         open={notifDialogOpen}
         onOpenChange={setNotifDialogOpen}

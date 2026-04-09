@@ -37,7 +37,7 @@ import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { EmptyState } from "@/components/shared/empty-state"
-import { BreadcrumbSkeleton, DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
+import { DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
 import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -126,7 +126,6 @@ export function EnvironmentDetailPage() {
   if (envLoading) {
     return (
       <div className="flex flex-col flex-1 gap-6">
-        <BreadcrumbSkeleton />
         <DetailHeroSkeleton actions={3} />
         <TabsSkeleton count={4} />
         <InfoCardSkeleton fields={4} />

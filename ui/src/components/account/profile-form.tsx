@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { DialogFooter } from "@/components/ui/dialog"
 import {
   Field,
   FieldContent,
@@ -19,9 +20,10 @@ interface ProfileFormProps {
   }
   onSave?: (data: { fullname: string; email: string; bio: string }) => Promise<void> | void
   isSaving?: boolean
+  onCancel?: () => void
 }
 
-export function ProfileForm({ user, onSave, isSaving = false }: ProfileFormProps) {
+export function ProfileForm({ user, onSave, isSaving = false, onCancel }: ProfileFormProps) {
   const [fullname, setFullname] = useState(user.fullname)
   const [email, setEmail] = useState(user.email)
   const [bio, setBio] = useState(user.bio ?? "")
@@ -77,12 +79,17 @@ export function ProfileForm({ user, onSave, isSaving = false }: ProfileFormProps
             />
           </FieldContent>
         </Field>
-        <Field>
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Changes"}
-          </Button>
-        </Field>
       </FieldGroup>
-    </form>
+      <DialogFooter className="pt-4">
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
+        <Button type="submit" disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
+      </DialogFooter>
+    </form >
   )
 }

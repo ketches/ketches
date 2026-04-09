@@ -1,6 +1,7 @@
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { DialogFooter } from "@/components/ui/dialog"
 import {
   Field,
   FieldContent,
@@ -12,9 +13,10 @@ import { Input } from "@/components/ui/input"
 interface PasswordFormProps {
   onSave?: (data: { currentPassword: string; newPassword: string }) => Promise<void> | void
   isSaving?: boolean
+  onCancel?: () => void
 }
 
-export function PasswordForm({ onSave, isSaving = false }: PasswordFormProps) {
+export function PasswordForm({ onSave, isSaving = false, onCancel }: PasswordFormProps) {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -88,12 +90,17 @@ export function PasswordForm({ onSave, isSaving = false }: PasswordFormProps) {
         {error && (
           <div className="text-destructive text-sm">{error}</div>
         )}
-        <Field>
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? "Updating..." : "Update Password"}
-          </Button>
-        </Field>
       </FieldGroup>
+      <DialogFooter className="pt-4">
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
+        <Button type="submit" disabled={isSaving}>
+          {isSaving ? "Updating..." : "Update Password"}
+        </Button>
+      </DialogFooter>
     </form>
   )
 }

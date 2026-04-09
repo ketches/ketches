@@ -34,7 +34,7 @@ import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-r
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
-import { BreadcrumbSkeleton, DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
+import { DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
 import { StatCard } from "@/components/shared/stat-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -105,7 +105,6 @@ export function ClusterNodeDetailPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col flex-1 gap-6">
-        <BreadcrumbSkeleton />
         <DetailHeroSkeleton showBadge actions={2} />
         <TabsSkeleton count={4} />
         <InfoCardSkeleton fields={7} />
