@@ -7,6 +7,7 @@ import {
   ChartLine,
   ChevronsUpDown,
   CircleSlash,
+  Clock,
   Copy,
   Cpu,
   GamepadDirectional,
@@ -603,23 +604,24 @@ export function ClusterDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Slug</p>
                   <p className="text-sm font-mono">{cluster.slug}</p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Status</p>
                   <div className="flex items-center">{getConnectionStatusBadge()}</div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Last Checked</p>
-                  <p className="text-sm">
-                    {cluster.last_checked_at ? formatDate(cluster.last_checked_at) : "Never"}
-                  </p>
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{cluster.last_checked_at ? formatDate(cluster.last_checked_at) : "Never"}</span>
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">API Server</p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-mono break-all">{cluster.api_server || "Unavailable"}</p>
@@ -642,7 +644,7 @@ export function ClusterDetailPage() {
                     )}
                   </div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">KubeConfig</p>
                   <div className="flex items-center gap-2">
                     <ColorBadge color={cluster.has_kube_config ? "green" : "red"}>
@@ -659,7 +661,7 @@ export function ClusterDetailPage() {
                     </Button>
                   </div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Gateway Host</p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-mono">{cluster.gateway_host || "N/A"}</p>

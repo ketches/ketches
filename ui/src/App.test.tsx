@@ -85,12 +85,12 @@ vi.mock("@/pages/projects/project-detail-page", () => ({
   ProjectDetailPage: () => <div data-testid="project-detail-page">project-detail-page</div>,
 }))
 
-vi.mock("@/pages/builder-sessions/builder-sessions-page", () => ({
-  BuilderSessionsPage: () => <div data-testid="builder-sessions-page">builder-sessions-page</div>,
+vi.mock("@/pages/builder-sessions/builder-page", () => ({
+  BuilderPage: () => <div data-testid="builder-page">builder-page</div>,
 }))
 
-vi.mock("@/pages/builder-sessions/builder-workbench-page", () => ({
-  BuilderWorkbenchPage: () => <div data-testid="builder-workbench-page">builder-workbench-page</div>,
+vi.mock("@/pages/builder-sessions/builder-session-page", () => ({
+  BuilderSessionPage: () => <div data-testid="builder-session-page">builder-session-page</div>,
 }))
 
 vi.mock("@/pages/collaborations/collaborations-page", () => ({

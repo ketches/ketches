@@ -232,8 +232,8 @@ vi.mock("sonner", () => ({
   },
 }))
 
-import { BuilderSessionsPage } from "./builder-sessions-page"
-import { BuilderWorkbenchPage } from "./builder-workbench-page"
+import { BuilderPage } from "./builder-page"
+import { BuilderSessionPage } from "./builder-session-page"
 
 const DEFAULT_PAGINATION = {
   page: 1,
@@ -461,10 +461,10 @@ async function renderBuilderRoute(initialEntry: string) {
         <MemoryRouter initialEntries={[initialEntry]}>
           <LocationProbe />
           <Routes>
-            <Route path="/projects/:projectId/builder-sessions" element={<BuilderSessionsPage />} />
+            <Route path="/builder-sessions" element={<BuilderPage />} />
             <Route
-              path="/projects/:projectId/builder-sessions/:sessionId"
-              element={<BuilderWorkbenchPage />}
+              path="/builder-sessions/:sessionId"
+              element={<BuilderSessionPage />}
             />
           </Routes>
         </MemoryRouter>
@@ -842,12 +842,12 @@ describe("Builder workspace routes", () => {
     })
     getBuilderSessionMock.mockResolvedValue(buildDetail({ session: recentSession }))
 
-    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions")
+    const { container, root } = await renderBuilderRoute("/builder-sessions")
 
     await settle()
 
     expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(
-      "/projects/project-1/builder-sessions/session-recent"
+      "/builder-sessions/session-recent"
     )
 
     await act(async () => {
@@ -873,12 +873,12 @@ describe("Builder workspace routes", () => {
       pagination: { ...DEFAULT_PAGINATION, total: 2 },
     })
 
-    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions")
+    const { container, root } = await renderBuilderRoute("/builder-sessions")
 
     await settle()
 
     expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(
-      "/projects/project-1/builder-sessions"
+      "/builder-sessions"
     )
     expect(container.querySelector('[data-testid="builder-session-history"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="builder-composer"]')).not.toBeNull()
@@ -906,7 +906,7 @@ describe("Builder workspace routes", () => {
     getBuilderSessionMock.mockResolvedValue(buildDetail({ session: activeSession }))
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -936,7 +936,7 @@ describe("Builder workspace routes", () => {
     getBuilderSessionMock.mockResolvedValue(buildDetail({ session: activeSession }))
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -982,7 +982,7 @@ describe("Builder workspace routes", () => {
     getBuilderSessionMock.mockResolvedValue(buildDetail({ session: activeSession }))
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1011,7 +1011,7 @@ describe("Builder workspace routes", () => {
     })
 
     expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(
-      "/projects/project-1/builder-sessions?draft=1"
+      "/builder-sessions?draft=1"
     )
     expect(container.querySelector('[data-testid="builder-composer"]')).not.toBeNull()
 
@@ -1042,7 +1042,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1101,7 +1101,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1154,7 +1154,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
 		await settle()
@@ -1220,7 +1220,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1254,7 +1254,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1287,7 +1287,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1351,7 +1351,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1408,7 +1408,7 @@ describe("Builder workspace routes", () => {
     ])
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1453,7 +1453,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1516,7 +1516,7 @@ describe("Builder workspace routes", () => {
     ])
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1606,7 +1606,7 @@ describe("Builder workspace routes", () => {
     ])
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1714,7 +1714,7 @@ describe("Builder workspace routes", () => {
     ])
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -1808,7 +1808,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-failed"
+      "/builder-sessions/session-failed"
     )
 
     await settle()
@@ -1839,7 +1839,7 @@ describe("Builder workspace routes", () => {
       model_profile_key: "claude-sonnet-4",
     })
     expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(
-      "/projects/project-1/builder-sessions/session-replacement"
+      "/builder-sessions/session-replacement"
     )
 
     await act(async () => {
@@ -1888,7 +1888,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-closed"
+      "/builder-sessions/session-closed"
     )
 
     await settle()
@@ -1924,7 +1924,7 @@ describe("Builder workspace routes", () => {
       model_profile_key: "claude-sonnet-4",
     })
     expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(
-      "/projects/project-1/builder-sessions/session-recreated"
+      "/builder-sessions/session-recreated"
     )
 
     await act(async () => {
@@ -1988,7 +1988,7 @@ describe("Builder workspace routes", () => {
       )
 
     const { root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-polling"
+      "/builder-sessions/session-polling"
     )
 
     await act(async () => {
@@ -2037,7 +2037,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-without-files"
+      "/builder-sessions/session-without-files"
     )
 
     await settle()
@@ -2082,7 +2082,7 @@ describe("Builder workspace routes", () => {
     })
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-with-files"
+      "/builder-sessions/session-with-files"
     )
 
     await settle()
@@ -2115,7 +2115,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-active"
+      "/builder-sessions/session-active"
     )
 
     await settle()
@@ -2141,7 +2141,7 @@ describe("Builder workspace routes", () => {
     })
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-1"
+      "/builder-sessions/session-1"
     )
 
     await settle()
@@ -2180,7 +2180,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-1"
+      "/builder-sessions/session-1"
     )
 
     await settle()
@@ -2194,7 +2194,7 @@ describe("Builder workspace routes", () => {
     expect(latestItems?.map((item) => item.label)).toEqual([
       "Builder",
       "Builder Env",
-      "Current Session",
+      "Workspace",
     ])
     expect(latestItems?.[0]?.icon).toBeDefined()
     expect(latestItems?.[1]?.icon).toBeDefined()
@@ -2208,7 +2208,7 @@ describe("Builder workspace routes", () => {
 
   it("keeps the draft workspace breadcrumb in Builder → environment → Current Session form", async () => {
     const { root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions?draft=1"
+      "/builder-sessions?draft=1"
     )
 
     await settle()
@@ -2221,7 +2221,7 @@ describe("Builder workspace routes", () => {
     expect(latestItems?.map((item) => item.label)).toEqual([
       "Builder",
       "Builder Env",
-      "Current Session",
+      "Workspace",
     ])
     expect(latestItems?.[1]?.dropdown).toBeDefined()
 
@@ -2259,7 +2259,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-with-preview"
+      "/builder-sessions/session-with-preview"
     )
 
     await settle()
@@ -2307,7 +2307,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-with-stale-preview"
+      "/builder-sessions/session-with-stale-preview"
     )
 
     await settle()
@@ -2353,7 +2353,7 @@ describe("Builder workspace routes", () => {
     })
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-previewable"
+      "/builder-sessions/session-previewable"
     )
 
     await settle()
@@ -2411,7 +2411,7 @@ describe("Builder workspace routes", () => {
     )
 
     const { container, root } = await renderBuilderRoute(
-      "/projects/project-1/builder-sessions/session-delivery-only"
+      "/builder-sessions/session-delivery-only"
     )
 
     await settle()
@@ -2441,7 +2441,7 @@ describe("Builder workspace routes", () => {
       pagination: DEFAULT_PAGINATION,
     })
 
-    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions?draft=1")
+    const { container, root } = await renderBuilderRoute("/builder-sessions?draft=1")
 
     await settle()
 
@@ -2471,7 +2471,7 @@ describe("Builder workspace routes", () => {
   })
 
   it("shows grouped model choices and includes the selected model when creating a Builder session", async () => {
-    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions?draft=1")
+    const { container, root } = await renderBuilderRoute("/builder-sessions?draft=1")
 
     await settle()
 
@@ -2526,7 +2526,7 @@ describe("Builder workspace routes", () => {
       },
     } satisfies BuilderModelSelection)
 
-    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions?draft=1")
+    const { container, root } = await renderBuilderRoute("/builder-sessions?draft=1")
 
     await settle()
 
@@ -2560,7 +2560,7 @@ describe("Builder workspace routes", () => {
       },
     } satisfies BuilderModelSelection)
 
-    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions?draft=1")
+    const { container, root } = await renderBuilderRoute("/builder-sessions?draft=1")
 
     await settle()
 
@@ -2577,7 +2577,7 @@ describe("Builder workspace routes", () => {
       effectiveDefaultSource: "none",
     } satisfies BuilderModelSelection)
 
-    const { container, root } = await renderBuilderRoute("/projects/project-1/builder-sessions?draft=1")
+    const { container, root } = await renderBuilderRoute("/builder-sessions?draft=1")
 
     await settle()
 

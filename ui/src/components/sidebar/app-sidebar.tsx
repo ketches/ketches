@@ -6,15 +6,12 @@ import {
   GalleryVerticalEnd,
   LayoutDashboard,
   Orbit,
-  Puzzle,
   Settings2,
   ShipWheel,
   Sparkles,
   Trash2,
   User,
-  Users,
   VectorSquare,
-  Warehouse
 } from "lucide-react"
 import * as React from "react"
 
@@ -77,10 +74,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: "Applications", url: "/applications", icon: Box },
     { title: "Environments", url: "/environments", icon: Orbit, hidden: isViewer },
     { title: "Code Repositories", url: "/code-repositories", icon: FolderGit2, hidden: isViewer },
-    { title: "Container Registries", url: "/container-registries", icon: Warehouse, hidden: isViewer },
-    { title: "Plugins", url: "/plugins", icon: Puzzle, hidden: isViewer },
-    { title: "Members", url: "/members", icon: Users, hidden: isViewer },
-    { title: "Builder", url: `/projects/${activeProjectId}/builder-sessions`, icon: Sparkles, hidden: !activeProjectId },
   ]
 
   // Global group: cross-project modules
@@ -104,6 +97,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavGlobalSearch onOpenSearch={() => setSearchOpen(true)} />
         <NavMain
           dashboardItem={{ title: "Dashboard", url: "/", icon: LayoutDashboard }}
+          topItems={isAdmin ? [] : [{ title: "Builder", url: "/builder-sessions", icon: Sparkles, hidden: !activeProjectId }]}
           projectItems={isAdmin ? [] : projectItems}
           globalItems={isAdmin ? [] : globalItems}
           infrastructureItems={isAdmin ? infrastructureItems : []}

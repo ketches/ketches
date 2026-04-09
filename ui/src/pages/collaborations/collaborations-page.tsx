@@ -11,7 +11,7 @@ import {
   User,
   Users
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { collaborationApi } from "@/api/collaboration"
 import {
@@ -46,6 +46,10 @@ function getStored<T extends string>(key: string, fallback: T): T {
   return (localStorage.getItem(key) as T) || fallback
 }
 
+function getStoredNullable(key: string): string | null {
+  return localStorage.getItem(key)
+}
+
 const MY_ITEMS_TABS = ["tasks", "test-cases", "defects"] as const
 const ALL_ITEMS_TABS = ["sprints", "tasks", "requirements", "backlog", "test-cases", "defects"] as const
 
@@ -57,7 +61,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
 
   const [scope, setScope] = useState<Scope>(() => getStored(STORAGE_KEYS.scope, "all-items"))
   const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>(() => getStored(STORAGE_KEYS.taskView, "list"))
-  const [selectedSprintId, setSelectedSprintId] = useState<string>(() => getStored(STORAGE_KEYS.sprint, ""))
+  const [selectedSprintId, setSelectedSprintId] = useState<string | null>(() => getStoredNullable(STORAGE_KEYS.sprint))
   const [activeTab, setActiveTab] = useState<string>(() => {
     const stored = getStored(STORAGE_KEYS.tab, "")
     const validTabs = scope === "my-items" ? MY_ITEMS_TABS : ALL_ITEMS_TABS
@@ -68,7 +72,6 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
   // Persist preferences
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.scope, scope) }, [scope])
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.taskView, taskViewMode) }, [taskViewMode])
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.sprint, selectedSprintId) }, [selectedSprintId])
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.tab, activeTab) }, [activeTab])
 
   // Fetch sprints for filter
@@ -77,14 +80,13 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     queryFn: () => collaborationApi.listSprints(projectId ?? "", { page: 1, page_size: 100 }),
     enabled: !!projectId,
   })
+  const sprints = useMemo(() => sprintsData?.items ?? [], [sprintsData?.items])
   const sprintOptions = useMemo<SprintOption[]>(() => {
-    const sprints = sprintsData?.items ?? []
-
     return [
       // { label: "All Sprints", value: "" },
       ...sprints.map((s) => ({ label: s.name, value: s.id })),
     ]
-  }, [sprintsData?.items])
+  }, [sprints])
   const getSprintOptionLabel = useCallback((item: SprintOption | string) => {
     if (typeof item !== "string") {
       return item.label
@@ -93,24 +95,36 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     return sprintOptions.find((opt) => opt.value === item)?.label || item || "All Sprints"
   }, [sprintOptions])
 
-  // Auto-select first active sprint when sprints load (runs only once)
-  const hasAutoSelectedSprint = useRef(false)
+  const effectiveSelectedSprintId = useMemo(() => {
+    if (selectedSprintId === "") {
+      return ""
+    }
+
+    if (selectedSprintId && sprints.some((s) => s.id === selectedSprintId)) {
+      return selectedSprintId
+    }
+
+    return sprints.find((s) => s.status === "active")?.id ?? ""
+  }, [selectedSprintId, sprints])
+
   useEffect(() => {
-    if (hasAutoSelectedSprint.current) return
-    const sprints = sprintsData?.items ?? []
-    if (!sprints.length) return
-    // Skip if a valid sprint is already selected from storage
-    if (selectedSprintId && sprints.some(s => s.id === selectedSprintId)) {
-      hasAutoSelectedSprint.current = true
+    if (selectedSprintId === null) {
+      if (effectiveSelectedSprintId) {
+        localStorage.setItem(STORAGE_KEYS.sprint, effectiveSelectedSprintId)
+        return
+      }
+
+      localStorage.removeItem(STORAGE_KEYS.sprint)
       return
     }
 
-    const firstActive = sprints.find(s => s.status === "active")
-    if (firstActive) {
-      setSelectedSprintId(firstActive.id)
+    if (selectedSprintId) {
+      localStorage.setItem(STORAGE_KEYS.sprint, selectedSprintId)
+      return
     }
-    hasAutoSelectedSprint.current = true
-  }, [sprintsData?.items, selectedSprintId])
+
+    localStorage.setItem(STORAGE_KEYS.sprint, "")
+  }, [effectiveSelectedSprintId, selectedSprintId])
 
   const assigneeId = scope === "my-items" ? currentUserId : undefined
   const handleScopeChange = (value: string) => {
@@ -173,7 +187,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
             <div className="w-full sm:w-auto">
               <Combobox
                 items={sprintOptions}
-                value={selectedSprintId}
+                value={effectiveSelectedSprintId}
                 onValueChange={(val) => setSelectedSprintId(typeof val === "string" ? val : val?.value ?? "")}
                 itemToStringLabel={getSprintOptionLabel}
               >
@@ -245,7 +259,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
               viewMode={taskViewMode}
               onViewModeChange={setTaskViewMode}
               assigneeId={assigneeId}
-              sprintId={selectedSprintId || undefined}
+              sprintId={effectiveSelectedSprintId || undefined}
             />
           </TabsContent>
 
@@ -254,7 +268,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
               <RequirementsPage
                 projectId={projectId}
                 assigneeId={assigneeId}
-                sprintId={selectedSprintId || undefined}
+                sprintId={effectiveSelectedSprintId || undefined}
               />
             </TabsContent>
           )}
@@ -268,7 +282,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
           <TabsContent value="test-cases" className="mt-2">
             <TestCasesPage
               projectId={projectId}
-              sprintId={selectedSprintId || undefined}
+              sprintId={effectiveSelectedSprintId || undefined}
             />
           </TabsContent>
 
@@ -276,7 +290,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
             <DefectsPage
               projectId={projectId}
               assigneeId={assigneeId}
-              sprintId={selectedSprintId || undefined}
+              sprintId={effectiveSelectedSprintId || undefined}
             />
           </TabsContent>
         </Tabs>

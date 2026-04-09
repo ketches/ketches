@@ -32,7 +32,7 @@ import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { type AxiosError } from "axios"
-import { Clock, GalleryVerticalEnd, LayoutGrid, List as ListIcon, LogIn, Pencil, Plus, Trash2, UserCog } from "lucide-react"
+import { Clock, GalleryVerticalEnd, LayoutGrid, List as ListIcon, Pencil, Plus, Trash2, UserCog } from "lucide-react"
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -43,7 +43,7 @@ const PROJECTS_VIEW_MODE_KEY = "projects_view_mode"
 export function ProjectsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const { activeProjectId, setActiveProjectId } = useProjectStore()
+  const { activeProjectId, setActiveContextWithNames } = useProjectStore()
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 
   // View mode persisted in localStorage, defaulting to "list"
@@ -136,10 +136,9 @@ export function ProjectsPage() {
     setDeleteDialogOpen(true)
   }
 
-  // Activate a project and navigate to dashboard
-  const handleEnterProject = (project: Project) => {
-    setActiveProjectId(project.id)
-    navigate("/")
+  const handleOpenProject = (project: Project) => {
+    setActiveContextWithNames(project.id, project.name, null, null)
+    navigate(`/projects/${project.id}`)
   }
 
   const columns: ColumnDef<Project>[] = [
@@ -156,11 +155,14 @@ export function ProjectsPage() {
           <div className="flex flex-col">
             <div className="flex items-center gap-2 flex-wrap">
               {isAdmin ? (
-                <span className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/projects/${row.original.id}`)}>
+                <span className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => handleOpenProject(row.original)}>
                   {row.original.name}
                 </span>
               ) : (
-                <span className="font-medium text-foreground">
+                <span
+                  className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => handleOpenProject(row.original)}
+                >
                   {row.original.name}
                 </span>
               )}
@@ -196,20 +198,8 @@ export function ProjectsPage() {
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
-        const isActive = row.original.id === activeProjectId
         return (
           <div className="flex items-center justify-end gap-2">
-            {/* Enter button: disabled if this is already the active project */}
-            {!isAdmin && <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleEnterProject(row.original)}
-              disabled={isActive}
-              title={isActive ? "Already active project" : "Set as active project and go to dashboard"}
-            >
-              <LogIn className="mr-1 h-3.5 w-3.5" />
-              Enter
-            </Button>}
             <Tooltip>
               <TooltipTrigger
                 delay={200}
@@ -327,12 +317,15 @@ export function ProjectsPage() {
         totalCount={paginationInfo?.total ?? 0}
         pagination={pagination}
         onPaginationChange={setPagination}
+        onRowClick={handleOpenProject}
         leftToolbar={() => leftToolbar}
         rightToolbar={() => rightToolbar}
         renderCard={(project) => {
-          const isActive = project.id === activeProjectId
           return (
-            <Card className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10">
+            <Card
+              className="group/card hover:shadow-md transition-shadow h-full bg-secondary/10 cursor-pointer"
+              onClick={() => handleOpenProject(project)}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 min-w-0">
@@ -343,15 +336,12 @@ export function ProjectsPage() {
                     </Avatar>
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {isAdmin ? (
-                          <CardTitle className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/projects/${project.id}`)}>
-                            {project.name}
-                          </CardTitle>
-                        ) : (
-                          <CardTitle className="text-base font-semibold truncate">
-                            {project.name}
-                          </CardTitle>
-                        )}
+                        <CardTitle
+                          className="text-base font-semibold truncate cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => isAdmin ? navigate(`/projects/${project.id}`) : handleOpenProject(project)}
+                        >
+                          {project.name}
+                        </CardTitle>
                         {project.id === activeProjectId && (
                           <ColorBadge color="green">
                             Active
@@ -370,17 +360,6 @@ export function ProjectsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {!isAdmin && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEnterProject(project)}
-                        disabled={isActive}
-                      >
-                        <LogIn />
-                        Enter
-                      </Button>
-                    )}
                     <Tooltip>
                       <TooltipTrigger
                         delay={200}

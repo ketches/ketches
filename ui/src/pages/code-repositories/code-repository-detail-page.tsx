@@ -148,7 +148,7 @@ export function CodeRepositoryDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Git URL</p>
                   <div className="flex items-center gap-2">
                     <p className="break-all font-mono text-sm">{detail.repo.git_repo_url}</p>

@@ -1,5 +1,5 @@
 import { BuilderWorkspaceShell } from "./builder-workspace-shell"
 
-export function BuilderWorkbenchPage() {
+export function BuilderPage() {
   return <BuilderWorkspaceShell />
 }

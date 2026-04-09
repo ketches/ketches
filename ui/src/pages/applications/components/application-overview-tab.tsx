@@ -377,7 +377,7 @@ export function ApplicationOverviewTab({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
-            <div>
+            <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Slug</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-mono">{app.slug}</p>
@@ -394,7 +394,7 @@ export function ApplicationOverviewTab({
                 </Button>
               </div>
             </div>
-            <div>
+            <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Image</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-mono truncate">{app.container_image}</p>
@@ -425,9 +425,12 @@ export function ApplicationOverviewTab({
                 </Button>
               </div>
             </div>
-            <div>
+            <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Created At</p>
-              <p className="text-sm">{app.created_at ? formatDate(app.created_at) : "N/A"}</p>
+              <div className="flex items-center gap-1.5 text-sm">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>{app.created_at ? formatDate(app.created_at) : "N/A"}</span>
+              </div>
             </div>
           </div>
         </CardContent>

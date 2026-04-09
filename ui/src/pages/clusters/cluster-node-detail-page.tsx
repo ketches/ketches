@@ -5,6 +5,7 @@ import {
   ChartLine,
   ChevronsUpDown,
   CircleSlash,
+  Clock,
   Copy,
   Cpu,
   HardDrive,
@@ -288,7 +289,7 @@ export function ClusterNodeDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Internal IP</p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-mono">{internalIP || "N/A"}</p>
@@ -307,7 +308,7 @@ export function ClusterNodeDetailPage() {
                     )}
                   </div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Host Name</p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-mono">{hostIP}</p>
@@ -326,31 +327,32 @@ export function ClusterNodeDetailPage() {
                     )}
                   </div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Kubelet Version</p>
                   <p className="text-sm font-mono">{node.status.nodeInfo.kubeletVersion}</p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">OS Image</p>
                   <p className="text-sm">{node.status.nodeInfo.osImage}</p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Operating System</p>
                   <p className="text-sm capitalize">{node.status.nodeInfo.operatingSystem} ({node.status.nodeInfo.architecture})</p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Kernel Version</p>
                   <p className="text-sm font-mono">{node.status.nodeInfo.kernelVersion}</p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Container Runtime</p>
                   <p className="text-sm font-mono">{node.status.nodeInfo.containerRuntimeVersion}</p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Created At</p>
-                  <p className="text-sm">
-                    {formatDate(node.metadata.creationTimestamp)}
-                  </p>
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{formatDate(node.metadata.creationTimestamp)}</span>
+                  </div>
                 </div>
               </div>
             </CardContent>

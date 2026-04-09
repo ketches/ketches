@@ -186,14 +186,16 @@ function mergeBuilderSessionDetailAfterPostMessage(
 }
 
 export function useBuilderWorkspaceSession() {
-  const { projectId, sessionId } = useParams<{ projectId: string; sessionId?: string }>()
+  const { projectId: projectIdFromParams, sessionId } = useParams<{ projectId?: string; sessionId?: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const currentUserId = useAuthStore((state) => state.user?.id ?? "")
+  const activeProjectId = useProjectStore((state) => state.activeProjectId)
   const activeProjectName = useProjectStore((state) => state.activeProjectName)
   const activeEnvName = useProjectStore((state) => state.activeEnvName)
   const setActiveContextWithNames = useProjectStore((state) => state.setActiveContextWithNames)
+  const projectId = projectIdFromParams ?? activeProjectId ?? undefined
 
   const [messageInput, setMessageInput] = React.useState("")
   const [draftBuildEnvId, setDraftBuildEnvId] = React.useState("")
@@ -257,7 +259,7 @@ export function useBuilderWorkspaceSession() {
       return
     }
 
-    navigate(`/projects/${projectId}/builder-sessions/${resumableSession.id}`, { replace: true })
+    navigate(`/builder-sessions/${resumableSession.id}`, { replace: true })
   }, [isDraftOverride, isSessionsLoading, navigate, projectId, resumableSession, sessionId])
 
   const { data: buildEnvs = [] } = useQuery({
@@ -338,8 +340,14 @@ export function useBuilderWorkspaceSession() {
   const selectedPreview = selectedDetail?.preview
   const selectedPreviewRunId = selectedPreview?.resolved_run_id ?? null
   const selectedPreviewAvailable = selectedPreview?.preview_available ?? false
-  const selectedRuns = selectedDetail?.runs ?? []
-  const rawMessages = selectedDetail?.messages ?? []
+  const selectedRuns = React.useMemo(
+    () => selectedDetail?.runs ?? [],
+    [selectedDetail?.runs]
+  )
+  const rawMessages = React.useMemo(
+    () => selectedDetail?.messages ?? [],
+    [selectedDetail?.messages]
+  )
 
   const latestRun = React.useMemo(() => {
     if (!selectedDetail?.runs?.length || !selectedDetail.session.latest_run_id) {
@@ -415,7 +423,7 @@ export function useBuilderWorkspaceSession() {
       setMessageInput("")
       setDraftError("")
       queryClient.invalidateQueries({ queryKey: ["builder-sessions", projectId] })
-      navigate(`/projects/${projectId}/builder-sessions/${detail.session.id}`)
+      navigate(`/builder-sessions/${detail.session.id}`)
     },
     onError: (error: unknown) => {
       const message = isAxiosError(error) ? error.response?.data?.error : "Unknown error"
@@ -639,7 +647,7 @@ export function useBuilderWorkspaceSession() {
     return () => {
       eventSource.close()
     }
-  }, [activeStreamingRun?.id, activeStreamingRun?.status, projectId, sessionId])
+  }, [activeStreamingRun, projectId, sessionId])
 
   const isSubmitting = createSessionMutation.isPending
   const isRedirectingToFreshSession = !sessionId && !isSessionsLoading && !!resumableSession && !isDraftOverride
@@ -653,7 +661,7 @@ export function useBuilderWorkspaceSession() {
       return
     }
 
-    navigate(`/projects/${projectId}/builder-sessions?draft=1`)
+    navigate(`/builder-sessions?draft=1`)
   }, [navigate, projectId])
 
   const handleSendMessage = React.useCallback(() => {
@@ -761,11 +769,11 @@ export function useBuilderWorkspaceSession() {
                   }
 
                   if (sessionId) {
-                    navigate(`/projects/${projectId}/builder-sessions?draft=1`)
+                    navigate(`/builder-sessions?draft=1`)
                     return
                   }
 
-                  navigate(`/projects/${projectId}/builder-sessions?draft=1`, { replace: !isDraftOverride })
+                  navigate(`/builder-sessions?draft=1`, { replace: !isDraftOverride })
                 }}
               >
                 <Orbit className="h-4 w-4" />
@@ -778,9 +786,9 @@ export function useBuilderWorkspaceSession() {
     ) : undefined
 
     return [
-      { label: "Builder", href: `/projects/${projectId}/builder-sessions`, icon: Sparkles },
+      { label: "Builder", href: "/builder-sessions", icon: Sparkles },
       { label: environmentLabel, icon: Orbit, dropdown: environmentDropdown },
-      { label: "Current Session", icon: MessageSquare },
+      { label: "Workspace", icon: MessageSquare },
     ]
   }, [
     activeProjectName,

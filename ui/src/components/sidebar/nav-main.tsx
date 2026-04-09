@@ -40,6 +40,7 @@ export function NavMenuItem({ item }: { item: NavItem }) {
 
 export function NavMain({
   dashboardItem,
+  topItems,
   projectItems,
   globalItems,
   infrastructureItems: infrastructureItems,
@@ -47,6 +48,7 @@ export function NavMain({
   platformItems: platformItems
 }: {
   dashboardItem?: NavItem
+  topItems?: NavItem[]
   projectItems: NavItem[]
   globalItems: NavItem[]
   infrastructureItems: NavItem[]
@@ -55,14 +57,18 @@ export function NavMain({
 }) {
   const visibleProjectItems = projectItems.filter((item) => !item.hidden)
   const visibleGlobalItems = globalItems.filter((item) => !item.hidden)
+  const visibleTopItems = (topItems ?? []).filter((item) => !item.hidden)
 
   return (
     <>
       {/* Dashboard rendered outside any group */}
-      {dashboardItem && (
+      {(dashboardItem || visibleTopItems.length > 0) && (
         <SidebarGroup>
           <SidebarMenu>
-            <NavMenuItem item={dashboardItem} />
+            {dashboardItem ? <NavMenuItem item={dashboardItem} /> : null}
+            {visibleTopItems.map((item) => (
+              <NavMenuItem key={item.title} item={item} />
+            ))}
           </SidebarMenu>
         </SidebarGroup>
       )}

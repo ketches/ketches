@@ -20,8 +20,8 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom
 const DashboardPage = React.lazy(() => import("@/pages/dashboard/dashboard-page").then((module) => ({ default: module.DashboardPage })))
 const ProjectsPage = React.lazy(() => import("@/pages/projects/projects-page").then((module) => ({ default: module.ProjectsPage })))
 const ProjectDetailPage = React.lazy(() => import("@/pages/projects/project-detail-page").then((module) => ({ default: module.ProjectDetailPage })))
-const BuilderSessionsPage = React.lazy(() => import("@/pages/builder-sessions/builder-sessions-page").then((module) => ({ default: module.BuilderSessionsPage })))
-const BuilderWorkbenchPage = React.lazy(() => import("@/pages/builder-sessions/builder-workbench-page").then((module) => ({ default: module.BuilderWorkbenchPage })))
+const BuilderPage = React.lazy(() => import("@/pages/builder-sessions/builder-page").then((module) => ({ default: module.BuilderPage })))
+const BuilderSessionPage = React.lazy(() => import("@/pages/builder-sessions/builder-session-page").then((module) => ({ default: module.BuilderSessionPage })))
 const CollaborationsPage = React.lazy(() => import("@/pages/collaborations/collaborations-page").then((module) => ({ default: module.CollaborationsPage })))
 const ActivitiesPage = React.lazy(() => import("@/pages/activities/activities-page").then((module) => ({ default: module.ActivitiesPage })))
 const AccountPage = React.lazy(() => import("@/pages/account/account-page").then((module) => ({ default: module.AccountPage })))
@@ -125,8 +125,8 @@ export function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-              <Route path="/projects/:projectId/builder-sessions" element={<BuilderSessionsPage />} />
-              <Route path="/projects/:projectId/builder-sessions/:sessionId" element={<BuilderWorkbenchPage />} />
+              <Route path="/builder-sessions" element={<BuilderPage />} />
+              <Route path="/builder-sessions/:sessionId" element={<BuilderSessionPage />} />
               <Route path="/collaborations" element={<CollaborationsPage />} />
               <Route path="/activities" element={<ActivitiesPage />} />
               <Route path="/account" element={<AccountPage />} />

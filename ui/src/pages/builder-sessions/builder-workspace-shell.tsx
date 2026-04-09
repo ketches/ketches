@@ -30,10 +30,7 @@ export function BuilderWorkspaceShell() {
           sessions={workspace.sessions}
           onNewConversation={workspace.handleOpenDraft}
           onSelectSession={(targetSessionId) => {
-            if (!workspace.projectId) {
-              return
-            }
-            workspace.navigate(`/projects/${workspace.projectId}/builder-sessions/${targetSessionId}`)
+            workspace.navigate(`/builder-sessions/${targetSessionId}`)
           }}
           hasFiles={workspace.hasFiles}
           filesExpanded={files.filesExpanded}

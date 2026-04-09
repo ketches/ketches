@@ -7,6 +7,7 @@ import {
   ChartLine,
   ChevronsUpDown,
   CircleAlert,
+  Clock,
   Copy,
   GalleryVerticalEnd,
   Hammer,
@@ -281,7 +282,7 @@ export function EnvironmentDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-3">
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Slug</p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-mono">{env.slug}</p>
@@ -298,7 +299,7 @@ export function EnvironmentDetailPage() {
                     </Button>
                   </div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Namespace</p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-mono">{env.cluster_namespace}</p>
@@ -316,15 +317,16 @@ export function EnvironmentDetailPage() {
                     </Button>
                   </div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Created At</p>
-                  <p className="text-sm">
-                    {formatDate(env.created_at)}
-                  </p>
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{formatDate(env.created_at)}</span>
+                  </div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Build Environment</p>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2">
                     {env.is_build_env ? (
                       <>
                         <Badge variant="default" className="gap-1"><Hammer className="h-3 w-3" />Build Env</Badge>
