@@ -20,8 +20,8 @@ vi.mock("@/components/layout/page-header", () => ({
 vi.mock("./backlog-page", () => ({ default: () => null }))
 vi.mock("./defects-page", () => ({ default: () => null }))
 vi.mock("./requirements-page", () => ({ default: () => null }))
-vi.mock("./sprints-page", () => ({ default: () => null }))
-vi.mock("./tasks-page", () => ({ default: () => null }))
+vi.mock("./sprints-page", () => ({ default: () => <div data-testid="sprints-page" /> }))
+vi.mock("./tasks-page", () => ({ default: () => <div data-testid="tasks-page" /> }))
 vi.mock("./test-cases-page", () => ({ default: () => null }))
 
 const listSprintsMock = vi.mocked(collaborationApi.listSprints)
@@ -132,7 +132,6 @@ describe("CollaborationsPage", () => {
     const sprintInput = container.querySelector('input[placeholder="Filter by sprint..."]') as HTMLInputElement | null
 
     expect(sprintInput).not.toBeNull()
-    expect(sprintInput?.value).toBe(ACTIVE_SPRINT.id)
 
     await act(async () => {
       resolveSprints?.({
@@ -152,6 +151,52 @@ describe("CollaborationsPage", () => {
     })
 
     expect(sprintInput?.value).toBe(ACTIVE_SPRINT.name)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("hides the sprint filter and top tabs when the project has no sprints", async () => {
+    listSprintsMock.mockResolvedValue({
+      items: [],
+      pagination: {
+        page: 1,
+        page_size: 100,
+        total: 0,
+        total_pages: 0,
+      },
+    })
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <CollaborationsPage projectId="project-1" />
+        </QueryClientProvider>
+      )
+      await flushPromises()
+    })
+
+    await act(async () => {
+      await flushPromises()
+    })
+
+    expect(container.querySelector('input[placeholder="Filter by sprint..."]')).toBeNull()
+    expect(container.textContent?.includes("Tasks")).toBe(false)
+    expect(container.textContent?.includes("Requirements")).toBe(false)
+    expect(container.querySelector('[data-testid="sprints-page"]')).not.toBeNull()
 
     await act(async () => {
       root.unmount()

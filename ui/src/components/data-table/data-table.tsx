@@ -32,6 +32,8 @@ import {
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Info, Loader2 } from "lucide-react"
 
+import { RefreshButtonIcon, RefreshIndicator } from "@/components/data-table/refresh-indicator"
+import { useRefreshAction } from "@/components/data-table/use-refresh-action"
 import {
   Combobox,
   ComboboxContent,
@@ -39,8 +41,6 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
-import { RefreshButtonIcon, RefreshIndicator } from "@/components/data-table/refresh-indicator"
-import { useRefreshAction } from "@/components/data-table/use-refresh-action"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -241,9 +241,9 @@ export function DataTable<TData, TValue>({
 
   if (showStandaloneEmptyState) {
     return (
-      <div>
-        {sourceEmptyContent ?? emptyContent ?? <EmptyState title="" description="No matching results." icon={Info} />}
-      </div>
+      sourceEmptyContent ?? (
+        emptyContent ?? <EmptyState title="" description="No data available." icon={Info} />
+      )
     )
   }
 

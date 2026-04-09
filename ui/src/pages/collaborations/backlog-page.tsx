@@ -286,6 +286,12 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
             title="No backlog items yet"
             description="Requirements moved to backlog will appear here."
             icon={Archive}
+            actionText="Create Requirement"
+            onAction={() => {
+              setParentRequirementId(undefined)
+              setCreateOpen(true)
+            }}
+            actionIcon={Plus}
           />
         }
         useStandaloneEmptyState={!hasActiveFilters}

@@ -401,7 +401,12 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
               title="No tasks yet"
               description="Create your first task to start tracking work."
               icon={CheckSquare}
-              border={false}
+              actionText="New Task"
+              onAction={() => {
+                setParentForCreate(undefined)
+                setCreateOpen(true)
+              }}
+              actionIcon={Plus}
             />
           }
           useStandaloneEmptyState={!hasActiveFilters}

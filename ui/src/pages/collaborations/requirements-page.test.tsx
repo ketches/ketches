@@ -2,23 +2,27 @@ import { act } from "react"
 import ReactDOMClient from "react-dom/client"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const { refetchMock, sprintsResponseRef } = vi.hoisted(() => ({
+const { refetchMock, requirementsResponseRef } = vi.hoisted(() => ({
   refetchMock: vi.fn(),
-  sprintsResponseRef: {
-    current: undefined as typeof SPRINTS_RESPONSE | typeof EMPTY_SPRINTS_RESPONSE | undefined,
+  requirementsResponseRef: {
+    current: undefined as typeof REQUIREMENTS_RESPONSE | typeof EMPTY_REQUIREMENTS_RESPONSE | undefined,
   },
 }))
 
-const SPRINTS_RESPONSE = {
+const REQUIREMENTS_RESPONSE = {
   items: [
     {
-      id: "sprint-1",
+      id: "requirement-1",
       project_id: "project-1",
-      name: "Sprint Alpha",
-      goal: "Ship refresh support",
-      status: "active",
-      start_date: "2026-03-01",
-      end_date: "2026-03-14",
+      sprint_id: "sprint-1",
+      title: "Support empty-state actions",
+      description: "Requirement description",
+      status: "draft",
+      priority: "p1",
+      planning_status: "planned",
+      assignee_id: "user-1",
+      parent_requirement_id: "",
+      depth: 0,
       created_by: "user-1",
       updated_by: "user-1",
       created_at: "2026-03-01T00:00:00Z",
@@ -33,7 +37,7 @@ const SPRINTS_RESPONSE = {
   },
 } as const
 
-const EMPTY_SPRINTS_RESPONSE = {
+const EMPTY_REQUIREMENTS_RESPONSE = {
   items: [],
   pagination: {
     total: 0,
@@ -43,13 +47,13 @@ const EMPTY_SPRINTS_RESPONSE = {
   },
 } as const
 
-sprintsResponseRef.current = SPRINTS_RESPONSE
+requirementsResponseRef.current = REQUIREMENTS_RESPONSE
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
-    if (queryKey[0] === "sprints") {
+    if (queryKey[0] === "requirements") {
       return {
-        data: sprintsResponseRef.current,
+        data: requirementsResponseRef.current,
         isLoading: false,
         refetch: refetchMock,
       }
@@ -88,24 +92,33 @@ vi.mock("@/components/data-table/data-table", () => ({
   }) => (
     <div>
       {onRefresh ? (
-        <button type="button" data-testid="refresh-sprints" onClick={onRefresh}>
+        <button type="button" data-testid="refresh-requirements" onClick={onRefresh}>
           Refresh
         </button>
       ) : (
         <div data-testid="missing-refresh" />
       )}
-      <div data-testid="sprints-source-empty">{sourceEmptyContent}</div>
+      <div data-testid="requirements-source-empty">{sourceEmptyContent}</div>
     </div>
   ),
 }))
 
+vi.mock("@/components/collaborations/collab-filters", () => ({
+  AssigneeFilter: () => null,
+  PriorityFilter: () => null,
+  StatusFilter: () => null,
+}))
+
 vi.mock("@/components/collaborations/inline-editors", () => ({
+  InlineAssigneeEditor: () => null,
+  InlinePriorityEditor: () => null,
   InlineStatusEditor: () => null,
 }))
 
-vi.mock("@/components/collaborations/sprint-dialogs", () => ({
-  CreateSprintDialog: ({ open }: { open: boolean }) => <div data-testid="create-sprint-dialog">{String(open)}</div>,
-  EditSprintDialog: () => null,
+vi.mock("@/components/collaborations/requirement-dialogs", () => ({
+  CreateRequirementDialog: ({ open }: { open: boolean }) => <div data-testid="create-requirement-dialog">{String(open)}</div>,
+  DeleteRequirementDialog: () => null,
+  EditRequirementDialog: () => null,
 }))
 
 vi.mock("@/components/layout/page-header", () => ({
@@ -136,17 +149,6 @@ vi.mock("@/components/shared/empty-state", () => ({
   ),
 }))
 
-vi.mock("@/components/ui/alert-dialog", () => ({
-  AlertDialog: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  AlertDialogAction: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
-  AlertDialogCancel: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
-  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: React.ComponentProps<"button">) => <button type="button" {...props}>{children}</button>,
 }))
@@ -162,26 +164,26 @@ vi.mock("@/components/ui/input", () => ({
   Input: (props: React.ComponentProps<"input">) => <input {...props} />,
 }))
 
-import SprintsPage from "./sprints-page"
+import RequirementsPage from "./requirements-page"
 
-describe("SprintsPage", () => {
+describe("RequirementsPage", () => {
   afterEach(() => {
     document.body.innerHTML = ""
     refetchMock.mockReset()
-    sprintsResponseRef.current = SPRINTS_RESPONSE
+    requirementsResponseRef.current = REQUIREMENTS_RESPONSE
   })
 
-  it("wires the refresh action to the sprint list refetch", async () => {
+  it("wires the refresh action to the requirements list refetch", async () => {
     const container = document.createElement("div")
     document.body.appendChild(container)
 
     const root = ReactDOMClient.createRoot(container)
 
     await act(async () => {
-      root.render(<SprintsPage projectId="project-1" />)
+      root.render(<RequirementsPage projectId="project-1" />)
     })
 
-    const refreshButton = container.querySelector('[data-testid="refresh-sprints"]') as HTMLButtonElement | null
+    const refreshButton = container.querySelector('[data-testid="refresh-requirements"]') as HTMLButtonElement | null
 
     expect(refreshButton).not.toBeNull()
 
@@ -196,8 +198,8 @@ describe("SprintsPage", () => {
     })
   })
 
-  it("shows a create action in the empty state when no sprints exist", async () => {
-    sprintsResponseRef.current = EMPTY_SPRINTS_RESPONSE
+  it("shows a create action in the empty state when no requirements exist", async () => {
+    requirementsResponseRef.current = EMPTY_REQUIREMENTS_RESPONSE
 
     const container = document.createElement("div")
     document.body.appendChild(container)
@@ -205,22 +207,21 @@ describe("SprintsPage", () => {
     const root = ReactDOMClient.createRoot(container)
 
     await act(async () => {
-      root.render(<SprintsPage projectId="project-1" />)
+      root.render(<RequirementsPage projectId="project-1" />)
     })
 
     const createButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "New Sprint"
+      (button) => button.textContent === "New Requirement"
     ) as HTMLButtonElement | undefined
-    const createDialogState = container.querySelector('[data-testid="create-sprint-dialog"]')
 
     expect(createButton).toBeDefined()
-    expect(createDialogState?.textContent).toBe("false")
+    expect(container.querySelector('[data-testid="create-requirement-dialog"]')?.textContent).toBe("false")
 
     await act(async () => {
       createButton?.click()
     })
 
-    expect(container.querySelector('[data-testid="create-sprint-dialog"]')?.textContent).toBe("true")
+    expect(container.querySelector('[data-testid="create-requirement-dialog"]')?.textContent).toBe("true")
 
     await act(async () => {
       root.unmount()

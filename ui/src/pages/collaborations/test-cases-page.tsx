@@ -150,6 +150,9 @@ export default function TestCasesPage({ projectId: propProjectId, sprintId }: Te
             title="No test cases yet"
             description="Create your first test case to start validating behavior."
             icon={TestTube}
+            actionText="New Test Case"
+            onAction={() => setCreateOpen(true)}
+            actionIcon={Plus}
           />
         }
         useStandaloneEmptyState={!hasActiveFilters}

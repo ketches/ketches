@@ -2,8 +2,11 @@ import { act } from "react"
 import ReactDOMClient from "react-dom/client"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const { refetchMock } = vi.hoisted(() => ({
+const { refetchMock, tasksResponseRef } = vi.hoisted(() => ({
   refetchMock: vi.fn(),
+  tasksResponseRef: {
+    current: undefined as typeof TASKS_RESPONSE | typeof EMPTY_TASKS_RESPONSE | undefined,
+  },
 }))
 
 const TASKS_RESPONSE = {
@@ -36,11 +39,23 @@ const TASKS_RESPONSE = {
   },
 } as const
 
+const EMPTY_TASKS_RESPONSE = {
+  items: [],
+  pagination: {
+    total: 0,
+    page: 1,
+    page_size: 20,
+    total_pages: 0,
+  },
+} as const
+
+tasksResponseRef.current = TASKS_RESPONSE
+
 vi.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
     if (queryKey[0] === "tasks") {
       return {
-        data: TASKS_RESPONSE,
+        data: tasksResponseRef.current,
         isLoading: false,
         refetch: refetchMock,
       }
@@ -70,7 +85,13 @@ vi.mock("@/hooks/use-debounce", () => ({
 }))
 
 vi.mock("@/components/data-table/data-table", () => ({
-  DataTable: ({ onRefresh }: { onRefresh?: () => void }) => (
+  DataTable: ({
+    onRefresh,
+    sourceEmptyContent,
+  }: {
+    onRefresh?: () => void
+    sourceEmptyContent?: React.ReactNode
+  }) => (
     <div>
       {onRefresh ? (
         <button type="button" data-testid="refresh-tasks-list" onClick={onRefresh}>
@@ -79,6 +100,7 @@ vi.mock("@/components/data-table/data-table", () => ({
       ) : (
         <div data-testid="missing-list-refresh" />
       )}
+      <div data-testid="tasks-source-empty">{sourceEmptyContent}</div>
     </div>
   ),
 }))
@@ -104,7 +126,7 @@ vi.mock("@/components/collaborations/inline-editors", () => ({
 }))
 
 vi.mock("@/components/collaborations/task-dialogs", () => ({
-  CreateTaskDialog: () => null,
+  CreateTaskDialog: ({ open }: { open: boolean }) => <div data-testid="create-task-dialog">{String(open)}</div>,
   EditTaskDialog: () => null,
 }))
 
@@ -113,7 +135,27 @@ vi.mock("@/components/layout/page-header", () => ({
 }))
 
 vi.mock("@/components/shared/empty-state", () => ({
-  EmptyState: () => null,
+  EmptyState: ({
+    title,
+    description,
+    actionText,
+    onAction,
+  }: {
+    title: string
+    description?: string
+    actionText?: string
+    onAction?: () => void
+  }) => (
+    <div>
+      <div>{title}</div>
+      {description ? <div>{description}</div> : null}
+      {actionText && onAction ? (
+        <button type="button" onClick={onAction}>
+          {actionText}
+        </button>
+      ) : null}
+    </div>
+  ),
 }))
 
 vi.mock("@/components/ui/alert-dialog", () => ({
@@ -154,6 +196,7 @@ describe("TasksPage", () => {
   afterEach(() => {
     document.body.innerHTML = ""
     refetchMock.mockReset()
+    tasksResponseRef.current = TASKS_RESPONSE
   })
 
   it("wires the refresh action to the task list refetch in list view", async () => {
@@ -202,6 +245,36 @@ describe("TasksPage", () => {
     })
 
     expect(refetchMock).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows a create action in the empty state when no tasks exist", async () => {
+    tasksResponseRef.current = EMPTY_TASKS_RESPONSE
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(<TasksPage projectId="project-1" viewMode="list" />)
+    })
+
+    const createButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "New Task"
+    ) as HTMLButtonElement | undefined
+
+    expect(createButton).toBeDefined()
+    expect(container.querySelector('[data-testid="create-task-dialog"]')?.textContent).toBe("false")
+
+    await act(async () => {
+      createButton?.click()
+    })
+
+    expect(container.querySelector('[data-testid="create-task-dialog"]')?.textContent).toBe("true")
 
     await act(async () => {
       root.unmount()

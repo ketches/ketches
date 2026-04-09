@@ -264,6 +264,9 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
             title="No defects yet"
             description="Defects will appear here once issues are reported."
             icon={Bug}
+            actionText="Report Defect"
+            onAction={() => setCreateOpen(true)}
+            actionIcon={Plus}
           />
         }
         useStandaloneEmptyState={!hasActiveFilters}

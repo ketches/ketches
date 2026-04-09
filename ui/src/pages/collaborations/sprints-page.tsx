@@ -197,6 +197,9 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
             title="No sprints yet"
             description="Create your first sprint to plan iteration work."
             icon={CalendarRange}
+            actionText="New Sprint"
+            onAction={() => setCreateOpen(true)}
+            actionIcon={Plus}
           />
         }
         useStandaloneEmptyState={!hasActiveFilters}

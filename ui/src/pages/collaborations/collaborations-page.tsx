@@ -81,6 +81,9 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     enabled: !!projectId,
   })
   const sprints = useMemo(() => sprintsData?.items ?? [], [sprintsData?.items])
+  const hasLoadedSprints = sprintsData !== undefined
+  const hasSprints = sprints.length > 0
+  const showSprintNavigation = !hasLoadedSprints || hasSprints
   const sprintOptions = useMemo<SprintOption[]>(() => {
     return [
       // { label: "All Sprints", value: "" },
@@ -125,6 +128,14 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
 
     localStorage.setItem(STORAGE_KEYS.sprint, "")
   }, [effectiveSelectedSprintId, selectedSprintId])
+
+  useEffect(() => {
+    if (!hasLoadedSprints || hasSprints) {
+      return
+    }
+
+    setActiveTab(scope === "my-items" ? MY_ITEMS_TABS[0] : "sprints")
+  }, [hasLoadedSprints, hasSprints, scope])
 
   const assigneeId = scope === "my-items" ? currentUserId : undefined
   const handleScopeChange = (value: string) => {
@@ -184,67 +195,71 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
               </TabsList>
             </Tabs>
 
-            <div className="w-full sm:w-auto">
-              <Combobox
-                items={sprintOptions}
-                value={effectiveSelectedSprintId}
-                onValueChange={(val) => setSelectedSprintId(typeof val === "string" ? val : val?.value ?? "")}
-                itemToStringLabel={getSprintOptionLabel}
-              >
-                <ComboboxInput placeholder="Filter by sprint..." className="w-full sm:w-48 h-7" >
-                  <InputGroupAddon>
-                    <Goal className="text-fuchsia-500" />
-                  </InputGroupAddon>
-                </ComboboxInput>
-                <ComboboxContent alignOffset={-24} className="w-auto sm:w-48">
-                  <ComboboxList>
-                    <ComboboxItem value="">
-                      <ListTodo />
-                      All Sprints
-                    </ComboboxItem>
-                    {sprintOptions.map((opt) => (
-                      <ComboboxItem key={opt.value} value={opt.value}>
-                        <Goal />
-                        {opt.label}
+            {showSprintNavigation && (
+              <div className="w-full sm:w-auto">
+                <Combobox
+                  items={sprintOptions}
+                  value={effectiveSelectedSprintId}
+                  onValueChange={(val) => setSelectedSprintId(typeof val === "string" ? val : val?.value ?? "")}
+                  itemToStringLabel={getSprintOptionLabel}
+                >
+                  <ComboboxInput placeholder="Filter by sprint..." className="w-full sm:w-48 h-7" >
+                    <InputGroupAddon>
+                      <Goal className="text-fuchsia-500" />
+                    </InputGroupAddon>
+                  </ComboboxInput>
+                  <ComboboxContent alignOffset={-24} className="w-auto sm:w-48">
+                    <ComboboxList>
+                      <ComboboxItem value="">
+                        <ListTodo />
+                        All Sprints
                       </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
+                      {sprintOptions.map((opt) => (
+                        <ComboboxItem key={opt.value} value={opt.value}>
+                          <Goal />
+                          {opt.label}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </div>
+            )}
 
-            <TabsList className="ml-auto" >
-              {(validTabs as readonly string[]).includes("sprints") && (
-                <TabsTrigger value="sprints">
-                  <Goal className="text-fuchsia-500" />
-                  Sprints
+            {showSprintNavigation && (
+              <TabsList className="ml-auto" >
+                {(validTabs as readonly string[]).includes("sprints") && (
+                  <TabsTrigger value="sprints">
+                    <Goal className="text-fuchsia-500" />
+                    Sprints
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="tasks">
+                  <ListTodo className="text-green-500" />
+                  Tasks
                 </TabsTrigger>
-              )}
-              <TabsTrigger value="tasks">
-                <ListTodo className="text-green-500" />
-                Tasks
-              </TabsTrigger>
-              {(validTabs as readonly string[]).includes("requirements") && (
-                <TabsTrigger value="requirements">
-                  <FileText className="text-blue-500" />
-                  Requirements
+                {(validTabs as readonly string[]).includes("requirements") && (
+                  <TabsTrigger value="requirements">
+                    <FileText className="text-blue-500" />
+                    Requirements
+                  </TabsTrigger>
+                )}
+                {(validTabs as readonly string[]).includes("backlog") && (
+                  <TabsTrigger value="backlog">
+                    <Logs className="text-yellow-500" />
+                    Backlog
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="test-cases">
+                  <FlaskConical className="text-purple-500" />
+                  Test Cases
                 </TabsTrigger>
-              )}
-              {(validTabs as readonly string[]).includes("backlog") && (
-                <TabsTrigger value="backlog">
-                  <Logs className="text-yellow-500" />
-                  Backlog
+                <TabsTrigger value="defects">
+                  <Bug className="text-red-500" />
+                  Defects
                 </TabsTrigger>
-              )}
-              <TabsTrigger value="test-cases">
-                <FlaskConical className="text-purple-500" />
-                Test Cases
-              </TabsTrigger>
-              <TabsTrigger value="defects">
-                <Bug className="text-red-500" />
-                Defects
-              </TabsTrigger>
-            </TabsList>
+              </TabsList>
+            )}
           </div>
 
           {(validTabs as readonly string[]).includes("sprints") && (

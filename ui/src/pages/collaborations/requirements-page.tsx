@@ -330,6 +330,12 @@ export default function RequirementsPage({ projectId: propProjectId, assigneeId,
             title="No requirements yet"
             description="Create your first requirement to start planning work."
             icon={FileText}
+            actionText="New Requirement"
+            onAction={() => {
+              setParentForCreate(undefined)
+              setCreateOpen(true)
+            }}
+            actionIcon={Plus}
           />
         }
         useStandaloneEmptyState={!hasActiveFilters}
