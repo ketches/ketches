@@ -111,6 +111,10 @@ vi.mock("@/stores/auth", () => ({
   useAuthStore: (selector: (state: typeof mockAuthState) => unknown) => selector(mockAuthState),
 }))
 
+vi.mock("@/hooks/useProjectRole", () => ({
+  useProjectRole: () => "owner",
+}))
+
 vi.mock("@/stores/project", () => ({
   useProjectStore: (
     selector: (state: {
@@ -160,6 +164,20 @@ vi.mock("@/components/shared/empty-state", () => ({
       ) : null}
     </div>
   ),
+  EmptyEnvironmentState: ({
+    onAction,
+  }: {
+    onAction?: () => void
+  }) => (
+    <div>
+      <div>No environments yet</div>
+      {onAction ? (
+        <button type="button" onClick={onAction}>
+          Create Environment
+        </button>
+      ) : null}
+    </div>
+  ),
 }))
 
 vi.mock("@/components/ui/avatar", () => ({
@@ -197,6 +215,12 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock("@/components/environment/create-environment-dialog", () => ({
+  CreateEnvironmentDialog: ({ open }: { open?: boolean }) => (
+    <div data-testid="create-environment-dialog">{String(Boolean(open))}</div>
+  ),
 }))
 
 vi.mock("@/components/ui/combobox", () => ({
@@ -883,6 +907,42 @@ describe("Builder workspace routes", () => {
     expect(container.querySelector('[data-testid="builder-session-history"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="builder-composer"]')).not.toBeNull()
     expect(container.textContent).toContain("New conversation")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows the create-environment empty state when the current project has no environments", async () => {
+    envsListMock.mockResolvedValue({
+      items: [],
+      pagination: {
+        page: 1,
+        page_size: 100,
+        total: 0,
+        total_pages: 0,
+      },
+    })
+
+    const { container, root } = await renderBuilderRoute("/builder-sessions")
+
+    await settle()
+
+    expect(container.textContent).toContain("No environments yet")
+    expect(container.querySelector('[data-testid="builder-workspace-body"]')).toBeNull()
+    expect(container.querySelector('[data-testid="create-environment-dialog"]')?.textContent).toBe("false")
+
+    const createButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Create Environment")
+    ) as HTMLButtonElement | undefined
+
+    expect(createButton).toBeDefined()
+
+    await act(async () => {
+      createButton?.click()
+    })
+
+    expect(container.querySelector('[data-testid="create-environment-dialog"]')?.textContent).toBe("true")
 
     await act(async () => {
       root.unmount()

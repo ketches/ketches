@@ -3,6 +3,7 @@ import { isAxiosError, type AxiosError } from "axios"
 import {
   Box,
   Brain,
+  ChevronsUpDown,
   CircleAlert,
   Clock,
   FolderGit2,
@@ -42,6 +43,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
@@ -98,11 +106,19 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
     queryFn: () => projectsApi.listMembers(projectId!, { page: 1, page_size: 200 }),
     enabled: !!projectId,
   })
+  const { data: projectsResponse } = useQuery({
+    queryKey: ["projects", "breadcrumb-switcher"],
+    queryFn: () => projectsApi.list({ page: 1, page_size: 100 }),
+    enabled: !!projectId,
+  })
   const ownerMember = React.useMemo(
     () => membersResponse?.items?.find((member) => member.project_role === "owner"),
     [membersResponse?.items]
   )
   const ownerDisplayName = ownerMember?.fullname || ownerMember?.username || project?.owner_name || "-"
+  const safeProjects = React.useMemo(() => (
+    Array.isArray(projectsResponse?.items) ? projectsResponse.items : []
+  ), [projectsResponse?.items])
 
   React.useEffect(() => {
     if (project && activeProjectId !== project.id) {
@@ -151,7 +167,31 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
 
   const breadcrumbs = [
     { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
-    { label: project?.name ?? "...", icon: GalleryVerticalEnd },
+    {
+      label: project?.name ?? "...",
+      icon: GalleryVerticalEnd,
+      dropdown: safeProjects.length > 1 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm"><ChevronsUpDown /></Button>} />
+          <DropdownMenuContent align="start" className="w-fit">
+            <DropdownMenuGroup>
+              {safeProjects.map((projectOption) => (
+                <DropdownMenuItem
+                  key={projectOption.id}
+                  onClick={() => {
+                    setActiveContextWithNames(projectOption.id, projectOption.name, null, null)
+                    navigate(`/projects/${projectOption.id}`)
+                  }}
+                >
+                  <GalleryVerticalEnd className="h-4 w-4" />
+                  {projectOption.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : undefined,
+    },
   ]
 
   if (isLoading) {
