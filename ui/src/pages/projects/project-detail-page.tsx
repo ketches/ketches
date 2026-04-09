@@ -2,27 +2,32 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAxiosError, type AxiosError } from "axios"
 import {
   Box,
+  Brain,
   CircleAlert,
   FolderGit2,
   GalleryVerticalEnd,
+  Info,
   LayoutDashboard,
   Loader2,
   Orbit,
   Pencil,
   Puzzle,
-  SquareStack,
+  Telescope,
   Trash2,
   Users,
-  Warehouse,
+  VectorSquare,
+  Warehouse
 } from "lucide-react"
 import * as React from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
-import { projectsApi } from "@/api/projects"
+import { ProjectRoleLabels, projectsApi } from "@/api/projects"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EditProjectDialog } from "@/components/project/edit-project-dialog"
+import { ProjectAiProvidersPanel } from "@/components/project/project-ai-providers-panel"
+import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import {
   AlertDialog,
@@ -35,7 +40,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useProjectRole } from "@/hooks/useProjectRole"
 import { ApplicationsPage } from "@/pages/applications/applications-page"
 import { CodeRepositoriesPage } from "@/pages/code-repositories/code-repositories-page"
 import { CollaborationsPage } from "@/pages/collaborations/collaborations-page"
@@ -44,6 +51,8 @@ import { UserDashboard } from "@/pages/dashboard/dashboard-page"
 import { EnvironmentsPage } from "@/pages/environments/environments-page"
 import { MembersPage } from "@/pages/members/members-page"
 import { PluginsPage } from "@/pages/plugins/plugins-page"
+import { useAuthStore } from "@/stores/auth"
+import { useProjectStore } from "@/stores/project"
 
 interface ProjectDetailPageProps {
   initialTab?: string
@@ -53,10 +62,26 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = React.useState<string>(initialTab)
+  const authUser = useAuthStore((state) => state.user)
+  const isAdmin = authUser?.role === "admin"
+  const { activeProjectId, setActiveContextWithNames } = useProjectStore()
+  const projectRole = useProjectRole(projectId)
+  const isViewer = projectRole === "viewer"
+  const canManageProject = isAdmin || projectRole === "owner"
+  const adminTabs = ["overview", "dashboard", "environments", "applications", "code-repositories", "container-registries", "plugins", "members", "collaboration", "ai-providers"]
+  const memberTabs = ["overview", "container-registries", "plugins", "members", "ai-providers"]
+  const viewerTabs = ["overview", "members"]
+  const allowedTabs = isAdmin ? adminTabs : isViewer ? viewerTabs : memberTabs
 
   React.useEffect(() => {
     setActiveTab(initialTab)
   }, [initialTab])
+
+  React.useEffect(() => {
+    if (!allowedTabs.includes(activeTab)) {
+      setActiveTab("overview")
+    }
+  }, [activeTab, allowedTabs])
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
 
@@ -65,6 +90,12 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
     queryFn: () => projectsApi.get(projectId!),
     enabled: !!projectId,
   })
+
+  React.useEffect(() => {
+    if (project && activeProjectId !== project.id) {
+      setActiveContextWithNames(project.id, project.name, null, null)
+    }
+  }, [project, activeProjectId, setActiveContextWithNames])
 
   const deleteMutation = useMutation<unknown, AxiosError<{ error: string }>, void>({
     mutationFn: () => projectsApi.delete(projectId!),
@@ -119,7 +150,6 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
     <div className="flex flex-col flex-1 gap-6">
       <PageHeader items={breadcrumbs} />
 
-      {/* Hero section: icon, name, description, action buttons */}
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-4">
@@ -127,94 +157,212 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
               <GalleryVerticalEnd className="h-8 w-8" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">{project?.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight">{project?.name}</h1>
+                <ColorBadge color={project.collaboration_enabled ? "blue" : "gray"}>
+                  {project.collaboration_enabled ? "Collaboration On" : "Collaboration Off"}
+                </ColorBadge>
+              </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {project?.description || "No description"}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => setEditOpen(true)}>
-              <Pencil />
-            </Button>
-            <Button variant="outline" onClick={() => setDeleteOpen(true)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
-              <Trash2 />
-              Delete
-            </Button>
-          </div>
+          {canManageProject ? (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={() => setEditOpen(true)}>
+                <Pencil />
+              </Button>
+              <Button variant="outline" onClick={() => setDeleteOpen(true)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                <Trash2 />
+                Delete
+              </Button>
+            </div>
+          ) : null}
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">
-            <LayoutDashboard />
+            <Telescope />
             Overview
           </TabsTrigger>
-          <TabsTrigger value="environments">
-            <Orbit />
-            Environments
-          </TabsTrigger>
-          <TabsTrigger value="applications">
-            <Box />
-            Applications
-          </TabsTrigger>
-          <TabsTrigger value="code-repositories">
-            <FolderGit2 />
-            Code Repositories
-          </TabsTrigger>
-          <TabsTrigger value="container-registries">
-            <Warehouse />
-            Container Registries
-          </TabsTrigger>
-          <TabsTrigger value="plugins">
-            <Puzzle />
-            Plugins
-          </TabsTrigger>
+          {isAdmin ? (
+            <TabsTrigger value="dashboard">
+              <LayoutDashboard />
+              Dashboard
+            </TabsTrigger>
+          ) : null}
+          {isAdmin ? (
+            <TabsTrigger value="environments">
+              <Orbit />
+              Environments
+            </TabsTrigger>
+          ) : null}
+          {isAdmin ? (
+            <TabsTrigger value="applications">
+              <Box />
+              Applications
+            </TabsTrigger>
+          ) : null}
+          {isAdmin ? (
+            <TabsTrigger value="code-repositories">
+              <FolderGit2 />
+              Code Repositories
+            </TabsTrigger>
+          ) : null}
+          {!isViewer ? (
+            <TabsTrigger value="container-registries">
+              <Warehouse />
+              Container Registries
+            </TabsTrigger>
+          ) : null}
+          {!isViewer ? (
+            <TabsTrigger value="plugins">
+              <Puzzle />
+              Plugins
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="members">
             <Users />
             Members
           </TabsTrigger>
-          <TabsTrigger value="collaboration">
-            <SquareStack />
-            Collaboration
-          </TabsTrigger>
+          {isAdmin ? (
+            <TabsTrigger value="collaboration">
+              <VectorSquare />
+              Collaborations
+            </TabsTrigger>
+          ) : null}
+          {!isViewer ? (
+            <TabsTrigger value="ai-providers">
+              <Brain />
+              AI Providers
+            </TabsTrigger>
+          ) : null}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
-          <UserDashboard projectId={projectId} />
+          <Card className="group/card bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Project Information
+              </CardTitle>
+              {canManageProject ? (
+                <CardAction className="opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100">
+                  <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)} aria-label="Edit project">
+                    <Pencil />
+                  </Button>
+                </CardAction>
+              ) : null}
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Name</p>
+                  <p className="text-sm">{project.name}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Slug</p>
+                  <p className="text-sm font-mono">{project.slug}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Owner</p>
+                  <p className="text-sm">{project.owner_name || "-"}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">My Role</p>
+                  <div className="flex items-center">
+                    <ColorBadge color={isAdmin ? "orange" : projectRole === "owner" ? "blue" : projectRole === "developer" ? "green" : "gray"}>
+                      {isAdmin ? "Admin" : projectRole ? ProjectRoleLabels[projectRole] : "Unknown"}
+                    </ColorBadge>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Created At</p>
+                  <p className="text-sm">{new Date(project.created_at).toLocaleString()}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Collaboration</p>
+                  <div className="flex items-center">
+                    <ColorBadge color={project.collaboration_enabled ? "blue" : "gray"}>
+                      {project.collaboration_enabled ? "Enabled" : "Disabled"}
+                    </ColorBadge>
+                  </div>
+                </div>
+                <div className="space-y-2 lg:col-span-4">
+                  <p className="text-xs font-medium text-muted-foreground">Description</p>
+                  <p className="text-sm text-muted-foreground">{project.description || "No description"}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="environments" className="space-y-4 mt-2">
-          <EnvironmentsPage projectId={projectId} />
-        </TabsContent>
+        {isAdmin ? (
+          <TabsContent value="dashboard" className="space-y-4 mt-2">
+            <UserDashboard projectId={projectId} />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="applications" className="space-y-4 mt-2">
-          <ApplicationsPage projectId={projectId} />
-        </TabsContent>
+        {isAdmin ? (
+          <TabsContent value="environments" className="space-y-4 mt-2">
+            <EnvironmentsPage projectId={projectId} />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="code-repositories" className="space-y-4 mt-2">
-          <CodeRepositoriesPage projectId={projectId} />
-        </TabsContent>
+        {isAdmin ? (
+          <TabsContent value="applications" className="space-y-4 mt-2">
+            <ApplicationsPage projectId={projectId} />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="container-registries" className="space-y-4 mt-2">
-          <ContainerRegistriesPage projectId={projectId} />
-        </TabsContent>
+        {isAdmin ? (
+          <TabsContent value="code-repositories" className="space-y-4 mt-2">
+            <CodeRepositoriesPage projectId={projectId} />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="plugins" className="space-y-4 mt-2">
-          <PluginsPage projectId={projectId} />
-        </TabsContent>
+        {!isViewer ? (
+          <TabsContent value="container-registries" className="space-y-4 mt-2">
+            <ContainerRegistriesPage projectId={projectId} />
+          </TabsContent>
+        ) : null}
+
+        {!isViewer ? (
+          <TabsContent value="plugins" className="space-y-4 mt-2">
+            <PluginsPage projectId={projectId} />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="members" className="space-y-4 mt-2">
           <MembersPage projectId={projectId} />
         </TabsContent>
 
-        <TabsContent value="collaboration" className="space-y-4 mt-2">
-          <CollaborationsPage projectId={projectId!} />
-        </TabsContent>
+        {isAdmin ? (
+          <TabsContent value="collaboration" className="space-y-4 mt-2">
+            <CollaborationsPage projectId={projectId!} />
+          </TabsContent>
+        ) : null}
+
+        {!isViewer ? (
+          <TabsContent value="ai-providers" className="space-y-4 mt-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  AI Providers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProjectAiProvidersPanel projectId={projectId!} isViewer={isViewer} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
       </Tabs>
 
-      {/* Edit project dialog */}
       <EditProjectDialog
         open={editOpen}
         onOpenChange={setEditOpen}
@@ -225,7 +373,6 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
         }}
       />
 
-      {/* Delete confirmation dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

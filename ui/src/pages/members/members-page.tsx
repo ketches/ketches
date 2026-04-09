@@ -43,7 +43,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
   const { activeProjectId: activeProjectIdFromStore, activeProjectName } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectNameToUse = activeProjectName
-  const projectRole = useProjectRole()
+  const projectRole = useProjectRole(activeProjectId)
   const isViewer = projectRole === 'viewer'
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 

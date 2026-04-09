@@ -1,4 +1,4 @@
-import { Bot, Settings } from "lucide-react"
+import { Brain, Settings } from "lucide-react"
 import * as React from "react"
 
 import {
@@ -22,7 +22,7 @@ interface ProjectSettingsShellProps {
 
 const sections: Array<{ key: ProjectSettingsSection; label: string; icon: React.ElementType }> = [
   { key: "general", label: "General", icon: Settings },
-  { key: "ai-providers", label: "AI Providers", icon: Bot },
+  { key: "ai-providers", label: "AI Providers", icon: Brain },
 ]
 
 export function ProjectSettingsShell({ activeSection, onSectionChange, children }: ProjectSettingsShellProps) {

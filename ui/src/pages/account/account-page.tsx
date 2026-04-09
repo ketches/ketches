@@ -14,7 +14,7 @@ import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
-import { Bot, Clock, Copy, Key, Pencil, UserCog, UserKey } from "lucide-react"
+import { Brain, Clock, Copy, Key, Pencil, UserCog, UserKey } from "lucide-react"
 import * as React from "react"
 import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -118,8 +118,8 @@ export function AccountPage() {
             Security
           </TabsTrigger>
           <TabsTrigger value="ai-providers">
-            <Bot />
-            AI Provider
+            <Brain />
+            AI Providers
           </TabsTrigger>
         </TabsList>
 
@@ -281,7 +281,7 @@ export function AccountPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
-                <Bot className="h-4 w-4" />
+                <Brain className="h-4 w-4" />
                 AI Provider
               </CardTitle>
               <CardDescription>

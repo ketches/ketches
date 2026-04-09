@@ -48,7 +48,7 @@ export function ContainerRegistriesPage({ projectId: projectIdProp }: { projectI
   const { activeProjectId: activeProjectIdFromStore, activeProjectName } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectNameToUse = activeProjectName
-  const projectRole = useProjectRole()
+  const projectRole = useProjectRole(activeProjectId)
   const isViewer = projectRole === 'viewer'
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
   const [createOpen, setCreateOpen] = React.useState(false)

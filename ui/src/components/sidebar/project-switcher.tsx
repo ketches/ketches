@@ -29,7 +29,7 @@ import {
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
-import { ChevronsUpDown, GalleryVerticalEnd, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
+import { ArrowRight, ChevronsUpDown, GalleryVerticalEnd, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -38,12 +38,14 @@ function ProjectItem({
   project,
   isActive: _isActive,
   onSelect,
+  onViewDetails,
   onEdit,
   onDelete,
 }: {
   project: Project
   isActive: boolean
   onSelect: () => void
+  onViewDetails: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -68,6 +70,10 @@ function ProjectItem({
           <MoreVertical className="text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-fit">
+          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewDetails(); }}>
+            <ArrowRight />
+            View Details
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
             <Pencil />
             Edit
@@ -101,7 +107,7 @@ export function ProjectSwitcher() {
     queryFn: projectsApi.listSimple,
   })
 
-  const safeProjects = Array.isArray(projects) ? projects : []
+  const safeProjects = React.useMemo(() => (Array.isArray(projects) ? projects : []), [projects])
   const activeProject = safeProjects.find(p => p.id === activeProjectId) || safeProjects[0]
 
   React.useEffect(() => {
@@ -179,6 +185,10 @@ export function ProjectSwitcher() {
                   project={project}
                   isActive={project.id === activeProjectId}
                   onSelect={() => { setActiveContextWithNames(project.id, project.name, null, null); navigate("/") }}
+                  onViewDetails={() => {
+                    setActiveContextWithNames(project.id, project.name, null, null)
+                    navigate(`/projects/${project.id}`)
+                  }}
                   onEdit={() => handleEdit(project)}
                   onDelete={() => handleDelete(project)}
                 />

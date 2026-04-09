@@ -1,5 +1,5 @@
+import { Brain, Lock, User } from "lucide-react"
 import * as React from "react"
-import { Bot, Lock, User } from "lucide-react"
 
 import {
   Sidebar,
@@ -23,7 +23,7 @@ interface AccountSettingsShellProps {
 const sections: Array<{ key: AccountSettingsSection; label: string; icon: React.ElementType }> = [
   { key: "profile", label: "Profile", icon: User },
   { key: "security", label: "Security", icon: Lock },
-  { key: "ai-providers", label: "AI Providers", icon: Bot },
+  { key: "ai-providers", label: "AI Providers", icon: Brain },
 ]
 
 export function AccountSettingsShell({ activeSection, onSectionChange, children }: AccountSettingsShellProps) {

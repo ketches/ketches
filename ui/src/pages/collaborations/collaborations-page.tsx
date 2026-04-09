@@ -1,4 +1,4 @@
-import { CheckSquare, FlaskConical, GalleryVerticalEnd, Goal, Logs } from "lucide-react"
+import { FlaskConical, GalleryVerticalEnd, Goal, Logs, VectorSquare } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
@@ -129,7 +129,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
     { label: activeProjectName || "Projects", icon: GalleryVerticalEnd, href: `/projects/${projectId}` },
   ] : []
-  breadcrumbs.push({ label: "Collaborations", icon: CheckSquare })
+  breadcrumbs.push({ label: "Collaborations", icon: VectorSquare })
 
   if (!projectId) {
     return (

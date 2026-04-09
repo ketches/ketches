@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/api/projects", () => ({
   projectsApi: {
     update: vi.fn(),
-    listAiProviders: vi.fn(),
   },
 }))
 
@@ -36,19 +35,6 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock("@/components/ui/sidebar", () => ({
-  SidebarProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Sidebar: ({ children }: { children: React.ReactNode }) => <nav>{children}</nav>,
-  SidebarContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SidebarGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SidebarGroupContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SidebarMenu: ({ children }: { children: React.ReactNode }) => <ul>{children}</ul>,
-  SidebarMenuItem: ({ children }: { children: React.ReactNode }) => <li>{children}</li>,
-  SidebarMenuButton: ({ children, onClick, isActive }: { children: React.ReactNode; onClick?: () => void; isActive?: boolean }) => (
-    <button type="button" onClick={onClick} aria-current={isActive ? "page" : undefined}>{children}</button>
-  ),
-}))
-
 import { EditProjectDialog } from "./edit-project-dialog"
 
 describe("EditProjectDialog", () => {
@@ -61,7 +47,7 @@ describe("EditProjectDialog", () => {
     vi.clearAllMocks()
   })
 
-  it("renders sidebar-style general and AI provider sections", async () => {
+  it("renders the basic project information form", async () => {
     const container = document.createElement("div")
     document.body.appendChild(container)
     const root = ReactDOMClient.createRoot(container)
@@ -84,20 +70,10 @@ describe("EditProjectDialog", () => {
     })
 
     expect(container.textContent).toContain("Edit Project")
-    expect(container.textContent).toContain("General")
-    expect(container.textContent).toContain("AI Providers")
     expect(container.textContent).toContain("Name")
+    expect(container.textContent).toContain("Slug")
     expect(container.textContent).toContain("Description")
-
-    const providersButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("AI Providers")
-    ) as HTMLButtonElement | undefined
-
-    await act(async () => {
-      providersButton?.click()
-    })
-
-    expect(container.textContent).toContain("Configure project-level AI providers")
+    expect(container.textContent).toContain("Enable collaboration module for this project")
 
     await act(async () => {
       root.unmount()

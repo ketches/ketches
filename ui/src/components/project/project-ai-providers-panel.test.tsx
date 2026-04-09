@@ -26,12 +26,22 @@ vi.mock("@tanstack/react-query", () => ({
 }))
 
 vi.mock("@/components/shared/empty-state", () => ({
-  EmptyState: ({ title, description }: { title: string; description: string }) => (
+  EmptyState: ({ title, description, actionText, onAction }: { title: string; description: string; actionText?: string; onAction?: () => void }) => (
     <div>
       <div>{title}</div>
       <div>{description}</div>
+      {actionText && onAction ? <button type="button" onClick={onAction}>{actionText}</button> : null}
     </div>
   ),
+}))
+
+vi.mock("@/components/ui/dialog", () => ({
+  Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 import { ProjectAiProvidersPanel } from "./project-ai-providers-panel"
@@ -59,9 +69,8 @@ describe("ProjectAiProvidersPanel", () => {
       root.render(<ProjectAiProvidersPanel projectId="project-1" />)
     })
 
-    expect(container.textContent).toContain("Project AI providers")
-    expect(container.textContent).toContain("No project AI providers configured yet")
-    expect(container.textContent).toContain("Add provider")
+    expect(container.textContent).toContain("No AI providers yet")
+    expect(container.textContent).toContain("Add Provider")
 
     await act(async () => {
       root.unmount()
@@ -128,14 +137,14 @@ describe("ProjectAiProvidersPanel", () => {
     expect(container.textContent).toContain("Default")
 
     const addButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Add provider")
+      button.textContent?.includes("Add Provider")
     ) as HTMLButtonElement | undefined
 
     await act(async () => {
       addButton?.click()
     })
 
-    expect(container.textContent).toContain("Provider key")
+    expect(container.textContent).toContain("Add AI Provider")
 
     const providerKeyInput = container.querySelector('input[name="provider_key"]') as HTMLInputElement | null
     const displayNameInput = container.querySelector('input[name="display_name"]') as HTMLInputElement | null
@@ -145,7 +154,7 @@ describe("ProjectAiProvidersPanel", () => {
     const enabledInput = container.querySelector('input[name="enabled"]') as HTMLInputElement | null
     const defaultInput = container.querySelector('input[name="is_default"]') as HTMLInputElement | null
     const saveButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Save provider")
+      button.textContent?.includes("Save Provider")
     ) as HTMLButtonElement | undefined
 
     await act(async () => {
@@ -196,7 +205,7 @@ describe("ProjectAiProvidersPanel", () => {
 
     const editDisplayNameInput = container.querySelector('input[name="display_name"]') as HTMLInputElement | null
     const updateButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Update provider")
+      button.textContent?.includes("Update Provider")
     ) as HTMLButtonElement | undefined
     const editEnabledInput = container.querySelector('input[name="enabled"]') as HTMLInputElement | null
     const editDefaultInput = container.querySelector('input[name="is_default"]') as HTMLInputElement | null

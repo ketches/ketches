@@ -5,9 +5,10 @@ import { projectsApi, type ProjectRole } from '@/api/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectStore } from '@/stores/project'
 
-export function useProjectRole(): ProjectRole | null {
+export function useProjectRole(projectIdOverride?: string | null): ProjectRole | null {
   const user = useAuthStore((state) => state.user)
-  const activeProjectId = useProjectStore((state) => state.activeProjectId)
+  const activeProjectIdFromStore = useProjectStore((state) => state.activeProjectId)
+  const activeProjectId = projectIdOverride ?? activeProjectIdFromStore
 
   const isAdmin = user?.role === 'admin'
 
