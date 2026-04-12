@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { InfoIcon, Loader2 } from "lucide-react"
+import { ChevronDown, InfoIcon, Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { appsApi, type App, type GatewaySpec } from "@/api/apps"
 import { certificatesApi } from "@/api/certificates"
 import { clustersApi } from "@/api/clusters"
+import { domainsApi } from "@/api/domains"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -15,6 +16,12 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -28,6 +35,7 @@ import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { isPatternDomain, isValidDomainValue, normalizeDomainValue, seedDomainInputFromSelection } from "@/lib/domain"
 import { getErrorMessage } from "@/lib/utils"
 
 interface GatewayEditorProps {
@@ -36,6 +44,32 @@ interface GatewayEditorProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onSuccess?: () => void
+}
+
+const PROTOCOL_OPTIONS = [
+  { value: "http", label: "HTTP", description: "Plaintext HTTP routing" },
+  { value: "https", label: "HTTPS", description: "TLS-terminated HTTPS routing" },
+  { value: "tcp", label: "TCP", description: "Raw TCP passthrough" },
+  { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
+] as const
+
+const SERVICE_TYPE_OPTIONS = [
+  { value: "ClusterIP", label: "ClusterIP", description: "Internal only, accessible within the cluster" },
+  { value: "NodePort", label: "NodePort", description: "Exposed on a static port on every cluster node" },
+] as const
+
+function inferSelectedDomainOption(domain: string, options: Array<{ value: string; domain: string }>) {
+  const normalizedDomain = normalizeDomainValue(domain)
+  const matched = options.find((option) => {
+    const normalizedOptionDomain = normalizeDomainValue(option.domain)
+    if (!isPatternDomain(normalizedOptionDomain)) {
+      return normalizedOptionDomain === normalizedDomain
+    }
+
+    const suffix = normalizedOptionDomain.slice(1)
+    return normalizedDomain.endsWith(suffix) && normalizedDomain !== suffix.slice(1)
+  })
+  return matched?.value ?? "custom"
 }
 
 export function GatewayEditor({
@@ -50,18 +84,6 @@ export function GatewayEditor({
   const setOpen = setControlledOpen || setInternalOpen
   const queryClient = useQueryClient()
 
-  const protocolOptions = React.useMemo(() => [
-    { value: "http", label: "HTTP", description: "Plaintext HTTP routing" },
-    { value: "https", label: "HTTPS", description: "TLS-terminated HTTPS routing" },
-    { value: "tcp", label: "TCP", description: "Raw TCP passthrough" },
-    { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
-  ], [])
-
-  const serviceTypeOptions = React.useMemo(() => [
-    { value: "ClusterIP", label: "ClusterIP", description: "Internal only, accessible within the cluster" },
-    { value: "NodePort", label: "NodePort", description: "Exposed on a static port on every cluster node" },
-  ], [])
-
   const isEditing = gateway !== null && gateway !== undefined
 
   const [errors, setErrors] = React.useState<{
@@ -72,6 +94,8 @@ export function GatewayEditor({
     gateway_port?: string
     node_port?: string
   }>({})
+  const [selectedDomainOption, setSelectedDomainOption] = React.useState("custom")
+  const [domainInput, setDomainInput] = React.useState("")
 
   const [formData, setFormData] = React.useState<GatewaySpec>({
     port: 80,
@@ -106,6 +130,18 @@ export function GatewayEditor({
   })
   const gatewayAPIInstalled = gatewayAPIStatus?.installed !== false
 
+  const { data: clusterDomainsResponse } = useQuery({
+    queryKey: ["cluster-domains", env?.cluster_id],
+    queryFn: () => domainsApi.listByCluster(env!.cluster_id, undefined, env!.project_id),
+    enabled: !!env?.cluster_id && open,
+  })
+
+  const { data: envDomainsResponse } = useQuery({
+    queryKey: ["env-domains", app.env_id],
+    queryFn: () => domainsApi.listByEnv(app.env_id),
+    enabled: !!app.env_id && open,
+  })
+
   // Combine cluster and env certificates for selection
   const certificates = React.useMemo(() => {
     const clusterCerts = (clusterCertsResponse?.items ?? []).map(c => ({ ...c, label: `[Cluster] ${c.name}` }))
@@ -113,10 +149,43 @@ export function GatewayEditor({
     return [...clusterCerts, ...envCerts]
   }, [clusterCertsResponse, envCertsResponse])
 
+  const domainOptions = React.useMemo(() => {
+    const envOptions = (envDomainsResponse?.items ?? [])
+      .map((item) => ({
+        value: `env:${item.id}`,
+        label: `[Env] ${item.name}`,
+        description: item.domain,
+        domain: item.domain,
+      }))
+
+    const clusterOptions = (clusterDomainsResponse?.items ?? [])
+      .map((item) => ({
+        value: `cluster:${item.id}`,
+        label: `[Cluster] ${item.name}`,
+        description: item.domain,
+        domain: item.domain,
+      }))
+
+    return [
+      ...envOptions,
+      ...clusterOptions,
+      {
+        value: "custom",
+        label: "Custom Domain",
+        description: "Enter a fully qualified domain manually",
+        domain: "",
+      },
+    ]
+  }, [app.slug, clusterDomainsResponse?.items, envDomainsResponse?.items])
+  const normalizedDomainInput = normalizeDomainValue(domainInput)
+  const selectedDomainLabel = domainOptions.find((option) => option.value === selectedDomainOption)?.label ?? "Select"
+
   React.useEffect(() => {
     if (open) {
       if (isEditing && gateway) {
         setFormData(gateway)
+        setDomainInput(gateway.domain)
+        setSelectedDomainOption("custom")
       } else {
         setFormData({
           port: 80,
@@ -128,6 +197,8 @@ export function GatewayEditor({
           node_port: undefined,
           exposed: false,
         })
+        setDomainInput("")
+        setSelectedDomainOption("custom")
       }
       setErrors({})
     }
@@ -136,6 +207,21 @@ export function GatewayEditor({
   const isHttpProtocol = formData.protocol === 'http' || formData.protocol === 'https'
   const isHttpsProtocol = formData.protocol === 'https'
   const supportsPublicExposure = isHttpProtocol
+
+  React.useEffect(() => {
+    if (selectedDomainOption !== "custom" && !domainOptions.some((option) => option.value === selectedDomainOption)) {
+      setSelectedDomainOption("custom")
+    }
+  }, [selectedDomainOption, domainOptions])
+
+  React.useEffect(() => {
+    if (!open || !isEditing || !gateway) {
+      return
+    }
+
+    const nextOption = inferSelectedDomainOption(gateway.domain, domainOptions)
+    setSelectedDomainOption((current) => current === nextOption ? current : nextOption)
+  }, [gateway, isEditing, open, domainOptions])
 
   React.useEffect(() => {
     if (!supportsPublicExposure && formData.exposed) {
@@ -191,8 +277,10 @@ export function GatewayEditor({
     // Only validate domain/path/gateway_port when exposed is true
     if (formData.exposed) {
       if (isHttpProtocol) {
-        if (!formData.domain?.trim()) {
+        if (!normalizedDomainInput) {
           newErrors.domain = "Domain is required for HTTP/HTTPS protocols"
+        } else if (!isValidDomainValue(normalizedDomainInput)) {
+          newErrors.domain = "Must be a valid domain such as example.com or *.example.com"
         }
         if (!formData.path?.trim()) {
           newErrors.path = "Path is required"
@@ -241,6 +329,7 @@ export function GatewayEditor({
         cleanedData.path = ''
         cleanedData.cert_id = undefined
       } else {
+        cleanedData.domain = normalizedDomainInput
         cleanedData.gateway_port = undefined
       }
     }
@@ -315,12 +404,12 @@ export function GatewayEditor({
                         gateway_port: nextSupportsPublicExposure ? prev.gateway_port : undefined,
                       }))
                     }}
-                    itemToStringLabel={(v) => protocolOptions.find((opt) => opt.value === v)?.label ?? v ?? ""}
+                    itemToStringLabel={(v) => PROTOCOL_OPTIONS.find((opt) => opt.value === v)?.label ?? v ?? ""}
                   >
                     <ComboboxInput />
                     <ComboboxContent>
                       <ComboboxList>
-                        {protocolOptions.map((option) => (
+                        {PROTOCOL_OPTIONS.map((option) => (
                           <ComboboxItem key={option.value} value={option.value}>
                             <Item size="xs" className="p-0">
                               <ItemContent>
@@ -362,12 +451,12 @@ export function GatewayEditor({
                           node_port: st !== 'NodePort' ? undefined : prev.node_port,
                         }))
                       }}
-                      itemToStringLabel={(v) => serviceTypeOptions.find((o) => o.value === v)?.label ?? v ?? ""}
+                      itemToStringLabel={(v) => SERVICE_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
                     >
                       <ComboboxInput />
                       <ComboboxContent>
                         <ComboboxList>
-                          {serviceTypeOptions.map((option) => (
+                          {SERVICE_TYPE_OPTIONS.map((option) => (
                             <ComboboxItem key={option.value} value={option.value}>
                               <Item size="xs" className="p-0">
                                 <ItemContent>
@@ -450,31 +539,74 @@ export function GatewayEditor({
             {formData.exposed && isHttpProtocol && (
               <>
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2">
-                    <Field>
-                      <FieldLabel>
-                        Domain *
-                        <Tooltip>
-                          <TooltipTrigger
-                            tabIndex={-1}
-                            render={
-                              <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
-                                <InfoIcon className="h-3.5 w-3.5" />
-                              </button>
-                            }
+                  <Field>
+                    <FieldLabel>
+                      Domain *
+                      <Tooltip>
+                        <TooltipTrigger
+                          tabIndex={-1}
+                          render={
+                            <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
+                              <InfoIcon className="h-3.5 w-3.5" />
+                            </button>
+                          }
                           />
                           <TooltipContent side="top" align="start" className="max-w-64">
-                            <p className="text-xs">The domain name for accessing your application.</p>
+                            <p className="text-xs">Choose a saved domain or type one directly.</p>
+                            <p className="text-xs mt-1">If the selected domain starts with `*.` the input removes the `*` so you can enter the hostname prefix yourself.</p>
                           </TooltipContent>
                         </Tooltip>
                       </FieldLabel>
                       <FieldContent>
                         <InputGroup>
-                          <InputGroupInput placeholder="app.example.com" value={formData.domain}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, domain: e.target.value }))}
-                            aria-invalid={!!errors.domain} />
-                          <InputGroupAddon>
+                          <InputGroupAddon align="inline-start">
                             <InputGroupText>{formData.protocol}://</InputGroupText>
+                          </InputGroupAddon>
+                          <InputGroupInput
+                            placeholder="app.example.com"
+                            value={domainInput}
+                            onChange={(e) => {
+                              setSelectedDomainOption("custom")
+                              setDomainInput(e.target.value)
+                            }}
+                            aria-invalid={!!errors.domain}
+                          />
+                          <InputGroupAddon>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <Button type="button" variant="ghost" size="sm">
+                                    {selectedDomainLabel}
+                                    <ChevronDown />
+                                  </Button>
+                                }
+                              />
+                              <DropdownMenuContent align="end" className="w-64">
+                                {domainOptions.map((option) => (
+                                  <DropdownMenuItem
+                                    key={option.value}
+                                    onClick={() => {
+                                      setSelectedDomainOption(option.value)
+                                      if (option.value === "custom") {
+                                        return
+                                      }
+                                      setDomainInput(seedDomainInputFromSelection(option.domain))
+                                    }}
+                                  >
+                                    <Item size="xs" className="p-0">
+                                      <ItemContent>
+                                        <ItemTitle className="whitespace-nowrap">
+                                          {option.label}
+                                        </ItemTitle>
+                                        <ItemDescription>
+                                          {option.description}
+                                        </ItemDescription>
+                                      </ItemContent>
+                                    </Item>
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </InputGroupAddon>
                         </InputGroup>
                       </FieldContent>
@@ -484,40 +616,39 @@ export function GatewayEditor({
                         </FieldError>
                       )}
                     </Field>
-                  </div>
-
-                  <Field>
-                    <FieldLabel>
-                      Path *
-                      <Tooltip>
-                        <TooltipTrigger
-                          tabIndex={-1}
-                          render={
-                            <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
-                              <InfoIcon className="h-3.5 w-3.5" />
-                            </button>
-                          }
-                        />
-                        <TooltipContent side="top" align="start" className="max-w-64">
-                          <p className="text-xs">URL path prefix (must start with /).</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </FieldLabel>
-                    <FieldContent>
-                      <Input
-                        placeholder="/"
-                        value={formData.path}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, path: e.target.value }))}
-                        aria-invalid={!!errors.path}
-                      />
-                    </FieldContent>
-                    {errors.path && (
-                      <FieldError>
-                        <span className="text-destructive text-xs">{errors.path}</span>
-                      </FieldError>
-                    )}
-                  </Field>
                 </div>
+
+                <Field>
+                  <FieldLabel>
+                    Path *
+                    <Tooltip>
+                      <TooltipTrigger
+                        tabIndex={-1}
+                        render={
+                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
+                            <InfoIcon className="h-3.5 w-3.5" />
+                          </button>
+                        }
+                      />
+                      <TooltipContent side="top" align="start" className="max-w-64">
+                        <p className="text-xs">URL path prefix (must start with /).</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      placeholder="/"
+                      value={formData.path}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, path: e.target.value }))}
+                      aria-invalid={!!errors.path}
+                    />
+                  </FieldContent>
+                  {errors.path && (
+                    <FieldError>
+                      <span className="text-destructive text-xs">{errors.path}</span>
+                    </FieldError>
+                  )}
+                </Field>
 
                 {/* HTTPS Certificate Selection */}
                 {isHttpsProtocol && (

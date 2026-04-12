@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import { pluginsApi } from "@/api/plugins"
+import { pluginsApi, type Plugin } from "@/api/plugins"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +15,7 @@ import {
 import type { AxiosError } from "axios"
 
 interface DeletePluginDialogProps {
-  plugin: any
+  plugin: Plugin
   projectId: string
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -23,6 +23,7 @@ interface DeletePluginDialogProps {
 
 export function DeletePluginDialog({ plugin, projectId, open, onOpenChange }: DeletePluginDialogProps) {
   const queryClient = useQueryClient()
+  const isInstalled = plugin.install_count > 0
 
   const deleteMutation = useMutation({
     mutationFn: () => pluginsApi.deletePlugin(projectId, plugin.id),
@@ -39,6 +40,9 @@ export function DeletePluginDialog({ plugin, projectId, open, onOpenChange }: De
   })
 
   const handleDelete = () => {
+    if (isInstalled) {
+      return
+    }
     deleteMutation.mutate()
   }
 
@@ -46,19 +50,28 @@ export function DeletePluginDialog({ plugin, projectId, open, onOpenChange }: De
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Plugin</AlertDialogTitle>
+          <AlertDialogTitle>{isInstalled ? "Plugin In Use" : "Delete Plugin"}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete <strong>{plugin.name}</strong>? This action cannot be undone.
+            {isInstalled ? (
+              <>
+                <strong>{plugin.name}</strong> is currently installed in {plugin.install_count} app{plugin.install_count === 1 ? "" : "s"}.
+                Uninstall it from those apps before deleting this plugin.
+              </>
+            ) : (
+              <>
+                Are you sure you want to delete <strong>{plugin.name}</strong>? This action cannot be undone.
+              </>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
-            disabled={deleteMutation.isPending}
+            disabled={deleteMutation.isPending || isInstalled}
             variant="destructive"
           >
-            {deleteMutation.isPending ? "Deleting..." : "Delete Plugin"}
+            {isInstalled ? "Uninstall First" : deleteMutation.isPending ? "Deleting..." : "Delete Plugin"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -81,8 +81,8 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 			if !hasGWAPI {
 				return app.NewErrorf("Gateway API CRDs are not installed on cluster %s", appCtx.EnvContext.Env.ClusterID)
 			}
-			// Ensure the env-level Gateway exists before creating HTTPRoute.
-			if err := EnsureEnvGateway(ctx, &appCtx.EnvContext, nil); err != nil {
+			// Ensure the shared Gateway exists before creating HTTPRoute.
+			if err := EnsureSharedGateway(ctx, appCtx.EnvContext.Env.ClusterID); err != nil {
 				return err
 			}
 

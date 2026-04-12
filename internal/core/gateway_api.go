@@ -4,9 +4,8 @@ import (
 	"context"
 
 	"github.com/ketches/ketches/internal/app"
-	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
-	"github.com/ketches/ketches/internal/models"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -17,9 +16,13 @@ const (
 	gatewayAPIGroup = "gateway.networking.k8s.io"
 	// gatewayAPIVersion is the version used for detection and resource creation.
 	gatewayAPIVersion = "v1"
-	// defaultGatewayClassName is the GatewayClass used when creating env gateways.
+	// defaultGatewayClassName is the GatewayClass used when creating managed gateways.
 	// Envoy Gateway is the default; this can be overridden via cluster configuration in the future.
 	defaultGatewayClassName = "eg"
+	// sharedGatewayNamespace is the fixed namespace that hosts the single shared Gateway.
+	sharedGatewayNamespace = "ketches-system"
+	// sharedGatewayName is the canonical name of the single shared Gateway.
+	sharedGatewayName = "ketches-shared-gateway"
 )
 
 // ClusterHasGatewayCRD reports whether the cluster identified by clusterID has
@@ -55,106 +58,107 @@ func clusterHasCRD(clusterID string, groupVersion string) (bool, error) {
 	return true, nil
 }
 
-// EnvGatewayName returns the canonical Gateway resource name for an environment.
-func EnvGatewayName(envSlug string) string {
-	return envSlug + "-gateway-default"
+// SharedGatewayName returns the canonical name of the single shared Gateway.
+func SharedGatewayName() string {
+	return sharedGatewayName
 }
 
-// BuildEnvGateway constructs a Gateway resource for the given environment.
-// When TLS certificates are present an HTTPS listener is added; an HTTP
-// listener is always included.
-// BuildEnvGateway creates the env-level Gateway object for a cluster. It adds
-// listeners for HTTP (80) and optionally HTTPS (443). The default "eg"
-// listener is always included.
-func BuildEnvGateway(envCtx *models.EnvContext, certs []entities.Certificate) *gatewayv1.Gateway {
-	env := envCtx.Env
-	gatewayClassName := gatewayv1.ObjectName(defaultGatewayClassName)
+// SharedGatewayNamespace returns the namespace that hosts the single shared Gateway.
+func SharedGatewayNamespace() string {
+	return sharedGatewayNamespace
+}
 
-	// HTTP listener is always present.
+// BuildSharedGateway constructs the single shared Gateway resource for a cluster.
+// It exposes one HTTP listener on port 80 and allows routes from all namespaces.
+func BuildSharedGateway() *gatewayv1.Gateway {
+	gatewayClassName := gatewayv1.ObjectName(defaultGatewayClassName)
+	listenerName := gatewayv1.SectionName("http")
+	fromAll := gatewayv1.NamespacesFromAll
+
 	httpPort := gatewayv1.PortNumber(80)
 	httpProtocol := gatewayv1.HTTPProtocolType
-	listeners := []gatewayv1.Listener{
-		{
-			Name:     "http",
-			Port:     httpPort,
-			Protocol: httpProtocol,
-		},
-	}
-
-	// Add HTTPS listener when at least one certificate is attached to this env.
-	if len(certs) > 0 {
-		httpsPort := gatewayv1.PortNumber(443)
-		httpsProtocol := gatewayv1.HTTPSProtocolType
-		tlsMode := gatewayv1.TLSModeTerminate
-
-		var certRefs []gatewayv1.SecretObjectReference
-		for _, cert := range certs {
-			certRefs = append(certRefs, gatewayv1.SecretObjectReference{
-				Name: gatewayv1.ObjectName(cert.Name),
-			})
-		}
-
-		listeners = append(listeners, gatewayv1.Listener{
-			Name:     "https",
-			Port:     httpsPort,
-			Protocol: httpsProtocol,
-			TLS: &gatewayv1.ListenerTLSConfig{
-				Mode:            &tlsMode,
-				CertificateRefs: certRefs,
-			},
-		})
-	}
 
 	return &gatewayv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      EnvGatewayName(env.Slug),
-			Namespace: env.ClusterNamespace,
+			Name:      SharedGatewayName(),
+			Namespace: SharedGatewayNamespace(),
 			Labels: map[string]string{
-				kube.LabelEnvID:       env.ID,
-				kube.LabelEnvSlug:     env.Slug,
-				kube.LabelProjectID:   envCtx.Project.ID,
-				kube.LabelProjectSlug: envCtx.Project.Slug,
-				kube.LabelManagedBy:   "true",
+				kube.LabelManagedBy: "true",
 			},
 		},
 		Spec: gatewayv1.GatewaySpec{
 			GatewayClassName: gatewayClassName,
-			Listeners:        listeners,
+			Listeners: []gatewayv1.Listener{
+				{
+					Name:     listenerName,
+					Port:     httpPort,
+					Protocol: httpProtocol,
+					AllowedRoutes: &gatewayv1.AllowedRoutes{
+						Namespaces: &gatewayv1.RouteNamespaces{
+							From: &fromAll,
+						},
+					},
+				},
+			},
 		},
 	}
 }
 
-// EnsureEnvGateway creates or updates the env-level Gateway resource in the
+// EnsureSharedGateway creates or updates the single shared Gateway resource in the
 // cluster. It is a no-op when the cluster does not have the Gateway API CRDs.
-func EnsureEnvGateway(ctx context.Context, envCtx *models.EnvContext, certs []entities.Certificate) error {
-	env := envCtx.Env
-	hasGW, err := ClusterHasGatewayCRD(env.ClusterID)
+func EnsureSharedGateway(ctx context.Context, clusterID string) error {
+	hasGW, err := ClusterHasGatewayCRD(clusterID)
 	if err != nil {
 		return app.WrapErrorf(err, "checking gateway CRD: %w", err)
 	}
 	if !hasGW {
-		// Gateway API not installed — nothing to do.
 		return nil
 	}
 
-	gwClient, err := kube.GlobalClusterStore.GetGatewayClient(env.ClusterID)
+	if err := ensureSharedGatewayNamespace(ctx, clusterID); err != nil {
+		return err
+	}
+
+	gwClient, err := kube.GlobalClusterStore.GetGatewayClient(clusterID)
 	if err != nil {
 		return err
 	}
 
-	desired := BuildEnvGateway(envCtx, certs)
+	desired := BuildSharedGateway()
 
-	existing, err := gwClient.GatewayV1().Gateways(env.ClusterNamespace).Get(ctx, desired.Name, metav1.GetOptions{})
+	existing, err := gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Get(ctx, desired.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			_, err = gwClient.GatewayV1().Gateways(env.ClusterNamespace).Create(ctx, desired, metav1.CreateOptions{})
+			_, err = gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Create(ctx, desired, metav1.CreateOptions{})
 			return err
 		}
 		return err
 	}
 
-	// Update the existing gateway with the desired spec.
 	desired.ResourceVersion = existing.ResourceVersion
-	_, err = gwClient.GatewayV1().Gateways(env.ClusterNamespace).Update(ctx, desired, metav1.UpdateOptions{})
+	_, err = gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Update(ctx, desired, metav1.UpdateOptions{})
 	return err
+}
+
+func ensureSharedGatewayNamespace(ctx context.Context, clusterID string) error {
+	client, err := kube.GlobalClusterStore.GetClient(clusterID)
+	if err != nil {
+		return err
+	}
+
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: SharedGatewayNamespace(),
+			Labels: map[string]string{
+				kube.LabelManagedBy: "true",
+			},
+		},
+	}
+
+	_, err = client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+
+	return nil
 }

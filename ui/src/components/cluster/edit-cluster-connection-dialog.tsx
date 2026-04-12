@@ -181,7 +181,7 @@ export function EditClusterConnectionDialog({
           <DialogHeader>
             <DialogTitle>Update KubeConfig</DialogTitle>
             <DialogDescription>
-              Update the cluster KubeConfig and derived gateway host.
+              Update the cluster KubeConfig and gateway host.
             </DialogDescription>
           </DialogHeader>
 
@@ -260,6 +260,7 @@ export function EditClusterConnectionDialog({
                 </FieldError>
               )}
             </Field>
+
           </div>
 
           <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">

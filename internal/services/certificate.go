@@ -1,10 +1,8 @@
 package services
 
 import (
-	"context"
 	"errors"
 
-	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -103,9 +101,6 @@ func CreateEnvCertificate(envID string, req *models.CreateCertificateRequest) (*
 		return nil, err
 	}
 
-	// Sync the env-level Gateway to include the new certificate.
-	syncEnvGatewayForCert(cert)
-
 	return cert, nil
 }
 
@@ -145,53 +140,17 @@ func UpdateCertificate(id string, req *models.UpdateCertificateRequest) (*entiti
 		return nil, err
 	}
 
-	// Sync the env-level Gateway to reflect certificate changes.
-	syncEnvGatewayForCert(cert)
-
 	return cert, nil
 }
 
 // DeleteCertificate deletes a certificate by ID
 func DeleteCertificate(id string) error {
-	cert, err := GetCertificate(id)
-	if err != nil {
+	if _, err := GetCertificate(id); err != nil {
 		return err
 	}
 
 	if err := db.DB.Delete(&entities.Certificate{}, "id = ?", id).Error; err != nil {
 		return err
 	}
-
-	// Sync the env-level Gateway to remove the deleted certificate.
-	syncEnvGatewayForCert(cert)
 	return nil
-}
-
-// syncEnvGatewayForCert re-syncs the env-level Gateway after a certificate
-// is created, updated, or deleted. Only env-scoped certificates trigger a sync.
-// Errors are intentionally ignored to keep certificate operations non-blocking.
-func syncEnvGatewayForCert(cert *entities.Certificate) {
-	if cert.Scope != "env" || cert.EnvID == nil || *cert.EnvID == "" {
-		return
-	}
-	var env entities.Env
-	if err := db.DB.First(&env, "id = ?", *cert.EnvID).Error; err != nil {
-		return
-	}
-	var project entities.Project
-	if err := db.DB.First(&project, "id = ?", env.ProjectID).Error; err != nil {
-		return
-	}
-	var cluster entities.Cluster
-	if err := db.DB.First(&cluster, "id = ?", env.ClusterID).Error; err != nil {
-		return
-	}
-	envCtx := &models.EnvContext{
-		Env:     env,
-		Project: project,
-		Cluster: cluster,
-	}
-	var certs []entities.Certificate
-	db.DB.Where("env_id = ? AND scope = ?", *cert.EnvID, "env").Find(&certs)
-	_ = core.EnsureEnvGateway(context.Background(), envCtx, certs)
 }

@@ -614,8 +614,10 @@ func DeleteApp(ctx context.Context, appID string) error {
 		return err
 	}
 
-	if _, err := executeStopAction(ctx, appCtx); err != nil {
+	if _, err := executeStopAction(ctx, appCtx); err != nil && !k8serrors.IsNotFound(err) {
 		return err
+	} else if err != nil {
+		slog.Warn("ignore missing Kubernetes resource during app delete", "appID", appID, "appSlug", appCtx.App.Slug, "error", err)
 	}
 
 	return db.DB.Delete(&entities.App{}, "id = ?", appID).Error

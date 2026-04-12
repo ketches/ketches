@@ -138,3 +138,38 @@ func TestCreatePluginResponseDoesNotExposeRegistryPassword(t *testing.T) {
 	assert.False(t, exists)
 	assert.Equal(t, true, payload["has_registry_password"])
 }
+
+func TestDeletePluginReturnsConflictWhenInstalledInApps(t *testing.T) {
+	setupPluginHandlerSecretTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Plugin{
+		ID:         "plugin-1",
+		ProjectID:  "project-1",
+		Slug:       "plugin-one",
+		Name:       "Plugin One",
+		Image:      "docker.io/library/migrate:latest",
+		PluginType: "init",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.AppPlugin{
+		ID:       "app-plugin-1",
+		AppID:    "app-1",
+		PluginID: "plugin-1",
+		Enabled:  true,
+	}).Error)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/projects/project-1/plugins/plugin-1", nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Request = req
+	ctx.Params = gin.Params{{Key: "projectID", Value: "project-1"}, {Key: "pluginID", Value: "plugin-1"}}
+	ctx.Set("claims", &app.Claims{Role: "admin"})
+	ctx.Set("user", &entities.User{Base: entities.Base{ID: "user-1"}, Username: "demo", Role: "admin"})
+
+	DeletePlugin(ctx)
+
+	require.Equal(t, http.StatusConflict, w.Code)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "cannot delete plugin: it is installed in one or more apps", resp["error"])
+}

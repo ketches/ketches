@@ -10,6 +10,7 @@ import {
   Clock,
   Copy,
   GalleryVerticalEnd,
+  Globe,
   Hammer,
   Info,
   Orbit,
@@ -32,6 +33,7 @@ import { ApplicationList } from "@/components/applications/application-list"
 import { EditEnvironmentDialog } from "@/components/environment/edit-environment-dialog"
 import { EnvCertificates } from "@/components/environment/env-certificates"
 import { EnvSettingsTab } from "@/components/environment/env-settings-tab"
+import { EnvDomains } from "@/components/environment/env-domains"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-resource-metrics"
@@ -266,6 +268,10 @@ export function EnvironmentDetailPage() {
             <ShieldCheck />
             Certificates
           </TabsTrigger>
+          <TabsTrigger value="domains">
+            <Globe />
+            Domains
+          </TabsTrigger>
           <TabsTrigger value="settings">
             <Settings2 />
             Settings
@@ -432,6 +438,10 @@ export function EnvironmentDetailPage() {
 
         <TabsContent value="certificates" className="space-y-4 mt-2">
           <EnvCertificates envId={envId!} isViewer={isViewer} />
+        </TabsContent>
+
+        <TabsContent value="domains" className="space-y-4 mt-2">
+          <EnvDomains envId={envId!} isViewer={isViewer} />
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4 mt-2">

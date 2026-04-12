@@ -532,7 +532,9 @@ func (m *AppMetadata) BuildHTTPRoute(gw entities.AppGateway) *gatewayv1.HTTPRout
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{
 				ParentRefs: []gatewayv1.ParentReference{
 					{
-						Name: gatewayv1.ObjectName(EnvGatewayName(m.AppContext.EnvContext.Env.Slug)),
+						Name:        gatewayv1.ObjectName(SharedGatewayName()),
+						Namespace:   ptrGatewayNamespace(gatewayv1.Namespace(SharedGatewayNamespace())),
+						SectionName: ptrSectionName(gatewayv1.SectionName("http")),
 					},
 				},
 			},
@@ -571,6 +573,14 @@ func ptrInt32(i int32) *int32 {
 
 func ptrPort(p gatewayv1.PortNumber) *gatewayv1.PortNumber {
 	return &p
+}
+
+func ptrGatewayNamespace(namespace gatewayv1.Namespace) *gatewayv1.Namespace {
+	return &namespace
+}
+
+func ptrSectionName(name gatewayv1.SectionName) *gatewayv1.SectionName {
+	return &name
 }
 
 func resolveImagePullPolicy(policy, image string) corev1.PullPolicy {

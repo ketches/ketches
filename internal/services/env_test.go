@@ -209,6 +209,49 @@ func TestCreateEnv_RejectsExistingClusterNamespace(t *testing.T) {
 	assert.Zero(t, count)
 }
 
+func TestCreateEnv_DoesNotCreateGatewayWithNamespace(t *testing.T) {
+	setupEnvTestDB(t)
+
+	var gatewayAPICalled bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.URL.Path {
+		case "/api/v1/namespaces/demo-project-staging":
+			w.WriteHeader(http.StatusNotFound)
+			require.NoError(t, json.NewEncoder(w).Encode(newKubeNotFoundStatus("demo-project-staging")))
+		case "/api/v1/namespaces":
+			require.Equal(t, http.MethodPost, r.Method)
+			w.WriteHeader(http.StatusCreated)
+			require.NoError(t, json.NewEncoder(w).Encode(&corev1.Namespace{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Namespace",
+				},
+				ObjectMeta: metav1.ObjectMeta{Name: "demo-project-staging"},
+			}))
+		case "/apis/gateway.networking.k8s.io/v1":
+			gatewayAPICalled = true
+			t.Fatalf("unexpected Gateway API discovery request during environment creation")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	clusterID := registerEnvTestCluster(t, server.URL)
+	seedEnvTestProjectAndCluster(t, clusterID)
+
+	_, err := CreateEnv("project-1", &models.CreateEnvRequest{
+		Name:             "Staging",
+		Slug:             "staging",
+		ClusterID:        clusterID,
+		ClusterNamespace: "demo-project-staging",
+	})
+	require.NoError(t, err)
+	assert.False(t, gatewayAPICalled)
+}
+
 func TestCheckEnvNamespaceAvailability_ReturnsDatabaseConflict(t *testing.T) {
 	setupEnvTestDB(t)
 

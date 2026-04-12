@@ -24,6 +24,7 @@ import {
   Telescope,
   Terminal,
   Trash2,
+  Globe,
   Warehouse
 } from "lucide-react"
 import * as React from "react"
@@ -34,6 +35,7 @@ import { clustersApi } from "@/api/clusters"
 import { ClusterCertificates } from "@/components/cluster/cluster-certificates"
 import { ClusterExtensions } from "@/components/cluster/cluster-extensions"
 import { ClusterIntegrationsConfig } from "@/components/cluster/cluster-integrations-config"
+import { ClusterDomains } from "@/components/cluster/cluster-domains"
 import { EditClusterDialog } from "@/components/cluster/edit-cluster-dialog"
 import { ContainerRegistryList } from "@/components/container-registries/container-registry-list"
 import { DataTable } from "@/components/data-table/data-table"
@@ -592,6 +594,10 @@ export function ClusterDetailPage() {
             <ShieldCheck />
             Certificates
           </TabsTrigger>
+          <TabsTrigger value="domains">
+            <Globe />
+            Domains
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
@@ -798,6 +804,10 @@ export function ClusterDetailPage() {
 
         <TabsContent value="certificates" className="space-y-4 mt-2">
           <ClusterCertificates clusterId={clusterId!} />
+        </TabsContent>
+
+        <TabsContent value="domains" className="space-y-4 mt-2">
+          <ClusterDomains clusterId={clusterId!} />
         </TabsContent>
       </Tabs>
 

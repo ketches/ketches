@@ -1,15 +1,41 @@
 package middlewares
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
+
+func setupRBACTestDB(t *testing.T) {
+	t.Helper()
+
+	originalDB := db.DB
+	t.Cleanup(func() { db.DB = originalDB })
+
+	testDB, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
+	require.NoError(t, err)
+	require.NoError(t, testDB.AutoMigrate(
+		&entities.Project{},
+		&entities.ProjectMember{},
+		&entities.Env{},
+		&entities.App{},
+	))
+
+	db.DB = testDB
+}
 
 // TestRequireProjectRole_AdminBypasses verifies that a user with the "admin"
 // system role is allowed through RequireProjectRole without any DB lookup.
@@ -142,4 +168,145 @@ func TestProjectRoleRank(t *testing.T) {
 	assert.Equal(t, 2, projectRoleRank[app.ProjectRoleDeveloper])
 	assert.Equal(t, 1, projectRoleRank[app.ProjectRoleViewer])
 	assert.Equal(t, 0, projectRoleRank["nonexistent"])
+}
+
+func TestRequireProjectRole_BatchDeleteResolvesProjectFromBody(t *testing.T) {
+	setupRBACTestDB(t)
+	gin.SetMode(gin.TestMode)
+
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-1"},
+		Slug: "project-1",
+		Name: "Project 1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.ProjectMember{
+		ID:          "member-1",
+		ProjectID:   "project-1",
+		UserID:      "user-123",
+		ProjectRole: app.ProjectRoleDeveloper,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "env-1"},
+		Slug:      "env-1",
+		Name:      "Env 1",
+		ProjectID: "project-1",
+		ClusterID: "cluster-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.App{
+		Base:           entities.Base{ID: "app-1"},
+		Slug:           "app-1",
+		Name:           "App 1",
+		EnvID:          "env-1",
+		ContainerImage: "nginx:latest",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.App{
+		Base:           entities.Base{ID: "app-2"},
+		Slug:           "app-2",
+		Name:           "App 2",
+		EnvID:          "env-1",
+		ContainerImage: "nginx:latest",
+	}).Error)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("claims", &app.Claims{
+			UserID: "user-123",
+			Role:   app.UserRoleUser,
+		})
+		c.Next()
+	})
+	router.Use(RequireProjectRole(app.ProjectRoleDeveloper))
+	router.POST("/api/v1/apps/batch-delete", func(c *gin.Context) {
+		var req struct {
+			IDs []string `json:"ids"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"count": len(req.IDs)})
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/apps/batch-delete", strings.NewReader(`{"ids":["app-1","app-2"]}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Count int `json:"count"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, 2, resp.Count)
+}
+
+func TestRequireProjectRole_BatchDeleteRejectsMixedProjects(t *testing.T) {
+	setupRBACTestDB(t)
+	gin.SetMode(gin.TestMode)
+
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-1"},
+		Slug: "project-1",
+		Name: "Project 1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-2"},
+		Slug: "project-2",
+		Name: "Project 2",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.ProjectMember{
+		ID:          "member-1",
+		ProjectID:   "project-1",
+		UserID:      "user-123",
+		ProjectRole: app.ProjectRoleDeveloper,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "env-1"},
+		Slug:      "env-1",
+		Name:      "Env 1",
+		ProjectID: "project-1",
+		ClusterID: "cluster-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "env-2"},
+		Slug:      "env-2",
+		Name:      "Env 2",
+		ProjectID: "project-2",
+		ClusterID: "cluster-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.App{
+		Base:           entities.Base{ID: "app-1"},
+		Slug:           "app-1",
+		Name:           "App 1",
+		EnvID:          "env-1",
+		ContainerImage: "nginx:latest",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.App{
+		Base:           entities.Base{ID: "app-2"},
+		Slug:           "app-2",
+		Name:           "App 2",
+		EnvID:          "env-2",
+		ContainerImage: "nginx:latest",
+	}).Error)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("claims", &app.Claims{
+			UserID: "user-123",
+			Role:   app.UserRoleUser,
+		})
+		c.Next()
+	})
+	router.Use(RequireProjectRole(app.ProjectRoleDeveloper))
+	router.POST("/api/v1/apps/batch-delete", func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/apps/batch-delete", strings.NewReader(`{"ids":["app-1","app-2"]}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

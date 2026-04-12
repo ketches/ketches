@@ -43,6 +43,22 @@ vi.mock("@/api/clusters", () => ({
   },
 }))
 
+vi.mock("@/api/domains", () => ({
+  domainsApi: {
+    listByCluster: vi.fn(),
+    listByEnv: vi.fn(),
+  },
+}))
+
+vi.mock("@/components/ui/dropdown-menu", () => ({
+  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ render }: { render?: React.ReactNode }) => <>{render ?? null}</>,
+  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
+    <button type="button" onClick={onClick}>{children}</button>
+  ),
+}))
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -238,6 +254,34 @@ describe("GatewayEditor", () => {
         return { data: { installed: true } }
       }
 
+      if (queryKey[0] === "env-domains") {
+        return {
+          data: {
+            items: [
+              {
+                id: "env-domain-1",
+                name: "Env Primary",
+                domain: "*.env.example.com",
+              },
+            ],
+          },
+        }
+      }
+
+      if (queryKey[0] === "cluster-domains") {
+        return {
+          data: {
+            items: [
+              {
+                id: "cluster-domain-1",
+                name: "Cluster Primary",
+                domain: "*.cluster.example.com",
+              },
+            ],
+          },
+        }
+      }
+
       return { data: { items: [] } }
     })
   })
@@ -299,6 +343,18 @@ describe("GatewayEditor", () => {
     expect(container.textContent).not.toContain(
       "Public access is currently available only for HTTP/HTTPS gateways. TCP/UDP public exposure is not supported yet.",
     )
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("uses the existing domain value when a managed domain matches", async () => {
+    const { container, root } = await renderEditor(buildGateway({ domain: "demo-app.env.example.com" }))
+
+    const input = Array.from(container.querySelectorAll("input")).find((element) => element.value === "demo-app.env.example.com") as HTMLInputElement | undefined
+    expect(input).toBeDefined()
+    expect(container.textContent).toContain("[Env] Env Primary")
 
     await act(async () => {
       root.unmount()

@@ -226,6 +226,7 @@ func setupV1Routes(r *gin.Engine) {
 				envsRead.GET("/:envID/app-groups", handlers.ListAppGroups)
 				envsRead.GET("/:envID/apps/favorites", handlers.ListFavoriteApps)
 				envsRead.GET("/:envID/certificates", handlers.ListEnvCertificates)
+				envsRead.GET("/:envID/domains", handlers.ListEnvDomains)
 				envsRead.GET("/:envID/apps/image-metadata", handlers.GetImageMetadata)
 				envsRead.GET("/:envID/certificates/:certID", handlers.GetCertificate)
 				// Write (require at least developer role)
@@ -240,8 +241,11 @@ func setupV1Routes(r *gin.Engine) {
 				envsWrite.POST("/:envID/apps/import", handlers.ImportApps)
 				envsWrite.POST("/:envID/app-groups", handlers.CreateAppGroup)
 				envsWrite.POST("/:envID/certificates", handlers.CreateEnvCertificate)
+				envsWrite.POST("/:envID/domains", handlers.CreateEnvDomain)
 				envsWrite.PUT("/:envID/certificates/:certID", handlers.UpdateCertificate)
 				envsWrite.DELETE("/:envID/certificates/:certID", handlers.DeleteCertificate)
+				envsWrite.PUT("/:envID/domains/:domainID", handlers.UpdateDomain)
+				envsWrite.DELETE("/:envID/domains/:domainID", handlers.DeleteDomain)
 			}
 
 			// ── Apps ──────────────────────────────────────────────────
@@ -340,6 +344,7 @@ func setupV1Routes(r *gin.Engine) {
 			authorized.GET("/clusters/public", handlers.ListPublicClusters)
 			authorized.GET("/clusters/:clusterID/public", handlers.GetPublicCluster)
 			authorized.GET("/clusters/:clusterID/certificates", handlers.ListClusterCertificates)
+			authorized.GET("/clusters/:clusterID/domains", handlers.ListClusterDomains)
 			authorized.GET("/clusters/:clusterID/integrations", handlers.ListClusterIntegrations)
 			authorized.GET("/clusters/:clusterID/storage-classes", handlers.ListStorageClasses)
 			authorized.GET("/clusters/:clusterID/gateway-api-status", handlers.GetClusterGatewayAPIStatus)
@@ -399,9 +404,12 @@ func setupV1Routes(r *gin.Engine) {
 
 				// Certificates (cluster scope)
 				clusters.POST("/:clusterID/certificates", handlers.CreateClusterCertificate)
+				clusters.POST("/:clusterID/domains", handlers.CreateClusterDomain)
 				clusters.GET("/:clusterID/certificates/:certID", handlers.GetCertificate)
 				clusters.PUT("/:clusterID/certificates/:certID", handlers.UpdateCertificate)
 				clusters.DELETE("/:clusterID/certificates/:certID", handlers.DeleteCertificate)
+				clusters.PUT("/:clusterID/domains/:domainID", handlers.UpdateDomain)
+				clusters.DELETE("/:clusterID/domains/:domainID", handlers.DeleteDomain)
 			}
 
 			// Container Registries (project-scoped) — write routes enforce developer role via registryID→project chain.

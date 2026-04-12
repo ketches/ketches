@@ -54,6 +54,7 @@ func Migrate() error {
 		&entities.CodeRepository{},
 		&entities.DeploymentHistory{},
 		&entities.Certificate{},
+		&entities.Domain{},
 		&entities.Extension{},
 		&entities.ClusterExtension{},
 		&entities.OperationLog{},

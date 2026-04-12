@@ -157,6 +157,10 @@ func DeletePlugin(c *gin.Context) {
 	}
 
 	if err := services.DeletePlugin(pluginID); err != nil {
+		if errors.Is(err, services.ErrPluginInstalledInApps) {
+			api.Error(c, http.StatusConflict, err)
+			return
+		}
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

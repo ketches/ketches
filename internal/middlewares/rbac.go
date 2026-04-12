@@ -1,8 +1,11 @@
 package middlewares
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -22,6 +25,75 @@ var projectRoleRank = map[string]int{
 	app.ProjectRoleViewer:    1,
 }
 
+type batchDeleteAppsRequest struct {
+	IDs []string `json:"ids"`
+}
+
+type appProjectRow struct {
+	ID        string
+	ProjectID string
+}
+
+func resolveBatchDeleteProjectID(c *gin.Context) (string, bool) {
+	if c.Request.Method != http.MethodPost || c.FullPath() != "/api/v1/apps/batch-delete" {
+		return "", false
+	}
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		slog.Debug("resolveProjectID batch delete body read failed", "error", err)
+		return "", false
+	}
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+
+	var req batchDeleteAppsRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		slog.Debug("resolveProjectID batch delete body decode failed", "error", err)
+		return "", false
+	}
+	if len(req.IDs) == 0 {
+		return "", false
+	}
+
+	uniqueIDs := make(map[string]struct{}, len(req.IDs))
+	for _, id := range req.IDs {
+		if id == "" {
+			return "", false
+		}
+		uniqueIDs[id] = struct{}{}
+	}
+
+	appIDs := make([]string, 0, len(uniqueIDs))
+	for id := range uniqueIDs {
+		appIDs = append(appIDs, id)
+	}
+
+	var rows []appProjectRow
+	if err := db.DB.Table("apps").
+		Select("apps.id, envs.project_id").
+		Joins("JOIN envs ON envs.id = apps.env_id").
+		Where("apps.id IN ?", appIDs).
+		Scan(&rows).Error; err != nil {
+		slog.Debug("resolveProjectID batch delete lookup failed", "error", err)
+		return "", false
+	}
+	if len(rows) != len(appIDs) {
+		return "", false
+	}
+
+	projectID := rows[0].ProjectID
+	if projectID == "" {
+		return "", false
+	}
+	for _, row := range rows[1:] {
+		if row.ProjectID != projectID {
+			return "", false
+		}
+	}
+
+	return projectID, true
+}
+
 // resolveProjectID attempts to extract the project ID from URL parameters.
 // It checks :projectID, :envID, and :appID in order, resolving the latter
 // two via DB lookups through the env and app tables.
@@ -33,6 +105,11 @@ func resolveProjectID(c *gin.Context) (string, bool) {
 
 	// Direct project ID from URL
 	if projectID := c.Param("projectID"); projectID != "" {
+		return projectID, true
+	}
+
+	// Resolve body-driven batch app routes that do not carry project context in the path.
+	if projectID, ok := resolveBatchDeleteProjectID(c); ok {
 		return projectID, true
 	}
 

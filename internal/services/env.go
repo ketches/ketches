@@ -82,18 +82,10 @@ func CreateEnv(projectID string, req *models.CreateEnvRequest) (*entities.Env, e
 			Update("is_build_env", false)
 	}
 
-	cluster, err := GetCluster(req.ClusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	envCtx := &models.EnvContext{
+	if err := core.CreateNamespace(context.Background(), req.ClusterID, namespaceName, &models.EnvContext{
 		Env:     *env,
 		Project: project,
-		Cluster: *cluster,
-	}
-
-	if err := core.CreateNamespace(context.Background(), req.ClusterID, namespaceName, envCtx); err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
@@ -103,12 +95,6 @@ func CreateEnv(projectID string, req *models.CreateEnvRequest) (*entities.Env, e
 
 	if err := CreateDefaultEnvResourceQuota(env.ID); err != nil {
 		return nil, err
-	}
-
-	// If the cluster has Gateway API CRDs, create the env-level Gateway resource.
-	// Failure is non-fatal — the env is created either way.
-	if gwErr := tryEnsureEnvGateway(context.Background(), envCtx); gwErr != nil {
-		_ = gwErr // best-effort
 	}
 
 	return env, nil
@@ -403,12 +389,4 @@ func ToEnvResponse(e *entities.Env) models.EnvResponse {
 		IsBuildEnv:       e.IsBuildEnv,
 		CreatedAt:        e.CreatedAt,
 	}
-}
-
-// tryEnsureEnvGateway loads the env's certificates and calls core.EnsureEnvGateway.
-// It is best-effort: errors are returned but must not block env lifecycle operations.
-func tryEnsureEnvGateway(ctx context.Context, envCtx *models.EnvContext) error {
-	var certs []entities.Certificate
-	db.DB.Where("env_id = ? AND scope = ?", envCtx.Env.ID, "env").Find(&certs)
-	return core.EnsureEnvGateway(ctx, envCtx, certs)
 }

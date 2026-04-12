@@ -17,6 +17,8 @@ type AppPluginWithPlugin struct {
 	Plugin entities.Plugin `gorm:"embedded;embeddedPrefix:plugin_"`
 }
 
+var ErrPluginInstalledInApps = errors.New("cannot delete plugin: it is installed in one or more apps")
+
 func CreatePlugin(req *models.CreatePluginRequest) (*entities.Plugin, error) {
 	var existing entities.Plugin
 	if err := db.DB.Where("project_id = ? AND slug = ?", req.ProjectID, req.Slug).First(&existing).Error; err == nil {
@@ -187,7 +189,7 @@ func DeletePlugin(pluginID string) error {
 		return err
 	}
 	if count > 0 {
-		return errors.New("cannot delete plugin: it is installed in one or more apps")
+		return ErrPluginInstalledInApps
 	}
 
 	return db.DB.Delete(&entities.Plugin{}, "id = ?", pluginID).Error

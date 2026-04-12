@@ -171,6 +171,7 @@ export function EditEnvironmentDialog({
                 />
               </FieldContent>
             </Field>
+
           </div>
 
           <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
