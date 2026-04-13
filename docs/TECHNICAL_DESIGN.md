@@ -1683,7 +1683,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "80:80"
+      - "8080:8080"
     depends_on:
       - ketches-api
 

@@ -98,5 +98,5 @@ kubectl -n ketches get svc ketches-ui
 If you switch UI service to `ClusterIP`, use port-forward:
 
 ```bash
-kubectl -n ketches port-forward svc/ketches-ui 8080:80
+kubectl -n ketches port-forward svc/ketches-ui 3000:3000
 ```

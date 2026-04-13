@@ -161,8 +161,8 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - port: 80
-      targetPort: 80
+    - port: 3000
+      targetPort: 3000
       nodePort: 30080
       name: http
   selector:
@@ -187,7 +187,7 @@ spec:
         - name: ketches-ui
           image: ghcr.io/ketches/ketches-ui:latest # Replace with your actual image
           ports:
-            - containerPort: 80
+            - containerPort: 3000
           env:
             - name: BACKEND_URL
               value: "http://ketches-api:8080"

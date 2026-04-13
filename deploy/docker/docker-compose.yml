@@ -29,7 +29,7 @@ services:
       DB_SOURCE: host=ketches-db port=5432 user=ketches password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD} dbname=ketches sslmode=${DB_SSLMODE:-disable}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       SECRET_ENCRYPTION_KEY: ${SECRET_ENCRYPTION_KEY:?set SECRET_ENCRYPTION_KEY}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       BUILD_LOG_BASE_DIR: /app/data/build-logs
       BUILD_LOG_RETENTION_DAYS: 15
     volumes:
@@ -44,7 +44,7 @@ services:
       context: ./ui
       dockerfile: Dockerfile
     ports:
-      - "80:8080"
+      - "3000:3000"
     environment:
       # Points to the api service; change to an external URL if api is not co-located
       BACKEND_URL: http://ketches-api:8080

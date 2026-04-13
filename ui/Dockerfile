@@ -36,7 +36,7 @@ ENV BACKEND_URL=http://api:8080
 
 USER nginx
 
-EXPOSE 8080
+EXPOSE 3000
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

@@ -120,8 +120,8 @@ kubectl -n ketches get svc ketches-ui
 Or access via port-forward:
 
 ```bash
-kubectl -n ketches port-forward svc/ketches-ui 8080:80
-# open http://127.0.0.1:8080
+kubectl -n ketches port-forward svc/ketches-ui 3000:3000
+# open http://127.0.0.1:3000
 ```
 
 For production, do not reuse the quickstart values file. Provide strong values for `config.jwtSecret` and `config.secretEncryptionKey`, set `postgres.auth.password` when using the bundled PostgreSQL instance, and review [Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md). If you use an external database, set `postgres.enabled=false` and provide `config.dbSource` (or the split `config.db*` values).

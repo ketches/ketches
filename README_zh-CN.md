@@ -120,8 +120,8 @@ kubectl -n ketches get svc ketches-ui
 也可以使用端口转发访问：
 
 ```bash
-kubectl -n ketches port-forward svc/ketches-ui 8080:80
-# 浏览器打开 http://127.0.0.1:8080
+kubectl -n ketches port-forward svc/ketches-ui 3000:3000
+# 浏览器打开 http://127.0.0.1:3000
 ```
 
 生产环境请不要复用 quickstart values 文件。请务必为 `config.jwtSecret` 和 `config.secretEncryptionKey` 提供强随机值；如果继续使用内置 PostgreSQL，还需要设置 `postgres.auth.password`，并参考[生产部署说明](docs/PRODUCTION_DEPLOYMENT.md)。如果使用外部数据库，请设置 `postgres.enabled=false`，并显式提供 `config.dbSource`（或拆分后的 `config.db*` 参数）。

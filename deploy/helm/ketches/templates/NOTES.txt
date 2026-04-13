@@ -30,6 +30,6 @@ It may take a few minutes to get an external IP:
 {{- else }}
 Use port-forward to access UI:
 
-  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "ketches.ui.fullname" . }} 8080:{{ .Values.ui.service.port }}
-  open http://127.0.0.1:8080
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "ketches.ui.fullname" . }} 3000:{{ .Values.ui.service.port }}
+  open http://127.0.0.1:3000
 {{- end }}
