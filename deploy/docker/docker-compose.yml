@@ -44,7 +44,7 @@ services:
       context: ./ui
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "80:8080"
     environment:
       # Points to the api service; change to an external URL if api is not co-located
       BACKEND_URL: http://ketches-api:8080
