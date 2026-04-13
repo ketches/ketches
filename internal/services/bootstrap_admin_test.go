@@ -32,7 +32,7 @@ func setupBootstrapAdminTestDB(t *testing.T) {
 	db.DB = testDB
 }
 
-func TestEnsureBootstrapAdminSkipsWhenNotConfigured(t *testing.T) {
+func TestEnsureBootstrapAdminCreatesDefaultAdminWhenNotConfigured(t *testing.T) {
 	setupBootstrapAdminTestDB(t)
 
 	app.Config.BootstrapAdminUsername = ""
@@ -40,9 +40,12 @@ func TestEnsureBootstrapAdminSkipsWhenNotConfigured(t *testing.T) {
 
 	require.NoError(t, EnsureBootstrapAdmin())
 
-	var count int64
-	require.NoError(t, db.DB.Model(&entities.User{}).Count(&count).Error)
-	assert.Equal(t, int64(0), count)
+	var user entities.User
+	require.NoError(t, db.DB.First(&user, "username = ?", "kadmin").Error)
+	assert.Equal(t, app.UserRoleAdmin, user.Role)
+	assert.Equal(t, "Ketches Admin", user.Fullname)
+	assert.Equal(t, "kadmin@local.ketches", user.Email)
+	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("KetchesBootstrapAdmin!ChangeMe")))
 }
 
 func TestEnsureBootstrapAdminCreatesConfiguredAdmin(t *testing.T) {
@@ -56,8 +59,23 @@ func TestEnsureBootstrapAdminCreatesConfiguredAdmin(t *testing.T) {
 	var user entities.User
 	require.NoError(t, db.DB.First(&user, "username = ?", "bootstrap-admin").Error)
 	assert.Equal(t, app.UserRoleAdmin, user.Role)
+	assert.Equal(t, "Bootstrap Admin", user.Fullname)
 	assert.Equal(t, "bootstrap-admin@local.ketches", user.Email)
 	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("bootstrap-password-123")))
+}
+
+func TestEnsureBootstrapAdminUsesDefaultPasswordWhenCustomUsernameProvided(t *testing.T) {
+	setupBootstrapAdminTestDB(t)
+
+	app.Config.BootstrapAdminUsername = "root-admin"
+	app.Config.BootstrapAdminPassword = ""
+
+	require.NoError(t, EnsureBootstrapAdmin())
+
+	var user entities.User
+	require.NoError(t, db.DB.First(&user, "username = ?", "root-admin").Error)
+	assert.Equal(t, "Root Admin", user.Fullname)
+	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("KetchesBootstrapAdmin!ChangeMe")))
 }
 
 func TestEnsureBootstrapAdminDoesNotCreateDuplicateAdmin(t *testing.T) {

@@ -21,19 +21,40 @@ import { Input } from "@/components/ui/input"
 import { PASSWORD_POLICY_MESSAGE, isStrongPassword } from "@/lib/password-policy"
 import { cn } from "@/lib/utils"
 
-const signupSchema = z.object({
-  fullname: z.string().min(1, "Full name is required"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().refine(isStrongPassword, PASSWORD_POLICY_MESSAGE),
-  verificationCode: z.string().length(6, "Enter the 6-digit verification code"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-})
+type SignupFormValues = {
+  fullname: string
+  username: string
+  email: string
+  password: string
+  verificationCode: string
+  confirmPassword: string
+}
 
-type SignupFormValues = z.infer<typeof signupSchema>
+function createSignupSchema(emailVerificationRequired: boolean) {
+  return z.object({
+    fullname: z.string().min(1, "Full name is required"),
+    username: z.string().min(3, "Username must be at least 3 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().refine(isStrongPassword, PASSWORD_POLICY_MESSAGE),
+    verificationCode: z.string(),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  }).superRefine((data, ctx) => {
+    if (emailVerificationRequired && data.verificationCode.length !== 6) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter the 6-digit verification code",
+        path: ["verificationCode"],
+      })
+    }
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Passwords don't match",
+        path: ["confirmPassword"],
+      })
+    }
+  })
+}
 
 export function SignupForm({
   className,
@@ -49,6 +70,7 @@ export function SignupForm({
     queryKey: ["sign-up-config"],
     queryFn: authApi.getSignUpConfig,
   })
+  const emailVerificationRequired = signUpConfigQuery.data?.email_verification_required ?? true
 
   const {
     register,
@@ -56,7 +78,10 @@ export function SignupForm({
     handleSubmit,
     formState: { errors },
   } = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
+    resolver: zodResolver(createSignupSchema(emailVerificationRequired)),
+    defaultValues: {
+      verificationCode: "",
+    },
   })
 
   useEffect(() => {
@@ -109,7 +134,7 @@ export function SignupForm({
         username: data.username,
         email: data.email,
         password: data.password,
-        verification_code: data.verificationCode,
+        ...(emailVerificationRequired ? { verification_code: data.verificationCode ?? "" } : {}),
       }
       await authApi.signUp(payload)
       toast.success("Account created", {
@@ -164,7 +189,7 @@ export function SignupForm({
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Create your account</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Verify your email, then complete the registration form.
+            {emailVerificationRequired ? "Verify your email, then complete the registration form." : "Complete the registration form."}
           </p>
         </div>
         {error && (
@@ -207,37 +232,43 @@ export function SignupForm({
               placeholder="m@example.com"
               {...register("email")}
             />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isSendingCode || resendAfterSeconds > 0}
-              onClick={handleSendVerificationCode}
-            >
-              {isSendingCode ? "Sending..." : resendAfterSeconds > 0 ? `Resend in ${resendAfterSeconds}s` : "Send Code"}
-            </Button>
+            {emailVerificationRequired && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSendingCode || resendAfterSeconds > 0}
+                onClick={handleSendVerificationCode}
+              >
+                {isSendingCode ? "Sending..." : resendAfterSeconds > 0 ? `Resend in ${resendAfterSeconds}s` : "Send Code"}
+              </Button>
+            )}
           </FieldContent>
-          <FieldDescription>
-            Verification codes stay valid for 300 seconds.
-          </FieldDescription>
+          {emailVerificationRequired && (
+            <FieldDescription>
+              Verification codes stay valid for 300 seconds.
+            </FieldDescription>
+          )}
           {errors.email && (
             <FieldError>{errors.email.message}</FieldError>
           )}
         </Field>
-        <Field>
-          <FieldLabel htmlFor="verificationCode">Verification Code</FieldLabel>
-          <FieldContent>
-            <Input
-              id="verificationCode"
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="123456"
-              {...register("verificationCode")}
-            />
-          </FieldContent>
-          {errors.verificationCode && (
-            <FieldError>{errors.verificationCode.message}</FieldError>
-          )}
-        </Field>
+        {emailVerificationRequired && (
+          <Field>
+            <FieldLabel htmlFor="verificationCode">Verification Code</FieldLabel>
+            <FieldContent>
+              <Input
+                id="verificationCode"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="123456"
+                {...register("verificationCode")}
+              />
+            </FieldContent>
+            {errors.verificationCode && (
+              <FieldError>{errors.verificationCode.message}</FieldError>
+            )}
+          </Field>
+        )}
         <Field>
           <FieldLabel htmlFor="password">Password</FieldLabel>
           <FieldContent>

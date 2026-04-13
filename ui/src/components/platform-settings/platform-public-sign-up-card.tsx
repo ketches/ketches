@@ -10,29 +10,46 @@ export function PlatformPublicSignUpCard() {
   const { data, isLoading } = usePublicSignUpSettings()
   const updateMutation = useUpdatePublicSignUpSettingsMutation()
   const [enabled, setEnabled] = React.useState(true)
+  const [emailVerificationRequired, setEmailVerificationRequired] = React.useState(true)
 
   React.useEffect(() => {
     if (typeof data?.enabled === "boolean") {
       setEnabled(data.enabled)
     }
-  }, [data?.enabled])
+    if (typeof data?.email_verification_required === "boolean") {
+      setEmailVerificationRequired(data.email_verification_required)
+    }
+  }, [data?.email_verification_required, data?.enabled])
 
-  const handleToggle = (checked: boolean) => {
-    setEnabled(checked)
+  const handleUpdate = (nextEnabled: boolean, nextEmailVerificationRequired: boolean) => {
     updateMutation.mutate(
-      { enabled: checked },
+      {
+        enabled: nextEnabled,
+        email_verification_required: nextEmailVerificationRequired,
+      },
       {
         onSuccess: () => {
-          toast.success(checked ? "Public registration enabled" : "Public registration disabled")
+          toast.success(nextEnabled ? "Public registration enabled" : "Public registration disabled")
         },
         onError: (error) => {
           setEnabled(data?.enabled ?? true)
+          setEmailVerificationRequired(data?.email_verification_required ?? true)
           toast.error("Failed to update public registration", {
             description: error instanceof Error ? error.message : String(error),
           })
         },
       },
     )
+  }
+
+  const handleEnabledToggle = (checked: boolean) => {
+    setEnabled(checked)
+    handleUpdate(checked, emailVerificationRequired)
+  }
+
+  const handleEmailVerificationToggle = (checked: boolean) => {
+    setEmailVerificationRequired(checked)
+    handleUpdate(enabled, checked)
   }
 
   return (
@@ -43,21 +60,38 @@ export function PlatformPublicSignUpCard() {
           Public Registration
         </CardTitle>
         <CardDescription>
-          Control whether new users can create accounts by email verification.
+          Control whether new users can create accounts and whether sign-up requires email verification.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex items-center justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-sm font-medium">
-            {enabled ? "Enabled" : "Disabled"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            When enabled, users must verify their email code before account creation.
-          </p>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">
+              Public registration: {enabled ? "Enabled" : "Disabled"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Allow unauthenticated visitors to create accounts.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {(isLoading || updateMutation.isPending) && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <Switch checked={enabled} onCheckedChange={handleEnabledToggle} disabled={isLoading || updateMutation.isPending} />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {(isLoading || updateMutation.isPending) && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-          <Switch checked={enabled} onCheckedChange={handleToggle} disabled={isLoading || updateMutation.isPending} />
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">
+              Email verification: {emailVerificationRequired ? "Required" : "Optional"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              When disabled, users can sign up without requesting a verification code.
+            </p>
+          </div>
+          <Switch
+            checked={emailVerificationRequired}
+            onCheckedChange={handleEmailVerificationToggle}
+            disabled={isLoading || updateMutation.isPending}
+          />
         </div>
       </CardContent>
     </Card>

@@ -9,9 +9,11 @@ type PlatformBrandingResponse struct {
 }
 
 type PublicSignUpSettingsResponse struct {
-	Enabled bool `json:"enabled"`
+	Enabled                   bool `json:"enabled"`
+	EmailVerificationRequired bool `json:"email_verification_required"`
 }
 
 type UpdatePublicSignUpSettingsRequest struct {
-	Enabled bool `json:"enabled"`
+	Enabled                   bool `json:"enabled"`
+	EmailVerificationRequired bool `json:"email_verification_required"`
 }

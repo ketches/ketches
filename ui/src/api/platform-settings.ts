@@ -10,6 +10,7 @@ export interface UpdatePlatformBrandingRequest {
 
 export interface PublicSignUpSettings {
   enabled: boolean
+  email_verification_required: boolean
 }
 
 export const platformSettingsApi = {

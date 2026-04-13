@@ -12,22 +12,28 @@ export type SignInResponse = WithRequired<
   user: WithRequired<GeneratedUser, "id" | "username" | "email" | "fullname" | "role">
 }
 
-export type SignUpRequest = OperationRequestBody<"/api/v1/users/sign-up", "post">
+export interface SignUpRequest {
+  fullname: string
+  username: string
+  email: string
+  password: string
+  verification_code?: string
+}
 export type SignUpResponse = OperationResponseData<"/api/v1/users/sign-up", "post", 201>
 
-export type SignUpConfigResponse = WithRequired<
-  OperationResponseData<"/api/v1/users/sign-up/config", "get">,
-  "enabled"
->
+export interface SignUpConfigResponse {
+  enabled: boolean
+  email_verification_required: boolean
+}
 
-export type SignUpVerificationCodeRequest = OperationRequestBody<
-  "/api/v1/users/sign-up/verification-code",
-  "post"
->
-export type SignUpVerificationCodeResponse = WithRequired<
-  OperationResponseData<"/api/v1/users/sign-up/verification-code", "post">,
-  "expires_in_seconds" | "resend_after_seconds"
->
+export interface SignUpVerificationCodeRequest {
+  email: string
+}
+
+export interface SignUpVerificationCodeResponse {
+  expires_in_seconds: number
+  resend_after_seconds: number
+}
 
 export const authApi = {
   signIn: async (data: SignInRequest) => {

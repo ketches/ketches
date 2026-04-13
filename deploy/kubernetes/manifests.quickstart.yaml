@@ -13,6 +13,9 @@ stringData:
   db-password: ketches-quickstart-postgres
   jwt-secret: ketches-quickstart-jwt-secret
   secret-encryption-key: ketches-quickstart-encryption-key
+  bootstrap-admin-username: ""
+  bootstrap-admin-password: ""
+  smtp-password: ""
 ---
 apiVersion: v1
 kind: Service
@@ -143,6 +146,31 @@ spec:
                 secretKeyRef:
                   name: ketches-secrets
                   key: secret-encryption-key
+            - name: BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ketches-secrets
+                  key: bootstrap-admin-username
+            - name: BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ketches-secrets
+                  key: bootstrap-admin-password
+            - name: SIGN_UP_EMAIL_VERIFICATION_REQUIRED
+              value: "false"
+            - name: SMTP_HOST
+              value: ""
+            - name: SMTP_PORT
+              value: "587"
+            - name: SMTP_USERNAME
+              value: ""
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ketches-secrets
+                  key: smtp-password
+            - name: SMTP_FROM
+              value: ""
             - name: CORS_ALLOWED_ORIGINS
               value: "http://localhost:3000,http://127.0.0.1:3000,http://localhost:30080,http://127.0.0.1:30080"
           resources:

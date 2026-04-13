@@ -21,6 +21,28 @@ Before deploying Ketches outside a local evaluation environment, configure these
 - `SECRET_ENCRYPTION_KEY`
   - Required for encrypting sensitive values at rest.
   - Use a strong random secret.
+- `BOOTSTRAP_ADMIN_PASSWORD`
+  - Override the built-in bootstrap admin password before first start.
+  - Do not rely on the quickstart default password outside local evaluation.
+- `BOOTSTRAP_ADMIN_USERNAME`
+  - Optional. Override the built-in bootstrap admin username before first start.
+
+### Email delivery for sign-up verification
+
+If `SIGN_UP_EMAIL_VERIFICATION_REQUIRED=true`, configure SMTP delivery before exposing public sign-up.
+
+- `SMTP_HOST`
+  - SMTP server hostname.
+- `SMTP_PORT`
+  - SMTP server port. `587` is the default.
+- `SMTP_USERNAME`
+  - SMTP authentication username.
+- `SMTP_PASSWORD`
+  - SMTP authentication password.
+- `SMTP_FROM`
+  - Sender address used for verification emails.
+
+If you do not plan to support email delivery in an environment, set `SIGN_UP_EMAIL_VERIFICATION_REQUIRED=false`.
 
 ### Database credentials
 
@@ -69,6 +91,14 @@ Review:
 - TLS certificates
 - external UI/backend URLs
 
+### Public sign-up policy
+
+Decide explicitly whether public sign-up should be available.
+
+- Shared or production environments usually should keep `SIGN_UP_EMAIL_VERIFICATION_REQUIRED=true`
+- Local demos or short-lived evaluation environments may choose `false`
+- If public registration is not needed at all, disable it from platform settings after bootstrap login
+
 ## Deployment-specific notes
 
 ### Docker Compose
@@ -82,6 +112,14 @@ At minimum:
 - `SECRET_ENCRYPTION_KEY`
 - `CORS_ALLOWED_ORIGINS`
 
+If email verification is enabled, also set:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `SMTP_FROM`
+
 ### Helm
 
 The main chart is secure by default and does not ship with reusable production secrets.
@@ -90,12 +128,22 @@ For production or shared clusters:
 
 - do not use `values-quickstart.yaml`
 - provide real values for `config.jwtSecret` and `config.secretEncryptionKey`
+- set `config.signUpEmailVerificationRequired=true` unless you intentionally want sign-up without email verification
+- provide `config.smtpHost`, `config.smtpPort`, `config.smtpUsername`, `config.smtpPassword`, and `config.smtpFrom` when email verification is enabled
 - provide `postgres.auth.password` when using the bundled PostgreSQL instance
 - set `postgres.enabled=false` and provide `config.dbSource` or `config.db*` values when using an external database
 
 ### Raw Kubernetes manifests
 
 The checked-in `deploy/kubernetes/manifests.yaml` keeps secret fields blank on purpose. Fill those secrets before applying the manifests.
+
+When sign-up email verification is enabled, also fill:
+
+- `smtp-password` in the secret
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USERNAME`
+- `SMTP_FROM`
 
 ## Common pitfalls
 
@@ -114,6 +162,20 @@ Check:
 Common cause: `CORS_ALLOWED_ORIGINS` does not include the actual UI origin.
 
 Verify the exact scheme, host, and port used by the browser.
+
+### Verification emails fail or sign-up code requests return errors
+
+Common cause: `SIGN_UP_EMAIL_VERIFICATION_REQUIRED=true` but SMTP settings are incomplete or invalid.
+
+Check:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `SMTP_FROM`
+
+If SMTP is intentionally unavailable in that environment, set `SIGN_UP_EMAIL_VERIFICATION_REQUIRED=false`.
 
 ### Quickstart values leaked into a real environment
 

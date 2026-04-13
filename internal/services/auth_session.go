@@ -22,18 +22,20 @@ import (
 
 const (
 	publicSignUpSettingKey               = "public_sign_up_enabled"
+	signUpEmailVerificationSettingKey    = "sign_up_email_verification_required"
 	signupVerificationCodeLength         = 6
 	signupVerificationCodeExpiresIn      = 5 * time.Minute
 	signupVerificationCodeResendCooldown = 60 * time.Second
 )
 
 var (
-	ErrAccountLocked                 = errors.New("account is locked")
-	ErrPublicSignUpDisabled          = errors.New("public registration is disabled")
-	ErrInvalidVerificationCode       = errors.New("verification code is invalid or expired")
-	ErrVerificationCodeResendTooSoon = errors.New("verification code was sent too recently")
-	ErrInvalidRefreshToken           = errors.New("refresh token is invalid")
-	ErrEmailDeliveryNotConfigured    = errors.New("email delivery is not configured")
+	ErrAccountLocked                   = errors.New("account is locked")
+	ErrPublicSignUpDisabled            = errors.New("public registration is disabled")
+	ErrSignUpEmailVerificationDisabled = errors.New("email verification is disabled")
+	ErrInvalidVerificationCode         = errors.New("verification code is invalid or expired")
+	ErrVerificationCodeResendTooSoon   = errors.New("verification code was sent too recently")
+	ErrInvalidRefreshToken             = errors.New("refresh token is invalid")
+	ErrEmailDeliveryNotConfigured      = errors.New("email delivery is not configured")
 )
 
 var (
@@ -74,6 +76,38 @@ func UpdatePublicSignUpEnabled(enabled bool) error {
 	return db.DB.Model(&entities.SystemSetting{}).Where("id = ?", setting.ID).Update("value", value).Error
 }
 
+func GetSignUpEmailVerificationRequired() (bool, error) {
+	setting, err := getSystemSetting(signUpEmailVerificationSettingKey)
+	if err != nil {
+		return false, err
+	}
+	if setting == nil || strings.TrimSpace(setting.Value) == "" {
+		return app.Config.SignUpEmailVerificationRequired, nil
+	}
+	return strings.EqualFold(strings.TrimSpace(setting.Value), "true"), nil
+}
+
+func UpdateSignUpEmailVerificationRequired(required bool) error {
+	value := "false"
+	if required {
+		value = "true"
+	}
+
+	setting, err := getSystemSetting(signUpEmailVerificationSettingKey)
+	if err != nil {
+		return err
+	}
+	if setting == nil {
+		return db.DB.Create(&entities.SystemSetting{
+			Base:  entities.Base{ID: uuid.New()},
+			Key:   signUpEmailVerificationSettingKey,
+			Value: value,
+		}).Error
+	}
+
+	return db.DB.Model(&entities.SystemSetting{}).Where("id = ?", setting.ID).Update("value", value).Error
+}
+
 func RequestSignUpVerificationCode(email string) (*models.SignUpVerificationCodeResponse, error) {
 	enabled, err := GetPublicSignUpEnabled()
 	if err != nil {
@@ -81,6 +115,13 @@ func RequestSignUpVerificationCode(email string) (*models.SignUpVerificationCode
 	}
 	if !enabled {
 		return nil, ErrPublicSignUpDisabled
+	}
+	verificationRequired, err := GetSignUpEmailVerificationRequired()
+	if err != nil {
+		return nil, err
+	}
+	if !verificationRequired {
+		return nil, ErrSignUpEmailVerificationDisabled
 	}
 
 	normalizedEmail, err := normalizeEmailAddress(email)

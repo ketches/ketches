@@ -17,6 +17,14 @@ config:
   dbAutoMigrate: true
   corsAllowedOrigins: "https://app.example.com"
   backendUrl: ""
+  signUpEmailVerificationRequired: true
+  bootstrapAdminUsername: ""
+  bootstrapAdminPassword: ""
+  smtpHost: ""
+  smtpPort: 587
+  smtpUsername: ""
+  smtpPassword: ""
+  smtpFrom: ""
   jwtSecret: ""
   secretEncryptionKey: ""
   buildLogBaseDir: /app/data/build-logs

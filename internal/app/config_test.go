@@ -317,6 +317,36 @@ func TestInitConfig_ReadsBootstrapAdminConfig(t *testing.T) {
 	}
 }
 
+func TestInitConfig_DefaultsSignUpEmailVerificationToTrue(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	unsetEnvForTest(t, "SIGN_UP_EMAIL_VERIFICATION_REQUIRED")
+
+	InitConfig()
+
+	if !Config.SignUpEmailVerificationRequired {
+		t.Fatalf("expected sign-up email verification to default to true")
+	}
+}
+
+func TestInitConfig_ReadsSignUpEmailVerificationOverride(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	t.Setenv("SIGN_UP_EMAIL_VERIFICATION_REQUIRED", "false")
+
+	InitConfig()
+
+	if Config.SignUpEmailVerificationRequired {
+		t.Fatalf("expected sign-up email verification override to be false")
+	}
+}
+
 func TestValidateRuntimeConfig_RejectsMissingSecrets(t *testing.T) {
 	originalConfig := Config
 	t.Cleanup(func() {
@@ -337,7 +367,23 @@ func TestValidateRuntimeConfig_RejectsMissingSecrets(t *testing.T) {
 	}
 }
 
-func TestValidateRuntimeConfig_RejectsIncompleteBootstrapConfig(t *testing.T) {
+func TestValidateRuntimeConfig_AllowsDefaultBootstrapAdminConfig(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	Config = AppConfig{
+		JWTSecret:           "0123456789abcdef0123456789abcdef",
+		SecretEncryptionKey: "fedcba9876543210fedcba9876543210",
+	}
+
+	if err := ValidateRuntimeConfig(); err != nil {
+		t.Fatalf("expected default bootstrap admin config to be valid, got %v", err)
+	}
+}
+
+func TestValidateRuntimeConfig_RejectsShortExplicitBootstrapPassword(t *testing.T) {
 	originalConfig := Config
 	t.Cleanup(func() {
 		Config = originalConfig
@@ -347,15 +393,11 @@ func TestValidateRuntimeConfig_RejectsIncompleteBootstrapConfig(t *testing.T) {
 		JWTSecret:              "0123456789abcdef0123456789abcdef",
 		SecretEncryptionKey:    "fedcba9876543210fedcba9876543210",
 		BootstrapAdminUsername: "bootstrap-admin",
-	}
-
-	err := ValidateRuntimeConfig()
-	if !errors.Is(err, ErrBootstrapAdminConfigIncomplete) {
-		t.Fatalf("expected incomplete bootstrap config error, got %v", err)
+		BootstrapAdminPassword: "short",
 	}
 
 	Config.BootstrapAdminPassword = "short"
-	err = ValidateRuntimeConfig()
+	err := ValidateRuntimeConfig()
 	if !errors.Is(err, ErrBootstrapAdminPasswordTooShort) {
 		t.Fatalf("expected short bootstrap password error, got %v", err)
 	}

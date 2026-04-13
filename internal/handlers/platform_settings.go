@@ -44,7 +44,15 @@ func GetPublicSignUpSettings(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Success(c, models.PublicSignUpSettingsResponse{Enabled: enabled})
+	verificationRequired, err := services.GetSignUpEmailVerificationRequired()
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.Success(c, models.PublicSignUpSettingsResponse{
+		Enabled:                   enabled,
+		EmailVerificationRequired: verificationRequired,
+	})
 }
 
 func UpdatePublicSignUpSettings(c *gin.Context) {
@@ -58,6 +66,13 @@ func UpdatePublicSignUpSettings(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
+	if err := services.UpdateSignUpEmailVerificationRequired(request.EmailVerificationRequired); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
 
-	api.Success(c, models.PublicSignUpSettingsResponse{Enabled: request.Enabled})
+	api.Success(c, models.PublicSignUpSettingsResponse{
+		Enabled:                   request.Enabled,
+		EmailVerificationRequired: request.EmailVerificationRequired,
+	})
 }

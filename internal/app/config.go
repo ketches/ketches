@@ -32,6 +32,7 @@ type AppConfig struct {
 	SecretEncryptionKey               string
 	BootstrapAdminUsername            string
 	BootstrapAdminPassword            string
+	SignUpEmailVerificationRequired   bool
 	CORSAllowedOrigins                string
 	SMTPHost                          string
 	SMTPPort                          int
@@ -61,7 +62,6 @@ var Config AppConfig
 var (
 	ErrJWTSecretNotConfigured           = errors.New("JWT_SECRET must be configured")
 	ErrSecretEncryptionKeyNotConfigured = errors.New("SECRET_ENCRYPTION_KEY must be configured")
-	ErrBootstrapAdminConfigIncomplete   = errors.New("BOOTSTRAP_ADMIN_USERNAME and BOOTSTRAP_ADMIN_PASSWORD must be configured together")
 	ErrBootstrapAdminPasswordTooShort   = errors.New("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters")
 )
 
@@ -99,6 +99,7 @@ func InitConfig() {
 		SecretEncryptionKey:               strings.TrimSpace(getEnv("SECRET_ENCRYPTION_KEY", "")),
 		BootstrapAdminUsername:            strings.TrimSpace(getEnv("BOOTSTRAP_ADMIN_USERNAME", "")),
 		BootstrapAdminPassword:            getEnv("BOOTSTRAP_ADMIN_PASSWORD", ""),
+		SignUpEmailVerificationRequired:   getEnvBool("SIGN_UP_EMAIL_VERIFICATION_REQUIRED", true),
 		CORSAllowedOrigins:                getEnv("CORS_ALLOWED_ORIGINS", ""),
 		SMTPHost:                          strings.TrimSpace(getEnv("SMTP_HOST", "")),
 		SMTPPort:                          getEnvInt("SMTP_PORT", 587),
@@ -132,12 +133,8 @@ func ValidateRuntimeConfig() error {
 		return ErrSecretEncryptionKeyNotConfigured
 	}
 
-	hasBootstrapUsername := strings.TrimSpace(Config.BootstrapAdminUsername) != ""
 	hasBootstrapPassword := strings.TrimSpace(Config.BootstrapAdminPassword) != ""
 
-	if hasBootstrapUsername != hasBootstrapPassword {
-		return ErrBootstrapAdminConfigIncomplete
-	}
 	if hasBootstrapPassword && len(strings.TrimSpace(Config.BootstrapAdminPassword)) < 12 {
 		return ErrBootstrapAdminPasswordTooShort
 	}

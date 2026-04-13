@@ -23,10 +23,24 @@ helm upgrade --install ketches ./deploy/helm/ketches \
 ```
 
 This quickstart file is intentionally for local evaluation only. It includes demo secrets so you can try the chart immediately.
+It also disables sign-up email verification by default while keeping bootstrap admin creation enabled.
 
 ### Production / shared environments
 
 The chart requires `config.jwtSecret` and `config.secretEncryptionKey` on every install or upgrade. When the bundled PostgreSQL instance is enabled, set `postgres.auth.password` as well. See [Production Deployment Guide](../../../docs/PRODUCTION_DEPLOYMENT.md) before using this chart in shared or production environments.
+
+Relevant auth-related values:
+
+```txt
+config.bootstrapAdminUsername
+config.bootstrapAdminPassword
+config.signUpEmailVerificationRequired
+config.smtpHost
+config.smtpPort
+config.smtpUsername
+config.smtpPassword
+config.smtpFrom
+```
 
 ## Common Overrides
 

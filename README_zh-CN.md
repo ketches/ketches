@@ -83,10 +83,29 @@ docker compose up -d
 
 这条 QuickStart 路径仅用于本地试用。它会使用 `deploy/docker/.env.quickstart` 中的演示密钥，方便快速启动。正式环境请保持 `deploy/docker/docker-compose.yml` 的安全默认行为，并参考[生产部署说明](docs/PRODUCTION_DEPLOYMENT.md)。
 
-默认管理员账号在首次启动时自动创建，查看日志获取：
+QuickStart 会自动创建 bootstrap 管理员账号，并默认关闭注册邮箱验证码：
 
-```bash
-docker compose logs ketches-api | grep -i "admin"
+```txt
+username: kadmin
+password: KetchesBootstrapAdmin!ChangeMe
+```
+
+如需覆盖默认行为，可配置：
+
+```txt
+BOOTSTRAP_ADMIN_USERNAME=<自定义管理员用户名>
+BOOTSTRAP_ADMIN_PASSWORD=<自定义管理员密码>
+SIGN_UP_EMAIL_VERIFICATION_REQUIRED=false
+```
+
+如果开启注册邮箱验证码，还需要配置 SMTP 发送参数：
+
+```txt
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=mailer@example.com
+SMTP_PASSWORD=<smtp-password>
+SMTP_FROM=mailer@example.com
 ```
 
 ### Helm（Kubernetes）
@@ -190,6 +209,14 @@ make dev-ui
 | `DB_AUTO_MIGRATE` | `true` | 是否在数据库初始化时执行 GORM AutoMigrate |
 | `JWT_SECRET` | *（必填）* | JWT Token 签名密钥 |
 | `SECRET_ENCRYPTION_KEY` | *（必填）* | 用于静态加密敏感数据的密钥 |
+| `BOOTSTRAP_ADMIN_USERNAME` | `kadmin` | 可选，覆盖 bootstrap 管理员用户名 |
+| `BOOTSTRAP_ADMIN_PASSWORD` | `KetchesBootstrapAdmin!ChangeMe` | 可选，覆盖 bootstrap 管理员密码 |
+| `SIGN_UP_EMAIL_VERIFICATION_REQUIRED` | `true` | 公共注册是否要求邮箱验证码 |
+| `SMTP_HOST` | 空 | SMTP 服务器地址，开启邮箱验证码时必填 |
+| `SMTP_PORT` | `587` | SMTP 服务器端口 |
+| `SMTP_USERNAME` | 空 | SMTP 用户名 |
+| `SMTP_PASSWORD` | 空 | SMTP 密码 |
+| `SMTP_FROM` | 空 | 验证邮件的发件人地址 |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | 允许跨域的源地址，逗号分隔 |
 
 **Note**：生产环境建议设置 `DB_AUTO_MIGRATE=false`，并通过可控的迁移流程管理数据库结构变更。

@@ -74,8 +74,33 @@ spec:
                 secretKeyRef:
                   name: {{ include "ketches.secretName" . | quote }}
                   key: jwt-secret
+            - name: BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ketches.secretName" . | quote }}
+                  key: bootstrap-admin-username
+            - name: BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ketches.secretName" . | quote }}
+                  key: bootstrap-admin-password
             - name: CORS_ALLOWED_ORIGINS
               value: {{ .Values.config.corsAllowedOrigins | quote }}
+            - name: SIGN_UP_EMAIL_VERIFICATION_REQUIRED
+              value: {{ .Values.config.signUpEmailVerificationRequired | quote }}
+            - name: SMTP_HOST
+              value: {{ .Values.config.smtpHost | quote }}
+            - name: SMTP_PORT
+              value: {{ printf "%v" .Values.config.smtpPort | quote }}
+            - name: SMTP_USERNAME
+              value: {{ .Values.config.smtpUsername | quote }}
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ketches.secretName" . | quote }}
+                  key: smtp-password
+            - name: SMTP_FROM
+              value: {{ .Values.config.smtpFrom | quote }}
             - name: BUILD_LOG_BASE_DIR
               value: {{ .Values.config.buildLogBaseDir | quote }}
             - name: BUILD_LOG_RETENTION_DAYS

@@ -47,6 +47,7 @@ func setupSignupSecurityTestDB(t *testing.T) {
 	app.Config.JWTSecret = "signup-security-test-secret"
 	app.Config.JWTIssuer = "ketches.test"
 	app.Config.JWTAudience = "ketches-ui"
+	app.Config.SignUpEmailVerificationRequired = true
 }
 
 func TestRequestSignUpVerificationCodeEnforcesResendCooldown(t *testing.T) {
@@ -134,4 +135,32 @@ func TestSignUpRejectsWhenPublicRegistrationIsDisabled(t *testing.T) {
 		VerificationCode: "123456",
 	})
 	require.ErrorIs(t, err, ErrPublicSignUpDisabled)
+}
+
+func TestSignUpSkipsVerificationWhenEmailVerificationDisabled(t *testing.T) {
+	setupSignupSecurityTestDB(t)
+
+	app.Config.SignUpEmailVerificationRequired = false
+
+	user, err := SignUp(&models.SignUpRequest{
+		Username: "alice",
+		Email:    "alice@example.com",
+		Password: "Password#123",
+		Fullname: "Alice Example",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "alice", user.Username)
+
+	var codeCount int64
+	require.NoError(t, db.DB.Model(&entities.SignupVerificationCode{}).Count(&codeCount).Error)
+	assert.Equal(t, int64(0), codeCount)
+}
+
+func TestRequestSignUpVerificationCodeRejectsWhenEmailVerificationDisabled(t *testing.T) {
+	setupSignupSecurityTestDB(t)
+
+	app.Config.SignUpEmailVerificationRequired = false
+
+	_, err := RequestSignUpVerificationCode("alice@example.com")
+	require.ErrorIs(t, err, ErrSignUpEmailVerificationDisabled)
 }

@@ -1489,7 +1489,12 @@ data:
   DB_USERNAME: "ketches"
   DB_SSLMODE: "disable"
   DB_AUTO_MIGRATE: "true"
+  SIGN_UP_EMAIL_VERIFICATION_REQUIRED: "true"
   CORS_ALLOWED_ORIGINS: "https://app.example.com"
+  SMTP_HOST: ""
+  SMTP_PORT: "587"
+  SMTP_USERNAME: ""
+  SMTP_FROM: ""
 
 ---
 apiVersion: v1
@@ -1502,6 +1507,9 @@ stringData:
   JWT_SECRET: ""
   SECRET_ENCRYPTION_KEY: ""
   DB_PASSWORD: ""
+  BOOTSTRAP_ADMIN_USERNAME: ""
+  BOOTSTRAP_ADMIN_PASSWORD: ""
+  SMTP_PASSWORD: ""
 
 ---
 apiVersion: apps/v1
@@ -1582,7 +1590,7 @@ spec:
       - name: ketches-ui
         image: ketches/ketches-ui:latest
         ports:
-        - containerPort: 80
+        - containerPort: 3000
         resources:
           requests:
             cpu: 50m
@@ -1601,8 +1609,8 @@ spec:
   selector:
     app: ketches-ui
   ports:
-  - port: 80
-    targetPort: 80
+  - port: 3000
+    targetPort: 3000
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -1630,7 +1638,7 @@ spec:
           service:
             name: ketches-ui
             port:
-              number: 80
+              number: 3000
 ```
 
 ### 5.2 Docker Compose 部署
@@ -1671,6 +1679,14 @@ services:
       DB_SSLMODE: "disable"
       JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET}"
       SECRET_ENCRYPTION_KEY: "${SECRET_ENCRYPTION_KEY:?set SECRET_ENCRYPTION_KEY}"
+      BOOTSTRAP_ADMIN_USERNAME: "${BOOTSTRAP_ADMIN_USERNAME:-}"
+      BOOTSTRAP_ADMIN_PASSWORD: "${BOOTSTRAP_ADMIN_PASSWORD:-}"
+      SIGN_UP_EMAIL_VERIFICATION_REQUIRED: "${SIGN_UP_EMAIL_VERIFICATION_REQUIRED:-true}"
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USERNAME: "${SMTP_USERNAME:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM: "${SMTP_FROM:-}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -1683,7 +1699,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "8080:8080"
+      - "3000:3000"
     depends_on:
       - ketches-api
 
@@ -1808,6 +1824,14 @@ GET /readyz               # 就绪检查（包含数据库连接）
 | DB_AUTO_MIGRATE | 启动时是否执行 GORM AutoMigrate | true |
 | JWT_SECRET | JWT 密钥 | 无（必填） |
 | SECRET_ENCRYPTION_KEY | 敏感数据静态加密密钥 | 无（必填） |
+| BOOTSTRAP_ADMIN_USERNAME | Bootstrap 管理员用户名覆盖值 | kadmin |
+| BOOTSTRAP_ADMIN_PASSWORD | Bootstrap 管理员密码覆盖值 | KetchesBootstrapAdmin!ChangeMe |
+| SIGN_UP_EMAIL_VERIFICATION_REQUIRED | 注册是否要求邮箱验证码 | true |
+| SMTP_HOST | SMTP 服务器地址 | 空 |
+| SMTP_PORT | SMTP 服务器端口 | 587 |
+| SMTP_USERNAME | SMTP 用户名 | 空 |
+| SMTP_PASSWORD | SMTP 密码 | 空 |
+| SMTP_FROM | 注册验证码邮件发件人 | 空 |
 
 ### B. API 错误码
 

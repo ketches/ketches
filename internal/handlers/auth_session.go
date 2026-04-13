@@ -23,7 +23,15 @@ func GetSignUpConfig(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	api.Success(c, models.PublicSignUpSettingsResponse{Enabled: enabled})
+	verificationRequired, err := services.GetSignUpEmailVerificationRequired()
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	api.Success(c, models.PublicSignUpSettingsResponse{
+		Enabled:                   enabled,
+		EmailVerificationRequired: verificationRequired,
+	})
 }
 
 func RequestSignUpVerificationCode(c *gin.Context) {

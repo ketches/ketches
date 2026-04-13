@@ -83,10 +83,29 @@ docker compose up -d
 
 This quickstart path is for local evaluation only. It uses checked-in demo secrets from `deploy/docker/.env.quickstart` so you can get running immediately. For real environments, keep `deploy/docker/docker-compose.yml` as-is and follow the production guide: [Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md).
 
-The default admin credentials are created during the first run — check the API container logs:
+Quickstart creates a bootstrap admin account automatically and disables sign-up email verification by default:
 
-```bash
-docker compose logs ketches-api | grep -i "admin"
+```txt
+username: kadmin
+password: KetchesBootstrapAdmin!ChangeMe
+```
+
+Override behavior when needed:
+
+```txt
+BOOTSTRAP_ADMIN_USERNAME=<custom-admin-username>
+BOOTSTRAP_ADMIN_PASSWORD=<custom-admin-password>
+SIGN_UP_EMAIL_VERIFICATION_REQUIRED=false
+```
+
+If you enable sign-up email verification, configure SMTP delivery as well:
+
+```txt
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=mailer@example.com
+SMTP_PASSWORD=<smtp-password>
+SMTP_FROM=mailer@example.com
 ```
 
 ### Helm (Kubernetes)
@@ -190,6 +209,14 @@ All configuration is done via environment variables. A `.env` file is optional f
 | `DB_AUTO_MIGRATE` | `true` | Whether to run GORM AutoMigrate during database initialization |
 | `JWT_SECRET` | *(required)* | Secret key for signing JWT tokens |
 | `SECRET_ENCRYPTION_KEY` | *(required)* | Encryption key for sensitive values stored at rest |
+| `BOOTSTRAP_ADMIN_USERNAME` | `kadmin` | Optional override for the bootstrap admin username |
+| `BOOTSTRAP_ADMIN_PASSWORD` | `KetchesBootstrapAdmin!ChangeMe` | Optional override for the bootstrap admin password |
+| `SIGN_UP_EMAIL_VERIFICATION_REQUIRED` | `true` | Whether public sign-up requires an email verification code |
+| `SMTP_HOST` | empty | SMTP server host, required when email verification is enabled |
+| `SMTP_PORT` | `587` | SMTP server port |
+| `SMTP_USERNAME` | empty | SMTP username |
+| `SMTP_PASSWORD` | empty | SMTP password |
+| `SMTP_FROM` | empty | Sender address used for verification emails |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | Comma-separated allowed CORS origins |
 
 **Note**: For production environments, set `DB_AUTO_MIGRATE=false` and manage schema migrations through a controlled migration process.

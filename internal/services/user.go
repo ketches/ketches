@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
@@ -20,6 +21,12 @@ var (
 	ErrInvalidCurrentPassword = errors.New("current password is incorrect")
 	ErrUsernameAlreadyExists  = errors.New("username already exists")
 	ErrEmailAlreadyExists     = errors.New("email already exists")
+)
+
+const (
+	defaultBootstrapAdminUsername = "kadmin"
+	defaultBootstrapAdminPassword = "KetchesBootstrapAdmin!ChangeMe"
+	defaultBootstrapAdminFullname = "Ketches Admin"
 )
 
 func createDefaultProject(tx *gorm.DB, user *entities.User) error {
@@ -84,8 +91,14 @@ func SignUp(req *models.SignUpRequest) (*entities.User, error) {
 		if !enabled {
 			return ErrPublicSignUpDisabled
 		}
-		if err := consumeSignupVerificationCode(tx, req.Email, req.VerificationCode); err != nil {
+		verificationRequired, err := GetSignUpEmailVerificationRequired()
+		if err != nil {
 			return err
+		}
+		if verificationRequired {
+			if err := consumeSignupVerificationCode(tx, req.Email, req.VerificationCode); err != nil {
+				return err
+			}
 		}
 		if err := tx.Create(user).Error; err != nil {
 			return mapUserWriteError(err)
@@ -302,15 +315,9 @@ func permanentlyDeleteOwnedProjects(tx *gorm.DB, userID string) error {
 }
 
 // EnsureBootstrapAdmin creates the bootstrap admin account only when it is
-// explicitly configured and when no admin exists. It never creates a default
-// project for the bootstrap admin.
+// needed and when no admin exists. It never creates a default project for the
+// bootstrap admin.
 func EnsureBootstrapAdmin() error {
-	bootstrapUsername := strings.TrimSpace(app.Config.BootstrapAdminUsername)
-	bootstrapPassword := strings.TrimSpace(app.Config.BootstrapAdminPassword)
-	if bootstrapUsername == "" || bootstrapPassword == "" {
-		return nil
-	}
-
 	adminCount, err := countAdmins()
 	if err != nil {
 		return err
@@ -319,6 +326,8 @@ func EnsureBootstrapAdmin() error {
 		return nil
 	}
 
+	bootstrapUsername := resolveBootstrapAdminUsername()
+	bootstrapPassword := resolveBootstrapAdminPassword()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(bootstrapPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -329,7 +338,7 @@ func EnsureBootstrapAdmin() error {
 		Username: bootstrapUsername,
 		Email:    buildBootstrapAdminEmail(bootstrapUsername),
 		Password: string(hashedPassword),
-		Fullname: "Bootstrap Administrator",
+		Fullname: buildBootstrapAdminFullname(bootstrapUsername),
 		Role:     app.UserRoleAdmin,
 	}
 
@@ -352,6 +361,45 @@ func buildBootstrapAdminEmail(username string) string {
 		name = "admin"
 	}
 	return fmt.Sprintf("%s@local.ketches", name)
+}
+
+func resolveBootstrapAdminUsername() string {
+	if username := strings.TrimSpace(app.Config.BootstrapAdminUsername); username != "" {
+		return username
+	}
+	return defaultBootstrapAdminUsername
+}
+
+func resolveBootstrapAdminPassword() string {
+	if password := strings.TrimSpace(app.Config.BootstrapAdminPassword); password != "" {
+		return password
+	}
+	return defaultBootstrapAdminPassword
+}
+
+func buildBootstrapAdminFullname(username string) string {
+	if strings.TrimSpace(app.Config.BootstrapAdminUsername) == "" {
+		return defaultBootstrapAdminFullname
+	}
+
+	normalized := strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			return r
+		}
+		return ' '
+	}, username)
+	parts := strings.Fields(normalized)
+	if len(parts) == 0 {
+		return defaultBootstrapAdminFullname
+	}
+
+	for i, part := range parts {
+		runes := []rune(strings.ToLower(part))
+		runes[0] = unicode.ToUpper(runes[0])
+		parts[i] = string(runes)
+	}
+
+	return strings.Join(parts, " ")
 }
 
 func DeleteUser(userID string) error {

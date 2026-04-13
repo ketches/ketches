@@ -51,9 +51,12 @@ describe("authApi", () => {
   })
 
   it("loads the public sign-up configuration", async () => {
-    getMock.mockResolvedValue({ enabled: true })
+    getMock.mockResolvedValue({ enabled: true, email_verification_required: true })
 
-    await expect(authApi.getSignUpConfig()).resolves.toEqual({ enabled: true })
+    await expect(authApi.getSignUpConfig()).resolves.toEqual({
+      enabled: true,
+      email_verification_required: true,
+    })
 
     expect(getMock).toHaveBeenCalledWith("/v1/users/sign-up/config")
   })

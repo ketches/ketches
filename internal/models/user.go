@@ -8,7 +8,7 @@ type SignUpRequest struct {
 	Username         string `json:"username" binding:"required"`
 	Email            string `json:"email" binding:"required,email"`
 	Password         string `json:"password" binding:"required,min=8"`
-	VerificationCode string `json:"verification_code" binding:"required,len=6"`
+	VerificationCode string `json:"verification_code" binding:"omitempty,len=6"`
 	Fullname         string `json:"fullname"`
 }
 
