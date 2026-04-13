@@ -45,7 +45,7 @@ helm upgrade --install ketches ./deploy/helm/ketches \
   --set config.dbName=ketches \
   --set config.dbUsername=ketches \
   --set config.dbPassword="$DB_PASSWORD" \
-  --set config.dbSSLMode=require \
+  --set config.dbSSLMode=disable \
   --set config.dbAutoMigrate=true
 ```
 

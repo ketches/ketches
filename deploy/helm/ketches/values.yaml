@@ -13,7 +13,7 @@ config:
   dbName: ""
   dbUsername: ""
   dbPassword: ""
-  dbSSLMode: require
+  dbSSLMode: disable
   dbAutoMigrate: true
   corsAllowedOrigins: "https://app.example.com"
   backendUrl: ""

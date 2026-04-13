@@ -26,7 +26,7 @@ services:
       PORT: 8080
       LOG_LEVEL: info
       DB_DRIVER: postgres
-      DB_SOURCE: host=ketches-db port=5432 user=ketches password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD} dbname=ketches sslmode=${DB_SSLMODE:-require}
+      DB_SOURCE: host=ketches-db port=5432 user=ketches password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD} dbname=ketches sslmode=${DB_SSLMODE:-disable}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       SECRET_ENCRYPTION_KEY: ${SECRET_ENCRYPTION_KEY:?set SECRET_ENCRYPTION_KEY}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}

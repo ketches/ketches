@@ -1487,7 +1487,7 @@ data:
   DB_PORT: "5432"
   DB_NAME: "ketches"
   DB_USERNAME: "ketches"
-  DB_SSLMODE: "require"
+  DB_SSLMODE: "disable"
   DB_AUTO_MIGRATE: "true"
   CORS_ALLOWED_ORIGINS: "https://app.example.com"
 
@@ -1668,7 +1668,7 @@ services:
       DB_NAME: "ketches"
       DB_USERNAME: "ketches"
       DB_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"
-      DB_SSLMODE: "require"
+      DB_SSLMODE: "disable"
       JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET}"
       SECRET_ENCRYPTION_KEY: "${SECRET_ENCRYPTION_KEY:?set SECRET_ENCRYPTION_KEY}"
     depends_on:
