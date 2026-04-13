@@ -6,9 +6,14 @@ on:
       - "v*"
 
 env:
-  REGISTRY: ghcr.io
-  API_IMAGE: ghcr.io/${{ github.repository_owner }}/ketches-api
-  UI_IMAGE: ghcr.io/${{ github.repository_owner }}/ketches-ui
+  GHCR_REGISTRY: ghcr.io
+  GHCR_NAMESPACE: ${{ vars.GHCR_NAMESPACE || 'ketches' }}
+  DOCKERHUB_REGISTRY: docker.io
+  DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_NAMESPACE || 'ketches' }}
+  ALIYUN_REGISTRY: ${{ vars.ALIYUN_REGISTRY || 'registry.cn-hangzhou.aliyuncs.com' }}
+  ALIYUN_NAMESPACE: ${{ vars.ALIYUN_NAMESPACE || 'ketches' }}
+  API_IMAGE_NAME: ketches-api
+  UI_IMAGE_NAME: ketches-ui
 
 jobs:
   # ── Tests must pass before releasing ───────────────────────────────────────
@@ -50,15 +55,32 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Log in to Aliyun container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_REGISTRY_USERNAME }}
+          password: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
 
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.API_IMAGE }}
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_NAMESPACE }}/${{ env.API_IMAGE_NAME }}
+            ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_NAMESPACE }}/${{ env.API_IMAGE_NAME }}
+            ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.API_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -102,15 +124,32 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Log in to Aliyun container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_REGISTRY_USERNAME }}
+          password: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
 
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.UI_IMAGE }}
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_NAMESPACE }}/${{ env.UI_IMAGE_NAME }}
+            ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_NAMESPACE }}/${{ env.UI_IMAGE_NAME }}
+            ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.UI_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -202,24 +241,40 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve release variables
+        id: release-vars
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+
+          {
+            echo "version=${version}"
+            echo 'body<<EOF'
+            echo '## Docker Images'
+            echo
+            echo '| Image | Pull command |'
+            echo '|-------|-------------|'
+            printf '| API (GHCR) | `docker pull %s/%s/%s:%s` |\n' "${GHCR_REGISTRY}" "${GHCR_NAMESPACE}" "${API_IMAGE_NAME}" "${version}"
+            printf '| API (Docker Hub) | `docker pull %s/%s/%s:%s` |\n' "${DOCKERHUB_REGISTRY}" "${DOCKERHUB_NAMESPACE}" "${API_IMAGE_NAME}" "${version}"
+            printf '| API (Aliyun) | `docker pull %s/%s/%s:%s` |\n' "${ALIYUN_REGISTRY}" "${ALIYUN_NAMESPACE}" "${API_IMAGE_NAME}" "${version}"
+            printf '| UI (GHCR) | `docker pull %s/%s/%s:%s` |\n' "${GHCR_REGISTRY}" "${GHCR_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
+            printf '| UI (Docker Hub) | `docker pull %s/%s/%s:%s` |\n' "${DOCKERHUB_REGISTRY}" "${DOCKERHUB_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
+            printf '| UI (Aliyun) | `docker pull %s/%s/%s:%s` |\n' "${ALIYUN_REGISTRY}" "${ALIYUN_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
+
+            echo
+            echo '## Quick Start'
+            echo
+            echo '```bash'
+            printf 'curl -fsSL https://raw.githubusercontent.com/%s/master/deploy/docker/docker-compose.yml \\\n' "${GITHUB_REPOSITORY}"
+            echo '  -o docker-compose.yml'
+            echo 'docker compose up -d'
+            echo '```'
+            echo 'EOF'
+          } >> "${GITHUB_OUTPUT}"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           # Pre-release when tag contains a pre-release identifier (e.g. v1.0.0-beta.1)
           prerelease: ${{ contains(github.ref_name, '-') }}
-          body: |
-            ## Docker Images
-
-            | Image | Pull command |
-            |-------|-------------|
-            | API   | `docker pull ${{ env.API_IMAGE }}:${{ github.ref_name }}` |
-            | UI    | `docker pull ${{ env.UI_IMAGE }}:${{ github.ref_name }}` |
-
-            ## Quick Start
-
-            ```bash
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/master/deploy/docker/docker-compose.yml \
-              -o docker-compose.yml
-            docker compose up -d
-            ```
+          body: ${{ steps.release-vars.outputs.body }}

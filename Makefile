@@ -16,10 +16,12 @@ LDFLAGS      := -ldflags "-w -s \
 # ──────────────────────────────────────────────────────────────────────────────
 # Docker / registry
 # ──────────────────────────────────────────────────────────────────────────────
-REGISTRY     ?= ghcr.io
-ORG          ?= ketches
-API_IMAGE    := $(REGISTRY)/$(ORG)/ketches-api
-UI_IMAGE     := $(REGISTRY)/$(ORG)/ketches-ui
+GHCR_REGISTRY      ?= ghcr.io
+DOCKERHUB_REGISTRY ?= docker.io
+ALIYUN_REGISTRY    ?= registry.cn-hangzhou.aliyuncs.com
+ORG                ?= ketches
+API_IMAGE    := ketches-api
+UI_IMAGE     := ketches-ui
 PLATFORMS    ?= linux/amd64,linux/arm64
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -89,43 +91,70 @@ docker-build-api: ## Build the backend Docker image
 	docker build \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg BUILD_TIME=$(BUILD_TIME) \
-		-t $(API_IMAGE):$(VERSION) \
-		-t $(API_IMAGE):latest \
+		-t $(GHCR_REGISTRY)/$(ORG)/$(API_IMAGE):$(VERSION) \
+		-t $(GHCR_REGISTRY)/$(ORG)/$(API_IMAGE):latest \
+		-t $(DOCKERHUB_REGISTRY)/$(ORG)/$(API_IMAGE):$(VERSION) \
+		-t $(DOCKERHUB_REGISTRY)/$(ORG)/$(API_IMAGE):latest \
+		-t $(ALIYUN_REGISTRY)/$(ORG)/$(API_IMAGE):$(VERSION) \
+		-t $(ALIYUN_REGISTRY)/$(ORG)/$(API_IMAGE):latest \
 		.
 
 docker-build-ui: ## Build the frontend Docker image
 	docker build \
-		-t $(UI_IMAGE):$(VERSION) \
-		-t $(UI_IMAGE):latest \
+		-t $(GHCR_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION) \
+		-t $(GHCR_REGISTRY)/$(ORG)/$(UI_IMAGE):latest \
+		-t $(DOCKERHUB_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION) \
+		-t $(DOCKERHUB_REGISTRY)/$(ORG)/$(UI_IMAGE):latest \
+		-t $(ALIYUN_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION) \
+		-t $(ALIYUN_REGISTRY)/$(ORG)/$(UI_IMAGE):latest \
 		./ui
 
 docker-push: docker-push-api docker-push-ui ## Push all Docker images to the registry
 
 docker-push-api: ## Push the backend Docker image
-	docker push $(API_IMAGE):$(VERSION)
-	docker push $(API_IMAGE):latest
+	docker push $(GHCR_REGISTRY)/$(ORG)/$(API_IMAGE):$(VERSION)
+	docker push $(GHCR_REGISTRY)/$(ORG)/$(API_IMAGE):latest
+	docker push $(DOCKERHUB_REGISTRY)/$(ORG)/$(API_IMAGE):$(VERSION)
+	docker push $(DOCKERHUB_REGISTRY)/$(ORG)/$(API_IMAGE):latest
+	docker push $(ALIYUN_REGISTRY)/$(ORG)/$(API_IMAGE):$(VERSION)
+	docker push $(ALIYUN_REGISTRY)/$(ORG)/$(API_IMAGE):latest
 
 docker-push-ui: ## Push the frontend Docker image
-	docker push $(UI_IMAGE):$(VERSION)
-	docker push $(UI_IMAGE):latest
+	docker push $(GHCR_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION)
+	docker push $(GHCR_REGISTRY)/$(ORG)/$(UI_IMAGE):latest
+	docker push $(DOCKERHUB_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION)
+	docker push $(DOCKERHUB_REGISTRY)/$(ORG)/$(UI_IMAGE):latest
+	docker push $(ALIYUN_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION)
+	docker push $(ALIYUN_REGISTRY)/$(ORG)/$(UI_IMAGE):latest
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Docker — multi-arch (CI / release)
 # ──────────────────────────────────────────────────────────────────────────────
-docker-buildx: ## Build and push multi-arch images via buildx (requires a buildx builder)
+docker-buildx: docker-buildx-api docker-buildx-ui ## Build and push multi-arch images via buildx
+
+docker-buildx-api: ## Build and push multi-arch images via buildx (requires a buildx builder)
 	docker buildx use ketches-builder || docker buildx create --name ketches-builder --use
 	docker buildx build \
 		--platform $(PLATFORMS) \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg BUILD_TIME=$(BUILD_TIME) \
-		-t $(API_IMAGE):$(VERSION) \
-		-t $(API_IMAGE):latest \
+		-t $(GHCR_REGISTRY)/$(ORG)/$(API_IMAGE):$(VERSION) \
+		-t $(GHCR_REGISTRY)/$(ORG)/$(API_IMAGE):latest \
+		-t $(DOCKERHUB_REGISTRY)/$(ORG)/$(API_IMAGE):$(VERSION) \
+		-t $(DOCKERHUB_REGISTRY)/$(ORG)/$(API_IMAGE):latest \
+		-t $(ALIYUN_REGISTRY)/$(ORG)/$(API_IMAGE):$(VERSION) \
+		-t $(ALIYUN_REGISTRY)/$(ORG)/$(API_IMAGE):latest \
 		--push \
 		.
+docker-buildx-ui: ## Build and push multi-arch frontend image via buildx
 	docker buildx build \
 		--platform $(PLATFORMS) \
-		-t $(UI_IMAGE):$(VERSION) \
-		-t $(UI_IMAGE):latest \
+		-t $(GHCR_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION) \
+		-t $(GHCR_REGISTRY)/$(ORG)/$(UI_IMAGE):latest \
+		-t $(DOCKERHUB_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION) \
+		-t $(DOCKERHUB_REGISTRY)/$(ORG)/$(UI_IMAGE):latest \
+		-t $(ALIYUN_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION) \
+		-t $(ALIYUN_REGISTRY)/$(ORG)/$(UI_IMAGE):latest \
 		--push \
 		./ui
 
