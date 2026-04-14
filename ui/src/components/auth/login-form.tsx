@@ -13,8 +13,8 @@ import { clearManualLogoutMarker, getPostLoginTarget } from "@/lib/auth-redirect
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { isAxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -111,11 +111,10 @@ export function LoginForm({
                     </div>
                 )}
                 <Field>
-                    <FieldLabel htmlFor="username">Username</FieldLabel>
+                    <FieldLabel htmlFor="username">Username *</FieldLabel>
                     <FieldContent>
                         <Input
                             id="username"
-                            placeholder="username"
                             {...register("username")}
                         />
                     </FieldContent>
@@ -125,7 +124,7 @@ export function LoginForm({
                 </Field>
                 <Field>
                     <div className="flex items-center">
-                        <FieldLabel htmlFor="password">Password</FieldLabel>
+                        <FieldLabel htmlFor="password">Password *</FieldLabel>
                         <a
                             href="#"
                             className="ml-auto text-xs underline-offset-4 hover:underline"

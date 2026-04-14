@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils"
 import { Send } from "lucide-react"
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../ui/input-group"
 
+const PROTECTED_FIELDS_TRANSITION_MS = 280
+
 type SignupFormValues = {
   fullname: string
   username: string
@@ -74,6 +76,8 @@ export function SignupForm({
     queryFn: authApi.getSignUpConfig,
   })
   const emailVerificationRequired = signUpConfigQuery.data?.email_verification_required ?? true
+  const [shouldRenderProtectedFields, setShouldRenderProtectedFields] = useState(!emailVerificationRequired)
+  const [isProtectedFieldsVisible, setIsProtectedFieldsVisible] = useState(!emailVerificationRequired)
 
   const {
     register,
@@ -88,6 +92,7 @@ export function SignupForm({
   })
   const emailField = register("email")
   const shouldShowProtectedFields = !emailVerificationRequired || hasSentVerificationCode
+  const isSubmitDisabled = isLoading || (emailVerificationRequired && !hasSentVerificationCode)
 
   useEffect(() => {
     if (resendAfterSeconds <= 0) {
@@ -100,6 +105,29 @@ export function SignupForm({
 
     return () => window.clearTimeout(timer)
   }, [resendAfterSeconds])
+
+  useEffect(() => {
+    if (!emailVerificationRequired) {
+      setShouldRenderProtectedFields(true)
+      setIsProtectedFieldsVisible(true)
+      return
+    }
+
+    if (hasSentVerificationCode) {
+      setShouldRenderProtectedFields(true)
+      const frame = window.requestAnimationFrame(() => {
+        setIsProtectedFieldsVisible(true)
+      })
+      return () => window.cancelAnimationFrame(frame)
+    }
+
+    setIsProtectedFieldsVisible(false)
+    const timer = window.setTimeout(() => {
+      setShouldRenderProtectedFields(false)
+    }, PROTECTED_FIELDS_TRANSITION_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [emailVerificationRequired, hasSentVerificationCode])
 
   const handleSendVerificationCode = async () => {
     const email = getValues("email")
@@ -169,6 +197,56 @@ export function SignupForm({
       setIsLoading(false)
     }
   }
+
+  const protectedFields = (
+    <>
+      {emailVerificationRequired && (
+        <Field>
+          <FieldLabel htmlFor="verificationCode">Verification Code</FieldLabel>
+          <FieldContent>
+            <Input
+              id="verificationCode"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="123456"
+              {...register("verificationCode")}
+            />
+          </FieldContent>
+          {errors.verificationCode && (
+            <FieldError>{errors.verificationCode.message}</FieldError>
+          )}
+        </Field>
+      )}
+      <Field>
+        <FieldLabel htmlFor="password">Password *</FieldLabel>
+        <FieldContent>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            {...register("password")}
+          />
+        </FieldContent>
+        <FieldDescription>{PASSWORD_POLICY_MESSAGE}</FieldDescription>
+        {errors.password && (
+          <FieldError>{errors.password.message}</FieldError>
+        )}
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="confirmPassword">Confirm Password *</FieldLabel>
+        <FieldContent>
+          <Input
+            id="confirmPassword"
+            type="password"
+            {...register("confirmPassword")}
+          />
+        </FieldContent>
+        {errors.confirmPassword && (
+          <FieldError>{errors.confirmPassword.message}</FieldError>
+        )}
+      </Field>
+    </>
+  )
 
   if (signUpConfigQuery.isLoading) {
     return (
@@ -284,60 +362,32 @@ export function SignupForm({
             <FieldError>{errors.email.message}</FieldError>
           )}
         </Field>
-        {emailVerificationRequired && shouldShowProtectedFields && (
-          <Field>
-            <FieldLabel htmlFor="verificationCode">Verification Code</FieldLabel>
-            <FieldContent>
-              <Input
-                id="verificationCode"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="123456"
-                {...register("verificationCode")}
-              />
-            </FieldContent>
-            {errors.verificationCode && (
-              <FieldError>{errors.verificationCode.message}</FieldError>
+        {!emailVerificationRequired && protectedFields}
+        {emailVerificationRequired && shouldRenderProtectedFields && (
+          <div
+            aria-hidden={!isProtectedFieldsVisible}
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none",
+              isProtectedFieldsVisible ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
             )}
-          </Field>
+          >
+            <div className="overflow-hidden">
+              <FieldGroup
+                className={cn(
+                  "pt-1 transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
+                  isProtectedFieldsVisible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0 pointer-events-none",
+                )}
+              >
+                {protectedFields}
+              </FieldGroup>
+            </div>
+          </div>
         )}
-        {shouldShowProtectedFields && (
-          <>
-            <Field>
-              <FieldLabel htmlFor="password">Password *</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  {...register("password")}
-                />
-              </FieldContent>
-              <FieldDescription>{PASSWORD_POLICY_MESSAGE}</FieldDescription>
-              {errors.password && (
-                <FieldError>{errors.password.message}</FieldError>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="confirmPassword">Confirm Password *</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  {...register("confirmPassword")}
-                />
-              </FieldContent>
-              {errors.confirmPassword && (
-                <FieldError>{errors.confirmPassword.message}</FieldError>
-              )}
-            </Field>
-            <Field>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Creating Account..." : "Create Account"}
-              </Button>
-            </Field>
-          </>
-        )}
+        <Field>
+          <Button type="submit" disabled={isSubmitDisabled}>
+            {isLoading ? "Creating Account..." : "Create Account"}
+          </Button>
+        </Field>
         <Field>
           <div className="text-center text-xs">
             Already have an account?{" "}

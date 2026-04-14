@@ -111,19 +111,20 @@ describe("SignupForm", () => {
     expect(screen.queryByLabelText(/verification code/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/^password/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/confirm password/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: /create account/i })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /create account/i })).toBeDisabled()
 
     fireEvent.click(screen.getByRole("button", { name: /send code/i }))
 
     await waitFor(() => {
-      expect(mockSendSignUpVerificationCode).toHaveBeenCalledWith({
-        email: "user@example.com",
-      })
+      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument()
     })
 
+    expect(mockSendSignUpVerificationCode).toHaveBeenCalledWith({
+      email: "user@example.com",
+    })
     expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^password/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /create account/i })).toBeEnabled()
   })
 })
