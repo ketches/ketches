@@ -113,16 +113,13 @@ func captureRequestBody(c *gin.Context) (string, string, string) {
 		return "", "", ""
 	}
 	contentType := strings.ToLower(strings.TrimSpace(c.ContentType()))
-	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxOperationLogBodySize+1))
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		return "", "", ""
 	}
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 	if len(body) == 0 {
 		return "", "", ""
-	}
-	if len(body) > maxOperationLogBodySize {
-		body = body[:maxOperationLogBodySize]
 	}
 	if strings.HasPrefix(contentType, "multipart/form-data") {
 		return "[multipart form data omitted]", "", ""
@@ -144,6 +141,9 @@ func captureRequestBody(c *gin.Context) (string, string, string) {
 
 		sanitized, err := json.Marshal(sanitizeOperationLogValue(payload))
 		if err == nil {
+			if len(sanitized) > maxOperationLogBodySize {
+				sanitized = sanitized[:maxOperationLogBodySize]
+			}
 			return strings.TrimSpace(string(sanitized)), bodyAction, bodyUsername
 		}
 		return "[json payload omitted]", bodyAction, bodyUsername
@@ -152,6 +152,9 @@ func captureRequestBody(c *gin.Context) (string, string, string) {
 		return "[json payload omitted]", bodyAction, bodyUsername
 	}
 
+	if len(body) > maxOperationLogBodySize {
+		body = body[:maxOperationLogBodySize]
+	}
 	return strings.TrimSpace(string(body)), bodyAction, bodyUsername
 }
 

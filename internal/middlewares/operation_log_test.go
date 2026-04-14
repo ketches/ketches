@@ -12,6 +12,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -114,6 +115,37 @@ func TestOperationLogMiddlewareSignInLogsWithBodyUsername(t *testing.T) {
 	assert.Equal(t, entities.OperationLogSensitivityInternal, logs[0].Sensitivity)
 	assert.Contains(t, logs[0].RequestSummary, `"password":"[REDACTED]"`)
 	assert.NotContains(t, logs[0].RequestSummary, "secret")
+}
+
+func TestOperationLogMiddlewareRestoresLargeJSONRequestBodies(t *testing.T) {
+	setupOperationLogMiddlewareTestDB(t)
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.Use(OperationLog())
+	r.POST("/api/v1/clusters/ping", func(c *gin.Context) {
+		var req models.PingClusterRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"kube_config_length": len(req.KubeConfig)})
+	})
+
+	largeKubeConfig := bytes.Repeat([]byte("apiVersion: v1\nclusters:\n- name: demo\n  cluster:\n    server: https://10.0.0.1:6443\n"), 80)
+	body, err := json.Marshal(map[string]any{
+		"kube_config": string(largeKubeConfig),
+	})
+	require.NoError(t, err)
+	require.Greater(t, len(body), maxOperationLogBodySize)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/clusters/ping", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "kube_config_length")
 }
 
 func TestCaptureRequestBodyRedactsSensitiveJSONFields(t *testing.T) {
