@@ -23,6 +23,7 @@ ORG                ?= ketches
 API_IMAGE    := ketches-api
 UI_IMAGE     := ketches-ui
 PLATFORMS    ?= linux/amd64,linux/arm64
+BUILDX_BUILDER ?= ketches-builder
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Phony targets
@@ -33,7 +34,7 @@ PLATFORMS    ?= linux/amd64,linux/arm64
 	run dev-ui openapi \
         docker-build docker-build-api docker-build-ui \
         docker-push docker-push-api docker-push-ui \
-        docker-buildx \
+        docker-buildx docker-buildx-ensure-builder \
         up down logs \
         clean help
 
@@ -132,8 +133,21 @@ docker-push-ui: ## Push the frontend Docker image
 # ──────────────────────────────────────────────────────────────────────────────
 docker-buildx: docker-buildx-api docker-buildx-ui ## Build and push multi-arch images via buildx
 
-docker-buildx-api: ## Build and push multi-arch images via buildx (requires a buildx builder)
-	docker buildx use ketches-builder || docker buildx create --name ketches-builder --use
+docker-buildx-ensure-builder: ## Ensure the multi-arch buildx builder is healthy
+	@if docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1; then \
+		docker buildx use $(BUILDX_BUILDER) >/dev/null; \
+	else \
+		echo "Creating buildx builder $(BUILDX_BUILDER)..."; \
+		docker buildx create --name $(BUILDX_BUILDER) --use >/dev/null; \
+	fi
+	@if ! docker buildx inspect $(BUILDX_BUILDER) --bootstrap >/dev/null 2>&1; then \
+		echo "Recreating stale buildx builder $(BUILDX_BUILDER)..."; \
+		docker buildx rm -f $(BUILDX_BUILDER) >/dev/null 2>&1 || true; \
+		docker buildx create --name $(BUILDX_BUILDER) --use >/dev/null; \
+		docker buildx inspect $(BUILDX_BUILDER) --bootstrap >/dev/null; \
+	fi
+
+docker-buildx-api: docker-buildx-ensure-builder ## Build and push multi-arch images via buildx (requires a buildx builder)
 	docker buildx build \
 		--platform $(PLATFORMS) \
 		--build-arg VERSION=$(VERSION) \
@@ -146,7 +160,7 @@ docker-buildx-api: ## Build and push multi-arch images via buildx (requires a bu
 		-t $(ALIYUN_REGISTRY)/$(ORG)/$(API_IMAGE):latest \
 		--push \
 		.
-docker-buildx-ui: ## Build and push multi-arch frontend image via buildx
+docker-buildx-ui: docker-buildx-ensure-builder ## Build and push multi-arch frontend image via buildx
 	docker buildx build \
 		--platform $(PLATFORMS) \
 		-t $(GHCR_REGISTRY)/$(ORG)/$(UI_IMAGE):$(VERSION) \
