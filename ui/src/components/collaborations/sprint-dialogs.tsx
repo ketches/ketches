@@ -179,7 +179,7 @@ export function CreateSprintDialog({
                 value={formData.goal || ""}
                 onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
                 placeholder="Sprint goal..."
-                className="min-h-24"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -379,7 +379,7 @@ export function EditSprintDialog({
                   value={formData.goal || ""}
                   onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
                   placeholder="Sprint goal..."
-                  className="min-h-24"
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
             </Field>

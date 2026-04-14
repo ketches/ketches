@@ -65,7 +65,7 @@ async function renderDialog(installCount: number) {
           slug: "plugin-one",
           name: "Plugin One",
           description: "",
-          image: "docker.io/library/migrate:latest",
+          image: "docker.io/library/busybox:latest",
           registry_username: "",
           command: "",
           env_vars: [],
@@ -84,7 +84,7 @@ async function renderDialog(installCount: number) {
 describe("DeletePluginDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+      ; (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   })
 
   afterEach(() => {

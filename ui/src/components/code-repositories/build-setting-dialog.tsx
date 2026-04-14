@@ -27,12 +27,12 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   parseBuildArgs,
   serializeBuildArgPairs,
   validateBuildArgPairs,
 } from "@/lib/build-setting-build-args"
-import { Textarea } from "@/components/ui/textarea"
 import { KeyValueInput } from "../shared/key-value-input"
 
 const PLATFORM_OPTIONS = [
@@ -318,7 +318,7 @@ export function BuildSettingSheet({
                   value={buildArgsRaw}
                   onChange={(e) => setBuildArgsRaw(e.target.value)}
                   placeholder="KEY=value"
-                  className="font-mono text-sm"
+                  className="font-mono text-sm min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                   rows={5}
                 />
               ) : (

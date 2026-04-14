@@ -1,4 +1,4 @@
-import { Copy, Edit2, Plus, Sparkles, Trash2 } from "lucide-react"
+import { Brain, Copy, Edit2, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -233,7 +233,7 @@ export function ProjectAiProvidersPanel({ projectId, isViewer = false }: Project
           <EmptyState
             title="No AI providers yet"
             description="Add a project-level provider to make shared models available in Builder."
-            icon={Sparkles}
+            icon={Brain}
             actionText={!isViewer ? "Add Provider" : undefined}
             onAction={!isViewer ? handleAddProvider : undefined}
             actionIcon={!isViewer ? Plus : undefined}
@@ -261,7 +261,7 @@ export function ProjectAiProvidersPanel({ projectId, isViewer = false }: Project
           </DialogHeader>
           <div className="space-y-4">
             <Field>
-              <FieldLabel htmlFor="project-provider-key">Provider key</FieldLabel>
+              <FieldLabel htmlFor="project-provider-key">Provider key *</FieldLabel>
               <FieldContent>
                 <Input
                   id="project-provider-key"
@@ -272,7 +272,7 @@ export function ProjectAiProvidersPanel({ projectId, isViewer = false }: Project
               </FieldContent>
             </Field>
             <Field>
-              <FieldLabel htmlFor="project-provider-display-name">Display name</FieldLabel>
+              <FieldLabel htmlFor="project-provider-display-name">Display name *</FieldLabel>
               <FieldContent>
                 <Input
                   id="project-provider-display-name"
@@ -283,7 +283,7 @@ export function ProjectAiProvidersPanel({ projectId, isViewer = false }: Project
               </FieldContent>
             </Field>
             <Field>
-              <FieldLabel htmlFor="project-provider-base-url">Base URL</FieldLabel>
+              <FieldLabel htmlFor="project-provider-base-url">Base URL *</FieldLabel>
               <FieldContent>
                 <Input
                   id="project-provider-base-url"
@@ -305,7 +305,7 @@ export function ProjectAiProvidersPanel({ projectId, isViewer = false }: Project
               </FieldContent>
             </Field>
             <Field>
-              <FieldLabel htmlFor="project-provider-model-profile">Default model profile key</FieldLabel>
+              <FieldLabel htmlFor="project-provider-model-profile">Default model profile key *</FieldLabel>
               <FieldContent>
                 <Input
                   id="project-provider-model-profile"
@@ -315,25 +315,25 @@ export function ProjectAiProvidersPanel({ projectId, isViewer = false }: Project
                 />
               </FieldContent>
             </Field>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Checkbox
                 id="project-provider-enabled"
                 name="enabled"
                 checked={formData.enabled}
                 onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, enabled: checked === true }))}
               />
-              <label htmlFor="project-provider-enabled" className="cursor-pointer text-sm">
+              <label htmlFor="project-provider-enabled" className="cursor-pointer">
                 Enabled
               </label>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Checkbox
                 id="project-provider-default"
                 name="is_default"
                 checked={formData.is_default}
                 onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_default: checked === true }))}
               />
-              <label htmlFor="project-provider-default" className="cursor-pointer text-sm">
+              <label htmlFor="project-provider-default" className="cursor-pointer">
                 Set as default
               </label>
             </div>

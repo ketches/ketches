@@ -141,7 +141,7 @@ export function AddExtensionDialog({
                   placeholder="Brief description of what this extension does"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
             </Field>

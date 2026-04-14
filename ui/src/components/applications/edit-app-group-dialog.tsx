@@ -1,12 +1,12 @@
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { appGroupsApi, type AppGroup } from '@/api/app-groups'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { appGroupsApi, type AppGroup } from '@/api/app-groups'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { toast } from 'sonner'
 
 interface Props {
   group: AppGroup
@@ -44,7 +44,7 @@ export function EditAppGroupDialog({ group, open, onOpenChange, onSuccess }: Pro
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-group-description">Description</Label>
-            <Textarea id="edit-group-description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description" />
+            <Textarea id="edit-group-description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description" className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap" />
           </div>
         </div>
         <DialogFooter>

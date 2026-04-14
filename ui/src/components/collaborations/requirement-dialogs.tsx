@@ -22,8 +22,8 @@ import {
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { getErrorMessage } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
+import { getErrorMessage } from "@/lib/utils"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -158,7 +158,7 @@ export function CreateRequirementDialog({
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="Detailed description..."
-                className="min-h-32"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -302,7 +302,7 @@ export function EditRequirementDialog({
                 <Textarea
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
-                  className="min-h-32"
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
             </Field>

@@ -25,8 +25,8 @@ import {
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { getErrorMessage } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
+import { getErrorMessage } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -193,7 +193,7 @@ export function CreateDefectDialog({
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="Detailed description of the issue..."
-                className="min-h-32"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -205,7 +205,7 @@ export function CreateDefectDialog({
                 value={reproductionSteps}
                 onChange={(event) => setReproductionSteps(event.target.value)}
                 placeholder="1. Go to page X..."
-                className="min-h-32"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -461,7 +461,7 @@ export function EditDefectDialog({
               <Textarea
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                className="min-h-32"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -472,7 +472,7 @@ export function EditDefectDialog({
               <Textarea
                 value={reproductionSteps}
                 onChange={(event) => setReproductionSteps(event.target.value)}
-                className="min-h-32"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -564,7 +564,7 @@ export function EditDefectDialog({
                 value={fixNote}
                 onChange={(e) => setFixNote(e.target.value)}
                 placeholder="Details about the fix or resolution..."
-                rows={2}
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>

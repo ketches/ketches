@@ -1,5 +1,5 @@
-import { AxiosError } from "axios"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { AxiosError } from "axios"
 import { AlertCircle, Edit2, ExternalLink, GamepadDirectional, Loader2, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -648,7 +648,7 @@ export function ClusterIntegrationsConfig({ clusterId }: ClusterIntegrationsConf
                           value={formData.ca_cert}
                           onChange={(e) => setFormData({ ...formData, ca_cert: e.target.value })}
                           placeholder="-----BEGIN CERTIFICATE-----..."
-                          rows={3}
+                          className="font-mono min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                           aria-label="CA Certificate"
                         />
                       )}

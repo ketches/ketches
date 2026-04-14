@@ -136,7 +136,7 @@ export function EditProjectDialog({
                   placeholder="Brief description..."
                   value={formData.description}
                   onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                  className="h-28 resize-y break-all whitespace-pre-wrap"
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
             </Field>

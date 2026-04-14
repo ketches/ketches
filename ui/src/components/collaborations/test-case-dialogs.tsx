@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { getErrorMessage } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
+import { getErrorMessage } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -137,7 +137,7 @@ export function CreateTestCaseDialog({
                 value={precondition}
                 onChange={(event) => setPrecondition(event.target.value)}
                 placeholder="e.g. User is logged out"
-                className="min-h-24"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -149,7 +149,7 @@ export function CreateTestCaseDialog({
                 value={steps}
                 onChange={(event) => setSteps(event.target.value)}
                 placeholder="1. Navigate to login page..."
-                className="min-h-32"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -161,7 +161,7 @@ export function CreateTestCaseDialog({
                 value={expectedResult}
                 onChange={(event) => setExpectedResult(event.target.value)}
                 placeholder="User is redirected to dashboard"
-                className="min-h-24"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -280,7 +280,7 @@ export function EditTestCaseDialog({
                 <Textarea
                   value={precondition}
                   onChange={(event) => setPrecondition(event.target.value)}
-                  className="min-h-24"
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
             </Field>
@@ -291,7 +291,7 @@ export function EditTestCaseDialog({
                 <Textarea
                   value={steps}
                   onChange={(event) => setSteps(event.target.value)}
-                  className="min-h-32"
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
             </Field>
@@ -302,7 +302,7 @@ export function EditTestCaseDialog({
                 <Textarea
                   value={expectedResult}
                   onChange={(event) => setExpectedResult(event.target.value)}
-                  className="min-h-24"
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
             </Field>
@@ -486,7 +486,7 @@ export function CreateTestRunDialog({
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   placeholder="Any observations or details..."
-                  rows={3}
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
             </Field>

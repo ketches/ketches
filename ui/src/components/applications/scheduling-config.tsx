@@ -231,7 +231,7 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
                   <FieldContent>
                     <Textarea
                       placeholder='{ "requiredDuringSchedulingIgnoredDuringExecution": { ... } }'
-                      className="font-mono min-h-32 text-xs"
+                      className="text-xs font-mono min-h-32 max-h-48 resize-y break-all whitespace-pre-wrap"
                       {...register("node_affinity")}
                     />
                   </FieldContent>

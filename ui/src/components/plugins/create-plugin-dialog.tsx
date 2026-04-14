@@ -190,7 +190,6 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
                   placeholder="Runs database migrations before app starts"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={2}
                   className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
@@ -240,7 +239,7 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
                   <InputGroupInput
                     id="image"
                     name="image"
-                    placeholder="docker.io/library/migrate:latest"
+                    placeholder="docker.io/library/busybox:latest"
                     value={formData.image}
                     onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                     required
@@ -370,7 +369,6 @@ export function CreatePluginDialog({ open, onOpenChange, projectId }: CreatePlug
                   placeholder='echo hello'
                   value={formData.command}
                   onChange={(e) => setFormData({ ...formData, command: e.target.value })}
-                  rows={3}
                   className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>

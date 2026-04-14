@@ -1,4 +1,4 @@
-import { Copy, Edit2, Plus, Sparkles, Trash2 } from "lucide-react"
+import { Brain, Copy, Edit2, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 
 import { usersApi, type UpsertMyAiProviderRequest } from "@/api/users"
@@ -229,7 +229,7 @@ export function AccountAiProvidersPanel() {
           <EmptyState
             title="No AI providers yet"
             description="Add your first provider to make personal models available in Builder."
-            icon={Sparkles}
+            icon={Brain}
             actionText="Add Provider"
             onAction={handleAddProvider}
             actionIcon={Plus}
@@ -254,91 +254,91 @@ export function AccountAiProvidersPanel() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-          <Field>
-            <FieldLabel htmlFor="account-provider-key">Provider key</FieldLabel>
-            <FieldContent>
-              <Input
-                id="account-provider-key"
-                name="provider_key"
-                value={formData.provider_key}
-                onInput={(event) => setFormData((prev) => ({ ...prev, provider_key: (event.target as HTMLInputElement).value }))}
+            <Field>
+              <FieldLabel htmlFor="account-provider-key">Provider key *</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="account-provider-key"
+                  name="provider_key"
+                  value={formData.provider_key}
+                  onInput={(event) => setFormData((prev) => ({ ...prev, provider_key: (event.target as HTMLInputElement).value }))}
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="account-provider-display-name">Display name *</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="account-provider-display-name"
+                  name="display_name"
+                  value={formData.display_name}
+                  onInput={(event) => setFormData((prev) => ({ ...prev, display_name: (event.target as HTMLInputElement).value }))}
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="account-provider-base-url">Base URL *</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="account-provider-base-url"
+                  name="base_url"
+                  value={formData.base_url}
+                  onInput={(event) => setFormData((prev) => ({ ...prev, base_url: (event.target as HTMLInputElement).value }))}
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="account-provider-api-key">API key</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="account-provider-api-key"
+                  name="api_key"
+                  value={formData.api_key}
+                  onInput={(event) => setFormData((prev) => ({ ...prev, api_key: (event.target as HTMLInputElement).value }))}
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="account-provider-model-profile">Default model profile key</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="account-provider-model-profile"
+                  name="default_model_profile_key"
+                  value={formData.default_model_profile_key}
+                  onInput={(event) => setFormData((prev) => ({ ...prev, default_model_profile_key: (event.target as HTMLInputElement).value }))}
+                />
+              </FieldContent>
+            </Field>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="account-provider-enabled"
+                name="enabled"
+                checked={formData.enabled}
+                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, enabled: checked === true }))}
               />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="account-provider-display-name">Display name</FieldLabel>
-            <FieldContent>
-              <Input
-                id="account-provider-display-name"
-                name="display_name"
-                value={formData.display_name}
-                onInput={(event) => setFormData((prev) => ({ ...prev, display_name: (event.target as HTMLInputElement).value }))}
+              <label htmlFor="account-provider-enabled" className="cursor-pointer">
+                Enabled
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="account-provider-default"
+                name="is_default"
+                checked={formData.is_default}
+                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_default: checked === true }))}
               />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="account-provider-base-url">Base URL</FieldLabel>
-            <FieldContent>
-              <Input
-                id="account-provider-base-url"
-                name="base_url"
-                value={formData.base_url}
-                onInput={(event) => setFormData((prev) => ({ ...prev, base_url: (event.target as HTMLInputElement).value }))}
-              />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="account-provider-api-key">API key</FieldLabel>
-            <FieldContent>
-              <Input
-                id="account-provider-api-key"
-                name="api_key"
-                value={formData.api_key}
-                onInput={(event) => setFormData((prev) => ({ ...prev, api_key: (event.target as HTMLInputElement).value }))}
-              />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="account-provider-model-profile">Default model profile key</FieldLabel>
-            <FieldContent>
-              <Input
-                id="account-provider-model-profile"
-                name="default_model_profile_key"
-                value={formData.default_model_profile_key}
-                onInput={(event) => setFormData((prev) => ({ ...prev, default_model_profile_key: (event.target as HTMLInputElement).value }))}
-              />
-            </FieldContent>
-          </Field>
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="account-provider-enabled"
-              name="enabled"
-              checked={formData.enabled}
-              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, enabled: checked === true }))}
-            />
-            <label htmlFor="account-provider-enabled" className="cursor-pointer text-sm">
-              Enabled
-            </label>
-          </div>
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="account-provider-default"
-              name="is_default"
-              checked={formData.is_default}
-              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_default: checked === true }))}
-            />
-            <label htmlFor="account-provider-default" className="cursor-pointer text-sm">
-              Set as default
-            </label>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={() => void handleSaveProvider()}>
-              {editingProviderId ? "Update Provider" : "Save Provider"}
-            </Button>
-          </DialogFooter>
+              <label htmlFor="account-provider-default" className="cursor-pointer">
+                Set as default
+              </label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={() => void handleSaveProvider()}>
+                {editingProviderId ? "Update Provider" : "Save Provider"}
+              </Button>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>

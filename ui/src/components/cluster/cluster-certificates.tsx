@@ -1,6 +1,6 @@
-import { AxiosError } from "axios"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { AxiosError } from "axios"
 import { Clock, Loader2, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -286,7 +286,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
                     value={formData.cert}
                     onChange={(e) => setFormData({ ...formData, cert: e.target.value })}
                     placeholder="-----BEGIN CERTIFICATE-----&#10;..."
-                    rows={6}
+                    className="font-mono min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                     required={!editingCert}
                   />
                 </FieldContent>
@@ -298,7 +298,7 @@ export function ClusterCertificates({ clusterId }: ClusterCertificatesProps) {
                     value={formData.key}
                     onChange={(e) => setFormData({ ...formData, key: e.target.value })}
                     placeholder="-----BEGIN PRIVATE KEY-----&#10;..."
-                    rows={6}
+                    className="font-mono min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                     required={!editingCert}
                   />
                 </FieldContent>

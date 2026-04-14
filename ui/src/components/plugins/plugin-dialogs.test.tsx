@@ -207,7 +207,7 @@ function buildPlugin(overrides: Partial<PluginRecord> = {}): PluginRecord {
     name: "Migration",
     slug: "migration",
     description: "",
-    image: "docker.io/library/migrate:latest",
+    image: "docker.io/library/busybox:latest",
     image_pull_policy: "IfNotPresent",
     registry_username: "",
     command: "",
@@ -220,7 +220,7 @@ function buildPlugin(overrides: Partial<PluginRecord> = {}): PluginRecord {
 describe("Plugin dialogs", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+      ; (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   })
 
   afterEach(() => {
@@ -301,7 +301,7 @@ describe("Plugin dialogs", () => {
     await clickElement(credentialsToggle as HTMLButtonElement)
     await changeInputValue(nameInput as HTMLInputElement, "Registry Plugin")
     await changeInputValue(slugInput as HTMLInputElement, "registry-plugin")
-    await changeInputValue(imageInput as HTMLInputElement, "docker.io/library/migrate:latest")
+    await changeInputValue(imageInput as HTMLInputElement, "docker.io/library/busybox:latest")
 
     const passwordInput = container.querySelector("#registry_password") as HTMLInputElement | null
 

@@ -39,7 +39,7 @@ func TestUpdatePluginClearsRegistryUsernameWhenExplicitlyEmpty(t *testing.T) {
 		ProjectID:        "project-1",
 		Slug:             "plugin-one",
 		Name:             "Plugin One",
-		Image:            "docker.io/library/migrate:latest",
+		Image:            "docker.io/library/busybox:latest",
 		RegistryUsername: "robot",
 		PluginType:       "init",
 	}
@@ -65,7 +65,7 @@ func TestUpdatePluginKeepsRegistryUsernameWhenFieldIsOmitted(t *testing.T) {
 		ProjectID:        "project-1",
 		Slug:             "plugin-two",
 		Name:             "Plugin Two",
-		Image:            "docker.io/library/migrate:latest",
+		Image:            "docker.io/library/busybox:latest",
 		RegistryUsername: "robot",
 		PluginType:       "init",
 	}
@@ -96,7 +96,7 @@ func TestCreatePluginEncryptsRegistryPasswordAtRest(t *testing.T) {
 		ProjectID:        "project-1",
 		Slug:             "plugin-one",
 		Name:             "Plugin One",
-		Image:            "docker.io/library/migrate:latest",
+		Image:            "docker.io/library/busybox:latest",
 		RegistryUsername: "robot",
 		RegistryPassword: "super-secret",
 		PluginType:       "init",
@@ -129,7 +129,7 @@ func TestUpdatePluginEncryptsRegistryPasswordAtRest(t *testing.T) {
 		ProjectID:  "project-1",
 		Slug:       "plugin-three",
 		Name:       "Plugin Three",
-		Image:      "docker.io/library/migrate:latest",
+		Image:      "docker.io/library/busybox:latest",
 		PluginType: "init",
 	}).Error)
 
@@ -167,7 +167,7 @@ func TestUpdatePluginClearsRegistryPasswordAtRest(t *testing.T) {
 		ProjectID:        "project-1",
 		Slug:             "plugin-four",
 		Name:             "Plugin Four",
-		Image:            "docker.io/library/migrate:latest",
+		Image:            "docker.io/library/busybox:latest",
 		RegistryPassword: encryptedPassword,
 		PluginType:       "init",
 	}).Error)

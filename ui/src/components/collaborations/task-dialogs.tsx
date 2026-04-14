@@ -195,7 +195,7 @@ export function CreateTaskDialog({
                 value={formData.description || ""}
                 onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                 placeholder="Detailed description..."
-                className="min-h-32"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>
@@ -427,7 +427,7 @@ export function EditTaskDialog({
                 value={formData.description || ""}
                 onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                 placeholder="Detailed description..."
-                className="min-h-32"
+                className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
               />
             </FieldContent>
           </Field>

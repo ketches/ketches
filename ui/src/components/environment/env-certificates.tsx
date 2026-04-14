@@ -1,4 +1,3 @@
-import { AxiosError } from "axios"
 import { certificatesApi, type Certificate } from "@/api/certificates"
 import { DataTable } from "@/components/data-table/data-table"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -33,6 +32,7 @@ import {
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
+import { AxiosError } from "axios"
 import { Clock, Loader2, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -310,7 +310,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
                     value={formData.cert}
                     onChange={(e) => setFormData({ ...formData, cert: e.target.value })}
                     placeholder="-----BEGIN CERTIFICATE-----&#10;..."
-                    rows={6}
+                    className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap font-mono"
                     required={!editingCert}
                   />
                 </FieldContent>
@@ -322,7 +322,7 @@ export function EnvCertificates({ envId, isViewer }: EnvCertificatesProps) {
                     value={formData.key}
                     onChange={(e) => setFormData({ ...formData, key: e.target.value })}
                     placeholder="-----BEGIN PRIVATE KEY-----&#10;..."
-                    rows={6}
+                    className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap font-mono"
                     required={!editingCert}
                   />
                 </FieldContent>

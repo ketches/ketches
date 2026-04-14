@@ -69,7 +69,7 @@ export function CommandConfig({ app }: CommandConfigProps) {
             <FieldContent>
               <Textarea
                 placeholder="echo Hello World"
-                className="font-mono min-h-32"
+                className="font-mono min-h-32 max-h-48 resize-y break-all whitespace-pre-wrap"
                 {...register("container_command")}
               />
             </FieldContent>

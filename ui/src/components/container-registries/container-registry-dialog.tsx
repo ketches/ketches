@@ -313,7 +313,7 @@ export function ContainerRegistryDialog({ open, onOpenChange, scope, scopeId, re
                 <Textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={2}
+                  className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
                 />
               </FieldContent>
             </Field>

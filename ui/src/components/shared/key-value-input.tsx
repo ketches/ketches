@@ -115,7 +115,7 @@ export function KeyValueInput({
             render={
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
                 onClick={handleAdd}
                 disabled={!canAdd}
                 size="icon"
