@@ -1,5 +1,4 @@
 import { appsApi } from '@/api/apps'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Combobox,
@@ -17,7 +16,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, FieldContent, FieldLabel } from '@/components/ui/field'
-import { AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -79,7 +77,6 @@ export function ExportAppsDialog({
   const [format, setFormat] = useState<ExportFormat>('kubernetes')
   const [scope, setScope] = useState<ExportScope>('selected')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   // Determine if we are in "batch mode" (multiple apps selected or potentially all)
   const isBatchMode = !appId
@@ -91,7 +88,6 @@ export function ExportAppsDialog({
 
   const handleExport = async () => {
     setLoading(true)
-    setError(null)
 
     try {
       let data: { yaml?: string; metadata?: string; chart?: string; compose?: string }
@@ -155,7 +151,7 @@ export function ExportAppsDialog({
       onOpenChange(false)
     } catch (err: any) {
       console.error('Export failed:', err)
-      setError(err.message || 'Failed to export applications')
+      toast.error(err.message || 'Failed to export applications')
     } finally {
       setLoading(false)
     }
@@ -173,13 +169,6 @@ export function ExportAppsDialog({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
             <Field>
               <FieldLabel htmlFor="format" className="text-right">
                 Format

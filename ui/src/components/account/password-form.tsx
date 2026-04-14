@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { DialogFooter } from "@/components/ui/dialog"
@@ -20,19 +21,17 @@ export function PasswordForm({ onSave, isSaving = false, onCancel }: PasswordFor
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setError("")
 
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match")
+      toast.error("New passwords do not match")
       return
     }
 
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters")
+      toast.error("Password must be at least 8 characters")
       return
     }
 
@@ -87,9 +86,6 @@ export function PasswordForm({ onSave, isSaving = false, onCancel }: PasswordFor
             />
           </FieldContent>
         </Field>
-        {error && (
-          <div className="text-destructive text-sm">{error}</div>
-        )}
       </FieldGroup>
       <DialogFooter className="pt-4">
         {onCancel ? (

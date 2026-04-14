@@ -65,7 +65,6 @@ export function SignupForm({
   ...props
 }: React.ComponentProps<"form">) {
   const navigate = useNavigate()
-  const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSendingCode, setIsSendingCode] = useState(false)
   const [hasSentVerificationCode, setHasSentVerificationCode] = useState(false)
@@ -132,12 +131,13 @@ export function SignupForm({
   const handleSendVerificationCode = async () => {
     const email = getValues("email")
     if (!email) {
-      setError("Enter your email address before requesting a verification code")
+      toast.error("Verification Failed", {
+        description: "Enter your email address before requesting a verification code",
+      })
       return
     }
 
     setIsSendingCode(true)
-    setError(null)
     try {
       const payload: SignUpVerificationCodeRequest = { email }
       const response = await authApi.sendSignUpVerificationCode(payload)
@@ -150,7 +150,6 @@ export function SignupForm({
       const errMsg = isAxiosError<{ error?: string }>(err)
         ? err.response?.data?.error || "Failed to send verification code"
         : "Failed to send verification code"
-      setError(errMsg)
       toast.error("Verification Failed", {
         description: errMsg,
       })
@@ -171,7 +170,6 @@ export function SignupForm({
 
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true)
-    setError(null)
     try {
       const payload: SignUpRequest = {
         fullname: data.fullname,
@@ -189,7 +187,6 @@ export function SignupForm({
       const errMsg = isAxiosError<{ error?: string }>(err)
         ? err.response?.data?.error || "Failed to create account"
         : "Failed to create account"
-      setError(errMsg)
       toast.error("Registration Failed", {
         description: errMsg,
       })
@@ -290,11 +287,6 @@ export function SignupForm({
               : "Complete the registration form."}
           </p>
         </div>
-        {error && (
-          <div className="text-sm font-medium text-destructive text-center">
-            {error}
-          </div>
-        )}
         <Field>
           <FieldLabel htmlFor="fullname">Full Name *</FieldLabel>
           <FieldContent>

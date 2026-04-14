@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Combobox,
@@ -40,14 +40,12 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
   const [isPending, setIsPending] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<"json" | "csv" | "excel">("json")
-  const [error, setError] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       setSelectedFile(file)
-      setError("")
 
       // Auto-detect file type from extension
       const ext = file.name.split(".").pop()?.toLowerCase()
@@ -65,7 +63,7 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
     e.preventDefault()
 
     if (!selectedFile) {
-      setError("Please select a file to import")
+      toast.error("Please select a file to import")
       return
     }
 
@@ -84,10 +82,9 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
 
       setOpen(false)
       setSelectedFile(null)
-      setError("")
       onSuccess?.()
     } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to import users")
+      toast.error(err.response?.data?.error || "Failed to import users")
     } finally {
       setIsPending(false)
     }
@@ -96,7 +93,6 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
   const handleClose = () => {
     setOpen(false)
     setSelectedFile(null)
-    setError("")
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -155,8 +151,6 @@ export function ImportUsersDialog({ onSuccess }: ImportUsersDialogProps) {
                 </p>
               )}
             </Field>
-
-            {error && <FieldError>{error}</FieldError>}
 
             <div className="rounded-md bg-muted p-4">
               <p className="text-sm font-medium mb-2">File format examples:</p>

@@ -36,7 +36,7 @@ export function CreateProjectDialog({
   const setOpen = setControlledOpen || setInternalOpen
 
   const queryClient = useQueryClient()
-  const [errors, setErrors] = React.useState<{ name?: string; slug?: string; global?: string }>({})
+  const [errors, setErrors] = React.useState<{ name?: string; slug?: string }>({})
 
   const [formData, setFormData] = React.useState({
     name: "",
@@ -63,7 +63,6 @@ export function CreateProjectDialog({
     },
     onError: (err: AxiosError<{ error: string }>) => {
       const errMsg = err.response?.data?.error || "Failed to create project"
-      setErrors({ global: errMsg })
       toast.error("Error", { description: errMsg })
     }
   })
@@ -112,11 +111,6 @@ export function CreateProjectDialog({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {errors.global && (
-              <div className="text-sm font-medium text-destructive text-center">
-                {errors.global}
-              </div>
-            )}
             <div className="grid grid-cols-2 gap-4">
               <Field>
                 <FieldLabel>Name *</FieldLabel>

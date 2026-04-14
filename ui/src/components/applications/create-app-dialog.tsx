@@ -82,7 +82,6 @@ export function CreateAppDialog({
     name?: string
     slug?: string
     container_image?: string
-    global?: string
   }>({})
 
   const [formData, setFormData] = React.useState<CreateAppFormData>({ ...INITIAL_FORM_DATA })
@@ -130,7 +129,6 @@ export function CreateAppDialog({
     },
     onError: (err) => {
       const errMsg = err.response?.data?.error || "Failed to create application"
-      setErrors({ global: errMsg })
       sonnerToast.error("Error", { description: errMsg })
     }
   })
@@ -174,7 +172,6 @@ export function CreateAppDialog({
 
     if (formData.registry_password.trim() && !formData.registry_username.trim()) {
       const errMsg = "Registry username is required when password is provided"
-      newErrors.global = errMsg
       sonnerToast.error("Error", { description: errMsg })
     }
 
@@ -220,12 +217,6 @@ export function CreateAppDialog({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {errors.global && (
-              <div className="text-sm font-medium text-destructive text-center">
-                {errors.global}
-              </div>
-            )}
-
             <Field>
               <FieldLabel htmlFor="container-image">Container Image *</FieldLabel>
               <FieldContent>

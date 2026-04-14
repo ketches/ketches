@@ -1,11 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
-import { AlertCircle, Upload } from "lucide-react"
+import { Upload } from "lucide-react"
 import * as React from "react"
 import { toast as sonnerToast } from "sonner"
 
 import { appsApi } from "@/api/apps"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -203,15 +202,6 @@ export function ImportAppsDialog({
             </Field>
           </div>
 
-          {mutation.isError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                {(mutation.error as AxiosError<{ error: string }>)?.response?.data?.error || mutation.error.message}
-              </AlertDescription>
-            </Alert>
-          )}
         </div>
 
         <DialogFooter>

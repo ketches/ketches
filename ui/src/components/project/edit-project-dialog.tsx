@@ -36,7 +36,7 @@ export function EditProjectDialog({
   const setOpen = setControlledOpen || setInternalOpen
 
   const queryClient = useQueryClient()
-  const [errors, setErrors] = React.useState<{ name?: string; global?: string }>({})
+  const [errors, setErrors] = React.useState<{ name?: string }>({})
   const [formData, setFormData] = React.useState({
     name: "",
     description: "",
@@ -72,7 +72,6 @@ export function EditProjectDialog({
     },
     onError: (err: AxiosError<{ error: string }>) => {
       const errMsg = err.response?.data?.error || "Failed to update project"
-      setErrors({ global: errMsg })
       toast.error("Error", { description: errMsg })
     }
   })
@@ -106,11 +105,6 @@ export function EditProjectDialog({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {errors.global && (
-              <div className="text-sm font-medium text-destructive text-center">
-                {errors.global}
-              </div>
-            )}
             <Field>
               <FieldLabel>Name *</FieldLabel>
               <FieldContent>

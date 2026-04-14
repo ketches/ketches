@@ -36,7 +36,6 @@ export function LoginForm({
     const location = useLocation();
     const setAuth = useAuthStore((state) => state.setAuth);
     const queryClient = useQueryClient();
-    const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [defaultPasswordNotice, setDefaultPasswordNotice] = useState<
         string | null
@@ -61,7 +60,6 @@ export function LoginForm({
 
     const onSubmit = async (data: LoginFormValues) => {
         setIsLoading(true);
-        setError(null);
         setDefaultPasswordNotice(null);
         try {
             const payload: SignInRequest = data;
@@ -81,7 +79,6 @@ export function LoginForm({
             const errMsg = isAxiosError<{ error?: string }>(err)
                 ? err.response?.data?.error || "Invalid username or password"
                 : "Invalid username or password";
-            setError(errMsg);
             toast.error("Login Failed", {
                 description: errMsg,
             });
@@ -105,11 +102,6 @@ export function LoginForm({
                         Enter your username below to login to your account
                     </p>
                 </div>
-                {error && (
-                    <div className="text-sm font-medium text-destructive text-center">
-                        {error}
-                    </div>
-                )}
                 <Field>
                     <FieldLabel htmlFor="username">Username *</FieldLabel>
                     <FieldContent>

@@ -78,7 +78,6 @@ export function CreateEnvironmentDialog({
     slug?: string
     namespace?: string
     cluster_id?: string
-    global?: string
   }>({})
   const [namespaceEdited, setNamespaceEdited] = React.useState(false)
 
@@ -194,7 +193,6 @@ export function CreateEnvironmentDialog({
     },
     onError: (err: AxiosError<{ error: string }>) => {
       const errMsg = err.response?.data?.error || "Failed to create environment"
-      setErrors({ global: errMsg })
       toast.error("Error", { description: errMsg })
     }
   })
@@ -361,11 +359,6 @@ export function CreateEnvironmentDialog({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {errors.global && (
-              <div className="text-sm font-medium text-destructive text-center">
-                {errors.global}
-              </div>
-            )}
             <div className="grid grid-cols-2 gap-4">
               <Field>
                 <FieldLabel>

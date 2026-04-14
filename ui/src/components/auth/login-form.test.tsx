@@ -8,12 +8,14 @@ const {
   mockSetAuth,
   mockNavigate,
   mockFormValues,
+  mockQueryClientClear,
 } = vi.hoisted(() => ({
   mockSignIn: vi.fn(),
   mockPlatformCheck: vi.fn(),
   mockSetAuth: vi.fn(),
   mockNavigate: vi.fn(),
   mockFormValues: {} as Record<string, string>,
+  mockQueryClientClear: vi.fn(),
 }))
 
 vi.mock("@/api/auth", () => ({
@@ -35,6 +37,12 @@ vi.mock("@/stores/auth", () => ({
 
 vi.mock("@hookform/resolvers/zod", () => ({
   zodResolver: () => undefined,
+}))
+
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    clear: mockQueryClientClear,
+  }),
 }))
 
 vi.mock("react-hook-form", () => ({
@@ -87,6 +95,7 @@ describe("LoginForm", () => {
   beforeEach(() => {
     mockFormValues.username = ""
     mockFormValues.password = ""
+    mockQueryClientClear.mockReset()
     mockSignIn.mockResolvedValue({
       user: {
         id: "admin-1",
