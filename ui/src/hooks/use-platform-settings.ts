@@ -1,5 +1,5 @@
-import * as React from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import * as React from "react"
 
 import {
   platformSettingsApi,
@@ -113,7 +113,7 @@ export function usePublicSignUpSettings() {
   })
 }
 
-export function useUpdatePublicSignUpSettingsMutation() {
+export function useUpdateBasicSettingsMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({

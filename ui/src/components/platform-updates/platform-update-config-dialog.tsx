@@ -119,45 +119,47 @@ export function PlatformUpdateConfigDialog({
                   />
                 </FieldContent>
               </Field>
-              <Field>
-                <FieldLabel htmlFor="api-namespace">Namespace</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="api-namespace"
-                    name="api-namespace"
-                    value={form.apiNamespace}
-                    onChange={(event) => updateField("apiNamespace", event.target.value)}
-                    disabled={isLoading || updateMutation.isPending}
-                    required
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="api-deployment-name">Deployment</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="api-deployment-name"
-                    name="api-deployment-name"
-                    value={form.apiDeploymentName}
-                    onChange={(event) => updateField("apiDeploymentName", event.target.value)}
-                    disabled={isLoading || updateMutation.isPending}
-                    required
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="api-container-name">Container</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="api-container-name"
-                    name="api-container-name"
-                    value={form.apiContainerName}
-                    onChange={(event) => updateField("apiContainerName", event.target.value)}
-                    disabled={isLoading || updateMutation.isPending}
-                    required
-                  />
-                </FieldContent>
-              </Field>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="api-namespace">Namespace</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="api-namespace"
+                      name="api-namespace"
+                      value={form.apiNamespace}
+                      onChange={(event) => updateField("apiNamespace", event.target.value)}
+                      disabled={isLoading || updateMutation.isPending}
+                      required
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="api-deployment-name">Deployment</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="api-deployment-name"
+                      name="api-deployment-name"
+                      value={form.apiDeploymentName}
+                      onChange={(event) => updateField("apiDeploymentName", event.target.value)}
+                      disabled={isLoading || updateMutation.isPending}
+                      required
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="api-container-name">Container</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="api-container-name"
+                      name="api-container-name"
+                      value={form.apiContainerName}
+                      onChange={(event) => updateField("apiContainerName", event.target.value)}
+                      disabled={isLoading || updateMutation.isPending}
+                      required
+                    />
+                  </FieldContent>
+                </Field>
+              </div>
             </section>
 
             <section className="space-y-3">
@@ -175,45 +177,47 @@ export function PlatformUpdateConfigDialog({
                   />
                 </FieldContent>
               </Field>
-              <Field>
-                <FieldLabel htmlFor="ui-namespace">Namespace</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="ui-namespace"
-                    name="ui-namespace"
-                    value={form.uiNamespace}
-                    onChange={(event) => updateField("uiNamespace", event.target.value)}
-                    disabled={isLoading || updateMutation.isPending}
-                    required
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="ui-deployment-name">Deployment</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="ui-deployment-name"
-                    name="ui-deployment-name"
-                    value={form.uiDeploymentName}
-                    onChange={(event) => updateField("uiDeploymentName", event.target.value)}
-                    disabled={isLoading || updateMutation.isPending}
-                    required
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="ui-container-name">Container</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="ui-container-name"
-                    name="ui-container-name"
-                    value={form.uiContainerName}
-                    onChange={(event) => updateField("uiContainerName", event.target.value)}
-                    disabled={isLoading || updateMutation.isPending}
-                    required
-                  />
-                </FieldContent>
-              </Field>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="ui-namespace">Namespace</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="ui-namespace"
+                      name="ui-namespace"
+                      value={form.uiNamespace}
+                      onChange={(event) => updateField("uiNamespace", event.target.value)}
+                      disabled={isLoading || updateMutation.isPending}
+                      required
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="ui-deployment-name">Deployment</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="ui-deployment-name"
+                      name="ui-deployment-name"
+                      value={form.uiDeploymentName}
+                      onChange={(event) => updateField("uiDeploymentName", event.target.value)}
+                      disabled={isLoading || updateMutation.isPending}
+                      required
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="ui-container-name">Container</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="ui-container-name"
+                      name="ui-container-name"
+                      value={form.uiContainerName}
+                      onChange={(event) => updateField("uiContainerName", event.target.value)}
+                      disabled={isLoading || updateMutation.isPending}
+                      required
+                    />
+                  </FieldContent>
+                </Field>
+              </div>
             </section>
           </div>
 

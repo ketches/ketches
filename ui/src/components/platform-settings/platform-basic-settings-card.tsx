@@ -2,13 +2,14 @@ import { Loader2, Settings2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
-import { usePublicSignUpSettings, useUpdatePublicSignUpSettingsMutation } from "@/hooks/use-platform-settings"
+import { usePublicSignUpSettings as useBasicSettings, useUpdateBasicSettingsMutation } from "@/hooks/use-platform-settings"
+import { ColorBadge } from "../shared/color-badge"
 
-export function PlatformPublicSignUpCard() {
-  const { data, isLoading } = usePublicSignUpSettings()
-  const updateMutation = useUpdatePublicSignUpSettingsMutation()
+export function PlatformBasicSettingsCard() {
+  const { data, isLoading } = useBasicSettings()
+  const updateMutation = useUpdateBasicSettingsMutation()
   const [enabled, setEnabled] = React.useState(true)
   const [emailVerificationRequired, setEmailVerificationRequired] = React.useState(true)
 
@@ -53,25 +54,23 @@ export function PlatformPublicSignUpCard() {
   }
 
   return (
-    <Card className="bg-linear-to-b/increasing from-emerald-500/5 to-transparent">
+    <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Settings2 className="h-4 w-4" />
-          Public Registration
+          Basic Settings
         </CardTitle>
-        <CardDescription>
-          Control whether new users can create accounts and whether sign-up requires email verification.
-        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-sm font-medium">
-              Public registration: {enabled ? "Enabled" : "Disabled"}
+            <p className="text-xs font-medium text-muted-foreground">
+              Public registration
+              <span className="ml-2 font-normal text-xs text-muted-foreground">
+                Allow unauthenticated visitors to create accounts.
+              </span>
             </p>
-            <p className="text-xs text-muted-foreground">
-              Allow unauthenticated visitors to create accounts.
-            </p>
+            <ColorBadge color={enabled ? "green" : "red"} className="ml-1" >{enabled ? "Enabled" : "Disabled"}</ColorBadge>
           </div>
           <div className="flex items-center gap-3">
             {(isLoading || updateMutation.isPending) && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
@@ -80,12 +79,15 @@ export function PlatformPublicSignUpCard() {
         </div>
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-sm font-medium">
-              Email verification: {emailVerificationRequired ? "Required" : "Optional"}
+            <p className="text-xs font-medium text-muted-foreground">
+              Email verification
+              <span className="ml-2 font-normal text-xs text-muted-foreground">
+                Require users to use email verification code to register an account or reset password and so on.
+              </span>
             </p>
-            <p className="text-xs text-muted-foreground">
-              When disabled, users can sign up without requesting a verification code.
-            </p>
+            <ColorBadge color={emailVerificationRequired ? "green" : "red"} className="ml-1">
+              {emailVerificationRequired ? "Required" : "Not required"}
+            </ColorBadge>
           </div>
           <Switch
             checked={emailVerificationRequired}

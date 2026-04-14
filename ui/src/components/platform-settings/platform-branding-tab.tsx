@@ -53,7 +53,7 @@ export function PlatformBrandingTab() {
 
   return (
     <>
-      <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent group/card">
+      <Card className="bg-linear-to-b/increasing from-emerald-500/5 to-transparent group/card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Type className="h-4 w-4" />
