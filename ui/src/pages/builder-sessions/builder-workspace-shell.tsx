@@ -1,9 +1,11 @@
 import { envsApi } from "@/api/envs"
 import { CreateEnvironmentDialog } from "@/components/environment/create-environment-dialog"
 import { PageHeader } from "@/components/layout/page-header"
-import { EmptyEnvironmentState } from "@/components/shared/empty-state"
+import { EmptyEnvironmentState, EmptyState } from "@/components/shared/empty-state"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useQuery } from "@tanstack/react-query"
+import { Hammer } from "lucide-react"
 import * as React from "react"
 
 import { BuilderWorkspaceMainPanel } from "./components/builder-workspace-main-panel"
@@ -22,6 +24,10 @@ export function BuilderWorkspaceShell() {
     enabled: !!workspace.projectId,
   })
   const envs = Array.isArray(envsResponse?.items) ? envsResponse.items : []
+  const buildEnvs = React.useMemo(
+    () => envs.filter((env) => env.is_build_env),
+    [envs]
+  )
   const files = useBuilderWorkspaceFiles({
     projectId: workspace.projectId,
     sessionId: workspace.sessionId,
@@ -35,19 +41,22 @@ export function BuilderWorkspaceShell() {
     >
       <PageHeader items={workspace.breadcrumbItems} />
 
-      {!isEnvsLoading && envs.length === 0 ? (
+      {isEnvsLoading ? (
+        <Skeleton className="h-full w-full rounded-xl" />
+      ) : envs.length === 0 ? (
         <>
-          <div
-            data-testid="builder-empty-environments"
-            className="flex h-full min-h-0 flex-1 items-center justify-center bg-background"
-          >
-            <EmptyEnvironmentState onAction={!isViewer ? () => setCreateEnvironmentOpen(true) : undefined} />
-          </div>
+          <EmptyEnvironmentState onAction={!isViewer ? () => setCreateEnvironmentOpen(true) : undefined} />
           <CreateEnvironmentDialog
             open={createEnvironmentOpen}
             onOpenChange={setCreateEnvironmentOpen}
           />
         </>
+      ) : buildEnvs.length === 0 ? (
+        <EmptyState
+          title="No build environments yet"
+          description="This project has environments, but none are marked as build environments. Mark one environment as a build environment before using Builder."
+          icon={Hammer}
+        />
       ) : (
         <div
           data-testid="builder-workspace-body"

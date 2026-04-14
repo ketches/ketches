@@ -148,15 +148,18 @@ vi.mock("@/components/data-table/data-table", () => ({
 vi.mock("@/components/shared/empty-state", () => ({
   EmptyState: ({
     title,
+    description,
     actionText,
     onAction,
   }: {
     title: string
+    description?: React.ReactNode
     actionText?: string
     onAction?: () => void
   }) => (
     <div>
       <div>{title}</div>
+      {description ? <div>{description}</div> : null}
       {actionText ? (
         <button type="button" onClick={onAction}>
           {actionText}
@@ -943,6 +946,84 @@ describe("Builder workspace routes", () => {
     })
 
     expect(container.querySelector('[data-testid="create-environment-dialog"]')?.textContent).toBe("true")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("does not render the workspace shell before environments finish loading", async () => {
+    let resolveEnvs: ((value: Awaited<ReturnType<typeof envsListMock>>) => void) | undefined
+    envsListMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveEnvs = resolve
+      }) as ReturnType<typeof envsListMock>
+    )
+
+    const { container, root } = await renderBuilderRoute("/builder-sessions")
+
+    expect(container.querySelector('[data-testid="builder-workspace-body"]')).toBeNull()
+    expect(container.textContent).not.toContain("New conversation")
+    expect(container.querySelector('[data-testid="builder-environments-loading"]')).not.toBeNull()
+
+    await act(async () => {
+      resolveEnvs?.({
+        items: [],
+        pagination: {
+          page: 1,
+          page_size: 100,
+          total: 0,
+          total_pages: 0,
+        },
+      })
+      await flushPromises()
+    })
+
+    await settle()
+
+    expect(container.textContent).toContain("No environments yet")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows a build-environment empty state when the project has environments but none are build environments", async () => {
+    envsListMock.mockResolvedValue({
+      items: [
+        {
+          id: "env-plain-1",
+          name: "App Env",
+          is_build_env: false,
+        },
+      ],
+      pagination: {
+        page: 1,
+        page_size: 100,
+        total: 1,
+        total_pages: 1,
+      },
+    })
+
+    const { container, root } = await renderBuilderRoute("/builder-sessions")
+
+    await settle()
+
+    expect(container.textContent).toContain("No build environments yet")
+    expect(container.textContent).toContain("none are marked as build environments")
+    expect(container.querySelector('[data-testid="builder-workspace-body"]')).toBeNull()
+    expect(container.textContent).not.toContain("Create Environment")
+
+    const latestItems = pageHeaderItemsMock.mock.calls.at(-1)?.[0] as Array<{
+      label: string
+      dropdown?: unknown
+    }> | undefined
+    expect(latestItems?.map((item) => item.label)).toEqual([
+      "Builder",
+      "Select Environment",
+      "Workspace",
+    ])
+    expect(latestItems?.[1]?.dropdown).toBeUndefined()
 
     await act(async () => {
       root.unmount()

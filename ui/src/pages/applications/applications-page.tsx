@@ -16,13 +16,14 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useProjectRole } from "@/hooks/useProjectRole"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
 import { useQuery } from "@tanstack/react-query"
-import { Box, ChevronsUpDown, FolderPlus, FolderTree, GalleryVerticalEnd, List, Loader2, Orbit, Plus, Star, Upload } from "lucide-react"
+import { Box, ChevronsUpDown, FolderPlus, FolderTree, GalleryVerticalEnd, List, Orbit, Plus, Star, Upload } from "lucide-react"
 import * as React from "react"
 
 export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: string } = {}) {
@@ -127,6 +128,10 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
     ) : undefined,
   })
 
+  const renderLoadingState = () => (
+    <Skeleton className="h-full w-full rounded-xl" />
+  )
+
   return (
     <div className="flex flex-col flex-1 gap-6">
       {!projectIdProp && <PageHeader items={breadcrumbs} />}
@@ -142,9 +147,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
       )}
 
       {isLoading && envs.length === 0 ? (
-        <div className="flex flex-col flex-1 items-center justify-center min-h-100">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        renderLoadingState()
       ) : !isLoading && safeEnvs.length === 0 ? (
         <EmptyEnvironmentState onAction={!isViewer ? () => setCreateEnvDialogOpen(true) : undefined} />
       ) : effectiveEnvId ? (

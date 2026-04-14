@@ -20,6 +20,9 @@ var (
 	ErrBuilderSessionNotFound      = errors.New("builder session not found")
 	ErrBuilderSessionNotAppendable = errors.New("builder session not appendable")
 	ErrBuilderRunNotFound          = errors.New("builder run not found")
+	builderWorkerQueuedRunNotifier = func() {
+		GlobalBuilderWorker.Nudge()
+	}
 )
 
 type BuilderSessionNotFoundError struct {
@@ -139,6 +142,7 @@ func CreateBuilderSession(ctx context.Context, projectID, userID string, req *mo
 		return nil, err
 	}
 
+	builderWorkerQueuedRunNotifier()
 	return detail, nil
 }
 
@@ -214,6 +218,7 @@ func AppendBuilderSessionMessage(ctx context.Context, projectID, sessionID, user
 		return nil, err
 	}
 
+	builderWorkerQueuedRunNotifier()
 	return detail, nil
 }
 

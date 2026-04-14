@@ -1,6 +1,8 @@
-import { FlaskConical, GalleryVerticalEnd, Goal, Logs, VectorSquare } from "lucide-react"
+import { CalendarRange, FlaskConical, GalleryVerticalEnd, Goal, Logs, Plus, VectorSquare } from "lucide-react"
 
+import { CreateSprintDialog } from "@/components/collaborations/sprint-dialogs"
 import { PageHeader } from "@/components/layout/page-header"
+import { EmptyState } from "@/components/shared/empty-state"
 import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
@@ -22,6 +24,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 import { InputGroupAddon } from "@/components/ui/input-group"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useQuery } from "@tanstack/react-query"
 import BacklogPage from "./backlog-page"
@@ -62,6 +65,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
   const [scope, setScope] = useState<Scope>(() => getStored(STORAGE_KEYS.scope, "all-items"))
   const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>(() => getStored(STORAGE_KEYS.taskView, "list"))
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(() => getStoredNullable(STORAGE_KEYS.sprint))
+  const [createSprintOpen, setCreateSprintOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<string>(() => {
     const stored = getStored(STORAGE_KEYS.tab, "")
     const validTabs = scope === "my-items" ? MY_ITEMS_TABS : ALL_ITEMS_TABS
@@ -75,7 +79,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.tab, activeTab) }, [activeTab])
 
   // Fetch sprints for filter
-  const { data: sprintsData } = useQuery({
+  const { data: sprintsData, isLoading: isSprintsLoading } = useQuery({
     queryKey: ["sprints", projectId, "all"],
     queryFn: () => collaborationApi.listSprints(projectId ?? "", { page: 1, page_size: 100 }),
     enabled: !!projectId,
@@ -83,7 +87,9 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
   const sprints = useMemo(() => sprintsData?.items ?? [], [sprintsData?.items])
   const hasLoadedSprints = sprintsData !== undefined
   const hasSprints = sprints.length > 0
-  const showSprintNavigation = !hasLoadedSprints || hasSprints
+  const showSprintNavigation = hasLoadedSprints && hasSprints
+  const showSprintLoadingState = isSprintsLoading && !hasLoadedSprints
+  const showSprintEmptyState = hasLoadedSprints && !hasSprints
   const sprintOptions = useMemo<SprintOption[]>(() => {
     return [
       // { label: "All Sprints", value: "" },
@@ -165,6 +171,22 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     )
   }
 
+  const renderLoadingState = () => (
+    <Skeleton className="h-full w-full rounded-xl" />
+  )
+
+  const renderNoSprintState = () => (
+    <div className="mt-2">
+      <EmptyState
+        title="No sprints yet"
+        description="Create your first sprint to plan iteration work."
+        icon={CalendarRange}
+        actionText="New Sprint"
+        onAction={() => setCreateSprintOpen(true)}
+        actionIcon={Plus}
+      />
+    </div>
+  )
 
   return (
     <div className="flex flex-col flex-1 gap-6">
@@ -262,54 +284,68 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
             )}
           </div>
 
-          {(validTabs as readonly string[]).includes("sprints") && (
-            <TabsContent value="sprints" className="mt-2">
-              <SprintsPage projectId={projectId} />
-            </TabsContent>
+          {showSprintLoadingState && renderLoadingState()}
+
+          {showSprintEmptyState && renderNoSprintState()}
+
+          {showSprintNavigation && (
+            <>
+              {(validTabs as readonly string[]).includes("sprints") && (
+                <TabsContent value="sprints" className="mt-2">
+                  <SprintsPage projectId={projectId} />
+                </TabsContent>
+              )}
+
+              <TabsContent value="tasks" className="mt-2">
+                <TasksPage
+                  projectId={projectId}
+                  viewMode={taskViewMode}
+                  onViewModeChange={setTaskViewMode}
+                  assigneeId={assigneeId}
+                  sprintId={effectiveSelectedSprintId || undefined}
+                />
+              </TabsContent>
+
+              {(validTabs as readonly string[]).includes("requirements") && (
+                <TabsContent value="requirements" className="mt-2">
+                  <RequirementsPage
+                    projectId={projectId}
+                    assigneeId={assigneeId}
+                    sprintId={effectiveSelectedSprintId || undefined}
+                  />
+                </TabsContent>
+              )}
+
+              {(validTabs as readonly string[]).includes("backlog") && (
+                <TabsContent value="backlog" className="mt-2">
+                  <BacklogPage projectId={projectId} />
+                </TabsContent>
+              )}
+
+              <TabsContent value="test-cases" className="mt-2">
+                <TestCasesPage
+                  projectId={projectId}
+                  sprintId={effectiveSelectedSprintId || undefined}
+                />
+              </TabsContent>
+
+              <TabsContent value="defects" className="mt-2">
+                <DefectsPage
+                  projectId={projectId}
+                  assigneeId={assigneeId}
+                  sprintId={effectiveSelectedSprintId || undefined}
+                />
+              </TabsContent>
+            </>
           )}
-
-          <TabsContent value="tasks" className="mt-2">
-            <TasksPage
-              projectId={projectId}
-              viewMode={taskViewMode}
-              onViewModeChange={setTaskViewMode}
-              assigneeId={assigneeId}
-              sprintId={effectiveSelectedSprintId || undefined}
-            />
-          </TabsContent>
-
-          {(validTabs as readonly string[]).includes("requirements") && (
-            <TabsContent value="requirements" className="mt-2">
-              <RequirementsPage
-                projectId={projectId}
-                assigneeId={assigneeId}
-                sprintId={effectiveSelectedSprintId || undefined}
-              />
-            </TabsContent>
-          )}
-
-          {(validTabs as readonly string[]).includes("backlog") && (
-            <TabsContent value="backlog" className="mt-2">
-              <BacklogPage projectId={projectId} />
-            </TabsContent>
-          )}
-
-          <TabsContent value="test-cases" className="mt-2">
-            <TestCasesPage
-              projectId={projectId}
-              sprintId={effectiveSelectedSprintId || undefined}
-            />
-          </TabsContent>
-
-          <TabsContent value="defects" className="mt-2">
-            <DefectsPage
-              projectId={projectId}
-              assigneeId={assigneeId}
-              sprintId={effectiveSelectedSprintId || undefined}
-            />
-          </TabsContent>
         </Tabs>
       </div>
+
+      <CreateSprintDialog
+        open={createSprintOpen}
+        onOpenChange={setCreateSprintOpen}
+        projectId={projectId}
+      />
     </div>
   )
 }

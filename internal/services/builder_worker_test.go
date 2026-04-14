@@ -177,6 +177,57 @@ func TestBuilderWorkerClaimsQueuedRuns(t *testing.T) {
 		assert.Equal(t, []string{"run-worker-oldest", "run-worker-newer"}, capturedOrder)
 	})
 
+	t.Run("nudge claims queued runs without waiting for fallback polling", func(t *testing.T) {
+		setupBuilderSessionServiceTestDB(t)
+
+		worker := NewBuilderWorker()
+		worker.pollInterval = time.Hour
+		worker.recoveryPollInterval = time.Hour
+		worker.leaseDuration = time.Minute
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		worker.SetParentContext(ctx)
+
+		claimedRunIDs := make(chan string, 1)
+		worker.handleClaimedRunFn = func(ctx context.Context, run *entities.BuilderRun) error {
+			if run == nil || run.ClaimToken == nil || *run.ClaimToken == "" {
+				return errors.New("claimed builder run is missing a claim token")
+			}
+
+			select {
+			case claimedRunIDs <- run.ID:
+			default:
+			}
+
+			_, err := FinalizeBuilderRun(ctx, BuilderRunFinalizeInput{
+				RunID:           run.ID,
+				ClaimToken:      *run.ClaimToken,
+				Status:          entities.BuilderRunStatusSucceeded,
+				WorkspaceUsable: true,
+			})
+			return err
+		}
+
+		worker.Start()
+		defer func() {
+			worker.Stop()
+			worker.Wait()
+		}()
+
+		now := time.Now().UTC().Truncate(time.Second)
+		insertQueuedBuilderRunSeed(t, now, "project-worker-nudge", "session-worker-nudge", "message-worker-nudge", "run-worker-nudge", "Nudge should claim me")
+
+		worker.Nudge()
+
+		select {
+		case runID := <-claimedRunIDs:
+			assert.Equal(t, "run-worker-nudge", runID)
+		case <-time.After(time.Second):
+			t.Fatal("expected worker nudge to claim queued run without waiting for fallback polling")
+		}
+	})
+
 	t.Run("polling claims queued runs without any nudge", func(t *testing.T) {
 		setupBuilderSessionServiceTestDB(t)
 

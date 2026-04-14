@@ -175,6 +175,23 @@ func TestPreflightBuilderWorkerStartupRepairsMissingControlPlaneColumns(t *testi
 	assert.Nil(t, run.TimeoutAt)
 }
 
+func TestPreflightBuilderWorkerStartupRepairsMissingControlPlaneIndexes(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	for _, indexName := range builderRunControlPlaneIndexes {
+		require.True(t, db.DB.Migrator().HasIndex(&entities.BuilderRun{}, indexName))
+		require.NoError(t, db.DB.Migrator().DropIndex(&entities.BuilderRun{}, indexName))
+		assert.False(t, db.DB.Migrator().HasIndex(&entities.BuilderRun{}, indexName))
+	}
+
+	err := PreflightBuilderWorkerStartup(context.Background())
+	require.NoError(t, err)
+
+	for _, indexName := range builderRunControlPlaneIndexes {
+		assert.True(t, db.DB.Migrator().HasIndex(&entities.BuilderRun{}, indexName))
+	}
+}
+
 func TestClaimNextQueuedBuilderRun(t *testing.T) {
 	setupBuilderSessionServiceTestDB(t)
 

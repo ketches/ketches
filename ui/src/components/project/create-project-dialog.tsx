@@ -54,6 +54,7 @@ export function CreateProjectDialog({
     }),
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['projects-simple'] })
       toast.success("Project created successfully")
       onSuccess?.(project)
       setOpen(false)

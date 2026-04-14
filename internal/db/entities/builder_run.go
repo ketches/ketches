@@ -29,19 +29,19 @@ const (
 
 type BuilderRun struct {
 	ID                       string           `gorm:"type:varchar(36);primaryKey"`
-	CreatedAt                time.Time        `gorm:"autoCreateTime"`
+	CreatedAt                time.Time        `gorm:"autoCreateTime;index:idx_builder_runs_status_phase_created,priority:3;index:idx_builder_runs_status_timeout_heartbeat_created,priority:4"`
 	UpdatedAt                time.Time        `gorm:"autoUpdateTime"`
-	SessionID                string           `gorm:"type:varchar(36);index;not null"`
+	SessionID                string           `gorm:"type:varchar(36);index;index:idx_builder_runs_session_status,priority:1;not null"`
 	TriggerMessageID         string           `gorm:"type:varchar(36);index;not null"`
 	WorkspaceID              *string          `gorm:"type:varchar(36);index"`
-	Status                   BuilderRunStatus `gorm:"type:varchar(32);not null;default:'queued';index"`
-	Phase                    *BuilderRunPhase `gorm:"type:varchar(64);default:'queued';index"`
+	Status                   BuilderRunStatus `gorm:"type:varchar(32);not null;default:'queued';index;index:idx_builder_runs_session_status,priority:2;index:idx_builder_runs_status_phase_created,priority:1;index:idx_builder_runs_status_timeout_heartbeat_created,priority:1"`
+	Phase                    *BuilderRunPhase `gorm:"type:varchar(64);default:'queued';index;index:idx_builder_runs_status_phase_created,priority:2"`
 	AttemptCount             int              `gorm:"not null;default:0"`
 	MaxAttempts              int              `gorm:"not null;default:3"`
 	ClaimToken               *string          `gorm:"type:varchar(64);index"`
 	ClaimedAt                *time.Time       `gorm:"index"`
-	HeartbeatAt              *time.Time       `gorm:"index"`
-	TimeoutAt                *time.Time       `gorm:"index"`
+	HeartbeatAt              *time.Time       `gorm:"index;index:idx_builder_runs_status_timeout_heartbeat_created,priority:3"`
+	TimeoutAt                *time.Time       `gorm:"index;index:idx_builder_runs_status_timeout_heartbeat_created,priority:2"`
 	CancelRequestedAt        *time.Time       `gorm:"index"`
 	ProviderScope            *string          `gorm:"type:varchar(32);index"`
 	ProviderKey              *string          `gorm:"type:varchar(128);index"`

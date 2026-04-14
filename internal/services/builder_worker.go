@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	builderWorkerDefaultPollInterval       = 2 * time.Second
+	builderWorkerDefaultPollInterval       = 30 * time.Second
+	builderWorkerDefaultRecoveryInterval   = 15 * time.Second
 	builderWorkerDefaultLeaseDuration      = 2 * time.Minute
 	builderWorkerDefaultHeartbeatInterval  = 30 * time.Second
 	builderWorkerDefaultCancelPollInterval = 250 * time.Millisecond
@@ -71,26 +72,41 @@ type BuilderWorker struct {
 	cancel    context.CancelFunc
 	wg        sync.WaitGroup
 
-	pollInterval       time.Duration
-	leaseDuration      time.Duration
-	heartbeatInterval  time.Duration
-	nowFn              func() time.Time
-	claimTokenFn       func() string
-	handleClaimedRunFn func(ctx context.Context, run *entities.BuilderRun) error
+	pollInterval         time.Duration
+	recoveryPollInterval time.Duration
+	leaseDuration        time.Duration
+	heartbeatInterval    time.Duration
+	nowFn                func() time.Time
+	claimTokenFn         func() string
+	handleClaimedRunFn   func(ctx context.Context, run *entities.BuilderRun) error
+	nudgeCh              chan struct{}
 }
 
 func NewBuilderWorker() *BuilderWorker {
 	worker := &BuilderWorker{
-		pollInterval:      builderWorkerDefaultPollInterval,
-		leaseDuration:     builderWorkerDefaultLeaseDuration,
-		heartbeatInterval: builderWorkerDefaultHeartbeatInterval,
+		pollInterval:         builderWorkerDefaultPollInterval,
+		recoveryPollInterval: builderWorkerDefaultRecoveryInterval,
+		leaseDuration:        builderWorkerDefaultLeaseDuration,
+		heartbeatInterval:    builderWorkerDefaultHeartbeatInterval,
 		nowFn: func() time.Time {
 			return time.Now().UTC()
 		},
 		claimTokenFn: uuid.New,
+		nudgeCh:      make(chan struct{}, 1),
 	}
 	worker.handleClaimedRunFn = worker.executeClaimedRun
 	return worker
+}
+
+func (w *BuilderWorker) Nudge() {
+	if w == nil || w.nudgeCh == nil {
+		return
+	}
+
+	select {
+	case w.nudgeCh <- struct{}{}:
+	default:
+	}
 }
 
 func (e *BuilderWorkerStartupPreflightError) Error() string {
@@ -168,19 +184,44 @@ func (w *BuilderWorker) run(ctx context.Context) {
 		slog.Error(fmt.Sprintf("builder worker initial scan failed: %v", err))
 	}
 
-	ticker := time.NewTicker(w.pollInterval)
+	pollInterval := w.pollInterval
+	if pollInterval <= 0 {
+		pollInterval = builderWorkerDefaultPollInterval
+	}
+	recoveryInterval := w.recoveryPollInterval
+	if recoveryInterval <= 0 {
+		recoveryInterval = builderWorkerDefaultRecoveryInterval
+	}
+
+	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
+	recoveryTicker := time.NewTicker(recoveryInterval)
+	defer recoveryTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			if err := w.processAvailableWork(ctx); err != nil {
+		case <-w.nudgeCh:
+			if err := w.processQueuedRuns(ctx); err != nil {
 				if ctx.Err() != nil {
 					return
 				}
-				slog.Error(fmt.Sprintf("builder worker scan failed: %v", err))
+				slog.Error(fmt.Sprintf("builder worker nudge scan failed: %v", err))
+			}
+		case <-ticker.C:
+			if err := w.processQueuedRuns(ctx); err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+				slog.Error(fmt.Sprintf("builder worker queue scan failed: %v", err))
+			}
+		case <-recoveryTicker.C:
+			if err := w.recoverExpiredExecutingRuns(ctx); err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+				slog.Error(fmt.Sprintf("builder worker recovery scan failed: %v", err))
 			}
 		}
 	}
@@ -191,6 +232,10 @@ func (w *BuilderWorker) processAvailableWork(ctx context.Context) error {
 		return err
 	}
 
+	return w.processQueuedRuns(ctx)
+}
+
+func (w *BuilderWorker) processQueuedRuns(ctx context.Context) error {
 	for {
 		claimedRun, err := ClaimNextQueuedBuilderRun(ctx, w.claimTokenFn(), w.leaseDuration)
 		if err != nil {
@@ -219,6 +264,10 @@ func (w *BuilderWorker) recoverExpiredExecutingRuns(ctx context.Context) error {
 		if err := w.recoverExpiredExecutingRun(ctx, &recoverableRuns[i]); err != nil {
 			return err
 		}
+	}
+
+	if len(recoverableRuns) > 0 {
+		w.Nudge()
 	}
 
 	return nil

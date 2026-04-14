@@ -23,6 +23,9 @@ vi.mock("./requirements-page", () => ({ default: () => null }))
 vi.mock("./sprints-page", () => ({ default: () => <div data-testid="sprints-page" /> }))
 vi.mock("./tasks-page", () => ({ default: () => <div data-testid="tasks-page" /> }))
 vi.mock("./test-cases-page", () => ({ default: () => null }))
+vi.mock("@/components/collaborations/sprint-dialogs", () => ({
+  CreateSprintDialog: ({ open }: { open: boolean }) => <div data-testid="create-sprint-dialog">{String(open)}</div>,
+}))
 
 const listSprintsMock = vi.mocked(collaborationApi.listSprints)
 
@@ -129,9 +132,7 @@ describe("CollaborationsPage", () => {
       )
     })
 
-    const sprintInput = container.querySelector('input[placeholder="Filter by sprint..."]') as HTMLInputElement | null
-
-    expect(sprintInput).not.toBeNull()
+    expect(container.querySelector('input[placeholder="Filter by sprint..."]')).toBeNull()
 
     await act(async () => {
       resolveSprints?.({
@@ -150,6 +151,7 @@ describe("CollaborationsPage", () => {
       await flushPromises()
     })
 
+    const sprintInput = container.querySelector('input[placeholder="Filter by sprint..."]') as HTMLInputElement | null
     expect(sprintInput?.value).toBe(ACTIVE_SPRINT.name)
 
     await act(async () => {
@@ -157,7 +159,61 @@ describe("CollaborationsPage", () => {
     })
   })
 
-  it("hides the sprint filter and top tabs when the project has no sprints", async () => {
+  it("shows only scope switching and skeletons before sprints load", async () => {
+    let resolveSprints: ((value: Awaited<ReturnType<typeof collaborationApi.listSprints>>) => void) | undefined
+    listSprintsMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSprints = resolve
+      }) as ReturnType<typeof collaborationApi.listSprints>
+    )
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <CollaborationsPage projectId="project-1" />
+        </QueryClientProvider>
+      )
+    })
+
+    expect(container.textContent?.includes("My Items")).toBe(true)
+    expect(container.textContent?.includes("All Items")).toBe(true)
+    expect(container.querySelector('input[placeholder="Filter by sprint..."]')).toBeNull()
+    expect(container.textContent?.includes("Sprints")).toBe(false)
+    expect(container.textContent?.includes("Tasks")).toBe(false)
+    expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull()
+
+    await act(async () => {
+      resolveSprints?.({
+        items: [ACTIVE_SPRINT],
+        pagination: {
+          page: 1,
+          page_size: 100,
+          total: 1,
+          total_pages: 1,
+        },
+      })
+      await flushPromises()
+    })
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows the create sprint empty state for my items when the project has no sprints", async () => {
+    localStorage.setItem("collab-scope", "my-items")
     listSprintsMock.mockResolvedValue({
       items: [],
       pagination: {
@@ -194,9 +250,12 @@ describe("CollaborationsPage", () => {
     })
 
     expect(container.querySelector('input[placeholder="Filter by sprint..."]')).toBeNull()
+    expect(container.textContent?.includes("Sprints")).toBe(false)
     expect(container.textContent?.includes("Tasks")).toBe(false)
-    expect(container.textContent?.includes("Requirements")).toBe(false)
-    expect(container.querySelector('[data-testid="sprints-page"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="tasks-page"]')).toBeNull()
+    expect(container.textContent?.includes("No sprints yet")).toBe(true)
+    expect(container.textContent?.includes("Create your first sprint to plan iteration work.")).toBe(true)
+    expect(container.textContent?.includes("New Sprint")).toBe(true)
 
     await act(async () => {
       root.unmount()

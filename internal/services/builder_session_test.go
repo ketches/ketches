@@ -108,6 +108,58 @@ func TestCreateBuilderSessionUsesProjectScopedContractAndStartsQueuedRun(t *test
 	assert.Empty(t, resp.Artifacts)
 }
 
+func TestCreateBuilderSessionNotifiesWorkerAfterQueueingRun(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	originalNotifier := builderWorkerQueuedRunNotifier
+	notified := 0
+	builderWorkerQueuedRunNotifier = func() {
+		notified++
+	}
+	t.Cleanup(func() {
+		builderWorkerQueuedRunNotifier = originalNotifier
+	})
+
+	resp, err := CreateBuilderSession(context.Background(), "project-1", "user-1", &models.CreateBuilderSessionRequest{
+		BuildEnvID: "env-1",
+		Prompt:     "Wake the builder worker immediately.",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, 1, notified)
+}
+
+func TestAppendBuilderSessionMessageNotifiesWorkerAfterQueueingRun(t *testing.T) {
+	setupBuilderSessionServiceTestDB(t)
+
+	session := entities.BuilderSession{
+		Base:           entities.Base{ID: "session-notify"},
+		ProjectID:      "project-1",
+		BuildEnvID:     "env-1",
+		Title:          "Wake worker session",
+		Status:         entities.BuilderSessionStatusReady,
+		CreatedBy:      "user-1",
+		LastActivityAt: time.Now().UTC(),
+	}
+	require.NoError(t, db.DB.Create(&session).Error)
+
+	originalNotifier := builderWorkerQueuedRunNotifier
+	notified := 0
+	builderWorkerQueuedRunNotifier = func() {
+		notified++
+	}
+	t.Cleanup(func() {
+		builderWorkerQueuedRunNotifier = originalNotifier
+	})
+
+	resp, err := AppendBuilderSessionMessage(context.Background(), "project-1", session.ID, "user-1", &models.AppendBuilderSessionMessageRequest{
+		Content: "Queue another run and wake the worker.",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, 1, notified)
+}
+
 func TestCreateBuilderSessionPersistsSelectedProviderAndModel(t *testing.T) {
 	setupBuilderSessionServiceTestDB(t)
 

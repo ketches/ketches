@@ -193,6 +193,7 @@ export function useBuilderWorkspaceSession() {
   const currentUserId = useAuthStore((state) => state.user?.id ?? "")
   const activeProjectId = useProjectStore((state) => state.activeProjectId)
   const activeProjectName = useProjectStore((state) => state.activeProjectName)
+  const activeEnvId = useProjectStore((state) => state.activeEnvId)
   const activeEnvName = useProjectStore((state) => state.activeEnvName)
   const setActiveContextWithNames = useProjectStore((state) => state.setActiveContextWithNames)
   const projectId = projectIdFromParams ?? activeProjectId ?? undefined
@@ -749,7 +750,9 @@ export function useBuilderWorkspaceSession() {
   }, [deployBuildForm, deployExportBuildMutation])
 
   const selectedBuildEnvironment = getSelectedBuildEnvironment(selectedSession, draftBuildEnvId, buildEnvs)
-  const environmentLabel = selectedBuildEnvironment?.name || activeEnvName || "Environment"
+  const activeBuildEnvironment = buildEnvs.find((env) => env.id === activeEnvId)
+  const activeEnvironmentLabel = activeEnvId ? activeBuildEnvironment?.name ?? null : activeEnvName
+  const environmentLabel = selectedBuildEnvironment?.name || activeEnvironmentLabel || "Select Environment"
   const breadcrumbItems = React.useMemo<BreadcrumbItem[]>(() => {
     const environmentDropdown = buildEnvs.length > 0 ? (
       <DropdownMenu>
@@ -791,6 +794,7 @@ export function useBuilderWorkspaceSession() {
       { label: "Workspace", icon: MessageSquare },
     ]
   }, [
+    activeEnvName,
     activeProjectName,
     buildEnvs,
     environmentLabel,

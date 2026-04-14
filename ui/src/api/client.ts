@@ -13,6 +13,26 @@ const client: AxiosInstance = axios.create({
   },
 })
 
+let refreshRequest: Promise<void> | null = null
+
+async function refreshSession(): Promise<void> {
+  if (!refreshRequest) {
+    const headers = applyCSRFHeader(new Headers(), 'POST')
+    refreshRequest = axios.post(
+      `${API_BASE_URL}/v1/users/refresh-token`,
+      {},
+      {
+        withCredentials: true,
+        headers: Object.fromEntries(headers.entries()),
+      }
+    ).then(() => undefined).finally(() => {
+      refreshRequest = null
+    })
+  }
+
+  return refreshRequest
+}
+
 client.interceptors.request.use((config) => {
   if (shouldAttachCSRF(config.method)) {
     const csrfToken = getCSRFToken()
@@ -43,15 +63,7 @@ client.interceptors.response.use(
       if (!isAuthRequest && originalRequest && !originalRequest._retry) {
         originalRequest._retry = true
         try {
-          const headers = applyCSRFHeader(new Headers(), 'POST')
-          await axios.post(
-            `${API_BASE_URL}/v1/users/refresh-token`,
-            {},
-            {
-              withCredentials: true,
-              headers: Object.fromEntries(headers.entries()),
-            }
-          )
+          await refreshSession()
           return client(originalRequest)
         } catch {
           clearPersistedAuthState()

@@ -62,12 +62,31 @@ var builderRunControlPlaneFields = []string{
 	"ErrorClass",
 }
 
+var builderRunControlPlaneIndexes = []string{
+	"idx_builder_runs_session_status",
+	"idx_builder_runs_status_phase_created",
+	"idx_builder_runs_status_timeout_heartbeat_created",
+}
+
 func ensureBuilderRunControlPlaneColumns(tx *gorm.DB) error {
 	for _, field := range builderRunControlPlaneFields {
 		if tx.Migrator().HasColumn(&entities.BuilderRun{}, field) {
 			continue
 		}
 		if err := tx.Migrator().AddColumn(&entities.BuilderRun{}, field); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ensureBuilderRunControlPlaneIndexes(tx *gorm.DB) error {
+	for _, indexName := range builderRunControlPlaneIndexes {
+		if tx.Migrator().HasIndex(&entities.BuilderRun{}, indexName) {
+			continue
+		}
+		if err := tx.Migrator().CreateIndex(&entities.BuilderRun{}, indexName); err != nil {
 			return err
 		}
 	}
@@ -363,6 +382,9 @@ func normalizeLegacyBuilderRunsForControlPlane(tx *gorm.DB) error {
 	if err := ensureBuilderRunControlPlaneColumns(tx); err != nil {
 		return err
 	}
+	if err := ensureBuilderRunControlPlaneIndexes(tx); err != nil {
+		return err
+	}
 
 	if err := tx.Model(&entities.BuilderRun{}).
 		Where("phase IS NULL AND status = ?", entities.BuilderRunStatusQueued).
@@ -389,7 +411,7 @@ func nextQueuedBuilderRunID(tx *gorm.DB) (string, error) {
 		Select("br.id").
 		Joins("JOIN builder_sessions AS bs ON bs.id = br.session_id").
 		Where("br.status = ?", entities.BuilderRunStatusQueued).
-		Where("COALESCE(br.phase, ?) = ?", entities.BuilderRunPhaseQueued, entities.BuilderRunPhaseQueued).
+		Where("br.phase = ?", entities.BuilderRunPhaseQueued).
 		Where("bs.status IN ?", []entities.BuilderSessionStatus{
 			entities.BuilderSessionStatusProvisioning,
 			entities.BuilderSessionStatusReady,
