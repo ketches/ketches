@@ -11,6 +11,7 @@ import {
   Copy,
   Cpu,
   GamepadDirectional,
+  Globe,
   Info,
   Key,
   Link2,
@@ -24,7 +25,6 @@ import {
   Telescope,
   Terminal,
   Trash2,
-  Globe,
   Warehouse
 } from "lucide-react"
 import * as React from "react"
@@ -33,9 +33,9 @@ import { toast } from "sonner"
 
 import { clustersApi } from "@/api/clusters"
 import { ClusterCertificates } from "@/components/cluster/cluster-certificates"
+import { ClusterDomains } from "@/components/cluster/cluster-domains"
 import { ClusterExtensions } from "@/components/cluster/cluster-extensions"
 import { ClusterIntegrationsConfig } from "@/components/cluster/cluster-integrations-config"
-import { ClusterDomains } from "@/components/cluster/cluster-domains"
 import { EditClusterDialog } from "@/components/cluster/edit-cluster-dialog"
 import { ContainerRegistryList } from "@/components/container-registries/container-registry-list"
 import { DataTable } from "@/components/data-table/data-table"
@@ -45,6 +45,7 @@ import { ClusterNodeResourceMetrics } from "@/components/monitoring/cluster-node
 import { MetricsTimeRangeSelector } from "@/components/monitoring/metrics-time-range-selector"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
 import { ColorBadge } from "@/components/shared/color-badge"
+import { EmptyState } from "@/components/shared/empty-state"
 import { DetailHeroSkeleton, InfoCardSkeleton, PanelCardSkeleton, StatCardsSkeleton, TabsSkeleton } from "@/components/shared/page-skeletons"
 import { StatCard } from "@/components/shared/stat-card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -775,16 +776,7 @@ export function ClusterDetailPage() {
                 searchKey="name"
                 searchPlaceholder="Filter nodes..."
               />) : (
-
-                <div className="flex flex-col items-center justify-center py-12 gap-4 bg-destructive/5 border border-destructive/10 rounded-md">
-                  <Server className="h-12 w-12 text-muted-foreground" />
-                  <div className="text-center">
-                    <p className="text-sm font-medium">No Nodes Available</p>
-                    <p className="text-xs text-muted-foreground">
-                      No nodes found in this cluster. This could indicate a connectivity issue or that the cluster is still provisioning.
-                    </p>
-                  </div>
-                </div>
+                <EmptyState icon={Server} title="No Nodes Available" description="No nodes found in this cluster. This could indicate a connectivity issue or that the cluster is still provisioning." />
               )}
             </CardContent>
           </Card>
