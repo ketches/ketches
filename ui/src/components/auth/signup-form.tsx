@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useQuery } from "@tanstack/react-query"
+import { isAxiosError } from "axios"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import * as z from "zod"
-import { isAxiosError } from "axios"
 
 import { authApi, type SignUpRequest, type SignUpVerificationCodeRequest } from "@/api/auth"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { PASSWORD_POLICY_MESSAGE, isStrongPassword } from "@/lib/password-policy"
 import { cn } from "@/lib/utils"
+import { Send } from "lucide-react"
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../ui/input-group"
 
 type SignupFormValues = {
   fullname: string
@@ -64,6 +66,7 @@ export function SignupForm({
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSendingCode, setIsSendingCode] = useState(false)
+  const [hasSentVerificationCode, setHasSentVerificationCode] = useState(false)
   const [resendAfterSeconds, setResendAfterSeconds] = useState(0)
 
   const signUpConfigQuery = useQuery({
@@ -83,6 +86,8 @@ export function SignupForm({
       verificationCode: "",
     },
   })
+  const emailField = register("email")
+  const shouldShowProtectedFields = !emailVerificationRequired || hasSentVerificationCode
 
   useEffect(() => {
     if (resendAfterSeconds <= 0) {
@@ -108,6 +113,7 @@ export function SignupForm({
     try {
       const payload: SignUpVerificationCodeRequest = { email }
       const response = await authApi.sendSignUpVerificationCode(payload)
+      setHasSentVerificationCode(true)
       setResendAfterSeconds(response.resend_after_seconds)
       toast.success("Verification code sent", {
         description: "Check your email inbox for the 6-digit code.",
@@ -123,6 +129,16 @@ export function SignupForm({
     } finally {
       setIsSendingCode(false)
     }
+  }
+
+  const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    emailField.onChange(event)
+    if (!hasSentVerificationCode) {
+      return
+    }
+
+    setHasSentVerificationCode(false)
+    setResendAfterSeconds(0)
   }
 
   const onSubmit = async (data: SignupFormValues) => {
@@ -189,7 +205,11 @@ export function SignupForm({
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Create your account</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            {emailVerificationRequired ? "Verify your email, then complete the registration form." : "Complete the registration form."}
+            {emailVerificationRequired
+              ? shouldShowProtectedFields
+                ? "Enter the verification code and finish setting your password."
+                : "Enter your email address to receive a verification code."
+              : "Complete the registration form."}
           </p>
         </div>
         {error && (
@@ -198,7 +218,7 @@ export function SignupForm({
           </div>
         )}
         <Field>
-          <FieldLabel htmlFor="fullname">Full Name</FieldLabel>
+          <FieldLabel htmlFor="fullname">Full Name *</FieldLabel>
           <FieldContent>
             <Input
               id="fullname"
@@ -211,7 +231,7 @@ export function SignupForm({
           )}
         </Field>
         <Field>
-          <FieldLabel htmlFor="username">Username</FieldLabel>
+          <FieldLabel htmlFor="username">Username *</FieldLabel>
           <FieldContent>
             <Input
               id="username"
@@ -224,35 +244,47 @@ export function SignupForm({
           )}
         </Field>
         <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <FieldLabel htmlFor="email">Email *</FieldLabel>
           <FieldContent className="flex gap-2">
-            <Input
-              id="email"
-              type="email"
-              placeholder="m@example.com"
-              {...register("email")}
-            />
-            {emailVerificationRequired && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isSendingCode || resendAfterSeconds > 0}
-                onClick={handleSendVerificationCode}
-              >
-                {isSendingCode ? "Sending..." : resendAfterSeconds > 0 ? `Resend in ${resendAfterSeconds}s` : "Send Code"}
-              </Button>
-            )}
+            <InputGroup>
+              <InputGroupInput
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                {...emailField}
+                onChange={handleEmailChange}
+              />
+              <InputGroupAddon align="inline-end">
+                {emailVerificationRequired && (
+                  <InputGroupButton
+                    type="button"
+                    variant="secondary"
+                    disabled={isSendingCode || resendAfterSeconds > 0}
+                    onClick={handleSendVerificationCode}
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    {isSendingCode
+                      ? "Sending..."
+                      : resendAfterSeconds > 0
+                        ? `Resend in ${resendAfterSeconds}s`
+                        : "Send Code"}
+                  </InputGroupButton>
+                )}
+              </InputGroupAddon>
+            </InputGroup>
           </FieldContent>
           {emailVerificationRequired && (
             <FieldDescription>
-              Verification codes stay valid for 300 seconds.
+              {shouldShowProtectedFields
+                ? "Verification codes stay valid for 300 seconds."
+                : "Send a verification code to continue registration."}
             </FieldDescription>
           )}
           {errors.email && (
             <FieldError>{errors.email.message}</FieldError>
           )}
         </Field>
-        {emailVerificationRequired && (
+        {emailVerificationRequired && shouldShowProtectedFields && (
           <Field>
             <FieldLabel htmlFor="verificationCode">Verification Code</FieldLabel>
             <FieldContent>
@@ -269,39 +301,43 @@ export function SignupForm({
             )}
           </Field>
         )}
-        <Field>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
-          <FieldContent>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              {...register("password")}
-            />
-          </FieldContent>
-          <FieldDescription>{PASSWORD_POLICY_MESSAGE}</FieldDescription>
-          {errors.password && (
-            <FieldError>{errors.password.message}</FieldError>
-          )}
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
-          <FieldContent>
-            <Input
-              id="confirmPassword"
-              type="password"
-              {...register("confirmPassword")}
-            />
-          </FieldContent>
-          {errors.confirmPassword && (
-            <FieldError>{errors.confirmPassword.message}</FieldError>
-          )}
-        </Field>
-        <Field>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Creating Account..." : "Create Account"}
-          </Button>
-        </Field>
+        {shouldShowProtectedFields && (
+          <>
+            <Field>
+              <FieldLabel htmlFor="password">Password *</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="new-password"
+                  {...register("password")}
+                />
+              </FieldContent>
+              <FieldDescription>{PASSWORD_POLICY_MESSAGE}</FieldDescription>
+              {errors.password && (
+                <FieldError>{errors.password.message}</FieldError>
+              )}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="confirmPassword">Confirm Password *</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  {...register("confirmPassword")}
+                />
+              </FieldContent>
+              {errors.confirmPassword && (
+                <FieldError>{errors.confirmPassword.message}</FieldError>
+              )}
+            </Field>
+            <Field>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Creating Account..." : "Create Account"}
+              </Button>
+            </Field>
+          </>
+        )}
         <Field>
           <div className="text-center text-xs">
             Already have an account?{" "}
