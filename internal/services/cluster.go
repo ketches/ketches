@@ -458,11 +458,17 @@ func InitClusters() error {
 					}
 					cluster.KubeConfig = encryptedKubeConfig
 				} else {
-					return err
+					kube.GlobalClusterStore.RemoveClient(cluster.ID)
+					updateClusterConnectionStatus(cluster.ID, "disconnected", err.Error(), "")
+					slog.Error(fmt.Sprintf("InitClusters: failed to decrypt kubeconfig for cluster %s (%s): %v", cluster.Name, cluster.ID, err))
+					continue
 				}
 			}
 			if err := kube.GlobalClusterStore.AddClient(cluster.ID, plaintextKubeConfig); err != nil {
-				return err
+				kube.GlobalClusterStore.RemoveClient(cluster.ID)
+				updateClusterConnectionStatus(cluster.ID, "disconnected", err.Error(), "")
+				slog.Error(fmt.Sprintf("InitClusters: failed to initialize client for cluster %s (%s): %v", cluster.Name, cluster.ID, err))
+				continue
 			}
 		}
 	}

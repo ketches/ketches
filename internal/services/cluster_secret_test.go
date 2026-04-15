@@ -182,6 +182,61 @@ func TestInitClustersHandlesLegacyPlaintextKubeConfig(t *testing.T) {
 	assert.Equal(t, testClusterKubeConfig("https://127.0.0.1"), decryptedKubeConfig)
 }
 
+func TestInitClustersSkipsClustersWithUndecryptableKubeConfig(t *testing.T) {
+	setupClusterSecretTestDB(t)
+
+	originalConfig := app.Config
+	t.Cleanup(func() {
+		app.Config = originalConfig
+	})
+	app.Config.SecretEncryptionKey = "current-master-key"
+
+	validKubeConfig := testClusterKubeConfig("https://127.0.0.1")
+	validEncryptedKubeConfig, err := secrets.EncryptString(validKubeConfig)
+	require.NoError(t, err)
+
+	app.Config.SecretEncryptionKey = "stale-master-key"
+	staleEncryptedKubeConfig, err := secrets.EncryptString(testClusterKubeConfig("https://10.0.0.1"))
+	require.NoError(t, err)
+	app.Config.SecretEncryptionKey = "current-master-key"
+
+	goodCluster := entities.Cluster{
+		Base:       entities.Base{ID: "cluster-good"},
+		Slug:       "good-cluster",
+		Name:       "Good Cluster",
+		KubeConfig: validEncryptedKubeConfig,
+		Enabled:    true,
+	}
+	badCluster := entities.Cluster{
+		Base:       entities.Base{ID: "cluster-bad"},
+		Slug:       "bad-cluster",
+		Name:       "Bad Cluster",
+		KubeConfig: staleEncryptedKubeConfig,
+		Enabled:    true,
+	}
+
+	require.NoError(t, db.DB.Create(&goodCluster).Error)
+	require.NoError(t, db.DB.Create(&badCluster).Error)
+	t.Cleanup(func() {
+		kube.GlobalClusterStore.RemoveClient(goodCluster.ID)
+		kube.GlobalClusterStore.RemoveClient(badCluster.ID)
+	})
+
+	require.NoError(t, InitClusters())
+
+	_, err = kube.GlobalClusterStore.GetClient(goodCluster.ID)
+	require.NoError(t, err)
+
+	_, err = kube.GlobalClusterStore.GetClient(badCluster.ID)
+	require.Error(t, err)
+
+	var storedBad entities.Cluster
+	require.NoError(t, db.DB.First(&storedBad, "id = ?", badCluster.ID).Error)
+	assert.Equal(t, "disconnected", storedBad.ConnectionStatus)
+	assert.Contains(t, storedBad.ConnectionStatusReason, "decrypt ciphertext")
+	assert.NotNil(t, storedBad.LastCheckedAt)
+}
+
 func TestCreateClusterIntegrationEncryptsSecretsAtRest(t *testing.T) {
 	setupClusterSecretTestDB(t)
 
