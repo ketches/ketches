@@ -1,10 +1,10 @@
+import type { Cluster } from "@/api/clusters"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate } from "@/lib/utils"
 import { Info, Pencil } from "lucide-react"
 import * as React from "react"
-import { EditClusterConnectionDialog } from "./edit-cluster-connection-dialog"
-import type { Cluster } from "@/api/clusters"
+import { EditClusterKubeConfigDialog } from "./edit-cluster-kube-config-dialog"
 
 interface ClusterConnectionCardProps {
   cluster: Cluster
@@ -56,7 +56,7 @@ export function ClusterConnectionCard({ cluster }: ClusterConnectionCardProps) {
         </CardContent>
       </Card>
 
-      <EditClusterConnectionDialog
+      <EditClusterKubeConfigDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         cluster={cluster}

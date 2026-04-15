@@ -1,12 +1,16 @@
 /** @vitest-environment jsdom */
 import "@testing-library/jest-dom/vitest"
-import { describe, test, expect, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { afterEach, describe, test, expect, vi } from "vitest"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ClusterDetailPage } from "./cluster-detail-page"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 
 const queryClient = new QueryClient()
+
+afterEach(() => {
+  cleanup()
+})
 
 vi.mock("@/api/clusters", () => ({
   clustersApi: {
@@ -60,4 +64,22 @@ describe("ClusterDetailPage", () => {
 		expect(screen.getByText("gateway.example.com")).toBeInTheDocument()
 		expect(screen.getByRole("tab", { name: /domains/i })).toBeInTheDocument()
 	})
+
+  test("opens edit kubeconfig dialog from the kubeconfig action", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/clusters/cluster-1"]}>
+          <Routes>
+            <Route path="/clusters/:clusterId" element={<ClusterDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    const buttons = await screen.findAllByRole("button", { name: /edit kubeconfig/i })
+    fireEvent.click(buttons[buttons.length - 1]!)
+
+    expect(await screen.findByRole("heading", { name: /edit kubeconfig/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /detect/i })).toBeInTheDocument()
+  })
 })

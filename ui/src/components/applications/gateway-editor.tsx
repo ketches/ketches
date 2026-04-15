@@ -364,8 +364,8 @@ export function GatewayEditor({
                           </button>
                         }
                       />
-                      <TooltipContent side="top" align="start" className="max-w-64">
-                        <p className="text-xs">The port your application listens on inside the container (1-65535).</p>
+                      <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                        <p className="text-xs">- The port your application listens on inside the container (1-65535).</p>
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
@@ -526,8 +526,8 @@ export function GatewayEditor({
                           </button>
                         }
                       />
-                      <TooltipContent side="top" align="start" className="max-w-64">
-                        <p className="text-xs">Public access is currently available only for HTTP/HTTPS gateways. TCP/UDP public exposure is not supported yet.</p>
+                      <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                        <p className="text-xs">- Public access is currently available only for HTTP/HTTPS gateways. TCP/UDP public exposure is not supported yet.</p>
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -551,9 +551,9 @@ export function GatewayEditor({
                             </button>
                           }
                           />
-                          <TooltipContent side="top" align="start" className="max-w-64">
-                            <p className="text-xs">Choose a saved domain or type one directly.</p>
-                            <p className="text-xs mt-1">If the selected domain starts with `*.` the input removes the `*` so you can enter the hostname prefix yourself.</p>
+                          <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                            <p className="text-xs">- Choose a saved domain or type one directly.</p>
+                            <p className="text-xs mt-1">- If the selected domain starts with `*.` the input removes the `*` so you can enter the hostname prefix yourself.</p>
                           </TooltipContent>
                         </Tooltip>
                       </FieldLabel>
@@ -630,8 +630,8 @@ export function GatewayEditor({
                           </button>
                         }
                       />
-                      <TooltipContent side="top" align="start" className="max-w-64">
-                        <p className="text-xs">URL path prefix (must start with /).</p>
+                      <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                        <p className="text-xs">- URL path prefix (must start with /).</p>
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
@@ -664,8 +664,8 @@ export function GatewayEditor({
                             </button>
                           }
                         />
-                        <TooltipContent side="top" align="start" className="max-w-64">
-                          <p className="text-xs">Select a TLS certificate for HTTPS. Certificates are managed in the environment settings.</p>
+                        <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                          <p className="text-xs">- Select a TLS certificate for HTTPS. Certificates are managed in the environment settings.</p>
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>
@@ -706,8 +706,8 @@ export function GatewayEditor({
                         </button>
                       }
                     />
-                    <TooltipContent side="top" align="start" className="max-w-64">
-                      <p className="text-xs">The external port exposed by the gateway for TCP/UDP protocols.</p>
+                    <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                      <p className="text-xs">- The external port exposed by the gateway for TCP/UDP protocols.</p>
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>

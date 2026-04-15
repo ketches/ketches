@@ -1,5 +1,5 @@
-import { AxiosError } from "axios"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { AxiosError } from "axios"
 import { CheckCircle2, InfoIcon, Link2, Loader2, Upload } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
@@ -231,8 +231,8 @@ export function CreateClusterDialog({
                       </button>
                     }
                   />
-                  <TooltipContent side="top" align="start" className="max-w-64">
-                    <p className="text-xs">2-50 characters.</p>
+                  <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                    <p className="text-xs">- 2-50 characters.</p>
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
@@ -258,9 +258,9 @@ export function CreateClusterDialog({
                   <TooltipTrigger tabIndex={-1}>
                     <InfoIcon className="h-3.5 w-3.5" />
                   </TooltipTrigger>
-                  <TooltipContent side="top" align="start" className="max-w-64">
-                    <p className="text-xs">3-32 characters.</p>
-                    <p className="text-xs mt-1">Only lowercase letters, numbers, and hyphens.</p>
+                  <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                    <p className="text-xs">- 3-32 characters.</p>
+                    <p className="text-xs mt-1">- Only lowercase letters, numbers, and hyphens.</p>
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
@@ -287,10 +287,10 @@ export function CreateClusterDialog({
                     <TooltipTrigger tabIndex={-1}>
                       <InfoIcon className="h-3.5 w-3.5" />
                     </TooltipTrigger>
-                    <TooltipContent side="top" align="start" className="max-w-64">
-                      <p className="text-xs">Kubernetes config file content (JSON or YAML).</p>
-                      <p className="text-xs mt-1">Supports upload JSON or YAML format file.</p>
-                      <p className="text-xs mt-1">Auto-extracts Gateway Host from apiServer.</p>
+                    <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                      <p className="text-xs">- Kubernetes config file content (JSON or YAML).</p>
+                      <p className="text-xs mt-1">- Supports upload JSON or YAML format file.</p>
+                      <p className="text-xs mt-1">- Auto-extracts Gateway Host from apiServer.</p>
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
@@ -333,9 +333,9 @@ export function CreateClusterDialog({
                       </button>
                     }
                   />
-                  <TooltipContent side="top" align="start" className="max-w-64">
-                    <p className="text-xs">Auto-extracted from KubeConfig apiServer.</p>
-                    <p className="text-xs mt-1">Can be manually edited.</p>
+                  <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                    <p className="text-xs">- Auto-extracted from KubeConfig apiServer.</p>
+                    <p className="text-xs mt-1">- Can be manually edited.</p>
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
@@ -343,13 +343,13 @@ export function CreateClusterDialog({
                 <Input
                   placeholder="192.168.1.1"
                   value={formData.gateway_host}
-					onChange={(e) => setFormData((prev) => ({ ...prev, gateway_host: e.target.value }))}
-					aria-invalid={!!errors.gateway_host}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, gateway_host: e.target.value }))}
+                  aria-invalid={!!errors.gateway_host}
                 />
               </FieldContent>
-				{errors.gateway_host && (
+              {errors.gateway_host && (
                 <FieldError>
-					<span className="text-destructive text-xs">{errors.gateway_host}</span>
+                  <span className="text-destructive text-xs">{errors.gateway_host}</span>
                 </FieldError>
               )}
             </Field>

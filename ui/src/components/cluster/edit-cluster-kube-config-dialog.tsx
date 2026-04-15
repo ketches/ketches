@@ -1,6 +1,6 @@
-import { AxiosError } from "axios"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { CheckCircle2, InfoIcon, Link2, Loader2, Upload } from "lucide-react"
+import { AxiosError } from "axios"
+import { CheckCircle2, InfoIcon, Link2, Loader2, RefreshCw, Upload } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -14,12 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface EditClusterConnectionDialogProps {
+interface EditClusterKubeConfigDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   cluster: Cluster
@@ -49,11 +49,11 @@ function extractGatewayHost(kubeConfig: string) {
   return ""
 }
 
-export function EditClusterConnectionDialog({
+export function EditClusterKubeConfigDialog({
   open,
   onOpenChange,
   cluster,
-}: EditClusterConnectionDialogProps) {
+}: EditClusterKubeConfigDialogProps) {
   const queryClient = useQueryClient()
 
   const [errors, setErrors] = React.useState<{
@@ -112,10 +112,6 @@ export function EditClusterConnectionDialog({
 
   const handleKubeConfigChange = (value: string) => {
     setFormData((prev) => ({ ...prev, kube_config: value }))
-    const gatewayHost = extractGatewayHost(value)
-    if (gatewayHost) {
-      setFormData((prev) => ({ ...prev, gateway_host: gatewayHost }))
-    }
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,6 +139,30 @@ export function EditClusterConnectionDialog({
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }
+
+  const handleDetectGatewayHost = () => {
+    if (!formData.kube_config.trim()) {
+      setErrors((prev) => ({ ...prev, kube_config: "Please fill in the KubeConfig" }))
+      toast.error("Gateway Host Detection Failed", {
+        description: "Please fill in the KubeConfig before detecting Gateway Host",
+      })
+      return
+    }
+
+    const gatewayHost = extractGatewayHost(formData.kube_config)
+    if (!gatewayHost) {
+      toast.error("Gateway Host Detection Failed", {
+        description: "Unable to detect Gateway Host from the provided KubeConfig",
+      })
+      return
+    }
+
+    setFormData((prev) => ({ ...prev, gateway_host: gatewayHost }))
+    setErrors((prev) => ({ ...prev, gateway_host: undefined }))
+    toast.success("Gateway Host detected", {
+      description: `Gateway Host updated to ${gatewayHost}`,
+    })
   }
 
   const handlePing = () => {
@@ -179,7 +199,7 @@ export function EditClusterConnectionDialog({
       <DialogContent className="sm:max-w-140 max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Update KubeConfig</DialogTitle>
+            <DialogTitle>Edit KubeConfig</DialogTitle>
             <DialogDescription>
               Update the cluster KubeConfig and gateway host.
             </DialogDescription>
@@ -194,10 +214,10 @@ export function EditClusterConnectionDialog({
                     <TooltipTrigger tabIndex={-1}>
                       <InfoIcon className="h-3.5 w-3.5" />
                     </TooltipTrigger>
-                    <TooltipContent side="top" align="start" className="max-w-64">
-                      <p className="text-xs">Kubernetes config file content (JSON or YAML).</p>
-                      <p className="text-xs mt-1">Supports upload JSON or YAML format file.</p>
-                      <p className="text-xs mt-1">Auto-extracts Gateway Host from apiServer.</p>
+                    <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                      <p className="text-xs">- Kubernetes config file content (JSON or YAML).</p>
+                      <p className="text-xs mt-1">- Supports upload JSON or YAML format file.</p>
+                      <p className="text-xs mt-1">- Use the detect button on Gateway Host when you want to update it from apiServer.</p>
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
@@ -240,20 +260,35 @@ export function EditClusterConnectionDialog({
                       </button>
                     }
                   />
-                  <TooltipContent side="top" align="start" className="max-w-64">
-                    <p className="text-xs">Auto-extracted from KubeConfig apiServer.</p>
-                    <p className="text-xs mt-1">Can be manually edited.</p>
+                  <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                    <p className="text-xs">- Can be manually edited.</p>
+                    <p className="text-xs mt-1">- Use the button to detect and update from the current KubeConfig apiServer.</p>
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
               <FieldContent>
-                <Input
-                  placeholder="e.g. 10.0.0.1 or gateway.example.com"
-                  value={formData.gateway_host}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, gateway_host: e.target.value }))}
-                  aria-invalid={!!errors.gateway_host}
-                />
+                <InputGroup>
+                  <InputGroupInput
+                    placeholder="e.g. 10.0.0.1 or gateway.example.com"
+                    value={formData.gateway_host}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, gateway_host: e.target.value }))}
+                    aria-invalid={!!errors.gateway_host}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      type="button"
+                      variant="secondary"
+                      onClick={handleDetectGatewayHost}
+                    >
+                      <RefreshCw data-icon="inline-start" />
+                      Detect
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
               </FieldContent>
+              <FieldDescription>
+                Detect from KubeConfig only when you want to overwrite the current Gateway Host.
+              </FieldDescription>
               {errors.gateway_host && (
                 <FieldError>
                   <span className="text-destructive text-xs">{errors.gateway_host}</span>
@@ -293,7 +328,7 @@ export function EditClusterConnectionDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? "Updating..." : "Update KubeConfig"}
+                {updateMutation.isPending ? "Updating..." : "Save Changes"}
               </Button>
             </div>
           </DialogFooter>

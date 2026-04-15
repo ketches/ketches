@@ -129,8 +129,8 @@ export function EditEnvironmentDialog({
                       </button>
                     }
                   />
-                  <TooltipContent side="top" align="start" className="max-w-64">
-                    <p className="text-xs">2-50 characters.</p>
+                  <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                    <p className="text-xs">- 2-50 characters.</p>
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>

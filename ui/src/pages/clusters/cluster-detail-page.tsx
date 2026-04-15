@@ -37,6 +37,7 @@ import { ClusterDomains } from "@/components/cluster/cluster-domains"
 import { ClusterExtensions } from "@/components/cluster/cluster-extensions"
 import { ClusterIntegrationsConfig } from "@/components/cluster/cluster-integrations-config"
 import { EditClusterDialog } from "@/components/cluster/edit-cluster-dialog"
+import { EditClusterKubeConfigDialog } from "@/components/cluster/edit-cluster-kube-config-dialog"
 import { ContainerRegistryList } from "@/components/container-registries/container-registry-list"
 import { DataTable } from "@/components/data-table/data-table"
 import { NotFoundPage } from "@/components/layout/not-found-page"
@@ -134,6 +135,7 @@ export function ClusterDetailPage() {
   const queryClient = useQueryClient()
   const { openPanel } = useBottomPanel()
   const [editOpen, setEditOpen] = React.useState(false)
+  const [editKubeConfigOpen, setEditKubeConfigOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get("tab") || "overview"
@@ -661,7 +663,7 @@ export function ClusterDetailPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setEditOpen(true)}
+                      onClick={() => setEditKubeConfigOpen(true)}
                     >
                       <Key className="h-4 w-4" />
                       {cluster.has_kube_config ? "Edit KubeConfig" : "Configure KubeConfig"}
@@ -810,6 +812,12 @@ export function ClusterDetailPage() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["cluster", clusterId] })
         }}
+      />
+
+      <EditClusterKubeConfigDialog
+        open={editKubeConfigOpen}
+        onOpenChange={setEditKubeConfigOpen}
+        cluster={cluster}
       />
 
 
