@@ -3,7 +3,6 @@ import { InlineStatusEditor } from "@/components/collaborations/inline-editors"
 import { CreateSprintDialog, EditSprintDialog } from "@/components/collaborations/sprint-dialogs"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
-import { getErrorMessage } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
@@ -15,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { useDebounce } from "@/hooks/use-debounce"
-import { formatDate } from "@/lib/utils"
+import { formatDate, getErrorMessage } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { CalendarRange, Goal, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
@@ -196,7 +195,7 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
           <EmptyState
             title="No sprints yet"
             description="Create your first sprint to plan iteration work."
-            icon={CalendarRange}
+            icon={Goal}
             actionText="New Sprint"
             onAction={() => setCreateOpen(true)}
             actionIcon={Plus}

@@ -1,7 +1,8 @@
 import { usersApi, type ListUsersResponse, type User as UserType } from "@/api/users"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { UserAvatarFallback } from "@/components/shared/user-avatar"
+import { Avatar } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -163,10 +164,8 @@ export function UsersPage() {
         const user = row.original
         return (
           <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8 rounded-lg bg-primary/10 text-primary border-none">
-              <AvatarFallback className="rounded-lg text-xs font-bold">
-                {user.username.charAt(0).toUpperCase()}
-              </AvatarFallback>
+            <Avatar className="h-8 w-8 after:border-none">
+              <UserAvatarFallback name={user.fullname || user.username} className="rounded-full text-xs font-bold" />
             </Avatar>
             <div className="flex flex-col">
               <span className="font-medium text-foreground">{user.fullname || user.username}</span>

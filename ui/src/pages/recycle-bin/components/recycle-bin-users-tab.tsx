@@ -3,7 +3,8 @@ import { ArchiveRestore, Clock, Trash2, User } from "lucide-react"
 import type { Dispatch, ReactNode, SetStateAction } from "react"
 
 import { type RecycleBinUser } from "@/api/recycle-bin"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { UserAvatarFallback } from "@/components/shared/user-avatar"
+import { Avatar } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -55,10 +56,8 @@ export function RecycleBinUsersTab({
       header: "User",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8 rounded-lg border-none bg-primary/10 text-primary">
-            <AvatarFallback className="rounded-lg text-xs font-bold">
-              {row.original.username.charAt(0).toUpperCase()}
-            </AvatarFallback>
+          <Avatar className="h-8 w-8 after:border-none">
+            <UserAvatarFallback name={row.original.fullname || row.original.username} className="rounded-full text-xs font-bold" />
           </Avatar>
           <div className="flex flex-col">
             <span className="font-medium text-foreground">{row.original.fullname || row.original.username}</span>

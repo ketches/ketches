@@ -90,7 +90,7 @@ vi.mock("@/components/shared/key-value-input", () => ({
   KeyValueInput: () => <div>Environment Variables</div>,
 }))
 
-vi.mock("./../ui/item", () => ({
+vi.mock("./@/components/ui/item", () => ({
   Item: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ItemContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ItemDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

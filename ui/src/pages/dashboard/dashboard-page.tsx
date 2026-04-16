@@ -127,7 +127,6 @@ function AdminDashboard() {
               icon={Users}
               description="Registered users"
               onClick={() => navigate("/users")}
-              color="red"
             />
           </div>
 
@@ -341,7 +340,6 @@ export function UserDashboard({ projectId: projectIdProp }: { projectId?: string
               icon={Users}
               description="Project members"
               onClick={() => navigate("/members")}
-              color="red"
             />
           </div>
 

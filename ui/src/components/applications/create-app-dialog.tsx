@@ -24,8 +24,8 @@ import { useProjectStore } from "@/stores/project"
 import type { AxiosError } from "axios"
 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 import { deriveImageDefaults, toNameSlug } from "./create-app-dialog.utils"
 
 interface CreateAppDialogProps {
@@ -100,21 +100,21 @@ export function CreateAppDialog({
   const mutation = useMutation<App, AxiosError<{ error: string }>, CreateAppFormData>({
     mutationFn: (data) => {
       const payload: AppCreateRequest = {
-      name: data.name,
-      slug: data.slug,
-      app_type: data.app_type,
-      container_image: data.container_image,
-      image_pull_policy: data.image_pull_policy,
-      registry_username: data.registry_username,
-      registry_password: data.registry_password,
-      replicas: 1,
-      request_cpu: 100,
-      request_memory: 128,
-      limit_cpu: 1000,
-      limit_memory: 512,
-      description: data.description,
-      deploy: data.deploy,
-      seed_image_metadata: true,
+        name: data.name,
+        slug: data.slug,
+        app_type: data.app_type,
+        container_image: data.container_image,
+        image_pull_policy: data.image_pull_policy,
+        registry_username: data.registry_username,
+        registry_password: data.registry_password,
+        replicas: 1,
+        request_cpu: 100,
+        request_memory: 128,
+        limit_cpu: 1000,
+        limit_memory: 512,
+        description: data.description,
+        deploy: data.deploy,
+        seed_image_metadata: true,
       }
 
       return appsApi.create(activeEnvId!, payload)

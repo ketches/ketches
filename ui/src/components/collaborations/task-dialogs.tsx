@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { format, isValid, parse } from "date-fns"
-import { CalendarIcon, User } from "lucide-react"
+import { CalendarIcon, Goal, User } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { MemberAvatar } from "./inline-editors"
@@ -179,6 +179,7 @@ export function CreateTaskDialog({
                   <ComboboxList>
                     {sprintItems.map((opt) => (
                       <ComboboxItem key={opt.value} value={opt.value}>
+                        <Goal className="text-fuchsia-500" />
                         {opt.label}
                       </ComboboxItem>
                     ))}
@@ -214,6 +215,7 @@ export function CreateTaskDialog({
                     <ComboboxList>
                       {TaskStatusOptions.map((opt) => (
                         <ComboboxItem key={opt.value} value={opt.value}>
+                          <opt.icon className={`text-${opt.color}-500`} />
                           {opt.label}
                         </ComboboxItem>
                       ))}
@@ -236,6 +238,7 @@ export function CreateTaskDialog({
                     <ComboboxList>
                       {CollabPriorityOptions.map((opt) => (
                         <ComboboxItem key={opt.value} value={opt.value}>
+                          <opt.icon className={`text-${opt.color}-500`} />
                           {opt.label}
                         </ComboboxItem>
                       ))}

@@ -18,10 +18,10 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group"
 import { PASSWORD_POLICY_MESSAGE, isStrongPassword } from "@/lib/password-policy"
 import { cn } from "@/lib/utils"
 import { Send } from "lucide-react"
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../ui/input-group"
 
 const PROTECTED_FIELDS_TRANSITION_MS = 280
 

@@ -14,10 +14,10 @@ import {
   Orbit,
   Pencil,
   Puzzle,
+  Share2,
   Telescope,
   Trash2,
   Users,
-  VectorSquare,
   Warehouse
 } from "lucide-react"
 import * as React from "react"
@@ -53,6 +53,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectRole } from "@/hooks/useProjectRole"
+import { formatDate } from "@/lib/utils"
 import { ApplicationsPage } from "@/pages/applications/applications-page"
 import { CodeRepositoriesPage } from "@/pages/code-repositories/code-repositories-page"
 import { CollaborationsPage } from "@/pages/collaborations/collaborations-page"
@@ -63,7 +64,6 @@ import { MembersPage } from "@/pages/members/members-page"
 import { PluginsPage } from "@/pages/plugins/plugins-page"
 import { useAuthStore } from "@/stores/auth"
 import { useProjectStore } from "@/stores/project"
-import { formatDate } from "@/lib/utils"
 
 interface ProjectDetailPageProps {
   initialTab?: string
@@ -306,7 +306,7 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
           </TabsTrigger>
           {isAdmin ? (
             <TabsTrigger value="collaboration">
-              <VectorSquare />
+              <Share2 />
               Collaborations
             </TabsTrigger>
           ) : null}
@@ -369,7 +369,7 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
           <Card>
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
-                <VectorSquare className="h-4 w-4" />
+                <Share2 className="h-4 w-4" />
                 Enable Collaboration
               </CardTitle>
               <CardAction>
@@ -382,9 +382,7 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
             </CardHeader>
             <CardContent>
               <div className="flex items-center">
-                <ColorBadge color={project.collaboration_enabled ? "blue" : "gray"}>
-                  {project.collaboration_enabled ? "Enabled" : "Disabled"}
-                </ColorBadge>
+                Enable or disable collaboration features for this project. When enabled, Collaborations menu will be displayed, allowing you to collaborate with other users on this project.
               </div>
             </CardContent>
           </Card>

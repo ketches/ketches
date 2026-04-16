@@ -16,11 +16,11 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { getImagePullPolicyLabel, IMAGE_PULL_POLICY_OPTIONS } from "@/lib/image-pull-policy-options"
 import type { AxiosError } from "axios"
-import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group"
-import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface ImageEditorProps {
   open?: boolean

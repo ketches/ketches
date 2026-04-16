@@ -8,7 +8,6 @@ import { CreateTaskDialog, EditTaskDialog } from "@/components/collaborations/ta
 import { flattenTree, type TreeItem } from "@/components/collaborations/tree-utils"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
-import { getErrorMessage } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,6 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
 import { buildTaskUpdateRequest } from "@/lib/collaboration-update-payloads"
+import { getErrorMessage } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table"
 import { CheckSquare, ChevronDown, ChevronRight, Columns3, ListTodo, ListTree, MoreVertical, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react"
@@ -400,7 +400,7 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
             <EmptyState
               title="No tasks yet"
               description="Create your first task to start tracking work."
-              icon={CheckSquare}
+              icon={ListTodo}
               actionText="New Task"
               onAction={() => {
                 setParentForCreate(undefined)

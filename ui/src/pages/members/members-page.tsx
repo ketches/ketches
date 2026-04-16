@@ -4,7 +4,8 @@ import { PROJECT_ROLES, ProjectRole, ProjectRoleDescriptions, ProjectRoleLabels,
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { InviteMemberDialog } from "@/components/members/invite-member-dialog"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { UserAvatarFallback } from "@/components/shared/user-avatar"
+import { Avatar } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -140,10 +141,8 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
         const member = row.original
         return (
           <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8 rounded-lg bg-primary/10 text-primary border-none">
-              <AvatarFallback className="rounded-lg text-xs font-bold">
-                {member.username.charAt(0).toUpperCase()}
-              </AvatarFallback>
+            <Avatar className="h-8 w-8 after:border-none">
+              <UserAvatarFallback name={member.fullname || member.username} className="rounded-full text-xs font-bold" />
             </Avatar>
             <div className="flex flex-col">
               <span className="font-medium text-foreground">{member.fullname || member.username}</span>

@@ -5,7 +5,7 @@ import { ProfileForm } from "@/components/account/profile-form"
 import { ActivitiesContent } from "@/components/activities/activities-content"
 import { PageHeader } from "@/components/layout/page-header"
 import { ColorBadge } from "@/components/shared/color-badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -85,10 +85,9 @@ export function AccountPage() {
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-start gap-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-14 w-14 rounded-lg bg-primary/10 text-primary border-none">
-              <AvatarFallback className="rounded-lg text-lg font-bold">
-                {(profileUser.fullname || profileUser.email || "U").charAt(0).toUpperCase()}
-              </AvatarFallback>
+            <Avatar className="h-14 w-14">
+              {profileUser.avatar && <AvatarImage src={profileUser.avatar} alt={profileUser.fullname} />}
+              <AvatarFallback>{profileUser.fullname?.charAt(0).toUpperCase() || "K"}</AvatarFallback>
             </Avatar>
             <div>
               <div className="flex items-center gap-2">

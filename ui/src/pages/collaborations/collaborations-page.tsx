@@ -1,4 +1,4 @@
-import { CalendarRange, FlaskConical, GalleryVerticalEnd, Goal, Logs, Plus, VectorSquare } from "lucide-react"
+import { FlaskConical, GalleryVerticalEnd, Goal, Logs, Plus, Share2 } from "lucide-react"
 
 import { CreateSprintDialog } from "@/components/collaborations/sprint-dialogs"
 import { PageHeader } from "@/components/layout/page-header"
@@ -160,7 +160,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
     { label: "Projects", icon: GalleryVerticalEnd, href: "/projects" },
     { label: activeProjectName || "Projects", icon: GalleryVerticalEnd, href: `/projects/${projectId}` },
   ] : []
-  breadcrumbs.push({ label: "Collaborations", icon: VectorSquare })
+  breadcrumbs.push({ label: "Collaborations", icon: Share2 })
 
   if (!projectId) {
     return (
@@ -180,7 +180,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
       <EmptyState
         title="No sprints yet"
         description="Create your first sprint to plan iteration work."
-        icon={CalendarRange}
+        icon={Goal}
         actionText="New Sprint"
         onAction={() => setCreateSprintOpen(true)}
         actionIcon={Plus}
@@ -233,7 +233,7 @@ export function CollaborationsPage({ projectId: projectIdProp }: { projectId?: s
                   <ComboboxContent alignOffset={-24} className="w-auto sm:w-48">
                     <ComboboxList>
                       <ComboboxItem value="">
-                        <ListTodo />
+                        <Goal />
                         All Sprints
                       </ComboboxItem>
                       {sprintOptions.map((opt) => (

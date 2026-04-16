@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 import {
   Tooltip,
   TooltipContent,
@@ -16,8 +18,6 @@ import { type PaginationState } from "@tanstack/react-table"
 import { Folder, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Separator } from '@/components/ui/separator'
-import { Label } from '../ui/label'
 import { EditAppGroupDialog } from './edit-app-group-dialog'
 interface Props { envId: string }
 

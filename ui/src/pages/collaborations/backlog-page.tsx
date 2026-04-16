@@ -4,14 +4,13 @@ import { AssigneeFilter, PriorityFilter, StatusFilter } from "@/components/colla
 import { InlineAssigneeEditor, InlinePriorityEditor, InlineStatusEditor } from "@/components/collaborations/inline-editors"
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/layout/page-header"
-import { getErrorMessage } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { useDebounce } from "@/hooks/use-debounce"
 import { buildRequirementUpdateRequest } from "@/lib/collaboration-update-payloads"
-import { formatDate } from "@/lib/utils"
+import { formatDate, getErrorMessage } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef, type PaginationState, type RowSelectionState } from "@tanstack/react-table"
 import { Archive, ArrowRight, CornerDownRight, Logs, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
@@ -285,7 +284,7 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
           <EmptyState
             title="No backlog items yet"
             description="Requirements moved to backlog will appear here."
-            icon={Archive}
+            icon={Logs}
             actionText="Create Requirement"
             onAction={() => {
               setParentRequirementId(undefined)

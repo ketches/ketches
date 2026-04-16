@@ -18,12 +18,12 @@ import {
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { getImagePullPolicyLabel, IMAGE_PULL_POLICY_OPTIONS } from "@/lib/image-pull-policy-options"
 import { cn } from "@/lib/utils"
 import type { AxiosError } from "axios"
-import { Item, ItemContent, ItemDescription, ItemTitle } from "../ui/item"
 
 interface CreatePluginDialogProps {
   open: boolean

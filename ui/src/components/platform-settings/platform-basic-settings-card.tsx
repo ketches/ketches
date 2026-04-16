@@ -1,11 +1,11 @@
-import { Loader2, Settings2 } from "lucide-react"
+import { Loader2, LogIn, Mail, Settings2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { usePublicSignUpSettings as useBasicSettings, useUpdateBasicSettingsMutation } from "@/hooks/use-platform-settings"
-import { ColorBadge } from "../shared/color-badge"
 
 export function PlatformBasicSettingsCard() {
   const { data, isLoading } = useBasicSettings()
@@ -64,30 +64,29 @@ export function PlatformBasicSettingsCard() {
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">
+            <p className="inline-flex items-center gap-1 text-[12px] font-medium">
+              <LogIn className="mr-1 h-4 w-4" />
               Public registration
-              <span className="ml-2 font-normal text-xs text-muted-foreground">
-                Allow unauthenticated visitors to create accounts.
-              </span>
             </p>
-            <ColorBadge color={enabled ? "green" : "red"} className="ml-1" >{enabled ? "Enabled" : "Disabled"}</ColorBadge>
+            <p className="text-xs font-medium text-muted-foreground">
+              If enabled, anyone can register an account without invitation. Otherwise, only administrators can create accounts for users.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             {(isLoading || updateMutation.isPending) && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             <Switch checked={enabled} onCheckedChange={handleEnabledToggle} disabled={isLoading || updateMutation.isPending} />
           </div>
         </div>
+        <Separator orientation="horizontal" className="h-4" />
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">
+            <p className="inline-flex items-center gap-1 text-[12px] font-medium">
+              <Mail className="mr-1 h-4 w-4" />
               Email verification
-              <span className="ml-2 font-normal text-xs text-muted-foreground">
-                Require users to use email verification code to register an account or reset password and so on.
-              </span>
             </p>
-            <ColorBadge color={emailVerificationRequired ? "green" : "red"} className="ml-1">
-              {emailVerificationRequired ? "Required" : "Not required"}
-            </ColorBadge>
+            <p className="text-xs font-medium text-muted-foreground">
+              Require users to use email verification code to register an account or reset password and so on.
+            </p>
           </div>
           <Switch
             checked={emailVerificationRequired}
