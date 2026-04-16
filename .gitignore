@@ -35,14 +35,14 @@ main
 .vscode/
 
 # Agents
-.opencode/*
-.sisyphus/*
-.cursor/*
-.claude/*
-.superpowers/*
-docs/plans/*
-ui/docs/plans/*
-docs/superpowers/*
+.opencode/
+.sisyphus/
+.cursor/
+.claude/
+.superpowers/
+docs/plans/
+ui/docs/plans/
+docs/superpowers/
 .codex
 
 # Runtime files
