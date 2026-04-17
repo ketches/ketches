@@ -11,13 +11,14 @@ import (
 )
 
 func TestBuildSharedGateway_UsesSingleHTTPListenerForAllNamespaces(t *testing.T) {
-	gateway := BuildSharedGateway()
+	gateway := BuildSharedGateway("ketches")
 
 	require.Equal(t, SharedGatewayName(), gateway.Name)
 	require.Equal(t, SharedGatewayNamespace(), gateway.Namespace)
 	require.Len(t, gateway.Spec.Listeners, 1)
 
 	listener := gateway.Spec.Listeners[0]
+	assert.Equal(t, gatewayv1.ObjectName("ketches"), gateway.Spec.GatewayClassName)
 	assert.Equal(t, gatewayv1.SectionName("http"), listener.Name)
 	assert.Equal(t, gatewayv1.PortNumber(80), listener.Port)
 	assert.Equal(t, gatewayv1.HTTPProtocolType, listener.Protocol)
@@ -58,4 +59,11 @@ func TestBuildHTTPRoute_UsesSharedGatewayParentRef(t *testing.T) {
 	assert.Equal(t, gatewayv1.ObjectName(SharedGatewayName()), parentRef.Name)
 	assert.Equal(t, gatewayv1.Namespace(SharedGatewayNamespace()), *parentRef.Namespace)
 	assert.Equal(t, gatewayv1.SectionName("http"), *parentRef.SectionName)
+}
+
+func TestBuildGatewayClass_UsesRequestedControllerName(t *testing.T) {
+	gatewayClass := BuildGatewayClass("ketches-envoy-gateway", "gateway.envoyproxy.io/gatewayclass-controller")
+
+	assert.Equal(t, "ketches-envoy-gateway", gatewayClass.Name)
+	assert.Equal(t, gatewayv1.GatewayController("gateway.envoyproxy.io/gatewayclass-controller"), gatewayClass.Spec.ControllerName)
 }

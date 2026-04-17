@@ -1,6 +1,6 @@
 import Editor from "@monaco-editor/react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
+import { InfoIcon, Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -12,6 +12,7 @@ import {
 } from "@/api/clusters"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Combobox,
   ComboboxContent,
@@ -29,6 +30,8 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { filterSelectableExtensionVersions } from "@/lib/extension-versions"
+import { sanitizeHelmReleaseName } from "@/lib/helm-release-name"
 
 interface InstallExtensionDialogProps {
   open: boolean
@@ -50,6 +53,8 @@ export function InstallExtensionDialog({
   const [releaseNamespace, setReleaseNamespace] = React.useState("default")
   const [selectedVersion, setSelectedVersion] = React.useState("")
   const [values, setValues] = React.useState("")
+  const [createNamespace, setCreateNamespace] = React.useState(false)
+  const lastSuggestedNamespaceRef = React.useRef("")
 
   // Resolved theme for Monaco
   const [monacoTheme, setMonacoTheme] = React.useState<"vs" | "vs-dark">("vs")
@@ -72,10 +77,12 @@ export function InstallExtensionDialog({
   // Reset form when extension changes
   React.useEffect(() => {
     if (extension) {
-      setReleaseName(extension.name)
+      setReleaseName(sanitizeHelmReleaseName(extension.name))
       setReleaseNamespace("default")
       setSelectedVersion("")
       setValues("")
+      setCreateNamespace(false)
+      lastSuggestedNamespaceRef.current = ""
     }
   }, [extension])
 
@@ -90,13 +97,77 @@ export function InstallExtensionDialog({
   const versions: ExtensionVersionInfo[] = Array.isArray(versionsData)
     ? versionsData
     : []
+  const selectableVersions = filterSelectableExtensionVersions(versions, selectedVersion)
 
   // Default to first version when versions load
   React.useEffect(() => {
-    if (versions.length > 0 && !selectedVersion) {
-      setSelectedVersion(versions[0].version)
+    if (selectableVersions.length > 0 && !selectedVersion) {
+      setSelectedVersion(selectableVersions[0].version)
     }
-  }, [versions, selectedVersion])
+  }, [selectableVersions, selectedVersion])
+
+  const normalizedNamespace = releaseNamespace.trim()
+
+  const { data: namespaces = [], isSuccess: namespacesLoaded, isFetching: namespacesFetching } = useQuery({
+    queryKey: ["cluster-namespaces", clusterId],
+    queryFn: () => clustersApi.listNamespaces(clusterId),
+    enabled: open && !!clusterId,
+    staleTime: 60 * 1000,
+  })
+
+  const namespaceExists = normalizedNamespace !== "" && namespaces.includes(normalizedNamespace)
+  const namespaceCreationBlocked = normalizedNamespace !== "" && namespacesLoaded && !namespaceExists && !createNamespace
+
+  const namespaceStatus = React.useMemo(() => {
+    if (!normalizedNamespace) {
+      return null
+    }
+
+    if (namespacesFetching) {
+      return {
+        tone: "muted" as const,
+        text: "Checking...",
+      }
+    }
+
+    if (!namespacesLoaded) {
+      return null
+    }
+
+    if (namespaceExists) {
+      return {
+        tone: "success" as const,
+        text: "Exists in cluster",
+      }
+    }
+
+    if (namespaceCreationBlocked) {
+      return {
+        tone: "warning" as const,
+        text: "Create namespace required",
+      }
+    }
+
+    return {
+      tone: "warning" as const,
+      text: "Will be created",
+    }
+  }, [namespaceCreationBlocked, namespaceExists, namespacesFetching, namespacesLoaded, normalizedNamespace])
+
+  React.useEffect(() => {
+    if (!open || !normalizedNamespace || !namespacesLoaded) {
+      return
+    }
+    if (namespaceExists) {
+      setCreateNamespace(false)
+      lastSuggestedNamespaceRef.current = normalizedNamespace
+      return
+    }
+    if (lastSuggestedNamespaceRef.current !== normalizedNamespace) {
+      setCreateNamespace(true)
+      lastSuggestedNamespaceRef.current = normalizedNamespace
+    }
+  }, [namespaceExists, namespacesLoaded, normalizedNamespace, open])
 
   // Fetch default values for the selected version
   const {
@@ -157,7 +228,7 @@ export function InstallExtensionDialog({
       extension_id: extension.id,
       version: selectedVersion || undefined,
       namespace: releaseNamespace,
-      create_namespace: true,
+      create_namespace: namespaceExists ? false : createNamespace,
     }
     if (values.trim()) {
       data.values = values
@@ -196,6 +267,7 @@ export function InstallExtensionDialog({
                     required
                   />
                 </FieldContent>
+                <p className="text-muted-foreground text-xs">Use lowercase letters, numbers, hyphens, or dots, up to 53 characters.</p>
               </Field>
 
               <Field>
@@ -209,7 +281,7 @@ export function InstallExtensionDialog({
                     <ComboboxInput placeholder={versionsLoading ? "Loading versions..." : "Select version"} />
                     <ComboboxContent>
                       <ComboboxList>
-                        {versions.map((v) => (
+                        {selectableVersions.map((v) => (
                           <ComboboxItem key={v.version} value={v.version}>
                             {v.version}
                           </ComboboxItem>
@@ -221,7 +293,22 @@ export function InstallExtensionDialog({
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="release-namespace">Namespace</FieldLabel>
+                <FieldLabel htmlFor="release-namespace" className="flex items-center justify-between gap-3">
+                  <span>Namespace</span>
+                  {namespaceStatus && (
+                    <span
+                      className={
+                        namespaceStatus.tone === "success"
+                          ? "text-xs text-emerald-600"
+                          : namespaceStatus.tone === "warning"
+                            ? "text-xs text-amber-700"
+                            : "text-xs text-muted-foreground"
+                      }
+                    >
+                      {namespaceStatus.text}
+                    </span>
+                  )}
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     id="release-namespace"
@@ -230,6 +317,24 @@ export function InstallExtensionDialog({
                     required
                   />
                 </FieldContent>
+                {normalizedNamespace && namespacesLoaded && !namespaceExists && (
+                  <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
+                    <div className="flex items-start gap-2">
+                      <InfoIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                      <p className="text-xs">Namespace "{normalizedNamespace}" does not exist in the cluster and needs to be created before installation.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="create-namespace"
+                        checked={createNamespace}
+                        onCheckedChange={(checked) => setCreateNamespace(checked === true)}
+                      />
+                      <label htmlFor="create-namespace" className="cursor-pointer text-xs">
+                        Create namespace
+                      </label>
+                    </div>
+                  </div>
+                )}
               </Field>
             </div>
 
@@ -287,7 +392,7 @@ export function InstallExtensionDialog({
             <Button
               type="submit"
               disabled={
-                installMutation.isPending || valuesLoading || valuesFetching
+                installMutation.isPending || valuesLoading || valuesFetching || namespaceCreationBlocked
               }
             >
               {installMutation.isPending ? (

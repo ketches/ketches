@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,11 +16,13 @@ import (
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
+	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func ListClusters(page, pageSize int, search string) (int64, []entities.Cluster, error) {
@@ -173,6 +176,228 @@ func DeleteCluster(clusterID string) error {
 	}
 	kube.GlobalClusterStore.RemoveClient(clusterID)
 	return nil
+}
+
+func CreateClusterGatewayProvider(clusterID string, req *models.CreateClusterGatewayProviderRequest) (*entities.ClusterGatewayProvider, error) {
+	provider := &entities.ClusterGatewayProvider{
+		ID:               uuid.New(),
+		ClusterID:        clusterID,
+		SourceType:       "adopted",
+		DisplayName:      firstNonEmpty(strings.TrimSpace(req.DisplayName), strings.TrimSpace(req.GatewayClassName)),
+		GatewayClassName: strings.TrimSpace(req.GatewayClassName),
+		ControllerName:   strings.TrimSpace(req.ControllerName),
+		IsDefault:        req.MakeDefault,
+	}
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := upsertClusterGatewayProvider(tx, provider); err != nil {
+			return err
+		}
+		if provider.IsDefault {
+			return setDefaultClusterGatewayProvider(tx, clusterID, provider.GatewayClassName)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	var stored entities.ClusterGatewayProvider
+	if err := db.DB.Where("cluster_id = ? AND gateway_class_name = ?", clusterID, provider.GatewayClassName).First(&stored).Error; err != nil {
+		return nil, err
+	}
+	return &stored, nil
+}
+
+func DeleteClusterGatewayProvider(clusterID, providerID string) error {
+	var provider entities.ClusterGatewayProvider
+	if err := db.DB.Where("cluster_id = ? AND id = ?", clusterID, providerID).First(&provider).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return app.NewErrorf("gateway provider not found")
+		}
+		return err
+	}
+	if provider.IsDefault {
+		return app.NewErrorf("cannot remove the default gateway provider; set another provider as default first")
+	}
+	if provider.SourceType != "adopted" {
+		return app.NewErrorf("only adopted gateway providers can be removed directly")
+	}
+	return db.DB.Delete(&provider).Error
+}
+
+func ListClusterGatewayProviders(clusterID string) ([]models.ClusterGatewayProvider, error) {
+	var records []entities.ClusterGatewayProvider
+	if err := db.DB.Where("cluster_id = ?", clusterID).Order("is_default DESC, created_at ASC").Find(&records).Error; err != nil {
+		return nil, err
+	}
+	result := make([]models.ClusterGatewayProvider, 0, len(records))
+	for _, record := range records {
+		result = append(result, toClusterGatewayProviderModel(&record))
+	}
+	return result, nil
+}
+
+func upsertClusterGatewayProvider(tx *gorm.DB, provider *entities.ClusterGatewayProvider) error {
+	var existing entities.ClusterGatewayProvider
+	err := tx.Where("cluster_id = ? AND gateway_class_name = ?", provider.ClusterID, provider.GatewayClassName).First(&existing).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return tx.Create(provider).Error
+	}
+	if err != nil {
+		return err
+	}
+
+	updates := map[string]any{
+		"source_type":          provider.SourceType,
+		"display_name":         provider.DisplayName,
+		"controller_name":      provider.ControllerName,
+		"extension_id":         provider.ExtensionID,
+		"cluster_extension_id": provider.ClusterExtensionID,
+		"is_default":           provider.IsDefault,
+	}
+	return tx.Model(&existing).Updates(updates).Error
+}
+
+func setDefaultClusterGatewayProvider(tx *gorm.DB, clusterID, gatewayClassName string) error {
+	if err := tx.Model(&entities.ClusterGatewayProvider{}).Where("cluster_id = ?", clusterID).Update("is_default", false).Error; err != nil {
+		return err
+	}
+	return tx.Model(&entities.ClusterGatewayProvider{}).Where("cluster_id = ? AND gateway_class_name = ?", clusterID, gatewayClassName).Update("is_default", true).Error
+}
+
+func RegisterAdoptedGatewayProvider(clusterID, gatewayClassName, controllerName string) (*entities.ClusterGatewayProvider, error) {
+	provider := &entities.ClusterGatewayProvider{
+		ID:               uuid.New(),
+		ClusterID:        clusterID,
+		SourceType:       "adopted",
+		DisplayName:      gatewayClassName,
+		GatewayClassName: gatewayClassName,
+		ControllerName:   controllerName,
+	}
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if err := tx.Model(&entities.ClusterGatewayProvider{}).Where("cluster_id = ? AND is_default = ?", clusterID, true).Count(&count).Error; err != nil {
+			return err
+		}
+		provider.IsDefault = count == 0
+		if err := upsertClusterGatewayProvider(tx, provider); err != nil {
+			return err
+		}
+		if provider.IsDefault {
+			return setDefaultClusterGatewayProvider(tx, clusterID, gatewayClassName)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	var stored entities.ClusterGatewayProvider
+	if err := db.DB.Where("cluster_id = ? AND gateway_class_name = ?", clusterID, gatewayClassName).First(&stored).Error; err != nil {
+		return nil, err
+	}
+	return &stored, nil
+}
+
+func SetDefaultClusterGatewayProvider(clusterID, gatewayClassName, controllerName, sourceType string) (*entities.ClusterGatewayProvider, error) {
+	if sourceType == "" {
+		sourceType = "adopted"
+	}
+	if sourceType != "adopted" && sourceType != "managed" {
+		return nil, app.NewErrorf("management mode must be one of: adopted, managed")
+	}
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		var provider entities.ClusterGatewayProvider
+		err := tx.Where("cluster_id = ? AND gateway_class_name = ?", clusterID, gatewayClassName).First(&provider).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			provider = entities.ClusterGatewayProvider{
+				ID:               uuid.New(),
+				ClusterID:        clusterID,
+				SourceType:       sourceType,
+				DisplayName:      gatewayClassName,
+				GatewayClassName: gatewayClassName,
+				ControllerName:   controllerName,
+				IsDefault:        true,
+			}
+			if err := tx.Create(&provider).Error; err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		} else {
+			if controllerName != "" {
+				provider.ControllerName = controllerName
+			}
+			provider.SourceType = sourceType
+			provider.IsDefault = true
+			if err := tx.Model(&provider).Updates(map[string]any{
+				"controller_name": provider.ControllerName,
+				"source_type":     provider.SourceType,
+				"is_default":      true,
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return setDefaultClusterGatewayProvider(tx, clusterID, gatewayClassName)
+	}); err != nil {
+		return nil, err
+	}
+	var stored entities.ClusterGatewayProvider
+	if err := db.DB.Where("cluster_id = ? AND gateway_class_name = ?", clusterID, gatewayClassName).First(&stored).Error; err != nil {
+		return nil, err
+	}
+	return &stored, nil
+}
+
+func GetDefaultClusterGatewayProvider(clusterID string) (*entities.ClusterGatewayProvider, error) {
+	var provider entities.ClusterGatewayProvider
+	if err := db.DB.Where("cluster_id = ? AND is_default = ?", clusterID, true).First(&provider).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &provider, nil
+}
+
+func ListClusterGatewayClasses(clusterID string) ([]models.GatewayClassSummary, error) {
+	gwClient, err := kube.GlobalClusterStore.GetGatewayClient(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultProvider, err := GetDefaultClusterGatewayProvider(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := gwClient.GatewayV1().GatewayClasses().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]models.GatewayClassSummary, 0, len(items.Items))
+	for _, item := range items.Items {
+		accepted := false
+		for _, condition := range item.Status.Conditions {
+			if condition.Type == string(gatewayv1.GatewayClassConditionStatusAccepted) && condition.Status == metav1.ConditionTrue {
+				accepted = true
+				break
+			}
+		}
+		result = append(result, models.GatewayClassSummary{
+			Name:           item.Name,
+			ControllerName: string(item.Spec.ControllerName),
+			Accepted:       accepted,
+			IsDefault:      defaultProvider != nil && item.Name == defaultProvider.GatewayClassName,
+		})
+	}
+
+	return result, nil
+}
+
+func UpdateClusterDefaultGatewayClass(clusterID string, req *models.UpdateClusterGatewayClassRequest) (*entities.Cluster, error) {
+	_, err := SetDefaultClusterGatewayProvider(clusterID, strings.TrimSpace(req.GatewayClassName), strings.TrimSpace(req.GatewayControllerName), strings.TrimSpace(req.ManagementMode))
+	if err != nil {
+		return nil, err
+	}
+	return GetCluster(clusterID)
 }
 
 func ListClusterNodes(clusterID string) (any, error) {
@@ -556,5 +781,27 @@ func CheckAllClustersConnectivity() {
 		if cluster.Enabled {
 			CheckClusterConnectivity(cluster.ID)
 		}
+	}
+}
+
+func toClusterGatewayProviderModel(provider *entities.ClusterGatewayProvider) models.ClusterGatewayProvider {
+	extensionID := ""
+	if provider.ExtensionID != nil {
+		extensionID = *provider.ExtensionID
+	}
+	clusterExtensionID := ""
+	if provider.ClusterExtensionID != nil {
+		clusterExtensionID = *provider.ClusterExtensionID
+	}
+	return models.ClusterGatewayProvider{
+		ID:                 provider.ID,
+		ClusterID:          provider.ClusterID,
+		SourceType:         provider.SourceType,
+		DisplayName:        provider.DisplayName,
+		GatewayClassName:   provider.GatewayClassName,
+		ControllerName:     provider.ControllerName,
+		ExtensionID:        extensionID,
+		ClusterExtensionID: clusterExtensionID,
+		IsDefault:          provider.IsDefault,
 	}
 }

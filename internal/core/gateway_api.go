@@ -2,11 +2,15 @@ package core
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ketches/ketches/internal/app"
+	"github.com/ketches/ketches/internal/db"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -16,9 +20,8 @@ const (
 	gatewayAPIGroup = "gateway.networking.k8s.io"
 	// gatewayAPIVersion is the version used for detection and resource creation.
 	gatewayAPIVersion = "v1"
-	// defaultGatewayClassName is the GatewayClass used when creating managed gateways.
-	// Envoy Gateway is the default; this can be overridden via cluster configuration in the future.
-	defaultGatewayClassName = "eg"
+	// fallbackGatewayClassName preserves the legacy default until a cluster-level default is configured.
+	fallbackGatewayClassName = "eg"
 	// sharedGatewayNamespace is the fixed namespace that hosts the single shared Gateway.
 	sharedGatewayNamespace = "ketches-system"
 	// sharedGatewayName is the canonical name of the single shared Gateway.
@@ -49,13 +52,61 @@ func clusterHasCRD(clusterID string, groupVersion string) (bool, error) {
 	_, err = kubeClient.Discovery().ServerResourcesForGroupVersion(groupVersion)
 	if err != nil {
 		// NotFound from the discovery API means the group/version is absent.
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return false, nil
 		}
 		// Any other error (e.g. "no kind is registered") is also treated as absent.
 		return false, nil
 	}
 	return true, nil
+}
+
+func resolveClusterGatewayClassName(clusterID string) (string, error) {
+	var provider entities.ClusterGatewayProvider
+	if err := db.DB.Where("cluster_id = ? AND is_default = ?", clusterID, true).First(&provider).Error; err == nil {
+		return provider.GatewayClassName, nil
+	} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", err
+	}
+
+	return fallbackGatewayClassName, nil
+}
+
+func BuildGatewayClass(name, controllerName string) *gatewayv1.GatewayClass {
+	return &gatewayv1.GatewayClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				kube.LabelManagedBy: "true",
+			},
+		},
+		Spec: gatewayv1.GatewayClassSpec{
+			ControllerName: gatewayv1.GatewayController(controllerName),
+		},
+	}
+}
+
+func EnsureGatewayClass(ctx context.Context, clusterID, name, controllerName string) error {
+	gwClient, err := kube.GlobalClusterStore.GetGatewayClient(clusterID)
+	if err != nil {
+		return err
+	}
+
+	desired := BuildGatewayClass(name, controllerName)
+	existing, err := gwClient.GatewayV1().GatewayClasses().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			_, err = gwClient.GatewayV1().GatewayClasses().Create(ctx, desired, metav1.CreateOptions{})
+			return err
+		}
+		return err
+	}
+
+	if existing.Spec.ControllerName != desired.Spec.ControllerName {
+		return app.NewErrorf("gateway class %q already exists with controller %q", name, existing.Spec.ControllerName)
+	}
+
+	return nil
 }
 
 // SharedGatewayName returns the canonical name of the single shared Gateway.
@@ -70,8 +121,8 @@ func SharedGatewayNamespace() string {
 
 // BuildSharedGateway constructs the single shared Gateway resource for a cluster.
 // It exposes one HTTP listener on port 80 and allows routes from all namespaces.
-func BuildSharedGateway() *gatewayv1.Gateway {
-	gatewayClassName := gatewayv1.ObjectName(defaultGatewayClassName)
+func BuildSharedGateway(gatewayClassName string) *gatewayv1.Gateway {
+	resolvedGatewayClassName := gatewayv1.ObjectName(gatewayClassName)
 	listenerName := gatewayv1.SectionName("http")
 	fromAll := gatewayv1.NamespacesFromAll
 
@@ -87,7 +138,7 @@ func BuildSharedGateway() *gatewayv1.Gateway {
 			},
 		},
 		Spec: gatewayv1.GatewaySpec{
-			GatewayClassName: gatewayClassName,
+			GatewayClassName: resolvedGatewayClassName,
 			Listeners: []gatewayv1.Listener{
 				{
 					Name:     listenerName,
@@ -124,11 +175,16 @@ func EnsureSharedGateway(ctx context.Context, clusterID string) error {
 		return err
 	}
 
-	desired := BuildSharedGateway()
+	gatewayClassName, err := resolveClusterGatewayClassName(clusterID)
+	if err != nil {
+		return err
+	}
+
+	desired := BuildSharedGateway(gatewayClassName)
 
 	existing, err := gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Get(ctx, desired.Name, metav1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			_, err = gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Create(ctx, desired, metav1.CreateOptions{})
 			return err
 		}
@@ -156,7 +212,7 @@ func ensureSharedGatewayNamespace(ctx context.Context, clusterID string) error {
 	}
 
 	_, err = client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
-	if err != nil && !errors.IsAlreadyExists(err) {
+	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
 

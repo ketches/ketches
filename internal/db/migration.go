@@ -57,6 +57,7 @@ func Migrate() error {
 		&entities.Domain{},
 		&entities.Extension{},
 		&entities.ClusterExtension{},
+		&entities.ClusterGatewayProvider{},
 		&entities.OperationLog{},
 		&entities.SystemSetting{},
 		&entities.CollabSprint{},

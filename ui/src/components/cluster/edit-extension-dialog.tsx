@@ -37,6 +37,8 @@ export function EditExtensionDialog({
   const [description, setDescription] = React.useState("")
   const [ociUrl, setOciUrl] = React.useState("")
   const [iconUrl, setIconUrl] = React.useState("")
+  const [capabilities, setCapabilities] = React.useState("")
+  const [metadata, setMetadata] = React.useState("{}")
 
   // Populate form fields when item changes
   React.useEffect(() => {
@@ -45,6 +47,8 @@ export function EditExtensionDialog({
       setDescription(item.description ?? "")
       setOciUrl(item.oci_url)
       setIconUrl(item.icon_url ?? "")
+      setCapabilities((item.capabilities ?? []).join(", "))
+      setMetadata(JSON.stringify(item.metadata ?? {}, null, 2))
     }
   }, [item, open])
 
@@ -55,6 +59,8 @@ export function EditExtensionDialog({
       setDescription("")
       setOciUrl("")
       setIconUrl("")
+      setCapabilities("")
+      setMetadata("{}")
     }
   }, [open])
 
@@ -88,6 +94,14 @@ export function EditExtensionDialog({
     }
     if (displayName.trim()) data.display_name = displayName.trim()
     if (description.trim()) data.description = description.trim()
+    data.capabilities = capabilities.split(",").map((item) => item.trim()).filter(Boolean)
+    try {
+      const parsedMetadata = JSON.parse(metadata) as Record<string, unknown>
+      data.metadata = parsedMetadata
+    } catch {
+      toast.error("Invalid extension metadata", { description: "Metadata must be valid JSON." })
+      return
+    }
     data.icon_url = iconUrl.trim()
     updateMutation.mutate(data)
   }
@@ -139,6 +153,31 @@ export function EditExtensionDialog({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="min-h-20 max-h-48 resize-y break-all whitespace-pre-wrap"
+                />
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="edit-ext-capabilities">Capabilities</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="edit-ext-capabilities"
+                  placeholder="e.g. gateway-api, observability"
+                  value={capabilities}
+                  onChange={(e) => setCapabilities(e.target.value)}
+                />
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="edit-ext-metadata">Metadata (JSON)</FieldLabel>
+              <FieldContent>
+                <Textarea
+                  id="edit-ext-metadata"
+                  placeholder='{"gateway_api":{"controller_name":"gateway.envoyproxy.io/gatewayclass-controller"}}'
+                  value={metadata}
+                  onChange={(e) => setMetadata(e.target.value)}
+                  className="min-h-24 max-h-48 resize-y break-all whitespace-pre-wrap font-mono text-xs"
                 />
               </FieldContent>
             </Field>

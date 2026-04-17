@@ -75,17 +75,19 @@ vi.mock("@/components/ui/checkbox", () => ({
     checked,
     disabled,
     onCheckedChange,
+    ...props
   }: {
     checked?: boolean
     disabled?: boolean
     onCheckedChange?: (checked: boolean) => void
-  }) => (
+  } & React.ComponentProps<"input">) => (
     <input
       aria-label="Enable public access"
       type="checkbox"
       checked={checked}
       disabled={disabled}
       onChange={(event) => onCheckedChange?.(event.target.checked)}
+      {...props}
     />
   ),
 }))
@@ -321,11 +323,56 @@ describe("GatewayEditor", () => {
     })
   })
 
+  it("re-enables public access when protocol changes from tcp to http", async () => {
+    const { container, root } = await renderEditor(buildGateway({ protocol: "tcp", exposed: false, domain: "", path: "" }))
+
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement | null
+    expect(checkbox).not.toBeNull()
+    expect(checkbox?.disabled).toBe(true)
+    expect(checkbox?.checked).toBe(false)
+
+    await clickElement(container.querySelector('[data-combobox-item="http"]'))
+
+    expect(checkbox?.disabled).toBe(false)
+    expect(checkbox?.checked).toBe(false)
+
+    await clickElement(container.querySelector('label[for="gateway-public-access"]'))
+
+    expect(checkbox?.checked).toBe(true)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it("shows the unsupported public access tooltip copy for non-http protocols", async () => {
     const { container, root } = await renderEditor(buildGateway({ protocol: "tcp", exposed: false, domain: "", path: "" }))
 
     expect(container.textContent).toContain(
       "Public access is currently available only for HTTP/HTTPS gateways. TCP/UDP public exposure is not supported yet.",
+    )
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("shows the Gateway API disabled tooltip copy when Gateway API is not installed", async () => {
+    mockUseQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
+      if (queryKey[0] === "cluster-gateway-api-status") {
+        return { data: { installed: false } }
+      }
+
+      return { data: { items: [] } }
+    })
+
+    const { container, root } = await renderEditor(buildGateway({ protocol: "http", exposed: false }))
+
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement | null
+    expect(checkbox).not.toBeNull()
+    expect(checkbox?.disabled).toBe(true)
+    expect(container.textContent).toContain(
+      "Gateway API is not installed on this cluster, so HTTP/HTTPS public access is currently unavailable.",
     )
 
     await act(async () => {

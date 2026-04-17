@@ -348,6 +348,8 @@ func setupV1Routes(r *gin.Engine) {
 			authorized.GET("/clusters/:clusterID/integrations", handlers.ListClusterIntegrations)
 			authorized.GET("/clusters/:clusterID/storage-classes", handlers.ListStorageClasses)
 			authorized.GET("/clusters/:clusterID/gateway-api-status", handlers.GetClusterGatewayAPIStatus)
+			authorized.GET("/clusters/:clusterID/gateway-classes", handlers.ListClusterGatewayClasses)
+			authorized.GET("/clusters/:clusterID/gateway-providers", handlers.ListClusterGatewayProviders)
 
 			// Extensions (platform-level)
 			extensions := authorized.Group("/extensions")
@@ -373,6 +375,9 @@ func setupV1Routes(r *gin.Engine) {
 				clusters.PUT("/:clusterID", handlers.UpdateCluster)
 				clusters.PATCH("/:clusterID/basic", handlers.UpdateClusterBasic)
 				clusters.PATCH("/:clusterID/credentials", handlers.UpdateClusterCredentials)
+				clusters.POST("/:clusterID/gateway-providers", handlers.CreateClusterGatewayProvider)
+				clusters.DELETE("/:clusterID/gateway-providers/:providerID", handlers.DeleteClusterGatewayProvider)
+				clusters.PUT("/:clusterID/default-gateway-class", handlers.UpdateClusterDefaultGatewayClass)
 				clusters.DELETE("/:clusterID", handlers.DeleteCluster)
 				clusters.POST("/:clusterID/check-connectivity", handlers.CheckClusterConnectivity)
 				clusters.GET("/:clusterID/nodes", handlers.ListClusterNodes)
@@ -396,6 +401,7 @@ func setupV1Routes(r *gin.Engine) {
 				clusters.POST("/:clusterID/extensions", handlers.InstallClusterExtension)
 				clusters.GET("/:clusterID/extensions/:clusterExtensionID", handlers.GetClusterExtension)
 				clusters.PUT("/:clusterID/extensions/:clusterExtensionID", handlers.UpgradeClusterExtension)
+				clusters.POST("/:clusterID/extensions/:clusterExtensionID/retry", handlers.RetryClusterExtension)
 				clusters.DELETE("/:clusterID/extensions/:clusterExtensionID", handlers.UninstallClusterExtension)
 
 				// Container Registries (cluster scope)

@@ -13,6 +13,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/middlewares"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -175,6 +176,71 @@ func TestGetDashboardEnvironmentsAllowsProjectMember(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestListPublicClustersRequiresProjectScopeForNonAdmin(t *testing.T) {
+	setupAccessControlHandlerDB(t)
+	seedAccessControlProjectCluster(t, "project-1", "cluster-1", "env-1")
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(accessControlClaimsMiddleware("user-1", "alice", app.UserRoleUser))
+	r.GET("/api/v1/clusters/public", ListPublicClusters)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/clusters/public", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestListPublicClustersAllowsProjectMemberWithoutExistingEnvAssociation(t *testing.T) {
+	setupAccessControlHandlerDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-1"},
+		Slug: "project-1",
+		Name: "Project 1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.ProjectMember{
+		ID:          "member-1",
+		ProjectID:   "project-1",
+		UserID:      "user-1",
+		ProjectRole: app.ProjectRoleDeveloper,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Cluster{
+		Base:       entities.Base{ID: "cluster-1"},
+		Slug:       "cluster-1",
+		Name:       "Cluster 1",
+		KubeConfig: "enc:v1:test",
+		Enabled:    true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Cluster{
+		Base:       entities.Base{ID: "cluster-2"},
+		Slug:       "cluster-2",
+		Name:       "Cluster 2",
+		KubeConfig: "enc:v1:test",
+	}).Error)
+	require.NoError(t, db.DB.Model(&entities.Cluster{}).Where("id = ?", "cluster-2").Update("enabled", false).Error)
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(accessControlClaimsMiddleware("user-1", "alice", app.UserRoleUser))
+	r.GET("/api/v1/clusters/public", ListPublicClusters)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/clusters/public?project_id=project-1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Data []models.SimpleCluster `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.Data, 1)
+	assert.Equal(t, "cluster-1", resp.Data[0].ID)
+	assert.True(t, resp.Data[0].Enabled)
 }
 
 func TestGetPublicClusterRequiresProjectScopeForNonAdmin(t *testing.T) {

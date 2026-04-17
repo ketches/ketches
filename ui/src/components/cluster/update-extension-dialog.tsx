@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
+import { filterSelectableExtensionVersions } from "@/lib/extension-versions"
 
 interface UpdateExtensionDialogProps {
   open: boolean
@@ -109,13 +110,7 @@ export function UpdateExtensionDialog({
     ? versionsData
     : []
 
-  // Ensure current version is always in the list
-  const versions: ExtensionVersionInfo[] =
-    rawVersions.length > 0
-      ? rawVersions
-      : extension?.version
-        ? [{ version: extension.version }]
-        : []
+  const versions = filterSelectableExtensionVersions(rawVersions, extension?.version)
 
   // Fetch default values for selected version (only in diff mode)
   const { data: chartValuesData, isFetching: chartValuesFetching } = useQuery({
@@ -146,7 +141,7 @@ export function UpdateExtensionDialog({
       clustersApi.upgradeExtension(clusterId, extension!.id, data),
     onSuccess: () => {
       toast.success("Extension updated", {
-        description: `${extension?.release_name} has been updated.`,
+        description: `${extension?.name || extension?.release_name} has been updated.`,
       })
       queryClient.invalidateQueries({ queryKey: ["cluster-extensions", clusterId] })
       onOpenChange(false)
@@ -204,8 +199,8 @@ export function UpdateExtensionDialog({
           <DialogHeader className="shrink-0 px-6 pt-6">
             <DialogTitle>Update Extension</DialogTitle>
             <DialogDescription>
-              Update <span className="font-medium">{extension.release_name}</span>{" "}
-              in namespace <span className="font-mono text-xs">{extension.namespace}</span>.
+              Update <span className="font-medium">{extension.name || extension.release_name}</span>{" "}
+              using release <span className="font-mono text-xs">{extension.release_name}</span> in namespace <span className="font-mono text-xs">{extension.namespace}</span>.
               Edit values below and save to apply.
             </DialogDescription>
           </DialogHeader>

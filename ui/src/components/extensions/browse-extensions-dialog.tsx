@@ -4,7 +4,6 @@ import * as React from "react"
 
 import { clustersApi, type Extension } from "@/api/clusters"
 import { InstallExtensionDialog } from "@/components/cluster/install-extension-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,20 +13,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { ColorBadge } from "../shared/color-badge"
 
 interface BrowseExtensionsDialogProps {
   clusterId: string
   open: boolean
   onOpenChange: (open: boolean) => void
-  // Names of extensions already installed on this cluster (to filter them out)
-  installedExtensionNames: string[]
+  // Extension IDs already installed on this cluster (to filter them out)
+  installedExtensionIds: string[]
 }
 
 export function BrowseExtensionsDialog({
   clusterId,
   open,
   onOpenChange,
-  installedExtensionNames,
+  installedExtensionIds,
 }: BrowseExtensionsDialogProps) {
   const [search, setSearch] = React.useState("")
   const [installTarget, setInstallTarget] =
@@ -52,7 +52,7 @@ export function BrowseExtensionsDialog({
         .toLowerCase()
         .includes(search.toLowerCase()) ||
       (item.description ?? "").toLowerCase().includes(search.toLowerCase())
-    const notInstalled = !installedExtensionNames.includes(item.name)
+    const notInstalled = !installedExtensionIds.includes(item.id)
     return matchesSearch && notInstalled
   })
 
@@ -117,13 +117,13 @@ export function BrowseExtensionsDialog({
                             {item.display_name || item.name}
                           </h4>
                           {item.builtin ? (
-                            <Badge variant="secondary" className="text-[10px]">
+                            <ColorBadge color="purple" className="text-[10px]">
                               Built-in
-                            </Badge>
+                            </ColorBadge>
                           ) : (
-                            <Badge variant="outline" className="text-[10px]">
+                            <ColorBadge color="blue" className="text-[10px]">
                               Custom
-                            </Badge>
+                            </ColorBadge>
                           )}
                         </div>
                         {item.description && (
@@ -141,7 +141,7 @@ export function BrowseExtensionsDialog({
                       className="ml-4 shrink-0"
                       onClick={() => handleInstallClick(item)}
                     >
-                      <ArrowDownToLine className="h-3.5 w-3.5 mr-1" />
+                      <ArrowDownToLine className="h-3.5 w-3.5" />
                       Install
                     </Button>
                   </div>

@@ -159,6 +159,23 @@ func UpgradeClusterExtension(c *gin.Context) {
 	api.Success(c, ext)
 }
 
+// RetryClusterExtension retries the last failed install, upgrade, or uninstall operation.
+func RetryClusterExtension(c *gin.Context) {
+	clusterID := c.Param("clusterID")
+	id := c.Param("clusterExtensionID")
+	var req models.RetryClusterExtensionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	ext, err := services.RetryClusterExtension(clusterID, id, &req)
+	if err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusAccepted, ext)
+}
+
 // UninstallClusterExtension removes an installed helm release from a cluster (async).
 func UninstallClusterExtension(c *gin.Context) {
 	clusterID := c.Param("clusterID")

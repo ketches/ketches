@@ -137,6 +137,7 @@ export function ClusterDetailPage() {
   const [editOpen, setEditOpen] = React.useState(false)
   const [editKubeConfigOpen, setEditKubeConfigOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const [deleteGatewayProviderTarget, setDeleteGatewayProviderTarget] = React.useState<{ id: string; displayName: string } | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get("tab") || "overview"
 
@@ -153,6 +154,18 @@ export function ClusterDetailPage() {
     enabled: !!clusterId,
   })
 
+  const { data: gatewayClasses = [], isLoading: gatewayClassesLoading } = useQuery({
+    queryKey: ["cluster-gateway-classes", clusterId],
+    queryFn: () => clustersApi.listGatewayClasses(clusterId!),
+    enabled: !!clusterId,
+  })
+
+  const { data: gatewayProviders = [], isLoading: gatewayProvidersLoading } = useQuery({
+    queryKey: ["cluster-gateway-providers", clusterId],
+    queryFn: () => clustersApi.listGatewayProviders(clusterId!),
+    enabled: !!clusterId,
+  })
+
   const checkConnectivityMutation = useMutation({
     mutationFn: () => clustersApi.checkConnectivity(clusterId!),
     onSuccess: () => {
@@ -165,6 +178,74 @@ export function ClusterDetailPage() {
     },
     onError: (error: AxiosError<{ error: string }>) => {
       toast.error("Failed to check connectivity", {
+        description: error.response?.data?.error || error.message,
+      })
+    },
+  })
+
+  const updateDefaultGatewayClassMutation = useMutation({
+    mutationFn: (gatewayClass: { name: string; controller_name: string }) =>
+      clustersApi.updateDefaultGatewayClass(clusterId!, {
+        gateway_class_name: gatewayClass.name,
+        gateway_controller_name: gatewayClass.controller_name,
+        management_mode: "adopted",
+      }),
+    onSuccess: (_data, gatewayClass) => {
+      toast.success("Default gateway class updated", {
+        description: `${gatewayClass.name} is now the default gateway class for this cluster.`,
+      })
+      queryClient.invalidateQueries({ queryKey: ["cluster", clusterId] })
+      queryClient.invalidateQueries({ queryKey: ["cluster-gateway-classes", clusterId] })
+      queryClient.invalidateQueries({ queryKey: ["cluster-gateway-providers", clusterId] })
+    },
+    onError: (error: AxiosError<{ error: string }>) => {
+      toast.error("Failed to update default gateway class", {
+        description: error.response?.data?.error || error.message,
+      })
+    },
+  })
+
+  const createGatewayProviderMutation = useMutation({
+    mutationFn: ({
+      gatewayClass,
+      makeDefault,
+    }: {
+      gatewayClass: { name: string; controller_name: string }
+      makeDefault: boolean
+    }) =>
+      clustersApi.createGatewayProvider(clusterId!, {
+        display_name: gatewayClass.name,
+        gateway_class_name: gatewayClass.name,
+        controller_name: gatewayClass.controller_name,
+        make_default: makeDefault,
+      }),
+    onSuccess: (_data, payload) => {
+      toast.success(payload.makeDefault ? "Gateway class adopted and set as default" : "Gateway class adopted", {
+        description: `${payload.gatewayClass.name} is now managed by Ketches as an adopted gateway provider.`,
+      })
+      queryClient.invalidateQueries({ queryKey: ["cluster", clusterId] })
+      queryClient.invalidateQueries({ queryKey: ["cluster-gateway-classes", clusterId] })
+      queryClient.invalidateQueries({ queryKey: ["cluster-gateway-providers", clusterId] })
+    },
+    onError: (error: AxiosError<{ error: string }>) => {
+      toast.error("Failed to adopt gateway class", {
+        description: error.response?.data?.error || error.message,
+      })
+    },
+  })
+
+  const deleteGatewayProviderMutation = useMutation({
+    mutationFn: ({ providerId }: { providerId: string }) =>
+      clustersApi.deleteGatewayProvider(clusterId!, providerId),
+    onSuccess: () => {
+      toast.success("Gateway provider removed")
+      setDeleteGatewayProviderTarget(null)
+      queryClient.invalidateQueries({ queryKey: ["cluster", clusterId] })
+      queryClient.invalidateQueries({ queryKey: ["cluster-gateway-classes", clusterId] })
+      queryClient.invalidateQueries({ queryKey: ["cluster-gateway-providers", clusterId] })
+    },
+    onError: (error: AxiosError<{ error: string }>) => {
+      toast.error("Failed to remove gateway provider", {
         description: error.response?.data?.error || error.message,
       })
     },
@@ -479,6 +560,12 @@ export function ClusterDetailPage() {
     return acc + cpu
   }, 0)
 
+  const safeGatewayProviders = Array.isArray(gatewayProviders) ? gatewayProviders : []
+  const safeGatewayClasses = Array.isArray(gatewayClasses) ? gatewayClasses : []
+  const hasDefaultGatewayProvider = safeGatewayProviders.some((provider) => provider.is_default)
+  const adoptedGatewayClassNames = new Set(safeGatewayProviders.map((provider) => provider.gateway_class_name))
+  const adoptableGatewayClasses = safeGatewayClasses.filter((gatewayClass) => !adoptedGatewayClassNames.has(gatewayClass.name))
+
   const totalMemory = safeNodes.reduce((acc, node) => {
     const parseMemory = (mem: string) => {
       if (!mem) return 0
@@ -600,6 +687,10 @@ export function ClusterDetailPage() {
           <TabsTrigger value="domains">
             <Globe />
             Domains
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            <Info />
+            Settings
           </TabsTrigger>
         </TabsList>
 
@@ -784,6 +875,161 @@ export function ClusterDetailPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="settings" className="space-y-4 mt-2">
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShipWheel className="h-4 w-4" />
+                Gateway Providers
+              </CardTitle>
+              <CardDescription>
+                Managed and adopted gateway providers available to Ketches on this cluster. One provider is selected as the default for shared gateways and HTTP routes.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!gatewayProvidersLoading && !hasDefaultGatewayProvider && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">No Default Gateway Provider</p>
+                      <p className="text-xs">Public HTTP/HTTPS gateways are unavailable until one gateway provider is set as default.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {gatewayProvidersLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading gateway providers...
+                </div>
+              ) : safeGatewayProviders.length === 0 ? (
+                <EmptyState
+                  icon={ShipWheel}
+                  title="No Gateway Providers Configured"
+                  description="Install a gateway-capable extension or adopt an existing GatewayClass from the cluster."
+                />
+              ) : (
+                <div className="space-y-2">
+                  {safeGatewayProviders.map((provider) => (
+                    <div key={provider.id} className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{provider.display_name}</p>
+                          <ColorBadge color={provider.source_type === "managed" ? "purple" : "blue"}>
+                            {provider.source_type === "managed" ? "Managed" : "Adopted"}
+                          </ColorBadge>
+                          {provider.is_default && (
+                            <ColorBadge color="green">Default</ColorBadge>
+                          )}
+                        </div>
+                        <p className="text-xs font-mono text-muted-foreground break-all">
+                          {provider.gateway_class_name} · {provider.controller_name}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {provider.source_type === "managed" && provider.cluster_extension_id && (
+                          <Button
+                            variant="outline"
+                            onClick={() => setSearchParams({ tab: "extensions" }, { replace: true })}
+                          >
+                            View Extension
+                          </Button>
+                        )}
+                        <Button
+                          variant={provider.is_default ? "secondary" : "outline"}
+                          disabled={provider.is_default || updateDefaultGatewayClassMutation.isPending}
+                          onClick={() => updateDefaultGatewayClassMutation.mutate({
+                            name: provider.gateway_class_name,
+                            controller_name: provider.controller_name,
+                          })}
+                        >
+                          {provider.is_default ? "Default" : "Set Default"}
+                        </Button>
+                        {provider.source_type === "adopted" && !provider.is_default && (
+                          <Button
+                            variant="destructive"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteGatewayProviderTarget({ id: provider.id, displayName: provider.display_name })}
+                          >
+                            Unbind
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-2 border-t pt-4">
+                <div>
+                  <p className="text-sm font-medium">Discovered Gateway Classes</p>
+                  <p className="text-xs text-muted-foreground">
+                    GatewayClass resources already present in the cluster that can be adopted by Ketches.
+                  </p>
+                </div>
+                {gatewayClassesLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Discovering gateway classes...
+                  </div>
+                ) : adoptableGatewayClasses.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No additional GatewayClass resources are waiting to be adopted.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {adoptableGatewayClasses.map((gatewayClass) => (
+                      <div key={gatewayClass.name} className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{gatewayClass.name}</p>
+                            <ColorBadge color={gatewayClass.accepted ? "green" : "yellow"}>
+                              {gatewayClass.accepted ? "Accepted" : "Pending"}
+                            </ColorBadge>
+                          </div>
+                          <p className="text-xs font-mono text-muted-foreground break-all">
+                            {gatewayClass.controller_name || "Controller name unavailable"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            disabled={createGatewayProviderMutation.isPending}
+                            onClick={() => createGatewayProviderMutation.mutate({ gatewayClass, makeDefault: false })}
+                          >
+                            Adopt
+                          </Button>
+                          <Button
+                            variant="outline"
+                            disabled={createGatewayProviderMutation.isPending || updateDefaultGatewayClassMutation.isPending}
+                            onClick={() => createGatewayProviderMutation.mutate({ gatewayClass, makeDefault: true })}
+                          >
+                            Adopt And Set Default
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Warehouse className="h-4 w-4" />
+                Storage Classes
+              </CardTitle>
+              <CardDescription>
+                Cluster-level storage class preferences and defaults will be configured here.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">Storage class settings will be added in a follow-up change.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="extensions" className="space-y-4 mt-2">
           <ClusterExtensions clusterId={clusterId!} />
         </TabsContent>
@@ -819,6 +1065,27 @@ export function ClusterDetailPage() {
         onOpenChange={setEditKubeConfigOpen}
         cluster={cluster}
       />
+
+
+      <AlertDialog open={!!deleteGatewayProviderTarget} onOpenChange={() => setDeleteGatewayProviderTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unbind Gateway Provider</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove the adopted gateway provider "{deleteGatewayProviderTarget?.displayName}" from Ketches? This will not uninstall anything from the cluster.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteGatewayProviderTarget && deleteGatewayProviderMutation.mutate({ providerId: deleteGatewayProviderTarget.id })}
+              variant="destructive"
+            >
+              {deleteGatewayProviderMutation.isPending ? "Removing..." : "Unbind"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

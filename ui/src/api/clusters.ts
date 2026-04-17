@@ -100,6 +100,38 @@ export interface K8sNode {
   }
 }
 
+export interface CreateClusterGatewayProviderRequest {
+  display_name?: string
+  gateway_class_name: string
+  controller_name: string
+  make_default?: boolean
+}
+
+export interface ClusterGatewayProvider {
+  id: string
+  cluster_id: string
+  source_type: string
+  display_name: string
+  gateway_class_name: string
+  controller_name: string
+  extension_id?: string
+  cluster_extension_id?: string
+  is_default: boolean
+}
+
+export interface GatewayClassSummary {
+  name: string
+  controller_name: string
+  accepted: boolean
+  is_default: boolean
+}
+
+export interface UpdateClusterGatewayClassRequest {
+  gateway_class_name: string
+  gateway_controller_name?: string
+  management_mode?: string
+}
+
 export interface ClusterServicePort {
   name?: string
   protocol: string
@@ -240,6 +272,26 @@ export const clustersApi = {
     return client.get(`/v1/clusters/${id}/namespaces`) as Promise<string[]>
   },
 
+  listGatewayClasses: async (id: string) => {
+    return client.get(`/v1/clusters/${id}/gateway-classes`) as Promise<GatewayClassSummary[]>
+  },
+
+  listGatewayProviders: async (id: string) => {
+    return client.get(`/v1/clusters/${id}/gateway-providers`) as Promise<ClusterGatewayProvider[]>
+  },
+
+  createGatewayProvider: async (id: string, data: CreateClusterGatewayProviderRequest) => {
+    return client.post(`/v1/clusters/${id}/gateway-providers`, data) as Promise<ClusterGatewayProvider>
+  },
+
+  deleteGatewayProvider: async (clusterId: string, providerId: string) => {
+    return client.delete(`/v1/clusters/${clusterId}/gateway-providers/${providerId}`)
+  },
+
+  updateDefaultGatewayClass: async (id: string, data: UpdateClusterGatewayClassRequest) => {
+    return client.put(`/v1/clusters/${id}/default-gateway-class`, data) as Promise<Cluster>
+  },
+
   listServices: async (id: string, namespace: string) => {
     return client.get(`/v1/clusters/${id}/services?namespace=${namespace}`) as Promise<string[]>
   },
@@ -293,6 +345,9 @@ export const clustersApi = {
   upgradeExtension: async (clusterId: string, clusterExtensionId: string, data: UpgradeExtensionRequest) =>
     client.put(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}`, data) as Promise<ClusterExtension>,
 
+  retryExtension: async (clusterId: string, clusterExtensionId: string, data?: RetryClusterExtensionRequest) =>
+    client.post(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}/retry`, data ?? {}) as Promise<ClusterExtension>,
+
   uninstallExtension: async (clusterId: string, clusterExtensionId: string) =>
     client.delete(`/v1/clusters/${clusterId}/extensions/${clusterExtensionId}`) as Promise<ClusterExtension>,
 
@@ -312,6 +367,8 @@ export interface Extension {
   name: string
   display_name?: string
   description?: string
+  capabilities?: string[]
+  metadata?: Record<string, unknown>
   oci_url: string
   icon_url?: string
   install_count: number
@@ -328,6 +385,7 @@ export interface ClusterExtension {
   id: string
   cluster_id: string
   extension_id: string
+  name: string
   namespace: string
   release_name: string
   version: string
@@ -354,11 +412,18 @@ export interface UpgradeExtensionRequest {
   values?: string
 }
 
+export interface RetryClusterExtensionRequest {
+  name?: string
+  values?: string
+}
+
 // Request to create a new extension
 export interface CreateExtensionRequest {
   name: string
   display_name?: string
   description?: string
+  capabilities?: string[]
+  metadata?: Record<string, unknown>
   oci_url: string
   icon_url?: string
 }
@@ -367,6 +432,8 @@ export interface CreateExtensionRequest {
 export interface UpdateExtensionRequest {
   display_name?: string
   description?: string
+  capabilities?: string[]
+  metadata?: Record<string, unknown>
   oci_url?: string
   icon_url?: string
 }
@@ -431,6 +498,7 @@ export interface GatewayAPIStatus {
 export interface InstalledCluster {
   cluster_id: string
   cluster_name: string
+  name: string
   release_name: string
   namespace: string
   version: string

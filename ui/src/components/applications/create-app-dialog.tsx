@@ -54,7 +54,7 @@ const INITIAL_FORM_DATA: CreateAppFormData = {
   container_image: "",
   image_pull_policy: "IfNotPresent",
   description: "",
-  deploy: true,
+  deploy: false,
   registry_username: "",
   registry_password: "",
 }
@@ -461,7 +461,7 @@ export function CreateAppDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Deploying..." : "Deploy"}
+                {mutation.isPending ? "Creating..." : "Create"}
               </Button>
             </div>
           </DialogFooter>

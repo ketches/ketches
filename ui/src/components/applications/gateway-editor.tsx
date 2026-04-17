@@ -17,12 +17,6 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -30,6 +24,12 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group"
@@ -52,6 +52,7 @@ const PROTOCOL_OPTIONS = [
   { value: "tcp", label: "TCP", description: "Raw TCP passthrough" },
   { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
 ] as const
+const PUBLIC_ACCESS_CHECKBOX_ID = "gateway-public-access"
 
 const SERVICE_TYPE_OPTIONS = [
   { value: "ClusterIP", label: "ClusterIP", description: "Internal only, accessible within the cluster" },
@@ -207,6 +208,11 @@ export function GatewayEditor({
   const isHttpProtocol = formData.protocol === 'http' || formData.protocol === 'https'
   const isHttpsProtocol = formData.protocol === 'https'
   const supportsPublicExposure = isHttpProtocol
+  const publicAccessDisabledReason = !supportsPublicExposure
+    ? 'Public access is currently available only for HTTP/HTTPS gateways. TCP/UDP public exposure is not supported yet.'
+    : !gatewayAPIInstalled
+      ? 'Gateway API is not installed on this cluster, so HTTP/HTTPS public access is currently unavailable.'
+      : null
 
   React.useEffect(() => {
     if (selectedDomainOption !== "custom" && !domainOptions.some((option) => option.value === selectedDomainOption)) {
@@ -351,40 +357,38 @@ export function GatewayEditor({
           <div className="grid gap-4 py-4">
             {/* Port and Protocol in one row */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2">
-                <Field>
-                  <FieldLabel>
-                    Container Port *
-                    <Tooltip>
-                      <TooltipTrigger
-                        tabIndex={-1}
-                        render={
-                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
-                            <InfoIcon className="h-3.5 w-3.5" />
-                          </button>
-                        }
-                      />
-                      <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
-                        <p className="text-xs">- The port your application listens on inside the container (1-65535).</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      type="number"
-                      placeholder="80"
-                      value={formData.port}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, port: parseInt(e.target.value) || 0 }))}
-                      aria-invalid={!!errors.port}
+              <Field className="col-span-2">
+                <FieldLabel>
+                  Container Port *
+                  <Tooltip>
+                    <TooltipTrigger
+                      tabIndex={-1}
+                      render={
+                        <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
+                          <InfoIcon className="h-3.5 w-3.5" />
+                        </button>
+                      }
                     />
-                  </FieldContent>
-                  {errors.port && (
-                    <FieldError>
-                      <span className="text-destructive text-xs">{errors.port}</span>
-                    </FieldError>
-                  )}
-                </Field>
-              </div>
+                    <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                      <p className="text-xs">- The port your application listens on inside the container (1-65535).</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    type="number"
+                    placeholder="80"
+                    value={formData.port}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, port: parseInt(e.target.value) || 0 }))}
+                    aria-invalid={!!errors.port}
+                  />
+                </FieldContent>
+                {errors.port && (
+                  <FieldError>
+                    <span className="text-destructive text-xs">{errors.port}</span>
+                  </FieldError>
+                )}
+              </Field>
 
               <Field>
                 <FieldLabel>Protocol *</FieldLabel>
@@ -499,38 +503,41 @@ export function GatewayEditor({
             {/* Public Access Checkbox */}
             <Field orientation="horizontal" className="flex items-center gap-2">
               <FieldContent>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={supportsPublicExposure ? formData.exposed : false}
-                    onCheckedChange={(checked) => {
-                      if (!supportsPublicExposure) {
-                        return
-                      }
-                      setFormData((prev) => ({ ...prev, exposed: !!checked }))
-                    }}
-                    disabled={!gatewayAPIInstalled || !supportsPublicExposure}
-                  />
-                  <label
-                    htmlFor="exposed"
-                    className={`cursor-pointer ${!gatewayAPIInstalled || !supportsPublicExposure ? 'text-muted-foreground' : ''}`}
-                  >
-                    Enable public access
-                  </label>
-                  {!supportsPublicExposure && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        tabIndex={-1}
-                        render={
-                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
-                            <InfoIcon className="h-3.5 w-3.5" />
-                          </button>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={PUBLIC_ACCESS_CHECKBOX_ID}
+                      checked={supportsPublicExposure ? formData.exposed : false}
+                      onCheckedChange={(checked) => {
+                        if (!supportsPublicExposure) {
+                          return
                         }
-                      />
-                      <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
-                        <p className="text-xs">- Public access is currently available only for HTTP/HTTPS gateways. TCP/UDP public exposure is not supported yet.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+                        setFormData((prev) => ({ ...prev, exposed: !!checked }))
+                      }}
+                      disabled={!gatewayAPIInstalled || !supportsPublicExposure}
+                    />
+                    <label
+                      htmlFor={PUBLIC_ACCESS_CHECKBOX_ID}
+                      className={`cursor-pointer ${!gatewayAPIInstalled || !supportsPublicExposure ? 'text-muted-foreground' : ''}`}
+                    >
+                      Enable public access
+                    </label>
+                    {publicAccessDisabledReason && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          tabIndex={-1}
+                          render={
+                            <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
+                              <InfoIcon className="h-3.5 w-3.5 text-orange-600" />
+                            </button>
+                          }
+                        />
+                        <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                          <p className="text-xs">- {publicAccessDisabledReason}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </div>
               </FieldContent>
             </Field>
@@ -539,7 +546,7 @@ export function GatewayEditor({
             {formData.exposed && isHttpProtocol && (
               <>
                 <div className="grid grid-cols-3 gap-4">
-                  <Field>
+                  <Field className="col-span-2">
                     <FieldLabel>
                       Domain *
                       <Tooltip>
@@ -550,105 +557,105 @@ export function GatewayEditor({
                               <InfoIcon className="h-3.5 w-3.5" />
                             </button>
                           }
-                          />
-                          <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
-                            <p className="text-xs">- Choose a saved domain or type one directly.</p>
-                            <p className="text-xs mt-1">- If the selected domain starts with `*.` the input removes the `*` so you can enter the hostname prefix yourself.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </FieldLabel>
-                      <FieldContent>
-                        <InputGroup>
-                          <InputGroupAddon align="inline-start">
-                            <InputGroupText>{formData.protocol}://</InputGroupText>
-                          </InputGroupAddon>
-                          <InputGroupInput
-                            placeholder="app.example.com"
-                            value={domainInput}
-                            onChange={(e) => {
-                              setSelectedDomainOption("custom")
-                              setDomainInput(e.target.value)
-                            }}
-                            aria-invalid={!!errors.domain}
-                          />
-                          <InputGroupAddon>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <Button type="button" variant="ghost" size="sm">
-                                    {selectedDomainLabel}
-                                    <ChevronDown />
-                                  </Button>
-                                }
-                              />
-                              <DropdownMenuContent align="end" className="w-64">
-                                {domainOptions.map((option) => (
-                                  <DropdownMenuItem
-                                    key={option.value}
-                                    onClick={() => {
-                                      setSelectedDomainOption(option.value)
-                                      if (option.value === "custom") {
-                                        return
-                                      }
-                                      setDomainInput(seedDomainInputFromSelection(option.domain))
-                                    }}
-                                  >
-                                    <Item size="xs" className="p-0">
-                                      <ItemContent>
-                                        <ItemTitle className="whitespace-nowrap">
-                                          {option.label}
-                                        </ItemTitle>
-                                        <ItemDescription>
-                                          {option.description}
-                                        </ItemDescription>
-                                      </ItemContent>
-                                    </Item>
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </InputGroupAddon>
-                        </InputGroup>
-                      </FieldContent>
-                      {errors.domain && (
-                        <FieldError>
-                          <span className="text-destructive text-xs">{errors.domain}</span>
-                        </FieldError>
-                      )}
-                    </Field>
-                </div>
+                        />
+                        <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                          <p className="text-xs">- Choose a saved domain or type one directly.</p>
+                          <p className="text-xs mt-1">- If the selected domain starts with `*.` the input removes the `*` so you can enter the hostname prefix yourself.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <InputGroup>
+                        <InputGroupAddon align="inline-start">
+                          <InputGroupText>{formData.protocol}://</InputGroupText>
+                        </InputGroupAddon>
+                        <InputGroupInput
+                          placeholder="app.example.com"
+                          value={domainInput}
+                          onChange={(e) => {
+                            setSelectedDomainOption("custom")
+                            setDomainInput(e.target.value)
+                          }}
+                          aria-invalid={!!errors.domain}
+                        />
+                        <InputGroupAddon>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button type="button" variant="ghost" size="sm">
+                                  {selectedDomainLabel}
+                                  <ChevronDown />
+                                </Button>
+                              }
+                            />
+                            <DropdownMenuContent align="end" className="w-64">
+                              {domainOptions.map((option) => (
+                                <DropdownMenuItem
+                                  key={option.value}
+                                  onClick={() => {
+                                    setSelectedDomainOption(option.value)
+                                    if (option.value === "custom") {
+                                      return
+                                    }
+                                    setDomainInput(seedDomainInputFromSelection(option.domain))
+                                  }}
+                                >
+                                  <Item size="xs" className="p-0">
+                                    <ItemContent>
+                                      <ItemTitle className="whitespace-nowrap">
+                                        {option.label}
+                                      </ItemTitle>
+                                      <ItemDescription>
+                                        {option.description}
+                                      </ItemDescription>
+                                    </ItemContent>
+                                  </Item>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </InputGroupAddon>
+                      </InputGroup>
+                    </FieldContent>
+                    {errors.domain && (
+                      <FieldError>
+                        <span className="text-destructive text-xs">{errors.domain}</span>
+                      </FieldError>
+                    )}
+                  </Field>
 
-                <Field>
-                  <FieldLabel>
-                    Path *
-                    <Tooltip>
-                      <TooltipTrigger
-                        tabIndex={-1}
-                        render={
-                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
-                            <InfoIcon className="h-3.5 w-3.5" />
-                          </button>
-                        }
+                  <Field>
+                    <FieldLabel>
+                      Path *
+                      <Tooltip>
+                        <TooltipTrigger
+                          tabIndex={-1}
+                          render={
+                            <button type="button" className="text-muted-foreground hover:text-foreground transition-colors outline-none">
+                              <InfoIcon className="h-3.5 w-3.5" />
+                            </button>
+                          }
+                        />
+                        <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
+                          <p className="text-xs">- URL path prefix (must start with /).</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        placeholder="/"
+                        value={formData.path}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, path: e.target.value }))}
+                        aria-invalid={!!errors.path}
                       />
-                      <TooltipContent side="top" align="start" className="max-w-100 flex-col items-start">
-                        <p className="text-xs">- URL path prefix (must start with /).</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      placeholder="/"
-                      value={formData.path}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, path: e.target.value }))}
-                      aria-invalid={!!errors.path}
-                    />
-                  </FieldContent>
-                  {errors.path && (
-                    <FieldError>
-                      <span className="text-destructive text-xs">{errors.path}</span>
-                    </FieldError>
-                  )}
-                </Field>
+                    </FieldContent>
+                    {errors.path && (
+                      <FieldError>
+                        <span className="text-destructive text-xs">{errors.path}</span>
+                      </FieldError>
+                    )}
+                  </Field>
+                </div>
 
                 {/* HTTPS Certificate Selection */}
                 {isHttpsProtocol && (
