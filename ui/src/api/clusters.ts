@@ -389,6 +389,7 @@ export interface ClusterExtension {
   namespace: string
   release_name: string
   version: string
+  create_namespace?: boolean
   values?: string
   status: string
   phase?: string
@@ -414,6 +415,7 @@ export interface UpgradeExtensionRequest {
 
 export interface RetryClusterExtensionRequest {
   name?: string
+  version?: string
   values?: string
 }
 

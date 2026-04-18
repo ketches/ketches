@@ -7,9 +7,19 @@ import { toast } from "sonner"
 import {
   clustersApi,
   type ClusterExtension,
+  type ExtensionVersionInfo,
 } from "@/api/clusters"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -20,6 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { filterSelectableExtensionVersions } from "@/lib/extension-versions"
 
 interface RetryInstallExtensionDialogProps {
   open: boolean
@@ -38,6 +49,7 @@ export function RetryInstallExtensionDialog({
   const { theme } = useTheme()
 
   const [name, setName] = React.useState("")
+  const [selectedVersion, setSelectedVersion] = React.useState("")
   const [values, setValues] = React.useState("")
   const [monacoTheme, setMonacoTheme] = React.useState<"vs" | "vs-dark">("vs")
 
@@ -61,22 +73,43 @@ export function RetryInstallExtensionDialog({
     enabled: open && Boolean(extension?.id),
   })
 
+  const { data: versionsData = [], isLoading: versionsLoading } = useQuery({
+    queryKey: ["extension-versions", extension?.extension_id],
+    queryFn: () => clustersApi.getExtensionVersions(extension!.extension_id),
+    enabled: open && Boolean(extension?.extension_id),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const versions: ExtensionVersionInfo[] = Array.isArray(versionsData)
+    ? versionsData
+    : []
+  const selectableVersions = filterSelectableExtensionVersions(versions, selectedVersion || extension?.version)
+
   React.useEffect(() => {
     if (!extension) return
     setName(extension.name || extension.release_name)
+    setSelectedVersion(extension.version || "")
     setValues(extension.values ?? "")
   }, [extension])
 
   React.useEffect(() => {
     if (!extensionDetails || !extension || extensionDetails.id !== extension.id) return
     setName(extensionDetails.name || extensionDetails.release_name)
+    setSelectedVersion(extensionDetails.version || "")
     setValues(extensionDetails.values ?? "")
   }, [extension, extensionDetails])
+
+  React.useEffect(() => {
+    if (selectableVersions.length > 0 && !selectedVersion) {
+      setSelectedVersion(selectableVersions[0].version)
+    }
+  }, [selectableVersions, selectedVersion])
 
   const retryMutation = useMutation({
     mutationFn: () =>
       clustersApi.retryExtension(clusterId, extension!.id, {
         name: name.trim(),
+        version: selectedVersion || undefined,
         values,
       }),
     onSuccess: () => {
@@ -109,6 +142,10 @@ export function RetryInstallExtensionDialog({
 
   if (!extension) return null
 
+  const releaseName = extensionDetails?.release_name ?? extension.release_name
+  const namespace = extensionDetails?.namespace ?? extension.namespace
+  const createNamespace = extensionDetails?.create_namespace ?? extension.create_namespace ?? false
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col gap-0 overflow-hidden p-0 sm:h-[90vh] sm:max-h-[90vh] sm:max-w-[90vw]">
@@ -117,12 +154,13 @@ export function RetryInstallExtensionDialog({
             <DialogTitle>Retry Install Extension</DialogTitle>
             <DialogDescription>
               Retry installing <span className="font-medium">{extension.name || extension.release_name}</span>.
-              Only the display name and values can be changed before retrying.
+              You can adjust the display name, chart version, and values before retrying.
+              Other installation fields are shown read-only.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden px-6 py-4 lg:grid-cols-[minmax(0,320px)_1fr]">
-            <div className="flex flex-col gap-4 overflow-auto">
+            <div className="space-y-4 overflow-auto">
               <Field>
                 <FieldLabel htmlFor="retry-install-name">Name *</FieldLabel>
                 <FieldContent>
@@ -138,21 +176,52 @@ export function RetryInstallExtensionDialog({
               <Field>
                 <FieldLabel htmlFor="retry-install-release-name">Release Name</FieldLabel>
                 <FieldContent>
-                  <Input id="retry-install-release-name" value={extension.release_name} disabled />
+                  <Input id="retry-install-release-name" value={releaseName} disabled />
                 </FieldContent>
               </Field>
 
               <Field>
                 <FieldLabel htmlFor="retry-install-version">Version</FieldLabel>
                 <FieldContent>
-                  <Input id="retry-install-version" value={extension.version || "Latest"} disabled />
+                  <Combobox
+                    value={selectedVersion}
+                    onValueChange={(value) => setSelectedVersion(value ?? "")}
+                    itemToStringLabel={(value) => selectableVersions.find((item) => item.version === value)?.version ?? value ?? ""}
+                    disabled={versionsLoading}
+                  >
+                    <ComboboxInput
+                      placeholder={versionsLoading ? "Loading versions..." : "Select version"}
+                    />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        <ComboboxEmpty>No versions found.</ComboboxEmpty>
+                        {selectableVersions.map((item) => (
+                          <ComboboxItem key={item.version} value={item.version}>
+                            {item.version}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </FieldContent>
               </Field>
 
               <Field>
                 <FieldLabel htmlFor="retry-install-namespace">Namespace</FieldLabel>
                 <FieldContent>
-                  <Input id="retry-install-namespace" value={extension.namespace} disabled />
+                  <Input id="retry-install-namespace" value={namespace} disabled />
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="retry-install-create-namespace">Create Namespace</FieldLabel>
+                <FieldContent>
+                  <div className="flex min-h-9 items-center rounded-md border border-input px-3">
+                    <Checkbox id="retry-install-create-namespace" checked={createNamespace} disabled />
+                    <label htmlFor="retry-install-create-namespace" className="ml-2 text-sm text-muted-foreground">
+                      {createNamespace ? "Enabled" : "Disabled"}
+                    </label>
+                  </div>
                 </FieldContent>
               </Field>
             </div>

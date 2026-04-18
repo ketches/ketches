@@ -72,8 +72,9 @@ type InstallExtensionRequest struct {
 
 // RetryClusterExtensionRequest is the request body for retrying a failed cluster extension operation.
 type RetryClusterExtensionRequest struct {
-	Name   *string `json:"name,omitempty"`
-	Values *string `json:"values,omitempty"`
+	Name    *string `json:"name,omitempty"`
+	Version *string `json:"version,omitempty"`
+	Values  *string `json:"values,omitempty"`
 }
 
 // UpgradeExtensionRequest is the request body for upgrading an installed cluster extension.

@@ -72,3 +72,23 @@ func TestDeleteClusterGatewayProviderRejectsManagedProvider(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "adopted gateway providers")
 }
+
+func TestRegisterAdoptedGatewayProviderAllowsSameGatewayClassAcrossClusters(t *testing.T) {
+	setupClusterGatewayProviderTestDB(t)
+	require.NoError(t, db.DB.Create(&entities.Cluster{Base: entities.Base{ID: "cluster-1"}, Slug: "cluster-one", Name: "Cluster One", KubeConfig: "enc:v1:test", Enabled: true}).Error)
+	require.NoError(t, db.DB.Create(&entities.Cluster{Base: entities.Base{ID: "cluster-2"}, Slug: "cluster-two", Name: "Cluster Two", KubeConfig: "enc:v1:test", Enabled: true}).Error)
+
+	providerOne, err := RegisterAdoptedGatewayProvider("cluster-1", "shared-gateway", "example.com/controller-one")
+	require.NoError(t, err)
+	providerTwo, err := RegisterAdoptedGatewayProvider("cluster-2", "shared-gateway", "example.com/controller-two")
+	require.NoError(t, err)
+
+	assert.Equal(t, "cluster-1", providerOne.ClusterID)
+	assert.Equal(t, "cluster-2", providerTwo.ClusterID)
+
+	var providers []entities.ClusterGatewayProvider
+	require.NoError(t, db.DB.Order("cluster_id ASC").Find(&providers).Error)
+	require.Len(t, providers, 2)
+	assert.Equal(t, "cluster-1", providers[0].ClusterID)
+	assert.Equal(t, "cluster-2", providers[1].ClusterID)
+}

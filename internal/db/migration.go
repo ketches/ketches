@@ -71,6 +71,10 @@ func Migrate() error {
 		return err
 	}
 
+	if err := migrateClusterGatewayProviderUniqueIndex(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -91,4 +95,23 @@ func migrateClusterGatewayAddressToGatewayHost() error {
 	}
 
 	return DB.Migrator().RenameColumn("clusters", "gateway_address", "gateway_host")
+}
+
+func migrateClusterGatewayProviderUniqueIndex() error {
+	if DB == nil {
+		return nil
+	}
+
+	if !DB.Migrator().HasTable(&entities.ClusterGatewayProvider{}) {
+		return nil
+	}
+
+	const indexName = "uidx_cluster_gateway_class"
+	if DB.Migrator().HasIndex(&entities.ClusterGatewayProvider{}, indexName) {
+		if err := DB.Migrator().DropIndex(&entities.ClusterGatewayProvider{}, indexName); err != nil {
+			return err
+		}
+	}
+
+	return DB.Migrator().CreateIndex(&entities.ClusterGatewayProvider{}, indexName)
 }

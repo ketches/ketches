@@ -2,6 +2,7 @@ package services
 
 import (
 	"testing"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/db"
@@ -24,6 +25,11 @@ func setupExtensionServiceTestDB(t *testing.T) {
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	require.NoError(t, err)
+
+	sqlDB, err := testDB.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
 
 	db.DB = testDB
 	require.NoError(t, testDB.AutoMigrate(
@@ -265,6 +271,117 @@ func TestRetryClusterExtensionQueuesInstallRetryForFailedInstall(t *testing.T) {
 	assert.Equal(t, "", stored.ErrorMessage)
 }
 
+func TestDefaultLaunchClusterExtensionInstallCreatesGatewayProviderForGatewayExtension(t *testing.T) {
+	setupExtensionServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Cluster{
+		Base:       entities.Base{ID: "cluster-1"},
+		Slug:       "cluster-one",
+		Name:       "Cluster One",
+		KubeConfig: "enc:v1:test",
+		Enabled:    true,
+	}).Error)
+
+	record := &entities.ClusterExtension{
+		ID:          "ce-1",
+		ClusterID:   "cluster-1",
+		ExtensionID: "ext-1",
+		Name:        "Envoy Gateway",
+		Namespace:   "ketches-extensions",
+		ReleaseName: "envoy-gateway",
+		Status:      entities.ClusterExtensionStatusPending,
+	}
+	require.NoError(t, db.DB.Create(record).Error)
+
+	ext := &entities.Extension{
+		ID:           "ext-1",
+		Name:         "envoyGateway",
+		DisplayName:  "Envoy Gateway",
+		Capabilities: `["gateway-api"]`,
+		Metadata:     entities.JSONBlob(`{"gateway_api":{"controller_name":"gateway.envoyproxy.io/gatewayclass-controller"}}`),
+	}
+
+	originalExecuteInstall := executeClusterExtensionInstall
+	originalEnsureGatewayClass := ensureGatewayClassForExtensionInstall
+	originalEnsureSharedGateway := ensureSharedGatewayForExtensionInstall
+	t.Cleanup(func() {
+		executeClusterExtensionInstall = originalExecuteInstall
+		ensureGatewayClassForExtensionInstall = originalEnsureGatewayClass
+		ensureSharedGatewayForExtensionInstall = originalEnsureSharedGateway
+	})
+
+	executeClusterExtensionInstall = func(clusterID string, ext *entities.Extension, record *entities.ClusterExtension) error {
+		return nil
+	}
+	ensureGatewayClassForExtensionInstall = func(clusterID, gatewayClassName, controllerName string) error {
+		return nil
+	}
+	ensureSharedGatewayForExtensionInstall = func(clusterID string) error {
+		return nil
+	}
+
+	defaultLaunchClusterExtensionInstall("cluster-1", ext, record)
+
+	require.Eventually(t, func() bool {
+		var provider entities.ClusterGatewayProvider
+		if err := db.DB.Where("cluster_id = ? AND cluster_extension_id = ?", "cluster-1", "ce-1").First(&provider).Error; err != nil {
+			return false
+		}
+		return provider.SourceType == "managed" && provider.IsDefault && provider.GatewayClassName == "ketches-envoy-gateway"
+	}, time.Second, 10*time.Millisecond)
+
+	require.Eventually(t, func() bool {
+		var stored entities.ClusterExtension
+		if err := db.DB.First(&stored, "id = ?", "ce-1").Error; err != nil {
+			return false
+		}
+		return stored.Status == entities.ClusterExtensionStatusDeployed && stored.Phase == "" && stored.ErrorMessage == ""
+	}, time.Second, 10*time.Millisecond)
+}
+
+func TestRetryClusterExtensionAllowsVersionOverrideForFailedInstall(t *testing.T) {
+	setupExtensionServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Extension{
+		ID:          "ext-1",
+		Name:        "kube-prometheus-stack",
+		DisplayName: "Kube Prometheus Stack",
+		OCIUrl:      "oci://example.com/kube-prometheus-stack",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.ClusterExtension{
+		ID:          "ce-1",
+		ClusterID:   "cluster-1",
+		ExtensionID: "ext-1",
+		Namespace:   "ketches-extensions",
+		ReleaseName: "kube-prometheus-stack",
+		Version:     "9.4.9",
+		Status:      entities.ClusterExtensionStatusFailed,
+		Phase:       "installing",
+	}).Error)
+
+	originalLaunch := launchClusterExtensionInstall
+	called := false
+	launchClusterExtensionInstall = func(clusterID string, ext *entities.Extension, record *entities.ClusterExtension) {
+		called = true
+		assert.Equal(t, "69.8.2", record.Version)
+	}
+	t.Cleanup(func() {
+		launchClusterExtensionInstall = originalLaunch
+	})
+
+	version := "69.8.2"
+	result, err := RetryClusterExtension("cluster-1", "ce-1", &models.RetryClusterExtensionRequest{Version: &version})
+	require.NoError(t, err)
+	assert.True(t, called)
+	require.NotNil(t, result)
+	assert.Equal(t, "69.8.2", result.Version)
+
+	var stored entities.ClusterExtension
+	require.NoError(t, db.DB.First(&stored, "id = ?", "ce-1").Error)
+	assert.Equal(t, "69.8.2", stored.Version)
+	assert.Equal(t, entities.ClusterExtensionStatusPending, stored.Status)
+}
+
 func setupExtensionMetadataTestDB(t *testing.T) {
 	t.Helper()
 
@@ -370,4 +487,16 @@ func TestReconcileClusterExtensionInstallSuccessSkipsNonGatewayExtensions(t *tes
 	}
 
 	require.NoError(t, reconcileClusterExtensionInstallSuccess("cluster-1", ext, record))
+}
+
+func TestSortExtensionVersionsPrefersNewestStableSemver(t *testing.T) {
+	versions := sortExtensionVersions([]string{"9.4.9", "68.4.4", "70.0.0", "10.0.0"})
+
+	assert.Equal(t, []string{"70.0.0", "68.4.4", "10.0.0", "9.4.9"}, versions)
+}
+
+func TestSortExtensionVersionsPlacesPrereleasesAfterStableVersions(t *testing.T) {
+	versions := sortExtensionVersions([]string{"70.0.0-rc.1", "69.8.2", "69.8.1", "latest", "sha256-deadbeef"})
+
+	assert.Equal(t, []string{"69.8.2", "69.8.1", "70.0.0-rc.1", "sha256-deadbeef", "latest"}, versions)
 }

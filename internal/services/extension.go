@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
@@ -83,6 +84,7 @@ var (
 	launchClusterExtensionInstall          = defaultLaunchClusterExtensionInstall
 	launchClusterExtensionUpgrade          = defaultLaunchClusterExtensionUpgrade
 	launchClusterExtensionUninstall        = defaultLaunchClusterExtensionUninstall
+	executeClusterExtensionInstall         = runClusterExtensionInstall
 	ensureGatewayClassForExtensionInstall  = defaultEnsureGatewayClassForExtensionInstall
 	ensureSharedGatewayForExtensionInstall = defaultEnsureSharedGatewayForExtensionInstall
 )
@@ -329,15 +331,65 @@ func ListExtensionVersions(extensionID string) ([]models.ExtensionVersionInfo, e
 		return nil, app.WrapErrorf(err, "failed to list versions for %q: %w", item.OCIUrl, err)
 	}
 
-	// Sort descending (newest first) using simple string sort; semver sorting
-	// can be added later without API change.
-	sort.Sort(sort.Reverse(sort.StringSlice(tags)))
+	tags = sortExtensionVersions(tags)
 
 	result := make([]models.ExtensionVersionInfo, 0, len(tags))
 	for _, tag := range tags {
 		result = append(result, models.ExtensionVersionInfo{Version: tag})
 	}
 	return result, nil
+}
+
+func sortExtensionVersions(tags []string) []string {
+	type parsedVersion struct {
+		original string
+		version  *semver.Version
+	}
+
+	stableVersions := make([]parsedVersion, 0, len(tags))
+	prereleaseVersions := make([]parsedVersion, 0, len(tags))
+	otherTags := make([]string, 0, len(tags))
+
+	for _, tag := range tags {
+		trimmed := strings.TrimSpace(tag)
+		if trimmed == "" {
+			continue
+		}
+
+		version, err := semver.NewVersion(trimmed)
+		if err != nil {
+			otherTags = append(otherTags, trimmed)
+			continue
+		}
+
+		item := parsedVersion{
+			original: trimmed,
+			version:  version,
+		}
+		if version.Prerelease() == "" {
+			stableVersions = append(stableVersions, item)
+			continue
+		}
+		prereleaseVersions = append(prereleaseVersions, item)
+	}
+
+	sort.Slice(stableVersions, func(i, j int) bool {
+		return stableVersions[i].version.GreaterThan(stableVersions[j].version)
+	})
+	sort.Slice(prereleaseVersions, func(i, j int) bool {
+		return prereleaseVersions[i].version.GreaterThan(prereleaseVersions[j].version)
+	})
+	sort.Sort(sort.Reverse(sort.StringSlice(otherTags)))
+
+	result := make([]string, 0, len(stableVersions)+len(prereleaseVersions)+len(otherTags))
+	for _, item := range stableVersions {
+		result = append(result, item.original)
+	}
+	for _, item := range prereleaseVersions {
+		result = append(result, item.original)
+	}
+	result = append(result, otherTags...)
+	return result
 }
 
 // GetExtensionValues pulls the OCI helm chart and returns its default values.yaml content.
@@ -723,6 +775,11 @@ func applyRetryInstallEdits(record *entities.ClusterExtension, req *models.Retry
 		updates["name"] = name
 		record.Name = name
 	}
+	if req.Version != nil {
+		version := strings.TrimSpace(*req.Version)
+		updates["version"] = version
+		record.Version = version
+	}
 	if req.Values != nil {
 		updates["values"] = *req.Values
 		record.Values = *req.Values
@@ -780,8 +837,25 @@ func defaultLaunchClusterExtensionInstall(clusterID string, ext *entities.Extens
 			return
 		}
 
-		if err := runClusterExtensionInstall(clusterID, ext, record); err != nil {
+		if err := executeClusterExtensionInstall(clusterID, ext, record); err != nil {
 			slog.Error("[extension] install failed",
+				"cluster_id", clusterID,
+				"extension_id", record.ExtensionID,
+				"release_name", record.ReleaseName,
+				"namespace", record.Namespace,
+				"version", record.Version,
+				"error", err,
+			)
+			db.DB.Model(record).Updates(map[string]any{
+				"status":        string(entities.ClusterExtensionStatusFailed),
+				"phase":         "installing",
+				"error_message": err.Error(),
+			})
+			return
+		}
+
+		if err := reconcileClusterExtensionInstallSuccess(clusterID, ext, record); err != nil {
+			slog.Error("[extension] install post-reconcile failed",
 				"cluster_id", clusterID,
 				"extension_id", record.ExtensionID,
 				"release_name", record.ReleaseName,

@@ -25,7 +25,7 @@ func ListAppEnvVars(appID string) ([]models.AppEnvVarResponse, error) {
 
 func CreateAppEnvVar(appID string, key, value string) (*models.AppEnvVarResponse, error) {
 	var existing entities.AppEnvVar
-	err := db.DB.Where("app_id = ? AND `key` = ?", appID, key).First(&existing).Error
+	err := db.DB.Where(&entities.AppEnvVar{AppID: appID, Key: key}).First(&existing).Error
 	if err == nil {
 		return nil, errors.New("environment variable with this key already exists for this app")
 	}
