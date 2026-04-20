@@ -45,7 +45,7 @@ func CreateAppGateway(c *gin.Context) {
 
 	gateway, err := services.CreateAppGateway(c.Request.Context(), appID, &req)
 	if err != nil {
-		if strings.Contains(err.Error(), "already exists") {
+		if strings.Contains(err.Error(), "already exists") || errors.Is(err, services.ErrInvalidGatewayCertificate) {
 			api.Error(c, http.StatusBadRequest, err)
 			return
 		}
@@ -74,6 +74,10 @@ func UpdateAppGateway(c *gin.Context) {
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			api.Error(c, http.StatusNotFound, err)
+			return
+		}
+		if errors.Is(err, services.ErrInvalidGatewayCertificate) {
+			api.Error(c, http.StatusBadRequest, err)
 			return
 		}
 		api.Error(c, http.StatusInternalServerError, err)
@@ -166,7 +170,7 @@ func validateGatewayRequest(gateway any) error {
 		isHTTPProtocol := proto == "http" || proto == "https"
 
 		if isHTTPProtocol {
-			// HTTP/HTTPS requires domain and path
+			// HTTP/HTTPS requires domain and path.
 			if *domain == "" {
 				return errors.New("domain is required for HTTP/HTTPS protocols when exposed")
 			}
@@ -176,7 +180,10 @@ func validateGatewayRequest(gateway any) error {
 			if !strings.HasPrefix(*path, "/") {
 				return errors.New("path must start with /")
 			}
-			// Clear TCP/UDP fields
+			if proto == "https" && strings.TrimSpace(*certID) == "" {
+				return errors.New("certificate is required for HTTPS when exposed")
+			}
+			// Clear TCP/UDP fields.
 			*gatewayPort = 0
 		} else {
 			return errors.New("public access is currently supported only for HTTP/HTTPS gateways")

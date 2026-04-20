@@ -62,6 +62,7 @@ func TestValidateGatewayRequestAllowsExposedHTTPS(t *testing.T) {
 		Exposed:     true,
 		Domain:      "secure.example.com",
 		Path:        "/",
+		CertID:      "cert-1",
 		ServiceType: "ClusterIP",
 	}
 
@@ -84,4 +85,20 @@ func TestValidateGatewayRequestAllowsNonExposedTCP(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 0, req.GatewayPort)
+}
+
+func TestValidateGatewayRequestRejectsExposedHTTPSWithoutCertificate(t *testing.T) {
+	req := &models.CreateGatewayRequest{
+		Port:        8443,
+		Protocol:    "https",
+		Exposed:     true,
+		Domain:      "secure.example.com",
+		Path:        "/",
+		ServiceType: "ClusterIP",
+	}
+
+	err := validateGatewayRequest(req)
+
+	require.Error(t, err)
+	assert.Equal(t, "certificate is required for HTTPS when exposed", err.Error())
 }

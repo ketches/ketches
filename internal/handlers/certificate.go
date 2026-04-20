@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -193,6 +194,10 @@ func DeleteCertificate(c *gin.Context) {
 	certID := c.Param("certID")
 
 	if err := services.DeleteCertificate(certID); err != nil {
+		if errors.Is(err, services.ErrCertificateInUse) {
+			api.Error(c, http.StatusBadRequest, err)
+			return
+		}
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

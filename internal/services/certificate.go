@@ -1,13 +1,17 @@
 package services
 
 import (
+	"context"
 	"errors"
 
+	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 )
+
+var ErrCertificateInUse = errors.New("certificate is in use")
 
 // ListClusterCertificates returns paginated certificates scoped to a cluster
 func ListClusterCertificates(clusterID string, page, pageSize int, search string) (int64, []entities.Certificate, error) {
@@ -139,6 +143,9 @@ func UpdateCertificate(id string, req *models.UpdateCertificateRequest) (*entiti
 	if err := db.DB.First(cert, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
+	if err := core.EnsureSharedGateway(context.Background(), cert.ClusterID); err != nil {
+		return nil, err
+	}
 
 	return cert, nil
 }
@@ -148,9 +155,24 @@ func DeleteCertificate(id string) error {
 	if _, err := GetCertificate(id); err != nil {
 		return err
 	}
+	inUse, err := certificateInUse(id)
+	if err != nil {
+		return err
+	}
+	if inUse {
+		return ErrCertificateInUse
+	}
 
 	if err := db.DB.Delete(&entities.Certificate{}, "id = ?", id).Error; err != nil {
 		return err
 	}
 	return nil
+}
+
+func certificateInUse(certID string) (bool, error) {
+	var count int64
+	if err := db.DB.Model(&entities.AppGateway{}).Where("cert_id = ?", certID).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

@@ -521,10 +521,14 @@ func (m *AppMetadata) BuildHTTPRoute(gw entities.AppGateway) *gatewayv1.HTTPRout
 
 	hostname := gatewayv1.Hostname(gw.Domain)
 	pathPrefix := gatewayv1.PathMatchPathPrefix
+	sectionName := gatewayv1.SectionName("http")
+	if strings.EqualFold(gw.Protocol, "https") {
+		sectionName = buildSharedGatewayHTTPSListenerName(gw.Domain)
+	}
 
 	route := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%d", m.AppContext.App.Slug, gw.Port),
+			Name:      buildAppGatewayHTTPRouteName(m.AppContext.App.Slug, gw),
 			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
 			Labels:    m.getLabels(),
 		},
@@ -534,7 +538,7 @@ func (m *AppMetadata) BuildHTTPRoute(gw entities.AppGateway) *gatewayv1.HTTPRout
 					{
 						Name:        gatewayv1.ObjectName(SharedGatewayName()),
 						Namespace:   ptrGatewayNamespace(gatewayv1.Namespace(SharedGatewayNamespace())),
-						SectionName: ptrSectionName(gatewayv1.SectionName("http")),
+						SectionName: ptrSectionName(sectionName),
 					},
 				},
 			},
@@ -565,6 +569,14 @@ func (m *AppMetadata) BuildHTTPRoute(gw entities.AppGateway) *gatewayv1.HTTPRout
 	}
 
 	return route
+}
+
+func buildAppGatewayHTTPRouteName(appSlug string, gw entities.AppGateway) string {
+	return fmt.Sprintf("%s-%d-%s", appSlug, gw.Port, strings.ToLower(gw.Protocol))
+}
+
+func buildLegacyAppGatewayHTTPRouteName(appSlug string, port int) string {
+	return fmt.Sprintf("%s-%d", appSlug, port)
 }
 
 func ptrInt32(i int32) *int32 {

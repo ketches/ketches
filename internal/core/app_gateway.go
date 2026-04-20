@@ -71,7 +71,7 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 			}
 		}
 
-		// If gateway is exposed, create/update Gateway API resources
+		protocol := gateway.Protocol
 		if gateway.Exposed {
 			// Verify that Gateway API CRDs are installed before attempting to create an HTTPRoute.
 			hasGWAPI, err := ClusterHasGatewayAPICRDs(appCtx.EnvContext.Env.ClusterID)
@@ -91,9 +91,8 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 				return err
 			}
 
-			protocol := gateway.Protocol
 			if protocol == "http" || protocol == "https" {
-				// Create/Update HTTPRoute using metadata builder
+				// Create/Update HTTPRoute using metadata builder.
 				route := metadata.BuildHTTPRoute(gateway)
 				if route != nil {
 					if got, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Get(ctx, route.Name, metav1.GetOptions{}); err != nil {
@@ -110,10 +109,32 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 							return err
 						}
 					}
+
+					legacyRouteName := buildLegacyAppGatewayHTTPRouteName(appCtx.App.Slug, gateway.Port)
+					if legacyRouteName != route.Name {
+						if err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Delete(ctx, legacyRouteName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+							return err
+						}
+					}
 				}
 			} else {
 				// TCP/UDP - Create/Update TCPRoute or UDPRoute
 				// TODO: Implement TCPRoute/UDPRoute when Gateway API supports them
+			}
+		} else if protocol == "http" || protocol == "https" {
+			gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID)
+			if err != nil {
+				return err
+			}
+			routeName := buildAppGatewayHTTPRouteName(appCtx.App.Slug, gateway)
+			if err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, routeName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+				return err
+			}
+			legacyRouteName := buildLegacyAppGatewayHTTPRouteName(appCtx.App.Slug, gateway.Port)
+			if legacyRouteName != routeName {
+				if err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, legacyRouteName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+					return err
+				}
 			}
 		}
 	}
@@ -134,11 +155,18 @@ func DeleteGatewayFromK8s(ctx context.Context, appCtx *models.AppContext, gatewa
 
 	protocol := gateway.Protocol
 	if protocol == "http" || protocol == "https" {
-		// Delete HTTPRoute
-		routeName := fmt.Sprintf("%s-%d", appCtx.App.Slug, gateway.Port)
+		// Delete HTTPRoute.
+		routeName := buildAppGatewayHTTPRouteName(appCtx.App.Slug, *gateway)
 		err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, routeName, metav1.DeleteOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return err
+		}
+		legacyRouteName := buildLegacyAppGatewayHTTPRouteName(appCtx.App.Slug, gateway.Port)
+		if legacyRouteName != routeName {
+			err = gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, legacyRouteName, metav1.DeleteOptions{})
+			if err != nil && !errors.IsNotFound(err) {
+				return err
+			}
 		}
 	} else {
 		// Delete TCPRoute/UDPRoute

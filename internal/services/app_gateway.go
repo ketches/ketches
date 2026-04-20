@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
@@ -12,6 +13,8 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
 )
+
+var ErrInvalidGatewayCertificate = errors.New("invalid gateway certificate")
 
 // ListAppGateways returns all gateways for a given app
 func ListAppGateways(appID string) ([]models.AppGatewayResponse, error) {
@@ -44,6 +47,14 @@ func ListAppGateways(appID string) ([]models.AppGatewayResponse, error) {
 
 // CreateAppGateway creates a new gateway for an app
 func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatewayRequest) (*models.AppGatewayResponse, error) {
+	appCtx, err := GetAppContext(ctx, appID)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateGatewayCertificateReference(appCtx, req.Protocol, req.Exposed, req.CertID); err != nil {
+		return nil, err
+	}
+
 	entity := &entities.AppGateway{
 		ID:          uuid.New(),
 		AppID:       appID,
@@ -58,13 +69,13 @@ func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatew
 	if req.ServiceType == "NodePort" && req.NodePort != 0 {
 		entity.NodePort = req.NodePort
 	}
-	if req.CertID != "" {
+	if req.CertID != "" && req.Exposed && req.Protocol == "https" {
 		certID := req.CertID
 		entity.CertID = &certID
 	}
 
 	var existing entities.AppGateway
-	err := db.DB.Where("app_id = ? AND port = ? AND protocol = ?", appID, req.Port, req.Protocol).First(&existing).Error
+	err = db.DB.Where("app_id = ? AND port = ? AND protocol = ?", appID, req.Port, req.Protocol).First(&existing).Error
 	if err == nil {
 		return nil, errors.New("gateway with this port and protocol already exists for this app")
 	}
@@ -72,23 +83,23 @@ func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatew
 		return nil, err
 	}
 
-	// Create in database
+	// Create in database.
 	if err := db.DB.Create(entity).Error; err != nil {
 		return nil, err
 	}
 
-	// Fetch full app context from DB
-	appCtx, err := GetAppContext(ctx, appID)
+	// Fetch full app context from DB.
+	appCtx, err = GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Sync to Kubernetes cluster
+	// Sync to Kubernetes cluster.
 	if err := core.SyncGatewaysToK8s(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	// Read back actual NodePorts assigned by K8s and persist
+	// Read back actual NodePorts assigned by K8s and persist.
 	if nodePorts, err := core.ReadNodePortsFromK8s(ctx, appCtx); err == nil {
 		if np, ok := nodePorts[entity.Port]; ok && entity.NodePort == 0 {
 			entity.NodePort = np
@@ -113,6 +124,14 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 		return nil, err
 	}
 
+	appCtx, err := GetAppContext(ctx, gateway.AppID)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateGatewayCertificateReference(appCtx, req.Protocol, req.Exposed, req.CertID); err != nil {
+		return nil, err
+	}
+
 	if req.Port != gateway.Port || req.Protocol != gateway.Protocol {
 		var existing entities.AppGateway
 		err := db.DB.Where("app_id = ? AND port = ? AND protocol = ? AND id != ?", gateway.AppID, req.Port, req.Protocol, id).First(&existing).Error
@@ -124,7 +143,7 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 		}
 	}
 
-	// Update fields
+	// Update fields.
 	gateway.Port = req.Port
 	gateway.Protocol = req.Protocol
 	gateway.Domain = req.Domain
@@ -137,30 +156,30 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 	} else if req.ServiceType != "NodePort" {
 		gateway.NodePort = 0
 	}
-	if req.CertID != "" {
+	if req.CertID != "" && req.Exposed && req.Protocol == "https" {
 		certID := req.CertID
 		gateway.CertID = &certID
 	} else {
 		gateway.CertID = nil
 	}
 
-	// Save to database
+	// Save to database.
 	if err := db.DB.Save(&gateway).Error; err != nil {
 		return nil, err
 	}
 
-	// Fetch full app context from DB
-	appCtx, err := GetAppContext(ctx, gateway.AppID)
+	// Fetch full app context from DB.
+	appCtx, err = GetAppContext(ctx, gateway.AppID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Sync to Kubernetes cluster
+	// Sync to Kubernetes cluster.
 	if err := core.SyncGatewaysToK8s(ctx, appCtx); err != nil {
 		return nil, err
 	}
 
-	// Read back actual NodePorts assigned by K8s and persist
+	// Read back actual NodePorts assigned by K8s and persist.
 	if nodePorts, err := core.ReadNodePortsFromK8s(ctx, appCtx); err == nil {
 		if np, ok := nodePorts[gateway.Port]; ok && gateway.NodePort == 0 {
 			gateway.NodePort = np
@@ -200,6 +219,38 @@ func DeleteAppGateway(ctx context.Context, id string) error {
 		return err
 	}
 
+	return nil
+}
+
+func validateGatewayCertificateReference(appCtx *models.AppContext, protocol string, exposed bool, certID string) error {
+	if appCtx == nil || !exposed || !strings.EqualFold(protocol, "https") {
+		return nil
+	}
+
+	trimmedCertID := strings.TrimSpace(certID)
+	if trimmedCertID == "" {
+		return fmt.Errorf("%w: certificate is required for HTTPS public access", ErrInvalidGatewayCertificate)
+	}
+
+	certificate, err := GetCertificate(trimmedCertID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("%w: selected certificate was not found", ErrInvalidGatewayCertificate)
+		}
+		return err
+	}
+	if certificate.ClusterID != appCtx.EnvContext.Env.ClusterID {
+		return fmt.Errorf("%w: selected certificate does not belong to the current cluster", ErrInvalidGatewayCertificate)
+	}
+	if certificate.Scope == "env" {
+		if certificate.EnvID == nil || strings.TrimSpace(*certificate.EnvID) != appCtx.EnvContext.Env.ID {
+			return fmt.Errorf("%w: selected certificate is not available in this environment", ErrInvalidGatewayCertificate)
+		}
+		return nil
+	}
+	if certificate.Scope != "cluster" {
+		return fmt.Errorf("%w: selected certificate has an unsupported scope", ErrInvalidGatewayCertificate)
+	}
 	return nil
 }
 

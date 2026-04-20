@@ -92,6 +92,7 @@ export function GatewayEditor({
     protocol?: string
     domain?: string
     path?: string
+    cert_id?: string
     gateway_port?: string
     node_port?: string
   }>({})
@@ -292,6 +293,9 @@ export function GatewayEditor({
           newErrors.path = "Path is required"
         } else if (!formData.path.startsWith('/')) {
           newErrors.path = "Path must start with /"
+        }
+        if (isHttpsProtocol && !formData.cert_id) {
+          newErrors.cert_id = "TLS certificate is required for HTTPS"
         }
       } else {
         // TCP/UDP
@@ -661,7 +665,7 @@ export function GatewayEditor({
                 {isHttpsProtocol && (
                   <Field>
                     <FieldLabel>
-                      TLS Certificate
+                      TLS Certificate *
                       <Tooltip>
                         <TooltipTrigger
                           tabIndex={-1}
@@ -682,7 +686,7 @@ export function GatewayEditor({
                         onValueChange={(v: string | null) => setFormData((prev) => ({ ...prev, cert_id: v || undefined }))}
                         itemToStringLabel={(v) => certificates.find((c) => c.id === v)?.label ?? v ?? ""}
                       >
-                        <ComboboxInput placeholder="Select a certificate" />
+                        <ComboboxInput placeholder="Select a certificate" aria-invalid={!!errors.cert_id} />
                         <ComboboxContent>
                           <ComboboxList>
                             {certificates.map((cert) => (
@@ -694,6 +698,11 @@ export function GatewayEditor({
                         </ComboboxContent>
                       </Combobox>
                     </FieldContent>
+                    {errors.cert_id && (
+                      <FieldError>
+                        <span className="text-destructive text-xs">{errors.cert_id}</span>
+                      </FieldError>
+                    )}
                   </Field>
                 )}
               </>

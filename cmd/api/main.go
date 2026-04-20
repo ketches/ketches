@@ -55,6 +55,9 @@ func main() {
 	if err := services.InitClusters(); err != nil {
 		fatal("failed to initialize clusters", err)
 	}
+	if err := services.ReconcilePublicGatewayResources(rootCtx); err != nil {
+		fatal("failed to reconcile public gateway resources", err)
+	}
 	nodeTerminalCleanupDone := services.StartClusterNodeTerminalCleanupLoop(rootCtx)
 
 	// Recover active build watchers
