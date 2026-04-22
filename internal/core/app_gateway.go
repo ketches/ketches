@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
@@ -137,6 +138,10 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 				}
 			}
 		}
+	}
+
+	if err := cleanupStaleHTTPRoutes(ctx, appCtx); err != nil {
+		return err
 	}
 
 	return nil
@@ -278,4 +283,43 @@ func ReadNodePortsFromK8s(ctx context.Context, appCtx *models.AppContext) (map[i
 		}
 	}
 	return result, nil
+}
+
+func cleanupStaleHTTPRoutes(ctx context.Context, appCtx *models.AppContext) error {
+	gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID)
+	if err != nil {
+		return err
+	}
+
+	routes, err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: kube.LabelAppSlug + "=" + appCtx.App.Slug,
+	})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	desiredNames := make(map[string]struct{})
+	for _, gateway := range appCtx.Gateways {
+		if !gateway.Exposed {
+			continue
+		}
+		if !strings.EqualFold(gateway.Protocol, "http") && !strings.EqualFold(gateway.Protocol, "https") {
+			continue
+		}
+		desiredNames[buildAppGatewayHTTPRouteName(appCtx.App.Slug, gateway)] = struct{}{}
+	}
+
+	for _, route := range routes.Items {
+		if _, ok := desiredNames[route.Name]; ok {
+			continue
+		}
+		if err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Delete(ctx, route.Name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	return nil
 }
