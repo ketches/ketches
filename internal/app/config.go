@@ -94,7 +94,7 @@ func InitConfig() {
 		JWTSecret:                         strings.TrimSpace(getEnv("JWT_SECRET", "")),
 		JWTIssuer:                         fallbackString(getEnv("JWT_ISSUER", ""), "ketches"),
 		JWTAudience:                       fallbackString(getEnv("JWT_AUDIENCE", ""), "ketches-ui"),
-		AccessTokenTTLMinutes:             getEnvInt("ACCESS_TOKEN_TTL_MINUTES", 15),
+		AccessTokenTTLMinutes:             getEnvInt("ACCESS_TOKEN_TTL_MINUTES", 60),
 		RefreshTokenTTLHours:              getEnvInt("REFRESH_TOKEN_TTL_HOURS", 24*7),
 		SecretEncryptionKey:               strings.TrimSpace(getEnv("SECRET_ENCRYPTION_KEY", "")),
 		BootstrapAdminUsername:            strings.TrimSpace(getEnv("BOOTSTRAP_ADMIN_USERNAME", "")),
@@ -139,7 +139,7 @@ func ValidateRuntimeConfig() error {
 		return ErrBootstrapAdminPasswordTooShort
 	}
 	if Config.AccessTokenTTLMinutes < 1 {
-		Config.AccessTokenTTLMinutes = 15
+		Config.AccessTokenTTLMinutes = 60
 	}
 	if Config.RefreshTokenTTLHours < 1 {
 		Config.RefreshTokenTTLHours = 24 * 7

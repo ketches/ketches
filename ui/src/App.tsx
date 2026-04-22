@@ -1,5 +1,6 @@
 import { BottomPanel } from "@/components/applications/bottom-panel"
 import { AuthRoute } from "@/components/auth/auth-route"
+import { AuthSessionManager } from "@/components/auth/auth-session-manager"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { AppHeader } from "@/components/layout/app-header"
 import { AppSidebar } from "@/components/sidebar/app-sidebar"
@@ -114,6 +115,7 @@ function ProtectedLayoutRoute() {
 export function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      <AuthSessionManager />
       <Toaster position="top-center" richColors />
       <BreadcrumbProvider>
         <BrowserRouter>

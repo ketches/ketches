@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { clearManualLogoutMarker, getPostLoginTarget } from "@/lib/auth-redirect";
+import { markSessionRefreshed } from "@/lib/auth-session";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -66,6 +67,7 @@ export function LoginForm({
             const response = await authApi.signIn(payload);
             queryClient.clear();
             setAuth(response.user);
+            markSessionRefreshed();
             setDefaultPasswordNotice(response.default_password_notice || null);
             if (response.user.role === "admin") {
                 void platformUpdateApi.check({ mode: "auto" }).catch(() => undefined);

@@ -1,5 +1,5 @@
 import { buildUnauthenticatedLoginHref, getCurrentRelativePath } from '@/lib/auth-redirect'
-import { applyCSRFHeader, clearPersistedAuthState, getCSRFToken, shouldAttachCSRF } from '@/lib/auth-session'
+import { applyCSRFHeader, clearPersistedAuthState, getCSRFToken, markSessionRefreshed, shouldAttachCSRF } from '@/lib/auth-session'
 import axios, { type AxiosInstance } from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -14,8 +14,21 @@ const client: AxiosInstance = axios.create({
 })
 
 let refreshRequest: Promise<void> | null = null
+let isRedirectingToLogin = false
 
-async function refreshSession(): Promise<void> {
+export function redirectToUnauthenticatedLogin(): void {
+  if (isRedirectingToLogin) {
+    return
+  }
+
+  isRedirectingToLogin = true
+  clearPersistedAuthState()
+  window.location.href = buildUnauthenticatedLoginHref(getCurrentRelativePath(window.location))
+}
+
+export async function refreshSession(options: { redirectOnFailure?: boolean } = {}): Promise<void> {
+  const { redirectOnFailure = true } = options
+
   if (!refreshRequest) {
     const headers = applyCSRFHeader(new Headers(), 'POST')
     refreshRequest = axios.post(
@@ -25,12 +38,21 @@ async function refreshSession(): Promise<void> {
         withCredentials: true,
         headers: Object.fromEntries(headers.entries()),
       }
-    ).then(() => undefined).finally(() => {
+    ).then(() => {
+      markSessionRefreshed()
+    }).finally(() => {
       refreshRequest = null
     })
   }
 
-  return refreshRequest
+  try {
+    await refreshRequest
+  } catch (error) {
+    if (redirectOnFailure) {
+      redirectToUnauthenticatedLogin()
+    }
+    throw error
+  }
 }
 
 client.interceptors.request.use((config) => {
@@ -63,15 +85,13 @@ client.interceptors.response.use(
       if (!isAuthRequest && originalRequest && !originalRequest._retry) {
         originalRequest._retry = true
         try {
-          await refreshSession()
+          await refreshSession({ redirectOnFailure: false })
           return client(originalRequest)
         } catch {
-          clearPersistedAuthState()
-          window.location.href = buildUnauthenticatedLoginHref(getCurrentRelativePath(window.location))
+          redirectToUnauthenticatedLogin()
         }
       } else if (!isAuthRequest) {
-        clearPersistedAuthState()
-        window.location.href = buildUnauthenticatedLoginHref(getCurrentRelativePath(window.location))
+        redirectToUnauthenticatedLogin()
       }
     }
     return Promise.reject(error)

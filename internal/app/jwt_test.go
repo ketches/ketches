@@ -19,7 +19,7 @@ func TestGenerateAccessTokenIncludesIssuerAudienceAndTokenType(t *testing.T) {
 	Config.JWTSecret = "jwt-test-secret"
 	Config.JWTIssuer = "ketches.test"
 	Config.JWTAudience = "ketches-ui"
-	Config.AccessTokenTTLMinutes = 15
+	Config.AccessTokenTTLMinutes = 60
 	Config.RefreshTokenTTLHours = 24 * 7
 
 	user := &entities.User{
@@ -39,7 +39,7 @@ func TestGenerateAccessTokenIncludesIssuerAudienceAndTokenType(t *testing.T) {
 	assert.Equal(t, "access", claims.TokenType)
 	assert.Equal(t, "user-1", claims.Subject)
 	assert.Equal(t, "alice", claims.Username)
-	assert.WithinDuration(t, time.Now().Add(15*time.Minute), claims.ExpiresAt.Time, 5*time.Second)
+	assert.WithinDuration(t, time.Now().Add(60*time.Minute), claims.ExpiresAt.Time, 5*time.Second)
 }
 
 func TestGenerateRefreshTokenIncludesIssuerAudienceAndTokenType(t *testing.T) {
@@ -51,7 +51,7 @@ func TestGenerateRefreshTokenIncludesIssuerAudienceAndTokenType(t *testing.T) {
 	Config.JWTSecret = "jwt-test-secret"
 	Config.JWTIssuer = "ketches.test"
 	Config.JWTAudience = "ketches-ui"
-	Config.AccessTokenTTLMinutes = 15
+	Config.AccessTokenTTLMinutes = 60
 	Config.RefreshTokenTTLHours = 24 * 7
 
 	user := &entities.User{

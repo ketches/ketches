@@ -26,6 +26,7 @@ const testState = vi.hoisted(() => {
   const requestAttempts = new Map<string, number>()
   const refreshPostMock = vi.fn(async () => ({ data: { data: {} } }))
   const clearPersistedAuthStateMock = vi.fn()
+  const markSessionRefreshedMock = vi.fn()
   const buildUnauthenticatedLoginHrefMock = vi.fn(() => "/login")
   const getCurrentRelativePathMock = vi.fn(() => "/projects")
 
@@ -34,6 +35,7 @@ const testState = vi.hoisted(() => {
     refreshPostMock.mockClear()
     refreshPostMock.mockImplementation(async () => ({ data: { data: {} } }))
     clearPersistedAuthStateMock.mockClear()
+    markSessionRefreshedMock.mockClear()
     buildUnauthenticatedLoginHrefMock.mockClear()
     getCurrentRelativePathMock.mockClear()
   }
@@ -120,6 +122,7 @@ const testState = vi.hoisted(() => {
   return {
     buildUnauthenticatedLoginHrefMock,
     clearPersistedAuthStateMock,
+    markSessionRefreshedMock,
     clientInstance,
     getCurrentRelativePathMock,
     refreshPostMock,
@@ -137,6 +140,7 @@ vi.mock("axios", () => ({
 vi.mock("@/lib/auth-session", () => ({
   applyCSRFHeader: vi.fn((headers: Headers) => headers),
   clearPersistedAuthState: testState.clearPersistedAuthStateMock,
+  markSessionRefreshed: testState.markSessionRefreshedMock,
   getCSRFToken: vi.fn(() => "csrf-token"),
   shouldAttachCSRF: vi.fn(() => true),
 }))
@@ -165,6 +169,7 @@ describe("api client refresh handling", () => {
     ])
 
     expect(testState.refreshPostMock).toHaveBeenCalledTimes(1)
+    expect(testState.markSessionRefreshedMock).toHaveBeenCalledTimes(1)
     expect(testState.clearPersistedAuthStateMock).not.toHaveBeenCalled()
   })
 })

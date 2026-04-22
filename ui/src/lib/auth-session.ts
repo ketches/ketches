@@ -1,4 +1,5 @@
 const AUTH_STORAGE_KEY = "auth-storage"
+const AUTH_SESSION_REFRESHED_AT_KEY = "auth-session-refreshed-at"
 const CSRF_COOKIE_NAME = "X-Ketches-CSRF"
 const CSRF_HEADER_NAME = "X-CSRF-Token"
 
@@ -8,15 +9,34 @@ type PersistedAuthState = {
   }
 }
 
-function getStorageValue(storage: Storage | null): string | null {
+function getWindowStorage(kind: "sessionStorage" | "localStorage"): Storage | null {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  return window[kind]
+}
+
+function getStorageValue(storage: Storage | null, key: string): string | null {
   if (!storage) {
     return null
   }
 
   try {
-    return storage.getItem(AUTH_STORAGE_KEY)
+    return storage.getItem(key)
   } catch {
     return null
+  }
+}
+
+function clearStorageValue(storage: Storage | null, key: string): void {
+  if (!storage) {
+    return
+  }
+
+  try {
+    storage.removeItem(key)
+  } catch {
   }
 }
 
@@ -51,12 +71,12 @@ function readCookie(name: string): string | null {
 }
 
 export function hasPersistedAuthSession(): boolean {
-  const sessionState = parsePersistedAuthState(getStorageValue(typeof window !== "undefined" ? window.sessionStorage : null))
+  const sessionState = parsePersistedAuthState(getStorageValue(getWindowStorage("sessionStorage"), AUTH_STORAGE_KEY))
   if (sessionState?.state?.isAuthenticated) {
     return true
   }
 
-  const localState = parsePersistedAuthState(getStorageValue(typeof window !== "undefined" ? window.localStorage : null))
+  const localState = parsePersistedAuthState(getStorageValue(getWindowStorage("localStorage"), AUTH_STORAGE_KEY))
   return !!localState?.state?.isAuthenticated
 }
 
@@ -93,18 +113,29 @@ export async function authenticatedFetch(input: string, init: RequestInit = {}):
   })
 }
 
-export function clearPersistedAuthState(): void {
-  if (typeof window === "undefined") {
+export function getLastSessionRefreshAt(storage: Storage | null = getWindowStorage("sessionStorage")): number {
+  const rawValue = getStorageValue(storage, AUTH_SESSION_REFRESHED_AT_KEY)
+  const parsedValue = Number(rawValue)
+
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 0
+}
+
+export function markSessionRefreshed(
+  storage: Storage | null = getWindowStorage("sessionStorage"),
+  now: number = Date.now()
+): void {
+  if (!storage) {
     return
   }
 
   try {
-    window.sessionStorage.removeItem(AUTH_STORAGE_KEY)
+    storage.setItem(AUTH_SESSION_REFRESHED_AT_KEY, String(now))
   } catch {
   }
+}
 
-  try {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY)
-  } catch {
-  }
+export function clearPersistedAuthState(): void {
+  clearStorageValue(getWindowStorage("sessionStorage"), AUTH_STORAGE_KEY)
+  clearStorageValue(getWindowStorage("localStorage"), AUTH_STORAGE_KEY)
+  clearStorageValue(getWindowStorage("sessionStorage"), AUTH_SESSION_REFRESHED_AT_KEY)
 }

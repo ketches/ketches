@@ -53,6 +53,25 @@ func TestInitConfig_DefaultsToPostgresDriver(t *testing.T) {
 	}
 }
 
+func TestInitConfig_DefaultsTokenTTLs(t *testing.T) {
+	originalConfig := Config
+	t.Cleanup(func() {
+		Config = originalConfig
+	})
+
+	t.Setenv("ACCESS_TOKEN_TTL_MINUTES", "")
+	t.Setenv("REFRESH_TOKEN_TTL_HOURS", "")
+
+	InitConfig()
+
+	if Config.AccessTokenTTLMinutes != 60 {
+		t.Fatalf("expected default access token ttl minutes %d, got %d", 60, Config.AccessTokenTTLMinutes)
+	}
+	if Config.RefreshTokenTTLHours != 24*7 {
+		t.Fatalf("expected default refresh token ttl hours %d, got %d", 24*7, Config.RefreshTokenTTLHours)
+	}
+}
+
 func TestInitConfig_DefaultsBuildLogSettings(t *testing.T) {
 	originalConfig := Config
 	t.Cleanup(func() {

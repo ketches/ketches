@@ -75,6 +75,10 @@ vi.mock("@/lib/auth-redirect", () => ({
   getPostLoginTarget: () => "/",
 }))
 
+vi.mock("@/lib/auth-session", () => ({
+  markSessionRefreshed: vi.fn(),
+}))
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),

@@ -39,7 +39,7 @@ func setupAuthSessionHandlerTestDB(t *testing.T) {
 	app.Config.JWTSecret = "auth-session-handler-test-secret"
 	app.Config.JWTIssuer = "ketches.test"
 	app.Config.JWTAudience = "ketches-ui"
-	app.Config.AccessTokenTTLMinutes = 15
+	app.Config.AccessTokenTTLMinutes = 60
 	app.Config.RefreshTokenTTLHours = 24 * 7
 }
 

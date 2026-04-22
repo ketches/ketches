@@ -20,6 +20,10 @@ vi.mock("@/stores/auth", () => ({
     selector(mockAuthState),
 }))
 
+vi.mock("@/components/auth/auth-session-manager", () => ({
+  AuthSessionManager: () => null,
+}))
+
 vi.mock("@/components/theme-provider/theme-provider", () => ({
   ThemeProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
