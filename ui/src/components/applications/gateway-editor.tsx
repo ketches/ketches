@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronDown, InfoIcon, Loader2 } from "lucide-react"
+import { InfoIcon, Loader2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -12,8 +12,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import {
   Combobox,
   ComboboxContent,
+  ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
+  ComboboxLabel,
   ComboboxList,
 } from "@/components/ui/combobox"
 import {
@@ -24,15 +26,9 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group"
+import { InputGroupAddon, InputGroupText } from "@/components/ui/input-group"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { isPatternDomain, isValidDomainValue, normalizeDomainValue, seedDomainInputFromSelection } from "@/lib/domain"
@@ -53,11 +49,30 @@ const PROTOCOL_OPTIONS = [
   { value: "udp", label: "UDP", description: "Raw UDP passthrough" },
 ] as const
 const PUBLIC_ACCESS_CHECKBOX_ID = "gateway-public-access"
+const CLUSTER_SCOPE_LABEL = "Cluster Scope"
+const ENVIRONMENT_SCOPE_LABEL = "Environment Scope"
 
 const SERVICE_TYPE_OPTIONS = [
   { value: "ClusterIP", label: "ClusterIP", description: "Internal only, accessible within the cluster" },
   { value: "NodePort", label: "NodePort", description: "Exposed on a static port on every cluster node" },
 ] as const
+
+type DomainOption = {
+  value: string
+  label: string
+  domain: string
+}
+
+type CertificateOption = {
+  id: string
+  label: string
+  description: string
+}
+
+type ComboboxOptionGroup<T> = {
+  label: string
+  items: T[]
+}
 
 function inferSelectedDomainOption(domain: string, options: Array<{ value: string; domain: string }>) {
   const normalizedDomain = normalizeDomainValue(domain)
@@ -144,43 +159,66 @@ export function GatewayEditor({
     enabled: !!app.env_id && open,
   })
 
-  // Combine cluster and env certificates for selection
-  const certificates = React.useMemo(() => {
-    const clusterCerts = (clusterCertsResponse?.items ?? []).map(c => ({ ...c, label: `[Cluster] ${c.name}` }))
-    const envCerts = (envCertsResponse?.items ?? []).map(c => ({ ...c, label: `[Env] ${c.name}` }))
-    return [...clusterCerts, ...envCerts]
+  const certificateGroups = React.useMemo<ComboboxOptionGroup<CertificateOption>[]>(() => {
+    const clusterCerts = (clusterCertsResponse?.items ?? []).map((item) => ({
+      id: item.id,
+      label: item.name,
+      description: item.description,
+    }))
+    const envCerts = (envCertsResponse?.items ?? []).map((item) => ({
+      id: item.id,
+      label: item.name,
+      description: item.description,
+    }))
+
+    return [
+      {
+        label: CLUSTER_SCOPE_LABEL,
+        items: clusterCerts,
+      },
+      {
+        label: ENVIRONMENT_SCOPE_LABEL,
+        items: envCerts,
+      },
+    ].filter((group) => group.items.length > 0)
   }, [clusterCertsResponse, envCertsResponse])
 
-  const domainOptions = React.useMemo(() => {
-    const envOptions = (envDomainsResponse?.items ?? [])
-      .map((item) => ({
-        value: `env:${item.id}`,
-        label: `[Env] ${item.name}`,
-        description: item.domain,
-        domain: item.domain,
-      }))
+  const certificates = React.useMemo(() => {
+    return certificateGroups.flatMap((group) => group.items)
+  }, [certificateGroups])
 
+  const domainOptionGroups = React.useMemo<ComboboxOptionGroup<DomainOption>[]>(() => {
     const clusterOptions = (clusterDomainsResponse?.items ?? [])
       .map((item) => ({
         value: `cluster:${item.id}`,
-        label: `[Cluster] ${item.name}`,
-        description: item.domain,
+        label: `${item.name}`,
+        domain: item.domain,
+      }))
+
+    const envOptions = (envDomainsResponse?.items ?? [])
+      .map((item) => ({
+        value: `env:${item.id}`,
+        label: `${item.name}`,
         domain: item.domain,
       }))
 
     return [
-      ...envOptions,
-      ...clusterOptions,
       {
-        value: "custom",
-        label: "Custom Domain",
-        description: "Enter a fully qualified domain manually",
-        domain: "",
+        label: CLUSTER_SCOPE_LABEL,
+        items: clusterOptions,
+      },
+      {
+        label: ENVIRONMENT_SCOPE_LABEL,
+        items: envOptions,
       },
     ]
-  }, [app.slug, clusterDomainsResponse?.items, envDomainsResponse?.items])
+      .filter((group) => group.items.length > 0)
+  }, [clusterDomainsResponse?.items, envDomainsResponse?.items])
+
+  const domainOptions = React.useMemo(() => {
+    return domainOptionGroups.flatMap((group) => group.items)
+  }, [domainOptionGroups])
   const normalizedDomainInput = normalizeDomainValue(domainInput)
-  const selectedDomainLabel = domainOptions.find((option) => option.value === selectedDomainOption)?.label ?? "Select"
 
   React.useEffect(() => {
     if (open) {
@@ -569,57 +607,63 @@ export function GatewayEditor({
                       </Tooltip>
                     </FieldLabel>
                     <FieldContent>
-                      <InputGroup>
-                        <InputGroupAddon align="inline-start">
-                          <InputGroupText>{formData.protocol}://</InputGroupText>
-                        </InputGroupAddon>
-                        <InputGroupInput
-                          placeholder="app.example.com"
+                      <Combobox
+                        value={selectedDomainOption === "custom" ? null : selectedDomainOption}
+                        onValueChange={(value: string | null) => {
+                          if (!value) {
+                            setSelectedDomainOption("custom")
+                            return
+                          }
+
+                          const nextOption = domainOptions.find((option) => option.value === value)
+                          if (!nextOption) {
+                            return
+                          }
+
+                          setSelectedDomainOption(nextOption.value)
+                          setDomainInput(seedDomainInputFromSelection(nextOption.domain))
+                        }}
+                        itemToStringLabel={(value) => domainOptions.find((option) => option.value === value)?.label ?? value ?? ""}
+                      >
+                        <ComboboxInput placeholder="app.example.com"
                           value={domainInput}
                           onChange={(e) => {
                             setSelectedDomainOption("custom")
                             setDomainInput(e.target.value)
                           }}
-                          aria-invalid={!!errors.domain}
-                        />
-                        <InputGroupAddon>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <Button type="button" variant="ghost" size="sm">
-                                  {selectedDomainLabel}
-                                  <ChevronDown />
-                                </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end" className="w-64">
-                              {domainOptions.map((option) => (
-                                <DropdownMenuItem
-                                  key={option.value}
-                                  onClick={() => {
-                                    setSelectedDomainOption(option.value)
-                                    if (option.value === "custom") {
-                                      return
-                                    }
-                                    setDomainInput(seedDomainInputFromSelection(option.domain))
-                                  }}
-                                >
-                                  <Item size="xs" className="p-0">
-                                    <ItemContent>
-                                      <ItemTitle className="whitespace-nowrap">
-                                        {option.label}
-                                      </ItemTitle>
-                                      <ItemDescription>
-                                        {option.description}
-                                      </ItemDescription>
-                                    </ItemContent>
-                                  </Item>
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </InputGroupAddon>
-                      </InputGroup>
+                          aria-invalid={!!errors.domain} >
+
+                          <InputGroupAddon align="inline-start">
+                            <InputGroupText>{formData.protocol}://</InputGroupText>
+                          </InputGroupAddon>
+                        </ComboboxInput>
+                        <ComboboxContent>
+                          <ComboboxList>
+                            {domainOptionGroups.map((group) => (
+                              <ComboboxGroup key={group.label}>
+                                <ComboboxLabel>{group.label}</ComboboxLabel>
+                                {group.items.map((option) => (
+                                  <ComboboxItem
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    <Item size="xs" className="p-0">
+                                      <ItemContent>
+                                        <ItemTitle className="whitespace-nowrap">
+                                          {option.label}
+                                        </ItemTitle>
+                                        <ItemDescription>
+                                          {option.domain}
+                                        </ItemDescription>
+                                      </ItemContent>
+                                    </Item>
+                                  </ComboboxItem>
+                                ))}
+                              </ComboboxGroup>
+                            ))}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
                     </FieldContent>
                     {errors.domain && (
                       <FieldError>
@@ -689,10 +733,24 @@ export function GatewayEditor({
                         <ComboboxInput placeholder="Select a certificate" aria-invalid={!!errors.cert_id} />
                         <ComboboxContent>
                           <ComboboxList>
-                            {certificates.map((cert) => (
-                              <ComboboxItem key={cert.id} value={cert.id}>
-                                {cert.label}
-                              </ComboboxItem>
+                            {certificateGroups.map((group) => (
+                              <ComboboxGroup key={group.label}>
+                                <ComboboxLabel>{group.label}</ComboboxLabel>
+                                {group.items.map((cert) => (
+                                  <ComboboxItem key={cert.id} value={cert.id}>
+                                    <Item size="xs" className="p-0">
+                                      <ItemContent>
+                                        <ItemTitle className="whitespace-nowrap">
+                                          {cert.label}
+                                        </ItemTitle>
+                                        <ItemDescription>
+                                          {cert.description}
+                                        </ItemDescription>
+                                      </ItemContent>
+                                    </Item>
+                                  </ComboboxItem>
+                                ))}
+                              </ComboboxGroup>
                             ))}
                           </ComboboxList>
                         </ComboboxContent>

@@ -108,8 +108,18 @@ vi.mock("@/components/ui/combobox", () => ({
       <div>{children}</div>
     </ComboboxContext.Provider>
   ),
-  ComboboxInput: (props: React.ComponentProps<"input">) => <input {...props} />,
+  ComboboxInput: ({
+    children,
+    ...props
+  }: React.ComponentProps<"input"> & { children?: React.ReactNode }) => (
+    <div>
+      <input {...props} />
+      {children}
+    </div>
+  ),
   ComboboxContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ComboboxGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ComboboxLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ComboboxList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ComboboxItem: ({
     children,
@@ -241,6 +251,10 @@ async function renderEditor(gateway?: GatewaySpec) {
   return { container, root }
 }
 
+function countTextOccurrences(container: HTMLElement, value: string) {
+  return container.textContent?.split(value).length ? (container.textContent?.split(value).length ?? 1) - 1 : 0
+}
+
 async function clickElement(element: Element | null) {
   await act(async () => {
     element?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
@@ -278,6 +292,42 @@ describe("GatewayEditor", () => {
                 id: "cluster-domain-1",
                 name: "Cluster Primary",
                 domain: "*.cluster.example.com",
+              },
+            ],
+          },
+        }
+      }
+
+      if (queryKey[0] === "cluster-certificates") {
+        return {
+          data: {
+            items: [
+              {
+                id: "cluster-cert-1",
+                name: "Cluster Wildcard",
+                description: "Cluster certificate",
+                scope: "cluster",
+                cluster_id: "cluster-1",
+                env_id: "",
+                created_at: "2026-04-03T00:00:00Z",
+              },
+            ],
+          },
+        }
+      }
+
+      if (queryKey[0] === "env-certificates") {
+        return {
+          data: {
+            items: [
+              {
+                id: "env-cert-1",
+                name: "Env Wildcard",
+                description: "Environment certificate",
+                scope: "env",
+                cluster_id: "cluster-1",
+                env_id: "env-1",
+                created_at: "2026-04-03T00:00:00Z",
               },
             ],
           },
@@ -401,7 +451,33 @@ describe("GatewayEditor", () => {
 
     const input = Array.from(container.querySelectorAll("input")).find((element) => element.value === "demo-app.env.example.com") as HTMLInputElement | undefined
     expect(input).toBeDefined()
-    expect(container.textContent).toContain("[Env] Env Primary")
+    expect(container.textContent).toContain("Env Primary")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("groups managed domains by cluster and environment scope", async () => {
+    const { container, root } = await renderEditor(buildGateway())
+
+    expect(container.textContent).toContain("Cluster Scope")
+    expect(container.textContent).toContain("Environment Scope")
+    expect(container.textContent).toContain("Cluster Primary")
+    expect(container.textContent).toContain("Env Primary")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("groups TLS certificates by cluster and environment scope", async () => {
+    const { container, root } = await renderEditor(buildGateway({ protocol: "https", cert_id: "env-cert-1" }))
+
+    expect(container.textContent).toContain("Cluster Wildcard")
+    expect(container.textContent).toContain("Env Wildcard")
+    expect(countTextOccurrences(container, "Cluster Scope")).toBe(2)
+    expect(countTextOccurrences(container, "Environment Scope")).toBe(2)
 
     await act(async () => {
       root.unmount()
