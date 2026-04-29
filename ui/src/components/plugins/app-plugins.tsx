@@ -24,6 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { normalizePluginResourceValues } from "@/lib/plugin-resources"
 import { formatDate } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
@@ -135,18 +136,19 @@ export function AppPlugins({ appId, projectId, readOnly = false }: AppPluginsPro
       header: "Resources",
       cell: ({ row }) => {
         const ap = row.original
+        const resources = normalizePluginResourceValues(ap)
         return (
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <Cpu className="h-3 w-3" />
               <span>
-                {ap.request_cpu || 0} / {ap.limit_cpu || 0} m
+                {resources.request_cpu} / {resources.limit_cpu} m
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <MemoryStick className="h-3 w-3" />
               <span>
-                {ap.request_memory || 0} / {ap.limit_memory || 0} Mi
+                {resources.request_memory} / {resources.limit_memory} Mi
               </span>
             </div>
           </div>

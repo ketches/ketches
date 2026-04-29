@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 
@@ -222,11 +223,15 @@ func InstallPluginToApp(appID string, req *models.InstallPluginRequest) (*entiti
 	envVarsJSON, _ := json.Marshal(envVars)
 
 	appPlugin := &entities.AppPlugin{
-		ID:       uuid.New(),
-		AppID:    appID,
-		PluginID: req.PluginID,
-		Enabled:  true,
-		EnvVars:  string(envVarsJSON),
+		ID:            uuid.New(),
+		AppID:         appID,
+		PluginID:      req.PluginID,
+		Enabled:       true,
+		EnvVars:       string(envVarsJSON),
+		RequestCPU:    entities.DefaultAppPluginRequestCPU,
+		RequestMemory: entities.DefaultAppPluginRequestMemory,
+		LimitCPU:      entities.DefaultAppPluginLimitCPU,
+		LimitMemory:   entities.DefaultAppPluginLimitMemory,
 	}
 
 	if err := db.DB.Create(appPlugin).Error; err != nil {
@@ -289,6 +294,30 @@ func UpdateAppPluginEnvVars(appID, pluginID string, envVars []models.PluginEnvVa
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+func UpdateAppPluginResources(ctx context.Context, appID, pluginID string, req *models.UpdateAppPluginResourcesRequest) error {
+	result := db.DB.Model(&entities.AppPlugin{}).
+		Where("app_id = ? AND plugin_id = ?", appID, pluginID).
+		Updates(map[string]any{
+			"request_cpu":    req.RequestCPU,
+			"request_memory": req.RequestMemory,
+			"limit_cpu":      req.LimitCPU,
+			"limit_memory":   req.LimitMemory,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	appCtx, err := GetAppContext(ctx, appID)
+	if err != nil {
+		return err
+	}
+
+	return applyAppFn(ctx, appCtx)
 }
 
 func GetPluginInstalledApps(pluginID string) ([]entities.App, error) {

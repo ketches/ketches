@@ -312,6 +312,7 @@ func setupV1Routes(r *gin.Engine) {
 				appsWrite.DELETE("/:appID/plugins/:pluginID", handlers.UninstallPluginFromApp)
 				appsWrite.PATCH("/:appID/plugins/:pluginID/toggle", handlers.ToggleAppPlugin)
 				appsWrite.PATCH("/:appID/plugins/:pluginID/env", handlers.UpdateAppPluginEnv)
+				appsWrite.PATCH("/:appID/plugins/:pluginID/resources", handlers.UpdateAppPluginResources)
 				appsWrite.POST("/:appID/deployment-history/rollback", handlers.RollbackDeployment)
 				appsWrite.POST("/:appID/favorite", handlers.AddFavoriteApp)
 				appsWrite.DELETE("/:appID/favorite", handlers.RemoveFavoriteApp)

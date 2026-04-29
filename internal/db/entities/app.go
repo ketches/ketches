@@ -2,6 +2,11 @@ package entities
 
 import "time"
 
+const DefaultAppPluginRequestCPU = 100
+const DefaultAppPluginRequestMemory = 128
+const DefaultAppPluginLimitCPU = 500
+const DefaultAppPluginLimitMemory = 256
+
 type App struct {
 	Base
 	Slug        string `gorm:"type:varchar(64);not null;uniqueIndex:idx_env_app_slug"`
@@ -119,11 +124,28 @@ type AppAutoScaling struct {
 }
 
 type AppPlugin struct {
-	ID        string    `gorm:"type:varchar(36);primaryKey"`
-	CreatedAt time.Time `gorm:"autoCreateTime"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-	AppID     string    `gorm:"type:varchar(36);index;not null"`
-	PluginID  string    `gorm:"type:varchar(36);index;not null"`
-	Enabled   bool      `gorm:"type:bool;default:true"`
-	EnvVars   string    `gorm:"type:text"`
+	ID            string    `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt     time.Time `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
+	AppID         string    `gorm:"type:varchar(36);index;not null"`
+	PluginID      string    `gorm:"type:varchar(36);index;not null"`
+	Enabled       bool      `gorm:"type:bool;default:true"`
+	EnvVars       string    `gorm:"type:text"`
+	RequestCPU    int       `gorm:"type:int;default:100"`
+	RequestMemory int       `gorm:"type:int;default:128"`
+	LimitCPU      int       `gorm:"type:int;default:500"`
+	LimitMemory   int       `gorm:"type:int;default:256"`
+}
+
+func NormalizeAppPluginResources(appPlugin AppPlugin) AppPlugin {
+	if appPlugin.RequestCPU != 0 || appPlugin.RequestMemory != 0 || appPlugin.LimitCPU != 0 || appPlugin.LimitMemory != 0 {
+		return appPlugin
+	}
+
+	appPlugin.RequestCPU = DefaultAppPluginRequestCPU
+	appPlugin.RequestMemory = DefaultAppPluginRequestMemory
+	appPlugin.LimitCPU = DefaultAppPluginLimitCPU
+	appPlugin.LimitMemory = DefaultAppPluginLimitMemory
+
+	return appPlugin
 }

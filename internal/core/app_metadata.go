@@ -348,7 +348,7 @@ func (m *AppMetadata) buildInitContainers() []corev1.Container {
 	for _, appPlugin := range m.AppContext.AppPlugins {
 		plugin, ok := m.AppContext.Plugins[appPlugin.PluginID]
 		if appPlugin.Enabled && ok && plugin.PluginType == "init" {
-			containers = append(containers, m.buildPluginContainer(&plugin))
+			containers = append(containers, m.buildPluginContainer(&plugin, &appPlugin))
 		}
 	}
 	return containers
@@ -359,13 +359,13 @@ func (m *AppMetadata) buildSidecarContainers() []corev1.Container {
 	for _, appPlugin := range m.AppContext.AppPlugins {
 		plugin, ok := m.AppContext.Plugins[appPlugin.PluginID]
 		if appPlugin.Enabled && ok && plugin.PluginType == "sidecar" {
-			containers = append(containers, m.buildPluginContainer(&plugin))
+			containers = append(containers, m.buildPluginContainer(&plugin, &appPlugin))
 		}
 	}
 	return containers
 }
 
-func (m *AppMetadata) buildPluginContainer(plugin *entities.Plugin) corev1.Container {
+func (m *AppMetadata) buildPluginContainer(plugin *entities.Plugin, appPlugin *entities.AppPlugin) corev1.Container {
 	container := corev1.Container{
 		Name:            plugin.Slug,
 		Image:           plugin.Image,
@@ -376,13 +376,14 @@ func (m *AppMetadata) buildPluginContainer(plugin *entities.Plugin) corev1.Conta
 		container.Command = []string{"sh", "-c", plugin.Command}
 	}
 
-	container.Env = m.buildPluginEnvVars(plugin)
+	container.Env = m.buildPluginEnvVars(plugin, appPlugin)
 	container.VolumeMounts = m.buildPluginVolumeMounts()
+	m.applyPluginResources(&container, appPlugin)
 
 	return container
 }
 
-func (m *AppMetadata) buildPluginEnvVars(plugin *entities.Plugin) []corev1.EnvVar {
+func (m *AppMetadata) buildPluginEnvVars(plugin *entities.Plugin, appPlugin *entities.AppPlugin) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{}
 
 	for _, ev := range m.AppContext.EnvVars {
@@ -392,9 +393,17 @@ func (m *AppMetadata) buildPluginEnvVars(plugin *entities.Plugin) []corev1.EnvVa
 		})
 	}
 
-	if plugin.EnvVars != "" {
+	rawPluginEnvVars := plugin.EnvVars
+	if appPlugin != nil {
+		rawAppPluginEnvVars := strings.TrimSpace(appPlugin.EnvVars)
+		if rawAppPluginEnvVars != "" && rawAppPluginEnvVars != "null" {
+			rawPluginEnvVars = appPlugin.EnvVars
+		}
+	}
+
+	if rawPluginEnvVars != "" {
 		var pluginEnvVars []models.PluginEnvVar
-		if err := json.Unmarshal([]byte(plugin.EnvVars), &pluginEnvVars); err == nil {
+		if err := json.Unmarshal([]byte(rawPluginEnvVars), &pluginEnvVars); err == nil {
 			for _, pev := range pluginEnvVars {
 				envVars = append(envVars, corev1.EnvVar{
 					Name:  pev.Key,
@@ -405,6 +414,39 @@ func (m *AppMetadata) buildPluginEnvVars(plugin *entities.Plugin) []corev1.EnvVa
 	}
 
 	return envVars
+}
+
+func (m *AppMetadata) applyPluginResources(container *corev1.Container, appPlugin *entities.AppPlugin) {
+	if appPlugin == nil {
+		return
+	}
+
+	normalizedAppPlugin := entities.NormalizeAppPluginResources(*appPlugin)
+	resources := corev1.ResourceRequirements{}
+	if normalizedAppPlugin.RequestCPU > 0 || normalizedAppPlugin.RequestMemory > 0 {
+		resources.Requests = corev1.ResourceList{}
+		if normalizedAppPlugin.RequestCPU > 0 {
+			resources.Requests[corev1.ResourceCPU] = resource.MustParse(fmt.Sprintf("%dm", normalizedAppPlugin.RequestCPU))
+		}
+		if normalizedAppPlugin.RequestMemory > 0 {
+			resources.Requests[corev1.ResourceMemory] = resource.MustParse(fmt.Sprintf("%dMi", normalizedAppPlugin.RequestMemory))
+		}
+	}
+	if normalizedAppPlugin.LimitCPU > 0 || normalizedAppPlugin.LimitMemory > 0 {
+		resources.Limits = corev1.ResourceList{}
+		if normalizedAppPlugin.LimitCPU > 0 {
+			resources.Limits[corev1.ResourceCPU] = resource.MustParse(fmt.Sprintf("%dm", normalizedAppPlugin.LimitCPU))
+		}
+		if normalizedAppPlugin.LimitMemory > 0 {
+			resources.Limits[corev1.ResourceMemory] = resource.MustParse(fmt.Sprintf("%dMi", normalizedAppPlugin.LimitMemory))
+		}
+	}
+
+	if len(resources.Requests) == 0 && len(resources.Limits) == 0 {
+		return
+	}
+
+	container.Resources = resources
 }
 
 func (m *AppMetadata) buildPluginVolumeMounts() []corev1.VolumeMount {

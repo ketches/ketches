@@ -6,9 +6,33 @@ import { toast } from "sonner"
 
 import { pluginsApi, type AppPlugin } from "@/api/plugins"
 import { Button } from "@/components/ui/button"
-import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  CUSTOM_PLUGIN_RESOURCE_PRESET_VALUE,
+  getPluginResourcePreset,
+  getPluginResourcePresetLabel,
+  normalizePluginResourceValues,
+  PLUGIN_RESOURCE_PRESET_OPTIONS,
+  type PluginResourceValues,
+} from "@/lib/plugin-resources"
 
 interface PluginResourcePopoverProps {
   appId: string
@@ -23,36 +47,18 @@ export function PluginResourcePopover({
 }: PluginResourcePopoverProps) {
   const queryClient = useQueryClient()
   const [open, setOpen] = React.useState(false)
-  const [formData, setFormData] = React.useState({
-    request_cpu: appPlugin.request_cpu || 0,
-    limit_cpu: appPlugin.limit_cpu || 0,
-    request_memory: appPlugin.request_memory || 0,
-    limit_memory: appPlugin.limit_memory || 0,
-  })
+  const [formData, setFormData] = React.useState<PluginResourceValues>(() =>
+    normalizePluginResourceValues(appPlugin),
+  )
 
   React.useEffect(() => {
     if (open) {
-      setFormData({
-        request_cpu: appPlugin.request_cpu || 0,
-        limit_cpu: appPlugin.limit_cpu || 0,
-        request_memory: appPlugin.request_memory || 0,
-        limit_memory: appPlugin.limit_memory || 0,
-      })
+      setFormData(normalizePluginResourceValues(appPlugin))
     }
   }, [open, appPlugin])
 
-  const updateMutation = useMutation<unknown, AxiosError<{ error: string }>, {
-    request_cpu?: number
-    limit_cpu?: number
-    request_memory?: number
-    limit_memory?: number
-  }>({
-    mutationFn: (resources: {
-      request_cpu?: number
-      limit_cpu?: number
-      request_memory?: number
-      limit_memory?: number
-    }) => pluginsApi.updateAppPluginResources(appId, appPlugin.plugin_id, resources),
+  const updateMutation = useMutation<unknown, AxiosError<{ error: string }>, PluginResourceValues>({
+    mutationFn: (resources) => pluginsApi.updateAppPluginResources(appId, appPlugin.plugin_id, resources),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["app-plugins", appId] })
       toast.success("Plugin resources updated")
@@ -65,6 +71,34 @@ export function PluginResourcePopover({
     },
   })
 
+  const selectedPresetValue = getPluginResourcePreset(formData)?.value ?? CUSTOM_PLUGIN_RESOURCE_PRESET_VALUE
+  const hasInvalidResourceValues = Object.values(formData).some((value) => value <= 0)
+
+  const handlePresetChange = (value: string | null | undefined) => {
+    const selectedOption = PLUGIN_RESOURCE_PRESET_OPTIONS.find((option) => option.value === value)
+    if (!selectedOption) {
+      return
+    }
+
+    setFormData({
+      request_cpu: selectedOption.request_cpu,
+      request_memory: selectedOption.request_memory,
+      limit_cpu: selectedOption.limit_cpu,
+      limit_memory: selectedOption.limit_memory,
+    })
+  }
+
+  const handleResourceInputChange = (
+    field: keyof PluginResourceValues,
+    value: string,
+  ) => {
+    const parsedValue = Number.parseInt(value, 10)
+    setFormData((current) => ({
+      ...current,
+      [field]: Number.isNaN(parsedValue) ? 0 : parsedValue,
+    }))
+  }
+
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     updateMutation.mutate(formData)
@@ -76,13 +110,69 @@ export function PluginResourcePopover({
       <PopoverContent className="w-80">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <h4 className="font-medium text-sm">Resource Limits</h4>
+            <h4 className="font-medium text-sm">Plugin Resources</h4>
             <p className="text-xs text-muted-foreground">
               Configure CPU and memory for {appPlugin.plugin.name}
             </p>
           </div>
 
-          <div className="grid gap-4">
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="plugin-resource-preset" className="text-xs">
+                Resource Preset
+              </FieldLabel>
+              <FieldContent>
+                <Combobox
+                  value={selectedPresetValue}
+                  onValueChange={handlePresetChange}
+                  itemToStringLabel={getPluginResourcePresetLabel}
+                >
+                  <ComboboxInput
+                    id="plugin-resource-preset"
+                    readOnly
+                    className="w-full cursor-pointer"
+                  />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      <ComboboxGroup>
+                        <ComboboxLabel>Recommended</ComboboxLabel>
+                        {PLUGIN_RESOURCE_PRESET_OPTIONS
+                          .filter((option) => option.group === "Recommended")
+                          .map((option) => (
+                            <ComboboxItem key={option.value} value={option.value}>
+                              <Item size="xs" className="p-0">
+                                <ItemContent>
+                                  <ItemTitle>{option.label}</ItemTitle>
+                                  <ItemDescription>{option.description}</ItemDescription>
+                                </ItemContent>
+                              </Item>
+                            </ComboboxItem>
+                          ))}
+                      </ComboboxGroup>
+                      <ComboboxGroup>
+                        <ComboboxLabel>Specialized</ComboboxLabel>
+                        {PLUGIN_RESOURCE_PRESET_OPTIONS
+                          .filter((option) => option.group === "Specialized")
+                          .map((option) => (
+                            <ComboboxItem key={option.value} value={option.value}>
+                              <Item size="xs" className="p-0">
+                                <ItemContent>
+                                  <ItemTitle>{option.label}</ItemTitle>
+                                  <ItemDescription>{option.description}</ItemDescription>
+                                </ItemContent>
+                              </Item>
+                            </ComboboxItem>
+                          ))}
+                      </ComboboxGroup>
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+                <FieldDescription>
+                  Choosing a preset fills the fields below. You can still fine-tune the values manually.
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+
             <div className="grid grid-cols-2 gap-3">
               <Field>
                 <FieldLabel htmlFor="request_cpu" className="text-xs">
@@ -92,11 +182,9 @@ export function PluginResourcePopover({
                   <Input
                     id="request_cpu"
                     type="number"
-                    min="0"
+                    min="1"
                     value={formData.request_cpu}
-                    onChange={(e) =>
-                      setFormData({ ...formData, request_cpu: parseInt(e.target.value) || 0 })
-                    }
+                    onChange={(e) => handleResourceInputChange("request_cpu", e.target.value)}
                     className="h-8"
                   />
                 </FieldContent>
@@ -109,11 +197,9 @@ export function PluginResourcePopover({
                   <Input
                     id="limit_cpu"
                     type="number"
-                    min="0"
+                    min="1"
                     value={formData.limit_cpu}
-                    onChange={(e) =>
-                      setFormData({ ...formData, limit_cpu: parseInt(e.target.value) || 0 })
-                    }
+                    onChange={(e) => handleResourceInputChange("limit_cpu", e.target.value)}
                     className="h-8"
                   />
                 </FieldContent>
@@ -129,11 +215,9 @@ export function PluginResourcePopover({
                   <Input
                     id="request_memory"
                     type="number"
-                    min="0"
+                    min="1"
                     value={formData.request_memory}
-                    onChange={(e) =>
-                      setFormData({ ...formData, request_memory: parseInt(e.target.value) || 0 })
-                    }
+                    onChange={(e) => handleResourceInputChange("request_memory", e.target.value)}
                     className="h-8"
                   />
                 </FieldContent>
@@ -146,17 +230,15 @@ export function PluginResourcePopover({
                   <Input
                     id="limit_memory"
                     type="number"
-                    min="0"
+                    min="1"
                     value={formData.limit_memory}
-                    onChange={(e) =>
-                      setFormData({ ...formData, limit_memory: parseInt(e.target.value) || 0 })
-                    }
+                    onChange={(e) => handleResourceInputChange("limit_memory", e.target.value)}
                     className="h-8"
                   />
                 </FieldContent>
               </Field>
             </div>
-          </div>
+          </FieldGroup>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button
@@ -166,7 +248,7 @@ export function PluginResourcePopover({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={updateMutation.isPending}>
+            <Button type="submit" disabled={updateMutation.isPending || hasInvalidResourceValues}>
               {updateMutation.isPending ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin mr-1.5" />

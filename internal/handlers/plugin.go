@@ -263,6 +263,24 @@ func UpdateAppPluginEnv(c *gin.Context) {
 	api.Success(c, nil)
 }
 
+func UpdateAppPluginResources(c *gin.Context) {
+	appID := c.Param("appID")
+	pluginID := c.Param("pluginID")
+
+	var req models.UpdateAppPluginResourcesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := services.UpdateAppPluginResources(c.Request.Context(), appID, pluginID, &req); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	api.Success(c, nil)
+}
+
 func GetPluginInstalledApps(c *gin.Context) {
 	pluginID := c.Param("pluginID")
 	projectID := c.Param("projectID")
@@ -316,18 +334,24 @@ func toPluginResponse(plugin any) models.PluginResponse {
 }
 
 func toAppPluginResponse(appPlugin *services.AppPluginWithPlugin) models.AppPluginResponse {
+	normalizedAppPlugin := entities.NormalizeAppPluginResources(appPlugin.AppPlugin)
+
 	var envVars []models.PluginEnvVar
-	if appPlugin.EnvVars != "" {
-		json.Unmarshal([]byte(appPlugin.EnvVars), &envVars)
+	if normalizedAppPlugin.EnvVars != "" {
+		json.Unmarshal([]byte(normalizedAppPlugin.EnvVars), &envVars)
 	}
 
 	return models.AppPluginResponse{
-		ID:        appPlugin.ID,
-		AppID:     appPlugin.AppID,
-		PluginID:  appPlugin.PluginID,
-		Enabled:   appPlugin.Enabled,
-		EnvVars:   envVars,
-		Plugin:    toPluginResponse(&appPlugin.Plugin),
-		CreatedAt: appPlugin.CreatedAt,
+		ID:            normalizedAppPlugin.ID,
+		AppID:         normalizedAppPlugin.AppID,
+		PluginID:      normalizedAppPlugin.PluginID,
+		Enabled:       normalizedAppPlugin.Enabled,
+		EnvVars:       envVars,
+		RequestCPU:    normalizedAppPlugin.RequestCPU,
+		RequestMemory: normalizedAppPlugin.RequestMemory,
+		LimitCPU:      normalizedAppPlugin.LimitCPU,
+		LimitMemory:   normalizedAppPlugin.LimitMemory,
+		Plugin:        toPluginResponse(&appPlugin.Plugin),
+		CreatedAt:     normalizedAppPlugin.CreatedAt,
 	}
 }
