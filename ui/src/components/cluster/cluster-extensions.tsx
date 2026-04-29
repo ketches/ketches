@@ -362,8 +362,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => retryMutation.mutate({ extension: ext })}
-                disabled={retryMutation.isPending}
+                onClick={() => setUpdateTarget(ext)}
               >
                 <RotateCcw />
                 {getRetryLabel(ext)}

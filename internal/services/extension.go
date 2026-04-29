@@ -71,13 +71,6 @@ var builtinExtensions = []builtinExtensionSeed{
 		OCIUrl:       "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack",
 		IconURL:      "",
 	},
-	{
-		Name:        "metrics-server",
-		DisplayName: "Metrics Server",
-		Description: "Cluster-wide resource metrics aggregator for Kubernetes autoscaling.",
-		OCIUrl:      "oci://registry-1.docker.io/bitnamicharts/metrics-server",
-		IconURL:     "",
-	},
 }
 
 var (
@@ -85,6 +78,7 @@ var (
 	launchClusterExtensionUpgrade          = defaultLaunchClusterExtensionUpgrade
 	launchClusterExtensionUninstall        = defaultLaunchClusterExtensionUninstall
 	executeClusterExtensionInstall         = runClusterExtensionInstall
+	executeClusterExtensionUninstall       = runClusterExtensionUninstall
 	ensureGatewayClassForExtensionInstall  = defaultEnsureGatewayClassForExtensionInstall
 	ensureSharedGatewayForExtensionInstall = defaultEnsureSharedGatewayForExtensionInstall
 )
@@ -908,7 +902,18 @@ func defaultLaunchClusterExtensionUpgrade(clusterID string, ext *entities.Extens
 
 func defaultLaunchClusterExtensionUninstall(clusterID string, record *entities.ClusterExtension) {
 	go func() {
-		if err := runClusterExtensionUninstall(clusterID, record); err != nil {
+		if err := executeClusterExtensionUninstall(clusterID, record); err != nil {
+			if isClusterExtensionReleaseNotFound(err) {
+				slog.Info("[extension] helm release already absent during uninstall",
+					"cluster_id", clusterID,
+					"extension_id", record.ExtensionID,
+					"release_name", record.ReleaseName,
+					"namespace", record.Namespace,
+				)
+				db.DB.Unscoped().Delete(record)
+				return
+			}
+
 			slog.Error(fmt.Sprintf("[extension] helm uninstall %q failed: %v", record.ReleaseName, err))
 			db.DB.Model(record).Updates(map[string]any{
 				"status":        string(entities.ClusterExtensionStatusFailed),
@@ -920,6 +925,10 @@ func defaultLaunchClusterExtensionUninstall(clusterID string, record *entities.C
 
 		db.DB.Unscoped().Delete(record)
 	}()
+}
+
+func isClusterExtensionReleaseNotFound(err error) bool {
+	return errors.Is(err, driver.ErrReleaseNotFound)
 }
 
 func runClusterExtensionInstall(clusterID string, ext *entities.Extension, record *entities.ClusterExtension) error {
@@ -974,6 +983,7 @@ func runClusterExtensionUninstall(clusterID string, record *entities.ClusterExte
 	defer cleanup()
 
 	uninstaller := action.NewUninstall(actionConfig)
+	uninstaller.IgnoreNotFound = true
 	_, err = uninstaller.Run(record.ReleaseName)
 	return err
 }

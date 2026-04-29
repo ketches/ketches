@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 func setupExtensionServiceTestDB(t *testing.T) {
@@ -339,6 +341,37 @@ func TestDefaultLaunchClusterExtensionInstallCreatesGatewayProviderForGatewayExt
 	}, time.Second, 10*time.Millisecond)
 }
 
+func TestDefaultLaunchClusterExtensionUninstallDeletesRecordWhenHelmReleaseIsMissing(t *testing.T) {
+	setupExtensionServiceTestDB(t)
+
+	record := &entities.ClusterExtension{
+		ID:          "ce-1",
+		ClusterID:   "cluster-1",
+		ExtensionID: "ext-1",
+		Namespace:   "ketches-extensions",
+		ReleaseName: "envoy-gateway",
+		Status:      entities.ClusterExtensionStatusUninstalling,
+		Phase:       "uninstalling",
+	}
+	require.NoError(t, db.DB.Create(record).Error)
+
+	originalExecuteUninstall := executeClusterExtensionUninstall
+	executeClusterExtensionUninstall = func(clusterID string, record *entities.ClusterExtension) error {
+		return fmt.Errorf("uninstall: Release not loaded: %s: %w", record.ReleaseName, driver.ErrReleaseNotFound)
+	}
+	t.Cleanup(func() {
+		executeClusterExtensionUninstall = originalExecuteUninstall
+	})
+
+	defaultLaunchClusterExtensionUninstall("cluster-1", record)
+
+	require.Eventually(t, func() bool {
+		var count int64
+		require.NoError(t, db.DB.Model(&entities.ClusterExtension{}).Where("id = ?", "ce-1").Count(&count).Error)
+		return count == 0
+	}, time.Second, 10*time.Millisecond)
+}
+
 func TestRetryClusterExtensionAllowsVersionOverrideForFailedInstall(t *testing.T) {
 	setupExtensionServiceTestDB(t)
 
@@ -467,8 +500,8 @@ func TestReconcileClusterExtensionInstallSuccessSetsManagedDefaultGatewayClassWh
 func TestReconcileClusterExtensionInstallSuccessSkipsNonGatewayExtensions(t *testing.T) {
 	setupExtensionMetadataTestDB(t)
 
-	ext := &entities.Extension{ID: "ext-1", Name: "metrics-server", Capabilities: `["observability"]`}
-	record := &entities.ClusterExtension{ClusterID: "cluster-1", ReleaseName: "metrics-server"}
+	ext := &entities.Extension{ID: "ext-1", Name: "cert-manager", Capabilities: `["observability"]`}
+	record := &entities.ClusterExtension{ClusterID: "cluster-1", ReleaseName: "cert-manager"}
 
 	originalEnsureGatewayClass := ensureGatewayClassForExtensionInstall
 	originalEnsureSharedGateway := ensureSharedGatewayForExtensionInstall

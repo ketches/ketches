@@ -49,6 +49,7 @@ export function UpdateExtensionDialog({
   const [selectedVersion, setSelectedVersion] = React.useState("")
   const [modifiedValues, setModifiedValues] = React.useState("")
   const [showDiff, setShowDiff] = React.useState(false)
+  const isRetryingFailedUpdate = extension?.status === "failed" && extension.phase === "upgrading"
 
   // Resolved theme for Monaco
   const [monacoTheme, setMonacoTheme] = React.useState<"vs" | "vs-dark">("vs")
@@ -140,8 +141,8 @@ export function UpdateExtensionDialog({
     mutationFn: (data: UpgradeExtensionRequest) =>
       clustersApi.upgradeExtension(clusterId, extension!.id, data),
     onSuccess: () => {
-      toast.success("Extension updated", {
-        description: `${extension?.name || extension?.release_name} has been updated.`,
+      toast.success(isRetryingFailedUpdate ? "Extension update retried" : "Extension updated", {
+        description: `${extension?.name || extension?.release_name} ${isRetryingFailedUpdate ? "update has been queued again" : "has been updated"}.`,
       })
       queryClient.invalidateQueries({ queryKey: ["cluster-extensions", clusterId] })
       onOpenChange(false)
@@ -197,9 +198,9 @@ export function UpdateExtensionDialog({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <DialogHeader className="shrink-0 px-6 pt-6">
-            <DialogTitle>Update Extension</DialogTitle>
+            <DialogTitle>{isRetryingFailedUpdate ? "Retry Update Extension" : "Update Extension"}</DialogTitle>
             <DialogDescription>
-              Update <span className="font-medium">{extension.name || extension.release_name}</span>{" "}
+              {isRetryingFailedUpdate ? "Retry updating" : "Update"} <span className="font-medium">{extension.name || extension.release_name}</span>{" "}
               using release <span className="font-mono text-xs">{extension.release_name}</span> in namespace <span className="font-mono text-xs">{extension.namespace}</span>.
               Edit values below and save to apply.
             </DialogDescription>
@@ -316,10 +317,10 @@ export function UpdateExtensionDialog({
               {updateMutation.isPending ? (
                 <>
                   <Loader2 className="animate-spin" />
-                  Updating...
+                  {isRetryingFailedUpdate ? "Retrying..." : "Updating..."}
                 </>
               ) : (
-                "Update"
+                isRetryingFailedUpdate ? "Retry Update" : "Update"
               )}
             </Button>
           </DialogFooter>
