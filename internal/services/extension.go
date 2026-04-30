@@ -71,6 +71,19 @@ var builtinExtensions = []builtinExtensionSeed{
 		OCIUrl:       "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack",
 		IconURL:      "",
 	},
+	{
+		Name:         "nginx-gateway-fabric",
+		DisplayName:  "Nginx Gateway Fabric",
+		Description:  "NGINX Gateway Fabric provides a Kubernetes Gateway API implementation based on NGINX.",
+		Capabilities: []string{"gateway-api"},
+		Metadata: map[string]any{
+			"gateway_api": map[string]any{
+				"controller_name": "gateway.nginx.org/nginx-gateway-controller",
+			},
+		},
+		OCIUrl:  "oci://ghcr.io/nginx/charts/nginx-gateway-fabric",
+		IconURL: "",
+	},
 }
 
 var (

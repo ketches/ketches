@@ -108,7 +108,7 @@ export function EditExtensionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-160 max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit} className="flex flex-col gap-0">
           <DialogHeader className="pb-4">
             <DialogTitle>Edit Extension</DialogTitle>
@@ -119,24 +119,38 @@ export function EditExtensionDialog({
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-2">
-            <Field>
-              <FieldLabel htmlFor="edit-ext-display-name">Display Name</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="edit-ext-display-name"
-                  placeholder="e.g. Gateway API"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                />
-              </FieldContent>
-            </Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="edit-ext-display-name">Name</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="edit-ext-display-name"
+                    placeholder="e.g. Nginx Gateway Fabric"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field data-disabled>
+                <FieldLabel htmlFor="edit-ext-name">Slug *</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="edit-ext-name"
+                    placeholder="e.g. nginx-gateway-fabric"
+                    value={item?.name ?? ""}
+                    disabled
+                  />
+                </FieldContent>
+              </Field>
+            </div>
 
             <Field>
               <FieldLabel htmlFor="edit-ext-oci-url">OCI URL *</FieldLabel>
               <FieldContent>
                 <Input
                   id="edit-ext-oci-url"
-                  placeholder="e.g. oci://docker.io/envoyproxy/gateway-helm"
+                  placeholder="e.g. oci://ghcr.io/nginx/charts/nginx-gateway-fabric"
                   value={ociUrl}
                   onChange={(e) => setOciUrl(e.target.value)}
                   required

@@ -18,6 +18,7 @@ import {
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { deriveExtensionDefaults, toExtensionSlug } from "./extension-dialog.utils"
 
 interface AddExtensionDialogProps {
   open: boolean
@@ -30,24 +31,28 @@ export function AddExtensionDialog({
 }: AddExtensionDialogProps) {
   const queryClient = useQueryClient()
 
-  const [name, setName] = React.useState("")
-  const [displayName, setDisplayName] = React.useState("")
+  const [slug, setSlug] = React.useState("")
+  const [extensionName, setExtensionName] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [ociUrl, setOciUrl] = React.useState("")
   const [iconUrl, setIconUrl] = React.useState("")
   const [capabilities, setCapabilities] = React.useState("")
   const [metadata, setMetadata] = React.useState("{}")
+  const [hasEditedName, setHasEditedName] = React.useState(false)
+  const [hasEditedSlug, setHasEditedSlug] = React.useState(false)
 
   // Reset form when dialog closes
   React.useEffect(() => {
     if (!open) {
-      setName("")
-      setDisplayName("")
+      setSlug("")
+      setExtensionName("")
       setDescription("")
       setOciUrl("")
       setIconUrl("")
       setCapabilities("")
       setMetadata("{}")
+      setHasEditedName(false)
+      setHasEditedSlug(false)
     }
   }, [open])
 
@@ -74,13 +79,28 @@ export function AddExtensionDialog({
     },
   })
 
+  const handleOciUrlChange = (value: string) => {
+    const defaults = deriveExtensionDefaults(value)
+    setOciUrl(value)
+    setExtensionName((current) => hasEditedName ? current : defaults.name)
+    setSlug((current) => hasEditedSlug ? current : defaults.slug)
+  }
+
+  const handleNameChange = (value: string) => {
+    setHasEditedName(true)
+    setExtensionName(value)
+    if (!hasEditedSlug) {
+      setSlug(toExtensionSlug(value))
+    }
+  }
+
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     const data: CreateExtensionRequest = {
-      name: name.trim(),
+      name: slug.trim(),
       oci_url: ociUrl.trim(),
     }
-    if (displayName.trim()) data.display_name = displayName.trim()
+    if (extensionName.trim()) data.display_name = extensionName.trim()
     if (description.trim()) data.description = description.trim()
     if (capabilities.trim()) data.capabilities = capabilities.split(",").map((item) => item.trim()).filter(Boolean)
     try {
@@ -96,7 +116,7 @@ export function AddExtensionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-160 max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit} className="flex flex-col gap-0">
           <DialogHeader className="pb-4">
             <DialogTitle>Add Extension</DialogTitle>
@@ -108,42 +128,50 @@ export function AddExtensionDialog({
 
           <div className="flex flex-col gap-4 py-2">
             <Field>
-              <FieldLabel htmlFor="ext-name">Name *</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="ext-name"
-                  placeholder="e.g. gateway-api"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="ext-display-name">Display Name</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="ext-display-name"
-                  placeholder="e.g. Gateway API"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                />
-              </FieldContent>
-            </Field>
-
-            <Field>
               <FieldLabel htmlFor="ext-oci-url">OCI URL *</FieldLabel>
               <FieldContent>
                 <Input
                   id="ext-oci-url"
-                  placeholder="e.g. oci://docker.io/envoyproxy/gateway-helm"
+                  name="oci_url"
+                  placeholder="e.g. oci://ghcr.io/nginx/charts/nginx-gateway-fabric"
                   value={ociUrl}
-                  onChange={(e) => setOciUrl(e.target.value)}
+                  onChange={(e) => handleOciUrlChange(e.target.value)}
                   required
                 />
               </FieldContent>
             </Field>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="ext-display-name">Name</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="ext-display-name"
+                    name="display_name"
+                    placeholder="e.g. Nginx Gateway Fabric"
+                    value={extensionName}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="ext-name">Slug *</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="ext-name"
+                    name="name"
+                    placeholder="e.g. nginx-gateway-fabric"
+                    value={slug}
+                    onChange={(e) => {
+                      setHasEditedSlug(true)
+                      setSlug(e.target.value)
+                    }}
+                    required
+                  />
+                </FieldContent>
+              </Field>
+            </div>
 
             <Field>
               <FieldLabel htmlFor="ext-description">Description</FieldLabel>

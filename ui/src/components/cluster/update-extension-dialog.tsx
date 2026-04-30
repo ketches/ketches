@@ -12,6 +12,7 @@ import {
 } from "@/api/clusters"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Combobox,
   ComboboxContent,
@@ -28,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { filterSelectableExtensionVersions } from "@/lib/extension-versions"
 
 interface UpdateExtensionDialogProps {
@@ -190,6 +192,12 @@ export function UpdateExtensionDialog({
 
   if (!extension) return null
 
+  const currentExtension = extensionDetails ?? extension
+  const displayName = currentExtension.name || currentExtension.release_name
+  const releaseName = currentExtension.release_name
+  const namespace = currentExtension.namespace
+  const createNamespace = currentExtension.create_namespace ?? false
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col gap-0 overflow-hidden p-0 sm:h-[90vh] sm:max-h-[90vh] sm:max-w-[90vw]">
@@ -208,15 +216,32 @@ export function UpdateExtensionDialog({
 
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden px-6 py-4 lg:grid-cols-[minmax(0,280px)_1fr]">
             <div className="flex flex-col gap-4 overflow-auto">
+              <Field data-disabled>
+                <FieldLabel htmlFor="update-extension-name">Name</FieldLabel>
+                <FieldContent>
+                  <Input id="update-extension-name" value={displayName} disabled />
+                </FieldContent>
+              </Field>
+
+              <Field data-disabled>
+                <FieldLabel htmlFor="update-extension-release-name">Release Name</FieldLabel>
+                <FieldContent>
+                  <Input id="update-extension-release-name" value={releaseName} disabled />
+                </FieldContent>
+              </Field>
+
               <Field>
-                <FieldLabel>Chart version</FieldLabel>
+                <FieldLabel htmlFor="update-extension-version">Version</FieldLabel>
                 <FieldContent>
                   <Combobox
                     value={selectedVersion}
                     onValueChange={(v) => v && setSelectedVersion(v)}
                     disabled={versionsLoading}
                   >
-                    <ComboboxInput placeholder={versionsLoading ? "Loading versions..." : "Select version"} />
+                    <ComboboxInput
+                      id="update-extension-version"
+                      placeholder={versionsLoading ? "Loading versions..." : "Select version"}
+                    />
                     <ComboboxContent>
                       <ComboboxList>
                         {versions.map((v) => (
@@ -229,6 +254,33 @@ export function UpdateExtensionDialog({
                   </Combobox>
                 </FieldContent>
               </Field>
+
+              <Field data-disabled>
+                <FieldLabel htmlFor="update-extension-namespace">Namespace</FieldLabel>
+                <FieldContent>
+                  <Input id="update-extension-namespace" value={namespace} disabled />
+                </FieldContent>
+              </Field>
+
+              <Field data-disabled>
+                <FieldLabel htmlFor="update-extension-create-namespace">Create Namespace</FieldLabel>
+                <FieldContent>
+                  <div className="flex min-h-9 items-center rounded-md border border-input px-3">
+                    <Checkbox
+                      id="update-extension-create-namespace"
+                      checked={createNamespace}
+                      disabled
+                    />
+                    <label
+                      htmlFor="update-extension-create-namespace"
+                      className="ml-2 text-sm text-muted-foreground"
+                    >
+                      {createNamespace ? "Enabled" : "Disabled"}
+                    </label>
+                  </div>
+                </FieldContent>
+              </Field>
+
               {showDiff && (
                 <p className="text-xs text-muted-foreground">
                   Left: default values for selected version. Right: current
