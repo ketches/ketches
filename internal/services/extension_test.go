@@ -46,10 +46,10 @@ func TestListExtensionsCountsClusterExtensionRowsWithoutDeletedAtColumn(t *testi
 	setupExtensionServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.Extension{
-		ID:          "ext-1",
-		Name:        "envoy-gateway",
-		DisplayName: "Envoy Gateway",
-		OCIUrl:      "oci://example.com/envoy-gateway",
+		ID:     "ext-1",
+		Slug:   "envoy-gateway",
+		Name:   "Envoy Gateway",
+		OCIUrl: "oci://example.com/envoy-gateway",
 	}).Error)
 	require.NoError(t, db.DB.Create(&entities.ClusterExtension{
 		ID:          "ce-1",
@@ -70,10 +70,10 @@ func TestGetInstalledClustersForExtensionQueriesClusterExtensionsWithoutDeletedA
 	setupExtensionServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.Extension{
-		ID:          "ext-1",
-		Name:        "envoy-gateway",
-		DisplayName: "Envoy Gateway",
-		OCIUrl:      "oci://example.com/envoy-gateway",
+		ID:     "ext-1",
+		Slug:   "envoy-gateway",
+		Name:   "Envoy Gateway",
+		OCIUrl: "oci://example.com/envoy-gateway",
 	}).Error)
 	require.NoError(t, db.DB.Create(&entities.Cluster{
 		Base:       entities.Base{ID: "cluster-1"},
@@ -99,14 +99,14 @@ func TestGetInstalledClustersForExtensionQueriesClusterExtensionsWithoutDeletedA
 	assert.Equal(t, "Cluster One", clusters[0].ClusterName)
 }
 
-func TestInstallClusterExtensionNormalizesReleaseNameAndStoresDisplayName(t *testing.T) {
+func TestInstallClusterExtensionNormalizesReleaseNameAndStoresName(t *testing.T) {
 	setupExtensionServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.Extension{
-		ID:          "ext-1",
-		Name:        "envoy-gateway",
-		DisplayName: "Envoy Gateway",
-		OCIUrl:      "oci://example.com/envoy-gateway",
+		ID:     "ext-1",
+		Slug:   "envoy-gateway",
+		Name:   "Envoy Gateway",
+		OCIUrl: "oci://example.com/envoy-gateway",
 	}).Error)
 
 	originalLaunch := launchClusterExtensionInstall
@@ -141,10 +141,10 @@ func TestInstallClusterExtensionRejectsCompletelyInvalidReleaseName(t *testing.T
 	setupExtensionServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.Extension{
-		ID:          "ext-1",
-		Name:        "envoy-gateway",
-		DisplayName: "Envoy Gateway",
-		OCIUrl:      "oci://example.com/envoy-gateway",
+		ID:     "ext-1",
+		Slug:   "envoy-gateway",
+		Name:   "Envoy Gateway",
+		OCIUrl: "oci://example.com/envoy-gateway",
 	}).Error)
 
 	result, err := InstallClusterExtension("cluster-1", &models.InstallExtensionRequest{
@@ -161,10 +161,10 @@ func TestInstallClusterExtensionRejectsDuplicateInstallWithoutDeletedAtColumn(t 
 	setupExtensionServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.Extension{
-		ID:          "ext-1",
-		Name:        "envoy-gateway",
-		DisplayName: "Envoy Gateway",
-		OCIUrl:      "oci://example.com/envoy-gateway",
+		ID:     "ext-1",
+		Slug:   "envoy-gateway",
+		Name:   "Envoy Gateway",
+		OCIUrl: "oci://example.com/envoy-gateway",
 	}).Error)
 	require.NoError(t, db.DB.Create(&entities.ClusterExtension{
 		ID:          "ce-1",
@@ -189,10 +189,10 @@ func TestRetryClusterExtensionNormalizesLegacyInvalidReleaseName(t *testing.T) {
 	setupExtensionServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.Extension{
-		ID:          "ext-1",
-		Name:        "envoy-gateway",
-		DisplayName: "Envoy Gateway",
-		OCIUrl:      "oci://example.com/envoy-gateway",
+		ID:     "ext-1",
+		Slug:   "envoy-gateway",
+		Name:   "Envoy Gateway",
+		OCIUrl: "oci://example.com/envoy-gateway",
 	}).Error)
 	require.NoError(t, db.DB.Create(&entities.ClusterExtension{
 		ID:           "ce-legacy",
@@ -232,10 +232,10 @@ func TestRetryClusterExtensionQueuesInstallRetryForFailedInstall(t *testing.T) {
 	setupExtensionServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.Extension{
-		ID:          "ext-1",
-		Name:        "envoy-gateway",
-		DisplayName: "Envoy Gateway",
-		OCIUrl:      "oci://example.com/envoy-gateway",
+		ID:     "ext-1",
+		Slug:   "envoy-gateway",
+		Name:   "Envoy Gateway",
+		OCIUrl: "oci://example.com/envoy-gateway",
 	}).Error)
 	require.NoError(t, db.DB.Create(&entities.ClusterExtension{
 		ID:              "ce-1",
@@ -297,8 +297,8 @@ func TestDefaultLaunchClusterExtensionInstallCreatesGatewayProviderForGatewayExt
 
 	ext := &entities.Extension{
 		ID:           "ext-1",
-		Name:         "envoyGateway",
-		DisplayName:  "Envoy Gateway",
+		Slug:         "envoyGateway",
+		Name:         "Envoy Gateway",
 		Capabilities: `["gateway-api"]`,
 		Metadata:     entities.JSONBlob(`{"gateway_api":{"controller_name":"gateway.envoyproxy.io/gatewayclass-controller"}}`),
 	}
@@ -376,10 +376,10 @@ func TestRetryClusterExtensionAllowsVersionOverrideForFailedInstall(t *testing.T
 	setupExtensionServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.Extension{
-		ID:          "ext-1",
-		Name:        "kube-prometheus-stack",
-		DisplayName: "Kube Prometheus Stack",
-		OCIUrl:      "oci://example.com/kube-prometheus-stack",
+		ID:     "ext-1",
+		Slug:   "kube-prometheus-stack",
+		Name:   "Kube Prometheus Stack",
+		OCIUrl: "oci://example.com/kube-prometheus-stack",
 	}).Error)
 	require.NoError(t, db.DB.Create(&entities.ClusterExtension{
 		ID:          "ce-1",
@@ -430,8 +430,8 @@ func setupExtensionMetadataTestDB(t *testing.T) {
 func TestToExtensionModelIncludesCapabilitiesAndMetadata(t *testing.T) {
 	ext := &entities.Extension{
 		ID:           "ext-1",
-		Name:         "envoyGateway",
-		DisplayName:  "Envoy Gateway",
+		Slug:         "envoyGateway",
+		Name:         "Envoy Gateway",
 		Capabilities: `["gateway-api","observability"]`,
 		Metadata:     entities.JSONBlob(`{"gateway_api":{"controller_name":"gateway.envoyproxy.io/gatewayclass-controller"}}`),
 	}
@@ -456,8 +456,8 @@ func TestReconcileClusterExtensionInstallSuccessSetsManagedDefaultGatewayClassWh
 
 	ext := &entities.Extension{
 		ID:           "ext-1",
-		Name:         "envoyGateway",
-		DisplayName:  "Envoy Gateway",
+		Slug:         "envoyGateway",
+		Name:         "Envoy Gateway",
 		Capabilities: `["gateway-api"]`,
 		Metadata:     entities.JSONBlob(`{"gateway_api":{"controller_name":"gateway.envoyproxy.io/gatewayclass-controller"}}`),
 	}
@@ -500,7 +500,7 @@ func TestReconcileClusterExtensionInstallSuccessSetsManagedDefaultGatewayClassWh
 func TestReconcileClusterExtensionInstallSuccessSkipsNonGatewayExtensions(t *testing.T) {
 	setupExtensionMetadataTestDB(t)
 
-	ext := &entities.Extension{ID: "ext-1", Name: "cert-manager", Capabilities: `["observability"]`}
+	ext := &entities.Extension{ID: "ext-1", Slug: "cert-manager", Name: "Cert Manager", Capabilities: `["observability"]`}
 	record := &entities.ClusterExtension{ClusterID: "cluster-1", ReleaseName: "cert-manager"}
 
 	originalEnsureGatewayClass := ensureGatewayClassForExtensionInstall

@@ -77,7 +77,7 @@ export function InstallExtensionDialog({
   // Reset form when extension changes
   React.useEffect(() => {
     if (extension) {
-      setReleaseName(sanitizeHelmReleaseName(extension.name))
+      setReleaseName(sanitizeHelmReleaseName(extension.slug))
       setReleaseNamespace("default")
       setSelectedVersion("")
       setValues("")
@@ -198,7 +198,7 @@ export function InstallExtensionDialog({
       clustersApi.installExtension(clusterId, data),
     onSuccess: () => {
       toast.success("Extension installed", {
-        description: `${extension?.display_name || extension?.name} is being installed to the cluster.`,
+        description: `${extension?.name || extension?.slug} is being installed to the cluster.`,
       })
       queryClient.invalidateQueries({ queryKey: ["cluster-extensions", clusterId] })
       onOpenChange(false)
@@ -248,7 +248,7 @@ export function InstallExtensionDialog({
             <DialogDescription>
               Install{" "}
               <span className="font-medium">
-                {extension?.display_name || extension?.name}
+                {extension?.name || extension?.slug}
               </span>{" "}
               to your cluster.
             </DialogDescription>

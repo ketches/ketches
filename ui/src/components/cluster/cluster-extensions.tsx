@@ -193,7 +193,7 @@ export function ClusterExtensions({ clusterId }: ClusterExtensionsProps) {
             </div>
             <div className="min-w-0">
               <p className="font-medium text-sm truncate">
-                {item.display_name || item.name}
+                {item.name || item.slug}
               </p>
               <p className="text-xs text-muted-foreground font-mono truncate">
                 {item.oci_url}

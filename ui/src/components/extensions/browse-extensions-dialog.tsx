@@ -48,9 +48,10 @@ export function BrowseExtensionsDialog({
   // Filter: exclude already installed, apply search
   const filteredItems = safeItems.filter((item) => {
     const matchesSearch =
-      (item.display_name || item.name)
+      (item.name || item.slug)
         .toLowerCase()
         .includes(search.toLowerCase()) ||
+      item.slug.toLowerCase().includes(search.toLowerCase()) ||
       (item.description ?? "").toLowerCase().includes(search.toLowerCase())
     const notInstalled = !installedExtensionIds.includes(item.id)
     return matchesSearch && notInstalled
@@ -114,7 +115,7 @@ export function BrowseExtensionsDialog({
                       <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-medium leading-none">
-                            {item.display_name || item.name}
+                            {item.name || item.slug}
                           </h4>
                           {item.builtin ? (
                             <ColorBadge color="purple" className="text-[10px]">
@@ -132,7 +133,7 @@ export function BrowseExtensionsDialog({
                           </p>
                         )}
                         <p className="text-[10px] text-muted-foreground font-mono truncate">
-                          {item.oci_url}
+                          {item.slug} · {item.oci_url}
                         </p>
                       </div>
                     </div>

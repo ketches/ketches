@@ -33,7 +33,7 @@ export function EditExtensionDialog({
 }: EditExtensionDialogProps) {
   const queryClient = useQueryClient()
 
-  const [displayName, setDisplayName] = React.useState("")
+  const [extensionName, setExtensionName] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [ociUrl, setOciUrl] = React.useState("")
   const [iconUrl, setIconUrl] = React.useState("")
@@ -43,7 +43,7 @@ export function EditExtensionDialog({
   // Populate form fields when item changes
   React.useEffect(() => {
     if (item && open) {
-      setDisplayName(item.display_name ?? "")
+      setExtensionName(item.name ?? "")
       setDescription(item.description ?? "")
       setOciUrl(item.oci_url)
       setIconUrl(item.icon_url ?? "")
@@ -55,7 +55,7 @@ export function EditExtensionDialog({
   // Reset form when dialog closes
   React.useEffect(() => {
     if (!open) {
-      setDisplayName("")
+      setExtensionName("")
       setDescription("")
       setOciUrl("")
       setIconUrl("")
@@ -92,7 +92,7 @@ export function EditExtensionDialog({
     const data: UpdateExtensionRequest = {
       oci_url: ociUrl.trim() || undefined,
     }
-    if (displayName.trim()) data.display_name = displayName.trim()
+    if (extensionName.trim()) data.name = extensionName.trim()
     if (description.trim()) data.description = description.trim()
     data.capabilities = capabilities.split(",").map((item) => item.trim()).filter(Boolean)
     try {
@@ -114,7 +114,7 @@ export function EditExtensionDialog({
             <DialogTitle>Edit Extension</DialogTitle>
             <DialogDescription>
               Update the metadata for{" "}
-              <span className="font-medium">{item?.display_name || item?.name}</span>.
+              <span className="font-medium">{item?.name || item?.slug}</span>.
             </DialogDescription>
           </DialogHeader>
 
@@ -126,8 +126,8 @@ export function EditExtensionDialog({
                   <Input
                     id="edit-ext-display-name"
                     placeholder="e.g. Nginx Gateway Fabric"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
+                    value={extensionName}
+                    onChange={(e) => setExtensionName(e.target.value)}
                   />
                 </FieldContent>
               </Field>
@@ -138,7 +138,7 @@ export function EditExtensionDialog({
                   <Input
                     id="edit-ext-name"
                     placeholder="e.g. nginx-gateway-fabric"
-                    value={item?.name ?? ""}
+                    value={item?.slug ?? ""}
                     disabled
                   />
                 </FieldContent>

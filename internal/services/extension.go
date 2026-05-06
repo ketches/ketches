@@ -40,8 +40,8 @@ import (
 )
 
 type builtinExtensionSeed struct {
+	Slug         string
 	Name         string
-	DisplayName  string
 	Description  string
 	Capabilities []string
 	Metadata     map[string]any
@@ -51,8 +51,8 @@ type builtinExtensionSeed struct {
 
 var builtinExtensions = []builtinExtensionSeed{
 	{
-		Name:         "envoyGateway",
-		DisplayName:  "Envoy Gateway",
+		Slug:         "envoyGateway",
+		Name:         "Envoy Gateway",
 		Description:  "Envoy Gateway provides Kubernetes Gateway API implementation based on Envoy Proxy.",
 		Capabilities: []string{"gateway-api"},
 		Metadata: map[string]any{
@@ -64,16 +64,16 @@ var builtinExtensions = []builtinExtensionSeed{
 		IconURL: "",
 	},
 	{
-		Name:         "kube-prometheus-stack",
-		DisplayName:  "Kube Prometheus Stack",
+		Slug:         "kube-prometheus-stack",
+		Name:         "Kube Prometheus Stack",
 		Description:  "Prometheus community monitoring stack for Kubernetes.",
 		Capabilities: []string{"observability"},
 		OCIUrl:       "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack",
 		IconURL:      "",
 	},
 	{
-		Name:         "nginx-gateway-fabric",
-		DisplayName:  "Nginx Gateway Fabric",
+		Slug:         "nginx-gateway-fabric",
+		Name:         "Nginx Gateway Fabric",
 		Description:  "NGINX Gateway Fabric provides a Kubernetes Gateway API implementation based on NGINX.",
 		Capabilities: []string{"gateway-api"},
 		Metadata: map[string]any{
@@ -113,12 +113,12 @@ func runBuiltinExtensionUpserts(items []builtinExtensionSeed) error {
 func upsertBuiltinExtension(ext builtinExtensionSeed) error {
 	return db.DB.Transaction(func(tx *gorm.DB) error {
 		var existing entities.Extension
-		err := tx.Where("name = ?", ext.Name).First(&existing).Error
+		err := tx.Where("slug = ?", ext.Slug).First(&existing).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			item := &entities.Extension{
 				ID:           uuid.New(),
+				Slug:         ext.Slug,
 				Name:         ext.Name,
-				DisplayName:  ext.DisplayName,
 				Description:  ext.Description,
 				Capabilities: mustMarshalExtensionCapabilities(ext.Capabilities),
 				Metadata:     mustMarshalExtensionMetadata(ext.Metadata),
@@ -128,16 +128,16 @@ func upsertBuiltinExtension(ext builtinExtensionSeed) error {
 				CreatedBy:    nil,
 			}
 			if err := tx.Create(item).Error; err != nil {
-				return app.WrapErrorf(err, "failed to seed built-in extension %q: %w", ext.Name, err)
+				return app.WrapErrorf(err, "failed to seed built-in extension %q: %w", ext.Slug, err)
 			}
 			return nil
 		}
 		if err != nil {
-			return app.WrapErrorf(err, "failed to query extension %q: %w", ext.Name, err)
+			return app.WrapErrorf(err, "failed to query extension %q: %w", ext.Slug, err)
 		}
 
 		updates := map[string]any{
-			"display_name": ext.DisplayName,
+			"name":         ext.Name,
 			"description":  ext.Description,
 			"capabilities": mustMarshalExtensionCapabilities(ext.Capabilities),
 			"metadata":     mustMarshalExtensionMetadata(ext.Metadata),
@@ -146,7 +146,7 @@ func upsertBuiltinExtension(ext builtinExtensionSeed) error {
 			"builtin":      true,
 		}
 		if err := tx.Model(&entities.Extension{}).Where("id = ?", existing.ID).Updates(updates).Error; err != nil {
-			return app.WrapErrorf(err, "failed to update built-in extension %q: %w", ext.Name, err)
+			return app.WrapErrorf(err, "failed to update built-in extension %q: %w", ext.Slug, err)
 		}
 		return nil
 	})
@@ -211,13 +211,13 @@ func GetExtensionEntity(extensionID string) (*entities.Extension, error) {
 // CreateExtension creates a new admin-added extension.
 func CreateExtension(req *models.CreateExtensionRequest, createdBy string) (*models.Extension, error) {
 	var existing entities.Extension
-	if err := db.DB.Where("name = ?", req.Name).First(&existing).Error; err == nil {
-		return nil, app.NewErrorf("extension with name %q already exists", req.Name)
+	if err := db.DB.Where("slug = ?", req.Slug).First(&existing).Error; err == nil {
+		return nil, app.NewErrorf("extension with slug %q already exists", req.Slug)
 	}
 	item := &entities.Extension{
 		ID:           uuid.New(),
+		Slug:         req.Slug,
 		Name:         req.Name,
-		DisplayName:  req.DisplayName,
 		Description:  req.Description,
 		Capabilities: sanitizeAndMarshalExtensionCapabilities(req.Capabilities),
 		Metadata:     sanitizeAndMarshalExtensionMetadata(req.Metadata),
@@ -260,8 +260,8 @@ func UpdateExtension(extensionID string, req *models.UpdateExtensionRequest) (*m
 	if item.Builtin {
 		return nil, app.NewErrorf("built-in extensions cannot be modified")
 	}
-	if req.DisplayName != "" {
-		item.DisplayName = req.DisplayName
+	if req.Name != "" {
+		item.Name = req.Name
 	}
 	if req.Description != "" {
 		item.Description = req.Description
@@ -531,7 +531,7 @@ func InstallClusterExtension(clusterID string, req *models.InstallExtensionReque
 		ExtensionID:     req.ExtensionID,
 		Namespace:       namespace,
 		ReleaseName:     normalizedReleaseName,
-		Name:            clusterExtensionDisplayName(ext),
+		Name:            clusterExtensionName(ext),
 		Version:         req.Version,
 		CreateNamespace: req.CreateNamespace,
 		Values:          req.Values,
@@ -662,7 +662,7 @@ func RetryClusterExtension(clusterID, id string, req *models.RetryClusterExtensi
 			updates[key] = value
 		}
 		if _, ok := updates["name"]; !ok {
-			record.Name = firstNonEmpty(record.Name, clusterExtensionDisplayName(ext), record.ReleaseName)
+			record.Name = firstNonEmpty(record.Name, clusterExtensionName(ext), record.ReleaseName)
 			updates["name"] = record.Name
 		}
 		if err := db.DB.Model(record).Updates(updates).Error; err != nil {
@@ -688,7 +688,7 @@ func RetryClusterExtension(clusterID, id string, req *models.RetryClusterExtensi
 		record.Phase = "upgrading"
 		record.ErrorMessage = ""
 		if record.Name == "" {
-			record.Name = clusterExtensionDisplayName(ext)
+			record.Name = clusterExtensionName(ext)
 			_ = db.DB.Model(record).Update("name", record.Name).Error
 		}
 		launchClusterExtensionUpgrade(clusterID, ext, record)
@@ -719,7 +719,7 @@ func reconcileClusterExtensionInstallSuccess(clusterID string, ext *entities.Ext
 
 	controllerName := extensionGatewayControllerName(ext)
 	if controllerName == "" {
-		return app.NewErrorf("extension %q is marked as gateway-api but has no gateway controller name configured", ext.Name)
+		return app.NewErrorf("extension %q is marked as gateway-api but has no gateway controller name configured", ext.Slug)
 	}
 
 	gatewayClassName := buildManagedGatewayClassName(record.ReleaseName)
@@ -731,7 +731,7 @@ func reconcileClusterExtensionInstallSuccess(clusterID string, ext *entities.Ext
 		ID:                 uuid.New(),
 		ClusterID:          clusterID,
 		SourceType:         "managed",
-		DisplayName:        firstNonEmpty(record.Name, clusterExtensionDisplayName(ext), gatewayClassName),
+		DisplayName:        firstNonEmpty(record.Name, clusterExtensionName(ext), gatewayClassName),
 		GatewayClassName:   gatewayClassName,
 		ControllerName:     controllerName,
 		ExtensionID:        &record.ExtensionID,
@@ -1249,11 +1249,11 @@ func mustMarshalExtensionCapabilities(capabilities []string) string {
 	return sanitizeAndMarshalExtensionCapabilities(capabilities)
 }
 
-func clusterExtensionDisplayName(ext *entities.Extension) string {
+func clusterExtensionName(ext *entities.Extension) string {
 	if ext == nil {
 		return ""
 	}
-	return firstNonEmpty(ext.DisplayName, ext.Name)
+	return firstNonEmpty(ext.Name, ext.Slug)
 }
 
 func firstNonEmpty(values ...string) string {
@@ -1353,8 +1353,8 @@ func (c *configFlagsAdapter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 func toExtensionModel(e *entities.Extension) models.Extension {
 	return models.Extension{
 		ID:           e.ID,
+		Slug:         e.Slug,
 		Name:         e.Name,
-		DisplayName:  e.DisplayName,
 		Description:  e.Description,
 		Capabilities: extensionCapabilities(e),
 		Metadata:     extensionMetadata(e),

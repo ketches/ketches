@@ -94,7 +94,8 @@ export function ExtensionsPage() {
     if (!debouncedSearch) return true
     const q = debouncedSearch.toLowerCase()
     return (
-      (item.display_name || item.name).toLowerCase().includes(q) ||
+      (item.name || item.slug).toLowerCase().includes(q) ||
+      item.slug.toLowerCase().includes(q) ||
       item.oci_url.toLowerCase().includes(q) ||
       (item.description ?? "").toLowerCase().includes(q)
     )
@@ -127,7 +128,7 @@ export function ExtensionsPage() {
             </div>
             <div className="min-w-0">
               <p className="font-medium text-xs truncate">
-                {item.display_name || item.name}
+                {item.name || item.slug}
               </p>
               <p className="text-xs text-muted-foreground font-mono truncate">
                 {item.oci_url}
@@ -348,7 +349,7 @@ export function ExtensionsPage() {
                       <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <CardTitle className="text-base font-semibold truncate">
-                            {item.display_name || item.name}
+                            {item.name || item.slug}
                           </CardTitle>
                           {item.builtin ? (
                             <ColorBadge color="purple" className="text-[10px]">
@@ -489,7 +490,7 @@ export function ExtensionsPage() {
             <AlertDialogTitle>Remove Extension</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove "
-              {deleteTarget?.display_name || deleteTarget?.name}"? Installed extensions will not be affected.
+              {deleteTarget?.name || deleteTarget?.slug}"? Installed extensions will not be affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -86,7 +86,7 @@ export function InstallExtensionToClusterDialog({
   // Reset form when extension or dialog open state changes
   React.useEffect(() => {
     if (extension) {
-      setReleaseName(sanitizeHelmReleaseName(extension.name))
+      setReleaseName(sanitizeHelmReleaseName(extension.slug))
       setReleaseNamespace("ketches-extensions")
       setSelectedVersion("")
       setValues("")
@@ -221,7 +221,7 @@ export function InstallExtensionToClusterDialog({
       clustersApi.installExtension(selectedClusterId, data),
     onSuccess: () => {
       toast.success("Extension installed", {
-        description: `${extension?.display_name || extension?.name} is being installed to the cluster.`,
+        description: `${extension?.name || extension?.slug} is being installed to the cluster.`,
       })
       queryClient.invalidateQueries({
         queryKey: ["cluster-extensions", selectedClusterId],
@@ -273,7 +273,7 @@ export function InstallExtensionToClusterDialog({
             <DialogDescription>
               Install{" "}
               <span className="font-medium">
-                {extension?.display_name || extension?.name}
+                {extension?.name || extension?.slug}
               </span>{" "}
               to a cluster.
             </DialogDescription>

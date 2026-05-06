@@ -97,10 +97,10 @@ export function AddExtensionDialog({
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     const data: CreateExtensionRequest = {
-      name: slug.trim(),
+      slug: slug.trim(),
+      name: extensionName.trim(),
       oci_url: ociUrl.trim(),
     }
-    if (extensionName.trim()) data.display_name = extensionName.trim()
     if (description.trim()) data.description = description.trim()
     if (capabilities.trim()) data.capabilities = capabilities.split(",").map((item) => item.trim()).filter(Boolean)
     try {
@@ -147,7 +147,7 @@ export function AddExtensionDialog({
                 <FieldContent>
                   <Input
                     id="ext-display-name"
-                    name="display_name"
+                    name="name"
                     placeholder="e.g. Nginx Gateway Fabric"
                     value={extensionName}
                     onChange={(e) => handleNameChange(e.target.value)}
@@ -160,7 +160,7 @@ export function AddExtensionDialog({
                 <FieldContent>
                   <Input
                     id="ext-name"
-                    name="name"
+                    name="slug"
                     placeholder="e.g. nginx-gateway-fabric"
                     value={slug}
                     onChange={(e) => {

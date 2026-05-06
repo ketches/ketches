@@ -55,7 +55,7 @@ export function InstalledClustersDialog({
           <DialogDescription>
             Clusters where{" "}
             <span className="font-medium">
-              {extension?.display_name || extension?.name}
+              {extension?.name || extension?.slug}
             </span>{" "}
             is installed
           </DialogDescription>

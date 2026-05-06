@@ -364,8 +364,8 @@ export const clustersApi = {
 // Extension entry (global, admin-managed)
 export interface Extension {
   id: string
+  slug: string
   name: string
-  display_name?: string
   description?: string
   capabilities?: string[]
   metadata?: Record<string, unknown>
@@ -421,8 +421,8 @@ export interface RetryClusterExtensionRequest {
 
 // Request to create a new extension
 export interface CreateExtensionRequest {
+  slug: string
   name: string
-  display_name?: string
   description?: string
   capabilities?: string[]
   metadata?: Record<string, unknown>
@@ -432,7 +432,7 @@ export interface CreateExtensionRequest {
 
 // Request to update an extension
 export interface UpdateExtensionRequest {
-  display_name?: string
+  name?: string
   description?: string
   capabilities?: string[]
   metadata?: Record<string, unknown>

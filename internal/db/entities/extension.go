@@ -8,8 +8,8 @@ type Extension struct {
 	ID           string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt    time.Time `gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
-	Name         string    `gorm:"type:varchar(128);uniqueIndex;not null"`
-	DisplayName  string    `gorm:"type:varchar(256)"`
+	Slug         string    `gorm:"type:varchar(128);uniqueIndex;not null"`
+	Name         string    `gorm:"type:varchar(256)"`
 	Description  string    `gorm:"type:text"`
 	Capabilities string    `gorm:"type:text"`
 	Metadata     JSONBlob

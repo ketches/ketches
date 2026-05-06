@@ -5,8 +5,8 @@ import "time"
 // Extension is the platform-level entry for an OCI-based Helm chart.
 type Extension struct {
 	ID           string         `json:"id"`
+	Slug         string         `json:"slug"`
 	Name         string         `json:"name"`
-	DisplayName  string         `json:"display_name"`
 	Description  string         `json:"description"`
 	Capabilities []string       `json:"capabilities,omitempty"`
 	Metadata     map[string]any `json:"metadata,omitempty"`
@@ -19,8 +19,8 @@ type Extension struct {
 
 // CreateExtensionRequest is the request body for adding a extension.
 type CreateExtensionRequest struct {
-	Name         string         `json:"name" binding:"required"`
-	DisplayName  string         `json:"display_name"`
+	Slug         string         `json:"slug" binding:"required"`
+	Name         string         `json:"name"`
 	Description  string         `json:"description"`
 	Capabilities []string       `json:"capabilities"`
 	Metadata     map[string]any `json:"metadata"`
@@ -30,7 +30,7 @@ type CreateExtensionRequest struct {
 
 // UpdateExtensionRequest is the request body for updating a extension.
 type UpdateExtensionRequest struct {
-	DisplayName  string         `json:"display_name"`
+	Name         string         `json:"name"`
 	Description  string         `json:"description"`
 	Capabilities *[]string      `json:"capabilities"`
 	Metadata     map[string]any `json:"metadata"`
