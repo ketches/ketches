@@ -140,7 +140,9 @@ func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 		}
 	}
 
-	SyncGatewaysToK8s(ctx, appCtx)
+	if err := SyncGatewaysToK8s(ctx, appCtx); err != nil {
+		return err
+	}
 
 	return nil
 }

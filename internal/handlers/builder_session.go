@@ -168,13 +168,15 @@ func ReadBuilderPreviewAsset(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	defer reader.Close()
+	defer func() {
+		_ = reader.Close()
+	}()
 
 	c.Header("Content-Type", snapshotFile.ContentType)
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.Header("Content-Security-Policy", "sandbox allow-scripts")
 	if _, err := io.Copy(c.Writer, reader); err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 	}
 }
 
@@ -191,7 +193,7 @@ func DownloadBuilderSessionSnapshot(c *gin.Context) {
 	c.Header("Content-Type", "application/gzip")
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="builder-output-%s.tar.gz"`, runID))
 	if err := writeBuilderSessionSnapshotArchive(c.Request.Context(), projectID, sessionID, runID, c.Writer); err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 	}
 }
 
@@ -281,7 +283,7 @@ func DownloadBuilderSessionExport(c *gin.Context) {
 	c.Header("Content-Type", "application/gzip")
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, export.FileName))
 	if err := downloadBuilderSessionExport(c.Request.Context(), projectID, sessionID, exportID, c.Writer); err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 	}
 }
 
@@ -391,8 +393,7 @@ func StreamBuilderRunLogs(c *gin.Context) {
 		return
 	}
 
-	run, err := services.GetBuilderRun(c.Request.Context(), projectID, sessionID, runID)
-	if err != nil {
+	if _, err := services.GetBuilderRun(c.Request.Context(), projectID, sessionID, runID); err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
 	}
@@ -412,7 +413,7 @@ func StreamBuilderRunLogs(c *gin.Context) {
 		streamBuilderRunEvent(c, &replayedEvents[i])
 		afterSequence = replayedEvents[i].Sequence
 	}
-	run, err = services.GetBuilderRun(c.Request.Context(), projectID, sessionID, runID)
+	run, err := services.GetBuilderRun(c.Request.Context(), projectID, sessionID, runID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -570,6 +571,6 @@ func DownloadBuilderWorkspace(c *gin.Context) {
 	c.Header("Content-Disposition", `attachment; filename="workspace.tar.gz"`)
 
 	if err := services.DownloadBuilderWorkspace(c.Request.Context(), projectID, sessionID, c.Writer); err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 	}
 }

@@ -199,7 +199,9 @@ func TestHelmChartGenerator_Generate(t *testing.T) {
 			t.Fatalf("Failed to open file in zip: %v", err)
 		}
 		content, err := io.ReadAll(rc)
-		rc.Close()
+		if closeErr := rc.Close(); closeErr != nil {
+			t.Fatalf("Failed to close file in zip: %v", closeErr)
+		}
 		if err != nil {
 			t.Fatalf("Failed to read file in zip: %v", err)
 		}

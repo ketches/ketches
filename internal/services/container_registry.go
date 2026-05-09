@@ -309,7 +309,9 @@ func TestContainerRegistryConnection(req *models.TestContainerRegistryRequest) *
 			Message: fmt.Sprintf("Connection failed: %v", err),
 		}
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode == http.StatusOK {
 		return &models.TestContainerRegistryResponse{

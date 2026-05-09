@@ -147,7 +147,7 @@ func TestEnsureNodeTerminalPodRecoversFromAlreadyExistsRace(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	podResource := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 
-	client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+	client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		createAction := action.(ktesting.CreateAction)
 		pod := createAction.GetObject().(*corev1.Pod).DeepCopy()
 		if err := client.Tracker().Add(pod); err != nil {

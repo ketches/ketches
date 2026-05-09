@@ -325,7 +325,9 @@ func readBuildFailureLogTail(
 	if err != nil {
 		return ""
 	}
-	defer stream.Close()
+	defer func() {
+		_ = stream.Close()
+	}()
 
 	data, err := io.ReadAll(stream)
 	if err != nil {
@@ -611,7 +613,7 @@ func handleCodeRepoBuildDeploy(build *entities.Build, bd *entities.BuildDeployme
 		// Update the BuildDeployment with the newly created app ID
 		db.DB.Model(bd).Update("app_id", newApp.ID)
 	} else {
-		slog.Info(fmt.Sprintf("Code repo auto-deploy: missing app deployment info in build deployment record"))
+		slog.Info("Code repo auto-deploy: missing app deployment info in build deployment record")
 		markBuildDeploymentFailed(bd, "missing app deployment info")
 		return
 	}

@@ -241,7 +241,7 @@ func TestBuilderExecutorReconcileSnapshot(t *testing.T) {
 		setBuilderWorkspaceServiceConfigForTest(t)
 
 		client := kubefake.NewSimpleClientset()
-		client.Fake.PrependReactor("create", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		client.PrependReactor("create", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
 			createAction := action.(k8stesting.CreateAction)
 			pod := createAction.GetObject().(*corev1.Pod)
 			pod.Status.Conditions = []corev1.PodCondition{{

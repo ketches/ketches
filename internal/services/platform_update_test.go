@@ -5,13 +5,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -191,7 +191,7 @@ func TestPlatformUpdateRolloutRollsBackUISpecWhenAPIPatchFails(t *testing.T) {
 		Resource: "deployments",
 	}
 
-	kubeClient.Fake.PrependReactor("patch", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+	kubeClient.PrependReactor("patch", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		patchAction := action.(ktesting.PatchAction)
 		switch patchAction.GetName() {
 		case "ketches-ui":

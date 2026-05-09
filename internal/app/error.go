@@ -12,7 +12,8 @@ var (
 )
 
 func NewErrorf(format string, args ...any) error {
-	return errors.New(fmt.Sprintf(format, args...))
+	message := fmt.Sprintf(format, args...)
+	return errors.New(message)
 }
 
 func WrapError(message string, err error) error {

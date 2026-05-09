@@ -411,7 +411,9 @@ func GetExtensionValues(extensionID, version string) (string, error) {
 	if err != nil {
 		return "", app.WrapErrorf(err, "failed to create temp dir: %w", err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() {
+		_ = os.RemoveAll(dir)
+	}()
 
 	regClient, err := registry.NewClient()
 	if err != nil {
@@ -1114,7 +1116,9 @@ func pullChart(ociUrl, version string, regClient *registry.Client) (*chart.Chart
 	if err != nil {
 		return nil, app.WrapErrorf(err, "failed to create temp dir: %w", err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() {
+		_ = os.RemoveAll(dir)
+	}()
 
 	p := action.NewPullWithOpts(action.WithConfig(&action.Configuration{
 		RegistryClient: regClient,

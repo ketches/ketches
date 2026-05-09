@@ -64,8 +64,10 @@ test-coverage: test ## Open test coverage report in browser
 # ──────────────────────────────────────────────────────────────────────────────
 # Lint
 # ──────────────────────────────────────────────────────────────────────────────
+GO_PACKAGES = $(shell go list -f '{{.Dir}}' ./... | grep -v '/ui/node_modules/')
+
 lint: ## Lint Go source code (requires golangci-lint)
-	golangci-lint run ./...
+	golangci-lint run $(GO_PACKAGES)
 
 lint-ui: ## Lint frontend source code
 	cd ui && pnpm run lint

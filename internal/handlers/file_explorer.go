@@ -98,7 +98,7 @@ func CompressAndDownloadFiles(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, req.ArchiveName))
 
 	if err := services.CompressAndDownloadFiles(app, instanceName, containerName, req.BaseDir, req.FileNames, c.Writer); err != nil {
-		c.Error(appcore.NewErrorf("failed to compress and download: %v", err))
+		_ = c.Error(appcore.NewErrorf("failed to compress and download: %v", err))
 	}
 }
 
@@ -354,9 +354,14 @@ func DownloadFile(c *gin.Context) {
 		c.Header("Content-Type", "application/octet-stream")
 		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.tar"`, sanitizeFilename(path)))
 		tarBuf.Reset()
-		services.DownloadFile(app, instanceName, containerName, path, &tarBuf)
+		if err := services.DownloadFile(app, instanceName, containerName, path, &tarBuf); err != nil {
+			api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("failed to download file: %v", err))
+			return
+		}
 		c.Header("Content-Length", fmt.Sprintf("%d", tarBuf.Len()))
-		io.Copy(c.Writer, &tarBuf)
+		if _, err := io.Copy(c.Writer, &tarBuf); err != nil {
+			_ = c.Error(appcore.NewErrorf("failed to stream archive: %v", err))
+		}
 		return
 	}
 
@@ -370,7 +375,7 @@ func DownloadFile(c *gin.Context) {
 	}
 
 	if _, err := io.Copy(c.Writer, tr); err != nil {
-		c.Error(appcore.NewErrorf("failed to stream file: %v", err))
+		_ = c.Error(appcore.NewErrorf("failed to stream file: %v", err))
 	}
 }
 
@@ -409,7 +414,7 @@ func DownloadFileDir(c *gin.Context) {
 	c.Header("Content-Length", fmt.Sprintf("%d", tarBuf.Len()))
 
 	if _, err := io.Copy(c.Writer, &tarBuf); err != nil {
-		c.Error(appcore.NewErrorf("failed to stream archive: %v", err))
+		_ = c.Error(appcore.NewErrorf("failed to stream archive: %v", err))
 	}
 }
 
@@ -483,7 +488,9 @@ func UploadFile(c *gin.Context) {
 		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("file parameter is required: %v", err))
 		return
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	if err := services.UploadFile(app, instanceName, containerName, destDir, header.Filename, file, header.Size); err != nil {
 		api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("failed to upload file: %v", err))

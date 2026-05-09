@@ -27,23 +27,7 @@ func ListNotifications(c *gin.Context) {
 
 	items := make([]models.NotificationResponse, 0, len(rows))
 	for _, r := range rows {
-		items = append(items, models.NotificationResponse{
-			ID:           r.ID,
-			SenderID:     r.SenderID,
-			SenderName:   r.SenderName,
-			Category:     r.Category,
-			EventType:    r.EventType,
-			Title:        r.Title,
-			Message:      r.Message,
-			Status:       r.Status,
-			ReadAt:       r.ReadAt,
-			ResourceType: r.ResourceType,
-			ResourceID:   r.ResourceID,
-			ProjectID:    r.ProjectID,
-			ProjectName:  r.ProjectName,
-			ActionData:   r.ActionData,
-			CreatedAt:    r.CreatedAt,
-		})
+		items = append(items, models.NotificationResponse(r))
 	}
 
 	api.Success(c, models.ListNotificationResponse{

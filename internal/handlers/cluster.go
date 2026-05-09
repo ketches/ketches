@@ -32,18 +32,18 @@ func ListClusters(c *gin.Context) {
 	res := []models.ClusterResponse{}
 	for _, cl := range clusters {
 		res = append(res, models.ClusterResponse{
-			ID:                           cl.ID,
-			Slug:                         cl.Slug,
-			Name:                         cl.Name,
-			Description:                  cl.Description,
-			Enabled:                      cl.Enabled,
-			ApiServer:                    cl.ApiServer,
-			GatewayHost:                  cl.GatewayHost,
-			HasKubeConfig:                cl.KubeConfig != "",
-			ConnectionStatus:             cl.ConnectionStatus,
-			ConnectionStatusReason:       cl.ConnectionStatusReason,
-			LastCheckedAt:                cl.LastCheckedAt,
-			CreatedAt:                    cl.CreatedAt,
+			ID:                     cl.ID,
+			Slug:                   cl.Slug,
+			Name:                   cl.Name,
+			Description:            cl.Description,
+			Enabled:                cl.Enabled,
+			ApiServer:              cl.ApiServer,
+			GatewayHost:            cl.GatewayHost,
+			HasKubeConfig:          cl.KubeConfig != "",
+			ConnectionStatus:       cl.ConnectionStatus,
+			ConnectionStatusReason: cl.ConnectionStatusReason,
+			LastCheckedAt:          cl.LastCheckedAt,
+			CreatedAt:              cl.CreatedAt,
 		})
 	}
 	slog.Debug(fmt.Sprintf("Listing clusters: found %d records out of %d total", len(res), total))
@@ -107,18 +107,18 @@ func CreateCluster(c *gin.Context) {
 	}
 
 	api.Created(c, models.ClusterResponse{
-		ID:                           cluster.ID,
-		Slug:                         cluster.Slug,
-		Name:                         cluster.Name,
-		Description:                  cluster.Description,
-		Enabled:                      cluster.Enabled,
-		ApiServer:                    cluster.ApiServer,
-		GatewayHost:                  cluster.GatewayHost,
-		HasKubeConfig:                cluster.KubeConfig != "",
-		ConnectionStatus:             cluster.ConnectionStatus,
-		ConnectionStatusReason:       cluster.ConnectionStatusReason,
-		LastCheckedAt:                cluster.LastCheckedAt,
-		CreatedAt:                    cluster.CreatedAt,
+		ID:                     cluster.ID,
+		Slug:                   cluster.Slug,
+		Name:                   cluster.Name,
+		Description:            cluster.Description,
+		Enabled:                cluster.Enabled,
+		ApiServer:              cluster.ApiServer,
+		GatewayHost:            cluster.GatewayHost,
+		HasKubeConfig:          cluster.KubeConfig != "",
+		ConnectionStatus:       cluster.ConnectionStatus,
+		ConnectionStatusReason: cluster.ConnectionStatusReason,
+		LastCheckedAt:          cluster.LastCheckedAt,
+		CreatedAt:              cluster.CreatedAt,
 	})
 }
 
@@ -137,19 +137,19 @@ func GetCluster(c *gin.Context) {
 	}
 
 	api.Success(c, models.ClusterResponse{
-		ID:                           cluster.ID,
-		Slug:                         cluster.Slug,
-		Name:                         cluster.Name,
-		Description:                  cluster.Description,
-		Enabled:                      cluster.Enabled,
-		ApiServer:                    cluster.ApiServer,
-		GatewayHost:                  cluster.GatewayHost,
-		HasKubeConfig:                cluster.KubeConfig != "",
-		HasPrometheusIntegration:     hasPrometheusIntegration,
-		ConnectionStatus:             cluster.ConnectionStatus,
-		ConnectionStatusReason:       cluster.ConnectionStatusReason,
-		LastCheckedAt:                cluster.LastCheckedAt,
-		CreatedAt:                    cluster.CreatedAt,
+		ID:                       cluster.ID,
+		Slug:                     cluster.Slug,
+		Name:                     cluster.Name,
+		Description:              cluster.Description,
+		Enabled:                  cluster.Enabled,
+		ApiServer:                cluster.ApiServer,
+		GatewayHost:              cluster.GatewayHost,
+		HasKubeConfig:            cluster.KubeConfig != "",
+		HasPrometheusIntegration: hasPrometheusIntegration,
+		ConnectionStatus:         cluster.ConnectionStatus,
+		ConnectionStatusReason:   cluster.ConnectionStatusReason,
+		LastCheckedAt:            cluster.LastCheckedAt,
+		CreatedAt:                cluster.CreatedAt,
 	})
 }
 
@@ -204,18 +204,18 @@ func UpdateCluster(c *gin.Context) {
 	}
 
 	api.Success(c, models.ClusterResponse{
-		ID:                           cluster.ID,
-		Slug:                         cluster.Slug,
-		Name:                         cluster.Name,
-		Description:                  cluster.Description,
-		Enabled:                      cluster.Enabled,
-		ApiServer:                    cluster.ApiServer,
-		GatewayHost:                  cluster.GatewayHost,
-		HasKubeConfig:                cluster.KubeConfig != "",
-		ConnectionStatus:             cluster.ConnectionStatus,
-		ConnectionStatusReason:       cluster.ConnectionStatusReason,
-		LastCheckedAt:                cluster.LastCheckedAt,
-		CreatedAt:                    cluster.CreatedAt,
+		ID:                     cluster.ID,
+		Slug:                   cluster.Slug,
+		Name:                   cluster.Name,
+		Description:            cluster.Description,
+		Enabled:                cluster.Enabled,
+		ApiServer:              cluster.ApiServer,
+		GatewayHost:            cluster.GatewayHost,
+		HasKubeConfig:          cluster.KubeConfig != "",
+		ConnectionStatus:       cluster.ConnectionStatus,
+		ConnectionStatusReason: cluster.ConnectionStatusReason,
+		LastCheckedAt:          cluster.LastCheckedAt,
+		CreatedAt:              cluster.CreatedAt,
 	})
 }
 
@@ -234,18 +234,18 @@ func UpdateClusterBasic(c *gin.Context) {
 	}
 
 	api.Success(c, models.ClusterResponse{
-		ID:                           cluster.ID,
-		Slug:                         cluster.Slug,
-		Name:                         cluster.Name,
-		Description:                  cluster.Description,
-		Enabled:                      cluster.Enabled,
-		ApiServer:                    cluster.ApiServer,
-		GatewayHost:                  cluster.GatewayHost,
-		HasKubeConfig:                cluster.KubeConfig != "",
-		ConnectionStatus:             cluster.ConnectionStatus,
-		ConnectionStatusReason:       cluster.ConnectionStatusReason,
-		LastCheckedAt:                cluster.LastCheckedAt,
-		CreatedAt:                    cluster.CreatedAt,
+		ID:                     cluster.ID,
+		Slug:                   cluster.Slug,
+		Name:                   cluster.Name,
+		Description:            cluster.Description,
+		Enabled:                cluster.Enabled,
+		ApiServer:              cluster.ApiServer,
+		GatewayHost:            cluster.GatewayHost,
+		HasKubeConfig:          cluster.KubeConfig != "",
+		ConnectionStatus:       cluster.ConnectionStatus,
+		ConnectionStatusReason: cluster.ConnectionStatusReason,
+		LastCheckedAt:          cluster.LastCheckedAt,
+		CreatedAt:              cluster.CreatedAt,
 	})
 }
 
@@ -262,13 +262,13 @@ func CreateClusterGatewayProvider(c *gin.Context) {
 		return
 	}
 	api.Created(c, models.ClusterGatewayProvider{
-		ID:                 provider.ID,
-		ClusterID:          provider.ClusterID,
-		SourceType:         provider.SourceType,
-		DisplayName:        provider.DisplayName,
-		GatewayClassName:   provider.GatewayClassName,
-		ControllerName:     provider.ControllerName,
-		IsDefault:          provider.IsDefault,
+		ID:               provider.ID,
+		ClusterID:        provider.ClusterID,
+		SourceType:       provider.SourceType,
+		DisplayName:      provider.DisplayName,
+		GatewayClassName: provider.GatewayClassName,
+		ControllerName:   provider.ControllerName,
+		IsDefault:        provider.IsDefault,
 	})
 }
 
@@ -317,18 +317,18 @@ func UpdateClusterDefaultGatewayClass(c *gin.Context) {
 	}
 
 	api.Success(c, models.ClusterResponse{
-		ID:                           cluster.ID,
-		Slug:                         cluster.Slug,
-		Name:                         cluster.Name,
-		Description:                  cluster.Description,
-		Enabled:                      cluster.Enabled,
-		ApiServer:                    cluster.ApiServer,
-		GatewayHost:                  cluster.GatewayHost,
-		HasKubeConfig:                cluster.KubeConfig != "",
-		ConnectionStatus:             cluster.ConnectionStatus,
-		ConnectionStatusReason:       cluster.ConnectionStatusReason,
-		LastCheckedAt:                cluster.LastCheckedAt,
-		CreatedAt:                    cluster.CreatedAt,
+		ID:                     cluster.ID,
+		Slug:                   cluster.Slug,
+		Name:                   cluster.Name,
+		Description:            cluster.Description,
+		Enabled:                cluster.Enabled,
+		ApiServer:              cluster.ApiServer,
+		GatewayHost:            cluster.GatewayHost,
+		HasKubeConfig:          cluster.KubeConfig != "",
+		ConnectionStatus:       cluster.ConnectionStatus,
+		ConnectionStatusReason: cluster.ConnectionStatusReason,
+		LastCheckedAt:          cluster.LastCheckedAt,
+		CreatedAt:              cluster.CreatedAt,
 	})
 }
 
@@ -488,23 +488,29 @@ func ExecClusterNodeTerminal(c *gin.Context) {
 
 	conn, err := wsPkg.NewConn(w, r)
 	if err != nil {
-		c.Error(app.NewErrorf("failed to upgrade to websocket: %v", err))
+		_ = c.Error(app.NewErrorf("failed to upgrade to websocket: %v", err))
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	sizeQueue := wsPkg.NewTerminalSizeQueue()
 	defer sizeQueue.Close()
 
 	stdinReader := wsPkg.NewDemuxReader(conn, sizeQueue)
-	defer stdinReader.Close()
+	defer func() {
+		_ = stdinReader.Close()
+	}()
 
 	stdout := wsPkg.NewWriter(conn)
 	stderr := wsPkg.NewWriter(conn)
 
 	err = services.ExecClusterNodeTerminal(clusterID, nodeName, stdinReader, stdout, stderr)
 	if err != nil {
-		websocket.Message.Send(conn, []byte(fmt.Sprintf("Error: %v", err)))
+		if sendErr := websocket.Message.Send(conn, []byte(fmt.Sprintf("Error: %v", err))); sendErr != nil {
+			_ = c.Error(sendErr)
+		}
 	}
 }
 
@@ -552,18 +558,18 @@ func UpdateClusterCredentials(c *gin.Context) {
 	}
 
 	api.Success(c, models.ClusterResponse{
-		ID:                           cluster.ID,
-		Slug:                         cluster.Slug,
-		Name:                         cluster.Name,
-		Description:                  cluster.Description,
-		Enabled:                      cluster.Enabled,
-		ApiServer:                    cluster.ApiServer,
-		GatewayHost:                  cluster.GatewayHost,
-		HasKubeConfig:                cluster.KubeConfig != "",
-		ConnectionStatus:             cluster.ConnectionStatus,
-		ConnectionStatusReason:       cluster.ConnectionStatusReason,
-		LastCheckedAt:                cluster.LastCheckedAt,
-		CreatedAt:                    cluster.CreatedAt,
+		ID:                     cluster.ID,
+		Slug:                   cluster.Slug,
+		Name:                   cluster.Name,
+		Description:            cluster.Description,
+		Enabled:                cluster.Enabled,
+		ApiServer:              cluster.ApiServer,
+		GatewayHost:            cluster.GatewayHost,
+		HasKubeConfig:          cluster.KubeConfig != "",
+		ConnectionStatus:       cluster.ConnectionStatus,
+		ConnectionStatusReason: cluster.ConnectionStatusReason,
+		LastCheckedAt:          cluster.LastCheckedAt,
+		CreatedAt:              cluster.CreatedAt,
 	})
 }
 

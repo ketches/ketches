@@ -64,7 +64,9 @@ func StreamBuildLogs(c *gin.Context, buildID string) {
 
 	switch build.Status {
 	case entities.BuildStatusPending, entities.BuildStatusCloning, entities.BuildStatusBuilding:
-		streamActiveBuildLogs(c, build)
+		if err := streamActiveBuildLogs(c, build); err != nil {
+			c.JSON(404, gin.H{"error": "build log stream unavailable"})
+		}
 	default:
 		if err := streamPersistedBuildLogs(c, build); err == nil {
 			return
@@ -81,7 +83,9 @@ func streamPersistedBuildLogs(c *gin.Context, build *entities.Build) error {
 	if err != nil {
 		return err
 	}
-	defer stream.Close()
+	defer func() {
+		_ = stream.Close()
+	}()
 
 	writeBuildLogSSEHeaders(c)
 	if err := streamSSELogReader(c, stream); err != nil {
@@ -158,7 +162,9 @@ func streamActiveBuildLogs(c *gin.Context, build *entities.Build) error {
 		if err := streamSSELogReader(c, stream); err != nil {
 			slog.Error(fmt.Sprintf("Build log stream error %s: %v", containerName, err))
 		}
-		stream.Close()
+		if err := stream.Close(); err != nil {
+			slog.Error(fmt.Sprintf("Build log stream close error %s: %v", containerName, err))
+		}
 	}
 
 	c.SSEvent("done", "stream ended")

@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
-	"github.com/ketches/ketches/internal/app"
 	appcore "github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/models"
@@ -63,11 +62,15 @@ func StreamAppLogs(c *gin.Context) {
 
 	stream, err := services.StreamAppLogs(r.Context(), app, instanceName, containerName, tailLines, timestamps)
 	if err != nil {
-		fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
+		if _, writeErr := fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error()); writeErr != nil {
+			return
+		}
 		flusher.Flush()
 		return
 	}
-	defer stream.Close()
+	defer func() {
+		_ = stream.Close()
+	}()
 
 	scanner := bufio.NewScanner(stream)
 
@@ -78,7 +81,9 @@ func StreamAppLogs(c *gin.Context) {
 		default:
 			if scanner.Scan() {
 				txt := scanner.Text()
-				fmt.Fprintf(w, "data: %s\n\n", txt)
+				if _, err := fmt.Fprintf(w, "data: %s\n\n", txt); err != nil {
+					return
+				}
 				flusher.Flush()
 			} else {
 				return
@@ -103,23 +108,29 @@ func ExecAppContainerTerminal(c *gin.Context) {
 
 	conn, err := wsPkg.NewConn(w, r)
 	if err != nil {
-		c.Error(appcore.NewErrorf("failed to upgrade to websocket: %v", err))
+		_ = c.Error(appcore.NewErrorf("failed to upgrade to websocket: %v", err))
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	sizeQueue := wsPkg.NewTerminalSizeQueue()
 	defer sizeQueue.Close()
 
 	stdinReader := wsPkg.NewDemuxReader(conn, sizeQueue)
-	defer stdinReader.Close()
+	defer func() {
+		_ = stdinReader.Close()
+	}()
 
 	stdout := wsPkg.NewWriter(conn)
 	stderr := wsPkg.NewWriter(conn)
 
 	err = services.ExecAppContainer(app, instanceName, containerName, stdinReader, stdout, stderr, true, sizeQueue)
 	if err != nil {
-		websocket.Message.Send(conn, []byte(fmt.Sprintf("Error: %v", err)))
+		if sendErr := websocket.Message.Send(conn, []byte(fmt.Sprintf("Error: %v", err))); sendErr != nil {
+			_ = c.Error(sendErr)
+		}
 	}
 }
 
@@ -508,7 +519,7 @@ func GetAppTopologyResourceYaml(c *gin.Context) {
 func GetImageMetadata(c *gin.Context) {
 	image := c.Query("image")
 	if image == "" {
-		api.Error(c, http.StatusBadRequest, app.NewErrorf("image query parameter is required"))
+		api.Error(c, http.StatusBadRequest, appcore.NewErrorf("image query parameter is required"))
 		return
 	}
 
@@ -517,7 +528,7 @@ func GetImageMetadata(c *gin.Context) {
 
 	meta, err := containerregistry.FetchImageMetadata(c.Request.Context(), image, username, password)
 	if err != nil {
-		api.Error(c, http.StatusBadGateway, app.WrapErrorf(err, "failed to fetch image metadata: %w", err))
+		api.Error(c, http.StatusBadGateway, appcore.WrapErrorf(err, "failed to fetch image metadata: %w", err))
 		return
 	}
 

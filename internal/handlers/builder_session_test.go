@@ -31,27 +31,6 @@ type builderSessionAPIResponse struct {
 	Error string          `json:"error,omitempty"`
 }
 
-type builderSessionDownloadRecorder struct {
-	HeaderMap http.Header
-	Status    int
-	Body      strings.Builder
-}
-
-func (r *builderSessionDownloadRecorder) Header() http.Header {
-	if r.HeaderMap == nil {
-		r.HeaderMap = make(http.Header)
-	}
-	return r.HeaderMap
-}
-
-func (r *builderSessionDownloadRecorder) Write(data []byte) (int, error) {
-	return r.Body.Write(data)
-}
-
-func (r *builderSessionDownloadRecorder) WriteHeader(statusCode int) {
-	r.Status = statusCode
-}
-
 type builderStreamHookRecorder struct {
 	*httptest.ResponseRecorder
 	flushHook func()

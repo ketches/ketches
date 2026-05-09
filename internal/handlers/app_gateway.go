@@ -294,7 +294,9 @@ func ProxyGatewayHTTP(c *gin.Context) {
 		api.Error(c, http.StatusBadGateway, app.WrapErrorf(err, "upstream request failed: %w", err))
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// The /forward prefix for this gateway — used when rewriting Location headers
 	// and injecting <base href> into HTML responses.

@@ -155,9 +155,12 @@ func writeBuildPodLogsToArchive(
 
 		openedAnyStream = true
 		written, copyErr := io.Copy(dst, stream)
-		stream.Close()
+		closeErr := stream.Close()
 		if copyErr != nil {
 			return 0, app.WrapErrorf(copyErr, "failed to copy logs for container %s: %w", containerName, copyErr)
+		}
+		if closeErr != nil {
+			return 0, app.WrapErrorf(closeErr, "failed to close logs for container %s: %w", containerName, closeErr)
 		}
 		totalWritten += written
 	}

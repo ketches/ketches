@@ -53,7 +53,9 @@ func PromoteBuilderSessionExportToCodeRepository(ctx context.Context, projectID,
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(workDir)
+	defer func() {
+		_ = os.RemoveAll(workDir)
+	}()
 
 	if err := extractBuilderExportArchive(ctx, projectID, session.ID, export.ID, workDir); err != nil {
 		return nil, err
@@ -118,7 +120,9 @@ func extractBuilderExportArchive(ctx context.Context, projectID, sessionID, expo
 	if err != nil {
 		return err
 	}
-	defer gzipReader.Close()
+	defer func() {
+		_ = gzipReader.Close()
+	}()
 
 	tarReader := tar.NewReader(gzipReader)
 	for {
@@ -149,7 +153,7 @@ func extractBuilderExportArchive(ctx context.Context, projectID, sessionID, expo
 				return err
 			}
 			if _, err := io.Copy(file, tarReader); err != nil {
-				file.Close()
+				_ = file.Close()
 				return err
 			}
 			if err := file.Close(); err != nil {

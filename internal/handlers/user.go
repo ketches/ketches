@@ -277,7 +277,9 @@ func ImportUsers(c *gin.Context) {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
-	defer src.Close()
+	defer func() {
+		_ = src.Close()
+	}()
 
 	// Determine file type and parse
 	var requests []models.CreateUserRequest

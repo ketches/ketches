@@ -118,9 +118,6 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 						}
 					}
 				}
-			} else {
-				// TCP/UDP - Create/Update TCPRoute or UDPRoute
-				// TODO: Implement TCPRoute/UDPRoute when Gateway API supports them
 			}
 		} else if protocol == "http" || protocol == "https" {
 			gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID)
@@ -173,9 +170,6 @@ func DeleteGatewayFromK8s(ctx context.Context, appCtx *models.AppContext, gatewa
 				return err
 			}
 		}
-	} else {
-		// Delete TCPRoute/UDPRoute
-		// TODO: Implement when Gateway API supports them
 	}
 
 	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)

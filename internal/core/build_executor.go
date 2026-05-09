@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
-	"runtime"
 	"strings"
 
 	"github.com/ketches/ketches/internal/app"
@@ -23,10 +21,6 @@ const (
 	KanikoImage   = "gcr.io/kaniko-project/executor:latest"
 	GitCloneImage = "alpine/git:latest"
 )
-
-var defaultKanikoIgnorePaths = []string{
-	"/product_uuid",
-}
 
 // CreateBuildJob creates a Kubernetes Job to build a container image via a BuildKit client job.
 func CreateBuildJob(
@@ -355,78 +349,6 @@ func sanitizeImageReference(imageRef string) string {
 	return imageRef
 }
 
-func buildKanikoArgs(dockerfilePath, buildContext, imageDestination, buildArgsJSON string, registry *entities.ContainerRegistry) []string {
-	kanikoArgs := []string{
-		fmt.Sprintf("--dockerfile=%s", dockerfilePath),
-		fmt.Sprintf("--context=dir:///workspace/%s", buildContext),
-		fmt.Sprintf("--destination=%s", imageDestination),
-		"--snapshot-mode=redo",
-		// Avoid failing the whole build when Kaniko cannot cleanup transient files on some runtimes.
-		"--cleanup=false",
-	}
-
-	for _, ignorePath := range kanikoIgnorePaths() {
-		kanikoArgs = append(kanikoArgs, fmt.Sprintf("--ignore-path=%s", ignorePath))
-	}
-
-	if shouldEnableKanikoCache(registry) {
-		kanikoArgs = append(kanikoArgs, "--cache=true")
-	} else {
-		// Docker Hub cache pushes commonly fail due to separate cache repo auth scope.
-		kanikoArgs = append(kanikoArgs, "--cache=false")
-	}
-
-	buildArgs := parseBuildArgs(buildArgsJSON)
-	buildArgs = withDefaultPlatformBuildArgs(buildArgs)
-	for _, arg := range buildArgs {
-		kanikoArgs = append(kanikoArgs, fmt.Sprintf("--build-arg=%s", arg))
-	}
-
-	return kanikoArgs
-}
-
-func kanikoIgnorePaths() []string {
-	seen := make(map[string]bool, len(defaultKanikoIgnorePaths))
-	paths := make([]string, 0, len(defaultKanikoIgnorePaths)+2)
-
-	appendPath := func(path string) {
-		path = strings.TrimSpace(path)
-		if path == "" || seen[path] {
-			return
-		}
-		seen[path] = true
-		paths = append(paths, path)
-	}
-
-	for _, path := range defaultKanikoIgnorePaths {
-		appendPath(path)
-	}
-
-	for _, part := range splitKanikoIgnorePaths(os.Getenv("KANIKO_EXTRA_IGNORE_PATHS")) {
-		appendPath(part)
-	}
-
-	return paths
-}
-
-func splitKanikoIgnorePaths(raw string) []string {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return nil
-	}
-
-	normalized := strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(raw)
-	normalized = strings.ReplaceAll(normalized, "\n", ",")
-	return strings.Split(normalized, ",")
-}
-
-func shouldEnableKanikoCache(registry *entities.ContainerRegistry) bool {
-	if registry == nil {
-		return false
-	}
-	return registry.Provider != entities.RegistryProviderDockerHub
-}
-
 func parseBuildArgs(raw string) []string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -463,43 +385,8 @@ func parseBuildArgs(raw string) []string {
 			continue
 		}
 
-		// Allow KEY form so Kaniko can resolve from environment if present.
+		// Allow KEY form so the builder can resolve from environment if present.
 		args = append(args, part)
-	}
-
-	return args
-}
-
-func withDefaultPlatformBuildArgs(args []string) []string {
-	existing := make(map[string]bool)
-	for _, arg := range args {
-		key := arg
-		if k, _, ok := strings.Cut(arg, "="); ok {
-			key = strings.TrimSpace(k)
-		}
-		if key == "" {
-			continue
-		}
-		existing[key] = true
-	}
-
-	arch := runtime.GOARCH
-	os := runtime.GOOS
-	platform := fmt.Sprintf("%s/%s", os, arch)
-
-	defaults := []string{
-		fmt.Sprintf("BUILDPLATFORM=%s", platform),
-		fmt.Sprintf("TARGETPLATFORM=%s", platform),
-		fmt.Sprintf("TARGETOS=%s", os),
-		fmt.Sprintf("TARGETARCH=%s", arch),
-	}
-
-	for _, kv := range defaults {
-		k, _, _ := strings.Cut(kv, "=")
-		if existing[k] {
-			continue
-		}
-		args = append(args, kv)
 	}
 
 	return args

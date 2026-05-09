@@ -142,35 +142,14 @@ func (m *AppMetadata) ToCreateAppRequest() *CreateAppRequest {
 	if len(m.Probes) > 0 {
 		req.Probes = make([]ProbeSpec, len(m.Probes))
 		for i, p := range m.Probes {
-			req.Probes[i] = ProbeSpec{
-				Type:                p.Type,
-				ProbeMode:           p.ProbeMode,
-				Enabled:             p.Enabled,
-				HttpGetPath:         p.HttpGetPath,
-				HttpGetPort:         p.HttpGetPort,
-				TcpSocketPort:       p.TcpSocketPort,
-				ExecCommand:         p.ExecCommand,
-				InitialDelaySeconds: p.InitialDelaySeconds,
-				PeriodSeconds:       p.PeriodSeconds,
-				TimeoutSeconds:      p.TimeoutSeconds,
-				SuccessThreshold:    p.SuccessThreshold,
-				FailureThreshold:    p.FailureThreshold,
-			}
+			req.Probes[i] = ProbeSpec(p)
 		}
 	}
 
 	if len(m.Gateways) > 0 {
 		req.Gateways = make([]GatewaySpec, len(m.Gateways))
 		for i, g := range m.Gateways {
-			req.Gateways[i] = GatewaySpec{
-				Port:        g.Port,
-				Protocol:    g.Protocol,
-				Domain:      g.Domain,
-				Path:        g.Path,
-				GatewayPort: g.GatewayPort,
-				Exposed:     g.Exposed,
-				CertID:      g.CertID,
-			}
+			req.Gateways[i] = GatewaySpec(g)
 		}
 	}
 

@@ -121,7 +121,9 @@ func GenerateBuilderFilesWithSelection(ctx context.Context, messages []BuilderAg
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		body, readErr := io.ReadAll(resp.Body)
@@ -340,10 +342,7 @@ func buildBuilderAnthropicMessageRequest(model string, messages []BuilderAgentMe
 				systemParts = append(systemParts, message.Content)
 			}
 		case "user", "assistant":
-			anthropicMessages = append(anthropicMessages, builderAnthropicMessageInput{
-				Role:    message.Role,
-				Content: message.Content,
-			})
+			anthropicMessages = append(anthropicMessages, builderAnthropicMessageInput(message))
 		}
 	}
 

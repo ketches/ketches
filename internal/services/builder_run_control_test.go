@@ -268,7 +268,7 @@ func TestClaimNextQueuedBuilderRunUsesMySQLSafeUpdateShape(t *testing.T) {
 		capturedSQL = tx.Statement.SQL.String()
 	}))
 	t.Cleanup(func() {
-		db.DB.Callback().Update().Remove(callbackName)
+		require.NoError(t, db.DB.Callback().Update().Remove(callbackName))
 	})
 
 	claimedRun, err := ClaimNextQueuedBuilderRun(context.Background(), "worker-sql", 5*time.Minute)
@@ -323,7 +323,7 @@ func TestSessionHasExecutingBuilderRunUsesLockingRead(t *testing.T) {
 		}
 	}))
 	t.Cleanup(func() {
-		db.DB.Callback().Query().Remove(callbackName)
+		require.NoError(t, db.DB.Callback().Query().Remove(callbackName))
 	})
 
 	hasExecutingRun, err := sessionHasExecutingBuilderRun(db.DB, "session-lock-check")
@@ -802,7 +802,7 @@ func registerBuilderSessionClosureDuringRunClaim(t *testing.T, sessionID string,
 				"updated_at": time.Now().UTC(),
 			}).Error
 		if err != nil {
-			tx.AddError(err)
+			_ = tx.AddError(err)
 		}
 	}))
 }

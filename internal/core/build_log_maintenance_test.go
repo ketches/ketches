@@ -128,12 +128,12 @@ func TestRecoverTerminalBuildLogArchives_RetriesPendingAndFailedBuildsOnly(t *te
 		podName,
 		containerName string,
 	) (io.ReadCloser, error) {
-		switch {
-		case podName == "pod-pending":
+		switch podName {
+		case "pod-pending":
 			return io.NopCloser(strings.NewReader("pending-" + containerName + "\n")), nil
-		case podName == "pod-failed":
+		case "pod-failed":
 			return io.NopCloser(strings.NewReader("failed-" + containerName + "\n")), nil
-		case podName == "pod-source-unavailable":
+		case "pod-source-unavailable":
 			return io.NopCloser(strings.NewReader("source-unavailable-" + containerName + "\n")), nil
 		default:
 			return nil, errors.New("unexpected pod")

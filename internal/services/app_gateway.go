@@ -16,6 +16,22 @@ import (
 
 var ErrInvalidGatewayCertificate = errors.New("invalid gateway certificate")
 
+type gatewayCertificateError struct {
+	message string
+}
+
+func (e gatewayCertificateError) Error() string {
+	return ErrInvalidGatewayCertificate.Error() + ": " + e.message
+}
+
+func (e gatewayCertificateError) Unwrap() error {
+	return ErrInvalidGatewayCertificate
+}
+
+func newGatewayCertificateError(message string) error {
+	return gatewayCertificateError{message: message}
+}
+
 // ListAppGateways returns all gateways for a given app
 func ListAppGateways(appID string) ([]models.AppGatewayResponse, error) {
 	var gateways []entities.AppGateway
@@ -229,27 +245,27 @@ func validateGatewayCertificateReference(appCtx *models.AppContext, protocol str
 
 	trimmedCertID := strings.TrimSpace(certID)
 	if trimmedCertID == "" {
-		return fmt.Errorf("%w: certificate is required for HTTPS public access", ErrInvalidGatewayCertificate)
+		return newGatewayCertificateError("certificate is required for HTTPS public access")
 	}
 
 	certificate, err := GetCertificate(trimmedCertID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("%w: selected certificate was not found", ErrInvalidGatewayCertificate)
+			return newGatewayCertificateError("selected certificate was not found")
 		}
 		return err
 	}
 	if certificate.ClusterID != appCtx.EnvContext.Env.ClusterID {
-		return fmt.Errorf("%w: selected certificate does not belong to the current cluster", ErrInvalidGatewayCertificate)
+		return newGatewayCertificateError("selected certificate does not belong to the current cluster")
 	}
 	if certificate.Scope == "env" {
 		if certificate.EnvID == nil || strings.TrimSpace(*certificate.EnvID) != appCtx.EnvContext.Env.ID {
-			return fmt.Errorf("%w: selected certificate is not available in this environment", ErrInvalidGatewayCertificate)
+			return newGatewayCertificateError("selected certificate is not available in this environment")
 		}
 		return nil
 	}
 	if certificate.Scope != "cluster" {
-		return fmt.Errorf("%w: selected certificate has an unsupported scope", ErrInvalidGatewayCertificate)
+		return newGatewayCertificateError("selected certificate has an unsupported scope")
 	}
 	return nil
 }

@@ -190,10 +190,7 @@ func requiresAuth(path string) bool {
 		"/api/v1/users/sign-up/verification-code": true,
 		"/api/v1/users/refresh-token":             true,
 	}
-	if publicPaths[path] {
-		return false
-	}
-	return true
+	return !publicPaths[path]
 }
 
 func errorResponseSpec(description string) map[string]any {

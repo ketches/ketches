@@ -642,42 +642,6 @@ func createBuilderWorkspaceExecutorHandle(tx *gorm.DB, sessionID, clusterID, nam
 	return handle, nil
 }
 
-func getOrCreateBuilderWorkspaceExecutorHandle(tx *gorm.DB, sessionID, clusterID, namespace string) (*entities.BuilderExecutorHandle, error) {
-	handle, err := getCurrentBuilderWorkspaceExecutorHandle(tx, sessionID)
-	if err == nil {
-		return handle, nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
-
-	now := time.Now().UTC()
-	handle = &entities.BuilderExecutorHandle{
-		ID:        uuid.New(),
-		CreatedAt: now,
-		UpdatedAt: now,
-		SessionID: sessionID,
-		Kind:      entities.BuilderExecutorHandleKindWorkspacePod,
-		Status:    entities.BuilderExecutorHandleStatusProvisioning,
-		ClusterID: builderStringPtr(clusterID),
-		Namespace: builderStringPtr(namespace),
-	}
-	if err := tx.Create(handle).Error; err != nil {
-		return nil, err
-	}
-	return handle, nil
-}
-
-func getCurrentBuilderWorkspaceExecutorHandle(tx *gorm.DB, sessionID string) (*entities.BuilderExecutorHandle, error) {
-	var handle entities.BuilderExecutorHandle
-	if err := tx.Where("session_id = ? AND kind = ? AND status IN ? AND terminated_at IS NULL", sessionID, entities.BuilderExecutorHandleKindWorkspacePod, []entities.BuilderExecutorHandleStatus{entities.BuilderExecutorHandleStatusProvisioning, entities.BuilderExecutorHandleStatusActive}).
-		Order("created_at DESC, id DESC").
-		Take(&handle).Error; err != nil {
-		return nil, err
-	}
-	return &handle, nil
-}
-
 func persistBuilderWorkspaceExecutorHandleSnapshot(tx *gorm.DB, handle *entities.BuilderExecutorHandle, snapshot *builderExecutorSnapshot) error {
 	if handle == nil {
 		return errors.New("builder executor handle is required")

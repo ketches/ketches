@@ -144,7 +144,7 @@ func seedBuilderWorkspaceServiceFixture(t *testing.T) (*entities.BuilderSession,
 }
 
 func markBuilderWorkspacePodReadyOnCreate(client *kubefake.Clientset) {
-	client.Fake.PrependReactor("create", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+	client.PrependReactor("create", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		createAction := action.(k8stesting.CreateAction)
 		pod := createAction.GetObject().(*corev1.Pod)
 		pod.Status.Conditions = []corev1.PodCondition{{
@@ -540,7 +540,7 @@ func TestProvisionBuilderWorkspaceRecoversFromIncompleteProvisioningHandle(t *te
 
 		client := kubefake.NewSimpleClientset()
 		addReadyBuilderWorkspacePod(t, client, "builder-ns", "builder-workspace-session-1-healthy", "workspace")
-		client.Fake.PrependReactor("delete", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		client.PrependReactor("delete", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
 			deleteAction := action.(k8stesting.DeleteAction)
 			if deleteAction.GetName() == "builder-workspace-session-1-healthy" {
 				return true, nil, apierrors.NewForbidden(schema.GroupResource{Resource: "pods"}, deleteAction.GetName(), errors.New("healthy handle should not be cancelled"))
@@ -612,7 +612,7 @@ func TestProvisionBuilderWorkspaceDoesNotCancelEquivalentDuplicateHandle(t *test
 
 	client := kubefake.NewSimpleClientset()
 	addReadyBuilderWorkspacePod(t, client, "builder-ns", "builder-workspace-session-1", "workspace")
-	client.Fake.PrependReactor("delete", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+	client.PrependReactor("delete", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		deleteAction := action.(k8stesting.DeleteAction)
 		if deleteAction.GetName() == "builder-workspace-session-1" {
 			return true, nil, apierrors.NewForbidden(schema.GroupResource{Resource: "pods"}, deleteAction.GetName(), errors.New("equivalent duplicate handle with different container name should not cancel canonical pod"))

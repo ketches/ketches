@@ -312,7 +312,7 @@ func toPluginResponse(plugin any) models.PluginResponse {
 
 	var envVars []models.PluginEnvVar
 	if p.EnvVars != "" {
-		json.Unmarshal([]byte(p.EnvVars), &envVars)
+		_ = json.Unmarshal([]byte(p.EnvVars), &envVars)
 	}
 
 	return models.PluginResponse{
@@ -338,7 +338,7 @@ func toAppPluginResponse(appPlugin *services.AppPluginWithPlugin) models.AppPlug
 
 	var envVars []models.PluginEnvVar
 	if normalizedAppPlugin.EnvVars != "" {
-		json.Unmarshal([]byte(normalizedAppPlugin.EnvVars), &envVars)
+		_ = json.Unmarshal([]byte(normalizedAppPlugin.EnvVars), &envVars)
 	}
 
 	return models.AppPluginResponse{

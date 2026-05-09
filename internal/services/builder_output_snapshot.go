@@ -109,7 +109,9 @@ func PublishBuilderOutputSnapshot(ctx context.Context, workspace *entities.Build
 		return nil, app.WrapErrorf(err, "create temporary snapshot directory: %w", err)
 	}
 	_ = os.RemoveAll(tmpPath)
-	defer os.RemoveAll(tmpPath)
+	defer func() {
+		_ = os.RemoveAll(tmpPath)
+	}()
 
 	if err := writeBuilderOutputSnapshotFiles(ctx, workspace, tmpPath, storagePath, snapshot.ID, filePlans); err != nil {
 		return nil, err
@@ -250,7 +252,7 @@ func WriteBuilderOutputSnapshotArchive(ctx context.Context, snapshot *entities.B
 
 		fileInfo, err := os.Stat(builderOutputSnapshotAbsPath(snapshotFile.StoragePath))
 		if err != nil {
-			reader.Close()
+			_ = reader.Close()
 			_ = tarWriter.Close()
 			_ = gzipWriter.Close()
 			return err
@@ -258,20 +260,20 @@ func WriteBuilderOutputSnapshotArchive(ctx context.Context, snapshot *entities.B
 
 		header, err := tar.FileInfoHeader(fileInfo, "")
 		if err != nil {
-			reader.Close()
+			_ = reader.Close()
 			_ = tarWriter.Close()
 			_ = gzipWriter.Close()
 			return err
 		}
 		header.Name = snapshotFile.RelativePath
 		if err := tarWriter.WriteHeader(header); err != nil {
-			reader.Close()
+			_ = reader.Close()
 			_ = tarWriter.Close()
 			_ = gzipWriter.Close()
 			return err
 		}
 		if _, err := io.Copy(tarWriter, reader); err != nil {
-			reader.Close()
+			_ = reader.Close()
 			_ = tarWriter.Close()
 			_ = gzipWriter.Close()
 			return err

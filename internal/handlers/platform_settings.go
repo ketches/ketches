@@ -71,8 +71,5 @@ func UpdatePublicSignUpSettings(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, models.PublicSignUpSettingsResponse{
-		Enabled:                   request.Enabled,
-		EmailVerificationRequired: request.EmailVerificationRequired,
-	})
+	api.Success(c, models.PublicSignUpSettingsResponse(request))
 }

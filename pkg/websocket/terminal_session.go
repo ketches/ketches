@@ -76,7 +76,9 @@ func (dr *DemuxReader) Read(p []byte) (int, error) {
 }
 
 func (dr *DemuxReader) readLoop() {
-	defer dr.pipeW.Close()
+	defer func() {
+		_ = dr.pipeW.Close()
+	}()
 	defer close(dr.done)
 
 	for {
@@ -104,7 +106,7 @@ func (dr *DemuxReader) readLoop() {
 }
 
 func (dr *DemuxReader) Close() error {
-	dr.pipeW.Close()
+	_ = dr.pipeW.Close()
 	<-dr.done
 	return nil
 }

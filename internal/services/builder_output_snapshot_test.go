@@ -193,7 +193,9 @@ func setBuilderOutputSnapshotSourceForTest(t *testing.T, sourceRoot string) {
 		if err != nil {
 			return err
 		}
-		defer sourceFile.Close()
+		defer func() {
+			require.NoError(t, sourceFile.Close())
+		}()
 
 		_, err = io.Copy(dst, sourceFile)
 		return err
@@ -262,7 +264,9 @@ func TestPublishBuilderOutputSnapshot_CopiesBuildOutputIntoDurableStorage(t *tes
 
 	reader, err := OpenBuilderOutputSnapshotFile(&indexFile)
 	require.NoError(t, err)
-	defer reader.Close()
+	defer func() {
+		require.NoError(t, reader.Close())
+	}()
 
 	content, err := io.ReadAll(reader)
 	require.NoError(t, err)
@@ -515,10 +519,10 @@ func TestPublishBuilderOutputSnapshot_CleansUpFinalizedStorageWhenDatabaseWriteF
 		if tx.Statement == nil || tx.Statement.Schema == nil || tx.Statement.Schema.Table != "builder_output_snapshot_files" {
 			return
 		}
-		tx.AddError(forcedErr)
+		_ = tx.AddError(forcedErr)
 	}))
 	t.Cleanup(func() {
-		db.DB.Callback().Create().Remove(callbackName)
+		require.NoError(t, db.DB.Callback().Create().Remove(callbackName))
 	})
 
 	snapshot, err := PublishBuilderOutputSnapshot(context.Background(), workspace, run)
@@ -567,7 +571,9 @@ func TestPublishBuilderOutputSnapshot_ReturnsExistingSnapshotOnCompetingPublicat
 		if err != nil {
 			return err
 		}
-		defer sourceFile.Close()
+		defer func() {
+			require.NoError(t, sourceFile.Close())
+		}()
 
 		_, err = io.Copy(dst, sourceFile)
 		return err
@@ -662,7 +668,9 @@ func TestWriteBuilderOutputSnapshotArchive_StreamsPublishedSnapshotAsTarGz(t *te
 
 	gzipReader, err := gzip.NewReader(bytes.NewReader(archive.Bytes()))
 	require.NoError(t, err)
-	defer gzipReader.Close()
+	defer func() {
+		require.NoError(t, gzipReader.Close())
+	}()
 
 	tarReader := tar.NewReader(gzipReader)
 	entries := map[string]string{}

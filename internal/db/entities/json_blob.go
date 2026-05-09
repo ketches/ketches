@@ -2,6 +2,7 @@ package entities
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -31,7 +32,8 @@ func (j *JSONBlob) Scan(value any) error {
 		*j = append((*j)[:0], []byte(v)...)
 		return nil
 	default:
-		return fmt.Errorf("unsupported JSONBlob source type %T", value)
+		message := fmt.Sprintf("unsupported JSONBlob source type %T", value)
+		return errors.New(message)
 	}
 }
 
@@ -40,7 +42,7 @@ func (JSONBlob) GormDataType() string {
 }
 
 func (JSONBlob) GormDBDataType(db *gorm.DB, _ *schema.Field) string {
-	switch db.Dialector.Name() {
+	switch db.Name() {
 	case "postgres":
 		return "JSONB"
 	case "mysql", "sqlite":
