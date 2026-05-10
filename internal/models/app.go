@@ -69,13 +69,104 @@ type ProbeSpec struct {
 }
 
 type GatewaySpec struct {
-	Port        int    `json:"port"`
-	Protocol    string `json:"protocol"`
-	Domain      string `json:"domain"`
-	Path        string `json:"path"`
-	GatewayPort int    `json:"gateway_port"`
-	Exposed     bool   `json:"exposed"`
-	CertID      string `json:"cert_id"`
+	ID          string             `json:"id,omitempty"`
+	Port        int                `json:"port"`
+	Protocol    string             `json:"protocol"`
+	GatewayPort int                `json:"gateway_port,omitempty"`
+	ServiceType string             `json:"service_type,omitempty"`
+	NodePort    int                `json:"node_port,omitempty"`
+	Routes      []GatewayRouteSpec `json:"routes,omitempty"`
+}
+
+type GatewayRouteSpec struct {
+	ID                 string                     `json:"id,omitempty"`
+	GatewayID          string                     `json:"gateway_id,omitempty"`
+	Host               string                     `json:"host"`
+	ListenerProtocol   string                     `json:"listener_protocol"`
+	Path               string                     `json:"path"`
+	PathMatchType      string                     `json:"path_match_type"`
+	Enabled            bool                       `json:"enabled"`
+	CertID             string                     `json:"cert_id,omitempty"`
+	Matches            *GatewayRouteMatches       `json:"matches,omitempty"`
+	Filters            *GatewayRouteFilters       `json:"filters,omitempty"`
+	Timeouts           *GatewayRouteTimeouts      `json:"timeouts,omitempty"`
+	Retry              *GatewayRouteRetry         `json:"retry,omitempty"`
+	SessionPersistence *GatewaySessionPersistence `json:"session_persistence,omitempty"`
+	Extension          *GatewayRouteExtension     `json:"extension,omitempty"`
+	Backends           []GatewayRouteBackendSpec  `json:"backends,omitempty"`
+	SortOrder          int                        `json:"sort_order,omitempty"`
+}
+
+type GatewayRouteMatches struct {
+	Method      string             `json:"method,omitempty"`
+	Headers     []GatewayHTTPMatch `json:"headers,omitempty"`
+	QueryParams []GatewayHTTPMatch `json:"query_params,omitempty"`
+}
+
+type GatewayHTTPMatch struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type GatewayRouteFilters struct {
+	RequestHeaders  *GatewayHeaderModifier `json:"request_headers,omitempty"`
+	ResponseHeaders *GatewayHeaderModifier `json:"response_headers,omitempty"`
+	CORS            *GatewayCORSFilter     `json:"cors,omitempty"`
+}
+
+type GatewayHeaderModifier struct {
+	Set    []GatewayHeaderValue `json:"set,omitempty"`
+	Add    []GatewayHeaderValue `json:"add,omitempty"`
+	Remove []string             `json:"remove,omitempty"`
+}
+
+type GatewayHeaderValue struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type GatewayCORSFilter struct {
+	AllowOrigins     []string `json:"allow_origins,omitempty"`
+	AllowMethods     []string `json:"allow_methods,omitempty"`
+	AllowHeaders     []string `json:"allow_headers,omitempty"`
+	ExposeHeaders    []string `json:"expose_headers,omitempty"`
+	AllowCredentials bool     `json:"allow_credentials,omitempty"`
+	MaxAge           string   `json:"max_age,omitempty"`
+}
+
+type GatewayRouteTimeouts struct {
+	Request        string `json:"request,omitempty"`
+	BackendRequest string `json:"backend_request,omitempty"`
+}
+
+type GatewayRouteRetry struct {
+	Attempts int    `json:"attempts,omitempty"`
+	Backoff  string `json:"backoff,omitempty"`
+	Codes    []int  `json:"codes,omitempty"`
+}
+
+type GatewaySessionPersistence struct {
+	Type               string `json:"type,omitempty"`
+	SessionName        string `json:"session_name,omitempty"`
+	CookieLifetimeType string `json:"cookie_lifetime_type,omitempty"`
+	AbsoluteTimeout    string `json:"absolute_timeout,omitempty"`
+	IdleTimeout        string `json:"idle_timeout,omitempty"`
+}
+
+type GatewayRouteExtension struct {
+	RequestBodySize string `json:"request_body_size,omitempty"`
+	KeepAlive       *bool  `json:"keep_alive,omitempty"`
+	WebSocket       bool   `json:"websocket,omitempty"`
+}
+
+type GatewayRouteBackendSpec struct {
+	ID             string `json:"id,omitempty"`
+	RouteID        string `json:"route_id,omitempty"`
+	BackendAppID   string `json:"backend_app_id,omitempty"`
+	BackendAppSlug string `json:"backend_app_slug,omitempty"`
+	BackendPort    int    `json:"backend_port"`
+	Weight         int    `json:"weight"`
 }
 
 type CreateConfigFileRequest struct {
@@ -115,27 +206,21 @@ type UpdateVolumeRequest struct {
 }
 
 type CreateGatewayRequest struct {
-	Port        int    `json:"port" binding:"required"`
-	Protocol    string `json:"protocol" binding:"required"`
-	Domain      string `json:"domain"`
-	Path        string `json:"path"`
-	GatewayPort int    `json:"gateway_port"`
-	ServiceType string `json:"service_type"`
-	NodePort    int    `json:"node_port"`
-	Exposed     bool   `json:"exposed"`
-	CertID      string `json:"cert_id"`
+	Port        int                `json:"port" binding:"required"`
+	Protocol    string             `json:"protocol" binding:"required"`
+	GatewayPort int                `json:"gateway_port"`
+	ServiceType string             `json:"service_type"`
+	NodePort    int                `json:"node_port"`
+	Routes      []GatewayRouteSpec `json:"routes"`
 }
 
 type UpdateGatewayRequest struct {
-	Port        int    `json:"port" binding:"required"`
-	Protocol    string `json:"protocol" binding:"required"`
-	Domain      string `json:"domain"`
-	Path        string `json:"path"`
-	GatewayPort int    `json:"gateway_port"`
-	ServiceType string `json:"service_type"`
-	NodePort    int    `json:"node_port"`
-	Exposed     bool   `json:"exposed"`
-	CertID      string `json:"cert_id"`
+	Port        int                `json:"port" binding:"required"`
+	Protocol    string             `json:"protocol" binding:"required"`
+	GatewayPort int                `json:"gateway_port"`
+	ServiceType string             `json:"service_type"`
+	NodePort    int                `json:"node_port"`
+	Routes      []GatewayRouteSpec `json:"routes"`
 }
 
 type AppResponse struct {
@@ -237,21 +322,18 @@ type AppVolumeResponse struct {
 }
 
 type AppGatewayResponse struct {
-	ID              string    `json:"id"`
-	AppID           string    `json:"app_id"`
-	Port            int       `json:"port"`
-	Protocol        string    `json:"protocol"`
-	Domain          string    `json:"domain"`
-	Path            string    `json:"path"`
-	GatewayPort     int       `json:"gateway_port"`
-	ServiceType     string    `json:"service_type"`
-	NodePort        int       `json:"node_port"`
-	GatewayHost     string    `json:"gateway_host"`
-	InternalAddress string    `json:"internal_address"`
-	Exposed         bool      `json:"exposed"`
-	CertID          *string   `json:"cert_id"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID              string             `json:"id"`
+	AppID           string             `json:"app_id"`
+	Port            int                `json:"port"`
+	Protocol        string             `json:"protocol"`
+	GatewayPort     int                `json:"gateway_port"`
+	ServiceType     string             `json:"service_type"`
+	NodePort        int                `json:"node_port"`
+	GatewayHost     string             `json:"gateway_host"`
+	InternalAddress string             `json:"internal_address"`
+	Routes          []GatewayRouteSpec `json:"routes"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
 }
 
 type AppActionRequest struct {

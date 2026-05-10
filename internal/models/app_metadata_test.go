@@ -23,7 +23,29 @@ func TestAppMetadata_Serialization(t *testing.T) {
 	}
 
 	gateways := []GatewayMetadata{
-		{Port: 8080, Protocol: "TCP", Exposed: true, Domain: "example.com", Path: "/", GatewayPort: 80, CertID: "cert-1"},
+		{
+			Port:        8080,
+			Protocol:    "http",
+			GatewayPort: 80,
+			ServiceType: "ClusterIP",
+			Routes: []GatewayRouteMetadata{
+				{
+					Host:             "example.com",
+					ListenerProtocol: "https",
+					Path:             "/",
+					PathMatchType:    "PathPrefix",
+					Enabled:          true,
+					CertID:           "cert-1",
+					Timeouts: &GatewayRouteTimeouts{
+						Request:        "30s",
+						BackendRequest: "25s",
+					},
+					Backends: []GatewayRouteBackendMetadata{
+						{BackendAppSlug: "test-app-slug", BackendPort: 8080, Weight: 100},
+					},
+				},
+			},
+		},
 	}
 
 	probes := []ProbeMetadata{
@@ -83,7 +105,8 @@ func TestAppMetadata_Serialization(t *testing.T) {
 	assert.Equal(t, len(appMetadata.EnvVars), len(loadedApp.EnvVars))
 	assert.Equal(t, appMetadata.EnvVars[0].Key, loadedApp.EnvVars[0].Key)
 	assert.Equal(t, appMetadata.SchedulingRule.RuleType, loadedApp.SchedulingRule.RuleType)
-	assert.Equal(t, appMetadata.Gateways[0].Domain, loadedApp.Gateways[0].Domain)
+	assert.Equal(t, appMetadata.Gateways[0].Routes[0].Host, loadedApp.Gateways[0].Routes[0].Host)
+	assert.Equal(t, appMetadata.Gateways[0].Routes[0].Timeouts.Request, loadedApp.Gateways[0].Routes[0].Timeouts.Request)
 
 	// Test omitempty fields
 	minimalApp := AppMetadata{
@@ -181,11 +204,22 @@ func TestAppMetadata_ToCreateAppRequest(t *testing.T) {
 				Gateways: []GatewayMetadata{
 					{
 						Port:        80,
-						Protocol:    "TCP",
-						Domain:      "example.com",
-						Path:        "/",
+						Protocol:    "http",
 						GatewayPort: 80,
-						Exposed:     true,
+						ServiceType: "ClusterIP",
+						Routes: []GatewayRouteMetadata{
+							{
+								Host:             "example.com",
+								ListenerProtocol: "https",
+								Path:             "/",
+								PathMatchType:    "PathPrefix",
+								Enabled:          true,
+								CertID:           "cert-1",
+								Backends: []GatewayRouteBackendMetadata{
+									{BackendAppSlug: "test-app", BackendPort: 80, Weight: 100},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -229,11 +263,22 @@ func TestAppMetadata_ToCreateAppRequest(t *testing.T) {
 				Gateways: []GatewaySpec{
 					{
 						Port:        80,
-						Protocol:    "TCP",
-						Domain:      "example.com",
-						Path:        "/",
+						Protocol:    "http",
 						GatewayPort: 80,
-						Exposed:     true,
+						ServiceType: "ClusterIP",
+						Routes: []GatewayRouteSpec{
+							{
+								Host:             "example.com",
+								ListenerProtocol: "https",
+								Path:             "/",
+								PathMatchType:    "PathPrefix",
+								Enabled:          true,
+								CertID:           "cert-1",
+								Backends: []GatewayRouteBackendSpec{
+									{BackendAppSlug: "test-app", BackendPort: 80, Weight: 100},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -317,10 +362,9 @@ func TestAppMetadata_ToCreateAppRequest(t *testing.T) {
 				for i, wantGateway := range tt.want.Gateways {
 					assert.Equal(t, wantGateway.Port, got.Gateways[i].Port)
 					assert.Equal(t, wantGateway.Protocol, got.Gateways[i].Protocol)
-					assert.Equal(t, wantGateway.Domain, got.Gateways[i].Domain)
-					assert.Equal(t, wantGateway.Path, got.Gateways[i].Path)
 					assert.Equal(t, wantGateway.GatewayPort, got.Gateways[i].GatewayPort)
-					assert.Equal(t, wantGateway.Exposed, got.Gateways[i].Exposed)
+					assert.Equal(t, wantGateway.ServiceType, got.Gateways[i].ServiceType)
+					assert.Equal(t, wantGateway.Routes, got.Gateways[i].Routes)
 				}
 			}
 		})

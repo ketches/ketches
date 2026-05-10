@@ -52,13 +52,34 @@ type ConfigFileMetadata struct {
 
 // GatewayMetadata represents gateway metadata.
 type GatewayMetadata struct {
-	Port        int    `json:"port"`
-	Protocol    string `json:"protocol"`
-	Domain      string `json:"domain,omitempty"`
-	Path        string `json:"path,omitempty"`
-	GatewayPort int    `json:"gateway_port,omitempty"`
-	Exposed     bool   `json:"exposed"`
-	CertID      string `json:"cert_id,omitempty"`
+	Port        int                    `json:"port"`
+	Protocol    string                 `json:"protocol"`
+	GatewayPort int                    `json:"gateway_port,omitempty"`
+	ServiceType string                 `json:"service_type,omitempty"`
+	NodePort    int                    `json:"node_port,omitempty"`
+	Routes      []GatewayRouteMetadata `json:"routes,omitempty"`
+}
+
+type GatewayRouteMetadata struct {
+	Host               string                        `json:"host"`
+	ListenerProtocol   string                        `json:"listener_protocol"`
+	Path               string                        `json:"path,omitempty"`
+	PathMatchType      string                        `json:"path_match_type,omitempty"`
+	Enabled            bool                          `json:"enabled"`
+	CertID             string                        `json:"cert_id,omitempty"`
+	Matches            *GatewayRouteMatches          `json:"matches,omitempty"`
+	Filters            *GatewayRouteFilters          `json:"filters,omitempty"`
+	Timeouts           *GatewayRouteTimeouts         `json:"timeouts,omitempty"`
+	Retry              *GatewayRouteRetry            `json:"retry,omitempty"`
+	SessionPersistence *GatewaySessionPersistence    `json:"session_persistence,omitempty"`
+	Extension          *GatewayRouteExtension        `json:"extension,omitempty"`
+	Backends           []GatewayRouteBackendMetadata `json:"backends,omitempty"`
+}
+
+type GatewayRouteBackendMetadata struct {
+	BackendAppSlug string `json:"backend_app_slug,omitempty"`
+	BackendPort    int    `json:"backend_port"`
+	Weight         int    `json:"weight"`
 }
 
 // ProbeMetadata represents probe metadata.
@@ -149,9 +170,51 @@ func (m *AppMetadata) ToCreateAppRequest() *CreateAppRequest {
 	if len(m.Gateways) > 0 {
 		req.Gateways = make([]GatewaySpec, len(m.Gateways))
 		for i, g := range m.Gateways {
-			req.Gateways[i] = GatewaySpec(g)
+			req.Gateways[i] = gatewayMetadataToSpec(g)
 		}
 	}
 
 	return req
+}
+
+func gatewayMetadataToSpec(g GatewayMetadata) GatewaySpec {
+	spec := GatewaySpec{
+		Port:        g.Port,
+		Protocol:    g.Protocol,
+		GatewayPort: g.GatewayPort,
+		ServiceType: g.ServiceType,
+		NodePort:    g.NodePort,
+	}
+	if len(g.Routes) == 0 {
+		return spec
+	}
+
+	spec.Routes = make([]GatewayRouteSpec, len(g.Routes))
+	for i, route := range g.Routes {
+		spec.Routes[i] = GatewayRouteSpec{
+			Host:               route.Host,
+			ListenerProtocol:   route.ListenerProtocol,
+			Path:               route.Path,
+			PathMatchType:      route.PathMatchType,
+			Enabled:            route.Enabled,
+			CertID:             route.CertID,
+			Matches:            route.Matches,
+			Filters:            route.Filters,
+			Timeouts:           route.Timeouts,
+			Retry:              route.Retry,
+			SessionPersistence: route.SessionPersistence,
+			Extension:          route.Extension,
+		}
+		if len(route.Backends) > 0 {
+			spec.Routes[i].Backends = make([]GatewayRouteBackendSpec, len(route.Backends))
+			for j, backend := range route.Backends {
+				spec.Routes[i].Backends[j] = GatewayRouteBackendSpec{
+					BackendAppSlug: backend.BackendAppSlug,
+					BackendPort:    backend.BackendPort,
+					Weight:         backend.Weight,
+				}
+			}
+		}
+	}
+	return spec
 }
