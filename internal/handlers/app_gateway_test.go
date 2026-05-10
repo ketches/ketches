@@ -8,75 +8,78 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateGatewayRequestRejectsExposedTCP(t *testing.T) {
+func TestValidateGatewayRequestRejectsTCPRoutes(t *testing.T) {
 	req := &models.CreateGatewayRequest{
 		Port:        8080,
 		Protocol:    "tcp",
-		Exposed:     true,
 		GatewayPort: 30080,
 		ServiceType: "ClusterIP",
+		Routes: []models.GatewayRouteSpec{
+			{Host: "example.com", ListenerProtocol: "http", Path: "/", Enabled: true},
+		},
 	}
 
 	err := validateGatewayRequest(req)
 
 	require.Error(t, err)
-	assert.Equal(t, "public access is currently supported only for HTTP/HTTPS gateways", err.Error())
+	assert.Equal(t, "HTTP routes are only supported when gateway protocol is http", err.Error())
 }
 
-func TestValidateGatewayRequestRejectsExposedUDP(t *testing.T) {
+func TestValidateGatewayRequestRejectsUDPRoutes(t *testing.T) {
 	req := &models.CreateGatewayRequest{
 		Port:        8080,
 		Protocol:    "udp",
-		Exposed:     true,
 		GatewayPort: 30080,
 		ServiceType: "ClusterIP",
+		Routes: []models.GatewayRouteSpec{
+			{Host: "example.com", ListenerProtocol: "http", Path: "/", Enabled: true},
+		},
 	}
 
 	err := validateGatewayRequest(req)
 
 	require.Error(t, err)
-	assert.Equal(t, "public access is currently supported only for HTTP/HTTPS gateways", err.Error())
+	assert.Equal(t, "HTTP routes are only supported when gateway protocol is http", err.Error())
 }
 
-func TestValidateGatewayRequestAllowsExposedHTTP(t *testing.T) {
+func TestValidateGatewayRequestAllowsHTTPRoutes(t *testing.T) {
 	req := &models.CreateGatewayRequest{
 		Port:        8080,
 		Protocol:    "http",
-		Exposed:     true,
-		Domain:      "example.com",
-		Path:        "/",
 		ServiceType: "ClusterIP",
+		Routes: []models.GatewayRouteSpec{
+			{Host: "example.com", ListenerProtocol: "http", Path: "", Enabled: true},
+		},
 	}
 
 	err := validateGatewayRequest(req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "http", req.Protocol)
-	assert.Equal(t, "/", req.Path)
+	assert.Equal(t, "/", req.Routes[0].Path)
 }
 
-func TestValidateGatewayRequestAllowsExposedHTTPS(t *testing.T) {
+func TestValidateGatewayRequestAllowsHTTPSRoutes(t *testing.T) {
 	req := &models.UpdateGatewayRequest{
 		Port:        8443,
-		Protocol:    "https",
-		Exposed:     true,
-		Domain:      "secure.example.com",
-		Path:        "/",
-		CertID:      "cert-1",
+		Protocol:    "http",
 		ServiceType: "ClusterIP",
+		Routes: []models.GatewayRouteSpec{
+			{Host: "secure.example.com", ListenerProtocol: "https", Path: "/", CertID: "cert-1", Enabled: true},
+		},
 	}
 
 	err := validateGatewayRequest(req)
 
 	require.NoError(t, err)
-	assert.Equal(t, "https", req.Protocol)
+	assert.Equal(t, "http", req.Protocol)
+	assert.Equal(t, "https", req.Routes[0].ListenerProtocol)
 }
 
-func TestValidateGatewayRequestAllowsNonExposedTCP(t *testing.T) {
+func TestValidateGatewayRequestAllowsTCPWithoutRoutes(t *testing.T) {
 	req := &models.CreateGatewayRequest{
 		Port:        8080,
 		Protocol:    "tcp",
-		Exposed:     false,
 		GatewayPort: 30080,
 		ServiceType: "ClusterIP",
 	}
@@ -84,21 +87,21 @@ func TestValidateGatewayRequestAllowsNonExposedTCP(t *testing.T) {
 	err := validateGatewayRequest(req)
 
 	require.NoError(t, err)
-	assert.Equal(t, 0, req.GatewayPort)
+	assert.Equal(t, 30080, req.GatewayPort)
 }
 
-func TestValidateGatewayRequestRejectsExposedHTTPSWithoutCertificate(t *testing.T) {
+func TestValidateGatewayRequestRejectsHTTPSRouteWithoutCertificate(t *testing.T) {
 	req := &models.CreateGatewayRequest{
 		Port:        8443,
-		Protocol:    "https",
-		Exposed:     true,
-		Domain:      "secure.example.com",
-		Path:        "/",
+		Protocol:    "http",
 		ServiceType: "ClusterIP",
+		Routes: []models.GatewayRouteSpec{
+			{Host: "secure.example.com", ListenerProtocol: "https", Path: "/", Enabled: true},
+		},
 	}
 
 	err := validateGatewayRequest(req)
 
 	require.Error(t, err)
-	assert.Equal(t, "certificate is required for HTTPS when exposed", err.Error())
+	assert.Equal(t, "certificate is required for HTTPS routes", err.Error())
 }

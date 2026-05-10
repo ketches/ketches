@@ -264,7 +264,23 @@ func GetAppContext(ctx context.Context, appID string) (*models.AppContext, error
 	var probes []entities.AppProbe
 	db.DB.Where("app_id = ?", appID).Find(&probes)
 	var gateways []entities.AppGateway
-	db.DB.Where("app_id = ?", appID).Find(&gateways)
+	db.DB.Where("app_id = ?", appID).Order("port ASC").Find(&gateways)
+	gatewayIDs := make([]string, 0, len(gateways))
+	for _, gateway := range gateways {
+		gatewayIDs = append(gatewayIDs, gateway.ID)
+	}
+	var gatewayRoutes []entities.AppGatewayHTTPRoute
+	var gatewayBackends []entities.AppGatewayHTTPRouteBackend
+	if len(gatewayIDs) > 0 {
+		db.DB.Where("app_gateway_id IN ?", gatewayIDs).Order("sort_order ASC, host ASC, path ASC").Find(&gatewayRoutes)
+		routeIDs := make([]string, 0, len(gatewayRoutes))
+		for _, route := range gatewayRoutes {
+			routeIDs = append(routeIDs, route.ID)
+		}
+		if len(routeIDs) > 0 {
+			db.DB.Where("route_id IN ?", routeIDs).Order("id ASC").Find(&gatewayBackends)
+		}
+	}
 
 	// Fetch 1:1 optional relations
 	var autoScaling *entities.AppAutoScaling
@@ -301,17 +317,19 @@ func GetAppContext(ctx context.Context, appID string) (*models.AppContext, error
 	}
 
 	return &models.AppContext{
-		App:            application,
-		EnvContext:     *envCtx,
-		EnvVars:        envVars,
-		Volumes:        volumes,
-		Gateways:       gateways,
-		Probes:         probes,
-		ConfigFiles:    configFiles,
-		SchedulingRule: schedulingRule,
-		AutoScaling:    autoScaling,
-		AppPlugins:     appPlugins,
-		Plugins:        plugins,
+		App:             application,
+		EnvContext:      *envCtx,
+		EnvVars:         envVars,
+		Volumes:         volumes,
+		Gateways:        gateways,
+		GatewayRoutes:   gatewayRoutes,
+		GatewayBackends: gatewayBackends,
+		Probes:          probes,
+		ConfigFiles:     configFiles,
+		SchedulingRule:  schedulingRule,
+		AutoScaling:     autoScaling,
+		AppPlugins:      appPlugins,
+		Plugins:         plugins,
 	}, nil
 }
 

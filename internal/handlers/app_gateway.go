@@ -104,35 +104,23 @@ func DeleteAppGateway(c *gin.Context) {
 func validateGatewayRequest(gateway any) error {
 	var port *int
 	var protocol *string
-	var domain *string
-	var path *string
-	var gatewayPort *int
 	var serviceType *string
 	var nodePort *int
-	var certID *string
-	var exposed *bool
+	var routes *[]models.GatewayRouteSpec
 
 	switch g := gateway.(type) {
 	case *models.CreateGatewayRequest:
 		port = &g.Port
 		protocol = &g.Protocol
-		domain = &g.Domain
-		path = &g.Path
-		gatewayPort = &g.GatewayPort
 		serviceType = &g.ServiceType
 		nodePort = &g.NodePort
-		certID = &g.CertID
-		exposed = &g.Exposed
+		routes = &g.Routes
 	case *models.UpdateGatewayRequest:
 		port = &g.Port
 		protocol = &g.Protocol
-		domain = &g.Domain
-		path = &g.Path
-		gatewayPort = &g.GatewayPort
 		serviceType = &g.ServiceType
 		nodePort = &g.NodePort
-		certID = &g.CertID
-		exposed = &g.Exposed
+		routes = &g.Routes
 	default:
 		return errors.New("invalid gateway request type")
 	}
@@ -144,8 +132,8 @@ func validateGatewayRequest(gateway any) error {
 
 	// Protocol validation
 	proto := strings.ToLower(*protocol)
-	if proto != "http" && proto != "https" && proto != "tcp" && proto != "udp" {
-		return errors.New("protocol must be one of: http, https, tcp, udp")
+	if proto != "http" && proto != "tcp" && proto != "udp" {
+		return errors.New("protocol must be one of: http, tcp, udp")
 	}
 	*protocol = proto
 
@@ -165,35 +153,38 @@ func validateGatewayRequest(gateway any) error {
 		*nodePort = 0
 	}
 
-	// Only validate routing fields when exposed is true
-	if *exposed {
-		isHTTPProtocol := proto == "http" || proto == "https"
-
-		if isHTTPProtocol {
-			// HTTP/HTTPS requires domain and path.
-			if *domain == "" {
-				return errors.New("domain is required for HTTP/HTTPS protocols when exposed")
+	if proto != "http" && len(*routes) > 0 {
+		return errors.New("HTTP routes are only supported when gateway protocol is http")
+	}
+	if proto == "http" {
+		for i := range *routes {
+			route := &(*routes)[i]
+			route.ListenerProtocol = strings.ToLower(strings.TrimSpace(route.ListenerProtocol))
+			if route.ListenerProtocol == "" {
+				route.ListenerProtocol = "http"
 			}
-			if *path == "" {
-				*path = "/"
+			if route.ListenerProtocol != "http" && route.ListenerProtocol != "https" {
+				return errors.New("route listener_protocol must be http or https")
 			}
-			if !strings.HasPrefix(*path, "/") {
-				return errors.New("path must start with /")
+			if route.Enabled && strings.TrimSpace(route.Host) == "" {
+				return errors.New("route host is required when enabled")
 			}
-			if proto == "https" && strings.TrimSpace(*certID) == "" {
-				return errors.New("certificate is required for HTTPS when exposed")
+			if route.Path == "" {
+				route.Path = "/"
 			}
-			// Clear TCP/UDP fields.
-			*gatewayPort = 0
-		} else {
-			return errors.New("public access is currently supported only for HTTP/HTTPS gateways")
+			if !strings.HasPrefix(route.Path, "/") {
+				return errors.New("route path must start with /")
+			}
+			if route.PathMatchType == "" {
+				route.PathMatchType = "PathPrefix"
+			}
+			if route.PathMatchType != "PathPrefix" && route.PathMatchType != "Exact" {
+				return errors.New("route path_match_type must be PathPrefix or Exact")
+			}
+			if route.Enabled && route.ListenerProtocol == "https" && strings.TrimSpace(route.CertID) == "" {
+				return errors.New("certificate is required for HTTPS routes")
+			}
 		}
-	} else {
-		// When not exposed, clear all routing fields
-		*domain = ""
-		*path = ""
-		*gatewayPort = 0
-		*certID = ""
 	}
 
 	return nil
@@ -220,8 +211,8 @@ func ProxyGatewayHTTP(c *gin.Context) {
 
 	// 2. Validate protocol
 	proto := strings.ToLower(gateway.Protocol)
-	if proto != "http" && proto != "https" {
-		api.Error(c, http.StatusBadRequest, app.NewErrorf("quick access is only available for HTTP/HTTPS gateways"))
+	if proto != "http" {
+		api.Error(c, http.StatusBadRequest, app.NewErrorf("quick access is only available for HTTP gateways"))
 		return
 	}
 

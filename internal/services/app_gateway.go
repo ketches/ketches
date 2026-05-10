@@ -2,9 +2,11 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
@@ -15,6 +17,12 @@ import (
 )
 
 var ErrInvalidGatewayCertificate = errors.New("invalid gateway certificate")
+
+var (
+	syncGatewaysToK8s    = core.SyncGatewaysToK8s
+	readNodePortsFromK8s = core.ReadNodePortsFromK8s
+	deleteGatewayFromK8s = core.DeleteGatewayFromK8s
+)
 
 type gatewayCertificateError struct {
 	message string
@@ -32,104 +40,59 @@ func newGatewayCertificateError(message string) error {
 	return gatewayCertificateError{message: message}
 }
 
-// ListAppGateways returns all gateways for a given app
+// ListAppGateways returns all gateways for a given app.
 func ListAppGateways(appID string) ([]models.AppGatewayResponse, error) {
-	var gateways []entities.AppGateway
-	err := db.DB.Where("app_id = ?", appID).Find(&gateways).Error
+	appCtx, err := GetAppContext(context.Background(), appID)
 	if err != nil {
 		return nil, err
 	}
-
-	var gatewayHost, appSlug, namespace string
-	if len(gateways) > 0 {
-		if appCtx, err := GetAppContext(context.Background(), appID); err == nil {
-			gatewayHost = appCtx.EnvContext.Cluster.GatewayHost
-			appSlug = appCtx.App.Slug
-			namespace = appCtx.EnvContext.Env.ClusterNamespace
-		}
-	}
-
-	result := make([]models.AppGatewayResponse, 0, len(gateways))
-	for _, gw := range gateways {
-		resp := toAppGatewayResponse(&gw)
-		resp.GatewayHost = gatewayHost
-		if appSlug != "" {
-			resp.InternalAddress = fmt.Sprintf("%s.%s:%d", appSlug, namespace, gw.Port)
-		}
-		result = append(result, resp)
-	}
-	return result, nil
+	return buildGatewayResponses(appCtx), nil
 }
 
-// CreateAppGateway creates a new gateway for an app
+// CreateAppGateway creates a new gateway for an app.
 func CreateAppGateway(ctx context.Context, appID string, req *models.CreateGatewayRequest) (*models.AppGatewayResponse, error) {
 	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
-	if err := validateGatewayCertificateReference(appCtx, req.Protocol, req.Exposed, req.CertID); err != nil {
-		return nil, err
-	}
 
-	entity := &entities.AppGateway{
-		ID:          uuid.New(),
-		AppID:       appID,
-		Port:        req.Port,
-		Protocol:    req.Protocol,
-		Domain:      req.Domain,
-		Path:        req.Path,
-		GatewayPort: req.GatewayPort,
-		ServiceType: req.ServiceType,
-		Exposed:     req.Exposed,
-	}
-	if req.ServiceType == "NodePort" && req.NodePort != 0 {
-		entity.NodePort = req.NodePort
-	}
-	if req.CertID != "" && req.Exposed && req.Protocol == "https" {
-		certID := req.CertID
-		entity.CertID = &certID
-	}
-
-	var existing entities.AppGateway
-	err = db.DB.Where("app_id = ? AND port = ? AND protocol = ?", appID, req.Port, req.Protocol).First(&existing).Error
-	if err == nil {
-		return nil, errors.New("gateway with this port and protocol already exists for this app")
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
-
-	// Create in database.
-	if err := db.DB.Create(entity).Error; err != nil {
-		return nil, err
-	}
-
-	// Fetch full app context from DB.
-	appCtx, err = GetAppContext(ctx, appID)
+	normalized, err := normalizeCreateGatewayRequest(appCtx, req, "")
 	if err != nil {
 		return nil, err
 	}
 
-	// Sync to Kubernetes cluster.
-	if err := core.SyncGatewaysToK8s(ctx, appCtx); err != nil {
+	var gateway entities.AppGateway
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		var existing entities.AppGateway
+		err := tx.Where("app_id = ? AND port = ? AND protocol = ?", appID, normalized.Port, normalized.Protocol).First(&existing).Error
+		if err == nil {
+			return errors.New("gateway with this port and protocol already exists for this app")
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		gateway = entities.AppGateway{
+			ID:          uuid.New(),
+			AppID:       appID,
+			Port:        normalized.Port,
+			Protocol:    normalized.Protocol,
+			GatewayPort: normalized.GatewayPort,
+			ServiceType: normalized.ServiceType,
+			NodePort:    normalized.NodePort,
+		}
+		if err := tx.Create(&gateway).Error; err != nil {
+			return err
+		}
+		return replaceGatewayRoutes(tx, appCtx, &gateway, normalized.Routes)
+	}); err != nil {
 		return nil, err
 	}
 
-	// Read back actual NodePorts assigned by K8s and persist.
-	if nodePorts, err := core.ReadNodePortsFromK8s(ctx, appCtx); err == nil {
-		if np, ok := nodePorts[entity.Port]; ok && entity.NodePort == 0 {
-			entity.NodePort = np
-			db.DB.Model(entity).Update("node_port", np)
-		}
-	}
-
-	res := toAppGatewayResponse(entity)
-	res.GatewayHost = appCtx.EnvContext.Cluster.GatewayHost
-	res.InternalAddress = fmt.Sprintf("%s.%s:%d", appCtx.App.Slug, appCtx.EnvContext.Env.ClusterNamespace, entity.Port)
-	return &res, nil
+	return syncAndLoadGatewayResponse(ctx, appID, gateway.ID)
 }
 
-// UpdateAppGateway updates an existing gateway
+// UpdateAppGateway updates an existing gateway and replaces its nested HTTP routes.
 func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayRequest) (*models.AppGatewayResponse, error) {
 	var gateway entities.AppGateway
 	err := db.DB.First(&gateway, "id = ?", id).Error
@@ -144,72 +107,41 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 	if err != nil {
 		return nil, err
 	}
-	if err := validateGatewayCertificateReference(appCtx, req.Protocol, req.Exposed, req.CertID); err != nil {
-		return nil, err
-	}
 
-	if req.Port != gateway.Port || req.Protocol != gateway.Protocol {
-		var existing entities.AppGateway
-		err := db.DB.Where("app_id = ? AND port = ? AND protocol = ? AND id != ?", gateway.AppID, req.Port, req.Protocol, id).First(&existing).Error
-		if err == nil {
-			return nil, errors.New("gateway with this port and protocol already exists for this app")
-		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
-	}
-
-	// Update fields.
-	gateway.Port = req.Port
-	gateway.Protocol = req.Protocol
-	gateway.Domain = req.Domain
-	gateway.Path = req.Path
-	gateway.GatewayPort = req.GatewayPort
-	gateway.ServiceType = req.ServiceType
-	gateway.Exposed = req.Exposed
-	if req.ServiceType == "NodePort" && req.NodePort != 0 {
-		gateway.NodePort = req.NodePort
-	} else if req.ServiceType != "NodePort" {
-		gateway.NodePort = 0
-	}
-	if req.CertID != "" && req.Exposed && req.Protocol == "https" {
-		certID := req.CertID
-		gateway.CertID = &certID
-	} else {
-		gateway.CertID = nil
-	}
-
-	// Save to database.
-	if err := db.DB.Save(&gateway).Error; err != nil {
-		return nil, err
-	}
-
-	// Fetch full app context from DB.
-	appCtx, err = GetAppContext(ctx, gateway.AppID)
+	normalized, err := normalizeUpdateGatewayRequest(appCtx, req, gateway.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Sync to Kubernetes cluster.
-	if err := core.SyncGatewaysToK8s(ctx, appCtx); err != nil {
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if normalized.Port != gateway.Port || normalized.Protocol != gateway.Protocol {
+			var existing entities.AppGateway
+			err := tx.Where("app_id = ? AND port = ? AND protocol = ? AND id != ?", gateway.AppID, normalized.Port, normalized.Protocol, id).First(&existing).Error
+			if err == nil {
+				return errors.New("gateway with this port and protocol already exists for this app")
+			}
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+		}
+
+		gateway.Port = normalized.Port
+		gateway.Protocol = normalized.Protocol
+		gateway.GatewayPort = normalized.GatewayPort
+		gateway.ServiceType = normalized.ServiceType
+		gateway.NodePort = normalized.NodePort
+		if err := tx.Save(&gateway).Error; err != nil {
+			return err
+		}
+		return replaceGatewayRoutes(tx, appCtx, &gateway, normalized.Routes)
+	}); err != nil {
 		return nil, err
 	}
 
-	// Read back actual NodePorts assigned by K8s and persist.
-	if nodePorts, err := core.ReadNodePortsFromK8s(ctx, appCtx); err == nil {
-		if np, ok := nodePorts[gateway.Port]; ok && gateway.NodePort == 0 {
-			gateway.NodePort = np
-			db.DB.Model(&gateway).Update("node_port", np)
-		}
-	}
-
-	res := toAppGatewayResponse(&gateway)
-	res.GatewayHost = appCtx.EnvContext.Cluster.GatewayHost
-	res.InternalAddress = fmt.Sprintf("%s.%s:%d", appCtx.App.Slug, appCtx.EnvContext.Env.ClusterNamespace, gateway.Port)
-	return &res, nil
+	return syncAndLoadGatewayResponse(ctx, gateway.AppID, gateway.ID)
 }
 
-// DeleteAppGateway deletes a gateway
+// DeleteAppGateway deletes a gateway and its nested route graph.
 func DeleteAppGateway(ctx context.Context, id string) error {
 	var gateway entities.AppGateway
 	err := db.DB.First(&gateway, "id = ?", id).Error
@@ -220,26 +152,243 @@ func DeleteAppGateway(ctx context.Context, id string) error {
 		return err
 	}
 
-	// Fetch full app context from DB
 	appCtx, err := GetAppContext(ctx, gateway.AppID)
 	if err != nil {
 		return err
 	}
-
-	// Delete from Kubernetes first
-	if err := core.DeleteGatewayFromK8s(ctx, appCtx, &gateway); err != nil {
-		return err
-	}
-	// Delete from database
-	if err := db.DB.Delete(&gateway).Error; err != nil {
+	if err := deleteGatewayFromK8s(ctx, appCtx, &gateway); err != nil {
 		return err
 	}
 
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var routeIDs []string
+		if err := tx.Model(&entities.AppGatewayHTTPRoute{}).Where("app_gateway_id = ?", gateway.ID).Pluck("id", &routeIDs).Error; err != nil {
+			return err
+		}
+		if len(routeIDs) > 0 {
+			if err := tx.Where("route_id IN ?", routeIDs).Delete(&entities.AppGatewayHTTPRouteBackend{}).Error; err != nil {
+				return err
+			}
+		}
+		if err := tx.Where("app_gateway_id = ?", gateway.ID).Delete(&entities.AppGatewayHTTPRoute{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&gateway).Error
+	})
+}
+
+type normalizedGatewayRequest struct {
+	Port        int
+	Protocol    string
+	GatewayPort int
+	ServiceType string
+	NodePort    int
+	Routes      []models.GatewayRouteSpec
+}
+
+func normalizeCreateGatewayRequest(appCtx *models.AppContext, req *models.CreateGatewayRequest, currentGatewayID string) (*normalizedGatewayRequest, error) {
+	return normalizeGatewayRequest(appCtx, req.Port, req.Protocol, req.GatewayPort, req.ServiceType, req.NodePort, req.Routes, currentGatewayID)
+}
+
+func normalizeUpdateGatewayRequest(appCtx *models.AppContext, req *models.UpdateGatewayRequest, currentGatewayID string) (*normalizedGatewayRequest, error) {
+	return normalizeGatewayRequest(appCtx, req.Port, req.Protocol, req.GatewayPort, req.ServiceType, req.NodePort, req.Routes, currentGatewayID)
+}
+
+func normalizeGatewayRequest(appCtx *models.AppContext, port int, protocol string, gatewayPort int, serviceType string, nodePort int, routes []models.GatewayRouteSpec, currentGatewayID string) (*normalizedGatewayRequest, error) {
+	if port < 1 || port > 65535 {
+		return nil, errors.New("port must be between 1 and 65535")
+	}
+
+	protocol = strings.ToLower(strings.TrimSpace(protocol))
+	if protocol != "http" && protocol != "tcp" && protocol != "udp" {
+		return nil, errors.New("protocol must be one of: http, tcp, udp")
+	}
+
+	serviceType = strings.TrimSpace(serviceType)
+	if serviceType == "" {
+		serviceType = "ClusterIP"
+	}
+	if serviceType != "ClusterIP" && serviceType != "NodePort" {
+		return nil, errors.New("service_type must be ClusterIP or NodePort")
+	}
+	if serviceType == "NodePort" && nodePort != 0 && (nodePort < 30000 || nodePort > 32767) {
+		return nil, errors.New("node_port must be between 30000 and 32767")
+	}
+	if serviceType != "NodePort" {
+		nodePort = 0
+	}
+
+	if protocol != "http" && len(routes) > 0 {
+		return nil, errors.New("HTTP routes are only supported when gateway protocol is http")
+	}
+
+	normalizedRoutes := make([]models.GatewayRouteSpec, 0, len(routes))
+	if protocol == "http" {
+		seenRoutes := make(map[string]struct{}, len(routes))
+		for _, route := range routes {
+			normalized, err := normalizeGatewayRoute(appCtx, port, route, currentGatewayID)
+			if err != nil {
+				return nil, err
+			}
+			key := strings.Join([]string{
+				strings.ToLower(normalized.Host),
+				normalized.ListenerProtocol,
+				normalized.PathMatchType,
+				normalized.Path,
+			}, "\x00")
+			if _, ok := seenRoutes[key]; ok {
+				return nil, errors.New("duplicate HTTP route for host, protocol, path match type, and path")
+			}
+			seenRoutes[key] = struct{}{}
+			normalizedRoutes = append(normalizedRoutes, normalized)
+		}
+	}
+
+	return &normalizedGatewayRequest{
+		Port:        port,
+		Protocol:    protocol,
+		GatewayPort: gatewayPort,
+		ServiceType: serviceType,
+		NodePort:    nodePort,
+		Routes:      normalizedRoutes,
+	}, nil
+}
+
+func normalizeGatewayRoute(appCtx *models.AppContext, gatewayPort int, route models.GatewayRouteSpec, currentGatewayID string) (models.GatewayRouteSpec, error) {
+	route.Host = strings.TrimSpace(strings.ToLower(route.Host))
+	route.ListenerProtocol = strings.ToLower(strings.TrimSpace(route.ListenerProtocol))
+	if route.ListenerProtocol == "" {
+		route.ListenerProtocol = "http"
+	}
+	if route.ListenerProtocol != "http" && route.ListenerProtocol != "https" {
+		return route, errors.New("route listener_protocol must be http or https")
+	}
+	route.Path = strings.TrimSpace(route.Path)
+	if route.Path == "" {
+		route.Path = "/"
+	}
+	if !strings.HasPrefix(route.Path, "/") {
+		return route, errors.New("route path must start with /")
+	}
+	route.PathMatchType = strings.TrimSpace(route.PathMatchType)
+	if route.PathMatchType == "" {
+		route.PathMatchType = "PathPrefix"
+	}
+	if route.PathMatchType != "PathPrefix" && route.PathMatchType != "Exact" {
+		return route, errors.New("route path_match_type must be PathPrefix or Exact")
+	}
+
+	if route.Enabled && route.Host == "" {
+		return route, errors.New("route host is required when enabled")
+	}
+	if route.Enabled && route.ListenerProtocol == "https" {
+		if err := validateGatewayRouteCertificateReference(appCtx, route.CertID); err != nil {
+			return route, err
+		}
+		if err := validateHTTPSRouteCertificateConflict(appCtx, route.Host, route.CertID, currentGatewayID); err != nil {
+			return route, err
+		}
+	}
+	if route.Enabled && route.Timeouts != nil {
+		if err := validateGatewayRouteTimeouts(route.Timeouts); err != nil {
+			return route, err
+		}
+	}
+
+	backends, err := normalizeGatewayRouteBackends(appCtx, gatewayPort, route.Backends)
+	if err != nil {
+		return route, err
+	}
+	route.Backends = backends
+	return route, nil
+}
+
+func normalizeGatewayRouteBackends(appCtx *models.AppContext, gatewayPort int, backends []models.GatewayRouteBackendSpec) ([]models.GatewayRouteBackendSpec, error) {
+	if len(backends) == 0 {
+		return []models.GatewayRouteBackendSpec{{
+			BackendAppID: appCtx.App.ID,
+			BackendPort:  gatewayPort,
+			Weight:       1,
+		}}, nil
+	}
+	if len(backends) > 16 {
+		return nil, errors.New("route may have no more than 16 backends")
+	}
+
+	hasPositiveWeight := false
+	normalized := make([]models.GatewayRouteBackendSpec, len(backends))
+	for i, backend := range backends {
+		if backend.BackendAppID == "" && backend.BackendAppSlug != "" {
+			appID, err := resolveBackendAppID(appCtx, backend.BackendAppSlug)
+			if err != nil {
+				return nil, err
+			}
+			backend.BackendAppID = appID
+		}
+		if backend.BackendAppID == "" {
+			backend.BackendAppID = appCtx.App.ID
+		}
+		if backend.BackendPort == 0 {
+			backend.BackendPort = gatewayPort
+		}
+		if backend.BackendPort < 1 || backend.BackendPort > 65535 {
+			return nil, errors.New("backend_port must be between 1 and 65535")
+		}
+		if backend.Weight < 0 || backend.Weight > 1000000 {
+			return nil, errors.New("backend weight must be between 0 and 1000000")
+		}
+		if backend.Weight > 0 {
+			hasPositiveWeight = true
+		}
+		normalized[i] = backend
+	}
+	if !hasPositiveWeight {
+		return nil, errors.New("at least one backend weight must be positive")
+	}
+	return normalized, nil
+}
+
+func resolveBackendAppID(appCtx *models.AppContext, backendAppSlug string) (string, error) {
+	var backend entities.App
+	err := db.DB.Where("env_id = ? AND slug = ?", appCtx.App.EnvID, strings.TrimSpace(backendAppSlug)).First(&backend).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", fmt.Errorf("backend app %q was not found in this environment", backendAppSlug)
+		}
+		return "", err
+	}
+	return backend.ID, nil
+}
+
+func validateGatewayRouteTimeouts(timeouts *models.GatewayRouteTimeouts) error {
+	requestTimeout, hasRequestTimeout, err := parseOptionalDuration(timeouts.Request, "request timeout")
+	if err != nil {
+		return err
+	}
+	backendTimeout, hasBackendTimeout, err := parseOptionalDuration(timeouts.BackendRequest, "backend_request timeout")
+	if err != nil {
+		return err
+	}
+	if hasRequestTimeout && hasBackendTimeout && backendTimeout > requestTimeout {
+		return errors.New("backend_request timeout must not exceed request timeout")
+	}
 	return nil
 }
 
-func validateGatewayCertificateReference(appCtx *models.AppContext, protocol string, exposed bool, certID string) error {
-	if appCtx == nil || !exposed || !strings.EqualFold(protocol, "https") {
+func parseOptionalDuration(value, label string) (time.Duration, bool, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, false, nil
+	}
+	duration, err := time.ParseDuration(value)
+	if err != nil {
+		return 0, false, fmt.Errorf("%s must be a valid duration", label)
+	}
+	return duration, true, nil
+}
+
+func validateGatewayRouteCertificateReference(appCtx *models.AppContext, certID string) error {
+	if appCtx == nil {
 		return nil
 	}
 
@@ -270,6 +419,184 @@ func validateGatewayCertificateReference(appCtx *models.AppContext, protocol str
 	return nil
 }
 
+func validateHTTPSRouteCertificateConflict(appCtx *models.AppContext, host, certID, currentGatewayID string) error {
+	if appCtx == nil || host == "" || certID == "" {
+		return nil
+	}
+
+	query := db.DB.Table("app_gateway_http_routes r").
+		Select("r.cert_id").
+		Joins("JOIN app_gateways ag ON ag.id = r.app_gateway_id").
+		Joins("JOIN apps a ON a.id = ag.app_id").
+		Joins("JOIN envs e ON e.id = a.env_id").
+		Where("e.cluster_id = ? AND LOWER(r.host) = ? AND LOWER(r.listener_protocol) = ? AND r.enabled = ? AND r.cert_id IS NOT NULL",
+			appCtx.EnvContext.Env.ClusterID,
+			strings.ToLower(host),
+			"https",
+			true,
+		)
+	if currentGatewayID != "" {
+		query = query.Where("ag.id <> ?", currentGatewayID)
+	}
+
+	var certIDs []string
+	if err := query.Pluck("r.cert_id", &certIDs).Error; err != nil {
+		return err
+	}
+	for _, existingCertID := range certIDs {
+		if strings.TrimSpace(existingCertID) != strings.TrimSpace(certID) {
+			return fmt.Errorf("HTTPS host %q is already configured with a different certificate", host)
+		}
+	}
+	return nil
+}
+
+func replaceGatewayRoutes(tx *gorm.DB, appCtx *models.AppContext, gateway *entities.AppGateway, routes []models.GatewayRouteSpec) error {
+	var existingRouteIDs []string
+	if err := tx.Model(&entities.AppGatewayHTTPRoute{}).Where("app_gateway_id = ?", gateway.ID).Pluck("id", &existingRouteIDs).Error; err != nil {
+		return err
+	}
+	if len(existingRouteIDs) > 0 {
+		if err := tx.Where("route_id IN ?", existingRouteIDs).Delete(&entities.AppGatewayHTTPRouteBackend{}).Error; err != nil {
+			return err
+		}
+	}
+	if err := tx.Where("app_gateway_id = ?", gateway.ID).Delete(&entities.AppGatewayHTTPRoute{}).Error; err != nil {
+		return err
+	}
+
+	for index, routeSpec := range routes {
+		routeID := strings.TrimSpace(routeSpec.ID)
+		if routeID == "" {
+			routeID = uuid.New()
+		}
+		route := entities.AppGatewayHTTPRoute{
+			ID:                     routeID,
+			AppGatewayID:           gateway.ID,
+			Host:                   routeSpec.Host,
+			ListenerProtocol:       routeSpec.ListenerProtocol,
+			Path:                   routeSpec.Path,
+			PathMatchType:          routeSpec.PathMatchType,
+			Enabled:                routeSpec.Enabled,
+			MatchesJSON:            marshalGatewayJSON(routeSpec.Matches),
+			FiltersJSON:            marshalGatewayJSON(routeSpec.Filters),
+			TimeoutsJSON:           marshalGatewayJSON(routeSpec.Timeouts),
+			RetryJSON:              marshalGatewayJSON(routeSpec.Retry),
+			SessionPersistenceJSON: marshalGatewayJSON(routeSpec.SessionPersistence),
+			ExtensionJSON:          marshalGatewayJSON(routeSpec.Extension),
+			SortOrder:              firstNonZero(routeSpec.SortOrder, index),
+		}
+		if routeSpec.CertID != "" {
+			certID := routeSpec.CertID
+			route.CertID = &certID
+		}
+		if err := tx.Create(&route).Error; err != nil {
+			return err
+		}
+		for _, backendSpec := range routeSpec.Backends {
+			backendID := strings.TrimSpace(backendSpec.ID)
+			if backendID == "" {
+				backendID = uuid.New()
+			}
+			backend := entities.AppGatewayHTTPRouteBackend{
+				ID:           backendID,
+				RouteID:      route.ID,
+				BackendAppID: backendSpec.BackendAppID,
+				BackendPort:  backendSpec.BackendPort,
+				Weight:       backendSpec.Weight,
+			}
+			if err := tx.Create(&backend).Error; err != nil {
+				return err
+			}
+		}
+	}
+	_ = appCtx
+	return nil
+}
+
+func firstNonZero(value, fallback int) int {
+	if value != 0 {
+		return value
+	}
+	return fallback
+}
+
+func marshalGatewayJSON(value any) entities.JSONBlob {
+	if value == nil {
+		return nil
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil || string(encoded) == "null" {
+		return nil
+	}
+	return entities.JSONBlob(encoded)
+}
+
+func syncAndLoadGatewayResponse(ctx context.Context, appID, gatewayID string) (*models.AppGatewayResponse, error) {
+	appCtx, err := GetAppContext(ctx, appID)
+	if err != nil {
+		return nil, err
+	}
+	if err := syncGatewaysToK8s(ctx, appCtx); err != nil {
+		return nil, err
+	}
+
+	if nodePorts, err := readNodePortsFromK8s(ctx, appCtx); err == nil {
+		for _, gateway := range appCtx.Gateways {
+			if gateway.ID != gatewayID {
+				continue
+			}
+			if np, ok := nodePorts[gateway.Port]; ok && gateway.NodePort == 0 {
+				_ = db.DB.Model(&entities.AppGateway{}).Where("id = ?", gateway.ID).Update("node_port", np).Error
+			}
+		}
+	}
+
+	appCtx, err = GetAppContext(ctx, appID)
+	if err != nil {
+		return nil, err
+	}
+	for _, response := range buildGatewayResponses(appCtx) {
+		if response.ID == gatewayID {
+			return &response, nil
+		}
+	}
+	return nil, errors.New("gateway not found")
+}
+
+func buildGatewayResponses(appCtx *models.AppContext) []models.AppGatewayResponse {
+	routesByGateway := groupGatewayRoutes(appCtx.GatewayRoutes)
+	backendsByRoute := groupGatewayBackends(appCtx.GatewayBackends)
+
+	result := make([]models.AppGatewayResponse, 0, len(appCtx.Gateways))
+	for _, gw := range appCtx.Gateways {
+		resp := toAppGatewayResponse(&gw)
+		resp.GatewayHost = appCtx.EnvContext.Cluster.GatewayHost
+		resp.InternalAddress = fmt.Sprintf("%s.%s:%d", appCtx.App.Slug, appCtx.EnvContext.Env.ClusterNamespace, gw.Port)
+		for _, route := range routesByGateway[gw.ID] {
+			resp.Routes = append(resp.Routes, routeEntityToSpec(&route, backendsByRoute[route.ID]))
+		}
+		result = append(result, resp)
+	}
+	return result
+}
+
+func groupGatewayRoutes(routes []entities.AppGatewayHTTPRoute) map[string][]entities.AppGatewayHTTPRoute {
+	grouped := make(map[string][]entities.AppGatewayHTTPRoute)
+	for _, route := range routes {
+		grouped[route.AppGatewayID] = append(grouped[route.AppGatewayID], route)
+	}
+	return grouped
+}
+
+func groupGatewayBackends(backends []entities.AppGatewayHTTPRouteBackend) map[string][]entities.AppGatewayHTTPRouteBackend {
+	grouped := make(map[string][]entities.AppGatewayHTTPRouteBackend)
+	for _, backend := range backends {
+		grouped[backend.RouteID] = append(grouped[backend.RouteID], backend)
+	}
+	return grouped
+}
+
 // toAppGatewayResponse converts an AppGateway entity to a response model with snake_case JSON fields.
 func toAppGatewayResponse(gw *entities.AppGateway) models.AppGatewayResponse {
 	return models.AppGatewayResponse{
@@ -277,15 +604,53 @@ func toAppGatewayResponse(gw *entities.AppGateway) models.AppGatewayResponse {
 		AppID:       gw.AppID,
 		Port:        gw.Port,
 		Protocol:    gw.Protocol,
-		Domain:      gw.Domain,
-		Path:        gw.Path,
 		GatewayPort: gw.GatewayPort,
 		ServiceType: gw.ServiceType,
 		NodePort:    gw.NodePort,
-		Exposed:     gw.Exposed,
-		CertID:      gw.CertID,
 		CreatedAt:   gw.CreatedAt,
 		UpdatedAt:   gw.UpdatedAt,
+	}
+}
+
+func routeEntityToSpec(route *entities.AppGatewayHTTPRoute, backends []entities.AppGatewayHTTPRouteBackend) models.GatewayRouteSpec {
+	spec := models.GatewayRouteSpec{
+		ID:               route.ID,
+		GatewayID:        route.AppGatewayID,
+		Host:             route.Host,
+		ListenerProtocol: route.ListenerProtocol,
+		Path:             route.Path,
+		PathMatchType:    route.PathMatchType,
+		Enabled:          route.Enabled,
+		SortOrder:        route.SortOrder,
+	}
+	if route.CertID != nil {
+		spec.CertID = *route.CertID
+	}
+	decodeGatewayJSON(route.MatchesJSON, &spec.Matches)
+	decodeGatewayJSON(route.FiltersJSON, &spec.Filters)
+	decodeGatewayJSON(route.TimeoutsJSON, &spec.Timeouts)
+	decodeGatewayJSON(route.RetryJSON, &spec.Retry)
+	decodeGatewayJSON(route.SessionPersistenceJSON, &spec.SessionPersistence)
+	decodeGatewayJSON(route.ExtensionJSON, &spec.Extension)
+	for _, backend := range backends {
+		spec.Backends = append(spec.Backends, models.GatewayRouteBackendSpec{
+			ID:           backend.ID,
+			RouteID:      backend.RouteID,
+			BackendAppID: backend.BackendAppID,
+			BackendPort:  backend.BackendPort,
+			Weight:       backend.Weight,
+		})
+	}
+	return spec
+}
+
+func decodeGatewayJSON[T any](blob entities.JSONBlob, target **T) {
+	if len(blob) == 0 {
+		return
+	}
+	var decoded T
+	if err := json.Unmarshal(blob, &decoded); err == nil {
+		*target = &decoded
 	}
 }
 
@@ -300,7 +665,6 @@ func GetGatewayWithApp(ctx context.Context, gatewayID string) (*entities.AppGate
 		return nil, nil, err
 	}
 
-	// Fetch full app context from DB
 	appCtx, err := GetAppContext(ctx, gateway.AppID)
 	if err != nil {
 		return nil, nil, err
