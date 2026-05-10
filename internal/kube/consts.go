@@ -26,6 +26,11 @@ const (
 	// LabelAppSlug is the human-readable slug for an application.
 	LabelAppSlug = LabelPrefix + "app-slug"
 
+	// LabelGatewayID is the unique identifier for an application gateway.
+	LabelGatewayID = LabelPrefix + "gateway-id"
+	// LabelGatewayRouteID is the unique identifier for an application gateway route.
+	LabelGatewayRouteID = LabelPrefix + "gateway-route-id"
+
 	// LabelProjectID is the unique identifier for a project.
 	LabelProjectID = LabelPrefix + "project-id"
 	// LabelProjectSlug is the human-readable slug for a project.
