@@ -26,6 +26,8 @@ func Migrate() error {
 		&entities.AppEnvVar{},
 		&entities.AppVolume{},
 		&entities.AppGateway{},
+		&entities.AppGatewayHTTPRoute{},
+		&entities.AppGatewayHTTPRouteBackend{},
 		&entities.AppProbe{},
 		&entities.AppConfigFile{},
 		&entities.AppSchedulingRule{},
@@ -72,6 +74,10 @@ func Migrate() error {
 	}
 
 	if err := migrateClusterGatewayProviderUniqueIndex(); err != nil {
+		return err
+	}
+
+	if err := migrateAppGatewayHTTPRoutes(); err != nil {
 		return err
 	}
 

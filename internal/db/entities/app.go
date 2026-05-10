@@ -77,8 +77,8 @@ type AppGatewayHTTPRoute struct {
 	AppGatewayID           string    `gorm:"type:varchar(36);not null;index;uniqueIndex:idx_gateway_route_unique,priority:1"`
 	Host                   string    `gorm:"type:varchar(256);not null;uniqueIndex:idx_gateway_route_unique,priority:2"`
 	ListenerProtocol       string    `gorm:"type:varchar(16);not null;uniqueIndex:idx_gateway_route_unique,priority:3"`
-	Path                   string    `gorm:"type:varchar(256);default:'/'"`
-	PathMatchType          string    `gorm:"type:varchar(32);default:'PathPrefix'"`
+	PathMatchType          string    `gorm:"type:varchar(32);default:'PathPrefix';uniqueIndex:idx_gateway_route_unique,priority:4"`
+	Path                   string    `gorm:"type:varchar(256);default:'/';uniqueIndex:idx_gateway_route_unique,priority:5"`
 	Enabled                bool      `gorm:"type:bool;default:true"`
 	CertID                 *string   `gorm:"type:varchar(36);index"`
 	MatchesJSON            JSONBlob  `gorm:"type:json"`
