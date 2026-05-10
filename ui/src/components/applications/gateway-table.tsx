@@ -26,6 +26,37 @@ interface GatewayConfigProps {
   app: App
 }
 
+function getRouteDisplayPath(path?: string) {
+  if (!path || path === "/") {
+    return ""
+  }
+
+  return path.startsWith("/") ? path : `/${path}`
+}
+
+function getRouteURL(route: NonNullable<GatewaySpec["routes"]>[number]) {
+  const displayPath = getRouteDisplayPath(route.path)
+  return `${route.listener_protocol}://${route.host}${displayPath}`
+}
+
+function getGatewaySearchText(gateway: GatewaySpec): string {
+  return [
+    gateway.port,
+    gateway.protocol,
+    gateway.service_type,
+    gateway.internal_address,
+    gateway.gateway_host,
+    gateway.gateway_port,
+    gateway.node_port,
+    ...(gateway.routes ?? []).flatMap((route) => [
+      route.host,
+      route.path,
+      route.listener_protocol,
+      route.path_match_type,
+    ]),
+  ].filter(Boolean).join(" ").toLowerCase()
+}
+
 export function NetworkConfig({ app }: GatewayConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
@@ -42,22 +73,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
   const { data: gateways = [], isLoading, refetch } = useQuery({
     queryKey: ['app-gateways', app.id],
     queryFn: async () => {
-      const response = await appsApi.listGateways(app.id)
-      // Transform backend response to match GatewaySpec
-      return response.map((gw: GatewaySpec) => ({
-        id: gw.id,
-        port: gw.port,
-        protocol: gw.protocol,
-        domain: gw.domain,
-        path: gw.path,
-        gateway_port: gw.gateway_port,
-        service_type: gw.service_type,
-        node_port: gw.node_port,
-        gateway_host: gw.gateway_host,
-        internal_address: gw.internal_address,
-        exposed: gw.exposed ?? false,
-        cert_id: gw.cert_id,
-      }))
+      return appsApi.listGateways(app.id)
     }
   })
 
@@ -65,13 +81,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
   const filteredGateways = React.useMemo(() => {
     if (!searchQuery) return gateways
     const lowQuery = searchQuery.toLowerCase()
-    return gateways.filter(g =>
-      g.port?.toString().includes(lowQuery) ||
-      g.protocol?.toLowerCase().includes(lowQuery) ||
-      g.domain?.toLowerCase().includes(lowQuery) ||
-      g.path?.toLowerCase().includes(lowQuery) ||
-      g.gateway_port?.toString().includes(lowQuery)
-    )
+    return gateways.filter((gateway) => getGatewaySearchText(gateway).includes(lowQuery))
   }, [gateways, searchQuery])
 
   const deleteMutation = useMutation({
@@ -129,7 +139,65 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
   }
 
   const isHttpProtocol = (protocol: string) => {
-    return protocol === 'http' || protocol === 'https'
+    return protocol === 'http'
+  }
+
+  const renderRouteSummary = (gateway: GatewaySpec) => {
+    const routes = gateway.routes ?? []
+    if (routes.length === 0) {
+      return (
+        <ColorBadge color="gray" className="gap-1">
+          <GlobeLock className="h-3 w-3" />
+          No public routes
+        </ColorBadge>
+      )
+    }
+
+    const visibleRoutes = routes.slice(0, 3)
+    const overflowCount = Math.max(routes.length - visibleRoutes.length, 0)
+
+    return (
+      <div className="flex max-w-120 flex-wrap items-center gap-1.5">
+        {visibleRoutes.map((route) => {
+          const label = `${route.host}${getRouteDisplayPath(route.path)}`
+          const protocolLabel = route.listener_protocol?.toUpperCase() || "HTTP"
+          const icon = route.listener_protocol === "https"
+            ? <Lock className="h-3 w-3" />
+            : <Globe className="h-3 w-3" />
+          const content = (
+            <span className="inline-flex min-w-0 max-w-56 items-center gap-1 truncate">
+              {icon}
+              <span className="shrink-0">{protocolLabel}</span>
+              <span className="truncate font-mono">{label}</span>
+            </span>
+          )
+
+          if (!route.enabled) {
+            return (
+              <ColorBadge key={route.id ?? `${route.host}-${route.path}`} color="gray" className="gap-1 opacity-55">
+                {content}
+              </ColorBadge>
+            )
+          }
+
+          return (
+            <Button
+              key={route.id ?? `${route.host}-${route.path}`}
+              variant="link"
+              className="h-6 min-w-0 p-0 text-xs"
+              onClick={() => window.open(getRouteURL(route), "_blank")}
+            >
+              <ColorBadge color={route.listener_protocol === "https" ? "blue" : "green"} className="gap-1">
+                {content}
+              </ColorBadge>
+            </Button>
+          )
+        })}
+        {overflowCount > 0 && (
+          <ColorBadge color="gray">+{overflowCount}</ColorBadge>
+        )}
+      </div>
+    )
   }
 
   const gatewayColumns: ColumnDef<GatewaySpec>[] = [
@@ -164,26 +232,17 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       header: "Protocol",
       cell: ({ row }) => (
         <ColorBadge color="gray" >
-          {row.original.protocol === 'https' && <Lock className="h-3 w-3 mr-1" />}
           {row.original.protocol?.toUpperCase()}
         </ColorBadge>
       ),
     },
     {
-      accessorKey: "exposed",
-      header: "Access",
+      accessorKey: "service_type",
+      header: "Service",
       cell: ({ row }) => (
-        row.original.exposed ? (
-          <ColorBadge color="blue" className="gap-1">
-            <Globe className="h-3 w-3" />
-            Public
-          </ColorBadge>
-        ) : (
-          <ColorBadge color="gray" className="gap-1">
-            <GlobeLock className="h-3 w-3" />
-            Internal
-          </ColorBadge>
-        )
+        <ColorBadge color={row.original.service_type === "NodePort" ? "blue" : "gray"}>
+          {row.original.service_type || "ClusterIP"}
+        </ColorBadge>
       ),
     },
     {
@@ -215,23 +274,9 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       },
     },
     {
-      id: "external_access",
-      header: "External Access",
-      cell: ({ row }) => {
-        const gw = row.original
-        const isHttp = isHttpProtocol(gw.protocol)
-        if (isHttp && gw.exposed && gw.domain) {
-          return (
-            <Button variant="link" className="p-0 h-auto font-mono text-xs" onClick={() => window.open(`${gw.protocol}://${gw.domain}`, '_blank')}>
-              {gw.protocol}://{gw.domain}
-            </Button>
-          )
-        }
-        if (gw.gateway_port) {
-          return <span className="font-mono text-xs">{gw.gateway_port}</span>
-        }
-        return <span className="text-muted-foreground text-xs">-</span>
-      },
+      id: "routes",
+      header: "Public Routes",
+      cell: ({ row }) => renderRouteSummary(row.original),
     },
     {
       id: "node_port_address",
@@ -269,26 +314,13 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       },
     },
     {
-      accessorKey: "path",
-      header: "Path",
-      cell: ({ row }) => (
-        <>
-          {isHttpProtocol(row.original.protocol) ? (
-            row.original.path || <span className="font-mono text-xs text-muted-foreground">-</span>
-          ) : (
-            <span className="text-muted-foreground text-xs">-</span>
-          )}
-        </>
-      ),
-    },
-    {
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-1">
           {/* Quick Access: visible when app is running/updating and protocol is http/https */}
           {(app.status === 'running' || app.status === 'updating') &&
-            (row.original.protocol === 'http' || row.original.protocol === 'https') && (
+            isHttpProtocol(row.original.protocol) && (
               <Tooltip>
                 <TooltipTrigger
                   delay={200}
@@ -368,7 +400,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
           sourceEmptyContent={(
             <EmptyState
               title="No gateways configured"
-              description="Add a gateway to expose your application to the network."
+              description="Add a gateway port and optional HTTP routes."
               icon={Network}
               actionText={!isViewer ? "Add Gateway" : undefined}
               onAction={!isViewer ? handleAdd : undefined}
@@ -379,7 +411,7 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
           leftToolbar={() => (
             <Input
               className="flex flex-1 max-w-sm min-w-75"
-              placeholder="Filter by port, protocol, domain, path..."
+              placeholder="Filter by port, protocol, service, route..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

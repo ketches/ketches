@@ -194,18 +194,9 @@
           "app_id": {
             "type": "string"
           },
-          "cert_id": {
-            "type": "string"
-          },
           "created_at": {
             "format": "date-time",
             "type": "string"
-          },
-          "domain": {
-            "type": "string"
-          },
-          "exposed": {
-            "type": "boolean"
           },
           "gateway_host": {
             "type": "string"
@@ -222,14 +213,17 @@
           "node_port": {
             "type": "integer"
           },
-          "path": {
-            "type": "string"
-          },
           "port": {
             "type": "integer"
           },
           "protocol": {
             "type": "string"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayRouteSpec"
+            },
+            "type": "array"
           },
           "service_type": {
             "type": "string"
@@ -822,29 +816,23 @@
       },
       "CreateGatewayRequest": {
         "properties": {
-          "cert_id": {
-            "type": "string"
-          },
-          "domain": {
-            "type": "string"
-          },
-          "exposed": {
-            "type": "boolean"
-          },
           "gateway_port": {
             "type": "integer"
           },
           "node_port": {
             "type": "integer"
           },
-          "path": {
-            "type": "string"
-          },
           "port": {
             "type": "integer"
           },
           "protocol": {
             "type": "string"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayRouteSpec"
+            },
+            "type": "array"
           },
           "service_type": {
             "type": "string"
@@ -970,27 +958,346 @@
         },
         "type": "object"
       },
-      "GatewayMetadata": {
+      "GatewayCORSFilter": {
         "properties": {
-          "cert_id": {
-            "type": "string"
-          },
-          "domain": {
-            "type": "string"
-          },
-          "exposed": {
+          "allow_credentials": {
             "type": "boolean"
           },
+          "allow_headers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "allow_methods": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "allow_origins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "expose_headers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "max_age": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayHTTPMatch": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayHeaderModifier": {
+        "properties": {
+          "add": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayHeaderValue"
+            },
+            "type": "array"
+          },
+          "remove": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "set": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayHeaderValue"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayHeaderValue": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayMetadata": {
+        "properties": {
           "gateway_port": {
             "type": "integer"
           },
-          "path": {
-            "type": "string"
+          "node_port": {
+            "type": "integer"
           },
           "port": {
             "type": "integer"
           },
           "protocol": {
+            "type": "string"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayRouteMetadata"
+            },
+            "type": "array"
+          },
+          "service_type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayRouteBackendMetadata": {
+        "properties": {
+          "backend_app_slug": {
+            "type": "string"
+          },
+          "backend_port": {
+            "type": "integer"
+          },
+          "weight": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayRouteBackendSpec": {
+        "properties": {
+          "backend_app_id": {
+            "type": "string"
+          },
+          "backend_app_slug": {
+            "type": "string"
+          },
+          "backend_port": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayRouteExtension": {
+        "properties": {
+          "keep_alive": {
+            "type": "boolean"
+          },
+          "request_body_size": {
+            "type": "string"
+          },
+          "websocket": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayRouteFilters": {
+        "properties": {
+          "cors": {
+            "$ref": "#/components/schemas/GatewayCORSFilter"
+          },
+          "request_headers": {
+            "$ref": "#/components/schemas/GatewayHeaderModifier"
+          },
+          "response_headers": {
+            "$ref": "#/components/schemas/GatewayHeaderModifier"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayRouteMatches": {
+        "properties": {
+          "headers": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayHTTPMatch"
+            },
+            "type": "array"
+          },
+          "method": {
+            "type": "string"
+          },
+          "query_params": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayHTTPMatch"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayRouteMetadata": {
+        "properties": {
+          "backends": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayRouteBackendMetadata"
+            },
+            "type": "array"
+          },
+          "cert_id": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "extension": {
+            "$ref": "#/components/schemas/GatewayRouteExtension"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/GatewayRouteFilters"
+          },
+          "host": {
+            "type": "string"
+          },
+          "listener_protocol": {
+            "type": "string"
+          },
+          "matches": {
+            "$ref": "#/components/schemas/GatewayRouteMatches"
+          },
+          "path": {
+            "type": "string"
+          },
+          "path_match_type": {
+            "type": "string"
+          },
+          "retry": {
+            "$ref": "#/components/schemas/GatewayRouteRetry"
+          },
+          "session_persistence": {
+            "$ref": "#/components/schemas/GatewaySessionPersistence"
+          },
+          "timeouts": {
+            "$ref": "#/components/schemas/GatewayRouteTimeouts"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayRouteRetry": {
+        "properties": {
+          "attempts": {
+            "type": "integer"
+          },
+          "backoff": {
+            "type": "string"
+          },
+          "codes": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayRouteSpec": {
+        "properties": {
+          "backends": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayRouteBackendSpec"
+            },
+            "type": "array"
+          },
+          "cert_id": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "extension": {
+            "$ref": "#/components/schemas/GatewayRouteExtension"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/GatewayRouteFilters"
+          },
+          "gateway_id": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "listener_protocol": {
+            "type": "string"
+          },
+          "matches": {
+            "$ref": "#/components/schemas/GatewayRouteMatches"
+          },
+          "path": {
+            "type": "string"
+          },
+          "path_match_type": {
+            "type": "string"
+          },
+          "retry": {
+            "$ref": "#/components/schemas/GatewayRouteRetry"
+          },
+          "session_persistence": {
+            "$ref": "#/components/schemas/GatewaySessionPersistence"
+          },
+          "sort_order": {
+            "type": "integer"
+          },
+          "timeouts": {
+            "$ref": "#/components/schemas/GatewayRouteTimeouts"
+          }
+        },
+        "type": "object"
+      },
+      "GatewayRouteTimeouts": {
+        "properties": {
+          "backend_request": {
+            "type": "string"
+          },
+          "request": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GatewaySessionPersistence": {
+        "properties": {
+          "absolute_timeout": {
+            "type": "string"
+          },
+          "cookie_lifetime_type": {
+            "type": "string"
+          },
+          "idle_timeout": {
+            "type": "string"
+          },
+          "session_name": {
+            "type": "string"
+          },
+          "type": {
             "type": "string"
           }
         },
@@ -998,25 +1305,28 @@
       },
       "GatewaySpec": {
         "properties": {
-          "cert_id": {
-            "type": "string"
-          },
-          "domain": {
-            "type": "string"
-          },
-          "exposed": {
-            "type": "boolean"
-          },
           "gateway_port": {
             "type": "integer"
           },
-          "path": {
+          "id": {
             "type": "string"
+          },
+          "node_port": {
+            "type": "integer"
           },
           "port": {
             "type": "integer"
           },
           "protocol": {
+            "type": "string"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayRouteSpec"
+            },
+            "type": "array"
+          },
+          "service_type": {
             "type": "string"
           }
         },
@@ -1722,29 +2032,23 @@
       },
       "UpdateGatewayRequest": {
         "properties": {
-          "cert_id": {
-            "type": "string"
-          },
-          "domain": {
-            "type": "string"
-          },
-          "exposed": {
-            "type": "boolean"
-          },
           "gateway_port": {
             "type": "integer"
           },
           "node_port": {
             "type": "integer"
           },
-          "path": {
-            "type": "string"
-          },
           "port": {
             "type": "integer"
           },
           "protocol": {
             "type": "string"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayRouteSpec"
+            },
+            "type": "array"
           },
           "service_type": {
             "type": "string"
@@ -6103,6 +6407,85 @@
         ]
       }
     },
+    "/api/v1/apps/{appID}/plugins/{pluginID}/resources": {
+      "patch": {
+        "operationId": "patch_api_v1_apps_appid_plugins_pluginid_resources",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "appID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "pluginID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "PATCH /api/v1/apps/{appID}/plugins/{pluginID}/resources",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
     "/api/v1/apps/{appID}/plugins/{pluginID}/toggle": {
       "patch": {
         "operationId": "patch_api_v1_apps_appid_plugins_pluginid_toggle",
@@ -8115,6 +8498,76 @@
         ]
       }
     },
+    "/api/v1/clusters/{clusterID}/default-gateway-class": {
+      "put": {
+        "operationId": "put_api_v1_clusters_clusterid_default_gateway_class",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "clusterID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/v1/clusters/{clusterID}/default-gateway-class",
+        "tags": [
+          "clusters"
+        ]
+      }
+    },
     "/api/v1/clusters/{clusterID}/domains": {
       "get": {
         "operationId": "get_api_v1_clusters_clusterid_domains",
@@ -8780,6 +9233,85 @@
         ]
       }
     },
+    "/api/v1/clusters/{clusterID}/extensions/{clusterExtensionID}/retry": {
+      "post": {
+        "operationId": "post_api_v1_clusters_clusterid_extensions_clusterextensionid_retry",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "clusterID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "clusterExtensionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "POST /api/v1/clusters/{clusterID}/extensions/{clusterExtensionID}/retry",
+        "tags": [
+          "clusters"
+        ]
+      }
+    },
     "/api/v1/clusters/{clusterID}/gateway-api-status": {
       "get": {
         "operationId": "get_api_v1_clusters_clusterid_gateway_api_status",
@@ -8845,6 +9377,293 @@
           }
         ],
         "summary": "GET /api/v1/clusters/{clusterID}/gateway-api-status",
+        "tags": [
+          "clusters"
+        ]
+      }
+    },
+    "/api/v1/clusters/{clusterID}/gateway-classes": {
+      "get": {
+        "operationId": "get_api_v1_clusters_clusterid_gateway_classes",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "clusterID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/clusters/{clusterID}/gateway-classes",
+        "tags": [
+          "clusters"
+        ]
+      }
+    },
+    "/api/v1/clusters/{clusterID}/gateway-providers": {
+      "get": {
+        "operationId": "get_api_v1_clusters_clusterid_gateway_providers",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "clusterID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "GET /api/v1/clusters/{clusterID}/gateway-providers",
+        "tags": [
+          "clusters"
+        ]
+      },
+      "post": {
+        "operationId": "post_api_v1_clusters_clusterid_gateway_providers",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "clusterID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "POST /api/v1/clusters/{clusterID}/gateway-providers",
+        "tags": [
+          "clusters"
+        ]
+      }
+    },
+    "/api/v1/clusters/{clusterID}/gateway-providers/{providerID}": {
+      "delete": {
+        "operationId": "delete_api_v1_clusters_clusterid_gateway_providers_providerid",
+        "parameters": [
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "clusterID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Path parameter",
+            "in": "path",
+            "name": "providerID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "DELETE /api/v1/clusters/{clusterID}/gateway-providers/{providerID}",
         "tags": [
           "clusters"
         ]

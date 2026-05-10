@@ -56,19 +56,98 @@ export interface ProbeSpec {
   failure_threshold: number
 }
 
+export interface GatewayHTTPMatch {
+  name: string
+  type: string
+  value: string
+}
+
+export interface GatewayHeaderValue {
+  name: string
+  value: string
+}
+
+export interface GatewayHeaderModifier {
+  set?: GatewayHeaderValue[]
+  add?: GatewayHeaderValue[]
+  remove?: string[]
+}
+
+export interface GatewayRouteFilters {
+  request_headers?: GatewayHeaderModifier
+  response_headers?: GatewayHeaderModifier
+}
+
+export interface GatewayRouteMatches {
+  method?: string
+  headers?: GatewayHTTPMatch[]
+  query_params?: GatewayHTTPMatch[]
+}
+
+export interface GatewayRouteTimeouts {
+  request?: string
+  backend_request?: string
+}
+
+export interface GatewayRouteRetry {
+  attempts?: number
+  backoff?: string
+  codes?: number[]
+}
+
+export interface GatewaySessionPersistence {
+  type?: string
+  session_name?: string
+  cookie_lifetime_type?: string
+  absolute_timeout?: string
+  idle_timeout?: string
+}
+
+export interface GatewayRouteExtension {
+  request_body_size?: string
+  keep_alive?: boolean
+  websocket?: boolean
+}
+
+export interface GatewayRouteBackendSpec {
+  id?: string
+  route_id?: string
+  backend_app_id?: string
+  backend_app_slug?: string
+  backend_port: number
+  weight: number
+}
+
+export interface GatewayRouteSpec {
+  id?: string
+  gateway_id?: string
+  host: string
+  listener_protocol: "http" | "https" | string
+  path: string
+  path_match_type: "PathPrefix" | "Exact" | string
+  enabled: boolean
+  cert_id?: string | null
+  matches?: GatewayRouteMatches
+  filters?: GatewayRouteFilters
+  timeouts?: GatewayRouteTimeouts
+  retry?: GatewayRouteRetry
+  session_persistence?: GatewaySessionPersistence
+  extension?: GatewayRouteExtension
+  backends?: GatewayRouteBackendSpec[]
+  sort_order?: number
+}
+
 export interface GatewaySpec {
   id?: string
+  app_id?: string
   port: number
-  protocol: string
-  domain: string
-  path: string
+  protocol: "http" | "tcp" | "udp" | string
   gateway_port?: number
-  service_type?: string
+  service_type?: "ClusterIP" | "NodePort" | string
   node_port?: number
   gateway_host?: string
   internal_address?: string
-  exposed: boolean
-  cert_id?: string | null
+  routes?: GatewayRouteSpec[]
 }
 
 export type AppCreateRequest = OperationRequestBody<"/api/v1/envs/{envID}/apps", "post">

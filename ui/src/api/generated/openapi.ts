@@ -762,6 +762,23 @@ export interface paths {
         patch: operations["patch_api_v1_apps_appid_plugins_pluginid_env"];
         trace?: never;
     };
+    "/api/v1/apps/{appID}/plugins/{pluginID}/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** PATCH /api/v1/apps/{appID}/plugins/{pluginID}/resources */
+        patch: operations["patch_api_v1_apps_appid_plugins_pluginid_resources"];
+        trace?: never;
+    };
     "/api/v1/apps/{appID}/plugins/{pluginID}/toggle": {
         parameters: {
             query?: never;
@@ -1059,6 +1076,59 @@ export interface paths {
         patch: operations["patch_api_v1_clusters_clusterid_credentials"];
         trace?: never;
     };
+    "/api/v1/clusters/{clusterID}/default-gateway-class": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/clusters/{clusterID}/default-gateway-class */
+        put: operations["put_api_v1_clusters_clusterid_default_gateway_class"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clusters/{clusterID}/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/clusters/{clusterID}/domains */
+        get: operations["get_api_v1_clusters_clusterid_domains"];
+        put?: never;
+        /** POST /api/v1/clusters/{clusterID}/domains */
+        post: operations["post_api_v1_clusters_clusterid_domains"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clusters/{clusterID}/domains/{domainID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/clusters/{clusterID}/domains/{domainID} */
+        put: operations["put_api_v1_clusters_clusterid_domains_domainid"];
+        post?: never;
+        /** DELETE /api/v1/clusters/{clusterID}/domains/{domainID} */
+        delete: operations["delete_api_v1_clusters_clusterid_domains_domainid"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clusters/{clusterID}/extensions": {
         parameters: {
             query?: never;
@@ -1096,6 +1166,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clusters/{clusterID}/extensions/{clusterExtensionID}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/clusters/{clusterID}/extensions/{clusterExtensionID}/retry */
+        post: operations["post_api_v1_clusters_clusterid_extensions_clusterextensionid_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clusters/{clusterID}/gateway-api-status": {
         parameters: {
             query?: never;
@@ -1108,6 +1195,58 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clusters/{clusterID}/gateway-classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/clusters/{clusterID}/gateway-classes */
+        get: operations["get_api_v1_clusters_clusterid_gateway_classes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clusters/{clusterID}/gateway-providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/clusters/{clusterID}/gateway-providers */
+        get: operations["get_api_v1_clusters_clusterid_gateway_providers"];
+        put?: never;
+        /** POST /api/v1/clusters/{clusterID}/gateway-providers */
+        post: operations["post_api_v1_clusters_clusterid_gateway_providers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clusters/{clusterID}/gateway-providers/{providerID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** DELETE /api/v1/clusters/{clusterID}/gateway-providers/{providerID} */
+        delete: operations["delete_api_v1_clusters_clusterid_gateway_providers_providerid"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1995,6 +2134,42 @@ export interface paths {
         post?: never;
         /** DELETE /api/v1/envs/{envID}/certificates/{certID} */
         delete: operations["delete_api_v1_envs_envid_certificates_certid"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/envs/{envID}/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/envs/{envID}/domains */
+        get: operations["get_api_v1_envs_envid_domains"];
+        put?: never;
+        /** POST /api/v1/envs/{envID}/domains */
+        post: operations["post_api_v1_envs_envid_domains"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/envs/{envID}/domains/{domainID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/envs/{envID}/domains/{domainID} */
+        put: operations["put_api_v1_envs_envid_domains_domainid"];
+        post?: never;
+        /** DELETE /api/v1/envs/{envID}/domains/{domainID} */
+        delete: operations["delete_api_v1_envs_envid_domains_domainid"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4174,19 +4349,16 @@ export interface components {
         };
         AppGatewayResponse: {
             app_id?: string;
-            cert_id?: string;
             /** Format: date-time */
             created_at?: string;
-            domain?: string;
-            exposed?: boolean;
             gateway_host?: string;
             gateway_port?: number;
             id?: string;
             internal_address?: string;
             node_port?: number;
-            path?: string;
             port?: number;
             protocol?: string;
+            routes?: components["schemas"]["GatewayRouteSpec"][];
             service_type?: string;
             /** Format: date-time */
             updated_at?: string;
@@ -4376,14 +4548,11 @@ export interface components {
             slug: string;
         };
         CreateGatewayRequest: {
-            cert_id?: string;
-            domain?: string;
-            exposed?: boolean;
             gateway_port?: number;
             node_port?: number;
-            path?: string;
             port: number;
             protocol: string;
+            routes?: components["schemas"]["GatewayRouteSpec"][];
             service_type?: string;
         };
         CreateVolumeRequest: {
@@ -4425,23 +4594,121 @@ export interface components {
         ErrorResponse: {
             error?: string;
         };
+        GatewayCORSFilter: {
+            allow_credentials?: boolean;
+            allow_headers?: string[];
+            allow_methods?: string[];
+            allow_origins?: string[];
+            expose_headers?: string[];
+            max_age?: string;
+        };
+        GatewayHTTPMatch: {
+            name?: string;
+            type?: string;
+            value?: string;
+        };
+        GatewayHeaderModifier: {
+            add?: components["schemas"]["GatewayHeaderValue"][];
+            remove?: string[];
+            set?: components["schemas"]["GatewayHeaderValue"][];
+        };
+        GatewayHeaderValue: {
+            name?: string;
+            value?: string;
+        };
         GatewayMetadata: {
-            cert_id?: string;
-            domain?: string;
-            exposed?: boolean;
             gateway_port?: number;
-            path?: string;
+            node_port?: number;
             port?: number;
             protocol?: string;
+            routes?: components["schemas"]["GatewayRouteMetadata"][];
+            service_type?: string;
+        };
+        GatewayRouteBackendMetadata: {
+            backend_app_slug?: string;
+            backend_port?: number;
+            weight?: number;
+        };
+        GatewayRouteBackendSpec: {
+            backend_app_id?: string;
+            backend_app_slug?: string;
+            backend_port?: number;
+            id?: string;
+            route_id?: string;
+            weight?: number;
+        };
+        GatewayRouteExtension: {
+            keep_alive?: boolean;
+            request_body_size?: string;
+            websocket?: boolean;
+        };
+        GatewayRouteFilters: {
+            cors?: components["schemas"]["GatewayCORSFilter"];
+            request_headers?: components["schemas"]["GatewayHeaderModifier"];
+            response_headers?: components["schemas"]["GatewayHeaderModifier"];
+        };
+        GatewayRouteMatches: {
+            headers?: components["schemas"]["GatewayHTTPMatch"][];
+            method?: string;
+            query_params?: components["schemas"]["GatewayHTTPMatch"][];
+        };
+        GatewayRouteMetadata: {
+            backends?: components["schemas"]["GatewayRouteBackendMetadata"][];
+            cert_id?: string;
+            enabled?: boolean;
+            extension?: components["schemas"]["GatewayRouteExtension"];
+            filters?: components["schemas"]["GatewayRouteFilters"];
+            host?: string;
+            listener_protocol?: string;
+            matches?: components["schemas"]["GatewayRouteMatches"];
+            path?: string;
+            path_match_type?: string;
+            retry?: components["schemas"]["GatewayRouteRetry"];
+            session_persistence?: components["schemas"]["GatewaySessionPersistence"];
+            timeouts?: components["schemas"]["GatewayRouteTimeouts"];
+        };
+        GatewayRouteRetry: {
+            attempts?: number;
+            backoff?: string;
+            codes?: number[];
+        };
+        GatewayRouteSpec: {
+            backends?: components["schemas"]["GatewayRouteBackendSpec"][];
+            cert_id?: string;
+            enabled?: boolean;
+            extension?: components["schemas"]["GatewayRouteExtension"];
+            filters?: components["schemas"]["GatewayRouteFilters"];
+            gateway_id?: string;
+            host?: string;
+            id?: string;
+            listener_protocol?: string;
+            matches?: components["schemas"]["GatewayRouteMatches"];
+            path?: string;
+            path_match_type?: string;
+            retry?: components["schemas"]["GatewayRouteRetry"];
+            session_persistence?: components["schemas"]["GatewaySessionPersistence"];
+            sort_order?: number;
+            timeouts?: components["schemas"]["GatewayRouteTimeouts"];
+        };
+        GatewayRouteTimeouts: {
+            backend_request?: string;
+            request?: string;
+        };
+        GatewaySessionPersistence: {
+            absolute_timeout?: string;
+            cookie_lifetime_type?: string;
+            idle_timeout?: string;
+            session_name?: string;
+            type?: string;
         };
         GatewaySpec: {
-            cert_id?: string;
-            domain?: string;
-            exposed?: boolean;
             gateway_port?: number;
-            path?: string;
+            id?: string;
+            node_port?: number;
             port?: number;
             protocol?: string;
+            routes?: components["schemas"]["GatewayRouteSpec"][];
+            service_type?: string;
         };
         ImportAppResult: {
             name?: string;
@@ -4491,6 +4758,7 @@ export interface components {
             type?: string;
         };
         PublicSignUpSettingsResponse: {
+            email_verification_required?: boolean;
             enabled?: boolean;
         };
         ResponseOfAppActionResponse: {
@@ -4593,7 +4861,7 @@ export interface components {
             fullname?: string;
             password: string;
             username: string;
-            verification_code: string;
+            verification_code?: string;
         };
         SignUpVerificationCodeRequest: {
             email: string;
@@ -4649,14 +4917,11 @@ export interface components {
             slug: string;
         };
         UpdateGatewayRequest: {
-            cert_id?: string;
-            domain?: string;
-            exposed?: boolean;
             gateway_port?: number;
             node_port?: number;
-            path?: string;
             port: number;
             protocol: string;
+            routes?: components["schemas"]["GatewayRouteSpec"][];
             service_type?: string;
         };
         UpdateVolumeRequest: {
@@ -7891,6 +8156,65 @@ export interface operations {
             };
         };
     };
+    patch_api_v1_apps_appid_plugins_pluginid_resources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                appID: string;
+                /** @description Path parameter */
+                pluginID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     patch_api_v1_apps_appid_plugins_pluginid_toggle: {
         parameters: {
             query?: never;
@@ -9351,6 +9675,295 @@ export interface operations {
             };
         };
     };
+    put_api_v1_clusters_clusterid_default_gateway_class: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_api_v1_clusters_clusterid_domains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_api_v1_clusters_clusterid_domains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_api_v1_clusters_clusterid_domains_domainid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+                /** @description Path parameter */
+                domainID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_api_v1_clusters_clusterid_domains_domainid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+                /** @description Path parameter */
+                domainID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_api_v1_clusters_clusterid_extensions: {
         parameters: {
             query?: never;
@@ -9642,6 +10255,65 @@ export interface operations {
             };
         };
     };
+    post_api_v1_clusters_clusterid_extensions_clusterextensionid_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+                /** @description Path parameter */
+                clusterExtensionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_api_v1_clusters_clusterid_gateway_api_status: {
         parameters: {
             query?: never;
@@ -9649,6 +10321,236 @@ export interface operations {
             path: {
                 /** @description Path parameter */
                 clusterID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_api_v1_clusters_clusterid_gateway_classes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_api_v1_clusters_clusterid_gateway_providers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_api_v1_clusters_clusterid_gateway_providers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_api_v1_clusters_clusterid_gateway_providers_providerid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                clusterID: string;
+                /** @description Path parameter */
+                providerID: string;
             };
             cookie?: never;
         };
@@ -13755,6 +14657,238 @@ export interface operations {
                 envID: string;
                 /** @description Path parameter */
                 certID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_api_v1_envs_envid_domains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                envID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_api_v1_envs_envid_domains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                envID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_api_v1_envs_envid_domains_domainid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                envID: string;
+                /** @description Path parameter */
+                domainID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_api_v1_envs_envid_domains_domainid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Path parameter */
+                envID: string;
+                /** @description Path parameter */
+                domainID: string;
             };
             cookie?: never;
         };

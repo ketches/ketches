@@ -50,15 +50,6 @@ vi.mock("@/api/domains", () => ({
   },
 }))
 
-vi.mock("@/components/ui/dropdown-menu", () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ render }: { render?: React.ReactNode }) => <>{render ?? null}</>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>{children}</button>
-  ),
-}))
-
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -82,7 +73,6 @@ vi.mock("@/components/ui/checkbox", () => ({
     onCheckedChange?: (checked: boolean) => void
   } & React.ComponentProps<"input">) => (
     <input
-      aria-label="Enable public access"
       type="checkbox"
       checked={checked}
       disabled={disabled}
@@ -147,7 +137,7 @@ vi.mock("@/components/ui/dialog", () => ({
 }))
 
 vi.mock("@/components/ui/field", () => ({
-  Field: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Field: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
   FieldContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   FieldError: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   FieldLabel: ({ children, htmlFor }: { children: React.ReactNode, htmlFor?: string }) => <label htmlFor={htmlFor}>{children}</label>,
@@ -169,6 +159,10 @@ vi.mock("@/components/ui/item", () => ({
   ItemContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ItemDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ItemTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock("@/components/ui/separator", () => ({
+  Separator: () => <hr />,
 }))
 
 vi.mock("@/components/ui/tooltip", () => ({
@@ -222,17 +216,27 @@ function buildApp(): App {
 function buildGateway(overrides: Partial<GatewaySpec> = {}): GatewaySpec {
   return {
     id: "gateway-1",
+    app_id: "app-1",
     port: 80,
     protocol: "http",
-    domain: "demo.example.com",
-    path: "/",
-    exposed: true,
     service_type: "ClusterIP",
+    routes: [
+      {
+        id: "route-1",
+        gateway_id: "gateway-1",
+        host: "demo.example.com",
+        listener_protocol: "http",
+        path: "/",
+        path_match_type: "PathPrefix",
+        enabled: true,
+        backends: [{ backend_app_id: "app-1", backend_port: 80, weight: 100 }],
+      },
+    ],
     ...overrides,
   }
 }
 
-async function renderEditor(gateway?: GatewaySpec) {
+async function renderEditor(gateway?: GatewaySpec | null) {
   const container = document.createElement("div")
   document.body.appendChild(container)
   const root = ReactDOMClient.createRoot(container)
@@ -251,13 +255,32 @@ async function renderEditor(gateway?: GatewaySpec) {
   return { container, root }
 }
 
-function countTextOccurrences(container: HTMLElement, value: string) {
-  return container.textContent?.split(value).length ? (container.textContent?.split(value).length ?? 1) - 1 : 0
+function getMutatedGateway(): GatewaySpec {
+  const firstCall = mockMutate.mock.calls[0]
+  expect(firstCall).toBeDefined()
+  return firstCall[0] as GatewaySpec
 }
 
-async function clickElement(element: Element | null) {
+async function clickElement(element: Element | null | undefined) {
   await act(async () => {
     element?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+  })
+}
+
+async function changeInput(input: HTMLInputElement, value: string) {
+  await act(async () => {
+    const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set
+    valueSetter?.call(input, value)
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+}
+
+async function submitForm(container: HTMLElement) {
+  const form = container.querySelector("form")
+  expect(form).not.toBeNull()
+
+  await act(async () => {
+    form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
   })
 }
 
@@ -343,141 +366,112 @@ describe("GatewayEditor", () => {
     vi.clearAllMocks()
   })
 
-  it("forces public access off and disables it when protocol changes to tcp", async () => {
+  it("creates a gateway with multiple HTTP routes", async () => {
+    const { container, root } = await renderEditor(null)
+
+    const hostInputs = () => Array.from(container.querySelectorAll('input[aria-label^="Route host"]')) as HTMLInputElement[]
+    await changeInput(hostInputs()[0], "api.example.com")
+    await clickElement(Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Add Route")))
+    await changeInput(hostInputs()[1], "admin.example.com")
+
+    await submitForm(container)
+
+    const payload = getMutatedGateway()
+    expect(payload.routes).toHaveLength(2)
+    expect(payload.routes?.map((route) => route.host)).toEqual(["api.example.com", "admin.example.com"])
+    expect(payload.routes?.[0].backends?.[0]).toMatchObject({ backend_app_id: "app-1", backend_port: 80, weight: 100 })
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("requires a certificate for enabled HTTPS routes", async () => {
+    const { container, root } = await renderEditor(buildGateway({
+      routes: [
+        {
+          id: "route-1",
+          host: "secure.example.com",
+          listener_protocol: "https",
+          path: "/",
+          path_match_type: "PathPrefix",
+          enabled: true,
+          backends: [{ backend_app_id: "app-1", backend_port: 80, weight: 100 }],
+        },
+      ],
+    }))
+
+    await submitForm(container)
+
+    expect(mockMutate).not.toHaveBeenCalled()
+    expect(container.textContent).toContain("TLS certificate is required for HTTPS")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("preserves HTTP route drafts when switching protocol away and back while omitting routes from TCP submit", async () => {
     const { container, root } = await renderEditor(buildGateway())
+
+    const hostInput = container.querySelector('input[aria-label="Route host 1"]') as HTMLInputElement | null
+    expect(hostInput).not.toBeNull()
+    await changeInput(hostInput!, "draft.example.com")
 
     await clickElement(container.querySelector('[data-combobox-item="tcp"]'))
+    expect(container.querySelector('input[aria-label="Route host 1"]')).toBeNull()
 
-    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement | null
-    expect(checkbox).not.toBeNull()
-    expect(checkbox?.disabled).toBe(true)
-    expect(checkbox?.checked).toBe(false)
+    await submitForm(container)
+    expect(getMutatedGateway().routes).toBeUndefined()
 
-    await act(async () => {
-      root.unmount()
-    })
-  })
-
-  it("forces public access off and disables it when protocol changes to udp", async () => {
-    const { container, root } = await renderEditor(buildGateway({ protocol: "https" }))
-
-    await clickElement(container.querySelector('[data-combobox-item="udp"]'))
-
-    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement | null
-    expect(checkbox).not.toBeNull()
-    expect(checkbox?.disabled).toBe(true)
-    expect(checkbox?.checked).toBe(false)
-
-    await act(async () => {
-      root.unmount()
-    })
-  })
-
-  it("re-enables public access when protocol changes from tcp to http", async () => {
-    const { container, root } = await renderEditor(buildGateway({ protocol: "tcp", exposed: false, domain: "", path: "" }))
-
-    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement | null
-    expect(checkbox).not.toBeNull()
-    expect(checkbox?.disabled).toBe(true)
-    expect(checkbox?.checked).toBe(false)
-
+    mockMutate.mockClear()
     await clickElement(container.querySelector('[data-combobox-item="http"]'))
-
-    expect(checkbox?.disabled).toBe(false)
-    expect(checkbox?.checked).toBe(false)
-
-    await clickElement(container.querySelector('label[for="gateway-public-access"]'))
-
-    expect(checkbox?.checked).toBe(true)
+    const restoredInput = container.querySelector('input[aria-label="Route host 1"]') as HTMLInputElement | null
+    expect(restoredInput?.value).toBe("draft.example.com")
 
     await act(async () => {
       root.unmount()
     })
   })
 
-  it("shows the unsupported public access tooltip copy for non-http protocols", async () => {
-    const { container, root } = await renderEditor(buildGateway({ protocol: "tcp", exposed: false, domain: "", path: "" }))
-
-    expect(container.textContent).toContain(
-      "Public access is currently available only for HTTP/HTTPS gateways. TCP/UDP public exposure is not supported yet.",
-    )
-
-    await act(async () => {
-      root.unmount()
-    })
-  })
-
-  it("shows the Gateway API disabled tooltip copy when Gateway API is not installed", async () => {
-    mockUseQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
-      if (queryKey[0] === "cluster-gateway-api-status") {
-        return { data: { installed: false } }
-      }
-
-      return { data: { items: [] } }
-    })
-
-    const { container, root } = await renderEditor(buildGateway({ protocol: "http", exposed: false }))
-
-    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement | null
-    expect(checkbox).not.toBeNull()
-    expect(checkbox?.disabled).toBe(true)
-    expect(container.textContent).toContain(
-      "Gateway API is not installed on this cluster, so HTTP/HTTPS public access is currently unavailable.",
-    )
-
-    await act(async () => {
-      root.unmount()
-    })
-  })
-
-  it("keeps public access enabled for http when Gateway API is installed", async () => {
-    const { container, root } = await renderEditor(buildGateway({ protocol: "http", exposed: true }))
-
-    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement | null
-    expect(checkbox).not.toBeNull()
-    expect(checkbox?.disabled).toBe(false)
-    expect(checkbox?.checked).toBe(true)
-    expect(container.textContent).not.toContain(
-      "Public access is currently available only for HTTP/HTTPS gateways. TCP/UDP public exposure is not supported yet.",
-    )
-
-    await act(async () => {
-      root.unmount()
-    })
-  })
-
-  it("uses the existing domain value when a managed domain matches", async () => {
-    const { container, root } = await renderEditor(buildGateway({ domain: "demo-app.env.example.com" }))
-
-    const input = Array.from(container.querySelectorAll("input")).find((element) => element.value === "demo-app.env.example.com") as HTMLInputElement | undefined
-    expect(input).toBeDefined()
-    expect(container.textContent).toContain("Env Primary")
-
-    await act(async () => {
-      root.unmount()
-    })
-  })
-
-  it("groups managed domains by cluster and environment scope", async () => {
+  it("serializes route timeout and backend weight settings", async () => {
     const { container, root } = await renderEditor(buildGateway())
 
-    expect(container.textContent).toContain("Cluster Scope")
-    expect(container.textContent).toContain("Environment Scope")
-    expect(container.textContent).toContain("Cluster Primary")
-    expect(container.textContent).toContain("Env Primary")
+    const requestTimeout = container.querySelector('input[aria-label="Route request timeout 1"]') as HTMLInputElement | null
+    const backendTimeout = container.querySelector('input[aria-label="Route backend timeout 1"]') as HTMLInputElement | null
+    const backendWeight = container.querySelector('input[aria-label="Route backend weight 1"]') as HTMLInputElement | null
+    expect(requestTimeout).not.toBeNull()
+    expect(backendTimeout).not.toBeNull()
+    expect(backendWeight).not.toBeNull()
+
+    await changeInput(requestTimeout!, "30s")
+    await changeInput(backendTimeout!, "25s")
+    await changeInput(backendWeight!, "75")
+    await submitForm(container)
+
+    const route = getMutatedGateway().routes?.[0]
+    expect(route?.timeouts).toEqual({ request: "30s", backend_request: "25s" })
+    expect(route?.backends?.[0]).toMatchObject({ backend_port: 80, weight: 75 })
 
     await act(async () => {
       root.unmount()
     })
   })
 
-  it("groups TLS certificates by cluster and environment scope", async () => {
-    const { container, root } = await renderEditor(buildGateway({ protocol: "https", cert_id: "env-cert-1" }))
+  it("deletes a route from the submitted payload", async () => {
+    const { container, root } = await renderEditor(buildGateway({
+      routes: [
+        { id: "route-1", host: "api.example.com", listener_protocol: "http", path: "/", path_match_type: "PathPrefix", enabled: true, backends: [{ backend_app_id: "app-1", backend_port: 80, weight: 100 }] },
+        { id: "route-2", host: "admin.example.com", listener_protocol: "http", path: "/admin", path_match_type: "PathPrefix", enabled: true, backends: [{ backend_app_id: "app-1", backend_port: 80, weight: 100 }] },
+      ],
+    }))
 
-    expect(container.textContent).toContain("Cluster Wildcard")
-    expect(container.textContent).toContain("Env Wildcard")
-    expect(countTextOccurrences(container, "Cluster Scope")).toBe(2)
-    expect(countTextOccurrences(container, "Environment Scope")).toBe(2)
+    await clickElement(container.querySelector('button[aria-label="Delete route 2"]'))
+    await submitForm(container)
+
+    const payload = getMutatedGateway()
+    expect(payload.routes).toHaveLength(1)
+    expect(payload.routes?.[0].host).toBe("api.example.com")
 
     await act(async () => {
       root.unmount()
