@@ -1492,18 +1492,17 @@ func seedAppFromImageMetadata(ctx context.Context, application *entities.App) er
 
 	// Seed Gateways — skip duplicate port/protocol combinations
 	for _, pi := range meta.ExposedPorts {
-		// Map TCP→HTTP and UDP→UDP for gateway protocol
-		protocol := "TCP"
+		// Map image TCP ports to HTTP app gateways by default.
+		protocol := "http"
 		if pi.Protocol == "UDP" {
-			protocol = "UDP"
+			protocol = "udp"
 		}
 		gateway := &entities.AppGateway{
-			ID:       uuid.New(),
-			AppID:    application.ID,
-			Port:     pi.Port,
-			Protocol: protocol,
-			Exposed:  false,
-			Path:     "/",
+			ID:          uuid.New(),
+			AppID:       application.ID,
+			Port:        pi.Port,
+			Protocol:    protocol,
+			ServiceType: "ClusterIP",
 		}
 		// Ignore duplicate port/protocol errors
 		_ = db.DB.Create(gateway).Error

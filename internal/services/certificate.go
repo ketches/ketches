@@ -171,7 +171,7 @@ func DeleteCertificate(id string) error {
 
 func certificateInUse(certID string) (bool, error) {
 	var count int64
-	if err := db.DB.Model(&entities.AppGateway{}).Where("cert_id = ?", certID).Count(&count).Error; err != nil {
+	if err := db.DB.Model(&entities.AppGatewayHTTPRoute{}).Where("cert_id = ?", certID).Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/ketches/ketches/internal/app"
@@ -118,24 +119,75 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 		// Add Gateways
 		if len(appMeta.Gateways) > 0 {
 			for _, gw := range appMeta.Gateways {
-				var certID *string
-				if gw.CertID != "" {
-					cid := gw.CertID
-					certID = &cid
-				}
 				gateway := &entities.AppGateway{
 					ID:          uuid.New(),
 					AppID:       createdApp.App.ID,
 					Port:        gw.Port,
 					Protocol:    gw.Protocol,
 					GatewayPort: gw.GatewayPort,
-					Exposed:     gw.Exposed,
-					Domain:      gw.Domain,
-					Path:        gw.Path,
-					CertID:      certID,
+					ServiceType: firstNonEmpty(gw.ServiceType, "ClusterIP"),
+					NodePort:    gw.NodePort,
 				}
 				if err := db.DB.Create(gateway).Error; err != nil {
 					return nil, err
+				}
+				for routeIndex, routeMeta := range gw.Routes {
+					route := &entities.AppGatewayHTTPRoute{
+						ID:               uuid.New(),
+						AppGatewayID:     gateway.ID,
+						Host:             routeMeta.Host,
+						ListenerProtocol: routeMeta.ListenerProtocol,
+						Path:             firstNonEmpty(routeMeta.Path, "/"),
+						PathMatchType:    firstNonEmpty(routeMeta.PathMatchType, "PathPrefix"),
+						Enabled:          routeMeta.Enabled,
+						MatchesJSON:      marshalGatewayJSON(routeMeta.Matches),
+						FiltersJSON:      marshalGatewayJSON(routeMeta.Filters),
+						TimeoutsJSON:     marshalGatewayJSON(routeMeta.Timeouts),
+						RetryJSON:        marshalGatewayJSON(routeMeta.Retry),
+						ExtensionJSON:    marshalGatewayJSON(routeMeta.Extension),
+						SortOrder:        routeIndex,
+					}
+					if routeMeta.CertID != "" {
+						certID := routeMeta.CertID
+						route.CertID = &certID
+					}
+					if routeMeta.SessionPersistence != nil {
+						route.SessionPersistenceJSON = marshalGatewayJSON(routeMeta.SessionPersistence)
+					}
+					if err := db.DB.Create(route).Error; err != nil {
+						return nil, err
+					}
+					backends := routeMeta.Backends
+					if len(backends) == 0 {
+						backends = []models.GatewayRouteBackendMetadata{{BackendAppSlug: createdApp.App.Slug, BackendPort: gw.Port, Weight: 1}}
+					}
+					for _, backendMeta := range backends {
+						backendAppID := createdApp.App.ID
+						if backendMeta.BackendAppSlug != "" && backendMeta.BackendAppSlug != createdApp.App.Slug {
+							var backendApp entities.App
+							if err := db.DB.Where("env_id = ? AND slug = ?", createdApp.App.EnvID, backendMeta.BackendAppSlug).First(&backendApp).Error; err != nil {
+								return nil, err
+							}
+							backendAppID = backendApp.ID
+						}
+						backendPort := backendMeta.BackendPort
+						if backendPort == 0 {
+							backendPort = gw.Port
+						}
+						weight := backendMeta.Weight
+						if weight == 0 {
+							weight = 1
+						}
+						if err := db.DB.Create(&entities.AppGatewayHTTPRouteBackend{
+							ID:           uuid.New(),
+							RouteID:      route.ID,
+							BackendAppID: backendAppID,
+							BackendPort:  backendPort,
+							Weight:       weight,
+						}).Error; err != nil {
+							return nil, err
+						}
+					}
 				}
 			}
 		}
@@ -320,16 +372,43 @@ func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMeta
 			})
 		}
 
+		routesByGateway := groupGatewayRoutes(appCtx.GatewayRoutes)
+		backendsByRoute := groupGatewayBackends(appCtx.GatewayBackends)
 		for _, gw := range appCtx.Gateways {
-			meta.Gateways = append(meta.Gateways, models.GatewayMetadata{
+			gatewayMeta := models.GatewayMetadata{
 				Port:        gw.Port,
 				Protocol:    gw.Protocol,
 				GatewayPort: gw.GatewayPort,
-				Exposed:     gw.Exposed,
-				Domain:      gw.Domain,
-				Path:        gw.Path,
-				CertID:      derefCertString(gw.CertID),
-			})
+				ServiceType: gw.ServiceType,
+				NodePort:    gw.NodePort,
+			}
+			for _, route := range routesByGateway[gw.ID] {
+				routeMeta := models.GatewayRouteMetadata{
+					Host:               route.Host,
+					ListenerProtocol:   route.ListenerProtocol,
+					Path:               route.Path,
+					PathMatchType:      route.PathMatchType,
+					Enabled:            route.Enabled,
+					Matches:            gatewayJSONToMetadata[models.GatewayRouteMatches](route.MatchesJSON),
+					Filters:            gatewayJSONToMetadata[models.GatewayRouteFilters](route.FiltersJSON),
+					Timeouts:           gatewayJSONToMetadata[models.GatewayRouteTimeouts](route.TimeoutsJSON),
+					Retry:              gatewayJSONToMetadata[models.GatewayRouteRetry](route.RetryJSON),
+					SessionPersistence: gatewayJSONToMetadata[models.GatewaySessionPersistence](route.SessionPersistenceJSON),
+					Extension:          gatewayJSONToMetadata[models.GatewayRouteExtension](route.ExtensionJSON),
+				}
+				if route.CertID != nil {
+					routeMeta.CertID = *route.CertID
+				}
+				for _, backend := range backendsByRoute[route.ID] {
+					routeMeta.Backends = append(routeMeta.Backends, models.GatewayRouteBackendMetadata{
+						BackendAppSlug: backendAppSlugForMetadata(appCtx, backend.BackendAppID),
+						BackendPort:    backend.BackendPort,
+						Weight:         backend.Weight,
+					})
+				}
+				gatewayMeta.Routes = append(gatewayMeta.Routes, routeMeta)
+			}
+			meta.Gateways = append(meta.Gateways, gatewayMeta)
 		}
 
 		for _, cf := range appCtx.ConfigFiles {
@@ -374,9 +453,27 @@ func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMeta
 	return metadatas
 }
 
-func derefCertString(v *string) string {
-	if v == nil {
+func gatewayJSONToMetadata[T any](blob entities.JSONBlob) *T {
+	if len(blob) == 0 {
+		return nil
+	}
+	var decoded T
+	if err := json.Unmarshal(blob, &decoded); err != nil {
+		return nil
+	}
+	return &decoded
+}
+
+func backendAppSlugForMetadata(appCtx *models.AppContext, backendAppID string) string {
+	if appCtx == nil || backendAppID == "" {
 		return ""
 	}
-	return *v
+	if backendAppID == appCtx.App.ID {
+		return appCtx.App.Slug
+	}
+	var backend entities.App
+	if err := db.DB.Select("slug").Where("id = ?", backendAppID).First(&backend).Error; err != nil {
+		return ""
+	}
+	return backend.Slug
 }

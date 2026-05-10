@@ -318,3 +318,32 @@ func TestUpdateAppGatewayReplacesRoutesAndBackends(t *testing.T) {
 	require.Len(t, backends, 1)
 	assert.Equal(t, routes[0].ID, backends[0].RouteID)
 }
+
+func TestCertificateInUseChecksGatewayRoutes(t *testing.T) {
+	setupAppGatewayServiceTestDB(t)
+	seedAppGatewayServiceApp(t)
+
+	require.NoError(t, db.DB.Create(&entities.AppGateway{
+		ID:          "gateway-1",
+		AppID:       "app-1",
+		Port:        8080,
+		Protocol:    "http",
+		ServiceType: "ClusterIP",
+	}).Error)
+	certID := "cert-1"
+	require.NoError(t, db.DB.Create(&entities.AppGatewayHTTPRoute{
+		ID:               "route-1",
+		AppGatewayID:     "gateway-1",
+		Host:             "secure.example.com",
+		ListenerProtocol: "https",
+		Path:             "/",
+		PathMatchType:    "PathPrefix",
+		Enabled:          true,
+		CertID:           &certID,
+	}).Error)
+
+	inUse, err := certificateInUse("cert-1")
+
+	require.NoError(t, err)
+	assert.True(t, inUse)
+}

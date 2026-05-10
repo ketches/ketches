@@ -38,7 +38,22 @@ func TestConvertAppsToMetadata(t *testing.T) {
 				{Key: "ENV_KEY", Value: "ENV_VALUE"},
 			},
 			Gateways: []entities.AppGateway{
-				{Port: 80, Protocol: "TCP", GatewayPort: 8080, Exposed: true, Domain: "example.com", Path: "/", CertID: strPtr("cert-id")},
+				{ID: "gateway-1", Port: 80, Protocol: "http", GatewayPort: 8080, ServiceType: "ClusterIP"},
+			},
+			GatewayRoutes: []entities.AppGatewayHTTPRoute{
+				{
+					ID:               "route-1",
+					AppGatewayID:     "gateway-1",
+					Host:             "example.com",
+					ListenerProtocol: "https",
+					Path:             "/",
+					PathMatchType:    "PathPrefix",
+					Enabled:          true,
+					CertID:           strPtr("cert-id"),
+				},
+			},
+			GatewayBackends: []entities.AppGatewayHTTPRouteBackend{
+				{ID: "backend-1", RouteID: "route-1", BackendAppID: "", BackendPort: 80, Weight: 100},
 			},
 			ConfigFiles: []entities.AppConfigFile{
 				{Slug: "config", MountPath: "/config", Content: "data", FileMode: "0644"},
@@ -87,10 +102,12 @@ func TestConvertAppsToMetadata(t *testing.T) {
 
 	assert.Len(t, meta.Gateways, 1)
 	assert.Equal(t, 80, meta.Gateways[0].Port)
-	assert.Equal(t, "TCP", meta.Gateways[0].Protocol)
+	assert.Equal(t, "http", meta.Gateways[0].Protocol)
 	assert.Equal(t, 8080, meta.Gateways[0].GatewayPort)
-	assert.Equal(t, true, meta.Gateways[0].Exposed)
-	assert.Equal(t, "example.com", meta.Gateways[0].Domain)
+	require.Len(t, meta.Gateways[0].Routes, 1)
+	assert.Equal(t, true, meta.Gateways[0].Routes[0].Enabled)
+	assert.Equal(t, "example.com", meta.Gateways[0].Routes[0].Host)
+	assert.Equal(t, "https", meta.Gateways[0].Routes[0].ListenerProtocol)
 
 	assert.Len(t, meta.ConfigFiles, 1)
 	assert.Equal(t, "config", meta.ConfigFiles[0].Slug)

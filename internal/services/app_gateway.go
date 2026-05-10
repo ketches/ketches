@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
@@ -353,7 +354,7 @@ func resolveBackendAppID(appCtx *models.AppContext, backendAppSlug string) (stri
 	err := db.DB.Where("env_id = ? AND slug = ?", appCtx.App.EnvID, strings.TrimSpace(backendAppSlug)).First(&backend).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", fmt.Errorf("backend app %q was not found in this environment", backendAppSlug)
+			return "", app.NewErrorf("backend app %q was not found in this environment", backendAppSlug)
 		}
 		return "", err
 	}
@@ -382,7 +383,7 @@ func parseOptionalDuration(value, label string) (time.Duration, bool, error) {
 	}
 	duration, err := time.ParseDuration(value)
 	if err != nil {
-		return 0, false, fmt.Errorf("%s must be a valid duration", label)
+		return 0, false, app.NewErrorf("%s must be a valid duration", label)
 	}
 	return duration, true, nil
 }
@@ -445,7 +446,7 @@ func validateHTTPSRouteCertificateConflict(appCtx *models.AppContext, host, cert
 	}
 	for _, existingCertID := range certIDs {
 		if strings.TrimSpace(existingCertID) != strings.TrimSpace(certID) {
-			return fmt.Errorf("HTTPS host %q is already configured with a different certificate", host)
+			return app.NewErrorf("HTTPS host %q is already configured with a different certificate", host)
 		}
 	}
 	return nil
