@@ -2,11 +2,13 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
 
 	"github.com/ketches/ketches/internal/app"
+	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
@@ -14,6 +16,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayclient "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+)
+
+var (
+	clusterHasGatewayAPICRDsForSync = ClusterHasGatewayAPICRDs
+	ensureSharedGatewayForSync      = EnsureSharedGateway
 )
 
 // SyncGatewaysToK8s synchronizes app gateways to Kubernetes cluster
@@ -46,6 +55,12 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 		}
 	}
 
+	routesByGateway := groupGatewayRoutesForSync(appCtx.GatewayRoutes)
+	backendsByRoute := groupGatewayBackendsForSync(appCtx.GatewayBackends)
+	hasEnabledHTTPRoute := appContextHasEnabledHTTPRoute(appCtx)
+	var gwClientReady bool
+	var gwClientErr error
+
 	// Sync per-gateway NodePort Services and Gateway API routes
 	for _, gateway := range appCtx.Gateways {
 		npSvcName := fmt.Sprintf("%s-np-%d", appCtx.App.Slug, gateway.Port)
@@ -72,19 +87,13 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 			}
 		}
 
-		protocol := gateway.Protocol
-		if gateway.Exposed {
-			// Verify that Gateway API CRDs are installed before attempting to create an HTTPRoute.
-			hasGWAPI, err := ClusterHasGatewayAPICRDs(appCtx.EnvContext.Env.ClusterID)
-			if err != nil {
-				return err
+		if strings.EqualFold(gateway.Protocol, "http") && len(routesByGateway[gateway.ID]) > 0 {
+			if !gwClientReady {
+				gwClientErr = ensureGatewayAPIReadyForRouteSync(ctx, appCtx)
+				gwClientReady = true
 			}
-			if !hasGWAPI {
-				return app.NewErrorf("Gateway API CRDs are not installed on cluster %s", appCtx.EnvContext.Env.ClusterID)
-			}
-			// Ensure the shared Gateway exists before creating HTTPRoute.
-			if err := EnsureSharedGateway(ctx, appCtx.EnvContext.Env.ClusterID); err != nil {
-				return err
+			if gwClientErr != nil {
+				return gwClientErr
 			}
 
 			gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID)
@@ -92,52 +101,44 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 				return err
 			}
 
-			if protocol == "http" || protocol == "https" {
-				// Create/Update HTTPRoute using metadata builder.
-				route := metadata.BuildHTTPRoute(gateway)
-				if route != nil {
-					if got, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Get(ctx, route.Name, metav1.GetOptions{}); err != nil {
-						if errors.IsNotFound(err) {
-							if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Create(ctx, route, metav1.CreateOptions{}); err != nil {
-								return err
-							}
-						} else {
-							return err
-						}
-					} else {
-						route.ResourceVersion = got.ResourceVersion
-						if _, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Update(ctx, route, metav1.UpdateOptions{}); err != nil {
-							return err
-						}
+			for _, routeRow := range routesByGateway[gateway.ID] {
+				routeName := buildGatewayHTTPRouteName(appCtx.App.Slug, routeRow.ID)
+				if !routeRow.Enabled {
+					if err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, routeName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+						return err
 					}
-
-					legacyRouteName := buildLegacyAppGatewayHTTPRouteName(appCtx.App.Slug, gateway.Port)
-					if legacyRouteName != route.Name {
-						if err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Delete(ctx, legacyRouteName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-							return err
-						}
-					}
+					continue
 				}
-			}
-		} else if protocol == "http" || protocol == "https" {
-			gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID)
-			if err != nil {
-				return err
-			}
-			routeName := buildAppGatewayHTTPRouteName(appCtx.App.Slug, gateway)
-			if err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, routeName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-				return err
-			}
-			legacyRouteName := buildLegacyAppGatewayHTTPRouteName(appCtx.App.Slug, gateway.Port)
-			if legacyRouteName != routeName {
-				if err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, legacyRouteName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+
+				route := BuildGatewayHTTPRoute(GatewayHTTPRouteBuildInput{
+					AppSlug:   appCtx.App.Slug,
+					AppID:     appCtx.App.ID,
+					EnvID:     appCtx.EnvContext.Env.ID,
+					Namespace: appCtx.EnvContext.Env.ClusterNamespace,
+					GatewayID: gateway.ID,
+					RouteID:   routeRow.ID,
+					Route:     routeEntityToRouteSpecForSync(routeRow),
+					Backends:  buildGatewayHTTPBackendInputsForSync(appCtx, gateway.Port, backendsByRoute[routeRow.ID]),
+				})
+				if route == nil {
+					continue
+				}
+				if err := applyHTTPRoute(ctx, gwClient, route); err != nil {
 					return err
 				}
+			}
+
+			if err := deleteLegacyHTTPRouteNames(ctx, gwClient, appCtx, gateway); err != nil {
+				return err
 			}
 		}
 	}
 
-	if err := cleanupStaleHTTPRoutes(ctx, appCtx); err != nil {
+	if hasEnabledHTTPRoute {
+		if err := cleanupStaleHTTPRoutes(ctx, appCtx); err != nil {
+			return err
+		}
+	} else if err := cleanupStaleHTTPRoutes(ctx, appCtx); err != nil {
 		return err
 	}
 
@@ -156,19 +157,18 @@ func DeleteGatewayFromK8s(ctx context.Context, appCtx *models.AppContext, gatewa
 	}
 
 	protocol := gateway.Protocol
-	if protocol == "http" || protocol == "https" {
-		// Delete HTTPRoute.
-		routeName := buildAppGatewayHTTPRouteName(appCtx.App.Slug, *gateway)
-		err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, routeName, metav1.DeleteOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
-		legacyRouteName := buildLegacyAppGatewayHTTPRouteName(appCtx.App.Slug, gateway.Port)
-		if legacyRouteName != routeName {
-			err = gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, legacyRouteName, metav1.DeleteOptions{})
-			if err != nil && !errors.IsNotFound(err) {
+	if protocol == "http" {
+		for _, route := range appCtx.GatewayRoutes {
+			if route.AppGatewayID != gateway.ID {
+				continue
+			}
+			routeName := buildGatewayHTTPRouteName(appCtx.App.Slug, route.ID)
+			if err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, routeName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 				return err
 			}
+		}
+		if err := deleteLegacyHTTPRouteNames(ctx, gwClient, appCtx, *gateway); err != nil {
+			return err
 		}
 	}
 
@@ -279,6 +279,44 @@ func ReadNodePortsFromK8s(ctx context.Context, appCtx *models.AppContext) (map[i
 	return result, nil
 }
 
+func ensureGatewayAPIReadyForRouteSync(ctx context.Context, appCtx *models.AppContext) error {
+	hasGWAPI, err := clusterHasGatewayAPICRDsForSync(appCtx.EnvContext.Env.ClusterID)
+	if err != nil {
+		return err
+	}
+	if !hasGWAPI {
+		return app.NewErrorf("Gateway API CRDs are not installed on cluster %s", appCtx.EnvContext.Env.ClusterID)
+	}
+	return ensureSharedGatewayForSync(ctx, appCtx.EnvContext.Env.ClusterID)
+}
+
+func applyHTTPRoute(ctx context.Context, gwClient gatewayclient.Interface, route *gatewayv1.HTTPRoute) error {
+	if got, err := gwClient.GatewayV1().HTTPRoutes(route.Namespace).Get(ctx, route.Name, metav1.GetOptions{}); err != nil {
+		if errors.IsNotFound(err) {
+			_, err = gwClient.GatewayV1().HTTPRoutes(route.Namespace).Create(ctx, route, metav1.CreateOptions{})
+			return err
+		}
+		return err
+	} else {
+		route.ResourceVersion = got.ResourceVersion
+		_, err = gwClient.GatewayV1().HTTPRoutes(route.Namespace).Update(ctx, route, metav1.UpdateOptions{})
+		return err
+	}
+}
+
+func deleteLegacyHTTPRouteNames(ctx context.Context, gwClient gatewayclient.Interface, appCtx *models.AppContext, gateway entities.AppGateway) error {
+	names := []string{
+		buildLegacyAppGatewayHTTPRouteName(appCtx.App.Slug, gateway.Port),
+		buildAppGatewayHTTPRouteName(appCtx.App.Slug, gateway),
+	}
+	for _, name := range names {
+		if err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
+}
+
 func cleanupStaleHTTPRoutes(ctx context.Context, appCtx *models.AppContext) error {
 	gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
@@ -296,14 +334,11 @@ func cleanupStaleHTTPRoutes(ctx context.Context, appCtx *models.AppContext) erro
 	}
 
 	desiredNames := make(map[string]struct{})
-	for _, gateway := range appCtx.Gateways {
-		if !gateway.Exposed {
+	for _, route := range appCtx.GatewayRoutes {
+		if !route.Enabled {
 			continue
 		}
-		if !strings.EqualFold(gateway.Protocol, "http") && !strings.EqualFold(gateway.Protocol, "https") {
-			continue
-		}
-		desiredNames[buildAppGatewayHTTPRouteName(appCtx.App.Slug, gateway)] = struct{}{}
+		desiredNames[buildGatewayHTTPRouteName(appCtx.App.Slug, route.ID)] = struct{}{}
 	}
 
 	for _, route := range routes.Items {
@@ -316,4 +351,93 @@ func cleanupStaleHTTPRoutes(ctx context.Context, appCtx *models.AppContext) erro
 	}
 
 	return nil
+}
+
+func appContextHasEnabledHTTPRoute(appCtx *models.AppContext) bool {
+	for _, route := range appCtx.GatewayRoutes {
+		if route.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
+func groupGatewayRoutesForSync(routes []entities.AppGatewayHTTPRoute) map[string][]entities.AppGatewayHTTPRoute {
+	grouped := make(map[string][]entities.AppGatewayHTTPRoute)
+	for _, route := range routes {
+		grouped[route.AppGatewayID] = append(grouped[route.AppGatewayID], route)
+	}
+	return grouped
+}
+
+func groupGatewayBackendsForSync(backends []entities.AppGatewayHTTPRouteBackend) map[string][]entities.AppGatewayHTTPRouteBackend {
+	grouped := make(map[string][]entities.AppGatewayHTTPRouteBackend)
+	for _, backend := range backends {
+		grouped[backend.RouteID] = append(grouped[backend.RouteID], backend)
+	}
+	return grouped
+}
+
+func routeEntityToRouteSpecForSync(route entities.AppGatewayHTTPRoute) models.GatewayRouteSpec {
+	spec := models.GatewayRouteSpec{
+		ID:               route.ID,
+		GatewayID:        route.AppGatewayID,
+		Host:             route.Host,
+		ListenerProtocol: route.ListenerProtocol,
+		Path:             route.Path,
+		PathMatchType:    route.PathMatchType,
+		Enabled:          route.Enabled,
+		SortOrder:        route.SortOrder,
+	}
+	if route.CertID != nil {
+		spec.CertID = *route.CertID
+	}
+	decodeGatewaySyncJSON(route.MatchesJSON, &spec.Matches)
+	decodeGatewaySyncJSON(route.FiltersJSON, &spec.Filters)
+	decodeGatewaySyncJSON(route.TimeoutsJSON, &spec.Timeouts)
+	decodeGatewaySyncJSON(route.RetryJSON, &spec.Retry)
+	decodeGatewaySyncJSON(route.SessionPersistenceJSON, &spec.SessionPersistence)
+	decodeGatewaySyncJSON(route.ExtensionJSON, &spec.Extension)
+	return spec
+}
+
+func decodeGatewaySyncJSON[T any](blob entities.JSONBlob, target **T) {
+	if len(blob) == 0 {
+		return
+	}
+	var decoded T
+	if err := json.Unmarshal(blob, &decoded); err == nil {
+		*target = &decoded
+	}
+}
+
+func buildGatewayHTTPBackendInputsForSync(appCtx *models.AppContext, gatewayPort int, backends []entities.AppGatewayHTTPRouteBackend) []GatewayHTTPBackendBuildInput {
+	if len(backends) == 0 {
+		return []GatewayHTTPBackendBuildInput{{
+			ServiceName: appCtx.App.Slug,
+			Port:        gatewayPort,
+			Weight:      1,
+		}}
+	}
+	result := make([]GatewayHTTPBackendBuildInput, 0, len(backends))
+	for _, backend := range backends {
+		serviceName := backendServiceNameForSync(appCtx, backend.BackendAppID)
+		result = append(result, GatewayHTTPBackendBuildInput{
+			ServiceName: serviceName,
+			Port:        backend.BackendPort,
+			Weight:      int32(backend.Weight),
+		})
+	}
+	return result
+}
+
+func backendServiceNameForSync(appCtx *models.AppContext, backendAppID string) string {
+	if backendAppID == "" || backendAppID == appCtx.App.ID {
+		return appCtx.App.Slug
+	}
+	var backend entities.App
+	if err := db.DB.Select("slug").Where("id = ?", backendAppID).First(&backend).Error; err == nil && strings.TrimSpace(backend.Slug) != "" {
+		return backend.Slug
+	}
+	return appCtx.App.Slug
 }

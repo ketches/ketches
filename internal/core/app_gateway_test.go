@@ -29,16 +29,26 @@ import (
 )
 
 func TestSyncGatewaysToK8s_DeletesStaleHTTPRoutes(t *testing.T) {
+	originalClusterHasGatewayAPICRDs := clusterHasGatewayAPICRDsForSync
+	originalEnsureSharedGateway := ensureSharedGatewayForSync
+	clusterHasGatewayAPICRDsForSync = func(string) (bool, error) { return true, nil }
+	ensureSharedGatewayForSync = func(context.Context, string) error { return nil }
+	t.Cleanup(func() {
+		clusterHasGatewayAPICRDsForSync = originalClusterHasGatewayAPICRDs
+		ensureSharedGatewayForSync = originalEnsureSharedGateway
+	})
+
 	clusterID := "cluster-sync-gateway"
 	namespace := "demo-env"
 	server := newGatewaySyncAPIServer()
 	server.addHTTPRoute(&gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo-app-8080-http",
+			Name:      "demo-app-route-stale",
 			Namespace: namespace,
 			Labels: map[string]string{
-				kube.LabelAppSlug:   "demo-app",
-				kube.LabelManagedBy: "true",
+				kube.LabelAppSlug:        "demo-app",
+				kube.LabelManagedBy:      "true",
+				kube.LabelGatewayRouteID: "route-stale",
 			},
 		},
 	})
@@ -73,6 +83,7 @@ func TestSyncGatewaysToK8s_DeletesStaleHTTPRoutes(t *testing.T) {
 		},
 		Gateways: []entities.AppGateway{
 			{
+				ID:          "gateway-1",
 				Port:        8080,
 				Protocol:    "tcp",
 				ServiceType: "ClusterIP",
@@ -85,6 +96,99 @@ func TestSyncGatewaysToK8s_DeletesStaleHTTPRoutes(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Empty(t, server.listHTTPRoutes(namespace))
+}
+
+func TestSyncGatewaysToK8s_CreatesHTTPRoutesFromRouteGraph(t *testing.T) {
+	originalClusterHasGatewayAPICRDs := clusterHasGatewayAPICRDsForSync
+	originalEnsureSharedGateway := ensureSharedGatewayForSync
+	clusterHasGatewayAPICRDsForSync = func(string) (bool, error) { return true, nil }
+	ensureSharedGatewayForSync = func(context.Context, string) error { return nil }
+	t.Cleanup(func() {
+		clusterHasGatewayAPICRDsForSync = originalClusterHasGatewayAPICRDs
+		ensureSharedGatewayForSync = originalEnsureSharedGateway
+	})
+
+	clusterID := "cluster-sync-routes"
+	namespace := "demo-env"
+	server := newGatewaySyncAPIServer()
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+
+	storeTestClusterClients(t, clusterID, httpServer)
+	defer kube.GlobalClusterStore.RemoveClient(clusterID)
+
+	appCtx := &models.AppContext{
+		App: entities.App{
+			Base: entities.Base{ID: "app-1"},
+			Slug: "demo-app",
+		},
+		EnvContext: models.EnvContext{
+			Env: entities.Env{
+				Base:             entities.Base{ID: "env-1"},
+				Slug:             "demo",
+				ClusterID:        clusterID,
+				ClusterNamespace: namespace,
+			},
+			Project: entities.Project{
+				Base: entities.Base{ID: "project-1"},
+				Slug: "proj",
+			},
+		},
+		Gateways: []entities.AppGateway{
+			{
+				ID:          "gateway-1",
+				Port:        8080,
+				Protocol:    "http",
+				ServiceType: "ClusterIP",
+			},
+		},
+		GatewayRoutes: []entities.AppGatewayHTTPRoute{
+			{
+				ID:               "route-http",
+				AppGatewayID:     "gateway-1",
+				Host:             "api.example.com",
+				ListenerProtocol: "http",
+				Path:             "/",
+				PathMatchType:    "PathPrefix",
+				Enabled:          true,
+			},
+			{
+				ID:               "route-https",
+				AppGatewayID:     "gateway-1",
+				Host:             "secure.example.com",
+				ListenerProtocol: "https",
+				Path:             "/secure",
+				PathMatchType:    "PathPrefix",
+				Enabled:          true,
+			},
+		},
+		GatewayBackends: []entities.AppGatewayHTTPRouteBackend{
+			{ID: "backend-http", RouteID: "route-http", BackendAppID: "app-1", BackendPort: 8080, Weight: 100},
+			{ID: "backend-https", RouteID: "route-https", BackendAppID: "app-1", BackendPort: 8080, Weight: 100},
+		},
+	}
+
+	err := SyncGatewaysToK8s(context.Background(), appCtx)
+	require.NoError(t, err)
+
+	routes := server.listHTTPRoutes(namespace)
+	require.Len(t, routes, 2)
+	routeByName := make(map[string]gatewayv1.HTTPRoute, len(routes))
+	for _, route := range routes {
+		routeByName[route.Name] = route
+	}
+
+	httpRoute := routeByName["demo-app-route-http"]
+	assert.Equal(t, "route-http", httpRoute.Labels[kube.LabelGatewayRouteID])
+	require.Len(t, httpRoute.Spec.ParentRefs, 1)
+	require.NotNil(t, httpRoute.Spec.ParentRefs[0].SectionName)
+	assert.Equal(t, gatewayv1.SectionName("http"), *httpRoute.Spec.ParentRefs[0].SectionName)
+
+	httpsRoute := routeByName["demo-app-route-https"]
+	assert.Equal(t, "route-https", httpsRoute.Labels[kube.LabelGatewayRouteID])
+	require.Len(t, httpsRoute.Spec.ParentRefs, 1)
+	require.NotNil(t, httpsRoute.Spec.ParentRefs[0].SectionName)
+	assert.Equal(t, buildSharedGatewayHTTPSListenerName("secure.example.com"), *httpsRoute.Spec.ParentRefs[0].SectionName)
 }
 
 type gatewaySyncAPIServer struct {
@@ -184,6 +288,30 @@ func (s *gatewaySyncAPIServer) handleHTTPRoutes(w http.ResponseWriter, r *http.R
 			return
 		}
 		writeJSON(w, route)
+	case http.MethodPost:
+		if !collection {
+			http.NotFound(w, r)
+			return
+		}
+		var route gatewayv1.HTTPRoute
+		if !requireRequestDecode(w, r, &route) {
+			return
+		}
+		s.mu.Lock()
+		s.httpRoutes[namespacedKey(namespace, route.Name)] = route.DeepCopy()
+		s.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(&route)
+	case http.MethodPut:
+		var route gatewayv1.HTTPRoute
+		if !requireRequestDecode(w, r, &route) {
+			return
+		}
+		s.mu.Lock()
+		s.httpRoutes[namespacedKey(namespace, name)] = route.DeepCopy()
+		s.mu.Unlock()
+		writeJSON(w, &route)
 	case http.MethodDelete:
 		s.mu.Lock()
 		delete(s.httpRoutes, namespacedKey(namespace, name))

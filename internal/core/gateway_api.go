@@ -281,11 +281,12 @@ func EnsureSharedGateway(ctx context.Context, clusterID string) error {
 
 func loadSharedGatewayHTTPSMaterial(clusterID string) ([]sharedGatewayHTTPSListener, []*corev1.Secret, error) {
 	var bindings []clusterHTTPSGatewayBinding
-	err := db.DB.Table("app_gateways ag").
-		Select("ag.domain, ag.cert_id, a.env_id").
+	err := db.DB.Table("app_gateway_http_routes r").
+		Select("r.host AS domain, r.cert_id, a.env_id").
+		Joins("JOIN app_gateways ag ON ag.id = r.app_gateway_id").
 		Joins("JOIN apps a ON a.id = ag.app_id").
 		Joins("JOIN envs e ON e.id = a.env_id").
-		Where("e.cluster_id = ? AND ag.exposed = ? AND LOWER(ag.protocol) = ?", clusterID, true, "https").
+		Where("e.cluster_id = ? AND r.enabled = ? AND LOWER(r.listener_protocol) = ?", clusterID, true, "https").
 		Scan(&bindings).Error
 	if err != nil {
 		return nil, nil, err
