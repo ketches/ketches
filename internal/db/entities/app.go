@@ -70,6 +70,36 @@ type AppGateway struct {
 	CertID      *string   `gorm:"type:varchar(36)"`
 }
 
+type AppGatewayHTTPRoute struct {
+	ID                     string    `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt              time.Time `gorm:"autoCreateTime"`
+	UpdatedAt              time.Time `gorm:"autoUpdateTime"`
+	AppGatewayID           string    `gorm:"type:varchar(36);not null;index;uniqueIndex:idx_gateway_route_unique,priority:1"`
+	Host                   string    `gorm:"type:varchar(256);not null;uniqueIndex:idx_gateway_route_unique,priority:2"`
+	ListenerProtocol       string    `gorm:"type:varchar(16);not null;uniqueIndex:idx_gateway_route_unique,priority:3"`
+	Path                   string    `gorm:"type:varchar(256);default:'/'"`
+	PathMatchType          string    `gorm:"type:varchar(32);default:'PathPrefix'"`
+	Enabled                bool      `gorm:"type:bool;default:true"`
+	CertID                 *string   `gorm:"type:varchar(36);index"`
+	MatchesJSON            JSONBlob  `gorm:"type:json"`
+	FiltersJSON            JSONBlob  `gorm:"type:json"`
+	TimeoutsJSON           JSONBlob  `gorm:"type:json"`
+	RetryJSON              JSONBlob  `gorm:"type:json"`
+	SessionPersistenceJSON JSONBlob  `gorm:"type:json"`
+	ExtensionJSON          JSONBlob  `gorm:"type:json"`
+	SortOrder              int       `gorm:"type:int;default:0"`
+}
+
+type AppGatewayHTTPRouteBackend struct {
+	ID           string    `gorm:"type:varchar(36);primaryKey"`
+	CreatedAt    time.Time `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
+	RouteID      string    `gorm:"type:varchar(36);not null;index"`
+	BackendAppID string    `gorm:"type:varchar(36);not null;index"`
+	BackendPort  int       `gorm:"type:int;not null"`
+	Weight       int       `gorm:"type:int;default:1"`
+}
+
 type AppProbe struct {
 	ID                  string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt           time.Time `gorm:"autoCreateTime"`
