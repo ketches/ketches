@@ -279,18 +279,19 @@ ketches-platform/
 
 | 功能点 | 描述 | 优先级 |
 | ----- | ---- | ------ |
-| 网关列表 | 查看应用网关规则 | P0 |
-| 添加网关 | 创建网关入口（HTTP/HTTPS/TCP/UDP） | P0 |
-| 编辑网关 | 修改域名、端口、路径配置 | P1 |
-| 删除网关 | 删除网关规则 | P0 |
-| 暴露开关 | 切换网关启用/禁用状态 | P1 |
+| 网关列表 | 查看应用端口网关及其公开 HTTP 路由 | P0 |
+| 添加网关 | 创建应用端口网关（HTTP/TCP/UDP）并配置 HTTP 路由 | P0 |
+| 编辑网关 | 修改端口、服务类型、多域名路由、HTTPS 证书和路径配置 | P1 |
+| 删除网关 | 删除端口网关及其路由规则 | P0 |
+| 路由启停 | 切换单条 HTTP 路由启用/禁用状态 | P1 |
+| 高级路由 | 配置超时、请求头、Cookie 会话、请求体大小、KeepAlive、WebSocket 和后端权重 | P1 |
 
 **协议支持**：
 
-- HTTP
-- HTTPS（需配置证书）
-- TCP
-- UDP
+- 端口网关协议：`http`、`tcp`、`udp`
+- HTTP 路由监听协议：`http`、`https`
+- HTTPS 路由按域名选择证书，同一域名在同一集群内保持证书一致
+- 一个 HTTP 端口网关可配置多个域名/路径路由，每条路由可独立启停
 
 ##### 健康检查
 
@@ -474,6 +475,12 @@ User (用户)
                     │            │            │          │          │            │
                     ▼            ▼            ▼          ▼          ▼            ▼
               AppEnvVar    AppVolume   AppGateway   AppProbe  AppConfigFile  AppSchedulingRule
+                                      │
+                                 1:N  ▼
+                              AppGatewayHTTPRoute
+                                      │
+                                 1:N  ▼
+                           AppGatewayHTTPRouteBackend
 ```
 
 ### 5.2 实体属性概要
@@ -487,7 +494,9 @@ User (用户)
 | App | slug, displayName, appType, containerImage, replicas, status |
 | AppEnvVar | key, value |
 | AppVolume | slug, mountPath, volumeType, capacity |
-| AppGateway | port, protocol, domain, path, exposed |
+| AppGateway | port, protocol, gatewayPort, serviceType, nodePort |
+| AppGatewayHTTPRoute | host, listenerProtocol, path, pathMatchType, enabled, certID, timeouts, filters, sessionPersistence, extension, sortOrder |
+| AppGatewayHTTPRouteBackend | routeID, backendAppID, backendPort, weight |
 | AppProbe | type, probeMode, enabled |
 | AppConfigFile | slug, mountPath, content, fileMode |
 | AppSchedulingRule | ruleType, nodeName, nodeSelector, tolerations |
@@ -554,7 +563,8 @@ User (用户)
 | Env | 环境，对应 K8s Namespace |
 | App | 应用，对应 Deployment/StatefulSet |
 | Instance | 应用实例，对应 Pod |
-| Gateway | 网关入口，对应 Ingress/Gateway API |
+| Gateway | 应用端口网关，对应 Kubernetes Service 和 Gateway API 路由 |
+| HTTPRoute | Gateway API HTTPRoute，用于描述域名、路径、监听协议、过滤器和后端权重 |
 | Probe | 健康检查探针 |
 
 ### B. 参考文档

@@ -329,8 +329,6 @@ type Project struct {
     Slug        string          `gorm:"type:varchar(64);uniqueIndex;not null"`
     Name string          `gorm:"type:varchar(128);not null"`
     Description string          `gorm:"type:text"`
-    Members     []ProjectMember `gorm:"foreignKey:ProjectID"`
-    Envs        []Env           `gorm:"foreignKey:ProjectID"`
 }
 
 type ProjectMember struct {
@@ -338,7 +336,6 @@ type ProjectMember struct {
     ProjectID   string `gorm:"type:varchar(36);index;not null"`
     UserID      string `gorm:"type:varchar(36);index;not null"`
     ProjectRole string `gorm:"type:varchar(16);not null"` // owner, developer, viewer
-    User        User   `gorm:"foreignKey:UserID"`
 }
 ```
 
@@ -356,9 +353,6 @@ type Env struct {
     ProjectID        string `gorm:"type:varchar(36);index;not null"`
     ClusterID        string `gorm:"type:varchar(36);index;not null"`
     ClusterNamespace string `gorm:"type:varchar(64);not null"` // K8s Namespace
-    Project          Project `gorm:"foreignKey:ProjectID"`
-    Cluster          Cluster `gorm:"foreignKey:ClusterID"`
-    Apps             []App   `gorm:"foreignKey:EnvID"`
 }
 ```
 
@@ -393,14 +387,6 @@ type App struct {
     Edition       string `gorm:"type:varchar(36)"`
     ActualEdition string `gorm:"type:varchar(36)"`
     
-    // Relations
-    Env            Env                 `gorm:"foreignKey:EnvID"`
-    EnvVars        []AppEnvVar         `gorm:"foreignKey:AppID"`
-    Volumes        []AppVolume         `gorm:"foreignKey:AppID"`
-    Gateways       []AppGateway        `gorm:"foreignKey:AppID"`
-    Probes         []AppProbe          `gorm:"foreignKey:AppID"`
-    ConfigFiles    []AppConfigFile     `gorm:"foreignKey:AppID"`
-    SchedulingRule *AppSchedulingRule  `gorm:"foreignKey:AppID"`
 }
 
 type AppEnvVar struct {
@@ -427,12 +413,36 @@ type AppGateway struct {
     Base
     AppID       string `gorm:"type:varchar(36);index;not null"`
     Port        int    `gorm:"type:int;not null"`
-    Protocol    string `gorm:"type:varchar(16);not null"` // http, https, tcp, udp
-    Domain      string `gorm:"type:varchar(256)"`
-    Path        string `gorm:"type:varchar(256);default:'/'"`
+    Protocol    string `gorm:"type:varchar(16);not null"` // http, tcp, udp
     GatewayPort int    `gorm:"type:int"`
-    Exposed     bool   `gorm:"type:bool;default:false"`
-    CertID      string `gorm:"type:varchar(36)"`
+    ServiceType string `gorm:"type:varchar(32);default:'ClusterIP'"`
+    NodePort    int    `gorm:"type:int"`
+}
+
+type AppGatewayHTTPRoute struct {
+    Base
+    AppGatewayID           string   `gorm:"type:varchar(36);index;not null"`
+    Host                   string   `gorm:"type:varchar(256);not null"`
+    ListenerProtocol       string   `gorm:"type:varchar(16);not null"` // http, https
+    Path                   string   `gorm:"type:varchar(256);default:'/'"`
+    PathMatchType          string   `gorm:"type:varchar(32);default:'PathPrefix'"`
+    Enabled                bool     `gorm:"type:bool;default:true"`
+    CertID                 *string  `gorm:"type:varchar(36);index"`
+    MatchesJSON            JSONBlob `gorm:"type:json"`
+    FiltersJSON            JSONBlob `gorm:"type:json"`
+    TimeoutsJSON           JSONBlob `gorm:"type:json"`
+    RetryJSON              JSONBlob `gorm:"type:json"`
+    SessionPersistenceJSON JSONBlob `gorm:"type:json"`
+    ExtensionJSON          JSONBlob `gorm:"type:json"`
+    SortOrder              int      `gorm:"type:int;default:0"`
+}
+
+type AppGatewayHTTPRouteBackend struct {
+    Base
+    RouteID      string `gorm:"type:varchar(36);index;not null"`
+    BackendAppID string `gorm:"type:varchar(36);index;not null"`
+    BackendPort  int    `gorm:"type:int;not null"`
+    Weight       int    `gorm:"type:int;default:1"`
 }
 
 type AppProbe struct {
@@ -471,6 +481,12 @@ type AppSchedulingRule struct {
     Tolerations  string `gorm:"type:text"` // JSON array of tolerations
 }
 ```
+
+实体设计约束：
+
+- 数据库迁移不创建物理外键；
+- GORM 实体只保留标量 ID 字段，不使用 association tags；
+- 需要关系数据时，通过 service/query DTO 显式查询并组装。
 
 ### 3.3 API 设计
 
@@ -692,56 +708,31 @@ func (s *ClusterStore) RemoveClient(clusterID string) {
 #### 3.4.2 应用部署核心逻辑
 
 ```go
-// core/apply_resource.go
+// core/app_gateway.go
 package core
 
-func ApplyApp(ctx context.Context, app *entities.App, cluster *entities.Cluster) error {
-    // 1. 构建应用元数据
-    metadata := NewAppMetadataBuilder(app).
-        WithEnvVars().
-        WithVolumes().
-        WithConfigFiles().
-        WithProbes().
-        WithSchedulingRules().
-        Build()
-    
-    // 2. 生成 Kubernetes 资源
+func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
     resources := []runtime.Object{}
-    
-    // Namespace
-    resources = append(resources, metadata.BuildNamespace())
-    
-    // ConfigMap (if config files exist)
-    if len(app.ConfigFiles) > 0 {
-        resources = append(resources, metadata.BuildConfigMap())
+
+    // Build one Service per application port gateway.
+    for _, gateway := range appCtx.Gateways {
+        resources = append(resources, BuildGatewayService(appCtx, gateway))
     }
-    
-    // PVC (if volumes exist)
-    for _, vol := range app.Volumes {
-        if vol.VolumeType == "pvc" {
-            resources = append(resources, metadata.BuildPVC(vol))
+
+    // Build one HTTPRoute per enabled public HTTP route.
+    backendsByRoute := groupGatewayBackends(appCtx.GatewayBackends)
+    for _, route := range appCtx.GatewayRoutes {
+        if !route.Enabled {
+            continue
         }
+        resources = append(resources, BuildGatewayHTTPRoute(GatewayHTTPRouteBuildInput{
+            App:      appCtx.App,
+            Route:    route,
+            Backends: backendsByRoute[route.ID],
+        }))
     }
-    
-    // Deployment or StatefulSet
-    if app.AppType == "Deployment" {
-        resources = append(resources, metadata.BuildDeployment())
-    } else {
-        resources = append(resources, metadata.BuildStatefulSet())
-    }
-    
-    // Service
-    resources = append(resources, metadata.BuildService())
-    
-    // Gateway (if gateways exist)
-    for _, gw := range app.Gateways {
-        if gw.Exposed {
-            resources = append(resources, metadata.BuildHTTPRoute(gw))
-        }
-    }
-    
-    // 3. 应用资源到集群
-    client, err := kube.GetClient(cluster.ID)
+
+    client, err := kube.GetClient(appCtx.EnvContext.Cluster.ID)
     if err != nil {
         return err
     }
