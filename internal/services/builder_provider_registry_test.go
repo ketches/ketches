@@ -27,12 +27,12 @@ func TestLoadBuilderProviderRegistry(t *testing.T) {
 		assert.Equal(t, "gpt-5.4-mini", resolved.ModelProfile.Model)
 	})
 
-	t.Run("preserves legacy single-provider env tuple as the default registry path", func(t *testing.T) {
+	t.Run("loads single-provider env config as the default registry path", func(t *testing.T) {
 		registry, err := loadBuilderProviderRegistry(app.AppConfig{
 			BuilderDefaultProviderKey:     "default",
 			BuilderDefaultModelProfileKey: "builder-default",
-			BuilderAgentBaseURL:           "https://legacy.example.com",
-			BuilderAgentAPIKey:            "legacy-secret",
+			BuilderAgentBaseURL:           "https://builder.example.com",
+			BuilderAgentAPIKey:            "builder-secret",
 			BuilderAgentModel:             "gpt-4.1",
 		})
 		require.NoError(t, err)
@@ -40,8 +40,8 @@ func TestLoadBuilderProviderRegistry(t *testing.T) {
 		resolved, err := registry.resolveBuilderProviderProfile("", "")
 		require.NoError(t, err)
 		assert.Equal(t, "default", resolved.Provider.Key)
-		assert.Equal(t, "https://legacy.example.com", resolved.Provider.BaseURL)
-		assert.Equal(t, "legacy-secret", resolved.Provider.APIKey)
+		assert.Equal(t, "https://builder.example.com", resolved.Provider.BaseURL)
+		assert.Equal(t, "builder-secret", resolved.Provider.APIKey)
 		assert.Equal(t, "builder-default", resolved.ModelProfile.Key)
 		assert.Equal(t, "gpt-4.1", resolved.ModelProfile.Model)
 	})

@@ -125,7 +125,6 @@ export default function SprintsPage({ projectId: propProjectId }: SprintsPagePro
       cell: ({ row }) => (
         <InlineStatusEditor
           currentStatus={row.original.status}
-          entityType="sprint"
           statusOptions={SprintStatusOptions}
           onStatusChange={(status) => updateSprintStatusMutation.mutate({ sprint: row.original, status })}
         />

@@ -87,7 +87,6 @@ func TestSyncGatewaysToK8s_DeletesStaleHTTPRoutes(t *testing.T) {
 				Port:        8080,
 				Protocol:    "tcp",
 				ServiceType: "ClusterIP",
-				Exposed:     false,
 			},
 		},
 	}

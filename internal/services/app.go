@@ -339,19 +339,6 @@ func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 
 var applyAppFn = ApplyApp
 
-func migrateLegacyRegistryPassword(application *entities.App) error {
-	encryptedPassword, migrated, err := secrets.EncryptStringIfNeeded(application.RegistryPassword)
-	if err != nil {
-		return app.WrapErrorf(err, "encrypt legacy registry password: %w", err)
-	}
-	if !migrated {
-		return nil
-	}
-
-	application.RegistryPassword = encryptedPassword
-	return nil
-}
-
 func UpdateAppBasic(ctx context.Context, appID string, req *models.UpdateBasicInfoRequest) (*models.AppContext, error) {
 	appCtx, err := GetAppContext(ctx, appID)
 	if err != nil {
@@ -385,7 +372,7 @@ func ListAppImageTags(ctx context.Context, appID string) (*models.AppImageTagsRe
 		return nil, app.WrapErrorf(err, "failed to parse image reference: %w", err)
 	}
 
-	plaintextRegistryPassword, _, err := secrets.DecryptStringCompat(appCtx.App.RegistryPassword)
+	plaintextRegistryPassword, err := secrets.DecryptString(appCtx.App.RegistryPassword)
 	if err != nil {
 		return nil, app.WrapErrorf(err, "failed to decrypt registry password: %w", err)
 	}
@@ -434,10 +421,6 @@ func UpdateAppImage(ctx context.Context, appID string, req *models.UpdateAppImag
 		}
 		appCtx.App.RegistryPassword = encryptedRegistryPassword
 	}
-	if err := migrateLegacyRegistryPassword(&appCtx.App); err != nil {
-		return nil, err
-	}
-
 	if err := db.DB.Save(&appCtx.App).Error; err != nil {
 		return nil, err
 	}
@@ -1445,7 +1428,7 @@ func GetAppTopologyResourceYaml(ctx context.Context, appID string, nodeID string
 // Errors are logged and silently skipped to avoid blocking app creation.
 
 func seedAppFromImageMetadata(ctx context.Context, application *entities.App) error {
-	plaintextRegistryPassword, _, err := secrets.DecryptStringCompat(application.RegistryPassword)
+	plaintextRegistryPassword, err := secrets.DecryptString(application.RegistryPassword)
 	if err != nil {
 		return app.WrapErrorf(err, "decrypt registry password: %w", err)
 	}

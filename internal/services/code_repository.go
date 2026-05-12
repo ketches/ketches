@@ -21,22 +21,6 @@ type CodeRepositoryWithProject struct {
 	Project entities.Project `gorm:"embedded;embeddedPrefix:project_"`
 }
 
-func migrateLegacyCodeRepositoryGitPassword(repo *entities.CodeRepository) error {
-	encryptedPassword, migrated, err := secrets.EncryptStringIfNeeded(repo.GitPassword)
-	if err != nil {
-		return app.WrapError("encrypt legacy git password", err)
-	}
-	if !migrated {
-		return nil
-	}
-
-	if err := db.DB.Model(&entities.CodeRepository{}).Where("id = ?", repo.ID).Update("git_password", encryptedPassword).Error; err != nil {
-		return err
-	}
-	repo.GitPassword = encryptedPassword
-	return nil
-}
-
 // RepoNameFromURL derives a short name from git repo URL (e.g. last path segment without .git).
 func RepoNameFromURL(gitRepoURL string) string {
 	u, err := url.Parse(gitRepoURL)
@@ -119,9 +103,6 @@ func GetCodeRepository(id string) (*CodeRepositoryWithProject, error) {
 		First(&repo).Error; err != nil {
 		return nil, err
 	}
-	if err := migrateLegacyCodeRepositoryGitPassword(&repo.CodeRepository); err != nil {
-		return nil, err
-	}
 	return &repo, nil
 }
 
@@ -196,8 +177,6 @@ func UpdateCodeRepository(id string, req *models.UpdateCodeRepositoryRequest) (*
 			return nil, app.WrapError("encrypt git password", err)
 		}
 		repo.GitPassword = encryptedPassword
-	} else if err := migrateLegacyCodeRepositoryGitPassword(&repo.CodeRepository); err != nil {
-		return nil, err
 	}
 	if err := db.DB.Save(&repo.CodeRepository).Error; err != nil {
 		return nil, err
@@ -377,7 +356,7 @@ func ListCodeRepositoryRefs(repoID string) ([]models.GitRef, error) {
 
 	repoURL := repo.GitRepoURL
 	if repo.GitUsername != "" && repo.GitPassword != "" {
-		plaintextGitPassword, _, err := secrets.DecryptStringCompat(repo.GitPassword)
+		plaintextGitPassword, err := secrets.DecryptString(repo.GitPassword)
 		if err != nil {
 			return nil, app.WrapError("decrypt git password", err)
 		}

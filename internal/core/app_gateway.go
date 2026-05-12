@@ -128,9 +128,6 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 				}
 			}
 
-			if err := deleteLegacyHTTPRouteNames(ctx, gwClient, appCtx, gateway); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -166,9 +163,6 @@ func DeleteGatewayFromK8s(ctx context.Context, appCtx *models.AppContext, gatewa
 			if err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, routeName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 				return err
 			}
-		}
-		if err := deleteLegacyHTTPRouteNames(ctx, gwClient, appCtx, *gateway); err != nil {
-			return err
 		}
 	}
 
@@ -302,19 +296,6 @@ func applyHTTPRoute(ctx context.Context, gwClient gatewayclient.Interface, route
 		_, err = gwClient.GatewayV1().HTTPRoutes(route.Namespace).Update(ctx, route, metav1.UpdateOptions{})
 		return err
 	}
-}
-
-func deleteLegacyHTTPRouteNames(ctx context.Context, gwClient gatewayclient.Interface, appCtx *models.AppContext, gateway entities.AppGateway) error {
-	names := []string{
-		buildLegacyAppGatewayHTTPRouteName(appCtx.App.Slug, gateway.Port),
-		buildAppGatewayHTTPRouteName(appCtx.App.Slug, gateway),
-	}
-	for _, name := range names {
-		if err := gwClient.GatewayV1().HTTPRoutes(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-			return err
-		}
-	}
-	return nil
 }
 
 func cleanupStaleHTTPRoutes(ctx context.Context, appCtx *models.AppContext) error {

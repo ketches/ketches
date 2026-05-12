@@ -185,7 +185,7 @@ func TestInstallClusterExtensionRejectsDuplicateInstallWithoutDeletedAtColumn(t 
 	assert.Contains(t, err.Error(), "extension already installed")
 }
 
-func TestRetryClusterExtensionNormalizesLegacyInvalidReleaseName(t *testing.T) {
+func TestRetryClusterExtensionNormalizesInvalidReleaseName(t *testing.T) {
 	setupExtensionServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.Extension{
@@ -195,7 +195,7 @@ func TestRetryClusterExtensionNormalizesLegacyInvalidReleaseName(t *testing.T) {
 		OCIUrl: "oci://example.com/envoy-gateway",
 	}).Error)
 	require.NoError(t, db.DB.Create(&entities.ClusterExtension{
-		ID:           "ce-legacy",
+		ID:           "ce-invalid-release",
 		ClusterID:    "cluster-1",
 		ExtensionID:  "ext-1",
 		Namespace:    "ketches-extensions",
@@ -215,7 +215,7 @@ func TestRetryClusterExtensionNormalizesLegacyInvalidReleaseName(t *testing.T) {
 		launchClusterExtensionInstall = originalLaunch
 	})
 
-	result, err := RetryClusterExtension("cluster-1", "ce-legacy", nil)
+	result, err := RetryClusterExtension("cluster-1", "ce-invalid-release", nil)
 	require.NoError(t, err)
 	assert.True(t, called)
 	require.NotNil(t, result)
@@ -223,7 +223,7 @@ func TestRetryClusterExtensionNormalizesLegacyInvalidReleaseName(t *testing.T) {
 	assert.Equal(t, "Envoy Gateway", result.Name)
 
 	var stored entities.ClusterExtension
-	require.NoError(t, db.DB.First(&stored, "id = ?", "ce-legacy").Error)
+	require.NoError(t, db.DB.First(&stored, "id = ?", "ce-invalid-release").Error)
 	assert.Equal(t, "envoy-gateway", stored.ReleaseName)
 	assert.Equal(t, "Envoy Gateway", stored.Name)
 }

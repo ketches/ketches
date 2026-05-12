@@ -46,12 +46,21 @@ func TestBuildDockerConfigJSONDecryptsEncryptedPassword(t *testing.T) {
 	assert.Equal(t, base64.StdEncoding.EncodeToString([]byte("demo:super-secret")), auth)
 }
 
-func TestResolveCodeRepositoryGitPasswordAllowsLegacyPlaintext(t *testing.T) {
+func TestResolveCodeRepositoryGitPasswordDecryptsEncryptedPassword(t *testing.T) {
+	originalConfig := app.Config
+	t.Cleanup(func() {
+		app.Config = originalConfig
+	})
+	app.Config.SecretEncryptionKey = "test-master-key"
+
+	encryptedPassword, err := secrets.EncryptString("git-secret")
+	require.NoError(t, err)
+
 	password, err := resolveCodeRepositoryGitPassword(&entities.CodeRepository{
 		GitUsername: "demo",
-		GitPassword: "legacy-plaintext-password",
+		GitPassword: encryptedPassword,
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "legacy-plaintext-password", password)
+	assert.Equal(t, "git-secret", password)
 }

@@ -47,9 +47,6 @@ func Auth() gin.HandlerFunc {
 		if tokenString == "" {
 			tokenString, _ = c.Cookie(app.AccessTokenCookieName)
 		}
-		if tokenString == "" {
-			tokenString, _ = c.Cookie(app.LegacyAuthCookieName)
-		}
 
 		claims, user, err := verifyToken(tokenString, app.TokenTypeAccess)
 		if err != nil {
@@ -67,9 +64,6 @@ func Auth() gin.HandlerFunc {
 func ForwardAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString, _ := c.Cookie(app.AccessTokenCookieName)
-		if tokenString == "" {
-			tokenString, _ = c.Cookie(app.LegacyAuthCookieName)
-		}
 
 		claims, user, err := verifyToken(tokenString, app.TokenTypeAccess)
 		if err != nil {

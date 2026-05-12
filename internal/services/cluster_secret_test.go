@@ -147,41 +147,6 @@ func TestInitClustersLoadsEncryptedKubeConfig(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestInitClustersHandlesLegacyPlaintextKubeConfig(t *testing.T) {
-	setupClusterSecretTestDB(t)
-
-	originalConfig := app.Config
-	t.Cleanup(func() {
-		app.Config = originalConfig
-	})
-	app.Config.SecretEncryptionKey = "test-master-key"
-
-	cluster := entities.Cluster{
-		Base:       entities.Base{ID: "cluster-legacy"},
-		Slug:       "legacy-cluster",
-		Name:       "Legacy Cluster",
-		KubeConfig: testClusterKubeConfig("https://127.0.0.1"),
-		Enabled:    true,
-	}
-	require.NoError(t, db.DB.Create(&cluster).Error)
-	t.Cleanup(func() {
-		kube.GlobalClusterStore.RemoveClient(cluster.ID)
-	})
-
-	require.NoError(t, InitClusters())
-
-	_, err := kube.GlobalClusterStore.GetClient(cluster.ID)
-	require.NoError(t, err)
-
-	var stored entities.Cluster
-	require.NoError(t, db.DB.First(&stored, "id = ?", cluster.ID).Error)
-	assert.Contains(t, stored.KubeConfig, "enc:v1:")
-
-	decryptedKubeConfig, err := secrets.DecryptString(stored.KubeConfig)
-	require.NoError(t, err)
-	assert.Equal(t, testClusterKubeConfig("https://127.0.0.1"), decryptedKubeConfig)
-}
-
 func TestInitClustersSkipsClustersWithUndecryptableKubeConfig(t *testing.T) {
 	setupClusterSecretTestDB(t)
 

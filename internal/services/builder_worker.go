@@ -48,22 +48,16 @@ const (
 const builderWorkerPhaseInstallingDependencies entities.BuilderRunPhase = "installing_dependencies"
 
 var (
-	ErrBuilderWorkerStartupPreflightBlocked = errors.New("builder worker startup preflight blocked")
-	GlobalBuilderWorker                     = NewBuilderWorker()
-	builderWorkerProvisionWorkspace         = ProvisionBuilderWorkspace
-	builderWorkerLoadConversationMessages   = loadBuilderConversationMessages
-	builderWorkerGenerateFiles              = GenerateBuilderFilesWithSelection
-	builderWorkerWriteAgentFiles            = writeBuilderAgentFiles
-	builderWorkerListWorkspaceFiles         = defaultBuilderWorkerListWorkspaceFiles
-	builderWorkerRunFrontendCommand         = defaultBuilderWorkerRunFrontendCommand
-	builderWorkerExecCommandWithContext     = execCommandWithContext
-	builderWorkerPublishOutputSnapshot      = PublishBuilderOutputSnapshot
+	GlobalBuilderWorker                   = NewBuilderWorker()
+	builderWorkerProvisionWorkspace       = ProvisionBuilderWorkspace
+	builderWorkerLoadConversationMessages = loadBuilderConversationMessages
+	builderWorkerGenerateFiles            = GenerateBuilderFilesWithSelection
+	builderWorkerWriteAgentFiles          = writeBuilderAgentFiles
+	builderWorkerListWorkspaceFiles       = defaultBuilderWorkerListWorkspaceFiles
+	builderWorkerRunFrontendCommand       = defaultBuilderWorkerRunFrontendCommand
+	builderWorkerExecCommandWithContext   = execCommandWithContext
+	builderWorkerPublishOutputSnapshot    = PublishBuilderOutputSnapshot
 )
-
-type BuilderWorkerStartupPreflightError struct {
-	LegacyExecutingRunCount int64
-	LegacyExecutingRunIDs   []string
-}
 
 type BuilderWorker struct {
 	mu sync.Mutex
@@ -107,14 +101,6 @@ func (w *BuilderWorker) Nudge() {
 	case w.nudgeCh <- struct{}{}:
 	default:
 	}
-}
-
-func (e *BuilderWorkerStartupPreflightError) Error() string {
-	return fmt.Sprintf("builder worker startup blocked by %d legacy executing runs", e.LegacyExecutingRunCount)
-}
-
-func (e *BuilderWorkerStartupPreflightError) Unwrap() error {
-	return ErrBuilderWorkerStartupPreflightBlocked
 }
 
 func (w *BuilderWorker) SetParentContext(ctx context.Context) {
@@ -1198,35 +1184,8 @@ func updateClaimedBuilderRunState(ctx context.Context, runID, claimToken string,
 }
 
 func PreflightBuilderWorkerStartup(ctx context.Context) error {
-	if err := NormalizeLegacyBuilderRunsForControlPlane(ctx); err != nil {
-		return err
-	}
-
-	runIDs, err := listLegacyExecutingBuilderRunIDs(db.DB.WithContext(ctx))
-	if err != nil {
-		return err
-	}
-	if len(runIDs) == 0 {
+	if ctx == nil {
 		return nil
 	}
-
-	return &BuilderWorkerStartupPreflightError{
-		LegacyExecutingRunCount: int64(len(runIDs)),
-		LegacyExecutingRunIDs:   runIDs,
-	}
-}
-
-func listLegacyExecutingBuilderRunIDs(tx *gorm.DB) ([]string, error) {
-	runIDs := []string{}
-	err := tx.Model(&entities.BuilderRun{}).
-		Where(
-			"status = ? AND (phase IS NULL OR claim_token IS NULL OR claimed_at IS NULL OR heartbeat_at IS NULL OR timeout_at IS NULL)",
-			entities.BuilderRunStatusExecuting,
-		).
-		Order("created_at ASC, id ASC").
-		Pluck("id", &runIDs).Error
-	if err != nil {
-		return nil, err
-	}
-	return runIDs, nil
+	return nil
 }

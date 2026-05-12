@@ -53,7 +53,7 @@ func seedBuilderRunEventTestRun(t *testing.T, runID string) *entities.BuilderRun
 		Phase:              &queuedPhase,
 		RequestedBy:        "user-1",
 		InstructionSummary: message.Content,
-		ExecutionLog:       "legacy independent execution log",
+		ExecutionLog:       "raw independent execution log",
 	}
 	require.NoError(t, db.DB.Create(run).Error)
 
@@ -89,7 +89,7 @@ func TestAppendBuilderRunEventSequence(t *testing.T) {
 	var persistedRun entities.BuilderRun
 	require.NoError(t, db.DB.First(&persistedRun, "id = ?", run.ID).Error)
 	assert.Equal(t, "[system] run started\n[agent] generating files...\n", persistedRun.ExecutionLog)
-	assert.NotContains(t, persistedRun.ExecutionLog, "legacy independent")
+	assert.NotContains(t, persistedRun.ExecutionLog, "raw independent")
 }
 
 func TestReplayBuilderRunEventsAfterCursor(t *testing.T) {

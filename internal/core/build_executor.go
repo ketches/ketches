@@ -356,36 +356,11 @@ func parseBuildArgs(raw string) []string {
 	}
 
 	var args []string
-
-	// Preferred format: JSON object, e.g. {"KEY":"VALUE"}
-	var jsonArgs map[string]string
-	if err := json.Unmarshal([]byte(raw), &jsonArgs); err == nil && len(jsonArgs) > 0 {
-		for k, v := range jsonArgs {
-			args = append(args, fmt.Sprintf("%s=%s", strings.TrimSpace(k), v))
-		}
-		return args
-	}
-
-	// Compatibility format: KEY1=val1,KEY2=val2 or newline separated pairs.
-	normalized := strings.ReplaceAll(raw, "\n", ",")
-	for _, part := range strings.Split(normalized, ",") {
+	for _, part := range strings.Split(raw, "\n") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
 		}
-
-		if strings.Contains(part, "=") {
-			key, val, _ := strings.Cut(part, "=")
-			key = strings.TrimSpace(key)
-			val = strings.TrimSpace(val)
-			if key == "" {
-				continue
-			}
-			args = append(args, fmt.Sprintf("%s=%s", key, val))
-			continue
-		}
-
-		// Allow KEY form so the builder can resolve from environment if present.
 		args = append(args, part)
 	}
 
@@ -398,7 +373,7 @@ func buildDockerConfigJSON(registry *entities.ContainerRegistry) ([]byte, error)
 		endpoint = "https://index.docker.io/v1/"
 	}
 
-	plaintextPassword, _, err := secrets.DecryptStringCompat(registry.Password)
+	plaintextPassword, err := secrets.DecryptString(registry.Password)
 	if err != nil {
 		return nil, app.WrapError("decrypt registry password", err)
 	}

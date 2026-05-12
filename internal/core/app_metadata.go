@@ -78,7 +78,7 @@ func (m *AppMetadata) BuildRegistrySecret() (*corev1.Secret, error) {
 		return nil, nil
 	}
 
-	plaintextRegistryPassword, _, err := secrets.DecryptStringCompat(m.AppContext.App.RegistryPassword)
+	plaintextRegistryPassword, err := secrets.DecryptString(m.AppContext.App.RegistryPassword)
 	if err != nil {
 		return nil, app.WrapErrorf(err, "decrypt registry password: %w", err)
 	}
@@ -554,71 +554,6 @@ func (m *AppMetadata) BuildHorizontalPodAutoscaler() *autoscalingv2.HorizontalPo
 	}
 
 	return hpa
-}
-
-func (m *AppMetadata) BuildHTTPRoute(gw entities.AppGateway) *gatewayv1.HTTPRoute {
-	if !gw.Exposed {
-		return nil
-	}
-
-	hostname := gatewayv1.Hostname(gw.Domain)
-	pathPrefix := gatewayv1.PathMatchPathPrefix
-	sectionName := gatewayv1.SectionName("http")
-	if strings.EqualFold(gw.Protocol, "https") {
-		sectionName = buildSharedGatewayHTTPSListenerName(gw.Domain)
-	}
-
-	route := &gatewayv1.HTTPRoute{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      buildAppGatewayHTTPRouteName(m.AppContext.App.Slug, gw),
-			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
-			Labels:    m.getLabels(),
-		},
-		Spec: gatewayv1.HTTPRouteSpec{
-			CommonRouteSpec: gatewayv1.CommonRouteSpec{
-				ParentRefs: []gatewayv1.ParentReference{
-					{
-						Name:        gatewayv1.ObjectName(SharedGatewayName()),
-						Namespace:   ptrGatewayNamespace(gatewayv1.Namespace(SharedGatewayNamespace())),
-						SectionName: ptrSectionName(sectionName),
-					},
-				},
-			},
-			Hostnames: []gatewayv1.Hostname{hostname},
-			Rules: []gatewayv1.HTTPRouteRule{
-				{
-					Matches: []gatewayv1.HTTPRouteMatch{
-						{
-							Path: &gatewayv1.HTTPPathMatch{
-								Type:  &pathPrefix,
-								Value: &gw.Path,
-							},
-						},
-					},
-					BackendRefs: []gatewayv1.HTTPBackendRef{
-						{
-							BackendRef: gatewayv1.BackendRef{
-								BackendObjectReference: gatewayv1.BackendObjectReference{
-									Name: gatewayv1.ObjectName(m.AppContext.App.Slug),
-									Port: ptrPort(gatewayv1.PortNumber(gw.Port)),
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	return route
-}
-
-func buildAppGatewayHTTPRouteName(appSlug string, gw entities.AppGateway) string {
-	return fmt.Sprintf("%s-%d-%s", appSlug, gw.Port, strings.ToLower(gw.Protocol))
-}
-
-func buildLegacyAppGatewayHTTPRouteName(appSlug string, port int) string {
-	return fmt.Sprintf("%s-%d", appSlug, port)
 }
 
 func ptrInt32(i int32) *int32 {

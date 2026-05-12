@@ -1,6 +1,7 @@
 package core
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -110,6 +111,19 @@ func TestBuildctlArgs_DoesNotInjectRuntimePlatformBuildArgs(t *testing.T) {
 				t.Fatalf("expected no implicit runtime platform build arg %q, got %v", prefix, args)
 			}
 		}
+	}
+}
+
+func TestParseBuildArgsUsesLineFormatOnly(t *testing.T) {
+	args := parseBuildArgs("APP_ENV=production\nEXPORT_ONLY\n COMMIT_SHA=abc123 ")
+	expected := []string{"APP_ENV=production", "EXPORT_ONLY", "COMMIT_SHA=abc123"}
+	if !reflect.DeepEqual(args, expected) {
+		t.Fatalf("expected %v, got %v", expected, args)
+	}
+
+	rawJSON := `{"APP_ENV":"production"}`
+	if got := parseBuildArgs(rawJSON); len(got) != 1 || got[0] != rawJSON {
+		t.Fatalf("expected raw JSON input to remain a single build arg, got %v", got)
 	}
 }
 

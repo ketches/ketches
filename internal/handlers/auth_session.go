@@ -175,19 +175,12 @@ func issueUserSession(c *gin.Context, user *entities.User, mustChangePassword bo
 		SameSite: http.SameSiteLaxMode,
 		Secure:   requestUsesHTTPS(c),
 	})
-	clearCookie(c, app.LegacyAuthCookieName, "/")
-	clearCookie(c, app.LegacyAuthCookieName, "/api")
-	clearCookie(c, app.LegacyAuthCookieName, "/forward")
-
 	return nil
 }
 
 func clearSessionCookies(c *gin.Context) {
 	clearCookie(c, app.AccessTokenCookieName, "/")
 	clearCookie(c, app.RefreshTokenCookieName, refreshTokenCookiePath)
-	clearCookie(c, app.LegacyAuthCookieName, "/")
-	clearCookie(c, app.LegacyAuthCookieName, "/api")
-	clearCookie(c, app.LegacyAuthCookieName, "/forward")
 	setCookie(c, &http.Cookie{
 		Name:     app.CSRFCookieName,
 		Value:    "",

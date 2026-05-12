@@ -167,16 +167,3 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
     </Dialog>
   )
 }
-
-// Keep the old GlobalSearch component for backward compatibility
-export function GlobalSearch() {
-  const [open, setOpen] = React.useState(false)
-
-  return (
-    <>
-      <GlobalSearchDialog open={open} onOpenChange={setOpen} />
-    </>
-  )
-}
-
-export default GlobalSearch

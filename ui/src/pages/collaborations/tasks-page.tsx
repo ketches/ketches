@@ -231,7 +231,6 @@ export default function TasksPage({ projectId: propProjectId, viewMode = "list",
       cell: ({ row }) => (
         <InlineStatusEditor
           currentStatus={row.original.status}
-          entityType="task"
           statusOptions={TaskStatusOptions}
           onStatusChange={(status) => transitionTaskMutation.mutate({ taskId: row.original.id, status })}
         />

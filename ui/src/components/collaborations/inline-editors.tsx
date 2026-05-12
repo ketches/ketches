@@ -70,11 +70,8 @@ function InlineComboboxEditor({ value, options, onValueChange, disabled }: Inlin
   )
 }
 
-// ── Backward-compatible wrappers ─────────────────────────────────────────────
-
 interface InlineStatusEditorProps {
   currentStatus: string
-  entityType: string
   statusOptions: CollabOption[]
   onStatusChange: (newStatus: string) => void
   disabled?: boolean

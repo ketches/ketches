@@ -21,22 +21,6 @@ import (
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
-func migrateLegacyContainerRegistryPassword(registry *entities.ContainerRegistry) error {
-	encryptedPassword, migrated, err := secrets.EncryptStringIfNeeded(registry.Password)
-	if err != nil {
-		return app.WrapError("encrypt legacy registry password", err)
-	}
-	if !migrated {
-		return nil
-	}
-
-	if err := db.DB.Model(&entities.ContainerRegistry{}).Where("id = ?", registry.ID).Update("password", encryptedPassword).Error; err != nil {
-		return err
-	}
-	registry.Password = encryptedPassword
-	return nil
-}
-
 func ListClusterRegistries(clusterID string, page, pageSize int, search string) (int64, []entities.ContainerRegistry, error) {
 	var registries []entities.ContainerRegistry
 	var total int64
@@ -98,9 +82,6 @@ func ListAvailableRegistries(clusterID, projectID string) ([]entities.ContainerR
 func GetContainerRegistry(id string) (*entities.ContainerRegistry, error) {
 	var registry entities.ContainerRegistry
 	if err := db.DB.First(&registry, "id = ?", id).Error; err != nil {
-		return nil, err
-	}
-	if err := migrateLegacyContainerRegistryPassword(&registry); err != nil {
 		return nil, err
 	}
 	return &registry, nil
@@ -209,8 +190,6 @@ func UpdateContainerRegistry(id string, req *models.UpdateContainerRegistryReque
 			return nil, err
 		}
 		registry.Password = encryptedPassword
-	} else if err := migrateLegacyContainerRegistryPassword(registry); err != nil {
-		return nil, err
 	}
 	if req.IsDefault != nil {
 		if *req.IsDefault {

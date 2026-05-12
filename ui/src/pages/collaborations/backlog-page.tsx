@@ -187,7 +187,6 @@ export default function BacklogPage({ projectId: propProjectId }: BacklogPagePro
       cell: ({ row }) => (
         <InlineStatusEditor
           currentStatus={row.original.status}
-          entityType="requirement"
           statusOptions={RequirementStatusOptions}
           onStatusChange={(status) => transitionRequirementMutation.mutate({ requirementId: row.original.id, status })}
         />

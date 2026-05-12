@@ -41,7 +41,7 @@ func loadBuilderExecutionCatalog(config app.AppConfig) (*builderExecutionCatalog
 		if err := json.Unmarshal([]byte(config.BuilderExecutionCatalogJSON), &catalogConfig); err != nil {
 			return nil, app.WrapErrorf(err, "parse builder execution catalog: %w", err)
 		}
-		return normalizeBuilderExecutionCatalog(catalogConfig, config.BuilderDefaultExecutorPolicyKey)
+		return normalizeBuilderExecutionCatalog(catalogConfig)
 	}
 
 	defaultImageProfile := builderImageProfileDefinition{
@@ -129,10 +129,10 @@ func loadBuilderExecutionCatalog(config app.AppConfig) (*builderExecutionCatalog
 		DefaultExecutorPolicyKey: defaultPolicyKey,
 	}
 
-	return normalizeBuilderExecutionCatalog(catalogConfig, defaultPolicyKey)
+	return normalizeBuilderExecutionCatalog(catalogConfig)
 }
 
-func normalizeBuilderExecutionCatalog(config builderExecutionCatalogConfig, legacyDefaultExecutorPolicyKey string) (*builderExecutionCatalog, error) {
+func normalizeBuilderExecutionCatalog(config builderExecutionCatalogConfig) (*builderExecutionCatalog, error) {
 	imageProfiles := make(map[string]builderImageProfileDefinition, len(config.ImageProfiles))
 	for _, imageProfile := range config.ImageProfiles {
 		imageProfile.Key = strings.TrimSpace(imageProfile.Key)
@@ -187,9 +187,6 @@ func normalizeBuilderExecutionCatalog(config builderExecutionCatalogConfig, lega
 	}
 
 	defaultExecutorPolicyKey := strings.TrimSpace(config.DefaultExecutorPolicyKey)
-	if defaultExecutorPolicyKey == "" {
-		defaultExecutorPolicyKey = strings.TrimSpace(legacyDefaultExecutorPolicyKey)
-	}
 	if defaultExecutorPolicyKey == "" && len(executorPolicies) == 1 {
 		for key := range executorPolicies {
 			defaultExecutorPolicyKey = key

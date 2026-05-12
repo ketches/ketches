@@ -305,7 +305,7 @@ func TestBuilderSessionRoutes(t *testing.T) {
 		require.NoError(t, db.DB.Model(&entities.BuilderRun{}).Where("id = ?", created.Session.LatestRunID).Updates(map[string]any{
 			"status":        entities.BuilderRunStatusSucceeded,
 			"phase":         &finalizingPhase,
-			"execution_log": "legacy route execution log",
+			"execution_log": "raw route execution log",
 			"completed_at":  time.Now().UTC().Truncate(time.Second),
 		}).Error)
 		require.NoError(t, db.DB.Create(&[]entities.BuilderRunEvent{
@@ -337,7 +337,7 @@ func TestBuilderSessionRoutes(t *testing.T) {
 		assert.Contains(t, logsW.Body.String(), "id:2")
 		assert.Contains(t, logsW.Body.String(), "[system] routed replay")
 		assert.Contains(t, logsW.Body.String(), "[system] routed completion")
-		assert.NotContains(t, logsW.Body.String(), "legacy route execution log")
+		assert.NotContains(t, logsW.Body.String(), "raw route execution log")
 
 		resumedLogsReq := newBuilderSessionRouteRequest(t, http.MethodGet, "/api/v1/projects/project-1/builder-sessions/"+created.Session.ID+"/runs/"+created.Session.LatestRunID+"/logs?after=1", "", developer)
 		resumedLogsW := httptest.NewRecorder()

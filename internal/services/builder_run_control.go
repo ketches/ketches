@@ -36,64 +36,6 @@ type BuilderRunFinalizeInput struct {
 	WorkspaceUsable bool
 }
 
-func NormalizeLegacyBuilderRunsForControlPlane(ctx context.Context) error {
-	return normalizeLegacyBuilderRunsForControlPlane(db.DB.WithContext(ctx))
-}
-
-var builderRunControlPlaneFields = []string{
-	"Phase",
-	"ClaimToken",
-	"ClaimedAt",
-	"HeartbeatAt",
-	"TimeoutAt",
-	"CancelRequestedAt",
-	"ProviderScope",
-	"ProviderKey",
-	"ModelProfileKey",
-	"PlannedProjectKind",
-	"PlannedProjectSummary",
-	"PlannedExecutorPolicyKey",
-	"PlannedImageProfileKey",
-	"ExecutorPolicyKey",
-	"ExecutionImageProfileKey",
-	"ExecutionImageRef",
-	"ExecutorHandleID",
-	"ErrorCode",
-	"ErrorClass",
-}
-
-var builderRunControlPlaneIndexes = []string{
-	"idx_builder_runs_session_status",
-	"idx_builder_runs_status_phase_created",
-	"idx_builder_runs_status_timeout_heartbeat_created",
-}
-
-func ensureBuilderRunControlPlaneColumns(tx *gorm.DB) error {
-	for _, field := range builderRunControlPlaneFields {
-		if tx.Migrator().HasColumn(&entities.BuilderRun{}, field) {
-			continue
-		}
-		if err := tx.Migrator().AddColumn(&entities.BuilderRun{}, field); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func ensureBuilderRunControlPlaneIndexes(tx *gorm.DB) error {
-	for _, indexName := range builderRunControlPlaneIndexes {
-		if tx.Migrator().HasIndex(&entities.BuilderRun{}, indexName) {
-			continue
-		}
-		if err := tx.Migrator().CreateIndex(&entities.BuilderRun{}, indexName); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func ClaimNextQueuedBuilderRun(ctx context.Context, claimToken string, leaseDuration time.Duration) (*entities.BuilderRun, error) {
 	tx := db.DB.WithContext(ctx)
 	var claimedRun *entities.BuilderRun
@@ -376,29 +318,6 @@ func FinalizeBuilderRun(ctx context.Context, input BuilderRunFinalizeInput) (*en
 	}
 
 	return run, nil
-}
-
-func normalizeLegacyBuilderRunsForControlPlane(tx *gorm.DB) error {
-	if err := ensureBuilderRunControlPlaneColumns(tx); err != nil {
-		return err
-	}
-	if err := ensureBuilderRunControlPlaneIndexes(tx); err != nil {
-		return err
-	}
-
-	if err := tx.Model(&entities.BuilderRun{}).
-		Where("phase IS NULL AND status = ?", entities.BuilderRunStatusQueued).
-		Update("phase", entities.BuilderRunPhaseQueued).Error; err != nil {
-		return err
-	}
-
-	if err := tx.Model(&entities.BuilderRun{}).
-		Where("status IN ? AND (phase IS NULL OR phase = ?)", builderRunTerminalStatuses, entities.BuilderRunPhaseQueued).
-		Update("phase", entities.BuilderRunPhaseFinalizing).Error; err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func nextQueuedBuilderRunID(tx *gorm.DB) (string, error) {

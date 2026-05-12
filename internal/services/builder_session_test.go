@@ -224,59 +224,6 @@ func TestCreateBuilderSessionPersistsPlannedProjectIntent(t *testing.T) {
 	assert.Equal(t, "Detected a Node SSR/web app request.", runs[0].PlannedProjectSummary)
 }
 
-func TestGetBuilderSessionDetailReadsLegacyRowsWithoutControlPlaneFields(t *testing.T) {
-	setupBuilderSessionServiceTestDB(t)
-
-	now := time.Now().UTC().Truncate(time.Second)
-	workspaceID := "workspace-legacy"
-
-	require.NoError(t, db.DB.Exec(`
-		INSERT INTO builder_sessions (
-			id, created_at, updated_at, project_id, build_env_id, title, summary, status, created_by, last_activity_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, "session-legacy", now, now, "project-legacy", "env-legacy", "Legacy session", "", entities.BuilderSessionStatusReady, "user-legacy", now).Error)
-
-	require.NoError(t, db.DB.Exec(`
-		INSERT INTO builder_messages (
-			id, created_at, updated_at, session_id, run_id, role, content, metadata_json, created_by
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, "message-legacy", now, now, "session-legacy", nil, entities.BuilderMessageRoleUser, "Legacy prompt", "", "user-legacy").Error)
-
-	require.NoError(t, db.DB.Exec(`
-		INSERT INTO builder_runs (
-			id, created_at, updated_at, session_id, trigger_message_id, workspace_id, status, requested_by, instruction_summary, execution_log, started_at, completed_at, error_message
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, "run-legacy", now, now, "session-legacy", "message-legacy", workspaceID, entities.BuilderRunStatusSucceeded, "user-legacy", "Legacy prompt", "", now, now, "").Error)
-
-	require.NoError(t, db.DB.Exec("UPDATE builder_runs SET phase = NULL, claim_token = NULL, claimed_at = NULL, heartbeat_at = NULL, timeout_at = NULL, cancel_requested_at = NULL, provider_key = NULL, model_profile_key = NULL, executor_policy_key = NULL, executor_handle_id = NULL, error_code = NULL, error_class = NULL WHERE id = ?", "run-legacy").Error)
-
-	require.NoError(t, db.DB.Exec(`
-		INSERT INTO builder_workspaces (
-			id, created_at, updated_at, session_id, build_env_id, cluster_id, namespace, pod_name, container_name, status, workspace_root, terminated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, workspaceID, now, now, "session-legacy", "env-legacy", "cluster-legacy", "legacy-ns", "legacy-pod", "workspace", entities.BuilderWorkspaceStatusActive, "/workspace", nil).Error)
-
-	detail, err := GetBuilderSessionDetail(context.Background(), "project-legacy", "session-legacy")
-	require.NoError(t, err)
-	require.NotNil(t, detail)
-	assert.Equal(t, "session-legacy", detail.Session.ID)
-	assert.Equal(t, string(entities.BuilderRunStatusSucceeded), detail.Session.LatestRunStatus)
-	require.Len(t, detail.Messages, 1)
-	require.Len(t, detail.Runs, 1)
-	assert.Equal(t, "run-legacy", detail.Runs[0].ID)
-	assert.Equal(t, string(entities.BuilderRunStatusSucceeded), detail.Runs[0].Status)
-	require.NotNil(t, detail.Workspace)
-	assert.Equal(t, workspaceID, detail.Workspace.ID)
-	assert.Empty(t, detail.Artifacts)
-
-	items, err := ListBuilderSessions(context.Background(), "project-legacy")
-	require.NoError(t, err)
-	require.Len(t, items, 1)
-	assert.Equal(t, "session-legacy", items[0].ID)
-	assert.Equal(t, string(entities.BuilderRunStatusSucceeded), items[0].LatestRunStatus)
-	assert.Equal(t, workspaceID, items[0].CurrentWorkspaceID)
-}
-
 func TestAppendBuilderMessageQueuesRunWhenSessionIsProvisioning(t *testing.T) {
 	setupBuilderSessionServiceTestDB(t)
 

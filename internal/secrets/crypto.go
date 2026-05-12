@@ -89,36 +89,6 @@ func DecryptString(value string) (string, error) {
 	return string(plaintext), nil
 }
 
-func DecryptStringCompat(value string) (string, bool, error) {
-	if value == "" {
-		return "", false, nil
-	}
-
-	if !strings.HasPrefix(value, encryptedPrefix) {
-		return value, true, nil
-	}
-
-	plaintext, err := DecryptString(value)
-	if err != nil {
-		return "", false, err
-	}
-
-	return plaintext, false, nil
-}
-
-func EncryptStringIfNeeded(value string) (string, bool, error) {
-	if value == "" || strings.HasPrefix(value, encryptedPrefix) {
-		return value, false, nil
-	}
-
-	encrypted, err := EncryptString(value)
-	if err != nil {
-		return "", false, err
-	}
-
-	return encrypted, true, nil
-}
-
 func encryptionKey() ([]byte, error) {
 	if strings.TrimSpace(app.Config.SecretEncryptionKey) == "" {
 		return nil, app.NewErrorf("secret encryption key is not configured")

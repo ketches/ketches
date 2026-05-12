@@ -78,7 +78,7 @@ func TestListAppImageTags_FiltersAndReversesTags(t *testing.T) {
 	assert.Equal(t, []string{"v1.3.0", "v1.10.0", "v1.2.0"}, result.Tags)
 }
 
-func TestUpdateAppImageMigratesLegacyPlaintextRegistryPassword(t *testing.T) {
+func TestUpdateAppImagePreservesEncryptedRegistryPassword(t *testing.T) {
 	setupAppVolumeTestDB(t)
 	require.NoError(t, db.DB.AutoMigrate(&entities.DeploymentHistory{}))
 
@@ -87,6 +87,8 @@ func TestUpdateAppImageMigratesLegacyPlaintextRegistryPassword(t *testing.T) {
 	t.Cleanup(func() {
 		internalapp.Config.SecretEncryptionKey = originalKey
 	})
+	encryptedPassword, err := secrets.EncryptString("registry-secret")
+	require.NoError(t, err)
 
 	require.NoError(t, db.DB.Create(&entities.Project{
 		Base: entities.Base{ID: "project-1"},
@@ -116,7 +118,7 @@ func TestUpdateAppImageMigratesLegacyPlaintextRegistryPassword(t *testing.T) {
 		AppType:          "Deployment",
 		ContainerImage:   "nginx:1.25",
 		RegistryUsername: "robot",
-		RegistryPassword: "legacy-plaintext-password",
+		RegistryPassword: encryptedPassword,
 		Replicas:         1,
 	}).Error)
 
@@ -124,7 +126,7 @@ func TestUpdateAppImageMigratesLegacyPlaintextRegistryPassword(t *testing.T) {
 	applyAppFn = func(_ context.Context, appCtx *models.AppContext) error {
 		decryptedPassword, err := secrets.DecryptString(appCtx.App.RegistryPassword)
 		require.NoError(t, err)
-		assert.Equal(t, "legacy-plaintext-password", decryptedPassword)
+		assert.Equal(t, "registry-secret", decryptedPassword)
 		return nil
 	}
 	t.Cleanup(func() {
@@ -145,5 +147,5 @@ func TestUpdateAppImageMigratesLegacyPlaintextRegistryPassword(t *testing.T) {
 
 	decryptedPassword, err := secrets.DecryptString(stored.RegistryPassword)
 	require.NoError(t, err)
-	assert.Equal(t, "legacy-plaintext-password", decryptedPassword)
+	assert.Equal(t, "registry-secret", decryptedPassword)
 }

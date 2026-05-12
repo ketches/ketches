@@ -61,13 +61,9 @@ type AppGateway struct {
 	AppID       string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_gateway_port_proto;index"`
 	Port        int       `gorm:"type:int;not null;uniqueIndex:idx_app_gateway_port_proto"`
 	Protocol    string    `gorm:"type:varchar(16);not null;uniqueIndex:idx_app_gateway_port_proto"`
-	Domain      string    `gorm:"type:varchar(256)"`
-	Path        string    `gorm:"type:varchar(256);default:'/'"`
 	GatewayPort int       `gorm:"type:int"`
 	ServiceType string    `gorm:"type:varchar(16);default:'ClusterIP'"`
 	NodePort    int       `gorm:"type:int"` // 0 = auto-assigned by K8s
-	Exposed     bool      `gorm:"type:bool;default:false"`
-	CertID      *string   `gorm:"type:varchar(36)"`
 }
 
 type AppGatewayHTTPRoute struct {

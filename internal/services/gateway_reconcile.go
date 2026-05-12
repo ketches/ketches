@@ -14,11 +14,12 @@ func ReconcilePublicGatewayResources(ctx context.Context) error {
 	}
 
 	var rows []clusterRow
-	err := db.DB.Table("app_gateways ag").
+	err := db.DB.Table("app_gateway_http_routes r").
 		Select("DISTINCT e.cluster_id AS cluster_id").
+		Joins("JOIN app_gateways ag ON ag.id = r.app_gateway_id").
 		Joins("JOIN apps a ON a.id = ag.app_id").
 		Joins("JOIN envs e ON e.id = a.env_id").
-		Where("ag.exposed = ? AND LOWER(ag.protocol) IN ? AND e.cluster_id <> ''", true, []string{"http", "https"}).
+		Where("r.enabled = ? AND LOWER(ag.protocol) = ? AND e.cluster_id <> ''", true, "http").
 		Scan(&rows).Error
 	if err != nil {
 		return err

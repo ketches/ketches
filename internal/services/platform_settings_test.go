@@ -43,14 +43,14 @@ func TestUpdatePlatformBrandingRejectsEmptyName(t *testing.T) {
 	assert.Contains(t, err.Error(), "platform name is required")
 }
 
-func TestGetPlatformBrandingIgnoresLegacyLogoFields(t *testing.T) {
+func TestGetPlatformBrandingIgnoresUnknownLogoFields(t *testing.T) {
 	setupPlatformUpdateServiceTestDB(t)
 
 	require.NoError(t, db.DB.Create(&entities.SystemSetting{
 		Base: entities.Base{ID: uuid.New()},
 		Key:  "platform_branding",
 		Value: `{
-			"name":"Legacy Brand",
+			"name":"Demo Brand",
 			"logo_path":"branding/logo.png",
 			"logo_content_type":"image/png"
 		}`,
@@ -58,5 +58,5 @@ func TestGetPlatformBrandingIgnoresLegacyLogoFields(t *testing.T) {
 
 	branding, err := GetPlatformBranding()
 	require.NoError(t, err)
-	assert.Equal(t, "Legacy Brand", branding.Name)
+	assert.Equal(t, "Demo Brand", branding.Name)
 }

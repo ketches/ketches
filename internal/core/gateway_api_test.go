@@ -3,7 +3,6 @@ package core
 import (
 	"testing"
 
-	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
@@ -47,71 +46,6 @@ func TestBuildSharedGateway_AddsHTTPSListenersWithCertificateRefs(t *testing.T) 
 	require.NotNil(t, httpsListener.TLS)
 	require.Len(t, httpsListener.TLS.CertificateRefs, 1)
 	assert.Equal(t, gatewayv1.ObjectName("ketches-cert-cert-1"), httpsListener.TLS.CertificateRefs[0].Name)
-}
-
-func TestBuildHTTPRoute_UsesSharedGatewayParentRef(t *testing.T) {
-	metadata := &AppMetadata{
-		AppContext: &models.AppContext{
-			App: entities.App{
-				Slug: "demo-app",
-			},
-			EnvContext: models.EnvContext{
-				Env: entities.Env{
-					ClusterNamespace: "demo-env",
-				},
-			},
-		},
-	}
-
-	route := metadata.BuildHTTPRoute(entities.AppGateway{
-		Port:     8080,
-		Protocol: "http",
-		Domain:   "demo.example.com",
-		Path:     "/",
-		Exposed:  true,
-	})
-
-	require.NotNil(t, route)
-	require.Len(t, route.Spec.ParentRefs, 1)
-
-	parentRef := route.Spec.ParentRefs[0]
-	require.NotNil(t, parentRef.Namespace)
-	require.NotNil(t, parentRef.SectionName)
-	assert.Equal(t, "demo-app-8080-http", route.Name)
-	assert.Equal(t, gatewayv1.ObjectName(SharedGatewayName()), parentRef.Name)
-	assert.Equal(t, gatewayv1.Namespace(SharedGatewayNamespace()), *parentRef.Namespace)
-	assert.Equal(t, gatewayv1.SectionName("http"), *parentRef.SectionName)
-}
-
-func TestBuildHTTPRoute_UsesHTTPSListenerParentRef(t *testing.T) {
-	metadata := &AppMetadata{
-		AppContext: &models.AppContext{
-			App: entities.App{
-				Slug: "demo-app",
-			},
-			EnvContext: models.EnvContext{
-				Env: entities.Env{
-					ClusterNamespace: "demo-env",
-				},
-			},
-		},
-	}
-
-	route := metadata.BuildHTTPRoute(entities.AppGateway{
-		Port:     8443,
-		Protocol: "https",
-		Domain:   "secure.example.com",
-		Path:     "/",
-		Exposed:  true,
-	})
-
-	require.NotNil(t, route)
-	require.Len(t, route.Spec.ParentRefs, 1)
-
-	parentRef := route.Spec.ParentRefs[0]
-	require.NotNil(t, parentRef.SectionName)
-	assert.Equal(t, "demo-app-8443-https", route.Name)
-	assert.Equal(t, buildSharedGatewayHTTPSListenerName("secure.example.com"), *parentRef.SectionName)
 }
 
 func TestBuildGatewayClass_UsesRequestedControllerName(t *testing.T) {

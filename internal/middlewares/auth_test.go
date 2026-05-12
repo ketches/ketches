@@ -69,14 +69,14 @@ func TestAuthAcceptsAccessTokenCookie(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	req.AddCookie(&http.Cookie{Name: "X-Ketches-Token", Value: token})
+	req.AddCookie(&http.Cookie{Name: app.AccessTokenCookieName, Value: token})
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
 }
 
-func TestAuthRejectsQueryTokenFallback(t *testing.T) {
+func TestAuthRejectsQueryTokenParameter(t *testing.T) {
 	setupAuthMiddlewareTestDB(t)
 	user := seedAuthMiddlewareUser(t)
 

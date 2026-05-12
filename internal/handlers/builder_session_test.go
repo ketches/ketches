@@ -1350,7 +1350,7 @@ func TestStreamBuilderRunLogsReplaysDurableEvents(t *testing.T) {
 		Phase:              &finalizingPhase,
 		RequestedBy:        "user-1",
 		InstructionSummary: "Replay durable builder logs",
-		ExecutionLog:       "legacy independent execution log",
+		ExecutionLog:       "raw independent execution log",
 		CompletedAt:        &completedAt,
 	}).Error)
 	require.NoError(t, db.DB.Create(&[]entities.BuilderRunEvent{
@@ -1388,7 +1388,7 @@ func TestStreamBuilderRunLogsReplaysDurableEvents(t *testing.T) {
 	assert.Contains(t, body, "id:2")
 	assert.Contains(t, body, "[system] run started")
 	assert.Contains(t, body, "[system] run completed")
-	assert.NotContains(t, body, "legacy independent execution log")
+	assert.NotContains(t, body, "raw independent execution log")
 	assert.Contains(t, body, "event:done")
 	assert.Less(t, strings.Index(body, "[system] run completed"), strings.Index(body, "event:done"))
 }

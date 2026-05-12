@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -10,7 +9,6 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
-	"github.com/ketches/ketches/internal/secrets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -115,42 +113,6 @@ func TestContainerRegistryResponseJSONNeverSerializesPassword(t *testing.T) {
 	_, exists := decoded["password"]
 	assert.False(t, exists)
 	assert.Equal(t, true, decoded["has_password"])
-}
-
-func TestGetContainerRegistryMigratesLegacyPlaintextPassword(t *testing.T) {
-	setupContainerRegistrySecretTestDB(t)
-
-	originalConfig := app.Config
-	t.Cleanup(func() {
-		app.Config = originalConfig
-	})
-	app.Config.SecretEncryptionKey = "test-master-key"
-
-	require.NoError(t, db.DB.Create(&entities.ContainerRegistry{
-		ID:        "registry-legacy",
-		Name:      "Legacy Registry",
-		Provider:  entities.RegistryProviderGHCR,
-		Endpoint:  "ghcr.io",
-		Username:  "demo",
-		Password:  "legacy-plaintext-password",
-		Scope:     entities.RegistryScopeCluster,
-		ClusterID: registryStringPtr("cluster-1"),
-		Enabled:   true,
-	}).Error)
-
-	registry, err := GetContainerRegistry("registry-legacy")
-
-	require.NoError(t, err)
-	require.NotNil(t, registry)
-	assert.True(t, strings.HasPrefix(registry.Password, "enc:v1:"))
-
-	var stored entities.ContainerRegistry
-	require.NoError(t, db.DB.First(&stored, "id = ?", "registry-legacy").Error)
-	assert.True(t, strings.HasPrefix(stored.Password, "enc:v1:"))
-
-	decrypted, err := secrets.DecryptString(stored.Password)
-	require.NoError(t, err)
-	assert.Equal(t, "legacy-plaintext-password", decrypted)
 }
 
 func registryStringPtr(v string) *string {

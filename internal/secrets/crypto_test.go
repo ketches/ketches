@@ -39,7 +39,7 @@ func TestDecryptStringRejectsPlaintextWithoutPrefix(t *testing.T) {
 
 	app.Config.SecretEncryptionKey = "test-master-key"
 
-	if _, err := DecryptString("legacy-plaintext"); err == nil {
+	if _, err := DecryptString("plaintext"); err == nil {
 		t.Fatalf("DecryptString() error = nil, want non-nil")
 	}
 }
@@ -54,38 +54,5 @@ func TestEncryptStringFailsWithoutConfiguredKey(t *testing.T) {
 
 	if _, err := EncryptString("kubeconfig-data"); err == nil {
 		t.Fatalf("EncryptString() error = nil, want non-nil")
-	}
-}
-
-func TestDecryptStringCompatAcceptsLegacyPlaintext(t *testing.T) {
-	plaintext, legacy, err := DecryptStringCompat("legacy-plaintext")
-	if err != nil {
-		t.Fatalf("DecryptStringCompat() error = %v", err)
-	}
-	if !legacy {
-		t.Fatalf("DecryptStringCompat() legacy = false, want true")
-	}
-	if plaintext != "legacy-plaintext" {
-		t.Fatalf("DecryptStringCompat() = %q, want %q", plaintext, "legacy-plaintext")
-	}
-}
-
-func TestEncryptStringIfNeededEncryptsLegacyPlaintext(t *testing.T) {
-	originalConfig := app.Config
-	t.Cleanup(func() {
-		app.Config = originalConfig
-	})
-
-	app.Config.SecretEncryptionKey = "test-master-key"
-
-	ciphertext, migrated, err := EncryptStringIfNeeded("legacy-plaintext")
-	if err != nil {
-		t.Fatalf("EncryptStringIfNeeded() error = %v", err)
-	}
-	if !migrated {
-		t.Fatalf("EncryptStringIfNeeded() migrated = false, want true")
-	}
-	if ciphertext == "legacy-plaintext" {
-		t.Fatalf("EncryptStringIfNeeded() returned plaintext")
 	}
 }

@@ -26,8 +26,8 @@ const (
 	gatewayAPIGroup = "gateway.networking.k8s.io"
 	// gatewayAPIVersion is the version used for detection and resource creation.
 	gatewayAPIVersion = "v1"
-	// fallbackGatewayClassName preserves the legacy default until a cluster-level default is configured.
-	fallbackGatewayClassName = "eg"
+	// defaultGatewayClassName is used when the cluster has no explicit default provider.
+	defaultGatewayClassName = "eg"
 	// sharedGatewayNamespace is the fixed namespace that hosts the single shared Gateway.
 	sharedGatewayNamespace = "ketches-system"
 	// sharedGatewayName is the canonical name of the single shared Gateway.
@@ -87,7 +87,7 @@ func resolveClusterGatewayClassName(clusterID string) (string, error) {
 		return "", err
 	}
 
-	return fallbackGatewayClassName, nil
+	return defaultGatewayClassName, nil
 }
 
 func BuildGatewayClass(name, controllerName string) *gatewayv1.GatewayClass {

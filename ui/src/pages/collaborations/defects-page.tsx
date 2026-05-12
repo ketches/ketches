@@ -187,7 +187,6 @@ export default function DefectsPage({ projectId: propProjectId, assigneeId, spri
       cell: ({ row }) => (
         <InlineStatusEditor
           currentStatus={row.original.status}
-          entityType="defect"
           statusOptions={DefectStatusOptions}
           onStatusChange={(status) => transitionDefectMutation.mutate({ defectId: row.original.id, status })}
         />

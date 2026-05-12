@@ -1,5 +1,4 @@
-import { CollabPriority, DefectSeverity, DefectStatus, RequirementStatus, TaskStatus } from "@/api/collaboration"
-import { Badge } from "@/components/ui/badge"
+import { CollabPriority, DefectSeverity } from "@/api/collaboration"
 import { cn } from "@/lib/utils"
 
 // Entity type for status color mapping
@@ -41,57 +40,23 @@ const sprintColorMap: Record<string, string> = {
 
 interface StatusBadgeProps {
   status: string
-  entityType?: EntityType
+  entityType: EntityType
 }
 
 export function StatusBadge({ status, entityType }: StatusBadgeProps) {
-  // If entityType is provided, use entity-specific color map
-  if (entityType) {
-    const colorMaps = {
-      task: taskColorMap,
-      requirement: requirementColorMap,
-      defect: defectColorMap,
-      sprint: sprintColorMap,
-    }
-    const colorMap = colorMaps[entityType]
-    const statusColorClass = colorMap[status] || 'bg-gray-100 text-gray-700 border border-gray-200'
-
-    return (
-      <span className={cn('inline-block uppercase text-[10px] px-2 py-1 rounded opacity-80 hover:opacity-100', statusColorClass)}>
-        {status.replace(/_/g, ' ')}
-      </span>
-    )
+  const colorMaps = {
+    task: taskColorMap,
+    requirement: requirementColorMap,
+    defect: defectColorMap,
+    sprint: sprintColorMap,
   }
-
-  // Fallback to original generic Badge variant logic for backward compatibility
-  let variant: "default" | "secondary" | "destructive" | "outline" = "outline"
-
-  switch (status) {
-    case RequirementStatus.DONE:
-    case TaskStatus.DONE:
-    case DefectStatus.CLOSED:
-      variant = "default"
-      break
-    case RequirementStatus.IN_PROGRESS:
-    case TaskStatus.IN_PROGRESS:
-    case DefectStatus.PROCESSING:
-      variant = "secondary"
-      break
-    case RequirementStatus.TRIAGE:
-    case TaskStatus.TODO:
-    case DefectStatus.NEW:
-      variant = "outline"
-      break
-    case DefectStatus.REJECTED:
-    case TaskStatus.CANCELLED:
-      variant = "destructive"
-      break
-  }
+  const colorMap = colorMaps[entityType]
+  const statusColorClass = colorMap[status] || 'bg-gray-100 text-gray-700 border border-gray-200'
 
   return (
-    <Badge variant={variant} className="uppercase text-[10px]">
-      {status.replace(/_/g, " ")}
-    </Badge>
+    <span className={cn('inline-block uppercase text-[10px] px-2 py-1 rounded opacity-80 hover:opacity-100', statusColorClass)}>
+      {status.replace(/_/g, ' ')}
+    </span>
   )
 }
 

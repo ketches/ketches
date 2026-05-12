@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -234,12 +233,6 @@ func ProxyGatewayHTTP(c *gin.Context) {
 		proxyPath = "/" + proxyPath
 	}
 	rawQuery := c.Request.URL.RawQuery
-	// Remove the auth token from the forwarded query string.
-	if rawQuery != "" {
-		qv, _ := url.ParseQuery(rawQuery)
-		qv.Del("token")
-		rawQuery = qv.Encode()
-	}
 	targetURL := fmt.Sprintf("%s/api/v1/namespaces/%s/services/%s:%d/proxy%s", k8sHost, ns, svcName, port, proxyPath)
 	if rawQuery != "" {
 		targetURL += "?" + rawQuery
@@ -252,7 +245,6 @@ func ProxyGatewayHTTP(c *gin.Context) {
 		return
 	}
 
-	// Forward safe request headers (skip hop-by-hop and Ketches-internal headers)
 	// Forward safe request headers (skip hop-by-hop and Ketches-internal headers).
 	// Drop Accept-Encoding so the upstream returns a plain (non-compressed) body that
 	// we can inspect and rewrite before forwarding to the browser.
@@ -268,7 +260,7 @@ func ProxyGatewayHTTP(c *gin.Context) {
 		}
 		// Strip the Ketches auth cookie so it is never forwarded to the upstream app.
 		if strings.ToLower(key) == "cookie" {
-			filtered := filterCookie(vals, "X-Ketches-Token")
+			filtered := filterCookies(vals, app.AccessTokenCookieName, app.RefreshTokenCookieName)
 			if len(filtered) > 0 {
 				req.Header[key] = filtered
 			}
@@ -333,16 +325,23 @@ func ProxyGatewayHTTP(c *gin.Context) {
 	}
 }
 
-// filterCookie removes a named cookie from a slice of raw Cookie header values.
+// filterCookies removes named cookies from a slice of raw Cookie header values.
 // Each element in vals is a full Cookie header line (may contain multiple name=value pairs).
-func filterCookie(vals []string, name string) []string {
+func filterCookies(vals []string, names ...string) []string {
+	drop := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		drop[name] = struct{}{}
+	}
+
 	var out []string
 	for _, line := range vals {
 		var kept []string
 		for _, part := range strings.Split(line, ";") {
 			part = strings.TrimSpace(part)
-			if kv := strings.SplitN(part, "=", 2); len(kv) > 0 && strings.TrimSpace(kv[0]) == name {
-				continue // drop this cookie
+			if kv := strings.SplitN(part, "=", 2); len(kv) > 0 {
+				if _, ok := drop[strings.TrimSpace(kv[0])]; ok {
+					continue
+				}
 			}
 			if part != "" {
 				kept = append(kept, part)
