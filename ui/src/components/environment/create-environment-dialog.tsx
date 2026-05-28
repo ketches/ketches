@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useProjectStore } from "@/stores/project"
 import type { AxiosError } from "axios"
-import { InfoIcon } from "lucide-react"
+import { InfoIcon, CircleCheck, Info } from "lucide-react"
 
 const KUBERNETES_NAMESPACE_MAX_LENGTH = 63
 const KUBERNETES_NAMESPACE_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/
@@ -477,14 +477,19 @@ export function CreateEnvironmentDialog({
                   </span>
                   {namespaceStatus && (
                     <span
-                      className={
+                      className={`inline-flex items-center gap-1 ${
                         namespaceStatus.tone === "success"
                           ? "text-xs text-emerald-600"
                           : namespaceStatus.tone === "error"
                             ? "text-xs text-destructive"
                             : "text-xs text-muted-foreground"
-                      }
+                      }`}
                     >
+                      {namespaceStatus.tone === "success" ? (
+                        <CircleCheck className="h-3.5 w-3.5" />
+                      ) : namespaceStatus.tone === "error" ? (
+                        <Info className="h-3.5 w-3.5" />
+                      ) : null}
                       {namespaceStatus.text}
                     </span>
                   )}
