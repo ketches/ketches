@@ -16,15 +16,71 @@ env:
   UI_IMAGE_NAME: ketches-ui
 
 jobs:
+  # ── Lint must pass before releasing ───────────────────────────────────────
+  lint-backend:
+    name: Lint (Go)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          args: ./...
+
+  # ── Frontend must build before releasing ─────────────────────────────────
+  build-frontend:
+    name: Lint and Build (Node.js)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
+
   # ── Tests must pass before releasing ───────────────────────────────────────
   test:
     name: Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -39,12 +95,12 @@ jobs:
   release-api:
     name: Release API image
     runs-on: ubuntu-latest
-    needs: test
+    needs: [lint-backend, test, build-frontend]
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -108,12 +164,12 @@ jobs:
   release-ui:
     name: Release UI image
     runs-on: ubuntu-latest
-    needs: test
+    needs: [lint-backend, test, build-frontend]
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -171,7 +227,7 @@ jobs:
   release-helm-chart:
     name: Release Helm chart
     runs-on: ubuntu-latest
-    needs: test
+    needs: [lint-backend, test, build-frontend]
     permissions:
       contents: write
     env:
@@ -179,7 +235,7 @@ jobs:
       CHART_REPO_DIR: .chartrepo
       CHART_REPO_URL: https://ketches.github.io/ketches
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -237,18 +293,26 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Resolve release variables
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --current --strip header --verbose
+        env:
+          OUTPUT: RELEASE_CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build release notes
         id: release-vars
         run: |
           version="${GITHUB_REF_NAME#v}"
 
           {
-            echo "version=${version}"
-            echo 'body<<EOF'
             echo '## Docker Images'
             echo
             echo '| Image | Pull command |'
@@ -268,13 +332,24 @@ jobs:
             echo '  -o docker-compose.yml'
             echo 'docker compose up -d'
             echo '```'
-            echo 'EOF'
-          } >> "${GITHUB_OUTPUT}"
+
+            echo
+            if [ -s RELEASE_CHANGELOG.md ]; then
+              cat RELEASE_CHANGELOG.md
+            else
+              echo '## Changes'
+              echo
+              echo 'No changelog entries were generated for this release.'
+            fi
+          } > release-notes.md
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          generate_release_notes: false
           # Pre-release when tag contains a pre-release identifier (e.g. v1.0.0-beta.1)
           prerelease: ${{ contains(github.ref_name, '-') }}
-          body: ${{ steps.release-vars.outputs.body }}
+          body_path: release-notes.md
+          files: RELEASE_CHANGELOG.md
