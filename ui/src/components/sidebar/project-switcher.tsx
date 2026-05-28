@@ -26,6 +26,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
 import { useProjectStore } from "@/stores/project"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
@@ -36,7 +37,7 @@ import { toast } from "sonner"
 
 function ProjectItem({
   project,
-  isActive: _isActive,
+  isActive,
   onSelect,
   onViewDetails,
   onEdit,
@@ -53,19 +54,19 @@ function ProjectItem({
 
   return (
     <DropdownMenuItem
-      className="gap-2 p-2 justify-start"
+      className={cn("gap-2 p-2 justify-start", isActive && "!bg-green-500/10 focus:!bg-green-500/10 focus:**:!text-green-600")}
       onClick={onSelect}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex size-6 items-center justify-center rounded-md border">
-        <GalleryVerticalEnd className="size-3.5 shrink-0" />
+      <div className={cn("flex size-6 items-center justify-center rounded-md border", isActive && "!border-green-600 !text-green-600")}>
+        <GalleryVerticalEnd className={cn("size-3.5 shrink-0", isActive && "!text-green-600")} />
       </div>
-      {project.name}
+      <span className={cn("min-w-0 flex-1 truncate", isActive && "!text-green-600")}>{project.name}</span>
       <DropdownMenu>
         <DropdownMenuTrigger
           onClick={(e) => e.stopPropagation()}
-          className={`${isHovered ? "opacity-100" : "opacity-0"} ml-auto transition-opacity focus:opacity-100 flex size-6 items-center justify-center rounded hover:bg-accent-foreground/10 cursor-pointer`}
+          className={`${isHovered ? "opacity-100" : "opacity-0"} transition-opacity focus:opacity-100 flex size-6 items-center justify-center rounded hover:bg-accent-foreground/10 cursor-pointer`}
         >
           <MoreVertical className="text-muted-foreground" />
         </DropdownMenuTrigger>
@@ -109,6 +110,15 @@ export function ProjectSwitcher() {
 
   const safeProjects = React.useMemo(() => (Array.isArray(projects) ? projects : []), [projects])
   const activeProject = safeProjects.find(p => p.id === activeProjectId) || safeProjects[0]
+  const orderedProjects = React.useMemo(() => {
+    const currentProject = safeProjects.find(p => p.id === activeProjectId)
+
+    if (!currentProject) {
+      return safeProjects
+    }
+
+    return [currentProject, ...safeProjects.filter(p => p.id !== activeProjectId)]
+  }, [safeProjects, activeProjectId])
 
   React.useEffect(() => {
     if (!hasHydrated) return
@@ -179,7 +189,7 @@ export function ProjectSwitcher() {
               <DropdownMenuLabel className="text-muted-foreground text-xs">
                 Projects
               </DropdownMenuLabel>
-              {safeProjects.map((project) => (
+              {orderedProjects.map((project) => (
                 <ProjectItem
                   key={project.id}
                   project={project}
