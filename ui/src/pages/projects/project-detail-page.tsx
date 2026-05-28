@@ -29,6 +29,7 @@ import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EditProjectDialog } from "@/components/project/edit-project-dialog"
 import { ProjectAiProvidersPanel } from "@/components/project/project-ai-providers-panel"
+import { DetailPageScrollArea } from "@/components/layout/detail-page-scroll-area"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import {
@@ -196,9 +197,9 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
 
   if (isLoading) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center">
+      <DetailPageScrollArea contentClassName="h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      </DetailPageScrollArea>
     )
   }
 
@@ -223,7 +224,7 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
   }
 
   return (
-    <div className="flex flex-col flex-1 gap-6">
+    <DetailPageScrollArea>
       <PageHeader items={breadcrumbs} />
 
       <div className="flex flex-col gap-4">
@@ -480,7 +481,7 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </DetailPageScrollArea>
   )
 }
 

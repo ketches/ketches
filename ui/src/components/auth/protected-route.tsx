@@ -7,10 +7,20 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const hasCheckedSession = useAuthStore((state) => state.hasCheckedSession)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isRestoringSession = useAuthStore((state) => state.isRestoringSession)
   const location = useLocation()
 
   if (!isAuthenticated) {
+    if (!hasCheckedSession || isRestoringSession) {
+      return (
+        <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
+          Loading page...
+        </div>
+      )
+    }
+
     return <Navigate to={buildLoginHref(getCurrentRelativePath(location))} replace />
   }
 

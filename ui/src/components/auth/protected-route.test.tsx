@@ -9,7 +9,9 @@ import { ProtectedRoute } from "./protected-route"
 
 const { mockAuthState } = vi.hoisted(() => ({
   mockAuthState: {
+    hasCheckedSession: true,
     isAuthenticated: false,
+    isRestoringSession: false,
     user: null,
   },
 }))
@@ -58,7 +60,9 @@ function LocationProbe() {
 
 describe("ProtectedRoute", () => {
   beforeEach(() => {
+    mockAuthState.hasCheckedSession = true
     mockAuthState.isAuthenticated = false
+    mockAuthState.isRestoringSession = false
     mockAuthState.user = null
     Object.defineProperty(globalThis, "sessionStorage", {
       configurable: true,
@@ -68,6 +72,41 @@ describe("ProtectedRoute", () => {
 
   afterEach(() => {
     document.body.innerHTML = ""
+  })
+
+  it("waits for session restore before redirecting unauthenticated access", async () => {
+    mockAuthState.hasCheckedSession = false
+    mockAuthState.isRestoringSession = true
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/applications/app-1?tab=logs"]}>
+          <Routes>
+            <Route path="/login" element={<LocationProbe />} />
+            <Route
+              path="/applications/:appId"
+              element={
+                <ProtectedRoute>
+                  <LocationProbe />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      )
+    })
+
+    expect(container.querySelector('[data-testid="location"]')).toBeNull()
+    expect(container.textContent).toContain("Loading page...")
+
+    await act(async () => {
+      root.unmount()
+    })
   })
 
   it("redirects unauthenticated access to login with the current path", async () => {

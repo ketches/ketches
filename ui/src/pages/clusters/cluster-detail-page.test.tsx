@@ -43,7 +43,7 @@ vi.mock("@/components/layout/page-header", () => ({
 
 describe("ClusterDetailPage", () => {
   test("does not render a General tab and shows merged cluster information inside Overview", async () => {
-    render(
+    const { container } = render(
       <QueryClientProvider client={queryClient}>
 		<MemoryRouter initialEntries={["/clusters/cluster-1"]}>
 			<Routes>
@@ -63,6 +63,14 @@ describe("ClusterDetailPage", () => {
 		expect(screen.getByText(/gateway host/i)).toBeInTheDocument()
 		expect(screen.getByText("gateway.example.com")).toBeInTheDocument()
 		expect(screen.getByRole("tab", { name: /domains/i })).toBeInTheDocument()
+
+    const scrollArea = container.querySelector('[data-detail-page-scroll-area="true"]')
+    const content = container.querySelector('[data-slot="detail-page-scroll-content"]')
+
+    expect(scrollArea).not.toBeNull()
+    expect(scrollArea?.className).toContain("min-h-0")
+    expect(scrollArea?.className).toContain("flex-1")
+    expect(content?.className).toContain("gap-6")
 	})
 
   test("opens edit kubeconfig dialog from the kubeconfig action", async () => {

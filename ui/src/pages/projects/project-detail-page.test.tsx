@@ -287,4 +287,43 @@ describe("ProjectDetailPage", () => {
       root.unmount()
     })
   })
+
+  it("keeps overflowing detail content scrollable with the themed detail scroll area", async () => {
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ProjectDetailPage />
+        </QueryClientProvider>
+      )
+    })
+
+    await act(async () => {
+      await flushPromises()
+      await flushPromises()
+    })
+
+    const scrollArea = container.querySelector('[data-detail-page-scroll-area="true"]')
+    const content = container.querySelector('[data-slot="detail-page-scroll-content"]')
+
+    expect(scrollArea).not.toBeNull()
+    expect(scrollArea?.className).toContain("min-h-0")
+    expect(scrollArea?.className).toContain("flex-1")
+    expect(content?.className).toContain("gap-6")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })

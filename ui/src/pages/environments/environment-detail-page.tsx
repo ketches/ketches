@@ -32,8 +32,9 @@ import { envsApi } from "@/api/envs"
 import { ApplicationList } from "@/components/applications/application-list"
 import { EditEnvironmentDialog } from "@/components/environment/edit-environment-dialog"
 import { EnvCertificates } from "@/components/environment/env-certificates"
-import { EnvSettingsTab } from "@/components/environment/env-settings-tab"
 import { EnvDomains } from "@/components/environment/env-domains"
+import { EnvSettingsTab } from "@/components/environment/env-settings-tab"
+import { DetailPageScrollArea } from "@/components/layout/detail-page-scroll-area"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EnvironmentResourceMetrics } from "@/components/monitoring/environment-resource-metrics"
@@ -128,7 +129,7 @@ export function EnvironmentDetailPage() {
 
   if (envLoading) {
     return (
-      <div className="flex flex-col flex-1 gap-6">
+      <DetailPageScrollArea>
         <DetailHeroSkeleton actions={3} />
         <TabsSkeleton count={4} />
         <InfoCardSkeleton fields={4} />
@@ -139,7 +140,7 @@ export function EnvironmentDetailPage() {
           contentHeight="h-80"
           className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent"
         />
-      </div>
+      </DetailPageScrollArea>
     )
   }
 
@@ -199,7 +200,7 @@ export function EnvironmentDetailPage() {
     })
 
   return (
-    <div className="flex flex-col flex-1 gap-6">
+    <DetailPageScrollArea>
       <PageHeader items={breadcrumbs} />
 
       <div className="flex flex-col gap-4">
@@ -479,7 +480,7 @@ export function EnvironmentDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </DetailPageScrollArea>
   )
 }
 

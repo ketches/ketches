@@ -4,6 +4,7 @@ import { EditBuildSettingDialog } from "@/components/code-repositories/edit-buil
 import { EditCodeRepositoryDialog } from "@/components/code-repositories/edit-code-repository-dialog"
 import { RepoTopologyView } from "@/components/code-repositories/repo-topology-view"
 import { UnifiedBuildDeployDialog } from "@/components/code-repositories/unified-build-deploy-dialog"
+import { DetailPageScrollArea } from "@/components/layout/detail-page-scroll-area"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -70,7 +71,7 @@ export function CodeRepositoryDetailPage() {
 
   if (detail.isLoading) {
     return (
-      <div className="flex flex-1 flex-col gap-6 animate-pulse">
+      <DetailPageScrollArea contentClassName="animate-pulse">
         <div className="flex flex-col gap-2">
           <Skeleton className="h-4 w-32" />
           <div className="flex items-start justify-between">
@@ -87,7 +88,7 @@ export function CodeRepositoryDetailPage() {
           <Skeleton className="h-10 w-full max-w-50" />
           <Skeleton className="h-64 w-full" />
         </div>
-      </div>
+      </DetailPageScrollArea>
     )
   }
 
@@ -112,7 +113,7 @@ export function CodeRepositoryDetailPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <DetailPageScrollArea>
       <PageHeader items={detail.breadcrumbs} />
 
       <CodeRepositoryDetailHeader
@@ -331,6 +332,6 @@ export function CodeRepositoryDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </DetailPageScrollArea>
   )
 }

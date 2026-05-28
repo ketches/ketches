@@ -14,10 +14,14 @@ export interface User {
 interface AuthState {
   user: User | null
   isAuthenticated: boolean
+  hasCheckedSession: boolean
+  isRestoringSession: boolean
 
   setAuth: (user: User) => void
   updateUser: (user: Partial<User>) => void
   logout: () => void
+  markSessionRestoreStarted: () => void
+  markSessionRestoreFinished: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -25,11 +29,15 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
+      hasCheckedSession: false,
+      isRestoringSession: false,
 
       setAuth: (user) =>
         set({
           user,
+          hasCheckedSession: true,
           isAuthenticated: true,
+          isRestoringSession: false,
         }),
 
       updateUser: (user) =>
@@ -39,13 +47,31 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () =>
         (clearPersistedAuthState(), set({
+          hasCheckedSession: true,
+          isRestoringSession: false,
           user: null,
           isAuthenticated: false,
         })),
+
+      markSessionRestoreStarted: () =>
+        set({
+          hasCheckedSession: false,
+          isRestoringSession: true,
+        }),
+
+      markSessionRestoreFinished: () =>
+        set({
+          hasCheckedSession: true,
+          isRestoringSession: false,
+        }),
     }),
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 )

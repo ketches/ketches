@@ -1,5 +1,6 @@
 import { buildUnauthenticatedLoginHref, getCurrentRelativePath } from '@/lib/auth-redirect'
 import { applyCSRFHeader, clearPersistedAuthState, getCSRFToken, markSessionRefreshed, shouldAttachCSRF } from '@/lib/auth-session'
+import type { User } from '@/stores/auth'
 import axios, { type AxiosInstance } from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -13,8 +14,22 @@ const client: AxiosInstance = axios.create({
   },
 })
 
-let refreshRequest: Promise<void> | null = null
+export interface SessionRefreshResponse {
+  user?: User
+  must_change_password?: boolean
+  default_password_notice?: string
+}
+
+let refreshRequest: Promise<SessionRefreshResponse> | null = null
 let isRedirectingToLogin = false
+
+function unwrapSessionRefreshResponse(responseData: unknown): SessionRefreshResponse {
+  if (responseData && typeof responseData === 'object' && 'data' in responseData) {
+    return ((responseData as { data?: SessionRefreshResponse }).data ?? {})
+  }
+
+  return (responseData ?? {}) as SessionRefreshResponse
+}
 
 export function redirectToUnauthenticatedLogin(): void {
   if (isRedirectingToLogin) {
@@ -26,27 +41,28 @@ export function redirectToUnauthenticatedLogin(): void {
   window.location.href = buildUnauthenticatedLoginHref(getCurrentRelativePath(window.location))
 }
 
-export async function refreshSession(options: { redirectOnFailure?: boolean } = {}): Promise<void> {
+export async function refreshSession(options: { redirectOnFailure?: boolean } = {}): Promise<SessionRefreshResponse> {
   const { redirectOnFailure = true } = options
 
   if (!refreshRequest) {
     const headers = applyCSRFHeader(new Headers(), 'POST')
-    refreshRequest = axios.post(
+    refreshRequest = axios.post<unknown>(
       `${API_BASE_URL}/v1/users/refresh-token`,
       {},
       {
         withCredentials: true,
         headers: Object.fromEntries(headers.entries()),
       }
-    ).then(() => {
+    ).then((response) => {
       markSessionRefreshed()
+      return unwrapSessionRefreshResponse(response.data)
     }).finally(() => {
       refreshRequest = null
     })
   }
 
   try {
-    await refreshRequest
+    return await refreshRequest
   } catch (error) {
     if (redirectOnFailure) {
       redirectToUnauthenticatedLogin()

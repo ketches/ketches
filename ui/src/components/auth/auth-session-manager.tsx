@@ -9,7 +9,12 @@ function shouldRefreshSession(now: number = Date.now()): boolean {
 }
 
 export function AuthSessionManager() {
+  const hasCheckedSession = useAuthStore((state) => state.hasCheckedSession)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isRestoringSession = useAuthStore((state) => state.isRestoringSession)
+  const markSessionRestoreFinished = useAuthStore((state) => state.markSessionRestoreFinished)
+  const markSessionRestoreStarted = useAuthStore((state) => state.markSessionRestoreStarted)
+  const setAuth = useAuthStore((state) => state.setAuth)
 
   const runRefresh = React.useEffectEvent(async () => {
     if (!isAuthenticated) {
@@ -21,6 +26,38 @@ export function AuthSessionManager() {
     } catch {
     }
   })
+
+  const runRestore = React.useEffectEvent(async () => {
+    markSessionRestoreStarted()
+    try {
+      const response = await refreshSession({ redirectOnFailure: false })
+      if (response.user) {
+        setAuth(response.user)
+      }
+    } catch {
+    } finally {
+      markSessionRestoreFinished()
+    }
+  })
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    if (isAuthenticated) {
+      if (!hasCheckedSession || isRestoringSession) {
+        markSessionRestoreFinished()
+      }
+      return
+    }
+
+    if (hasCheckedSession || isRestoringSession) {
+      return
+    }
+
+    void runRestore()
+  }, [hasCheckedSession, isAuthenticated, isRestoringSession, markSessionRestoreFinished])
 
   React.useEffect(() => {
     if (!isAuthenticated || typeof window === "undefined") {

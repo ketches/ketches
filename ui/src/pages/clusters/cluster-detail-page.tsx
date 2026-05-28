@@ -40,6 +40,7 @@ import { EditClusterDialog } from "@/components/cluster/edit-cluster-dialog"
 import { EditClusterKubeConfigDialog } from "@/components/cluster/edit-cluster-kube-config-dialog"
 import { ContainerRegistryList } from "@/components/container-registries/container-registry-list"
 import { DataTable } from "@/components/data-table/data-table"
+import { DetailPageScrollArea } from "@/components/layout/detail-page-scroll-area"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { ClusterNodeResourceMetrics } from "@/components/monitoring/cluster-node-resource-metrics"
@@ -476,7 +477,7 @@ export function ClusterDetailPage() {
 
   if (clusterLoading) {
     return (
-      <div className="flex flex-col flex-1 gap-6">
+      <DetailPageScrollArea>
         <DetailHeroSkeleton showBadge actions={3} />
         <TabsSkeleton count={6} />
         <InfoCardSkeleton fields={6} />
@@ -491,7 +492,7 @@ export function ClusterDetailPage() {
           descriptionWidth="w-72"
           contentHeight="h-64"
         />
-      </div>
+      </DetailPageScrollArea>
     )
   }
 
@@ -582,7 +583,7 @@ export function ClusterDetailPage() {
   }, 0)
 
   return (
-    <div className="flex flex-col flex-1 gap-6">
+    <DetailPageScrollArea>
       <PageHeader items={breadcrumbs} />
 
       <div className="flex flex-col gap-4">
@@ -1108,7 +1109,7 @@ export function ClusterDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </DetailPageScrollArea>
   )
 }
 

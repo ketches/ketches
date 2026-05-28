@@ -17,6 +17,7 @@ import { VolumesTable } from "@/components/applications/volumes-table"
 import { BuildList } from "@/components/builds/build-list"
 import { UnifiedBuildDeployDialog } from "@/components/code-repositories/unified-build-deploy-dialog"
 import { DeploymentHistoryList } from "@/components/deployments/deployment-history-list"
+import { DetailPageScrollArea } from "@/components/layout/detail-page-scroll-area"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { useTimeRange } from "@/components/monitoring/use-time-range"
@@ -230,7 +231,7 @@ export function ApplicationDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col flex-1 gap-6">
+      <DetailPageScrollArea>
         <DetailHeroSkeleton showBadge actions={3} />
         <TabsSkeleton count={11} />
         <StatCardsSkeleton count={4} columnsClassName="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4" />
@@ -241,7 +242,7 @@ export function ApplicationDetailPage() {
           contentHeight="h-80"
           className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent"
         />
-      </div>
+      </DetailPageScrollArea>
     )
   }
 
@@ -324,7 +325,7 @@ export function ApplicationDetailPage() {
     })
 
   return (
-    <div className="flex flex-col flex-1 gap-6">
+    <DetailPageScrollArea>
       <PageHeader items={breadcrumbs} />
 
       <ApplicationDetailHeader
@@ -617,7 +618,7 @@ export function ApplicationDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </DetailPageScrollArea>
   )
 }
 

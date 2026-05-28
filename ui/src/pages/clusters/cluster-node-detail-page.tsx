@@ -28,6 +28,7 @@ import { clustersApi } from "@/api/clusters"
 import { NodeAnnotationsEditor } from "@/components/cluster/node-annotations-editor"
 import { NodeLabelsEditor } from "@/components/cluster/node-labels-editor"
 import { NodeTaintsEditor } from "@/components/cluster/node-taints-editor"
+import { DetailPageScrollArea } from "@/components/layout/detail-page-scroll-area"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { ClusterNodeResourceMetrics } from "@/components/monitoring/cluster-node-resource-metrics"
@@ -105,7 +106,7 @@ export function ClusterNodeDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col flex-1 gap-6">
+      <DetailPageScrollArea>
         <DetailHeroSkeleton showBadge actions={2} />
         <TabsSkeleton count={4} />
         <InfoCardSkeleton fields={7} />
@@ -116,7 +117,7 @@ export function ClusterNodeDetailPage() {
           contentHeight="h-80"
           className="bg-linear-to-b/increasing from-blue-500/5 to-transparent data-[active=true]:bg-transparent"
         />
-      </div>
+      </DetailPageScrollArea>
     )
   }
 
@@ -211,7 +212,7 @@ export function ClusterNodeDetailPage() {
   const storageCapacity = parseMemory(node.status.capacity["ephemeral-storage"] || "0")
 
   return (
-    <div className="flex flex-col flex-1 gap-6">
+    <DetailPageScrollArea>
       <PageHeader items={breadcrumbs} />
 
       <div className="flex justify-between items-start">
@@ -542,6 +543,6 @@ export function ClusterNodeDetailPage() {
         nodeName={nodeName!}
         taints={node.spec.taints}
       />
-    </div>
+    </DetailPageScrollArea>
   )
 }
