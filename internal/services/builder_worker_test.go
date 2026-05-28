@@ -1703,7 +1703,7 @@ func TestDefaultBuilderWorkerRunFrontendCommandPersistsPartialOutputOnCancellati
 }
 
 func TestBuilderWorkerCancelsInFlightDefaultFrontendExecutionOnUserRequest(t *testing.T) {
-	setupBuilderSessionServiceTestDB(t)
+	setupBuilderSessionServiceFileTestDB(t)
 	session, workspace, run, _ := seedClaimedBuilderWorkerDefaultExecutionFixture(t)
 	resetBuilderWorkerExecutionHooks(t)
 

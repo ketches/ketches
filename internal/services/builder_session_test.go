@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -23,6 +24,28 @@ func setupBuilderSessionServiceTestDB(t *testing.T) {
 	})
 
 	testDB, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
+	require.NoError(t, err)
+	sqlDB, err := testDB.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
+
+	db.DB = testDB
+	require.NoError(t, db.Migrate())
+}
+
+func setupBuilderSessionServiceFileTestDB(t *testing.T) {
+	t.Helper()
+
+	originalDB := db.DB
+	t.Cleanup(func() {
+		db.DB = originalDB
+	})
+
+	dbPath := filepath.Join(t.TempDir(), "builder-session-test.db")
+	testDB, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	require.NoError(t, err)
