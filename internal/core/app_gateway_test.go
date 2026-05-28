@@ -190,6 +190,95 @@ func TestSyncGatewaysToK8s_CreatesHTTPRoutesFromRouteGraph(t *testing.T) {
 	assert.Equal(t, buildSharedGatewayHTTPSListenerName("secure.example.com"), *httpsRoute.Spec.ParentRefs[0].SectionName)
 }
 
+func TestSyncGatewaysToK8s_DoesNotCreateClusterIPServiceWithoutGateways(t *testing.T) {
+	clusterID := "cluster-sync-no-gateways"
+	namespace := "demo-env"
+	server := newGatewaySyncAPIServer()
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+
+	storeTestClusterClients(t, clusterID, httpServer)
+	defer kube.GlobalClusterStore.RemoveClient(clusterID)
+
+	appCtx := &models.AppContext{
+		App: entities.App{
+			Base: entities.Base{ID: "app-1"},
+			Slug: "demo-app",
+		},
+		EnvContext: models.EnvContext{
+			Env: entities.Env{
+				Base:             entities.Base{ID: "env-1"},
+				Slug:             "demo",
+				ClusterID:        clusterID,
+				ClusterNamespace: namespace,
+			},
+			Project: entities.Project{
+				Base: entities.Base{ID: "project-1"},
+				Slug: "proj",
+			},
+		},
+	}
+
+	err := SyncGatewaysToK8s(context.Background(), appCtx)
+	require.NoError(t, err)
+
+	assert.Empty(t, server.listServices(namespace))
+}
+
+func TestDeleteGatewayFromK8s_DeletesClusterIPServiceWhenRemovingLastGateway(t *testing.T) {
+	clusterID := "cluster-delete-last-gateway"
+	namespace := "demo-env"
+	server := newGatewaySyncAPIServer()
+	server.addService(&corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-app",
+			Namespace: namespace,
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{Name: "port-8080", Port: 8080},
+			},
+		},
+	})
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+
+	storeTestClusterClients(t, clusterID, httpServer)
+	defer kube.GlobalClusterStore.RemoveClient(clusterID)
+
+	gateway := entities.AppGateway{
+		ID:          "gateway-1",
+		Port:        8080,
+		Protocol:    "tcp",
+		ServiceType: "ClusterIP",
+	}
+	appCtx := &models.AppContext{
+		App: entities.App{
+			Base: entities.Base{ID: "app-1"},
+			Slug: "demo-app",
+		},
+		EnvContext: models.EnvContext{
+			Env: entities.Env{
+				Base:             entities.Base{ID: "env-1"},
+				Slug:             "demo",
+				ClusterID:        clusterID,
+				ClusterNamespace: namespace,
+			},
+			Project: entities.Project{
+				Base: entities.Base{ID: "project-1"},
+				Slug: "proj",
+			},
+		},
+		Gateways: []entities.AppGateway{gateway},
+	}
+
+	err := DeleteGatewayFromK8s(context.Background(), appCtx, &gateway)
+	require.NoError(t, err)
+
+	assert.Empty(t, server.listServices(namespace))
+}
+
 type gatewaySyncAPIServer struct {
 	mu         sync.Mutex
 	services   map[string]*corev1.Service
@@ -325,6 +414,24 @@ func (s *gatewaySyncAPIServer) addHTTPRoute(route *gatewayv1.HTTPRoute) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.httpRoutes[namespacedKey(route.Namespace, route.Name)] = route.DeepCopy()
+}
+
+func (s *gatewaySyncAPIServer) addService(service *corev1.Service) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.services[namespacedKey(service.Namespace, service.Name)] = service.DeepCopy()
+}
+
+func (s *gatewaySyncAPIServer) listServices(namespace string) []corev1.Service {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	items := make([]corev1.Service, 0)
+	for _, service := range s.services {
+		if service.Namespace == namespace {
+			items = append(items, *service.DeepCopy())
+		}
+	}
+	return items
 }
 
 func (s *gatewaySyncAPIServer) listHTTPRoutes(namespace string) []gatewayv1.HTTPRoute {

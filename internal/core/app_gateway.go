@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayclient "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
@@ -39,20 +40,8 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 
 	metadata := &AppMetadata{AppContext: appCtx}
 
-	// Always sync shared ClusterIP Service (all gateway ports)
-	svc := metadata.BuildClusterIPService(appCtx.Gateways)
-	if _, err := client.CoreV1().Services(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{}); err != nil {
-		if errors.IsNotFound(err) {
-			if _, err := client.CoreV1().Services(svc.Namespace).Create(ctx, svc, metav1.CreateOptions{}); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	} else {
-		if _, err := client.CoreV1().Services(svc.Namespace).Update(ctx, svc, metav1.UpdateOptions{}); err != nil {
-			return err
-		}
+	if err := syncClusterIPService(ctx, client, metadata, appCtx.Gateways); err != nil {
+		return err
 	}
 
 	routesByGateway := groupGatewayRoutesForSync(appCtx.GatewayRoutes)
@@ -179,14 +168,46 @@ func DeleteGatewayFromK8s(ctx context.Context, appCtx *models.AppContext, gatewa
 		}
 	}
 
-	// Rebuild shared ClusterIP Service with remaining gateways
 	metadata := &AppMetadata{AppContext: appCtx}
-	svc := metadata.BuildClusterIPService(appCtx.Gateways)
-	if _, err := client.CoreV1().Services(svc.Namespace).Update(ctx, svc, metav1.UpdateOptions{}); err != nil {
+	if err := syncClusterIPService(ctx, client, metadata, remainingGatewaysAfterDelete(appCtx.Gateways, gateway.ID)); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func syncClusterIPService(ctx context.Context, client *kubernetes.Clientset, metadata *AppMetadata, gateways []entities.AppGateway) error {
+	namespace := metadata.AppContext.EnvContext.Env.ClusterNamespace
+	name := metadata.AppContext.App.Slug
+	if len(gateways) == 0 {
+		if err := client.CoreV1().Services(namespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+
+	svc := metadata.BuildClusterIPService(gateways)
+	if _, err := client.CoreV1().Services(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{}); err != nil {
+		if errors.IsNotFound(err) {
+			_, err = client.CoreV1().Services(svc.Namespace).Create(ctx, svc, metav1.CreateOptions{})
+			return err
+		}
+		return err
+	}
+
+	_, err := client.CoreV1().Services(svc.Namespace).Update(ctx, svc, metav1.UpdateOptions{})
+	return err
+}
+
+func remainingGatewaysAfterDelete(gateways []entities.AppGateway, deletedGatewayID string) []entities.AppGateway {
+	remaining := make([]entities.AppGateway, 0, len(gateways))
+	for _, gateway := range gateways {
+		if gateway.ID == deletedGatewayID {
+			continue
+		}
+		remaining = append(remaining, gateway)
+	}
+	return remaining
 }
 
 // BuildClusterIPService builds a shared ClusterIP Service containing all gateway ports.
