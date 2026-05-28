@@ -26,14 +26,20 @@ export const toTitleCase = (str: string) => {
   })
 }
 
+export function capitalizeDisplayMessage(message: string): string {
+  return message.replace(/^(\s*)([a-z])/, (_, leading: string, firstLetter: string) => {
+    return `${leading}${firstLetter.toUpperCase()}`
+  })
+}
+
 export function getErrorMessage(error: unknown, fallback: string): string {
   if (isAxiosError<{ error?: string }>(error)) {
-    return error.response?.data?.error || error.message || fallback
+    return capitalizeDisplayMessage(error.response?.data?.error || error.message || fallback)
   }
 
   if (error instanceof Error) {
-    return error.message
+    return capitalizeDisplayMessage(error.message)
   }
 
-  return fallback
+  return capitalizeDisplayMessage(fallback)
 }

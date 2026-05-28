@@ -23,6 +23,38 @@ describe("getErrorMessage", () => {
     ).toBe("Server said no")
   })
 
+  it("capitalizes API response messages before display", () => {
+    const getErrorMessage = getErrorMessageImplementation()
+
+    expect(getErrorMessage).toBeTypeOf("function")
+    expect(
+      getErrorMessage?.(
+        {
+          isAxiosError: true,
+          message: "Request failed",
+          response: { data: { error: "project already exists" } },
+        },
+        "Fallback message"
+      )
+    ).toBe("Project already exists")
+  })
+
+  it("keeps the rest of the API response message unchanged", () => {
+    const getErrorMessage = getErrorMessageImplementation()
+
+    expect(getErrorMessage).toBeTypeOf("function")
+    expect(
+      getErrorMessage?.(
+        {
+          isAxiosError: true,
+          message: "Request failed",
+          response: { data: { error: "URL is invalid" } },
+        },
+        "Fallback message"
+      )
+    ).toBe("URL is invalid")
+  })
+
   it("falls back to the axios error message when response data has no error", () => {
     const getErrorMessage = getErrorMessageImplementation()
 

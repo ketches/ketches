@@ -15,6 +15,7 @@ type Response = {
 type AxiosErrorLike = Error & {
   response?: {
     status?: number
+    data?: unknown
   }
   config?: RequestConfig
 }
@@ -75,6 +76,29 @@ const testState = vi.hoisted(() => {
       error.response = { status: 401 }
       error.config = config
       throw error
+    }
+
+    if (url === "/v1/lowercase-error") {
+      const error = new Error("Bad request") as AxiosErrorLike
+      error.response = {
+        status: 400,
+        data: {
+          error: "project already exists",
+        },
+      }
+      error.config = config
+      throw error
+    }
+
+    if (url === "/v1/lowercase-message") {
+      return {
+        data: {
+          data: {
+            message: "namespace is available",
+          },
+        },
+        config,
+      }
     }
 
     return {
@@ -171,5 +195,21 @@ describe("api client refresh handling", () => {
     expect(testState.refreshPostMock).toHaveBeenCalledTimes(1)
     expect(testState.markSessionRefreshedMock).toHaveBeenCalledTimes(1)
     expect(testState.clearPersistedAuthStateMock).not.toHaveBeenCalled()
+  })
+
+  it("capitalizes API error response messages before rejection", async () => {
+    await expect(client.get("/v1/lowercase-error")).rejects.toMatchObject({
+      response: {
+        data: {
+          error: "Project already exists",
+        },
+      },
+    })
+  })
+
+  it("capitalizes API success response messages before unwrapping", async () => {
+    await expect(client.get("/v1/lowercase-message")).resolves.toEqual({
+      message: "Namespace is available",
+    })
   })
 })

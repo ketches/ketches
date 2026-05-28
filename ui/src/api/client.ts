@@ -1,5 +1,6 @@
 import { buildUnauthenticatedLoginHref, getCurrentRelativePath } from '@/lib/auth-redirect'
 import { applyCSRFHeader, clearPersistedAuthState, getCSRFToken, markSessionRefreshed, shouldAttachCSRF } from '@/lib/auth-session'
+import { capitalizeDisplayMessage } from '@/lib/utils'
 import type { User } from '@/stores/auth'
 import axios, { type AxiosInstance } from 'axios'
 
@@ -29,6 +30,24 @@ function unwrapSessionRefreshResponse(responseData: unknown): SessionRefreshResp
   }
 
   return (responseData ?? {}) as SessionRefreshResponse
+}
+
+function normalizeBackendMessagePayload(payload: unknown): void {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return
+  }
+
+  const data = payload as Record<string, unknown>
+  if (typeof data.error === 'string') {
+    data.error = capitalizeDisplayMessage(data.error)
+  }
+  if (typeof data.message === 'string') {
+    data.message = capitalizeDisplayMessage(data.message)
+  }
+}
+
+function normalizeErrorResponseMessages(error: unknown): void {
+  normalizeBackendMessagePayload((error as { response?: { data?: unknown } }).response?.data)
 }
 
 export function redirectToUnauthenticatedLogin(): void {
@@ -83,12 +102,19 @@ client.interceptors.request.use((config) => {
 
 client.interceptors.response.use(
   (response) => {
-    if (response.data && Object.prototype.hasOwnProperty.call(response.data, 'data')) {
-      return response.data.data
+    const responseData = response.data
+    normalizeBackendMessagePayload(responseData)
+
+    if (responseData && Object.prototype.hasOwnProperty.call(responseData, 'data')) {
+      const payload = (responseData as { data?: unknown }).data
+      normalizeBackendMessagePayload(payload)
+      return payload
     }
-    return response.data
+    return responseData
   },
   async (error) => {
+    normalizeErrorResponseMessages(error)
+
     if (error.response?.status === 401) {
       const requestUrl = String(error.config?.url ?? '')
       const isAuthRequest =
