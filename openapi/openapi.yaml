@@ -1419,7 +1419,7 @@ components:
 info:
   description: Auto-generated from Gin route table.
   title: Ketches API
-  version: dev
+  version: 0.1.0-alpha.1
 openapi: 3.0.3
 paths:
   /api/v1/activities:
