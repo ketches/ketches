@@ -160,6 +160,15 @@ jobs:
           username: ${{ vars.ALIYUNACR_USERNAME }}
           password: ${{ secrets.ALIYUNACR_TOKEN }}
 
+      - name: Resolve release tag metadata
+        id: release-tag
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "stable=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "stable=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -170,8 +179,9 @@ jobs:
             ${{ env.ALIYUNACR_REGISTRY }}/${{ env.ALIYUNACR_NAMESPACE }}/${{ env.API_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ steps.release-tag.outputs.stable == 'true' }}
+            type=semver,pattern={{major}},enable=${{ steps.release-tag.outputs.stable == 'true' }}
+            type=raw,value=latest,enable=${{ steps.release-tag.outputs.stable == 'true' }}
             type=sha,prefix=sha-,format=short
 
       - name: Build and push
@@ -229,6 +239,15 @@ jobs:
           username: ${{ vars.ALIYUNACR_USERNAME }}
           password: ${{ secrets.ALIYUNACR_TOKEN }}
 
+      - name: Resolve release tag metadata
+        id: release-tag
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "stable=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "stable=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -239,8 +258,9 @@ jobs:
             ${{ env.ALIYUNACR_REGISTRY }}/${{ env.ALIYUNACR_NAMESPACE }}/${{ env.UI_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ steps.release-tag.outputs.stable == 'true' }}
+            type=semver,pattern={{major}},enable=${{ steps.release-tag.outputs.stable == 'true' }}
+            type=raw,value=latest,enable=${{ steps.release-tag.outputs.stable == 'true' }}
             type=sha,prefix=sha-,format=short
 
       - name: Build and push
@@ -342,6 +362,12 @@ jobs:
         id: release-vars
         run: |
           version="${GITHUB_REF_NAME#v}"
+          stable_release=false
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            stable_release=true
+            major="${version%%.*}"
+            minor="${version%.*}"
+          fi
 
           {
             echo '## Docker Images'
@@ -354,6 +380,10 @@ jobs:
             printf '| UI (Docker Hub) | `docker pull %s/%s/%s:%s` |\n' "${DOCKERHUB_REGISTRY}" "${DOCKERHUB_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
             printf '| API (Aliyun ACR) | `docker pull %s/%s/%s:%s` |\n' "${ALIYUNACR_REGISTRY}" "${ALIYUNACR_NAMESPACE}" "${API_IMAGE_NAME}" "${version}"
             printf '| UI (Aliyun ACR) | `docker pull %s/%s/%s:%s` |\n' "${ALIYUNACR_REGISTRY}" "${ALIYUNACR_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
+            if [ "${stable_release}" = "true" ]; then
+              echo
+              printf 'Stable aliases `%s`, `%s`, and `latest` are also published for each image.\n' "${minor}" "${major}"
+            fi
 
             echo
             echo '## Quick Start'
