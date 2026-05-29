@@ -114,6 +114,28 @@ export function ApplicationList({
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [deleteAppIds, setDeleteAppIds] = React.useState<string[]>([])
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+  const [actionInteractionAppIds, setActionInteractionAppIds] = React.useState<Set<string>>(() => new Set())
+  const isActionInteractionActive = actionInteractionAppIds.size > 0
+
+  const handleActionInteractionChange = React.useCallback((appId: string, active: boolean) => {
+    setActionInteractionAppIds((currentAppIds) => {
+      if (active && currentAppIds.has(appId)) {
+        return currentAppIds
+      }
+
+      if (!active && !currentAppIds.has(appId)) {
+        return currentAppIds
+      }
+
+      const nextAppIds = new Set(currentAppIds)
+      if (active) {
+        nextAppIds.add(appId)
+      } else {
+        nextAppIds.delete(appId)
+      }
+      return nextAppIds
+    })
+  }, [])
 
   const [viewMode, setViewMode] = React.useState<"list" | "card">(() => {
     const saved = localStorage.getItem(APPLICATIONS_VIEW_MODE_KEY)
@@ -137,7 +159,7 @@ export function ApplicationList({
     queryFn: () => appFavoritesApi.listFavorites(envId),
     enabled: !!envId,
     // Poll only when this list is the primary data source (Favorites tab)
-    refetchInterval: favoritesOnly ? 5000 : false,
+    refetchInterval: favoritesOnly && !isActionInteractionActive ? 5000 : false,
   })
   const favoriteIds = new Set(favorites.map((f: App) => f.id))
 
@@ -208,7 +230,7 @@ export function ApplicationList({
       page_size: pagination.pageSize,
     }),
     enabled: !!envId && !externalApps && !favoritesOnly,
-    refetchInterval: 5000,
+    refetchInterval: isActionInteractionActive ? false : 5000,
     placeholderData: (previousData) => previousData,
   })
 
@@ -241,9 +263,9 @@ export function ApplicationList({
   const effectiveLoading = selectLoadingState({
     favoritesOnly,
     hasExternalDataSource: Boolean(externalApps),
-    favoritesSource: { isLoading: favoritesLoading, isFetching: favoritesFetching },
+    favoritesSource: { isLoading: favoritesLoading, isFetching: isActionInteractionActive ? false : favoritesFetching },
     externalSource: { isLoading: externalLoading, isFetching: false },
-    defaultSource: { isLoading, isFetching },
+    defaultSource: { isLoading, isFetching: isActionInteractionActive ? false : isFetching },
   })
   const sourceDataCount = favoritesOnly
     ? favorites.length
@@ -432,6 +454,7 @@ export function ApplicationList({
                 currentGroupId={currentGroupId}
                 onMoveToGroup={(groupId) => addToGroupMutation.mutate({ groupId, appId: row.original.id })}
                 onRemoveFromGroup={currentGroupId ? () => removeFromGroupMutation.mutate({ groupId: currentGroupId, appId: row.original.id }) : undefined}
+                onActionInteractionChange={handleActionInteractionChange}
               />
             </>
           )}
@@ -492,6 +515,7 @@ export function ApplicationList({
       <DataTable
         columns={columns}
         data={safeApps}
+        getRowId={(app) => app.id}
         sourceDataCount={sourceDataCount}
         isLoading={effectiveLoading}
         sourceEmptyContent={(
@@ -594,6 +618,7 @@ export function ApplicationList({
                         currentGroupId={currentGroupId}
                         onMoveToGroup={(groupId) => addToGroupMutation.mutate({ groupId, appId: app.id })}
                         onRemoveFromGroup={currentGroupId ? () => removeFromGroupMutation.mutate({ groupId: currentGroupId, appId: app.id }) : undefined}
+                        onActionInteractionChange={handleActionInteractionChange}
                       />
                     </>
                   )}

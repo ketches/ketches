@@ -73,14 +73,47 @@ interface AppActionIconsProps {
   currentGroupId?: string
   onMoveToGroup?: (groupId: string) => void
   onRemoveFromGroup?: () => void
+  onInteractionChange?: (active: boolean) => void
 }
 
-export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupId, onMoveToGroup, onRemoveFromGroup }: AppActionIconsProps) {
+export function AppActionIcons({
+  appId,
+  envId,
+  actions,
+  appGroups,
+  currentGroupId,
+  onMoveToGroup,
+  onRemoveFromGroup,
+  onInteractionChange,
+}: AppActionIconsProps) {
   const queryClient = useQueryClient()
+  const [moreActionsOpen, setMoreActionsOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
   const [exportAppIds, setExportAppIds] = React.useState<string[]>([])
   const [_exportAppId, setExportAppId] = React.useState<string | undefined>(undefined)
+  const lastInteractionActiveRef = React.useRef(false)
+  const interactionActive = moreActionsOpen || deleteDialogOpen || exportDialogOpen
+
+  React.useEffect(() => {
+    if (lastInteractionActiveRef.current === interactionActive) {
+      return
+    }
+
+    lastInteractionActiveRef.current = interactionActive
+    onInteractionChange?.(interactionActive)
+  }, [interactionActive, onInteractionChange])
+
+  React.useEffect(() => {
+    return () => {
+      if (!lastInteractionActiveRef.current) {
+        return
+      }
+
+      lastInteractionActiveRef.current = false
+      onInteractionChange?.(false)
+    }
+  }, [onInteractionChange])
 
   const executeMutation = useMutation<unknown, AxiosError<{ error: string }>, string>({
     mutationFn: async (action: string) => {
@@ -155,7 +188,7 @@ export function AppActionIcons({ appId, envId, actions, appGroups, currentGroupI
         })}
 
         {moreActions.length > 0 && (
-          <DropdownMenu>
+          <DropdownMenu open={moreActionsOpen} onOpenChange={(open) => setMoreActionsOpen(open)}>
             <DropdownMenuTrigger
               render={<Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()} />}
             >

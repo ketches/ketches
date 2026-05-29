@@ -128,4 +128,37 @@ describe("DataTable", () => {
       root.unmount()
     })
   })
+
+  it("uses custom row ids for controlled row selection", async () => {
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DataTable
+          columns={[
+            {
+              accessorKey: "name",
+              header: "Name",
+            },
+          ]}
+          data={[
+            { id: "app-alpha", name: "Alpha" },
+            { id: "app-beta", name: "Beta" },
+          ]}
+          getRowId={(row) => row.id}
+          rowSelection={{ "app-beta": true }}
+        />,
+      )
+    })
+
+    const selectedRow = container.querySelector('tr[data-state="selected"]')
+    expect(selectedRow?.textContent).toContain("Beta")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })

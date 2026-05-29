@@ -1,5 +1,6 @@
 import { type ActionMetadata } from "@/api/apps"
 import { AppActionIcons } from "@/components/applications/app-action-icons"
+import * as React from "react"
 
 interface AppActionIconsWrapperProps {
   appId: string
@@ -9,9 +10,23 @@ interface AppActionIconsWrapperProps {
   currentGroupId?: string
   onMoveToGroup?: (groupId: string) => void
   onRemoveFromGroup?: () => void
+  onActionInteractionChange?: (appId: string, active: boolean) => void
 }
 
-export function AppActionIconsWrapper({ appId, envId, actions, appGroups, currentGroupId, onMoveToGroup, onRemoveFromGroup }: AppActionIconsWrapperProps) {
+export function AppActionIconsWrapper({
+  appId,
+  envId,
+  actions,
+  appGroups,
+  currentGroupId,
+  onMoveToGroup,
+  onRemoveFromGroup,
+  onActionInteractionChange,
+}: AppActionIconsWrapperProps) {
+  const handleInteractionChange = React.useCallback((active: boolean) => {
+    onActionInteractionChange?.(appId, active)
+  }, [appId, onActionInteractionChange])
+
   if (!actions || actions.length === 0) {
     return null
   }
@@ -25,6 +40,7 @@ export function AppActionIconsWrapper({ appId, envId, actions, appGroups, curren
       currentGroupId={currentGroupId}
       onMoveToGroup={onMoveToGroup}
       onRemoveFromGroup={onRemoveFromGroup}
+      onInteractionChange={handleInteractionChange}
     />
   )
 }

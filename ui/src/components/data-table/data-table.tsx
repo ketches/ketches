@@ -63,6 +63,7 @@ interface DataTableProps<TData, TValue> {
   viewMode?: "list" | "card"
   borderless?: boolean
   isLoading?: boolean
+  getRowId?: (originalRow: TData, index: number) => string
   // Custom empty state rendered in place of the default filtered-empty state
   emptyContent?: React.ReactNode
   // Standalone empty state rendered instead of the table when the source data is empty
@@ -100,6 +101,7 @@ export function DataTable<TData, TValue>({
   viewMode = "list",
   borderless = true,
   isLoading = false,
+  getRowId,
   emptyContent,
   sourceEmptyContent,
   useStandaloneEmptyState = false,
@@ -135,6 +137,7 @@ export function DataTable<TData, TValue>({
   const table = useReactTable({
     data: normalizedData,
     columns,
+    getRowId,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
