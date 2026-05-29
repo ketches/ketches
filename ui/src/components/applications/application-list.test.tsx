@@ -247,7 +247,7 @@ describe("ApplicationList", () => {
     document.body.innerHTML = ""
   })
 
-  it("pauses automatic refresh and hides fetching overlay while an action menu is active", async () => {
+  it("keeps actions interactive during automatic refresh and pauses polling while an action menu is active", async () => {
     const container = document.createElement("div")
     document.body.appendChild(container)
     const root = ReactDOMClient.createRoot(container)
@@ -257,7 +257,7 @@ describe("ApplicationList", () => {
     })
 
     expect(latestAppsQueryConfig()?.refetchInterval).toBe(5000)
-    expect(latestDataTableProps()?.isLoading).toBe(true)
+    expect(latestDataTableProps()?.isLoading).toBe(false)
 
     const actionButton = container.querySelector('[data-testid="actions-app-1"]') as HTMLButtonElement
     await act(async () => {

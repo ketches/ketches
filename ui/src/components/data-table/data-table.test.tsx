@@ -161,4 +161,39 @@ describe("DataTable", () => {
       root.unmount()
     })
   })
+
+  it("does not cover existing rows with a refresh overlay", async () => {
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DataTable
+          columns={[
+            {
+              accessorKey: "name",
+              header: "Name",
+            },
+          ]}
+          data={[
+            { id: "app-alpha", name: "Alpha" },
+          ]}
+          getRowId={(row) => row.id}
+          refreshState={{
+            isRefreshing: true,
+            handleRefresh: () => undefined,
+          }}
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain("Alpha")
+    expect(container.textContent).not.toContain("Refreshing...")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })

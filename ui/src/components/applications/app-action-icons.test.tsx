@@ -1,5 +1,7 @@
-import { act } from "react"
-import ReactDOMClient from "react-dom/client"
+import "@testing-library/jest-dom/vitest"
+
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@tanstack/react-query", () => ({
@@ -25,37 +27,6 @@ vi.mock("@/components/ui/alert-dialog", () => ({
   AlertDialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, type, ...props }: React.ComponentProps<"button">) => <button type={type ?? "button"} {...props}>{children}</button>,
-}))
-
-vi.mock("@/components/ui/dropdown-menu", () => ({
-  DropdownMenu: ({
-    children,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    onOpenChange?: (open: boolean) => void
-  }) => (
-    <div>
-      <button type="button" data-testid="open-actions" onClick={() => onOpenChange?.(true)}>
-        Open actions
-      </button>
-      <button type="button" data-testid="close-actions" onClick={() => onOpenChange?.(false)}>
-        Close actions
-      </button>
-      {children}
-    </div>
-  ),
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({ children, ...props }: React.ComponentProps<"button">) => <button type="button" {...props}>{children}</button>,
-  DropdownMenuSeparator: () => <div data-testid="menu-separator" />,
-  DropdownMenuSub: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuSubTrigger: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
-  DropdownMenuTrigger: ({ children, render }: { children?: React.ReactNode; render?: React.ReactNode }) => <>{render ?? children ?? null}</>,
 }))
 
 vi.mock("@/components/ui/tooltip", () => ({
@@ -84,45 +55,38 @@ describe("AppActionIcons", () => {
     document.body.innerHTML = ""
   })
 
-  it("reports active interaction while the actions dropdown is open", async () => {
-    const container = document.createElement("div")
-    document.body.appendChild(container)
-    const root = ReactDOMClient.createRoot(container)
+  it("opens the more actions dropdown from the trigger button", async () => {
+    const user = userEvent.setup()
     const onInteractionChange = vi.fn()
 
-    await act(async () => {
-      root.render(
-        <AppActionIcons
-          appId="app-1"
-          envId="env-1"
-          actions={[
-            {
-              action: "restart",
-              label: "Restart",
-              icon: "rotate-cw",
-              category: "secondary",
-              variant: "default",
-            },
-          ]}
-          onInteractionChange={onInteractionChange}
-        />,
-      )
-    })
+    const { container } = render(
+      <AppActionIcons
+        appId="app-1"
+        envId="env-1"
+        actions={[
+          {
+            action: "restart",
+            label: "Restart",
+            icon: "rotate-cw",
+            category: "secondary",
+            variant: "default",
+          },
+        ]}
+        onInteractionChange={onInteractionChange}
+      />,
+    )
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-testid="open-actions"]')?.click()
-    })
+    const trigger = container.querySelector<HTMLButtonElement>('[data-slot="dropdown-menu-trigger"]')
 
-    expect(onInteractionChange).toHaveBeenLastCalledWith(true)
+    expect(trigger).toBeInTheDocument()
+    await user.click(trigger!)
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-testid="close-actions"]')?.click()
-    })
+    expect(await screen.findByText("Restart")).toBeInTheDocument()
+    expect(screen.getByText("Export")).toBeInTheDocument()
+    await waitFor(() => expect(onInteractionChange).toHaveBeenLastCalledWith(true))
 
-    expect(onInteractionChange).toHaveBeenLastCalledWith(false)
+    await user.keyboard("{Escape}")
 
-    await act(async () => {
-      root.unmount()
-    })
+    await waitFor(() => expect(onInteractionChange).toHaveBeenLastCalledWith(false))
   })
 })

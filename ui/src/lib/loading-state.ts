@@ -1,6 +1,5 @@
 export interface LoadingSourceState {
   isLoading?: boolean
-  isFetching?: boolean
 }
 
 export interface SelectLoadingStateOptions {
@@ -19,12 +18,12 @@ export function selectLoadingState({
   defaultSource,
 }: SelectLoadingStateOptions): boolean {
   if (favoritesOnly) {
-    return Boolean(favoritesSource?.isLoading || favoritesSource?.isFetching)
+    return Boolean(favoritesSource?.isLoading)
   }
 
   if (hasExternalDataSource) {
-    return Boolean(externalSource?.isLoading || externalSource?.isFetching)
+    return Boolean(externalSource?.isLoading)
   }
 
-  return Boolean(defaultSource?.isLoading || defaultSource?.isFetching)
+  return Boolean(defaultSource?.isLoading)
 }

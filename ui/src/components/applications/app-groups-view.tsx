@@ -39,7 +39,7 @@ function GroupAppList({
   const [searchQuery, setSearchQuery] = useState("")
   const debouncedSearch = useDebounce(searchQuery, 300)
 
-  const { data: groupAppsResponse, isLoading, isFetching } = useQuery({
+  const { data: groupAppsResponse, isLoading } = useQuery({
     queryKey: ['group-apps', groupId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
     queryFn: () => appGroupsApi.listGroupApps(groupId, {
       page: pagination.pageIndex + 1,
@@ -61,7 +61,7 @@ function GroupAppList({
       externalTotalCount={groupAppsResponse?.pagination?.total || 0}
       externalSearchQuery={searchQuery}
       onExternalSearchChange={setSearchQuery}
-      externalLoading={isLoading || isFetching}
+      externalLoading={isLoading}
       toolbarLeadingContent={toolbarLeadingContent}
     />
   )

@@ -32,7 +32,7 @@ import {
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Info, Loader2 } from "lucide-react"
 
-import { RefreshButtonIcon, RefreshIndicator } from "@/components/data-table/refresh-indicator"
+import { RefreshButtonIcon } from "@/components/data-table/refresh-indicator"
 import { useRefreshAction } from "@/components/data-table/use-refresh-action"
 import {
   Combobox,
@@ -214,7 +214,6 @@ export function DataTable<TData, TValue>({
     isLoading,
   })
   const isRefreshing = refreshState?.isRefreshing ?? internalRefreshAction.isRefreshing
-  const showRefreshOverlay = isRefreshing && !isLoading
   const handleRefresh = refreshState?.handleRefresh ?? internalRefreshAction.handleRefresh
   const showLoadingOverlay = isLoading && effectiveSourceDataCount > 0
 
@@ -333,16 +332,12 @@ export function DataTable<TData, TValue>({
                   : listEmptyRow}
               </TableBody>
             </Table>
-            {(showRefreshOverlay || showLoadingOverlay) && (
+            {showLoadingOverlay && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/55 backdrop-blur-[1px]">
-                {showRefreshOverlay ? (
-                  <RefreshIndicator />
-                ) : (
-                  <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading...</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
               </div>
             )}
           </div>
@@ -381,16 +376,12 @@ export function DataTable<TData, TValue>({
               )
             )}
           </div>
-          {(showRefreshOverlay || showLoadingOverlay) && (
+          {showLoadingOverlay && (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md bg-background/55 backdrop-blur-[1px]">
-              {showRefreshOverlay ? (
-                <RefreshIndicator />
-              ) : (
-                <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Loading...</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2 rounded-md border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Loading...</span>
+              </div>
             </div>
           )}
         </div>

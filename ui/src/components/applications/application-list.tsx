@@ -154,7 +154,7 @@ export function ApplicationList({
     pageIndex: 0,
     pageSize: viewMode === "card" ? 9 : 10,
   })
-  const { data: favorites = [], isLoading: favoritesLoading, isFetching: favoritesFetching, refetch: refetchFavorites } = useQuery({
+  const { data: favorites = [], isLoading: favoritesLoading, refetch: refetchFavorites } = useQuery({
     queryKey: ['app-favorites', envId],
     queryFn: () => appFavoritesApi.listFavorites(envId),
     enabled: !!envId,
@@ -222,7 +222,7 @@ export function ApplicationList({
     }
   })
 
-  const { data: appsResponse, isLoading, isFetching, refetch } = useQuery({
+  const { data: appsResponse, isLoading, refetch } = useQuery({
     queryKey: ['apps', envId, debouncedSearch, pagination.pageIndex, pagination.pageSize],
     queryFn: () => appsApi.list(envId, {
       search: debouncedSearch,
@@ -263,9 +263,9 @@ export function ApplicationList({
   const effectiveLoading = selectLoadingState({
     favoritesOnly,
     hasExternalDataSource: Boolean(externalApps),
-    favoritesSource: { isLoading: favoritesLoading, isFetching: isActionInteractionActive ? false : favoritesFetching },
-    externalSource: { isLoading: externalLoading, isFetching: false },
-    defaultSource: { isLoading, isFetching: isActionInteractionActive ? false : isFetching },
+    favoritesSource: { isLoading: favoritesLoading },
+    externalSource: { isLoading: externalLoading },
+    defaultSource: { isLoading },
   })
   const sourceDataCount = favoritesOnly
     ? favorites.length
