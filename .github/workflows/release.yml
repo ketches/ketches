@@ -9,13 +9,44 @@ env:
   GHCR_REGISTRY: ghcr.io
   GHCR_NAMESPACE: ${{ vars.GHCR_NAMESPACE || github.repository }}
   DOCKERHUB_REGISTRY: docker.io
-  DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_NAMESPACE || 'ketches' }}
-  ALIYUN_REGISTRY: ${{ vars.ALIYUN_REGISTRY || 'registry.cn-hangzhou.aliyuncs.com' }}
-  ALIYUN_NAMESPACE: ${{ vars.ALIYUN_NAMESPACE || 'ketches' }}
+  DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_USERNAME }}
+  ALIYUNACR_REGISTRY: ${{ vars.ALIYUNACR_REGISTRY }}
+  ALIYUNACR_NAMESPACE: ${{ vars.ALIYUNACR_NAMESPACE }}
   API_IMAGE_NAME: ketches-api
   UI_IMAGE_NAME: ketches-ui
 
 jobs:
+  validate-release-config:
+    name: Validate release registry configuration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      ALIYUNACR_REGISTRY: ${{ vars.ALIYUNACR_REGISTRY }}
+      ALIYUNACR_NAMESPACE: ${{ vars.ALIYUNACR_NAMESPACE }}
+      ALIYUNACR_USERNAME: ${{ vars.ALIYUNACR_USERNAME }}
+      ALIYUNACR_TOKEN: ${{ secrets.ALIYUNACR_TOKEN }}
+    steps:
+      - name: Validate registry variables and secrets
+        run: |
+          missing=0
+          for name in \
+            DOCKERHUB_USERNAME \
+            DOCKERHUB_TOKEN \
+            ALIYUNACR_REGISTRY \
+            ALIYUNACR_NAMESPACE \
+            ALIYUNACR_USERNAME \
+            ALIYUNACR_TOKEN
+          do
+            if [ -z "${!name}" ]; then
+              echo "::error title=Missing registry configuration::${name} is required for release publishing"
+              missing=1
+            fi
+          done
+          exit "${missing}"
+
   # ── Lint must pass before releasing ───────────────────────────────────────
   lint-backend:
     name: Lint (Go)
@@ -95,13 +126,10 @@ jobs:
   release-api:
     name: Release API image
     runs-on: ubuntu-latest
-    needs: [lint-backend, test, build-frontend]
+    needs: [validate-release-config, lint-backend, test, build-frontend]
     permissions:
       contents: read
       packages: write
-    env:
-      DOCKERHUB_ENABLED: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_PASSWORD != '' }}
-      ALIYUN_ENABLED: ${{ secrets.ALIYUN_REGISTRY_USERNAME != '' && secrets.ALIYUN_REGISTRY_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v6
 
@@ -119,41 +147,27 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        if: env.DOCKERHUB_ENABLED == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Log in to Aliyun container registry
-        if: env.ALIYUN_ENABLED == 'true'
+      - name: Log in to Aliyun ACR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.ALIYUN_REGISTRY }}
-          username: ${{ secrets.ALIYUN_REGISTRY_USERNAME }}
-          password: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
-
-      - name: Resolve image targets
-        id: image-targets
-        run: |
-          {
-            echo 'images<<EOF'
-            printf '%s/%s/%s\n' "${GHCR_REGISTRY}" "${GHCR_NAMESPACE}" "${API_IMAGE_NAME}"
-            if [ "${DOCKERHUB_ENABLED}" = "true" ]; then
-              printf '%s/%s/%s\n' "${DOCKERHUB_REGISTRY}" "${DOCKERHUB_NAMESPACE}" "${API_IMAGE_NAME}"
-            fi
-            if [ "${ALIYUN_ENABLED}" = "true" ]; then
-              printf '%s/%s/%s\n' "${ALIYUN_REGISTRY}" "${ALIYUN_NAMESPACE}" "${API_IMAGE_NAME}"
-            fi
-            echo 'EOF'
-          } >> "${GITHUB_OUTPUT}"
+          registry: ${{ env.ALIYUNACR_REGISTRY }}
+          username: ${{ vars.ALIYUNACR_USERNAME }}
+          password: ${{ secrets.ALIYUNACR_TOKEN }}
 
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.image-targets.outputs.images }}
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_NAMESPACE }}/${{ env.API_IMAGE_NAME }}
+            ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_NAMESPACE }}/${{ env.API_IMAGE_NAME }}
+            ${{ env.ALIYUNACR_REGISTRY }}/${{ env.ALIYUNACR_NAMESPACE }}/${{ env.API_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -181,13 +195,10 @@ jobs:
   release-ui:
     name: Release UI image
     runs-on: ubuntu-latest
-    needs: [lint-backend, test, build-frontend]
+    needs: [validate-release-config, lint-backend, test, build-frontend]
     permissions:
       contents: read
       packages: write
-    env:
-      DOCKERHUB_ENABLED: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_PASSWORD != '' }}
-      ALIYUN_ENABLED: ${{ secrets.ALIYUN_REGISTRY_USERNAME != '' && secrets.ALIYUN_REGISTRY_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v6
 
@@ -205,41 +216,27 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        if: env.DOCKERHUB_ENABLED == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Log in to Aliyun container registry
-        if: env.ALIYUN_ENABLED == 'true'
+      - name: Log in to Aliyun ACR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.ALIYUN_REGISTRY }}
-          username: ${{ secrets.ALIYUN_REGISTRY_USERNAME }}
-          password: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
-
-      - name: Resolve image targets
-        id: image-targets
-        run: |
-          {
-            echo 'images<<EOF'
-            printf '%s/%s/%s\n' "${GHCR_REGISTRY}" "${GHCR_NAMESPACE}" "${UI_IMAGE_NAME}"
-            if [ "${DOCKERHUB_ENABLED}" = "true" ]; then
-              printf '%s/%s/%s\n' "${DOCKERHUB_REGISTRY}" "${DOCKERHUB_NAMESPACE}" "${UI_IMAGE_NAME}"
-            fi
-            if [ "${ALIYUN_ENABLED}" = "true" ]; then
-              printf '%s/%s/%s\n' "${ALIYUN_REGISTRY}" "${ALIYUN_NAMESPACE}" "${UI_IMAGE_NAME}"
-            fi
-            echo 'EOF'
-          } >> "${GITHUB_OUTPUT}"
+          registry: ${{ env.ALIYUNACR_REGISTRY }}
+          username: ${{ vars.ALIYUNACR_USERNAME }}
+          password: ${{ secrets.ALIYUNACR_TOKEN }}
 
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.image-targets.outputs.images }}
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_NAMESPACE }}/${{ env.UI_IMAGE_NAME }}
+            ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_NAMESPACE }}/${{ env.UI_IMAGE_NAME }}
+            ${{ env.ALIYUNACR_REGISTRY }}/${{ env.ALIYUNACR_NAMESPACE }}/${{ env.UI_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -261,7 +258,7 @@ jobs:
   release-helm-chart:
     name: Release Helm chart
     runs-on: ubuntu-latest
-    needs: [lint-backend, test, build-frontend]
+    needs: [validate-release-config, lint-backend, test, build-frontend]
     permissions:
       contents: write
     env:
@@ -326,9 +323,6 @@ jobs:
     needs: [release-api, release-ui, release-helm-chart]
     permissions:
       contents: write
-    env:
-      DOCKERHUB_ENABLED: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_PASSWORD != '' }}
-      ALIYUN_ENABLED: ${{ secrets.ALIYUN_REGISTRY_USERNAME != '' && secrets.ALIYUN_REGISTRY_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -356,14 +350,10 @@ jobs:
             echo '|-------|-------------|'
             printf '| API (GHCR) | `docker pull %s/%s/%s:%s` |\n' "${GHCR_REGISTRY}" "${GHCR_NAMESPACE}" "${API_IMAGE_NAME}" "${version}"
             printf '| UI (GHCR) | `docker pull %s/%s/%s:%s` |\n' "${GHCR_REGISTRY}" "${GHCR_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
-            if [ "${DOCKERHUB_ENABLED}" = "true" ]; then
-              printf '| API (Docker Hub) | `docker pull %s/%s/%s:%s` |\n' "${DOCKERHUB_REGISTRY}" "${DOCKERHUB_NAMESPACE}" "${API_IMAGE_NAME}" "${version}"
-              printf '| UI (Docker Hub) | `docker pull %s/%s/%s:%s` |\n' "${DOCKERHUB_REGISTRY}" "${DOCKERHUB_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
-            fi
-            if [ "${ALIYUN_ENABLED}" = "true" ]; then
-              printf '| API (Aliyun) | `docker pull %s/%s/%s:%s` |\n' "${ALIYUN_REGISTRY}" "${ALIYUN_NAMESPACE}" "${API_IMAGE_NAME}" "${version}"
-              printf '| UI (Aliyun) | `docker pull %s/%s/%s:%s` |\n' "${ALIYUN_REGISTRY}" "${ALIYUN_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
-            fi
+            printf '| API (Docker Hub) | `docker pull %s/%s/%s:%s` |\n' "${DOCKERHUB_REGISTRY}" "${DOCKERHUB_NAMESPACE}" "${API_IMAGE_NAME}" "${version}"
+            printf '| UI (Docker Hub) | `docker pull %s/%s/%s:%s` |\n' "${DOCKERHUB_REGISTRY}" "${DOCKERHUB_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
+            printf '| API (Aliyun ACR) | `docker pull %s/%s/%s:%s` |\n' "${ALIYUNACR_REGISTRY}" "${ALIYUNACR_NAMESPACE}" "${API_IMAGE_NAME}" "${version}"
+            printf '| UI (Aliyun ACR) | `docker pull %s/%s/%s:%s` |\n' "${ALIYUNACR_REGISTRY}" "${ALIYUNACR_NAMESPACE}" "${UI_IMAGE_NAME}" "${version}"
 
             echo
             echo '## Quick Start'
@@ -393,4 +383,5 @@ jobs:
           # Pre-release when tag contains a pre-release identifier (e.g. v1.0.0-beta.1)
           prerelease: ${{ contains(github.ref_name, '-') }}
           body_path: release-notes.md
+          overwrite_files: true
           files: RELEASE_CHANGELOG.md
