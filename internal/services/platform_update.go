@@ -360,13 +360,13 @@ func TriggerPlatformRollout(req *models.TriggerPlatformRolloutRequest, claims *a
 func defaultPlatformUpdateConfig() models.PlatformUpdateConfig {
 	return models.PlatformUpdateConfig{
 		API: models.PlatformUpdateTargetConfig{
-			ImageRepository: "ghcr.io/ketches/ketches-api",
+			ImageRepository: "ghcr.io/ketches/ketches/ketches-api",
 			Namespace:       "ketches",
 			DeploymentName:  "ketches-api",
 			ContainerName:   "ketches-api",
 		},
 		UI: models.PlatformUpdateTargetConfig{
-			ImageRepository: "ghcr.io/ketches/ketches-ui",
+			ImageRepository: "ghcr.io/ketches/ketches/ketches-ui",
 			Namespace:       "ketches",
 			DeploymentName:  "ketches-ui",
 			ContainerName:   "ketches-ui",

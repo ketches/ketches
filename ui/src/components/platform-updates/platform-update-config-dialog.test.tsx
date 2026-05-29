@@ -50,13 +50,13 @@ describe("PlatformUpdateConfigDialog", () => {
     mockUsePlatformUpdateConfigQuery.mockReturnValue({
       data: {
         api: {
-          image_repository: "ghcr.io/ketches/ketches-api",
+          image_repository: "ghcr.io/ketches/ketches/ketches-api",
           namespace: "ketches",
           deployment_name: "ketches-api",
           container_name: "ketches-api",
         },
         ui: {
-          image_repository: "ghcr.io/ketches/ketches-ui",
+          image_repository: "ghcr.io/ketches/ketches/ketches-ui",
           namespace: "ketches",
           deployment_name: "ketches-ui",
           container_name: "ketches-ui",
@@ -75,9 +75,9 @@ describe("PlatformUpdateConfigDialog", () => {
       )
     })
 
-    expect((container.querySelector('input[name="api-image-repository"]') as HTMLInputElement | null)?.value).toBe("ghcr.io/ketches/ketches-api")
+    expect((container.querySelector('input[name="api-image-repository"]') as HTMLInputElement | null)?.value).toBe("ghcr.io/ketches/ketches/ketches-api")
     expect((container.querySelector('input[name="api-namespace"]') as HTMLInputElement | null)?.value).toBe("ketches")
-    expect((container.querySelector('input[name="ui-image-repository"]') as HTMLInputElement | null)?.value).toBe("ghcr.io/ketches/ketches-ui")
+    expect((container.querySelector('input[name="ui-image-repository"]') as HTMLInputElement | null)?.value).toBe("ghcr.io/ketches/ketches/ketches-ui")
     expect((container.querySelector('input[name="ui-deployment-name"]') as HTMLInputElement | null)?.value).toBe("ketches-ui")
 
     await act(async () => {

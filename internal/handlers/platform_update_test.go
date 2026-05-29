@@ -33,13 +33,13 @@ func TestGetPlatformUpdateConfigReturnsDefaults(t *testing.T) {
 	getPlatformUpdateConfig = func() (*models.PlatformUpdateConfig, error) {
 		return &models.PlatformUpdateConfig{
 			API: models.PlatformUpdateTargetConfig{
-				ImageRepository: "ghcr.io/ketches/ketches-api",
+				ImageRepository: "ghcr.io/ketches/ketches/ketches-api",
 				Namespace:       "ketches",
 				DeploymentName:  "ketches-api",
 				ContainerName:   "ketches-api",
 			},
 			UI: models.PlatformUpdateTargetConfig{
-				ImageRepository: "ghcr.io/ketches/ketches-ui",
+				ImageRepository: "ghcr.io/ketches/ketches/ketches-ui",
 				Namespace:       "ketches",
 				DeploymentName:  "ketches-ui",
 				ContainerName:   "ketches-ui",
@@ -63,8 +63,8 @@ func TestGetPlatformUpdateConfigReturnsDefaults(t *testing.T) {
 		Data models.PlatformUpdateConfig `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, "ghcr.io/ketches/ketches-api", resp.Data.API.ImageRepository)
-	assert.Equal(t, "ghcr.io/ketches/ketches-ui", resp.Data.UI.ImageRepository)
+	assert.Equal(t, "ghcr.io/ketches/ketches/ketches-api", resp.Data.API.ImageRepository)
+	assert.Equal(t, "ghcr.io/ketches/ketches/ketches-ui", resp.Data.UI.ImageRepository)
 }
 
 func TestGetPlatformUpdateConfigRequiresAdmin(t *testing.T) {
@@ -150,15 +150,15 @@ func TestTriggerPlatformRolloutReturnsAccepted(t *testing.T) {
 				Namespace:      "ketches",
 				DeploymentName: "ketches-api",
 				ContainerName:  "ketches-api",
-				PreviousImage:  "ghcr.io/ketches/ketches-api:v1.0.0",
-				TargetImage:    "ghcr.io/ketches/ketches-api:v1.2.0",
+				PreviousImage:  "ghcr.io/ketches/ketches/ketches-api:v1.0.0",
+				TargetImage:    "ghcr.io/ketches/ketches/ketches-api:v1.2.0",
 			},
 			UI: models.PlatformUpdateRolloutTarget{
 				Namespace:      "ketches",
 				DeploymentName: "ketches-ui",
 				ContainerName:  "ketches-ui",
-				PreviousImage:  "ghcr.io/ketches/ketches-ui:v1.0.0",
-				TargetImage:    "ghcr.io/ketches/ketches-ui:v1.2.0",
+				PreviousImage:  "ghcr.io/ketches/ketches/ketches-ui:v1.0.0",
+				TargetImage:    "ghcr.io/ketches/ketches/ketches-ui:v1.2.0",
 			},
 		}, nil
 	}
@@ -179,8 +179,8 @@ func TestTriggerPlatformRolloutReturnsAccepted(t *testing.T) {
 		Data models.PlatformUpdateRolloutResult `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, "ghcr.io/ketches/ketches-api:v1.2.0", resp.Data.API.TargetImage)
-	assert.Equal(t, "ghcr.io/ketches/ketches-ui:v1.2.0", resp.Data.UI.TargetImage)
+	assert.Equal(t, "ghcr.io/ketches/ketches/ketches-api:v1.2.0", resp.Data.API.TargetImage)
+	assert.Equal(t, "ghcr.io/ketches/ketches/ketches-ui:v1.2.0", resp.Data.UI.TargetImage)
 }
 
 func TestCheckPlatformUpdateReturnsStatus(t *testing.T) {

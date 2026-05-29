@@ -47,12 +47,12 @@ func TestPlatformUpdateConfigDefaults(t *testing.T) {
 	cfg, err := GetPlatformUpdateConfig()
 	require.NoError(t, err)
 
-	assert.Equal(t, "ghcr.io/ketches/ketches-api", cfg.API.ImageRepository)
+	assert.Equal(t, "ghcr.io/ketches/ketches/ketches-api", cfg.API.ImageRepository)
 	assert.Equal(t, "ketches", cfg.API.Namespace)
 	assert.Equal(t, "ketches-api", cfg.API.DeploymentName)
 	assert.Equal(t, "ketches-api", cfg.API.ContainerName)
 
-	assert.Equal(t, "ghcr.io/ketches/ketches-ui", cfg.UI.ImageRepository)
+	assert.Equal(t, "ghcr.io/ketches/ketches/ketches-ui", cfg.UI.ImageRepository)
 	assert.Equal(t, "ketches", cfg.UI.Namespace)
 	assert.Equal(t, "ketches-ui", cfg.UI.DeploymentName)
 	assert.Equal(t, "ketches-ui", cfg.UI.ContainerName)
@@ -101,9 +101,9 @@ func TestPlatformUpdateStatusPrefersRuntimeDeploymentTags(t *testing.T) {
 
 	platformUpdateListTags = func(repo string) ([]string, error) {
 		switch repo {
-		case "ghcr.io/ketches/ketches-api":
+		case "ghcr.io/ketches/ketches/ketches-api":
 			return []string{"v1.2.0", "v1.1.0"}, nil
-		case "ghcr.io/ketches/ketches-ui":
+		case "ghcr.io/ketches/ketches/ketches-ui":
 			return []string{"v1.3.0", "v1.2.0"}, nil
 		default:
 			return nil, errors.New("unexpected repo")
@@ -114,8 +114,8 @@ func TestPlatformUpdateStatusPrefersRuntimeDeploymentTags(t *testing.T) {
 	}
 
 	kubeClient := fake.NewSimpleClientset(
-		newPlatformUpdateDeployment("ketches", "ketches-api", "ketches-api", "ghcr.io/ketches/ketches-api:v1.2.0"),
-		newPlatformUpdateDeployment("ketches", "ketches-ui", "ketches-ui", "ghcr.io/ketches/ketches-ui:v1.3.0"),
+		newPlatformUpdateDeployment("ketches", "ketches-api", "ketches-api", "ghcr.io/ketches/ketches/ketches-api:v1.2.0"),
+		newPlatformUpdateDeployment("ketches", "ketches-ui", "ketches-ui", "ghcr.io/ketches/ketches/ketches-ui:v1.3.0"),
 	)
 	platformUpdateNewKubeClientForConfig = func(*rest.Config) (platformUpdateKubeClient, error) {
 		return kubeClient, nil
@@ -179,8 +179,8 @@ func TestPlatformUpdateRolloutRollsBackUISpecWhenAPIPatchFails(t *testing.T) {
 	}
 
 	kubeClient := fake.NewSimpleClientset(
-		newPlatformUpdateDeployment("ketches", "ketches-api", "ketches-api", "ghcr.io/ketches/ketches-api:v1.0.0"),
-		newPlatformUpdateDeployment("ketches", "ketches-ui", "ketches-ui", "ghcr.io/ketches/ketches-ui:v1.0.0"),
+		newPlatformUpdateDeployment("ketches", "ketches-api", "ketches-api", "ghcr.io/ketches/ketches/ketches-api:v1.0.0"),
+		newPlatformUpdateDeployment("ketches", "ketches-ui", "ketches-ui", "ghcr.io/ketches/ketches/ketches-ui:v1.0.0"),
 	)
 
 	var uiPatchCount int
@@ -200,9 +200,9 @@ func TestPlatformUpdateRolloutRollsBackUISpecWhenAPIPatchFails(t *testing.T) {
 			require.NoError(t, getErr)
 			deployment := obj.(*appsv1.Deployment).DeepCopy()
 			if uiPatchCount == 1 {
-				deployment.Spec.Template.Spec.Containers[0].Image = "ghcr.io/ketches/ketches-ui:v2.0.0"
+				deployment.Spec.Template.Spec.Containers[0].Image = "ghcr.io/ketches/ketches/ketches-ui:v2.0.0"
 			} else {
-				deployment.Spec.Template.Spec.Containers[0].Image = "ghcr.io/ketches/ketches-ui:v1.0.0"
+				deployment.Spec.Template.Spec.Containers[0].Image = "ghcr.io/ketches/ketches/ketches-ui:v1.0.0"
 			}
 			return true, deployment, kubeClient.Tracker().Update(deploymentResource, deployment, "ketches")
 		case "ketches-api":
@@ -231,7 +231,7 @@ func TestPlatformUpdateRolloutRollsBackUISpecWhenAPIPatchFails(t *testing.T) {
 
 	uiDeployment, getErr := kubeClient.AppsV1().Deployments("ketches").Get(t.Context(), "ketches-ui", metav1.GetOptions{})
 	require.NoError(t, getErr)
-	assert.Equal(t, "ghcr.io/ketches/ketches-ui:v1.0.0", uiDeployment.Spec.Template.Spec.Containers[0].Image)
+	assert.Equal(t, "ghcr.io/ketches/ketches/ketches-ui:v1.0.0", uiDeployment.Spec.Template.Spec.Containers[0].Image)
 }
 
 func TestPlatformUpdateAutoCheckCreatesNotificationsWhenRecommendedVersionChanges(t *testing.T) {
@@ -249,7 +249,7 @@ func TestPlatformUpdateAutoCheckCreatesNotificationsWhenRecommendedVersionChange
 
 	platformUpdateListTags = func(repo string) ([]string, error) {
 		switch repo {
-		case "ghcr.io/ketches/ketches-api", "ghcr.io/ketches/ketches-ui":
+		case "ghcr.io/ketches/ketches/ketches-api", "ghcr.io/ketches/ketches/ketches-ui":
 			return []string{"v1.2.0", "v1.0.0"}, nil
 		default:
 			return nil, errors.New("unexpected repo")
@@ -299,7 +299,7 @@ func TestPlatformUpdateAutoCheckSkipsNotificationsWhenRecommendedVersionIsUnchan
 
 	platformUpdateListTags = func(repo string) ([]string, error) {
 		switch repo {
-		case "ghcr.io/ketches/ketches-api", "ghcr.io/ketches/ketches-ui":
+		case "ghcr.io/ketches/ketches/ketches-api", "ghcr.io/ketches/ketches/ketches-ui":
 			return []string{"v1.2.0", "v1.0.0"}, nil
 		default:
 			return nil, errors.New("unexpected repo")
@@ -335,7 +335,7 @@ func TestPlatformUpdateManualCheckNeverCreatesNotifications(t *testing.T) {
 
 	platformUpdateListTags = func(repo string) ([]string, error) {
 		switch repo {
-		case "ghcr.io/ketches/ketches-api", "ghcr.io/ketches/ketches-ui":
+		case "ghcr.io/ketches/ketches/ketches-api", "ghcr.io/ketches/ketches/ketches-ui":
 			return []string{"v2.0.0", "v1.0.0"}, nil
 		default:
 			return nil, errors.New("unexpected repo")

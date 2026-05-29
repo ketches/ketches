@@ -109,7 +109,7 @@ spec:
     spec:
       containers:
         - name: ketches-api
-          image: ghcr.io/ketches/ketches-api:latest # Replace with your actual image
+          image: ghcr.io/ketches/ketches/ketches-api:latest # Replace with your actual image
           ports:
             - containerPort: 8080
           env:
@@ -213,7 +213,7 @@ spec:
     spec:
       containers:
         - name: ketches-ui
-          image: ghcr.io/ketches/ketches-ui:latest # Replace with your actual image
+          image: ghcr.io/ketches/ketches/ketches-ui:latest # Replace with your actual image
           ports:
             - containerPort: 3000
           env:

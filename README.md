@@ -342,10 +342,10 @@ Pre-built multi-arch images (`linux/amd64` + `linux/arm64`) are published to the
 
 ```bash
 # API
-docker pull ghcr.io/ketches/ketches-api:latest
+docker pull ghcr.io/ketches/ketches/ketches-api:latest
 
 # UI
-docker pull ghcr.io/ketches/ketches-ui:latest
+docker pull ghcr.io/ketches/ketches/ketches-ui:latest
 ```
 
 Browse all tags: [ghcr.io/ketches](https://github.com/orgs/ketches/packages)

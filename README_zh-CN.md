@@ -342,10 +342,10 @@ ketches/
 
 ```bash
 # API 镜像
-docker pull ghcr.io/ketches/ketches-api:latest
+docker pull ghcr.io/ketches/ketches/ketches-api:latest
 
 # UI 镜像
-docker pull ghcr.io/ketches/ketches-ui:latest
+docker pull ghcr.io/ketches/ketches/ketches-ui:latest
 ```
 
 浏览所有标签：[ghcr.io/ketches](https://github.com/orgs/ketches/packages)
