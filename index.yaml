@@ -3,9 +3,9 @@ entries:
   ketches:
   - apiVersion: v2
     appVersion: 0.1.0-alpha.1
-    created: "2026-05-29T03:43:38.247076987Z"
+    created: "2026-05-29T06:12:32.180767194Z"
     description: Helm chart for deploying Ketches (API + UI + PostgreSQL)
-    digest: cd9c3da3add3e0f83443281cb7cf092104d83689a492437e4ca2a7aa9dfa0de9
+    digest: 36f6980009149dcd9967ef5221ded57c4e516b62337a2c9b77016c68f15f7d61
     home: https://github.com/ketches/ketches
     keywords:
     - ketches
@@ -19,4 +19,4 @@ entries:
     urls:
     - https://ketches.github.io/ketches/ketches-0.1.0-alpha.1.tgz
     version: 0.1.0-alpha.1
-generated: "2026-05-29T03:43:38.246259781Z"
+generated: "2026-05-29T06:12:32.179970825Z"
