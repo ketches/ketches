@@ -87,11 +87,12 @@ func ListEnvCertificates(c *gin.Context) {
 	})
 }
 
-// GetCertificate returns a single certificate by ID
+// GetCertificate returns a certificate scoped to the environment in the URL.
 func GetCertificate(c *gin.Context) {
+	envID := c.Param("envID")
 	certID := c.Param("certID")
 
-	cert, err := services.GetCertificate(certID)
+	cert, err := services.GetCertificate(envID, certID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -162,8 +163,9 @@ func CreateEnvCertificate(c *gin.Context) {
 	})
 }
 
-// UpdateCertificate updates an existing certificate
+// UpdateCertificate updates an environment certificate.
 func UpdateCertificate(c *gin.Context) {
+	envID := c.Param("envID")
 	certID := c.Param("certID")
 
 	var req models.UpdateCertificateRequest
@@ -172,7 +174,7 @@ func UpdateCertificate(c *gin.Context) {
 		return
 	}
 
-	cert, err := services.UpdateCertificate(certID, &req)
+	cert, err := services.UpdateCertificate(envID, certID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -189,11 +191,12 @@ func UpdateCertificate(c *gin.Context) {
 	})
 }
 
-// DeleteCertificate deletes a certificate by ID
+// DeleteCertificate deletes an environment certificate.
 func DeleteCertificate(c *gin.Context) {
+	envID := c.Param("envID")
 	certID := c.Param("certID")
 
-	if err := services.DeleteCertificate(certID); err != nil {
+	if err := services.DeleteCertificate(envID, certID); err != nil {
 		if errors.Is(err, services.ErrCertificateInUse) {
 			api.Error(c, http.StatusBadRequest, err)
 			return

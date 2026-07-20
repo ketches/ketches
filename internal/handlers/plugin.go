@@ -69,7 +69,7 @@ func GetPlugin(c *gin.Context) {
 		return
 	}
 
-	plugin, err := services.GetPlugin(pluginID)
+	plugin, err := services.GetPlugin(projectID, pluginID)
 	if err != nil {
 		api.Error(c, http.StatusNotFound, err)
 		return
@@ -139,7 +139,7 @@ func UpdatePlugin(c *gin.Context) {
 		return
 	}
 
-	plugin, err := services.UpdatePlugin(pluginID, &req)
+	plugin, err := services.UpdatePlugin(projectID, pluginID, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -156,7 +156,7 @@ func DeletePlugin(c *gin.Context) {
 		return
 	}
 
-	if err := services.DeletePlugin(pluginID); err != nil {
+	if err := services.DeletePlugin(projectID, pluginID); err != nil {
 		if errors.Is(err, services.ErrPluginInstalledInApps) {
 			api.Error(c, http.StatusConflict, err)
 			return
@@ -289,7 +289,7 @@ func GetPluginInstalledApps(c *gin.Context) {
 		return
 	}
 
-	apps, err := services.GetPluginInstalledApps(pluginID)
+	apps, err := services.GetPluginInstalledApps(projectID, pluginID)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

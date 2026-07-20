@@ -91,6 +91,7 @@ func CreateEnvDomain(c *gin.Context) {
 }
 
 func UpdateDomain(c *gin.Context) {
+	envID := c.Param("envID")
 	id := c.Param("domainID")
 	var req models.UpdateDomainRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -98,7 +99,7 @@ func UpdateDomain(c *gin.Context) {
 		return
 	}
 
-	item, err := services.UpdateDomain(id, &req)
+	item, err := services.UpdateDomain(envID, id, &req)
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -107,8 +108,9 @@ func UpdateDomain(c *gin.Context) {
 }
 
 func DeleteDomain(c *gin.Context) {
+	envID := c.Param("envID")
 	id := c.Param("domainID")
-	if err := services.DeleteDomain(id); err != nil {
+	if err := services.DeleteDomain(envID, id); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

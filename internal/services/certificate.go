@@ -47,10 +47,25 @@ func ListEnvCertificates(envID string, page, pageSize int, search string) (int64
 	return total, certs, nil
 }
 
-// GetCertificate returns a single certificate by ID
-func GetCertificate(id string) (*entities.Certificate, error) {
+// GetCertificate returns an environment certificate by parent and child ID.
+func GetCertificate(envID, certID string) (*entities.Certificate, error) {
 	var cert entities.Certificate
-	if err := db.DB.First(&cert, "id = ?", id).Error; err != nil {
+	if err := db.DB.Where("env_id = ? AND id = ? AND scope = ?", envID, certID, "env").First(&cert).Error; err != nil {
+		return nil, err
+	}
+	return &cert, nil
+}
+
+func getCertificateForGateway(clusterID, envID, certID string) (*entities.Certificate, error) {
+	var cert entities.Certificate
+	if err := db.DB.Where(
+		"id = ? AND cluster_id = ? AND (scope = ? OR (scope = ? AND env_id = ?))",
+		certID,
+		clusterID,
+		"cluster",
+		"env",
+		envID,
+	).First(&cert).Error; err != nil {
 		return nil, err
 	}
 	return &cert, nil
@@ -108,9 +123,9 @@ func CreateEnvCertificate(envID string, req *models.CreateCertificateRequest) (*
 	return cert, nil
 }
 
-// UpdateCertificate updates an existing certificate by ID
-func UpdateCertificate(id string, req *models.UpdateCertificateRequest) (*entities.Certificate, error) {
-	cert, err := GetCertificate(id)
+// UpdateCertificate updates an environment certificate by parent and child ID.
+func UpdateCertificate(envID, certID string, req *models.UpdateCertificateRequest) (*entities.Certificate, error) {
+	cert, err := GetCertificate(envID, certID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,12 +150,14 @@ func UpdateCertificate(id string, req *models.UpdateCertificateRequest) (*entiti
 	}
 
 	if len(updates) > 0 {
-		if err := db.DB.Model(&entities.Certificate{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		if err := db.DB.Model(&entities.Certificate{}).
+			Where("env_id = ? AND id = ? AND scope = ?", envID, certID, "env").
+			Updates(updates).Error; err != nil {
 			return nil, err
 		}
 	}
 
-	if err := db.DB.First(cert, "id = ?", id).Error; err != nil {
+	if err := db.DB.Where("env_id = ? AND id = ? AND scope = ?", envID, certID, "env").First(cert).Error; err != nil {
 		return nil, err
 	}
 	if err := core.EnsureSharedGateway(context.Background(), cert.ClusterID); err != nil {
@@ -150,12 +167,12 @@ func UpdateCertificate(id string, req *models.UpdateCertificateRequest) (*entiti
 	return cert, nil
 }
 
-// DeleteCertificate deletes a certificate by ID
-func DeleteCertificate(id string) error {
-	if _, err := GetCertificate(id); err != nil {
+// DeleteCertificate deletes an environment certificate by parent and child ID.
+func DeleteCertificate(envID, certID string) error {
+	if _, err := GetCertificate(envID, certID); err != nil {
 		return err
 	}
-	inUse, err := certificateInUse(id)
+	inUse, err := certificateInUse(certID)
 	if err != nil {
 		return err
 	}
@@ -163,7 +180,7 @@ func DeleteCertificate(id string) error {
 		return ErrCertificateInUse
 	}
 
-	if err := db.DB.Delete(&entities.Certificate{}, "id = ?", id).Error; err != nil {
+	if err := db.DB.Where("env_id = ? AND id = ? AND scope = ?", envID, certID, "env").Delete(&entities.Certificate{}).Error; err != nil {
 		return err
 	}
 	return nil

@@ -41,9 +41,9 @@ func ListEnvDomains(envID string, page, pageSize int, search string) (int64, []e
 	return total, items, nil
 }
 
-func GetDomain(id string) (*entities.Domain, error) {
+func GetDomain(envID, domainID string) (*entities.Domain, error) {
 	var item entities.Domain
-	if err := db.DB.First(&item, "id = ?", id).Error; err != nil {
+	if err := db.DB.Where("env_id = ? AND id = ? AND scope = ?", envID, domainID, "env").First(&item).Error; err != nil {
 		return nil, err
 	}
 	return &item, nil
@@ -116,8 +116,8 @@ func CreateEnvDomain(envID string, req *models.CreateDomainRequest) (*entities.D
 	return item, nil
 }
 
-func UpdateDomain(id string, req *models.UpdateDomainRequest) (*entities.Domain, error) {
-	item, err := GetDomain(id)
+func UpdateDomain(envID, domainID string, req *models.UpdateDomainRequest) (*entities.Domain, error) {
+	item, err := GetDomain(envID, domainID)
 	if err != nil {
 		return nil, err
 	}
@@ -149,20 +149,22 @@ func UpdateDomain(id string, req *models.UpdateDomainRequest) (*entities.Domain,
 	}
 
 	if len(updates) > 0 {
-		if err := db.DB.Model(&entities.Domain{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		if err := db.DB.Model(&entities.Domain{}).
+			Where("env_id = ? AND id = ? AND scope = ?", envID, domainID, "env").
+			Updates(updates).Error; err != nil {
 			return nil, err
 		}
 	}
 
-	if err := db.DB.First(item, "id = ?", id).Error; err != nil {
+	if err := db.DB.Where("env_id = ? AND id = ? AND scope = ?", envID, domainID, "env").First(item).Error; err != nil {
 		return nil, err
 	}
 	return item, nil
 }
 
-func DeleteDomain(id string) error {
-	if _, err := GetDomain(id); err != nil {
+func DeleteDomain(envID, domainID string) error {
+	if _, err := GetDomain(envID, domainID); err != nil {
 		return err
 	}
-	return db.DB.Delete(&entities.Domain{}, "id = ?", id).Error
+	return db.DB.Where("env_id = ? AND id = ? AND scope = ?", envID, domainID, "env").Delete(&entities.Domain{}).Error
 }

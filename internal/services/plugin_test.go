@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -29,7 +30,32 @@ func setupPluginServiceTestDB(t *testing.T) {
 	require.NoError(t, err)
 
 	db.DB = testDB
-	require.NoError(t, testDB.AutoMigrate(&entities.Plugin{}))
+	require.NoError(t, testDB.AutoMigrate(&entities.Plugin{}, &entities.AppPlugin{}))
+}
+
+func TestPluginOperationsRequireMatchingParent(t *testing.T) {
+	setupPluginServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Plugin{
+		ID:         "plugin-2",
+		ProjectID:  "project-2",
+		Slug:       "plugin-two",
+		Name:       "Other Project",
+		Image:      "docker.io/library/busybox:latest",
+		PluginType: "init",
+	}).Error)
+
+	_, err := GetPlugin("project-1", "plugin-2")
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+
+	_, err = UpdatePlugin("project-1", "plugin-2", &models.UpdatePluginRequest{Name: "Tampered"})
+	assert.Error(t, err)
+
+	require.Error(t, DeletePlugin("project-1", "plugin-2"))
+	var stored entities.Plugin
+	require.NoError(t, db.DB.First(&stored, "id = ?", "plugin-2").Error)
+	assert.Equal(t, "Other Project", stored.Name)
 }
 
 func TestUpdatePluginClearsRegistryUsernameWhenExplicitlyEmpty(t *testing.T) {
@@ -47,7 +73,7 @@ func TestUpdatePluginClearsRegistryUsernameWhenExplicitlyEmpty(t *testing.T) {
 	require.NoError(t, db.DB.Create(plugin).Error)
 
 	emptyUsername := ""
-	updated, err := UpdatePlugin(plugin.ID, &models.UpdatePluginRequest{
+	updated, err := UpdatePlugin("project-1", plugin.ID, &models.UpdatePluginRequest{
 		RegistryUsername: &emptyUsername,
 	})
 	require.NoError(t, err)
@@ -72,7 +98,7 @@ func TestUpdatePluginKeepsRegistryUsernameWhenFieldIsOmitted(t *testing.T) {
 	}
 	require.NoError(t, db.DB.Create(plugin).Error)
 
-	updated, err := UpdatePlugin(plugin.ID, &models.UpdatePluginRequest{
+	updated, err := UpdatePlugin("project-1", plugin.ID, &models.UpdatePluginRequest{
 		Name: "Plugin Two Updated",
 	})
 	require.NoError(t, err)
@@ -135,7 +161,7 @@ func TestUpdatePluginEncryptsRegistryPasswordAtRest(t *testing.T) {
 	}).Error)
 
 	password := "new-super-secret"
-	updated, err := UpdatePlugin("plugin-3", &models.UpdatePluginRequest{
+	updated, err := UpdatePlugin("project-1", "plugin-3", &models.UpdatePluginRequest{
 		RegistryPassword: &password,
 	})
 	require.NoError(t, err)
@@ -174,7 +200,7 @@ func TestUpdatePluginClearsRegistryPasswordAtRest(t *testing.T) {
 	}).Error)
 
 	clearPassword := true
-	updated, err := UpdatePlugin("plugin-4", &models.UpdatePluginRequest{
+	updated, err := UpdatePlugin("project-1", "plugin-4", &models.UpdatePluginRequest{
 		ClearRegistryPassword: &clearPassword,
 	})
 	require.NoError(t, err)

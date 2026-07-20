@@ -398,7 +398,11 @@ func validateGatewayRouteCertificateReference(appCtx *models.AppContext, certID 
 		return newGatewayCertificateError("certificate is required for HTTPS public access")
 	}
 
-	certificate, err := GetCertificate(trimmedCertID)
+	certificate, err := getCertificateForGateway(
+		appCtx.EnvContext.Env.ClusterID,
+		appCtx.EnvContext.Env.ID,
+		trimmedCertID,
+	)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return newGatewayCertificateError("selected certificate was not found")

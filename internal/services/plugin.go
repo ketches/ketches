@@ -57,11 +57,12 @@ func CreatePlugin(req *models.CreatePluginRequest) (*entities.Plugin, error) {
 	return plugin, nil
 }
 
-func GetPlugin(pluginID string) (*entities.Plugin, error) {
+func GetPlugin(projectID, pluginID string) (*entities.Plugin, error) {
 	var plugin entities.Plugin
 	if err := db.DB.
 		Select("plugins.*, (SELECT COUNT(*) FROM app_plugins WHERE app_plugins.plugin_id = plugins.id) as install_count").
-		First(&plugin, "id = ?", pluginID).Error; err != nil {
+		Where("plugins.project_id = ? AND plugins.id = ?", projectID, pluginID).
+		First(&plugin).Error; err != nil {
 		return nil, err
 	}
 	return &plugin, nil
@@ -130,9 +131,8 @@ func ListProjectPlugins(projectID string, page, pageSize int, search string) (in
 	return total, plugins, nil
 }
 
-func UpdatePlugin(pluginID string, req *models.UpdatePluginRequest) (*entities.Plugin, error) {
-	var plugin entities.Plugin
-	if err := db.DB.First(&plugin, "id = ?", pluginID).Error; err != nil {
+func UpdatePlugin(projectID, pluginID string, req *models.UpdatePluginRequest) (*entities.Plugin, error) {
+	if _, err := GetPlugin(projectID, pluginID); err != nil {
 		return nil, err
 	}
 
@@ -177,23 +177,32 @@ func UpdatePlugin(pluginID string, req *models.UpdatePluginRequest) (*entities.P
 		updates["plugin_type"] = req.PluginType
 	}
 
-	if err := db.DB.Model(&plugin).Updates(updates).Error; err != nil {
+	if err := db.DB.Model(&entities.Plugin{}).
+		Where("project_id = ? AND id = ?", projectID, pluginID).
+		Updates(updates).Error; err != nil {
 		return nil, err
 	}
 
-	return &plugin, nil
+	return GetPlugin(projectID, pluginID)
 }
 
-func DeletePlugin(pluginID string) error {
+func DeletePlugin(projectID, pluginID string) error {
+	if _, err := GetPlugin(projectID, pluginID); err != nil {
+		return err
+	}
+
 	var count int64
-	if err := db.DB.Model(&entities.AppPlugin{}).Where("plugin_id = ?", pluginID).Count(&count).Error; err != nil {
+	if err := db.DB.Model(&entities.AppPlugin{}).
+		Joins("JOIN plugins ON plugins.id = app_plugins.plugin_id").
+		Where("plugins.project_id = ? AND plugins.id = ?", projectID, pluginID).
+		Count(&count).Error; err != nil {
 		return err
 	}
 	if count > 0 {
 		return ErrPluginInstalledInApps
 	}
 
-	return db.DB.Delete(&entities.Plugin{}, "id = ?", pluginID).Error
+	return db.DB.Where("project_id = ? AND id = ?", projectID, pluginID).Delete(&entities.Plugin{}).Error
 }
 
 func InstallPluginToApp(appID string, req *models.InstallPluginRequest) (*entities.AppPlugin, error) {
@@ -320,11 +329,16 @@ func UpdateAppPluginResources(ctx context.Context, appID, pluginID string, req *
 	return applyAppFn(ctx, appCtx)
 }
 
-func GetPluginInstalledApps(pluginID string) ([]entities.App, error) {
+func GetPluginInstalledApps(projectID, pluginID string) ([]entities.App, error) {
+	if _, err := GetPlugin(projectID, pluginID); err != nil {
+		return nil, err
+	}
+
 	var apps []entities.App
 	err := db.DB.
 		Joins("JOIN app_plugins ON app_plugins.app_id = apps.id").
-		Where("app_plugins.plugin_id = ?", pluginID).
+		Joins("JOIN plugins ON plugins.id = app_plugins.plugin_id").
+		Where("plugins.project_id = ? AND plugins.id = ?", projectID, pluginID).
 		Find(&apps).Error
 	if err != nil {
 		return nil, err
