@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,30 @@ import (
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
+
+func recycleBinActor(c *gin.Context) (services.RecycleBinActor, bool) {
+	claims := api.GetClaims(c)
+	if claims == nil {
+		api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
+		return services.RecycleBinActor{}, false
+	}
+	return services.RecycleBinActor{UserID: claims.UserID, Role: claims.Role}, true
+}
+
+func writeRecycleBinActionError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, services.ErrRecycleBinAccessDenied):
+		api.Error(c, http.StatusForbidden, err)
+	case errors.Is(err, services.ErrRecycleBinInvalidIDs):
+		api.Error(c, http.StatusBadRequest, err)
+	case errors.Is(err, services.ErrRecycleBinResourceActive):
+		api.Error(c, http.StatusConflict, err)
+	case errors.Is(err, services.ErrRecycleBinResourceNotFound):
+		api.Error(c, http.StatusNotFound, err)
+	default:
+		api.Error(c, http.StatusInternalServerError, err)
+	}
+}
 
 func ListRecycleBinApps(c *gin.Context) {
 	projectID := c.Query("project_id")
@@ -90,8 +115,12 @@ func RestoreApps(c *gin.Context) {
 		return
 	}
 
-	if err := services.BatchRestoreApps(req.IDs); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+	actor, ok := recycleBinActor(c)
+	if !ok {
+		return
+	}
+	if err := services.BatchRestoreApps(req.IDs, actor); err != nil {
+		writeRecycleBinActionError(c, err)
 		return
 	}
 
@@ -105,8 +134,12 @@ func PermanentlyDeleteApps(c *gin.Context) {
 		return
 	}
 
-	if err := services.BatchPermanentlyDeleteApps(req.IDs); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+	actor, ok := recycleBinActor(c)
+	if !ok {
+		return
+	}
+	if err := services.BatchPermanentlyDeleteApps(req.IDs, actor); err != nil {
+		writeRecycleBinActionError(c, err)
 		return
 	}
 
@@ -120,8 +153,12 @@ func RestoreEnvs(c *gin.Context) {
 		return
 	}
 
-	if err := services.BatchRestoreEnvs(req.IDs); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+	actor, ok := recycleBinActor(c)
+	if !ok {
+		return
+	}
+	if err := services.BatchRestoreEnvs(req.IDs, actor); err != nil {
+		writeRecycleBinActionError(c, err)
 		return
 	}
 
@@ -135,8 +172,12 @@ func PermanentlyDeleteEnvs(c *gin.Context) {
 		return
 	}
 
-	if err := services.BatchPermanentlyDeleteEnvs(req.IDs); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+	actor, ok := recycleBinActor(c)
+	if !ok {
+		return
+	}
+	if err := services.BatchPermanentlyDeleteEnvs(req.IDs, actor); err != nil {
+		writeRecycleBinActionError(c, err)
 		return
 	}
 
@@ -206,8 +247,12 @@ func RestoreProjects(c *gin.Context) {
 		return
 	}
 
-	if err := services.BatchRestoreProjects(req.IDs); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+	actor, ok := recycleBinActor(c)
+	if !ok {
+		return
+	}
+	if err := services.BatchRestoreProjects(req.IDs, actor); err != nil {
+		writeRecycleBinActionError(c, err)
 		return
 	}
 
@@ -222,8 +267,12 @@ func PermanentlyDeleteProjects(c *gin.Context) {
 		return
 	}
 
-	if err := services.BatchPermanentlyDeleteProjects(req.IDs); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+	actor, ok := recycleBinActor(c)
+	if !ok {
+		return
+	}
+	if err := services.BatchPermanentlyDeleteProjects(req.IDs, actor); err != nil {
+		writeRecycleBinActionError(c, err)
 		return
 	}
 
@@ -316,8 +365,12 @@ func RestoreCodeRepositories(c *gin.Context) {
 		return
 	}
 
-	if err := services.BatchRestoreCodeRepositories(req.IDs); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+	actor, ok := recycleBinActor(c)
+	if !ok {
+		return
+	}
+	if err := services.BatchRestoreCodeRepositories(req.IDs, actor); err != nil {
+		writeRecycleBinActionError(c, err)
 		return
 	}
 
@@ -332,8 +385,12 @@ func PermanentlyDeleteCodeRepositories(c *gin.Context) {
 		return
 	}
 
-	if err := services.BatchPermanentlyDeleteCodeRepositories(req.IDs); err != nil {
-		api.Error(c, http.StatusInternalServerError, err)
+	actor, ok := recycleBinActor(c)
+	if !ok {
+		return
+	}
+	if err := services.BatchPermanentlyDeleteCodeRepositories(req.IDs, actor); err != nil {
+		writeRecycleBinActionError(c, err)
 		return
 	}
 

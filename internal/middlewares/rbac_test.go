@@ -310,3 +310,44 @@ func TestRequireProjectRole_BatchDeleteRejectsMixedProjects(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
+
+func TestRequireRecycleBinOwnerChecksEveryProject(t *testing.T) {
+	setupRBACTestDB(t)
+	gin.SetMode(gin.TestMode)
+
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-recycle"},
+		Slug: "project-recycle",
+		Name: "Recycle Project",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.ProjectMember{
+		ID:          "member-recycle-owner",
+		ProjectID:   "project-recycle",
+		UserID:      "owner-1",
+		ProjectRole: app.ProjectRoleOwner,
+	}).Error)
+
+	newRouter := func(userID string, role string) *gin.Engine {
+		router := gin.New()
+		router.Use(func(c *gin.Context) {
+			c.Set("claims", &app.Claims{UserID: userID, Role: role})
+			c.Next()
+		})
+		router.POST("/recycle-bin/projects/permanently-delete", RequireRecycleBinOwner("projects"), func(c *gin.Context) {
+			c.String(http.StatusOK, "ok")
+		})
+		return router
+	}
+
+	request := func(router *gin.Engine) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/recycle-bin/projects/permanently-delete", strings.NewReader(`{"ids":["project-recycle"]}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	assert.Equal(t, http.StatusOK, request(newRouter("owner-1", app.UserRoleUser)).Code)
+	assert.Equal(t, http.StatusForbidden, request(newRouter("viewer-1", app.UserRoleUser)).Code)
+	assert.Equal(t, http.StatusOK, request(newRouter("admin-1", app.UserRoleAdmin)).Code)
+}

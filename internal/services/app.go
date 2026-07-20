@@ -638,31 +638,43 @@ func BatchDeleteApps(ctx context.Context, ids []string) error {
 	return nil
 }
 
-func PermanentlyDeleteApp(ctx context.Context, appID string) error {
-	var application entities.App
-	if err := db.DB.Unscoped().First(&application, "id = ?", appID).Error; err != nil {
+func PermanentlyDeleteApp(ctx context.Context, appID string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
 		return err
+	}
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if _, err := loadRecycleBinApp(tx, appID, actor); err != nil {
+			return err
+		}
+		return permanentlyDeleteAppTx(ctx, tx, appID)
+	})
+}
+
+func permanentlyDeleteAppTx(ctx context.Context, tx *gorm.DB, appID string) error {
+	var application entities.App
+	if err := tx.Unscoped().First(&application, "id = ?", appID).Error; err != nil {
+		return err
+	}
+	if !application.DeletedAt.Valid {
+		return app.WrapErrorf(ErrRecycleBinResourceActive, "app %s", appID)
 	}
 
 	// Build a minimal AppContext for K8s resource cleanup
 	var env entities.Env
-	if err := db.DB.Unscoped().First(&env, "id = ?", application.EnvID).Error; err != nil {
-		return err
-	}
-	envCtx, err := GetEnvContext(env.ID)
-	if err != nil {
+	if err := tx.Unscoped().First(&env, "id = ?", application.EnvID).Error; err != nil {
 		return err
 	}
 
 	var autoScaling *entities.AppAutoScaling
 	var as entities.AppAutoScaling
-	if err := db.DB.Where("app_id = ?", appID).First(&as).Error; err == nil {
+	if err := tx.Where("app_id = ?", appID).First(&as).Error; err == nil {
 		autoScaling = &as
 	}
 
 	appCtx := &models.AppContext{
 		App:         application,
-		EnvContext:  *envCtx,
+		EnvContext:  models.EnvContext{Env: env},
 		AutoScaling: autoScaling,
 	}
 
@@ -672,32 +684,32 @@ func PermanentlyDeleteApp(ctx context.Context, appID string) error {
 	}
 
 	// Hard-delete all child records directly (no need to fetch first)
-	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppEnvVar{}).Error; err != nil {
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppEnvVar{}).Error; err != nil {
 		return err
 	}
-	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppVolume{}).Error; err != nil {
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppVolume{}).Error; err != nil {
 		return err
 	}
-	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppConfigFile{}).Error; err != nil {
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppConfigFile{}).Error; err != nil {
 		return err
 	}
-	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppGateway{}).Error; err != nil {
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppGateway{}).Error; err != nil {
 		return err
 	}
-	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppProbe{}).Error; err != nil {
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppProbe{}).Error; err != nil {
 		return err
 	}
-	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppPlugin{}).Error; err != nil {
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppPlugin{}).Error; err != nil {
 		return err
 	}
-	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppAutoScaling{}).Error; err != nil {
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppAutoScaling{}).Error; err != nil {
 		return err
 	}
-	if err := db.DB.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppSchedulingRule{}).Error; err != nil {
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppSchedulingRule{}).Error; err != nil {
 		return err
 	}
 
-	return db.DB.Unscoped().Delete(&entities.App{}, "id = ?", appID).Error
+	return tx.Unscoped().Delete(&entities.App{}, "id = ?", appID).Error
 }
 
 // deleteAppK8sResources deletes all Kubernetes resources created by an app

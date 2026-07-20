@@ -2,11 +2,84 @@ package services
 
 import (
 	"context"
+	"errors"
+	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"gorm.io/gorm"
 )
+
+// RecycleBinActor is the authenticated identity performing a recycle-bin action.
+// System administrators bypass project membership checks; all other users must
+// be an owner of every affected project.
+type RecycleBinActor struct {
+	UserID string
+	Role   string
+}
+
+var (
+	ErrRecycleBinAccessDenied     = errors.New("insufficient recycle bin permissions")
+	ErrRecycleBinInvalidIDs       = errors.New("recycle bin resource IDs are required")
+	ErrRecycleBinResourceNotFound = errors.New("recycle bin resource not found")
+	ErrRecycleBinResourceActive   = errors.New("resource is not soft-deleted")
+)
+
+func normalizeRecycleBinIDs(ids []string) ([]string, error) {
+	unique := make([]string, 0, len(ids))
+	seen := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return nil, ErrRecycleBinInvalidIDs
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+	if len(unique) == 0 {
+		return nil, ErrRecycleBinInvalidIDs
+	}
+	return unique, nil
+}
+
+func ensureRecycleBinOwner(tx *gorm.DB, projectID string, actor RecycleBinActor) error {
+	if actor.Role == app.UserRoleAdmin {
+		return nil
+	}
+	if strings.TrimSpace(actor.UserID) == "" {
+		return ErrRecycleBinAccessDenied
+	}
+
+	var count int64
+	if err := tx.Model(&entities.ProjectMember{}).
+		Where("project_id = ? AND user_id = ? AND project_role = ?", projectID, actor.UserID, app.ProjectRoleOwner).
+		Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrRecycleBinAccessDenied
+	}
+	return nil
+}
+
+func recycleBinActorFromArgs(actors []RecycleBinActor) (RecycleBinActor, error) {
+	if len(actors) != 1 {
+		return RecycleBinActor{}, ErrRecycleBinAccessDenied
+	}
+	return actors[0], nil
+}
+
+func recycleBinActionError(resourceID string, err error) error {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return app.WrapErrorf(ErrRecycleBinResourceNotFound, "resource %s", resourceID)
+	}
+	return err
+}
 
 func ListDeletedApps(projectID string, userID string, page, pageSize int, search string) (int64, []models.RecycleBinAppRow, error) {
 	var rows []models.RecycleBinAppRow
@@ -93,40 +166,127 @@ func ListDeletedEnvs(projectID string, userID string, page, pageSize int, search
 	return total, result, nil
 }
 
-func BatchRestoreApps(appIDs []string) error {
-	for _, appID := range appIDs {
-		if err := RestoreApp(context.Background(), appID); err != nil {
-			return err
-		}
+func loadRecycleBinApp(tx *gorm.DB, appID string, actor RecycleBinActor) (*entities.App, error) {
+	var application entities.App
+	if err := tx.Unscoped().First(&application, "id = ?", appID).Error; err != nil {
+		return nil, recycleBinActionError(appID, err)
 	}
-	return nil
+	if !application.DeletedAt.Valid {
+		return nil, app.WrapErrorf(ErrRecycleBinResourceActive, "app %s", appID)
+	}
+
+	var env entities.Env
+	if err := tx.Unscoped().Select("project_id").First(&env, "id = ?", application.EnvID).Error; err != nil {
+		return nil, recycleBinActionError(appID, err)
+	}
+	if err := ensureRecycleBinOwner(tx, env.ProjectID, actor); err != nil {
+		return nil, err
+	}
+	return &application, nil
 }
 
-func BatchPermanentlyDeleteApps(appIDs []string) error {
-	for _, appID := range appIDs {
-		if err := PermanentlyDeleteApp(context.Background(), appID); err != nil {
-			return err
-		}
+func loadRecycleBinEnv(tx *gorm.DB, envID string, actor RecycleBinActor) (*entities.Env, error) {
+	var env entities.Env
+	if err := tx.Unscoped().First(&env, "id = ?", envID).Error; err != nil {
+		return nil, recycleBinActionError(envID, err)
 	}
-	return nil
+	if !env.DeletedAt.Valid {
+		return nil, app.WrapErrorf(ErrRecycleBinResourceActive, "environment %s", envID)
+	}
+	if err := ensureRecycleBinOwner(tx, env.ProjectID, actor); err != nil {
+		return nil, err
+	}
+	return &env, nil
 }
 
-func BatchRestoreEnvs(envIDs []string) error {
-	for _, envID := range envIDs {
-		if err := RestoreEnv(envID); err != nil {
-			return err
-		}
+func BatchRestoreApps(appIDs []string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
+		return err
 	}
-	return nil
+	ids, err := normalizeRecycleBinIDs(appIDs)
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, appID := range ids {
+			if _, err := loadRecycleBinApp(tx, appID, actor); err != nil {
+				return err
+			}
+		}
+		return tx.Unscoped().Model(&entities.App{}).Where("id IN ?", ids).Update("deleted_at", nil).Error
+	})
 }
 
-func BatchPermanentlyDeleteEnvs(envIDs []string) error {
-	for _, envID := range envIDs {
-		if err := PermanentlyDeleteEnv(envID); err != nil {
-			return err
-		}
+func BatchPermanentlyDeleteApps(appIDs []string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
+		return err
 	}
-	return nil
+	ids, err := normalizeRecycleBinIDs(appIDs)
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, appID := range ids {
+			if _, err := loadRecycleBinApp(tx, appID, actor); err != nil {
+				return err
+			}
+		}
+		for _, appID := range ids {
+			if err := permanentlyDeleteAppTx(context.Background(), tx, appID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func BatchRestoreEnvs(envIDs []string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
+		return err
+	}
+	ids, err := normalizeRecycleBinIDs(envIDs)
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, envID := range ids {
+			if _, err := loadRecycleBinEnv(tx, envID, actor); err != nil {
+				return err
+			}
+		}
+		return tx.Unscoped().Model(&entities.Env{}).Where("id IN ?", ids).Update("deleted_at", nil).Error
+	})
+}
+
+func BatchPermanentlyDeleteEnvs(envIDs []string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
+		return err
+	}
+	ids, err := normalizeRecycleBinIDs(envIDs)
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, envID := range ids {
+			if _, err := loadRecycleBinEnv(tx, envID, actor); err != nil {
+				return err
+			}
+		}
+		for _, envID := range ids {
+			if err := permanentlyDeleteEnvTx(context.Background(), tx, envID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // ListDeletedProjects returns soft-deleted projects, paginated, with optional search.
@@ -167,24 +327,65 @@ func ListDeletedProjects(userID string, page, pageSize int, search string) (int6
 	return total, result, nil
 }
 
-// BatchRestoreProjects restores multiple soft-deleted projects by ID.
-func BatchRestoreProjects(ids []string) error {
-	for _, id := range ids {
-		if err := RestoreProject(id); err != nil {
-			return err
-		}
+func loadRecycleBinProject(tx *gorm.DB, projectID string, actor RecycleBinActor) (*entities.Project, error) {
+	var project entities.Project
+	if err := tx.Unscoped().First(&project, "id = ?", projectID).Error; err != nil {
+		return nil, recycleBinActionError(projectID, err)
 	}
-	return nil
+	if !project.DeletedAt.Valid {
+		return nil, app.WrapErrorf(ErrRecycleBinResourceActive, "project %s", projectID)
+	}
+	if err := ensureRecycleBinOwner(tx, project.ID, actor); err != nil {
+		return nil, err
+	}
+	return &project, nil
+}
+
+// BatchRestoreProjects restores multiple soft-deleted projects by ID.
+func BatchRestoreProjects(projectIDs []string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
+		return err
+	}
+	ids, err := normalizeRecycleBinIDs(projectIDs)
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, projectID := range ids {
+			if _, err := loadRecycleBinProject(tx, projectID, actor); err != nil {
+				return err
+			}
+		}
+		return tx.Unscoped().Model(&entities.Project{}).Where("id IN ?", ids).Update("deleted_at", nil).Error
+	})
 }
 
 // BatchPermanentlyDeleteProjects permanently deletes multiple projects by ID.
-func BatchPermanentlyDeleteProjects(ids []string) error {
-	for _, id := range ids {
-		if err := PermanentlyDeleteProject(id); err != nil {
-			return err
-		}
+func BatchPermanentlyDeleteProjects(projectIDs []string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
+		return err
 	}
-	return nil
+	ids, err := normalizeRecycleBinIDs(projectIDs)
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, projectID := range ids {
+			if _, err := loadRecycleBinProject(tx, projectID, actor); err != nil {
+				return err
+			}
+		}
+		for _, projectID := range ids {
+			if err := permanentlyDeleteProjectTx(tx, projectID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func ListDeletedUsers(page, pageSize int, search string) (int64, []models.RecycleBinUserResponse, error) {

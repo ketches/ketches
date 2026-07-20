@@ -14,6 +14,7 @@ import (
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
+	"gorm.io/gorm"
 )
 
 type CodeRepositoryWithProject struct {
@@ -454,14 +455,39 @@ func RestoreCodeRepository(id string) error {
 	return db.DB.Unscoped().Model(&entities.CodeRepository{}).Where("id = ?", id).Update("deleted_at", nil).Error
 }
 
-// BatchRestoreCodeRepositories restores multiple soft-deleted code repositories.
-func BatchRestoreCodeRepositories(ids []string) error {
-	for _, id := range ids {
-		if err := RestoreCodeRepository(id); err != nil {
-			return err
-		}
+func loadRecycleBinCodeRepository(tx *gorm.DB, repoID string, actor RecycleBinActor) (*entities.CodeRepository, error) {
+	var repo entities.CodeRepository
+	if err := tx.Unscoped().First(&repo, "id = ?", repoID).Error; err != nil {
+		return nil, recycleBinActionError(repoID, err)
 	}
-	return nil
+	if !repo.DeletedAt.Valid {
+		return nil, app.WrapErrorf(ErrRecycleBinResourceActive, "code repository %s", repoID)
+	}
+	if err := ensureRecycleBinOwner(tx, repo.ProjectID, actor); err != nil {
+		return nil, err
+	}
+	return &repo, nil
+}
+
+// BatchRestoreCodeRepositories restores multiple soft-deleted code repositories.
+func BatchRestoreCodeRepositories(repoIDs []string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
+		return err
+	}
+	ids, err := normalizeRecycleBinIDs(repoIDs)
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, repoID := range ids {
+			if _, err := loadRecycleBinCodeRepository(tx, repoID, actor); err != nil {
+				return err
+			}
+		}
+		return tx.Unscoped().Model(&entities.CodeRepository{}).Where("id IN ?", ids).Update("deleted_at", nil).Error
+	})
 }
 
 // PermanentlyDeleteCodeRepository hard-deletes a code repository and all associated data.
@@ -471,9 +497,30 @@ func BatchRestoreCodeRepositories(ids []string) error {
 //  3. build_settings (by repo)
 //  4. apps.code_repository_id → NULL
 //  5. code_repositories (hard delete)
-func PermanentlyDeleteCodeRepository(id string) error {
+func PermanentlyDeleteCodeRepository(id string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
+		return err
+	}
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if _, err := loadRecycleBinCodeRepository(tx, id, actor); err != nil {
+			return err
+		}
+		return permanentlyDeleteCodeRepositoryTx(tx, id)
+	})
+}
+
+func permanentlyDeleteCodeRepositoryTx(tx *gorm.DB, id string) error {
+	var repo entities.CodeRepository
+	if err := tx.Unscoped().First(&repo, "id = ?", id).Error; err != nil {
+		return err
+	}
+	if !repo.DeletedAt.Valid {
+		return app.WrapErrorf(ErrRecycleBinResourceActive, "code repository %s", id)
+	}
+
 	// 1. Delete build_deployments
-	if err := db.DB.Exec(`
+	if err := tx.Exec(`
 		DELETE FROM build_deployments
 		WHERE build_id IN (
 			SELECT b.id FROM builds b
@@ -484,7 +531,7 @@ func PermanentlyDeleteCodeRepository(id string) error {
 	}
 
 	// 2. Delete builds
-	if err := db.DB.Exec(`
+	if err := tx.Exec(`
 		DELETE FROM builds
 		WHERE build_setting_id IN (
 			SELECT id FROM build_settings WHERE code_repository_id = ?
@@ -493,25 +540,41 @@ func PermanentlyDeleteCodeRepository(id string) error {
 	}
 
 	// 3. Delete build_settings
-	if err := db.DB.Exec("DELETE FROM build_settings WHERE code_repository_id = ?", id).Error; err != nil {
+	if err := tx.Exec("DELETE FROM build_settings WHERE code_repository_id = ?", id).Error; err != nil {
 		return err
 	}
 
 	// 4. Detach apps (set code_repository_id to NULL)
-	if err := db.DB.Exec("UPDATE apps SET code_repository_id = NULL WHERE code_repository_id = ?", id).Error; err != nil {
+	if err := tx.Exec("UPDATE apps SET code_repository_id = NULL WHERE code_repository_id = ?", id).Error; err != nil {
 		return err
 	}
 
 	// 5. Hard-delete the repo
-	return db.DB.Unscoped().Delete(&entities.CodeRepository{}, "id = ?", id).Error
+	return tx.Unscoped().Delete(&entities.CodeRepository{}, "id = ?", id).Error
 }
 
 // BatchPermanentlyDeleteCodeRepositories hard-deletes multiple code repositories.
-func BatchPermanentlyDeleteCodeRepositories(ids []string) error {
-	for _, id := range ids {
-		if err := PermanentlyDeleteCodeRepository(id); err != nil {
-			return err
-		}
+func BatchPermanentlyDeleteCodeRepositories(repoIDs []string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
+		return err
 	}
-	return nil
+	ids, err := normalizeRecycleBinIDs(repoIDs)
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, repoID := range ids {
+			if _, err := loadRecycleBinCodeRepository(tx, repoID, actor); err != nil {
+				return err
+			}
+		}
+		for _, repoID := range ids {
+			if err := permanentlyDeleteCodeRepositoryTx(tx, repoID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

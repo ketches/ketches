@@ -280,44 +280,68 @@ func DeleteEnv(envID string) error {
 	return db.DB.Delete(&entities.Env{}, "id = ?", envID).Error
 }
 
-func PermanentlyDeleteEnv(envID string) error {
-	var env entities.Env
-	if err := db.DB.Unscoped().First(&env, "id = ?", envID).Error; err != nil {
+func PermanentlyDeleteEnv(envID string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
 		return err
+	}
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if _, err := loadRecycleBinEnv(tx, envID, actor); err != nil {
+			return err
+		}
+		return permanentlyDeleteEnvTx(context.Background(), tx, envID)
+	})
+}
+
+func permanentlyDeleteEnvTx(ctx context.Context, tx *gorm.DB, envID string) error {
+	var env entities.Env
+	if err := tx.Unscoped().First(&env, "id = ?", envID).Error; err != nil {
+		return err
+	}
+	if !env.DeletedAt.Valid {
+		return app.WrapErrorf(ErrRecycleBinResourceActive, "environment %s", envID)
+	}
+
+	var activeAppCount int64
+	if err := tx.Model(&entities.App{}).Where("env_id = ?", envID).Count(&activeAppCount).Error; err != nil {
+		return err
+	}
+	if activeAppCount > 0 {
+		return app.NewErrorf("cannot permanently delete environment %s: it contains active applications", envID)
 	}
 
 	// Get all soft-deleted apps in this environment
 	var deletedApps []entities.App
-	if err := db.DB.Unscoped().Where("env_id = ? AND deleted_at IS NOT NULL", envID).Find(&deletedApps).Error; err != nil {
+	if err := tx.Unscoped().Where("env_id = ? AND deleted_at IS NOT NULL", envID).Find(&deletedApps).Error; err != nil {
 		return err
 	}
 
 	// Permanently delete all soft-deleted apps
 	for _, app := range deletedApps {
-		if err := PermanentlyDeleteApp(context.Background(), app.ID); err != nil {
+		if err := permanentlyDeleteAppTx(ctx, tx, app.ID); err != nil {
 			return err
 		}
 	}
 
 	// Delete environment-level certificates
 	var certs []entities.Certificate
-	if err := db.DB.Unscoped().Where("env_id = ? AND scope = ?", envID, "env").Find(&certs).Error; err != nil {
+	if err := tx.Unscoped().Where("env_id = ? AND scope = ?", envID, "env").Find(&certs).Error; err != nil {
 		return err
 	}
 	for _, cert := range certs {
-		if err := db.DB.Unscoped().Delete(&cert).Error; err != nil {
+		if err := tx.Unscoped().Delete(&cert).Error; err != nil {
 			return err
 		}
 	}
 
 	// Delete the namespace in the cluster (if not already deleted during soft delete)
 	if env.ClusterID != "" && env.ClusterNamespace != "" {
-		if err := core.DeleteNamespace(context.Background(), env.ClusterID, env.ClusterNamespace); err != nil && !k8serrors.IsNotFound(err) {
+		if err := core.DeleteNamespace(ctx, env.ClusterID, env.ClusterNamespace); err != nil && !k8serrors.IsNotFound(err) {
 			return err
 		}
 	}
 
-	return db.DB.Unscoped().Delete(&entities.Env{}, "id = ?", envID).Error
+	return tx.Unscoped().Delete(&entities.Env{}, "id = ?", envID).Error
 }
 
 func RestoreEnv(envID string) error {

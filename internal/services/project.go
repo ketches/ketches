@@ -147,13 +147,29 @@ func DeleteProject(projectID string) error {
 	return db.DB.Delete(&entities.Project{}, "id = ?", projectID).Error
 }
 
-func PermanentlyDeleteProject(projectID string) error {
-	var project entities.Project
-	if err := db.DB.Unscoped().First(&project, "id = ?", projectID).Error; err != nil {
+func PermanentlyDeleteProject(projectID string, actors ...RecycleBinActor) error {
+	actor, err := recycleBinActorFromArgs(actors)
+	if err != nil {
 		return err
 	}
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if _, err := loadRecycleBinProject(tx, projectID, actor); err != nil {
+			return err
+		}
+		return permanentlyDeleteProjectTx(tx, projectID)
+	})
+}
 
-	return db.DB.Unscoped().Delete(&entities.Project{}, "id = ?", projectID).Error
+func permanentlyDeleteProjectTx(tx *gorm.DB, projectID string) error {
+	var project entities.Project
+	if err := tx.Unscoped().First(&project, "id = ?", projectID).Error; err != nil {
+		return err
+	}
+	if !project.DeletedAt.Valid {
+		return app.WrapErrorf(ErrRecycleBinResourceActive, "project %s", projectID)
+	}
+
+	return tx.Unscoped().Delete(&entities.Project{}, "id = ?", projectID).Error
 }
 
 func IsProjectMember(projectID, userID string) (bool, error) {

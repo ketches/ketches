@@ -316,6 +316,156 @@ func RequireProjectRole(minRole string) gin.HandlerFunc {
 	}
 }
 
+// RequireRecycleBinOwner protects body-driven recycle-bin actions. Since these
+// routes do not carry a project ID in the path, resolve every requested
+// resource to its project and require owner membership for each one. The
+// service layer repeats this check inside its transaction.
+func RequireRecycleBinOwner(resource string) gin.HandlerFunc {
+	validResources := map[string]bool{
+		"apps":              true,
+		"envs":              true,
+		"projects":          true,
+		"code-repositories": true,
+	}
+	if !validResources[resource] {
+		panic(fmt.Sprintf("RequireRecycleBinOwner: unknown resource %q", resource))
+	}
+
+	return func(c *gin.Context) {
+		claims := api.GetClaims(c)
+		if claims == nil {
+			api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
+			c.Abort()
+			return
+		}
+		if claims.Role == app.UserRoleAdmin {
+			c.Next()
+			return
+		}
+
+		ids, err := readRecycleBinIDs(c)
+		if err != nil {
+			api.Error(c, http.StatusBadRequest, err)
+			c.Abort()
+			return
+		}
+		projectIDs, err := resolveRecycleBinProjectIDs(resource, ids)
+		if err != nil {
+			api.Error(c, http.StatusNotFound, err)
+			c.Abort()
+			return
+		}
+		for _, projectID := range projectIDs {
+			var count int64
+			if err := db.DB.Model(&entities.ProjectMember{}).
+				Where("project_id = ? AND user_id = ? AND project_role = ?", projectID, claims.UserID, app.ProjectRoleOwner).
+				Count(&count).Error; err != nil {
+				api.Error(c, http.StatusInternalServerError, err)
+				c.Abort()
+				return
+			}
+			if count == 0 {
+				api.Error(c, http.StatusForbidden, errors.New("insufficient permissions"))
+				c.Abort()
+				return
+			}
+		}
+
+		c.Next()
+	}
+}
+
+func readRecycleBinIDs(c *gin.Context) ([]string, error) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return nil, err
+	}
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+
+	var request struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.Unmarshal(body, &request); err != nil {
+		return nil, err
+	}
+	if len(request.IDs) == 0 {
+		return nil, errors.New("resource IDs are required")
+	}
+
+	unique := make([]string, 0, len(request.IDs))
+	seen := make(map[string]struct{}, len(request.IDs))
+	for _, id := range request.IDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return nil, errors.New("resource IDs must not be empty")
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+	return unique, nil
+}
+
+func resolveRecycleBinProjectIDs(resource string, ids []string) ([]string, error) {
+	projectIDs := make([]string, 0, len(ids))
+	switch resource {
+	case "projects":
+		var rows []struct{ ID string }
+		if err := db.DB.Unscoped().Table("projects").Select("id").Where("id IN ?", ids).Scan(&rows).Error; err != nil {
+			return nil, err
+		}
+		if len(rows) != len(ids) {
+			return nil, errors.New("recycle-bin project not found")
+		}
+		for _, row := range rows {
+			projectIDs = append(projectIDs, row.ID)
+		}
+	case "envs":
+		var rows []struct {
+			ProjectID string `gorm:"column:project_id"`
+		}
+		if err := db.DB.Unscoped().Table("envs").Select("project_id").Where("id IN ?", ids).Scan(&rows).Error; err != nil {
+			return nil, err
+		}
+		if len(rows) != len(ids) {
+			return nil, errors.New("recycle-bin environment not found")
+		}
+		for _, row := range rows {
+			projectIDs = append(projectIDs, row.ProjectID)
+		}
+	case "apps":
+		var rows []struct {
+			ProjectID string `gorm:"column:project_id"`
+		}
+		if err := db.DB.Unscoped().Table("apps").Select("envs.project_id").
+			Joins("JOIN envs ON envs.id = apps.env_id").Where("apps.id IN ?", ids).Scan(&rows).Error; err != nil {
+			return nil, err
+		}
+		if len(rows) != len(ids) {
+			return nil, errors.New("recycle-bin application not found")
+		}
+		for _, row := range rows {
+			projectIDs = append(projectIDs, row.ProjectID)
+		}
+	case "code-repositories":
+		var rows []struct {
+			ProjectID string `gorm:"column:project_id"`
+		}
+		if err := db.DB.Unscoped().Table("code_repositories").Select("project_id").Where("id IN ?", ids).Scan(&rows).Error; err != nil {
+			return nil, err
+		}
+		if len(rows) != len(ids) {
+			return nil, errors.New("recycle-bin code repository not found")
+		}
+		for _, row := range rows {
+			projectIDs = append(projectIDs, row.ProjectID)
+		}
+	}
+	return projectIDs, nil
+}
+
 // BlockViewer is a convenience middleware that blocks users with the "viewer"
 // project role. It requires at least "developer" level access.
 func BlockViewer() gin.HandlerFunc {
