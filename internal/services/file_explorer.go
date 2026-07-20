@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -55,6 +56,9 @@ func execCommandWithContext(ctx context.Context, appCtx *models.AppContext, inst
 	if err != nil {
 		return "", "", err
 	}
+	if _, err := validateAppPodContainer(ctx, client, appCtx, instanceName, containerName); err != nil {
+		return "", "", err
+	}
 
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -96,6 +100,9 @@ func execCommandWithStdin(appCtx *models.AppContext, instanceName, containerName
 
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
+		return "", "", err
+	}
+	if _, err := validateAppPodContainer(context.Background(), client, appCtx, instanceName, containerName); err != nil {
 		return "", "", err
 	}
 
@@ -147,6 +154,9 @@ func execCommandStreamStdoutWithContext(ctx context.Context, appCtx *models.AppC
 	if err != nil {
 		return err
 	}
+	if _, err := validateAppPodContainer(ctx, client, appCtx, instanceName, containerName); err != nil {
+		return err
+	}
 
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -190,6 +200,9 @@ func execCommandWithStdinStream(appCtx *models.AppContext, instanceName, contain
 	if err != nil {
 		return err
 	}
+	if _, err := validateAppPodContainer(context.Background(), client, appCtx, instanceName, containerName); err != nil {
+		return err
+	}
 
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -222,7 +235,10 @@ func execCommandWithStdinStream(appCtx *models.AppContext, instanceName, contain
 func GetHomeDir(appCtx *models.AppContext, instanceName, containerName string) (string, error) {
 	stdout, _, err := execCommand(appCtx, instanceName, containerName, []string{"sh", "-c", `echo "$HOME"`})
 	if err != nil {
-		return "/", nil // fallback to root
+		if errors.Is(err, errPodAccessDenied) {
+			return "", err
+		}
+		return "/", nil // fallback to root when the container shell cannot report HOME
 	}
 	home := strings.TrimSpace(stdout)
 	if home == "" {

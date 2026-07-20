@@ -46,6 +46,11 @@ const (
 	// LabelBuildKey indicates a resource is part of a build process.
 	LabelBuildKey = LabelPrefix + "build"
 
+	// LabelBuilderWorkspace marks a Pod used for a builder workspace.
+	LabelBuilderWorkspace = LabelPrefix + "builder-workspace"
+	// LabelBuilderSessionID identifies the builder session that owns a workspace Pod.
+	LabelBuilderSessionID = LabelPrefix + "builder-session-id"
+
 	// LabelDebugging indicates an application is in debugging mode.
 	LabelDebugging = LabelPrefix + "app-debugging"
 )

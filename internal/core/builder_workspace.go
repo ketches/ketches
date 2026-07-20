@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	builderWorkspaceMarkerLabelKey = kube.LabelPrefix + "builder-workspace"
-	builderSessionIDLabelKey       = kube.LabelPrefix + "builder-session-id"
+	builderWorkspaceMarkerLabelKey = kube.LabelBuilderWorkspace
+	builderSessionIDLabelKey       = kube.LabelBuilderSessionID
 	builderWorkspaceContainerName  = "workspace"
 	builderWorkspaceVolumeName     = "workspace"
 )

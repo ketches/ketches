@@ -38,6 +38,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
@@ -802,7 +803,7 @@ func ListAppInstances(ctx context.Context, appID string) ([]models.AppInstanceRe
 	}
 
 	pods, err := client.CoreV1().Pods(appCtx.EnvContext.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
-		LabelSelector: kube.LabelAppSlug + "=" + appCtx.App.Slug,
+		LabelSelector: fmt.Sprintf("%s=true,%s=%s,%s!=true", kube.LabelManagedBy, kube.LabelAppID, appCtx.App.ID, kube.LabelBuildKey),
 	})
 	if err != nil {
 		return nil, err
@@ -810,6 +811,12 @@ func ListAppInstances(ctx context.Context, appID string) ([]models.AppInstanceRe
 
 	var res []models.AppInstanceResponse
 	for _, p := range pods.Items {
+		if p.Labels[kube.LabelManagedBy] != "true" ||
+			p.Labels[kube.LabelAppID] != appCtx.App.ID ||
+			p.Labels[kube.LabelBuildKey] == "true" ||
+			p.Labels[kube.LabelBuildID] != "" {
+			continue
+		}
 		res = append(res, core.ToAppInstanceResponse(&p))
 	}
 	return res, nil
@@ -820,9 +827,21 @@ func ListAppInstanceEvents(ctx context.Context, appCtx *models.AppContext, insta
 	if err != nil {
 		return nil, err
 	}
+	pod, err := validateAppPodAccess(ctx, client, appCtx, instanceName)
+	if err != nil {
+		return nil, err
+	}
+
+	eventFields := fields.Set{
+		"involvedObject.name": pod.Name,
+		"involvedObject.kind": "Pod",
+	}
+	if pod.UID != "" {
+		eventFields["involvedObject.uid"] = string(pod.UID)
+	}
 
 	eventList, err := client.CoreV1().Events(appCtx.EnvContext.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
-		FieldSelector: "involvedObject.name=" + instanceName + ",involvedObject.kind=Pod",
+		FieldSelector: fields.SelectorFromSet(eventFields).String(),
 	})
 	if err != nil {
 		return nil, err
@@ -849,12 +868,23 @@ func DeleteAppInstance(ctx context.Context, appCtx *models.AppContext, instanceN
 		return err
 	}
 
-	return client.CoreV1().Pods(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, instanceName, metav1.DeleteOptions{})
+	pod, err := validateAppPodAccess(ctx, client, appCtx, instanceName)
+	if err != nil {
+		return err
+	}
+	deleteOptions := metav1.DeleteOptions{}
+	if pod.UID != "" {
+		deleteOptions.Preconditions = &metav1.Preconditions{UID: &pod.UID}
+	}
+	return client.CoreV1().Pods(appCtx.EnvContext.Env.ClusterNamespace).Delete(ctx, instanceName, deleteOptions)
 }
 
 func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName, containerName string, tailLines int64, timestamps bool) (io.ReadCloser, error) {
 	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
+		return nil, err
+	}
+	if _, err := validateAppPodContainer(ctx, client, appCtx, instanceName, containerName); err != nil {
 		return nil, err
 	}
 
@@ -887,6 +917,9 @@ func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName str
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return app.WrapErrorf(err, "failed to create kubernetes client: %w", err)
+	}
+	if _, err := validateAppPodContainer(context.Background(), client, appCtx, instanceName, containerName); err != nil {
+		return err
 	}
 
 	req := client.CoreV1().RESTClient().Post().

@@ -3,8 +3,12 @@ package services
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"path"
 	"strings"
@@ -12,10 +16,13 @@ import (
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/secrets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -104,6 +111,28 @@ func (f *fakeWritableFSExecutor) ensureDir(dir string) {
 
 func buildFileExplorerTestAppContext(t *testing.T) *models.AppContext {
 	t.Helper()
+	pod := &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "builder-pod",
+			Namespace: "builder-ns",
+			Labels: map[string]string{
+				kube.LabelManagedBy:        "true",
+				kube.LabelBuilderWorkspace: "true",
+				kube.LabelBuilderSessionID: "session-1",
+			},
+		},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "workspace"}}},
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/namespaces/builder-ns/pods/builder-pod" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(pod))
+	}))
+	t.Cleanup(server.Close)
 
 	originalConfig := app.Config
 	t.Cleanup(func() {
@@ -111,12 +140,12 @@ func buildFileExplorerTestAppContext(t *testing.T) *models.AppContext {
 	})
 	app.Config.SecretEncryptionKey = "test-master-key"
 
-	encryptedKubeConfig, err := secrets.EncryptString(`apiVersion: v1
+	kubeConfig := fmt.Sprintf(`apiVersion: v1
 kind: Config
 clusters:
 - name: test
   cluster:
-    server: https://127.0.0.1
+    server: %s
 users:
 - name: test
   user:
@@ -127,10 +156,15 @@ contexts:
     cluster: test
     user: test
 current-context: test
-`)
+`, server.URL)
+	encryptedKubeConfig, err := secrets.EncryptString(kubeConfig)
 	require.NoError(t, err)
 
 	return &models.AppContext{
+		PodAccessPolicy: &models.PodAccessPolicy{RequiredLabels: map[string]string{
+			kube.LabelBuilderWorkspace: "true",
+			kube.LabelBuilderSessionID: "session-1",
+		}},
 		EnvContext: models.EnvContext{
 			Env:     entities.Env{ClusterNamespace: "builder-ns"},
 			Cluster: entities.Cluster{KubeConfig: encryptedKubeConfig},
@@ -138,7 +172,7 @@ current-context: test
 	}
 }
 
-func TestExecCommandStreamStdoutWithContext_UsesPassedContext(t *testing.T) {
+func TestExecCommandStreamStdoutWithContext_StopsBeforeExecWhenContextCanceled(t *testing.T) {
 	appCtx := buildFileExplorerTestAppContext(t)
 
 	fakeExecutor := &fakeRemoteCommandExecutor{}
@@ -156,8 +190,27 @@ func TestExecCommandStreamStdoutWithContext_UsesPassedContext(t *testing.T) {
 	var stdout bytes.Buffer
 	err := execCommandStreamStdoutWithContext(ctx, appCtx, "builder-pod", "workspace", []string{"cat", "/workspace/dist/index.html"}, &stdout)
 	require.ErrorIs(t, err, context.Canceled)
-	assert.Same(t, ctx, fakeExecutor.seenCtx)
-	assert.Equal(t, "streamed-output", stdout.String())
+	assert.Nil(t, fakeExecutor.seenCtx)
+	assert.Empty(t, stdout.String())
+}
+
+func TestExecCommandRejectsPodOutsideApplicationBeforeExec(t *testing.T) {
+	appCtx := buildFileExplorerTestAppContext(t)
+	appCtx.App.ID = "app-1"
+
+	executorCreated := false
+	originalFactory := newRemoteCommandExecutor
+	newRemoteCommandExecutor = func(_ *rest.Config, _ string, _ *url.URL) (remotecommand.Executor, error) {
+		executorCreated = true
+		return &fakeRemoteCommandExecutor{}, nil
+	}
+	t.Cleanup(func() {
+		newRemoteCommandExecutor = originalFactory
+	})
+
+	_, _, err := execCommand(appCtx, "builder-pod", "workspace", []string{"id"})
+	require.ErrorIs(t, err, errPodAccessDenied)
+	assert.False(t, executorCreated)
 }
 
 func TestWriteFile_AllowsCreatingNestedParentDirectoriesInsideWritableWorkspace(t *testing.T) {

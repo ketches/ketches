@@ -567,6 +567,10 @@ func buildBuilderWorkspaceAppContext(workspace *entities.BuilderWorkspace) (*mod
 	envCopy.ClusterNamespace = workspace.Namespace
 
 	return &models.AppContext{
+		PodAccessPolicy: &models.PodAccessPolicy{RequiredLabels: map[string]string{
+			kube.LabelBuilderWorkspace: "true",
+			kube.LabelBuilderSessionID: workspace.SessionID,
+		}},
 		EnvContext: models.EnvContext{
 			Env:     envCopy,
 			Project: *project,
