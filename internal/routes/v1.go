@@ -12,7 +12,7 @@ func SetupRoutes(r *gin.Engine) {
 	r.Use(middlewares.CORS())
 
 	setupV1Routes(r)
-	setupForwardRoutes(r)
+	setupBuilderPreviewRoutes(r)
 
 	openapi.RegisterRoutes(r, openapi.Config{
 		Title:       "Ketches API",
@@ -464,23 +464,11 @@ func setupV1Routes(r *gin.Engine) {
 				recycleBin.POST("/code-repositories/permanently-delete", middlewares.RequireRecycleBinOwner("code-repositories"), handlers.PermanentlyDeleteCodeRepositories)
 			}
 
-			authorized.GET("/gateways/:gatewayID/proxy/*path", middlewares.RequireProjectRole(app.ProjectRoleViewer), handlers.ProxyGatewayHTTP)
-			authorized.HEAD("/gateways/:gatewayID/proxy/*path", middlewares.RequireProjectRole(app.ProjectRoleViewer), handlers.ProxyGatewayHTTP)
 		}
 	}
 }
 
-// setupForwardRoutes registers /forward/:gatewayID/*path at the root level (outside
-// /api/v1) so that nginx can proxy /forward/* directly to the backend without a
-// path prefix, keeping the browser address bar at /forward/:gatewayID.
-func setupForwardRoutes(r *gin.Engine) {
-	forward := r.Group("/forward")
-	forward.Use(middlewares.ForwardAuth(), middlewares.RequireProjectRole(app.ProjectRoleViewer))
-	{
-		forward.GET("/:gatewayID/*path", handlers.ProxyGatewayHTTP)
-		forward.HEAD("/:gatewayID/*path", handlers.ProxyGatewayHTTP)
-	}
-
+func setupBuilderPreviewRoutes(r *gin.Engine) {
 	builderPreview := r.Group("/builder-preview")
 	builderPreview.GET("/projects/:projectID/sessions/:sessionID/runs/:runID/*assetPath", middlewares.BuilderPreviewAuth(), middlewares.RequireProjectRole(app.ProjectRoleViewer), handlers.ReadBuilderPreviewAsset)
 }

@@ -533,9 +533,8 @@ func storeTestClusterClients(t *testing.T, clusterID string, server *httptest.Se
 	clientsField := reflect.ValueOf(kube.GlobalClusterStore).Elem().FieldByName("clients")
 	clientsMap := (*sync.Map)(unsafe.Pointer(clientsField.UnsafeAddr()))
 	clientsMap.Store(clusterID, &kube.Clients{
-		Kube:      kubeClient,
-		Gateway:   gwClient,
-		Dynamic:   dynamic.NewForConfigOrDie(config),
-		HTTPProxy: httpClient,
+		Kube:    kubeClient,
+		Gateway: gwClient,
+		Dynamic: dynamic.NewForConfigOrDie(config),
 	})
 }

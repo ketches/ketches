@@ -61,23 +61,6 @@ func Auth() gin.HandlerFunc {
 	}
 }
 
-func ForwardAuth() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tokenString, _ := c.Cookie(app.AccessTokenCookieName)
-
-		claims, user, err := verifyToken(tokenString, app.TokenTypeAccess)
-		if err != nil {
-			api.Error(c, http.StatusUnauthorized, err)
-			c.Abort()
-			return
-		}
-
-		c.Set("claims", claims)
-		c.Set("user", user)
-		c.Next()
-	}
-}
-
 func AdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, ok := c.Get("claims")

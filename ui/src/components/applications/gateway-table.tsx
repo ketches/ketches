@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Copy, Edit2, ExternalLink, Globe, GlobeLock, Lock, Network, Plus, Trash2 } from "lucide-react"
+import { Copy, Edit2, Globe, GlobeLock, Lock, Network, Plus, Trash2 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -318,30 +318,6 @@ export function NetworkConfig({ app }: GatewayConfigProps) {
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-1">
-          {/* Quick Access: visible when app is running/updating and protocol is http/https */}
-          {(app.status === 'running' || app.status === 'updating') &&
-            isHttpProtocol(row.original.protocol) && (
-              <Tooltip>
-                <TooltipTrigger
-                  delay={200}
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => {
-                        window.open(
-                          `/forward/${row.original.id}/`,
-                          '_blank'
-                        )
-                      }}
-                    />
-                  }
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </TooltipTrigger>
-                <TooltipContent>Quick Access</TooltipContent>
-              </Tooltip>
-            )}
           {!isViewer && (
             <>
               <Tooltip>

@@ -654,21 +654,3 @@ func decodeGatewayJSON[T any](blob entities.JSONBlob, target **T) {
 		*target = &decoded
 	}
 }
-
-// GetGatewayWithApp loads a gateway along with its parent App, Env, and Cluster.
-func GetGatewayWithApp(ctx context.Context, gatewayID string) (*entities.AppGateway, *models.AppContext, error) {
-	var gateway entities.AppGateway
-	err := db.DB.First(&gateway, "id = ?", gatewayID).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil, errors.New("gateway not found")
-		}
-		return nil, nil, err
-	}
-
-	appCtx, err := GetAppContext(ctx, gateway.AppID)
-	if err != nil {
-		return nil, nil, err
-	}
-	return &gateway, appCtx, nil
-}
