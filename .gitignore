@@ -1,5 +1,3 @@
-.worktrees/
-
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -31,20 +29,10 @@ main
 .env
 
 # Editor/IDE
-.idea/
 .vscode/
 
 # Agents
-.opencode/
-.sisyphus/
-.cursor/
 .claude/
-.superpowers/
-docs/plans/
-ui/docs/plans/
-docs/superpowers/
-.codex
 
 # Runtime files
-data/
 **/*.db
