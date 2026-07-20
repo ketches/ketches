@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/services"
 )
 
@@ -58,6 +59,45 @@ func Auth() gin.HandlerFunc {
 		c.Set("claims", claims)
 		c.Set("user", user)
 		c.Next()
+	}
+}
+
+func RequirePasswordChange() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		currentUser, ok := c.Get("user")
+		if !ok {
+			api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
+			c.Abort()
+			return
+		}
+
+		user, ok := currentUser.(*entities.User)
+		if !ok || user == nil {
+			api.Error(c, http.StatusUnauthorized, errors.New("unauthorized"))
+			c.Abort()
+			return
+		}
+
+		if !user.MustChangePassword || passwordChangeRouteAllowed(c.Request.Method, c.Request.URL.Path) {
+			c.Next()
+			return
+		}
+
+		api.Error(c, http.StatusForbidden, services.ErrPasswordChangeRequired)
+		c.Abort()
+	}
+}
+
+func passwordChangeRouteAllowed(method, path string) bool {
+	switch {
+	case method == http.MethodGet && path == "/api/v1/users/me":
+		return true
+	case method == http.MethodPatch && path == "/api/v1/users/me/password":
+		return true
+	case method == http.MethodPost && path == "/api/v1/users/logout":
+		return true
+	default:
+		return false
 	}
 }
 

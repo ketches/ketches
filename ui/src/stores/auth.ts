@@ -14,10 +14,12 @@ export interface User {
 interface AuthState {
   user: User | null
   isAuthenticated: boolean
+  mustChangePassword: boolean
   hasCheckedSession: boolean
   isRestoringSession: boolean
 
-  setAuth: (user: User) => void
+  setAuth: (user: User, mustChangePassword?: boolean) => void
+  setPasswordChangeRequired: (required: boolean) => void
   updateUser: (user: Partial<User>) => void
   logout: () => void
   markSessionRestoreStarted: () => void
@@ -29,16 +31,21 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
+      mustChangePassword: false,
       hasCheckedSession: false,
       isRestoringSession: false,
 
-      setAuth: (user) =>
+      setAuth: (user, mustChangePassword = false) =>
         set({
           user,
+          mustChangePassword,
           hasCheckedSession: true,
           isAuthenticated: true,
           isRestoringSession: false,
         }),
+
+      setPasswordChangeRequired: (required) =>
+        set({ mustChangePassword: required }),
 
       updateUser: (user) =>
         set((state) => ({
@@ -51,6 +58,7 @@ export const useAuthStore = create<AuthState>()(
           isRestoringSession: false,
           user: null,
           isAuthenticated: false,
+          mustChangePassword: false,
         })),
 
       markSessionRestoreStarted: () =>
@@ -71,6 +79,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        mustChangePassword: state.mustChangePassword,
       }),
     }
   )

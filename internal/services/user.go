@@ -16,16 +16,17 @@ import (
 )
 
 var (
-	ErrDeleteLastAdmin        = errors.New("cannot delete the last admin user")
-	ErrDemoteLastAdmin        = errors.New("cannot demote the last admin user")
-	ErrInvalidCurrentPassword = errors.New("current password is incorrect")
-	ErrUsernameAlreadyExists  = errors.New("username already exists")
-	ErrEmailAlreadyExists     = errors.New("email already exists")
+	ErrDeleteLastAdmin                     = errors.New("cannot delete the last admin user")
+	ErrDemoteLastAdmin                     = errors.New("cannot demote the last admin user")
+	ErrInvalidCurrentPassword              = errors.New("current password is incorrect")
+	ErrUsernameAlreadyExists               = errors.New("username already exists")
+	ErrEmailAlreadyExists                  = errors.New("email already exists")
+	ErrBootstrapAdminPasswordNotConfigured = app.ErrBootstrapAdminPasswordNotConfigured
+	ErrPasswordChangeRequired              = errors.New("password change required")
 )
 
 const (
 	defaultBootstrapAdminUsername = "kadmin"
-	defaultBootstrapAdminPassword = "KetchesBootstrapAdmin!ChangeMe"
 	defaultBootstrapAdminFullname = "Ketches Admin"
 )
 
@@ -127,7 +128,7 @@ func SignIn(req *models.SignInRequest) (*entities.User, bool, error) {
 		return nil, false, errors.New("invalid username or password")
 	}
 
-	return &user, false, nil
+	return &user, user.MustChangePassword, nil
 }
 
 func GetUser(userID string) (*entities.User, error) {
@@ -234,8 +235,9 @@ func ChangeUserPassword(userID, newPassword string) error {
 	}
 
 	return db.DB.Model(&entities.User{}).Where("id = ?", userID).Updates(map[string]any{
-		"password":      string(hashedPassword),
-		"refresh_token": "",
+		"password":             string(hashedPassword),
+		"refresh_token":        "",
+		"must_change_password": false,
 	}).Error
 }
 
@@ -327,19 +329,23 @@ func EnsureBootstrapAdmin() error {
 	}
 
 	bootstrapUsername := resolveBootstrapAdminUsername()
-	bootstrapPassword := resolveBootstrapAdminPassword()
+	bootstrapPassword := app.Config.BootstrapAdminPassword
+	if strings.TrimSpace(bootstrapPassword) == "" {
+		return ErrBootstrapAdminPasswordNotConfigured
+	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(bootstrapPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
 	admin := &entities.User{
-		Base:     entities.Base{ID: uuid.New()},
-		Username: bootstrapUsername,
-		Email:    buildBootstrapAdminEmail(bootstrapUsername),
-		Password: string(hashedPassword),
-		Fullname: buildBootstrapAdminFullname(bootstrapUsername),
-		Role:     app.UserRoleAdmin,
+		Base:               entities.Base{ID: uuid.New()},
+		Username:           bootstrapUsername,
+		Email:              buildBootstrapAdminEmail(bootstrapUsername),
+		Password:           string(hashedPassword),
+		Fullname:           buildBootstrapAdminFullname(bootstrapUsername),
+		Role:               app.UserRoleAdmin,
+		MustChangePassword: true,
 	}
 
 	return db.DB.Transaction(func(tx *gorm.DB) error {
@@ -368,13 +374,6 @@ func resolveBootstrapAdminUsername() string {
 		return username
 	}
 	return defaultBootstrapAdminUsername
-}
-
-func resolveBootstrapAdminPassword() string {
-	if password := strings.TrimSpace(app.Config.BootstrapAdminPassword); password != "" {
-		return password
-	}
-	return defaultBootstrapAdminPassword
 }
 
 func buildBootstrapAdminFullname(username string) string {

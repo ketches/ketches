@@ -25,6 +25,15 @@ helm upgrade --install ketches ./deploy/helm/ketches \
 This quickstart file is intentionally for local evaluation only. It includes demo secrets so you can try the chart immediately.
 It also disables sign-up email verification by default while keeping bootstrap admin creation enabled.
 
+On the first install, the chart generates a random bootstrap administrator password and stores it in the chart Secret. Upgrades reuse the existing Secret value. Retrieve it with:
+
+```bash
+kubectl get secret ketches-secrets -n ketches \
+  -o jsonpath='{.data.bootstrap-admin-password}' | base64 -d; echo
+```
+
+The initial administrator must change this password before using other API operations.
+
 ### Production / shared environments
 
 The chart requires `config.jwtSecret` and `config.secretEncryptionKey` on every install or upgrade. When the bundled PostgreSQL instance is enabled, set `postgres.auth.password` as well. See [Production Deployment Guide](../../../docs/PRODUCTION_DEPLOYMENT.md) before using this chart in shared or production environments.
@@ -41,6 +50,8 @@ config.smtpUsername
 config.smtpPassword
 config.smtpFrom
 ```
+
+`config.bootstrapAdminPassword` is optional. When omitted, the chart generates it on first install and persists it in the Secret. Set it explicitly only when the value is already managed by an external secret workflow.
 
 ## Common Overrides
 

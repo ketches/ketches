@@ -4,20 +4,6 @@ metadata:
   name: ketches
 ---
 apiVersion: v1
-kind: Secret
-metadata:
-  name: ketches-secrets
-  namespace: ketches
-type: Opaque
-stringData:
-  db-password: ketches-quickstart-postgres
-  jwt-secret: ketches-quickstart-jwt-secret
-  secret-encryption-key: ketches-quickstart-encryption-key
-  bootstrap-admin-username: ""
-  bootstrap-admin-password: ""
-  smtp-password: ""
----
-apiVersion: v1
 kind: Service
 metadata:
   name: ketches-db

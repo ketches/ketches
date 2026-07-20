@@ -96,3 +96,42 @@ func TestAuthRejectsQueryTokenParameter(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
+
+func TestRequirePasswordChangeBlocksBusinessRoutes(t *testing.T) {
+	setupAuthMiddlewareTestDB(t)
+	user := seedAuthMiddlewareUser(t)
+	require.NoError(t, db.DB.Model(user).Update("must_change_password", true).Error)
+	user.MustChangePassword = true
+
+	token, err := app.GenerateAccessToken(user)
+	require.NoError(t, err)
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(Auth(), RequirePasswordChange())
+	r.GET("/api/v1/projects", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	r.GET("/api/v1/users/me", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	r.PATCH("/api/v1/users/me/password", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	r.POST("/api/v1/users/logout", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+
+	tests := []struct {
+		method string
+		path   string
+		status int
+	}{
+		{method: http.MethodGet, path: "/api/v1/projects", status: http.StatusForbidden},
+		{method: http.MethodGet, path: "/api/v1/users/me", status: http.StatusNoContent},
+		{method: http.MethodPatch, path: "/api/v1/users/me/password", status: http.StatusNoContent},
+		{method: http.MethodPost, path: "/api/v1/users/logout", status: http.StatusNoContent},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+			assert.Equal(t, tt.status, w.Code)
+		})
+	}
+}

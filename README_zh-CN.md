@@ -78,7 +78,6 @@ Ketches 是一个面向企业级的开源云原生应用平台，旨在降低 Ku
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/docker-compose.yml -o docker-compose.yml
 curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/.env.quickstart -o .env
-docker compose up -d
 ```
 
 这条 QuickStart 路径仅用于本地试用。它会使用 `deploy/docker/.env.quickstart` 中的演示密钥，方便快速启动。正式环境请保持 `deploy/docker/docker-compose.yml` 的安全默认行为，并参考[生产部署说明](docs/PRODUCTION_DEPLOYMENT.md)。
@@ -87,10 +86,17 @@ QuickStart 会自动创建 bootstrap 管理员账号，并默认关闭注册邮�
 
 ```txt
 username: kadmin
-password: KetchesBootstrapAdmin!ChangeMe
+password: 从 `.env` 中的 `BOOTSTRAP_ADMIN_PASSWORD` 读取
 ```
 
-如需覆盖默认行为，可配置：
+启动前生成一次随机初始口令：
+
+```bash
+printf '\nBOOTSTRAP_ADMIN_PASSWORD=%s\n' "$(openssl rand -base64 24 | tr -d '\n')" >> .env
+docker compose up -d
+```
+
+初始口令会通过受保护的 `.env` 传给 API 容器。请从受保护的 `.env` 文件中读取并在首次登录后立即修改。如需覆盖其他默认行为，可配置：
 
 ```txt
 BOOTSTRAP_ADMIN_USERNAME=<自定义管理员用户名>
@@ -118,17 +124,20 @@ helm upgrade --install ketches ./deploy/helm/ketches --namespace ketches --creat
 
 这条 QuickStart 路径仅适用于本地体验集群。主 Helm Chart 仍然保持安全默认值，需要在非体验场景下显式提供真实密钥。
 
+从 Secret 中读取随机生成的管理员初始口令：
+
+```bash
+kubectl get secret ketches-secrets -n ketches \
+  -o jsonpath='{.data.bootstrap-admin-password}' | base64 -d; echo
+```
+
 ### 原始 Kubernetes manifests
 
 **前置条件**：Kubernetes 1.24+
 
-```bash
-kubectl apply -f https://raw.githubusercontent.com/ketches/ketches/master/deploy/kubernetes/manifests.quickstart.yaml
-```
+原始 manifest 要求预先创建 `ketches-secrets` Secret，并在其中保存随机生成的 bootstrap 管理员口令。请先按 [`deploy/kubernetes/README.md`](deploy/kubernetes/README.md) 中的命令创建 Secret，再应用 `manifests.quickstart.yaml`。
 
-这份 quickstart manifest 仅用于本地体验。它内置了演示密钥和面向 localhost 的 CORS 配置，使原始 manifest 的体验路径与其他 quickstart 方式一致。
-
-更多说明见：[`deploy/kubernetes/README.md`](deploy/kubernetes/README.md)
+这份 quickstart manifest 仅用于本地体验。它使用面向 localhost 的 CORS 配置，使原始 manifest 的体验路径与其他 quickstart 方式一致。
 
 QuickStart 下 UI Service 类型为 `NodePort`（`30080`）：
 
@@ -210,7 +219,7 @@ make dev-ui
 | `JWT_SECRET` | *（必填）* | JWT Token 签名密钥 |
 | `SECRET_ENCRYPTION_KEY` | *（必填）* | 用于静态加密敏感数据的密钥 |
 | `BOOTSTRAP_ADMIN_USERNAME` | `kadmin` | 可选，覆盖 bootstrap 管理员用户名 |
-| `BOOTSTRAP_ADMIN_PASSWORD` | `KetchesBootstrapAdmin!ChangeMe` | 可选，覆盖 bootstrap 管理员密码 |
+| `BOOTSTRAP_ADMIN_PASSWORD` | *（必填）* | bootstrap 管理员初始口令；请生成随机值并通过 Secret/环境注入 |
 | `SIGN_UP_EMAIL_VERIFICATION_REQUIRED` | `true` | 公共注册是否要求邮箱验证码 |
 | `SMTP_HOST` | 空 | SMTP 服务器地址，开启邮箱验证码时必填 |
 | `SMTP_PORT` | `587` | SMTP 服务器端口 |

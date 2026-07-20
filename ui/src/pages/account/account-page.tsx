@@ -25,12 +25,22 @@ type AccountTab = "overview" | "security" | "ai-providers"
 
 export function AccountPage() {
   const authUser = useAuthStore((state) => state.user)
+  const mustChangePassword = useAuthStore((state) => state.mustChangePassword)
+  const setPasswordChangeRequired = useAuthStore((state) => state.setPasswordChangeRequired)
   const updateUser = useAuthStore((state) => state.updateUser)
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = (searchParams.get("tab") as AccountTab | null) || "overview"
+  const activeTab = mustChangePassword
+    ? "security"
+    : (searchParams.get("tab") as AccountTab | null) || "overview"
   const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false)
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    if (mustChangePassword) {
+      setIsPasswordDialogOpen(true)
+    }
+  }, [mustChangePassword])
 
   const profileQuery = useQuery({
     queryKey: ["users", "me", authUser?.id ?? "self"],
@@ -60,6 +70,7 @@ export function AccountPage() {
   const passwordMutation = useMutation({
     mutationFn: usersApi.updateMyPassword,
     onSuccess: () => {
+      setPasswordChangeRequired(false)
       toast.success("Password updated successfully")
     },
     onError: (error: AxiosError<{ error?: string }>) => {
@@ -106,9 +117,16 @@ export function AccountPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(value) => setSearchParams({ tab: value }, { replace: true })}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          if (!mustChangePassword) {
+            setSearchParams({ tab: value }, { replace: true })
+          }
+        }}
+      >
         <TabsList>
-          <TabsTrigger value="overview">
+          <TabsTrigger value="overview" disabled={mustChangePassword}>
             <UserCog />
             Overview
           </TabsTrigger>
@@ -116,7 +134,7 @@ export function AccountPage() {
             <UserKey />
             Security
           </TabsTrigger>
-          <TabsTrigger value="ai-providers">
+          <TabsTrigger value="ai-providers" disabled={mustChangePassword}>
             <Brain />
             AI Providers
           </TabsTrigger>
@@ -253,7 +271,14 @@ export function AccountPage() {
             <CardContent />
           </Card>
 
-          <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+          <Dialog
+            open={isPasswordDialogOpen}
+            onOpenChange={(open) => {
+              if (!mustChangePassword || open) {
+                setIsPasswordDialogOpen(open)
+              }
+            }}
+          >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Update Password</DialogTitle>
@@ -270,7 +295,7 @@ export function AccountPage() {
                   setIsPasswordDialogOpen(false)
                 }}
                 isSaving={passwordMutation.isPending}
-                onCancel={() => setIsPasswordDialogOpen(false)}
+                onCancel={mustChangePassword ? undefined : () => setIsPasswordDialogOpen(false)}
               />
             </DialogContent>
           </Dialog>

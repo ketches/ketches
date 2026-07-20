@@ -78,7 +78,6 @@ Ketches is an enterprise-grade, open-source cloud-native application platform de
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/docker-compose.yml -o docker-compose.yml
 curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/.env.quickstart -o .env
-docker compose up -d
 ```
 
 This quickstart path is for local evaluation only. It uses checked-in demo secrets from `deploy/docker/.env.quickstart` so you can get running immediately. For real environments, keep `deploy/docker/docker-compose.yml` as-is and follow the production guide: [Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md).
@@ -87,10 +86,17 @@ Quickstart creates a bootstrap admin account automatically and disables sign-up 
 
 ```txt
 username: kadmin
-password: KetchesBootstrapAdmin!ChangeMe
+password: read from `BOOTSTRAP_ADMIN_PASSWORD` in `.env`
 ```
 
-Override behavior when needed:
+Generate the initial password before starting the stack:
+
+```bash
+printf '\nBOOTSTRAP_ADMIN_PASSWORD=%s\n' "$(openssl rand -base64 24 | tr -d '\n')" >> .env
+docker compose up -d
+```
+
+The initial password is also the value delivered to the API container. Retrieve the value from the protected `.env` file and change it immediately after signing in. Override behavior when needed:
 
 ```txt
 BOOTSTRAP_ADMIN_USERNAME=<custom-admin-username>
@@ -118,17 +124,20 @@ helm upgrade --install ketches ./deploy/helm/ketches --namespace ketches --creat
 
 This quickstart path is intended for local evaluation clusters only. The main Helm chart remains secure-by-default and expects you to provide real secrets for non-quickstart usage.
 
+Retrieve the generated initial administrator password from the Secret:
+
+```bash
+kubectl get secret ketches-secrets -n ketches \
+  -o jsonpath='{.data.bootstrap-admin-password}' | base64 -d; echo
+```
+
 ### Raw Kubernetes manifests
 
 **Prerequisites**: Kubernetes 1.24+
 
-```bash
-kubectl apply -f https://raw.githubusercontent.com/ketches/ketches/master/deploy/kubernetes/manifests.quickstart.yaml
-```
+The raw manifest requires a pre-created `ketches-secrets` Secret containing a randomly generated bootstrap password. Follow the commands in [`deploy/kubernetes/README.md`](deploy/kubernetes/README.md), then apply `manifests.quickstart.yaml`.
 
-This quickstart manifest is for local evaluation only. It bakes in demo secrets and localhost-friendly CORS values so raw-manifest installs behave like the other quickstart paths.
-
-More details: [`deploy/kubernetes/README.md`](deploy/kubernetes/README.md)
+This quickstart manifest is for local evaluation only. It uses localhost-friendly CORS values so raw-manifest installs behave like the other quickstart paths.
 
 The quickstart UI service type is `NodePort` (`30080`):
 
@@ -210,7 +219,7 @@ All configuration is done via environment variables. A `.env` file is optional f
 | `JWT_SECRET` | *(required)* | Secret key for signing JWT tokens |
 | `SECRET_ENCRYPTION_KEY` | *(required)* | Encryption key for sensitive values stored at rest |
 | `BOOTSTRAP_ADMIN_USERNAME` | `kadmin` | Optional override for the bootstrap admin username |
-| `BOOTSTRAP_ADMIN_PASSWORD` | `KetchesBootstrapAdmin!ChangeMe` | Optional override for the bootstrap admin password |
+| `BOOTSTRAP_ADMIN_PASSWORD` | *(required)* | Initial bootstrap admin password; generate a random value and deliver it through a secret |
 | `SIGN_UP_EMAIL_VERIFICATION_REQUIRED` | `true` | Whether public sign-up requires an email verification code |
 | `SMTP_HOST` | empty | SMTP server host, required when email verification is enabled |
 | `SMTP_PORT` | `587` | SMTP server port |

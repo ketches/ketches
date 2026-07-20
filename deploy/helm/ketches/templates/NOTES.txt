@@ -7,6 +7,12 @@ Useful commands:
   helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
   helm get values {{ .Release.Name }} -n {{ .Release.Namespace }}
 
+Initial administrator credentials:
+  Username: {{ .Values.config.bootstrapAdminUsername | default "kadmin" }}
+  Password: kubectl get secret {{ include "ketches.secretName" . }} -n {{ .Release.Namespace }} -o jsonpath='{.data.bootstrap-admin-password}' | base64 -d; echo
+
+The initial administrator must change this password before using other API operations.
+
 {{- if .Values.ingress.enabled }}
 Ingress is enabled. Access endpoints:
 {{- range .Values.ingress.hosts }}

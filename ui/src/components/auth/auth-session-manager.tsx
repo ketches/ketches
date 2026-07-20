@@ -22,7 +22,10 @@ export function AuthSessionManager() {
     }
 
     try {
-      await refreshSession()
+      const response = await refreshSession()
+      if (response.user) {
+        setAuth(response.user, response.must_change_password ?? false)
+      }
     } catch {
     }
   })
@@ -32,7 +35,7 @@ export function AuthSessionManager() {
     try {
       const response = await refreshSession({ redirectOnFailure: false })
       if (response.user) {
-        setAuth(response.user)
+        setAuth(response.user, response.must_change_password ?? false)
       }
     } catch {
     } finally {

@@ -10,6 +10,7 @@ import (
 
 func SetupRoutes(r *gin.Engine) {
 	r.Use(middlewares.CORS())
+	r.Use(middlewares.RequestBodyLimit())
 
 	setupV1Routes(r)
 	setupBuilderPreviewRoutes(r)
@@ -38,7 +39,7 @@ func setupV1Routes(r *gin.Engine) {
 		}
 
 		authorized := v1.Group("")
-		authorized.Use(middlewares.Auth(), middlewares.CSRF())
+		authorized.Use(middlewares.Auth(), middlewares.RequirePasswordChange(), middlewares.CSRF())
 		{
 			authorized.GET("/activities", handlers.ListActivities)
 			authorized.GET("/operation-logs", middlewares.AdminOnly(), handlers.ListOperationLogs)

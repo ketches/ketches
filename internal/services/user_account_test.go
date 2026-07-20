@@ -94,7 +94,11 @@ func TestChangeCurrentUserPasswordRejectsWrongCurrentPassword(t *testing.T) {
 
 func TestChangeCurrentUserPasswordUpdatesHash(t *testing.T) {
 	setupUserAccountServiceTestDB(t)
-	seedAccountTestUser(t, "user-1", "alice", "secret123", app.UserRoleUser)
+	user := seedAccountTestUser(t, "user-1", "alice", "secret123", app.UserRoleUser)
+	require.NoError(t, db.DB.Model(user).Updates(map[string]any{
+		"must_change_password": true,
+		"refresh_token":        "refresh-token",
+	}).Error)
 
 	err := ChangeCurrentUserPassword("user-1", "secret123", "New-secret#123")
 	require.NoError(t, err)
@@ -102,6 +106,15 @@ func TestChangeCurrentUserPasswordUpdatesHash(t *testing.T) {
 	var persisted entities.User
 	require.NoError(t, db.DB.First(&persisted, "id = ?", "user-1").Error)
 	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(persisted.Password), []byte("New-secret#123")))
+	assert.False(t, persisted.MustChangePassword)
+	assert.Empty(t, persisted.RefreshToken)
+
+	_, mustChangePassword, err := SignIn(&models.SignInRequest{
+		Username: "alice",
+		Password: "New-secret#123",
+	})
+	require.NoError(t, err)
+	assert.False(t, mustChangePassword)
 }
 
 func TestAdminChangeUserPasswordUpdatesHash(t *testing.T) {
@@ -137,4 +150,17 @@ func TestSignInRejectsLockedAccount(t *testing.T) {
 		Password: "Password#123",
 	})
 	require.ErrorIs(t, err, ErrAccountLocked)
+}
+
+func TestSignInReturnsPasswordChangeRequirement(t *testing.T) {
+	setupUserAccountServiceTestDB(t)
+	user := seedAccountTestUser(t, "user-1", "alice", "Password#123", app.UserRoleAdmin)
+	require.NoError(t, db.DB.Model(user).Update("must_change_password", true).Error)
+
+	_, mustChangePassword, err := SignIn(&models.SignInRequest{
+		Username: "alice",
+		Password: "Password#123",
+	})
+	require.NoError(t, err)
+	assert.True(t, mustChangePassword)
 }

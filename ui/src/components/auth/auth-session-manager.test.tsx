@@ -123,7 +123,7 @@ describe("AuthSessionManager", () => {
     mockAuthState.hasCheckedSession = false
     mockAuthState.isAuthenticated = false
     mockAuthState.isRestoringSession = false
-    mockRefreshSession.mockResolvedValue({ user: AUTH_USER })
+    mockRefreshSession.mockResolvedValue({ user: AUTH_USER, must_change_password: true })
 
     const container = document.createElement("div")
     document.body.appendChild(container)
@@ -137,7 +137,7 @@ describe("AuthSessionManager", () => {
 
     expect(mockAuthState.markSessionRestoreStarted).toHaveBeenCalledTimes(1)
     expect(mockRefreshSession).toHaveBeenCalledWith({ redirectOnFailure: false })
-    expect(mockAuthState.setAuth).toHaveBeenCalledWith(AUTH_USER)
+    expect(mockAuthState.setAuth).toHaveBeenCalledWith(AUTH_USER, true)
     expect(mockAuthState.markSessionRestoreFinished).toHaveBeenCalledTimes(1)
 
     await act(async () => {

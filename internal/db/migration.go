@@ -3,11 +3,15 @@ package db
 import (
 	"log/slog"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
+	"gorm.io/gorm"
 )
 
 func Migrate() error {
 	slog.Info("running database automigrate")
+	hadUserTable := DB.Migrator().HasTable(&entities.User{})
+	hadPasswordChangeColumn := DB.Migrator().HasColumn(&entities.User{}, "MustChangePassword")
 
 	if err := DB.AutoMigrate(
 		&entities.User{},
@@ -68,6 +72,17 @@ func Migrate() error {
 	); err != nil {
 		return err
 	}
+	if hadUserTable && !hadPasswordChangeColumn {
+		if err := requireLegacyBootstrapAdminPasswordChange(DB); err != nil {
+			return err
+		}
+	}
 
 	return nil
+}
+
+func requireLegacyBootstrapAdminPasswordChange(database *gorm.DB) error {
+	return database.Model(&entities.User{}).
+		Where("role = ? AND email LIKE ?", app.UserRoleAdmin, "%@local.ketches").
+		Update("must_change_password", true).Error
 }

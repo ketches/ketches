@@ -384,9 +384,15 @@ func TestValidateRuntimeConfig_RejectsMissingSecrets(t *testing.T) {
 	if !errors.Is(err, ErrSecretEncryptionKeyNotConfigured) {
 		t.Fatalf("expected missing secret encryption key error, got %v", err)
 	}
+
+	Config.SecretEncryptionKey = "fedcba9876543210fedcba9876543210"
+	err = ValidateRuntimeConfig()
+	if !errors.Is(err, ErrBootstrapAdminPasswordNotConfigured) {
+		t.Fatalf("expected missing bootstrap admin password error, got %v", err)
+	}
 }
 
-func TestValidateRuntimeConfig_AllowsDefaultBootstrapAdminConfig(t *testing.T) {
+func TestValidateRuntimeConfigRejectsMissingBootstrapAdminPassword(t *testing.T) {
 	originalConfig := Config
 	t.Cleanup(func() {
 		Config = originalConfig
@@ -397,8 +403,8 @@ func TestValidateRuntimeConfig_AllowsDefaultBootstrapAdminConfig(t *testing.T) {
 		SecretEncryptionKey: "fedcba9876543210fedcba9876543210",
 	}
 
-	if err := ValidateRuntimeConfig(); err != nil {
-		t.Fatalf("expected default bootstrap admin config to be valid, got %v", err)
+	if err := ValidateRuntimeConfig(); !errors.Is(err, ErrBootstrapAdminPasswordNotConfigured) {
+		t.Fatalf("expected missing bootstrap admin password error, got %v", err)
 	}
 }
 

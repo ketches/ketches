@@ -152,7 +152,46 @@ describe("LoginForm", () => {
     })
 
     expect(mockSignIn).toHaveBeenCalled()
+    expect(mockSetAuth).toHaveBeenCalledWith(expect.objectContaining({ id: "admin-1" }), false)
     expect(mockPlatformCheck).toHaveBeenCalledWith({ mode: "auto" })
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("requires a password change before loading admin business data", async () => {
+    mockSignIn.mockResolvedValue({
+      user: {
+        id: "admin-1",
+        username: "admin",
+        email: "admin@example.com",
+        fullname: "Admin",
+        role: "admin",
+      },
+      must_change_password: true,
+      default_password_notice: "Change the initial administrator password before continuing.",
+    })
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(<LoginForm />)
+    })
+
+    const submitButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Login")
+    )
+
+    await act(async () => {
+      submitButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(mockSetAuth).toHaveBeenCalledWith(expect.objectContaining({ id: "admin-1" }), true)
+    expect(mockPlatformCheck).not.toHaveBeenCalled()
+    expect(mockNavigate).toHaveBeenCalledWith("/account?tab=security", { replace: true })
 
     await act(async () => {
       root.unmount()

@@ -32,20 +32,18 @@ func setupBootstrapAdminTestDB(t *testing.T) {
 	db.DB = testDB
 }
 
-func TestEnsureBootstrapAdminCreatesDefaultAdminWhenNotConfigured(t *testing.T) {
+func TestEnsureBootstrapAdminRequiresPasswordWhenCreatingAdmin(t *testing.T) {
 	setupBootstrapAdminTestDB(t)
 
 	app.Config.BootstrapAdminUsername = ""
 	app.Config.BootstrapAdminPassword = ""
 
-	require.NoError(t, EnsureBootstrapAdmin())
+	err := EnsureBootstrapAdmin()
+	require.ErrorIs(t, err, ErrBootstrapAdminPasswordNotConfigured)
 
-	var user entities.User
-	require.NoError(t, db.DB.First(&user, "username = ?", "kadmin").Error)
-	assert.Equal(t, app.UserRoleAdmin, user.Role)
-	assert.Equal(t, "Ketches Admin", user.Fullname)
-	assert.Equal(t, "kadmin@local.ketches", user.Email)
-	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("KetchesBootstrapAdmin!ChangeMe")))
+	var count int64
+	require.NoError(t, db.DB.Model(&entities.User{}).Count(&count).Error)
+	assert.Zero(t, count)
 }
 
 func TestEnsureBootstrapAdminCreatesConfiguredAdmin(t *testing.T) {
@@ -61,28 +59,24 @@ func TestEnsureBootstrapAdminCreatesConfiguredAdmin(t *testing.T) {
 	assert.Equal(t, app.UserRoleAdmin, user.Role)
 	assert.Equal(t, "Bootstrap Admin", user.Fullname)
 	assert.Equal(t, "bootstrap-admin@local.ketches", user.Email)
+	assert.True(t, user.MustChangePassword)
 	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("bootstrap-password-123")))
 }
 
-func TestEnsureBootstrapAdminUsesDefaultPasswordWhenCustomUsernameProvided(t *testing.T) {
+func TestEnsureBootstrapAdminRequiresPasswordWhenCustomUsernameProvided(t *testing.T) {
 	setupBootstrapAdminTestDB(t)
 
 	app.Config.BootstrapAdminUsername = "root-admin"
 	app.Config.BootstrapAdminPassword = ""
 
-	require.NoError(t, EnsureBootstrapAdmin())
-
-	var user entities.User
-	require.NoError(t, db.DB.First(&user, "username = ?", "root-admin").Error)
-	assert.Equal(t, "Root Admin", user.Fullname)
-	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("KetchesBootstrapAdmin!ChangeMe")))
+	require.ErrorIs(t, EnsureBootstrapAdmin(), ErrBootstrapAdminPasswordNotConfigured)
 }
 
 func TestEnsureBootstrapAdminDoesNotCreateDuplicateAdmin(t *testing.T) {
 	setupBootstrapAdminTestDB(t)
 
 	app.Config.BootstrapAdminUsername = "bootstrap-admin"
-	app.Config.BootstrapAdminPassword = "bootstrap-password-123"
+	app.Config.BootstrapAdminPassword = ""
 
 	require.NoError(t, db.DB.Create(&entities.User{
 		Base:     entities.Base{ID: "admin-1"},

@@ -62,7 +62,7 @@ func SignIn(c *gin.Context) {
 		MustChangePassword: mustChangePassword,
 		DefaultPasswordNotice: func() string {
 			if mustChangePassword {
-				return "You are using the default administrator credentials. Please change the password as soon as possible."
+				return "Change the initial administrator password before continuing."
 			}
 			return ""
 		}(),

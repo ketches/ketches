@@ -11,6 +11,7 @@ const { mockAuthState } = vi.hoisted(() => ({
   mockAuthState: {
     hasCheckedSession: true,
     isAuthenticated: false,
+    mustChangePassword: false,
     isRestoringSession: false,
     user: null,
   },
@@ -62,6 +63,7 @@ describe("ProtectedRoute", () => {
   beforeEach(() => {
     mockAuthState.hasCheckedSession = true
     mockAuthState.isAuthenticated = false
+    mockAuthState.mustChangePassword = false
     mockAuthState.isRestoringSession = false
     mockAuthState.user = null
     Object.defineProperty(globalThis, "sessionStorage", {
@@ -170,6 +172,41 @@ describe("ProtectedRoute", () => {
 
     expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(
       "/login?redirect=%2Fapplications%2Fapp-1%3Ftab%3Dlogs"
+    )
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("redirects forced-password-change sessions to account security", async () => {
+    mockAuthState.isAuthenticated = true
+    mockAuthState.mustChangePassword = true
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const root = ReactDOMClient.createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/applications/app-1"]}>
+          <Routes>
+            <Route path="/account" element={<LocationProbe />} />
+            <Route
+              path="/applications/:appId"
+              element={
+                <ProtectedRoute>
+                  <LocationProbe />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      )
+    })
+
+    expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(
+      "/account?tab=security"
     )
 
     await act(async () => {

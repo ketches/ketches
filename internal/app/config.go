@@ -60,9 +60,10 @@ type AppConfig struct {
 var Config AppConfig
 
 var (
-	ErrJWTSecretNotConfigured           = errors.New("JWT_SECRET must be configured")
-	ErrSecretEncryptionKeyNotConfigured = errors.New("SECRET_ENCRYPTION_KEY must be configured")
-	ErrBootstrapAdminPasswordTooShort   = errors.New("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters")
+	ErrJWTSecretNotConfigured              = errors.New("JWT_SECRET must be configured")
+	ErrSecretEncryptionKeyNotConfigured    = errors.New("SECRET_ENCRYPTION_KEY must be configured")
+	ErrBootstrapAdminPasswordNotConfigured = errors.New("BOOTSTRAP_ADMIN_PASSWORD must be configured")
+	ErrBootstrapAdminPasswordTooShort      = errors.New("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters")
 )
 
 func InitConfig() {
@@ -131,11 +132,11 @@ func ValidateRuntimeConfig() error {
 		return ErrJWTSecretNotConfigured
 	case Config.SecretEncryptionKey == "":
 		return ErrSecretEncryptionKeyNotConfigured
+	case strings.TrimSpace(Config.BootstrapAdminPassword) == "":
+		return ErrBootstrapAdminPasswordNotConfigured
 	}
 
-	hasBootstrapPassword := strings.TrimSpace(Config.BootstrapAdminPassword) != ""
-
-	if hasBootstrapPassword && len(strings.TrimSpace(Config.BootstrapAdminPassword)) < 12 {
+	if len(strings.TrimSpace(Config.BootstrapAdminPassword)) < 12 {
 		return ErrBootstrapAdminPasswordTooShort
 	}
 	if Config.AccessTokenTTLMinutes < 1 {

@@ -9,6 +9,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const hasCheckedSession = useAuthStore((state) => state.hasCheckedSession)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const mustChangePassword = useAuthStore((state) => state.mustChangePassword)
   const isRestoringSession = useAuthStore((state) => state.isRestoringSession)
   const location = useLocation()
 
@@ -22,6 +23,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
 
     return <Navigate to={buildLoginHref(getCurrentRelativePath(location))} replace />
+  }
+
+  if (mustChangePassword && (location.pathname !== '/account' || location.search !== '?tab=security')) {
+    return <Navigate to="/account?tab=security" replace />
   }
 
   return <>{children}</>

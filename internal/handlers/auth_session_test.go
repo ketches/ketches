@@ -13,6 +13,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/middlewares"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -62,7 +63,8 @@ func seedAuthSessionHandlerUser(t *testing.T, username, password string) *entiti
 
 func TestSignInSetsSessionCookiesAndReturnsUserOnly(t *testing.T) {
 	setupAuthSessionHandlerTestDB(t)
-	seedAuthSessionHandlerUser(t, "alice", "Password#123")
+	user := seedAuthSessionHandlerUser(t, "alice", "Password#123")
+	require.NoError(t, db.DB.Model(user).Update("must_change_password", true).Error)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -88,15 +90,18 @@ func TestSignInSetsSessionCookiesAndReturnsUserOnly(t *testing.T) {
 			User struct {
 				Username string `json:"username"`
 			} `json:"user"`
+			MustChangePassword bool `json:"must_change_password"`
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Equal(t, "alice", resp.Data.User.Username)
+	assert.True(t, resp.Data.MustChangePassword)
 }
 
 func TestRefreshTokenRotatesSessionCookies(t *testing.T) {
 	setupAuthSessionHandlerTestDB(t)
-	seedAuthSessionHandlerUser(t, "alice", "Password#123")
+	user := seedAuthSessionHandlerUser(t, "alice", "Password#123")
+	require.NoError(t, db.DB.Model(user).Update("must_change_password", true).Error)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -129,4 +134,10 @@ func TestRefreshTokenRotatesSessionCookies(t *testing.T) {
 	require.Equal(t, http.StatusOK, refreshRes.Code)
 	assert.Contains(t, strings.Join(refreshRes.Result().Header.Values("Set-Cookie"), "\n"), app.AccessTokenCookieName+"=")
 	assert.Contains(t, strings.Join(refreshRes.Result().Header.Values("Set-Cookie"), "\n"), app.RefreshTokenCookieName+"=")
+
+	var resp struct {
+		Data models.SignInResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(refreshRes.Body.Bytes(), &resp))
+	assert.True(t, resp.Data.MustChangePassword)
 }

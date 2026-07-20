@@ -66,17 +66,22 @@ export function LoginForm({
             const payload: SignInRequest = data;
             const response = await authApi.signIn(payload);
             queryClient.clear();
-            setAuth(response.user);
+            setAuth(response.user, response.must_change_password);
             markSessionRefreshed();
             setDefaultPasswordNotice(response.default_password_notice || null);
-            if (response.user.role === "admin") {
+            if (response.user.role === "admin" && !response.must_change_password) {
                 void platformUpdateApi.check({ mode: "auto" }).catch(() => undefined);
             }
             toast.success("Login successful", {
                 description: `Welcome back, ${response.user.username}!`,
             });
             clearManualLogoutMarker();
-            navigate(getPostLoginTarget(location.search), { replace: true });
+            navigate(
+                response.must_change_password
+                    ? "/account?tab=security"
+                    : getPostLoginTarget(location.search),
+                { replace: true },
+            );
         } catch (err: unknown) {
             const errMsg = isAxiosError<{ error?: string }>(err)
                 ? err.response?.data?.error || "Invalid username or password"

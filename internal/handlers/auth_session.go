@@ -83,14 +83,14 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	if err := issueUserSession(c, user, false); err != nil {
+	if err := issueUserSession(c, user, user.MustChangePassword); err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 
 	api.Success(c, models.SignInResponse{
 		User:               toUserResponse(user),
-		MustChangePassword: false,
+		MustChangePassword: user.MustChangePassword,
 	})
 }
 
