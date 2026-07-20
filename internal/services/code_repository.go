@@ -1,9 +1,9 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"net/url"
-	"os/exec"
 	"path"
 	"regexp"
 	"strings"
@@ -354,6 +354,12 @@ func ListCodeRepositoryRefs(repoID string) ([]models.GitRef, error) {
 	if err := validateGitRepositoryURL(repo.GitRepoURL); err != nil {
 		return nil, err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
+	defer cancel()
+	endpoint, err := resolveGitRepositoryEndpoint(ctx, repo.GitRepoURL)
+	if err != nil {
+		return nil, err
+	}
 
 	repoURL := repo.GitRepoURL
 	if repo.GitUsername != "" && repo.GitPassword != "" {
@@ -364,8 +370,7 @@ func ListCodeRepositoryRefs(repoID string) ([]models.GitRef, error) {
 		repoURL = injectGitCredentials(repoURL, repo.GitUsername, plaintextGitPassword)
 	}
 
-	cmd := exec.Command("git", "ls-remote", "--heads", "--tags", repoURL)
-	output, err := cmd.CombinedOutput()
+	output, err := runGitRemoteCommand(ctx, "", endpoint, "ls-remote", "--heads", "--tags", "--", repoURL)
 	if err != nil {
 		return nil, errors.New("failed to list refs: " + strings.TrimSpace(string(output)))
 	}

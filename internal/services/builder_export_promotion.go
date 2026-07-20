@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -21,9 +20,8 @@ import (
 
 var downloadBuilderExportArchive = DownloadBuilderSessionExport
 var runBuilderExportGitCommand = func(dir string, args ...string) ([]byte, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	return cmd.CombinedOutput()
+	commandArgs := append([]string{"-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always"}, args...)
+	return runGitCommand(context.Background(), dir, nil, commandArgs...)
 }
 
 type builderExportPromotionMetadata struct {
@@ -35,6 +33,18 @@ type builderExportPromotionMetadata struct {
 func PromoteBuilderSessionExportToCodeRepository(ctx context.Context, projectID, sessionID, exportID string, req *models.PromoteBuilderExportToCodeRepositoryRequest) (*models.BuilderExportPromotionResponse, error) {
 	if req == nil {
 		return nil, app.NewErrorf("builder export promotion request is required")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := validateGitRepositoryURL(req.GitRepoURL); err != nil {
+		return nil, err
+	}
+	resolveCtx, cancel := context.WithTimeout(ctx, gitCommandTimeout)
+	endpoint, err := resolveGitRepositoryEndpoint(resolveCtx, req.GitRepoURL)
+	cancel()
+	if err != nil {
+		return nil, err
 	}
 
 	session, err := loadBuilderSession(db.DB.WithContext(ctx), projectID, sessionID)
@@ -69,7 +79,7 @@ func PromoteBuilderSessionExportToCodeRepository(ctx context.Context, projectID,
 	if req.GitUsername != "" && req.GitPassword != "" {
 		repoURL = injectGitCredentials(repoURL, req.GitUsername, req.GitPassword)
 	}
-	if err := pushBuilderPromotionRepository(workDir, repoURL); err != nil {
+	if err := pushBuilderPromotionRepository(ctx, workDir, endpoint, repoURL); err != nil {
 		return nil, err
 	}
 
@@ -138,6 +148,10 @@ func extractBuilderExportArchive(ctx context.Context, projectID, sessionID, expo
 		if !strings.HasPrefix(targetPath, destDir) {
 			return app.NewErrorf("unsafe builder export archive path %q", header.Name)
 		}
+		cleanHeaderName := filepath.Clean(header.Name)
+		if cleanHeaderName == ".git" || strings.HasPrefix(cleanHeaderName, ".git"+string(filepath.Separator)) {
+			return app.NewErrorf("unsafe builder export archive path %q", header.Name)
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -179,11 +193,11 @@ func initializeBuilderPromotionRepository(dir string) error {
 	return nil
 }
 
-func pushBuilderPromotionRepository(dir, repoURL string) error {
-	if output, err := runBuilderExportGitCommand(dir, "remote", "add", "origin", repoURL); err != nil {
+func pushBuilderPromotionRepository(ctx context.Context, dir string, endpoint *validatedGitEndpoint, repoURL string) error {
+	if output, err := runGitRemoteCommand(ctx, dir, endpoint, "remote", "add", "origin", repoURL); err != nil {
 		return app.NewErrorf("git remote add failed: %s", strings.TrimSpace(string(output)))
 	}
-	if output, err := runBuilderExportGitCommand(dir, "push", "-u", "origin", "main"); err != nil {
+	if output, err := runGitRemoteCommand(ctx, dir, endpoint, "push", "-u", "origin", "main"); err != nil {
 		return app.NewErrorf("git push failed: %s", strings.TrimSpace(string(output)))
 	}
 	return nil

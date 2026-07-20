@@ -176,6 +176,20 @@ func TestCreateUserAIProviderAllowsDirectProviderConfigurationWithoutRegistry(t 
 	assert.Equal(t, "missing-provider", provider.ProviderKey)
 }
 
+func TestCreateUserAIProviderRejectsUnsafeBaseURL(t *testing.T) {
+	setupAIProviderServiceTestDB(t)
+
+	_, err := CreateUserAIProvider("user-1", &models.CreateAIProviderRequest{
+		ProviderKey:            "unsafe-provider",
+		DisplayName:            "Unsafe Provider",
+		BaseURL:                "https://169.254.169.254",
+		APIKey:                 "secret",
+		DefaultModelProfileKey: "model",
+		Enabled:                true,
+	})
+	require.ErrorIs(t, err, ErrInvalidAIProviderBaseURL)
+}
+
 func TestUpdateProjectAIProviderAllowsDirectModelConfigurationWithoutRegistry(t *testing.T) {
 	setupAIProviderServiceTestDB(t)
 

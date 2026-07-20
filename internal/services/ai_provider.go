@@ -3,8 +3,10 @@ package services
 import (
 	"errors"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/egress"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
@@ -12,7 +14,12 @@ import (
 
 var ErrInvalidBuilderRegistryAlias = errors.New("invalid builder registry alias")
 
+var ErrInvalidAIProviderBaseURL = errors.New("invalid AI provider base URL")
+
 func CreateUserAIProvider(userID string, req *models.CreateAIProviderRequest) (*models.AIProviderResponse, error) {
+	if err := validateAIProviderBaseURL(req.BaseURL); err != nil {
+		return nil, err
+	}
 	provider := &entities.UserAIProvider{
 		ID:                     uuid.New(),
 		UserID:                 userID,
@@ -39,6 +46,9 @@ func CreateUserAIProvider(userID string, req *models.CreateAIProviderRequest) (*
 }
 
 func CreateProjectAIProvider(projectID string, req *models.CreateAIProviderRequest) (*models.AIProviderResponse, error) {
+	if err := validateAIProviderBaseURL(req.BaseURL); err != nil {
+		return nil, err
+	}
 	provider := &entities.ProjectAIProvider{
 		ID:                     uuid.New(),
 		ProjectID:              projectID,
@@ -65,6 +75,9 @@ func CreateProjectAIProvider(projectID string, req *models.CreateAIProviderReque
 }
 
 func UpdateUserAIProvider(userID, providerID string, req *models.CreateAIProviderRequest) (*models.AIProviderResponse, error) {
+	if err := validateAIProviderBaseURL(req.BaseURL); err != nil {
+		return nil, err
+	}
 	var provider entities.UserAIProvider
 	if err := db.DB.Where("id = ? AND user_id = ?", providerID, userID).First(&provider).Error; err != nil {
 		return nil, err
@@ -102,6 +115,9 @@ func DeleteUserAIProvider(userID, providerID string) error {
 }
 
 func UpdateProjectAIProvider(projectID, providerID string, req *models.CreateAIProviderRequest) (*models.AIProviderResponse, error) {
+	if err := validateAIProviderBaseURL(req.BaseURL); err != nil {
+		return nil, err
+	}
 	var provider entities.ProjectAIProvider
 	if err := db.DB.Where("id = ? AND project_id = ?", providerID, projectID).First(&provider).Error; err != nil {
 		return nil, err
@@ -125,6 +141,17 @@ func UpdateProjectAIProvider(projectID, providerID string, req *models.CreateAIP
 		Enabled:                provider.Enabled,
 		IsDefault:              provider.IsDefault,
 	}, nil
+}
+
+func validateAIProviderBaseURL(baseURL string) error {
+	parsed, err := egress.CurrentPolicy().ValidateURLSyntax(baseURL, "https")
+	if err != nil {
+		return app.WrapErrorf(ErrInvalidAIProviderBaseURL, "%w: %v", ErrInvalidAIProviderBaseURL, err)
+	}
+	if parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return app.WrapErrorf(ErrInvalidAIProviderBaseURL, "%w: credentials, query parameters, and fragments are not allowed", ErrInvalidAIProviderBaseURL)
+	}
+	return nil
 }
 
 func DeleteProjectAIProvider(projectID, providerID string) error {

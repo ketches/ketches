@@ -55,6 +55,7 @@ type AppConfig struct {
 	BuilderWorkspaceImage             string
 	BuilderWorkspaceRoot              string
 	BuilderSessionTTLHours            int
+	EgressAllowedHosts                string
 }
 
 var Config AppConfig
@@ -123,6 +124,7 @@ func InitConfig() {
 		BuilderWorkspaceImage:             fallbackString(getEnv("BUILDER_WORKSPACE_IMAGE", ""), "node:22-bookworm"),
 		BuilderWorkspaceRoot:              fallbackString(getEnv("BUILDER_WORKSPACE_ROOT", ""), "/workspace"),
 		BuilderSessionTTLHours:            getEnvInt("BUILDER_SESSION_TTL_HOURS", 24),
+		EgressAllowedHosts:                getEnv("EGRESS_ALLOWED_HOSTS", ""),
 	}
 }
 

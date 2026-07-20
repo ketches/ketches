@@ -10,18 +10,29 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/egress"
 )
 
 var ErrBuilderAgentUnsafeFilePath = errors.New("unsafe file path")
+
+var newBuilderAgentHTTPClient = func() *http.Client {
+	return egress.CurrentPolicy().NewHTTPClient(builderAgentRequestTimeout, builderAgentMaxResponseBytes)
+}
 
 const maxBuilderRelativePathLength = 255
 
 const builderAgentSystemPrompt = "You are a builder. First decide whether the user's latest turn requires file changes. If the user is only greeting, chatting, asking for clarification, or not yet requesting a concrete project change, return action=reply_only with an assistant_message and an empty files array. If the user is asking to create or modify project files, return action=generate_files with the smallest correct set of file writes. Return only content that satisfies the required JSON schema. Never omit required fields, never return prose outside the schema, and never generate unsafe file paths."
 
 const builderAnthropicDefaultMaxTokens = 4096
+
+const (
+	builderAgentRequestTimeout   = 2 * time.Minute
+	builderAgentMaxResponseBytes = 8 << 20
+)
 
 type builderAgentProtocol string
 
@@ -117,7 +128,8 @@ func GenerateBuilderFilesWithSelection(ctx context.Context, messages []BuilderAg
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	client := newBuilderAgentHTTPClient()
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -125,15 +137,15 @@ func GenerateBuilderFilesWithSelection(ctx context.Context, messages []BuilderAg
 		_ = resp.Body.Close()
 	}()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		body, readErr := io.ReadAll(resp.Body)
-		if readErr != nil {
-			return nil, readErr
-		}
 		return nil, app.NewErrorf("builder agent request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
-	result, err := decodeBuilderAgentResponse(resp.Body, protocol)
+	result, err := decodeBuilderAgentResponse(bytes.NewReader(body), protocol)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +228,9 @@ func resolveBuilderAgentProtocol(baseURL string) (builderAgentProtocol, error) {
 	if err != nil {
 		return "", app.WrapErrorf(err, "parse builder provider base URL: %w", err)
 	}
-
+	if parsedURL.User != nil || parsedURL.RawQuery != "" || parsedURL.Fragment != "" {
+		return "", errors.New("builder provider base URL must not include credentials, query parameters, or fragments")
+	}
 	normalizedPath := strings.ToLower(strings.TrimRight(parsedURL.Path, "/"))
 	if strings.HasSuffix(normalizedPath, "/v1/chat/completions") || strings.HasSuffix(normalizedPath, "/chat/completions") {
 		return builderAgentProtocolOpenAICompatible, nil

@@ -11,7 +11,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/ketches/ketches/internal/egress"
 )
+
+const imageMetadataRequestTimeout = 30 * time.Second
 
 // EnvVar represents a container environment variable with a key-value pair.
 type EnvVar struct {
@@ -45,9 +48,21 @@ type ImageMetadata struct {
 // If username/password are empty, anonymous access is attempted.
 // Returns an error if the image reference is invalid or the registry is unreachable.
 func FetchImageMetadata(ctx context.Context, image, username, password string) (*ImageMetadata, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	ref, err := name.ParseReference(image)
 	if err != nil {
 		return nil, fmt.Errorf("invalid image reference %q: %w", image, err)
+	}
+
+	requestCtx, cancel := context.WithTimeout(ctx, imageMetadataRequestTimeout)
+	defer cancel()
+
+	policy := egress.CurrentPolicy()
+	registryURL := "https://" + ref.Context().RegistryStr()
+	if _, err := policy.ValidateURL(requestCtx, registryURL, "https"); err != nil {
+		return nil, fmt.Errorf("unsafe image registry for %q: %w", image, err)
 	}
 
 	var authOpt remote.Option
@@ -60,7 +75,12 @@ func FetchImageMetadata(ctx context.Context, image, username, password string) (
 		authOpt = remote.WithAuthFromKeychain(authn.DefaultKeychain)
 	}
 
-	img, err := remote.Image(ref, remote.WithContext(ctx), authOpt)
+	img, err := remote.Image(
+		ref,
+		remote.WithContext(requestCtx),
+		remote.WithTransport(policy.NewHTTPTransport(egress.DefaultMaxResponseBytes)),
+		authOpt,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch image %q: %w", image, err)
 	}

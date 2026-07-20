@@ -16,6 +16,7 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/egress"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
@@ -88,6 +89,9 @@ func GetContainerRegistry(id string) (*entities.ContainerRegistry, error) {
 }
 
 func CreateClusterRegistry(clusterID string, req *models.CreateContainerRegistryRequest) (*entities.ContainerRegistry, error) {
+	if _, _, err := resolveRegistryHost(req.Provider, req.Endpoint); err != nil {
+		return nil, err
+	}
 	cid := clusterID
 	skipTLS := req.SkipTLSVerify != nil && *req.SkipTLSVerify
 	encryptedPassword, err := secrets.EncryptString(req.Password)
@@ -124,6 +128,9 @@ func CreateClusterRegistry(clusterID string, req *models.CreateContainerRegistry
 }
 
 func CreateProjectContainerRegistry(projectID string, req *models.CreateContainerRegistryRequest) (*entities.ContainerRegistry, error) {
+	if _, _, err := resolveRegistryHost(req.Provider, req.Endpoint); err != nil {
+		return nil, err
+	}
 	pid := projectID
 	skipTLS := req.SkipTLSVerify != nil && *req.SkipTLSVerify
 	encryptedPassword, err := secrets.EncryptString(req.Password)
@@ -162,6 +169,17 @@ func CreateProjectContainerRegistry(projectID string, req *models.CreateContaine
 func UpdateContainerRegistry(id string, req *models.UpdateContainerRegistryRequest) (*entities.ContainerRegistry, error) {
 	registry, err := GetContainerRegistry(id)
 	if err != nil {
+		return nil, err
+	}
+	candidateProvider := string(registry.Provider)
+	if req.Provider != "" {
+		candidateProvider = req.Provider
+	}
+	candidateEndpoint := registry.Endpoint
+	if req.Endpoint != "" {
+		candidateEndpoint = req.Endpoint
+	}
+	if _, _, err := resolveRegistryHost(candidateProvider, candidateEndpoint); err != nil {
 		return nil, err
 	}
 
@@ -248,16 +266,23 @@ func TestContainerRegistryConnection(req *models.TestContainerRegistryRequest) *
 		}
 	}
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: req.SkipTLSVerify}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	policy := egress.CurrentPolicy()
+	registryURL := fmt.Sprintf("https://%s", host)
+	if _, err := policy.ValidateURL(ctx, registryURL, "https"); err != nil {
+		return &models.TestContainerRegistryResponse{Success: false, Message: err.Error()}
+	}
+	transport := policy.NewHTTPTransportWithTLSConfig(
+		egress.DefaultMaxResponseBytes,
+		&tls.Config{InsecureSkipVerify: req.SkipTLSVerify},
+	)
 
 	auth := authn.Anonymous
 	if req.Username != "" || req.Password != "" {
 		auth = &authn.Basic{Username: req.Username, Password: req.Password}
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
 	authedTransport, err := remoteTransport.NewWithContext(ctx, registry, auth, transport, nil)
 	if err != nil {
@@ -280,7 +305,7 @@ func TestContainerRegistryConnection(req *models.TestContainerRegistryRequest) *
 		}
 	}
 
-	probeClient := &http.Client{Transport: authedTransport}
+	probeClient := &http.Client{Transport: authedTransport, Timeout: 10 * time.Second}
 	resp, err := probeClient.Do(probeReq)
 	if err != nil {
 		return &models.TestContainerRegistryResponse{
@@ -337,7 +362,14 @@ func resolveRegistryHost(provider, endpoint string) (string, bool, error) {
 		return "", false, errors.New("invalid endpoint: missing host")
 	}
 
-	return u.Host, strings.EqualFold(u.Scheme, "http"), nil
+	if u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return "", false, errors.New("invalid endpoint: credentials, query parameters, and fragments are not allowed")
+	}
+	if _, err := egress.CurrentPolicy().ValidateURLSyntax(u.String(), "https"); err != nil {
+		return "", false, app.WrapErrorf(err, "invalid endpoint: %w", err)
+	}
+
+	return u.Host, false, nil
 }
 
 func clearDefaultRegistry(scope entities.RegistryScope, clusterID, projectID string) error {

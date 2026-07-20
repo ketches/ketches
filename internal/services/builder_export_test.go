@@ -6,8 +6,6 @@ import (
 	"compress/gzip"
 	"context"
 	"io"
-	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -203,66 +201,14 @@ func TestListAndDownloadBuilderSessionExport(t *testing.T) {
 	assert.Equal(t, "export-snapshot-archive", archive.String())
 }
 
-func TestPromoteBuilderSessionExportToCodeRepository(t *testing.T) {
-	setupBuilderSessionServiceTestDB(t)
-
-	now := time.Now().UTC().Truncate(time.Second)
-	require.NoError(t, db.DB.Create(&entities.Project{
-		Base: entities.Base{ID: "project-1"},
-		Slug: "demo",
-		Name: "Demo Project",
-	}).Error)
-	require.NoError(t, db.DB.Create(&entities.BuilderSession{
-		Base:           entities.Base{ID: "session-export-promote"},
-		ProjectID:      "project-1",
-		BuildEnvID:     "env-1",
-		Title:          "Export promote session",
-		Status:         entities.BuilderSessionStatusReady,
-		CreatedBy:      "user-1",
-		LastActivityAt: now,
-	}).Error)
-	require.NoError(t, db.DB.Create(&entities.BuilderExport{
-		ID:          "export-promote-1",
-		SessionID:   "session-export-promote",
-		Kind:        "session_archive",
-		Status:      entities.BuilderExportStatusReady,
-		FileName:    "builder-output-run-promote-1.tar.gz",
-		StoragePath: "builder-exports/session-export-promote/builder-output-run-promote-1.tar.gz",
-		CreatedBy:   "user-1",
-	}).Error)
-
-	bareRepoDir := filepath.Join(t.TempDir(), "repo.git")
-	cmd := exec.Command("git", "init", "--bare", bareRepoDir)
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, string(output))
-
-	originalDownloadBuilderExportArchive := downloadBuilderExportArchive
-	t.Cleanup(func() {
-		downloadBuilderExportArchive = originalDownloadBuilderExportArchive
-	})
-	downloadBuilderExportArchive = func(ctx context.Context, projectID, sessionID, exportID string, writer io.Writer) error {
-		return writeTestTarGz(map[string]string{
-			"README.md": "# Builder Export\n",
-		}, writer)
-	}
-
+func TestPromoteBuilderSessionExportToCodeRepositoryRejectsLocalRepositoryPath(t *testing.T) {
 	resp, err := PromoteBuilderSessionExportToCodeRepository(context.Background(), "project-1", "session-export-promote", "export-promote-1", &models.PromoteBuilderExportToCodeRepositoryRequest{
 		Name:       "Builder Export Repo",
 		Slug:       "builder-export-repo",
-		GitRepoURL: bareRepoDir,
+		GitRepoURL: "/var/lib/ketches/repo.git",
 	})
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-	assert.Equal(t, "builder-export-repo", resp.Repository.Slug)
-
-	showCmd := exec.Command("git", "--git-dir", bareRepoDir, "show", "main:README.md")
-	showOutput, err := showCmd.CombinedOutput()
-	require.NoError(t, err, string(showOutput))
-	assert.Contains(t, string(showOutput), "Builder Export")
-
-	var export entities.BuilderExport
-	require.NoError(t, db.DB.First(&export, "id = ?", "export-promote-1").Error)
-	assert.Contains(t, export.MetadataJSON, `"promoted_code_repository_id"`)
+	require.ErrorIs(t, err, ErrInvalidGitRepositoryURL)
+	assert.Nil(t, resp)
 }
 
 func TestGetBuilderSessionExportPromotionPlan(t *testing.T) {

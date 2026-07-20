@@ -11,6 +11,7 @@ import (
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/egress"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -168,6 +169,7 @@ func TestGenerateBuilderFilesWithSelection_UsesExplicitRunLevelProviderAndModel(
 	t.Cleanup(func() {
 		app.Config = originalConfig
 	})
+	useBuilderAgentTestHTTPClient(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
@@ -309,6 +311,7 @@ func TestGenerateBuilderFiles_UsesAnthropicNativeMessagesAPI(t *testing.T) {
 	t.Cleanup(func() {
 		app.Config = originalConfig
 	})
+	useBuilderAgentTestHTTPClient(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
@@ -387,8 +390,31 @@ func TestResolveBuilderAgentProtocol_PrefersAnthropicNativeForOfficialBaseURL(t 
 	assert.Equal(t, builderAgentProtocolOpenAICompatible, protocol)
 }
 
+func TestGenerateBuilderFiles_RejectsLoopbackProviderBaseURL(t *testing.T) {
+	originalConfig := app.Config
+	originalClientFactory := newBuilderAgentHTTPClient
+	t.Cleanup(func() {
+		app.Config = originalConfig
+		newBuilderAgentHTTPClient = originalClientFactory
+	})
+	newBuilderAgentHTTPClient = func() *http.Client {
+		return egress.CurrentPolicy().NewHTTPClient(builderAgentRequestTimeout, builderAgentMaxResponseBytes)
+	}
+	app.Config = app.AppConfig{
+		BuilderProviderRegistryJSON:     `[{"key":"unsafe","base_url":"https://127.0.0.1","api_key":"test"}]`,
+		BuilderModelProfileRegistryJSON: `[{"key":"builder-default","model":"builder-model"}]`,
+		BuilderDefaultProviderKey:       "unsafe",
+		BuilderDefaultModelProfileKey:   "builder-default",
+	}
+
+	_, err := GenerateBuilderFiles(context.Background(), []BuilderAgentMessage{{Role: "user", Content: "Create a file."}})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, egress.ErrUnsafeAddress)
+}
+
 func TestGenerateBuilderFilesForRun_UsesProjectScopedDatabaseProviderSelection(t *testing.T) {
 	setupAIProviderServiceTestDB(t)
+	useBuilderAgentTestHTTPClient(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
@@ -558,6 +584,7 @@ func newBuilderAgentRegistryTestConfig(t *testing.T, baseURL string) app.AppConf
 
 func newBuilderAgentRegistryTestConfigWithAPIKey(t *testing.T, baseURL, apiKey string) app.AppConfig {
 	t.Helper()
+	useBuilderAgentTestHTTPClient(t)
 
 	return app.AppConfig{
 		BuilderProviderRegistryJSON:     `[{"key":"openai-compatible-primary","base_url":` + marshalJSONString(t, baseURL) + `,"api_key":` + marshalJSONString(t, apiKey) + `}]`,
@@ -565,4 +592,13 @@ func newBuilderAgentRegistryTestConfigWithAPIKey(t *testing.T, baseURL, apiKey s
 		BuilderDefaultProviderKey:       "openai-compatible-primary",
 		BuilderDefaultModelProfileKey:   "builder-default",
 	}
+}
+
+func useBuilderAgentTestHTTPClient(t *testing.T) {
+	t.Helper()
+	originalClientFactory := newBuilderAgentHTTPClient
+	newBuilderAgentHTTPClient = func() *http.Client { return http.DefaultClient }
+	t.Cleanup(func() {
+		newBuilderAgentHTTPClient = originalClientFactory
+	})
 }

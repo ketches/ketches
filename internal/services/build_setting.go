@@ -1,9 +1,10 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"os/exec"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -294,6 +295,12 @@ func TestGitConnection(req *models.TestGitConnectionRequest) *models.TestGitConn
 			Message: err.Error(),
 		}
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
+	defer cancel()
+	endpoint, err := resolveGitRepositoryEndpoint(ctx, req.GitRepoURL)
+	if err != nil {
+		return &models.TestGitConnectionResponse{Success: false, Message: err.Error()}
+	}
 
 	repoURL := req.GitRepoURL
 	if req.GitUsername != "" && req.GitPassword != "" {
@@ -305,8 +312,7 @@ func TestGitConnection(req *models.TestGitConnectionRequest) *models.TestGitConn
 		ref = "HEAD"
 	}
 
-	cmd := exec.Command("git", "ls-remote", "--exit-code", repoURL, ref)
-	output, err := cmd.CombinedOutput()
+	output, err := runGitRemoteCommand(ctx, "", endpoint, "ls-remote", "--exit-code", "--", repoURL, ref)
 	if err != nil {
 		return &models.TestGitConnectionResponse{
 			Success: false,
@@ -328,11 +334,10 @@ func defaultStr(val, def string) string {
 }
 
 func injectGitCredentials(repoURL, username, password string) string {
-	if strings.HasPrefix(repoURL, "https://") {
-		return fmt.Sprintf("https://%s:%s@%s", username, password, strings.TrimPrefix(repoURL, "https://"))
+	parsed, err := url.Parse(repoURL)
+	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || parsed.Host == "" {
+		return repoURL
 	}
-	if strings.HasPrefix(repoURL, "http://") {
-		return fmt.Sprintf("http://%s:%s@%s", username, password, strings.TrimPrefix(repoURL, "http://"))
-	}
-	return repoURL
+	parsed.User = url.UserPassword(username, password)
+	return parsed.String()
 }
