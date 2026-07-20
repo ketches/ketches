@@ -61,11 +61,145 @@ func setupBuildWatcherTestDB(t *testing.T) {
 
 	require.NoError(t, testDB.AutoMigrate(
 		&entities.Env{},
+		&entities.App{},
+		&entities.CodeRepository{},
+		&entities.BuildSetting{},
 		&entities.Build{},
 		&entities.BuildDeployment{},
 	))
 
 	db.DB = testDB
+}
+
+func TestHandleCodeRepoBuildDeployRejectsCrossProjectEnvironment(t *testing.T) {
+	setupBuildWatcherTestDB(t)
+
+	repo := entities.CodeRepository{
+		Base:       entities.Base{ID: "repo-1"},
+		ProjectID:  "project-repo",
+		Name:       "Repo",
+		Slug:       "repo",
+		GitRepoURL: "https://example.com/repo.git",
+	}
+	require.NoError(t, db.DB.Create(&repo).Error)
+	repoID := repo.ID
+	setting := entities.BuildSetting{
+		ID:               "setting-1",
+		CodeRepositoryID: &repoID,
+		ImageName:        "repo/app",
+		RegistryID:       "registry-1",
+	}
+	require.NoError(t, db.DB.Create(&setting).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "deploy-env"},
+		Slug:      "deploy",
+		Name:      "Deploy",
+		ProjectID: "project-other",
+		ClusterID: "cluster-1",
+	}).Error)
+	build := entities.Build{
+		ID:             "build-1",
+		BuildSettingID: setting.ID,
+		BuildEnvID:     "build-env",
+		BuildNumber:    1,
+		Status:         entities.BuildStatusSucceeded,
+		ImageFullName:  "registry.example.com/repo/app:new",
+	}
+	require.NoError(t, db.DB.Create(&build).Error)
+	deployment := entities.BuildDeployment{
+		ID:         "deployment-1",
+		BuildID:    build.ID,
+		EnvID:      "deploy-env",
+		AppName:    "New App",
+		AppSlug:    "new-app",
+		Status:     entities.BuildDeploymentStatusPending,
+		DeployedBy: "auto",
+	}
+	require.NoError(t, db.DB.Create(&deployment).Error)
+
+	handleCodeRepoBuildDeploy(&build, &deployment)
+
+	var updatedDeployment entities.BuildDeployment
+	require.NoError(t, db.DB.First(&updatedDeployment, "id = ?", deployment.ID).Error)
+	assert.Equal(t, entities.BuildDeploymentStatusFailed, updatedDeployment.Status)
+	assert.Equal(t, "deploy environment must belong to the same project as the code repository", updatedDeployment.ErrorMessage)
+
+	var appCount int64
+	require.NoError(t, db.DB.Model(&entities.App{}).Count(&appCount).Error)
+	assert.Zero(t, appCount)
+}
+
+func TestHandleCodeRepoBuildDeployRejectsAppOutsideDeployEnvironment(t *testing.T) {
+	setupBuildWatcherTestDB(t)
+
+	repo := entities.CodeRepository{
+		Base:       entities.Base{ID: "repo-1"},
+		ProjectID:  "project-repo",
+		Name:       "Repo",
+		Slug:       "repo",
+		GitRepoURL: "https://example.com/repo.git",
+	}
+	require.NoError(t, db.DB.Create(&repo).Error)
+	repoID := repo.ID
+	setting := entities.BuildSetting{
+		ID:               "setting-1",
+		CodeRepositoryID: &repoID,
+		ImageName:        "repo/app",
+		RegistryID:       "registry-1",
+	}
+	require.NoError(t, db.DB.Create(&setting).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "deploy-env"},
+		Slug:      "deploy",
+		Name:      "Deploy",
+		ProjectID: "project-repo",
+		ClusterID: "cluster-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "other-env"},
+		Slug:      "other",
+		Name:      "Other",
+		ProjectID: "project-other",
+		ClusterID: "cluster-2",
+	}).Error)
+	application := entities.App{
+		Base:           entities.Base{ID: "app-1"},
+		Slug:           "app-1",
+		Name:           "App 1",
+		EnvID:          "other-env",
+		ContainerImage: "registry.example.com/repo/app:old",
+	}
+	require.NoError(t, db.DB.Create(&application).Error)
+	build := entities.Build{
+		ID:             "build-1",
+		BuildSettingID: setting.ID,
+		BuildEnvID:     "build-env",
+		BuildNumber:    1,
+		Status:         entities.BuildStatusSucceeded,
+		ImageFullName:  "registry.example.com/repo/app:new",
+	}
+	require.NoError(t, db.DB.Create(&build).Error)
+	appID := application.ID
+	deployment := entities.BuildDeployment{
+		ID:         "deployment-1",
+		BuildID:    build.ID,
+		AppID:      &appID,
+		EnvID:      "deploy-env",
+		Status:     entities.BuildDeploymentStatusPending,
+		DeployedBy: "auto",
+	}
+	require.NoError(t, db.DB.Create(&deployment).Error)
+
+	handleCodeRepoBuildDeploy(&build, &deployment)
+
+	var updatedDeployment entities.BuildDeployment
+	require.NoError(t, db.DB.First(&updatedDeployment, "id = ?", deployment.ID).Error)
+	assert.Equal(t, entities.BuildDeploymentStatusFailed, updatedDeployment.Status)
+	assert.Equal(t, "deploy app must belong to the deploy environment", updatedDeployment.ErrorMessage)
+
+	var updatedApp entities.App
+	require.NoError(t, db.DB.First(&updatedApp, "id = ?", application.ID).Error)
+	assert.Equal(t, "registry.example.com/repo/app:old", updatedApp.ContainerImage)
 }
 
 func TestUpdateBuildFailed_MarksPendingBuildDeploymentsFailed(t *testing.T) {

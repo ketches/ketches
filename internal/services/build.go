@@ -363,6 +363,30 @@ func ListDeployedAppsByEnvironmentAndBuildSetting(envID, buildSettingID string) 
 	return apps, nil
 }
 
+func validateCodeRepositoryAutoDeployTarget(repoProjectID string, req *models.TriggerCodeRepositoryBuildRequest) error {
+	deployEnv, err := GetEnv(req.DeployEnvID)
+	if err != nil {
+		return app.WrapErrorf(err, "deploy environment not found: %w", err)
+	}
+	if deployEnv.ProjectID != repoProjectID {
+		return errors.New("deploy environment must belong to the same project as the code repository")
+	}
+
+	if req.DeployAppID == "" {
+		return nil
+	}
+
+	var deployApp entities.App
+	if err := db.DB.First(&deployApp, "id = ?", req.DeployAppID).Error; err != nil {
+		return app.WrapErrorf(err, "deploy app not found: %w", err)
+	}
+	if deployApp.EnvID != deployEnv.ID {
+		return errors.New("deploy app must belong to the deploy environment")
+	}
+
+	return nil
+}
+
 func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRepositoryBuildRequest) (*entities.Build, error) {
 	repo, err := GetCodeRepository(repoID)
 	if err != nil {
@@ -390,6 +414,13 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 	project, err := GetProject(repo.ProjectID)
 	if err != nil {
 		return nil, app.WrapErrorf(err, "project not found: %w", err)
+	}
+
+	autoDeploy := req.AutoDeploy != nil && *req.AutoDeploy && req.DeployEnvID != ""
+	if autoDeploy {
+		if err := validateCodeRepositoryAutoDeployTarget(repo.ProjectID, req); err != nil {
+			return nil, err
+		}
 	}
 
 	var activeCount int64
@@ -454,7 +485,7 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 		return nil, err
 	}
 
-	if req.AutoDeploy != nil && *req.AutoDeploy && req.DeployEnvID != "" {
+	if autoDeploy {
 		var appIDPtr *string
 		if req.DeployAppID != "" {
 			appIDPtr = &req.DeployAppID

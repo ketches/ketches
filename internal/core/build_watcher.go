@@ -453,23 +453,60 @@ func handleAutoDeploy(build *entities.Build) {
 }
 
 func handleCodeRepoBuildDeploy(build *entities.Build, bd *entities.BuildDeployment) {
+	var setting entities.BuildSetting
+	if err := db.DB.First(&setting, "id = ?", build.BuildSettingID).Error; err != nil {
+		slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get build setting: %v", err))
+		markBuildDeploymentFailed(bd, "failed to get build setting")
+		return
+	}
+	if setting.CodeRepositoryID == nil || *setting.CodeRepositoryID == "" {
+		markBuildDeploymentFailed(bd, "build setting has no code repository")
+		return
+	}
+
+	var repo entities.CodeRepository
+	if err := db.DB.First(&repo, "id = ?", *setting.CodeRepositoryID).Error; err != nil {
+		slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get code repository: %v", err))
+		markBuildDeploymentFailed(bd, "failed to get code repository")
+		return
+	}
+
 	var deployEnv entities.Env
 	if err := db.DB.First(&deployEnv, "id = ?", bd.EnvID).Error; err != nil {
 		slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get deploy env: %v", err))
 		markBuildDeploymentFailed(bd, "failed to get deploy environment")
 		return
 	}
+	if deployEnv.ProjectID != repo.ProjectID {
+		markBuildDeploymentFailed(bd, "deploy environment must belong to the same project as the code repository")
+		return
+	}
+	var existingApp *entities.App
+	if bd.AppID != nil && *bd.AppID != "" {
+		var targetApp entities.App
+		if err := db.DB.First(&targetApp, "id = ?", *bd.AppID).Error; err != nil {
+			slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get app: %v", err))
+			markBuildDeploymentFailed(bd, "failed to get app")
+			return
+		}
+		if targetApp.EnvID != deployEnv.ID {
+			markBuildDeploymentFailed(bd, "deploy app must belong to the deploy environment")
+			return
+		}
+		existingApp = &targetApp
+	}
+
+	var project entities.Project
+	if err := db.DB.First(&project, "id = ?", repo.ProjectID).Error; err != nil {
+		slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get project: %v", err))
+		markBuildDeploymentFailed(bd, "failed to get project")
+		return
+	}
+
 	var deployCluster entities.Cluster
 	if err := db.DB.First(&deployCluster, "id = ?", deployEnv.ClusterID).Error; err != nil {
 		slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get cluster: %v", err))
 		markBuildDeploymentFailed(bd, "failed to get deploy cluster")
-		return
-	}
-
-	var setting entities.BuildSetting
-	if err := db.DB.First(&setting, "id = ?", build.BuildSettingID).Error; err != nil {
-		slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get build setting: %v", err))
-		markBuildDeploymentFailed(bd, "failed to get build setting")
 		return
 	}
 	var repoRegistry entities.ContainerRegistry
@@ -480,26 +517,8 @@ func handleCodeRepoBuildDeploy(build *entities.Build, bd *entities.BuildDeployme
 	}
 
 	var app *entities.App
-	if bd.AppID != nil && *bd.AppID != "" {
-		var existingApp entities.App
-		if err := db.DB.First(&existingApp, "id = ?", *bd.AppID).Error; err != nil {
-			slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get app: %v", err))
-			markBuildDeploymentFailed(bd, "failed to get app")
-			return
-		}
-		var appEnv entities.Env
-		if err := db.DB.First(&appEnv, "id = ?", existingApp.EnvID).Error; err != nil {
-			slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get app env: %v", err))
-			markBuildDeploymentFailed(bd, "failed to get app env")
-			return
-		}
-		var appCluster entities.Cluster
-		if err := db.DB.First(&appCluster, "id = ?", appEnv.ClusterID).Error; err != nil {
-			slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get app cluster: %v", err))
-			markBuildDeploymentFailed(bd, "failed to get app cluster")
-			return
-		}
-		app = &existingApp
+	if existingApp != nil {
+		app = existingApp
 
 		app.ContainerImage = build.ImageFullName
 		app.RegistryUsername = repoRegistry.Username
@@ -510,19 +529,12 @@ func handleCodeRepoBuildDeploy(build *entities.Build, bd *entities.BuildDeployme
 			return
 		}
 
-		var project entities.Project
-		if err := db.DB.First(&project, "id = ?", appEnv.ProjectID).Error; err != nil {
-			slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get project: %v", err))
-			markBuildDeploymentFailed(bd, "failed to get project")
-			return
-		}
-
 		appCtx := models.AppContext{
 			App: *app,
 			EnvContext: models.EnvContext{
-				Env:     appEnv,
+				Env:     deployEnv,
 				Project: project,
-				Cluster: appCluster,
+				Cluster: deployCluster,
 			},
 		}
 		if err := ApplyApp(context.Background(), &appCtx); err != nil {
@@ -556,13 +568,6 @@ func handleCodeRepoBuildDeploy(build *entities.Build, bd *entities.BuildDeployme
 		if err := db.DB.Create(newApp).Error; err != nil {
 			slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to create app: %v", err))
 			markBuildDeploymentFailed(bd, "failed to create app")
-			return
-		}
-
-		var project entities.Project
-		if err := db.DB.First(&project, "id = ?", deployEnv.ProjectID).Error; err != nil {
-			slog.Error(fmt.Sprintf("Code repo auto-deploy: failed to get project: %v", err))
-			markBuildDeploymentFailed(bd, "failed to get project")
 			return
 		}
 

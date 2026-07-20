@@ -8,6 +8,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -50,13 +51,140 @@ func setupBuildServiceTestDB(t *testing.T) {
 
 	require.NoError(t, testDB.AutoMigrate(
 		&entities.App{},
+		&entities.CodeRepository{},
+		&entities.ContainerRegistry{},
 		&entities.BuildSetting{},
 		&entities.Build{},
 		&entities.BuildDeployment{},
 		&entities.Env{},
+		&entities.Project{},
 	))
 
 	db.DB = testDB
+}
+
+func TestValidateCodeRepositoryAutoDeployTargetRequiresProjectScopedEnvironment(t *testing.T) {
+	setupBuildServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "deploy-env"},
+		Slug:      "deploy",
+		Name:      "Deploy",
+		ProjectID: "project-other",
+		ClusterID: "cluster-1",
+	}).Error)
+
+	req := &models.TriggerCodeRepositoryBuildRequest{DeployEnvID: "deploy-env"}
+	err := validateCodeRepositoryAutoDeployTarget("project-repo", req)
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "same project as the code repository")
+}
+
+func TestValidateCodeRepositoryAutoDeployTargetRequiresAppInDeployEnvironment(t *testing.T) {
+	setupBuildServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "deploy-env"},
+		Slug:      "deploy",
+		Name:      "Deploy",
+		ProjectID: "project-repo",
+		ClusterID: "cluster-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "other-env"},
+		Slug:      "other",
+		Name:      "Other",
+		ProjectID: "project-repo",
+		ClusterID: "cluster-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.App{
+		Base:           entities.Base{ID: "app-1"},
+		Slug:           "app-1",
+		Name:           "App 1",
+		EnvID:          "other-env",
+		ContainerImage: "nginx:1",
+	}).Error)
+
+	req := &models.TriggerCodeRepositoryBuildRequest{
+		DeployEnvID: "deploy-env",
+		DeployAppID: "app-1",
+	}
+	err := validateCodeRepositoryAutoDeployTarget("project-repo", req)
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "deploy environment")
+}
+
+func TestTriggerCodeRepositoryBuildRejectsCrossProjectAutoDeployBeforeCreatingRecords(t *testing.T) {
+	setupBuildServiceTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-repo"},
+		Slug: "repo-project",
+		Name: "Repo Project",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-other"},
+		Slug: "other-project",
+		Name: "Other Project",
+	}).Error)
+	repo := entities.CodeRepository{
+		Base:       entities.Base{ID: "repo-1"},
+		ProjectID:  "project-repo",
+		Name:       "Repo",
+		Slug:       "repo",
+		GitRepoURL: "https://example.com/repo.git",
+	}
+	require.NoError(t, db.DB.Create(&repo).Error)
+	require.NoError(t, db.DB.Create(&entities.ContainerRegistry{
+		ID:        "registry-1",
+		Name:      "Registry",
+		Provider:  entities.RegistryProviderCustom,
+		Endpoint:  "registry.example.com",
+		Scope:     entities.RegistryScopeProject,
+		ProjectID: "project-repo",
+		Enabled:   true,
+	}).Error)
+	repoID := repo.ID
+	require.NoError(t, db.DB.Create(&entities.BuildSetting{
+		ID:               "setting-1",
+		CodeRepositoryID: &repoID,
+		Name:             "Build",
+		ImageName:        "repo/app",
+		RegistryID:       "registry-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:       entities.Base{ID: "build-env"},
+		Slug:       "build",
+		Name:       "Build",
+		ProjectID:  "project-repo",
+		ClusterID:  "cluster-1",
+		IsBuildEnv: true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:      entities.Base{ID: "deploy-env"},
+		Slug:      "deploy",
+		Name:      "Deploy",
+		ProjectID: "project-other",
+		ClusterID: "cluster-1",
+	}).Error)
+	autoDeploy := true
+
+	build, err := TriggerCodeRepositoryBuild("repo-1", "user-1", &models.TriggerCodeRepositoryBuildRequest{
+		BuildSettingID: "setting-1",
+		BuildEnvID:     "build-env",
+		AutoDeploy:     &autoDeploy,
+		DeployEnvID:    "deploy-env",
+	})
+
+	require.Error(t, err)
+	assert.Nil(t, build)
+	var buildCount, deploymentCount int64
+	require.NoError(t, db.DB.Model(&entities.Build{}).Count(&buildCount).Error)
+	require.NoError(t, db.DB.Model(&entities.BuildDeployment{}).Count(&deploymentCount).Error)
+	assert.Zero(t, buildCount)
+	assert.Zero(t, deploymentCount)
 }
 
 func TestListDeployedAppsByEnvironmentAndBuildSetting(t *testing.T) {
