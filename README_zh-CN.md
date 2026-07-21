@@ -80,7 +80,7 @@ curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docke
 curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/.env.quickstart -o .env
 ```
 
-这条 QuickStart 路径仅用于本地试用。它会使用 `deploy/docker/.env.quickstart` 中的演示密钥，方便快速启动。正式环境请保持 `deploy/docker/docker-compose.yml` 的安全默认行为，并参考[生产部署说明](docs/PRODUCTION_DEPLOYMENT.md)。
+这条 QuickStart 路径仅用于本地试用。它会使用 `deploy/docker/.env.quickstart` 中的演示密钥，方便快速启动。正式环境请保持 `deploy/docker/docker-compose.yml` 的安全默认行为，并自行提供密钥。
 
 QuickStart 会自动创建 bootstrap 管理员账号，并默认关闭注册邮箱验证码：
 
@@ -152,7 +152,7 @@ kubectl -n ketches port-forward svc/ketches-ui 3000:3000
 # 浏览器打开 http://127.0.0.1:3000
 ```
 
-生产环境请不要复用 quickstart values 文件。请务必为 `config.jwtSecret` 和 `config.secretEncryptionKey` 提供强随机值；如果继续使用内置 PostgreSQL，还需要设置 `postgres.auth.password`，并参考[生产部署说明](docs/PRODUCTION_DEPLOYMENT.md)。如果使用外部数据库，请设置 `postgres.enabled=false`，并显式提供 `config.dbSource`（或拆分后的 `config.db*` 参数）。
+生产环境请不要复用 quickstart values 文件。请务必为 `config.jwtSecret` 和 `config.secretEncryptionKey` 提供强随机值；如果继续使用内置 PostgreSQL，还需要设置 `postgres.auth.password`。如果使用外部数据库，请设置 `postgres.enabled=false`，并显式提供 `config.dbSource`（或拆分后的 `config.db*` 参数）。
 
 #### Helm Chart 仓库（GitHub Pages）
 

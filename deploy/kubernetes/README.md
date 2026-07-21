@@ -56,7 +56,3 @@ This file does not create the Secret, so operators must provide:
 
 - Local demo / evaluation cluster → `manifests.quickstart.yaml`
 - Shared environment / production / anything internet-facing → `manifests.yaml`
-
-## Next step for production
-
-Before using `manifests.yaml` outside local evaluation, read [Production Deployment Guide](../../docs/PRODUCTION_DEPLOYMENT.md).

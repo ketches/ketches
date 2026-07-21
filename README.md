@@ -80,7 +80,7 @@ curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docke
 curl -fsSL https://raw.githubusercontent.com/ketches/ketches/master/deploy/docker/.env.quickstart -o .env
 ```
 
-This quickstart path is for local evaluation only. It uses checked-in demo secrets from `deploy/docker/.env.quickstart` so you can get running immediately. For real environments, keep `deploy/docker/docker-compose.yml` as-is and follow the production guide: [Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md).
+This quickstart path is for local evaluation only. It uses checked-in demo secrets from `deploy/docker/.env.quickstart` so you can get running immediately. For real environments, keep `deploy/docker/docker-compose.yml` as-is and provide your own secrets.
 
 Quickstart creates a bootstrap admin account automatically and disables sign-up email verification by default:
 
@@ -152,7 +152,7 @@ kubectl -n ketches port-forward svc/ketches-ui 3000:3000
 # open http://127.0.0.1:3000
 ```
 
-For production, do not reuse the quickstart values file. Provide strong values for `config.jwtSecret` and `config.secretEncryptionKey`, set `postgres.auth.password` when using the bundled PostgreSQL instance, and review [Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md). If you use an external database, set `postgres.enabled=false` and provide `config.dbSource` (or the split `config.db*` values).
+For production, do not reuse the quickstart values file. Provide strong values for `config.jwtSecret` and `config.secretEncryptionKey`, and set `postgres.auth.password` when using the bundled PostgreSQL instance. If you use an external database, set `postgres.enabled=false` and provide `config.dbSource` (or the split `config.db*` values).
 
 #### Helm Chart Repository (GitHub Pages)
 

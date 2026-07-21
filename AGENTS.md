@@ -6,7 +6,6 @@ This document defines the specialized agents involved in the development and mai
 
 - **Role**: Oversees the overall technical design and integration between the backend (ketches) and frontend (ketches-ui).
 - **Responsibilities**:
-  - Ensure adherence to the technical design specified in `docs/TECHNICAL_DESIGN.md`.
   - Maintain architectural consistency across the project.
   - Review cross-module integrations.
 
@@ -14,14 +13,13 @@ This document defines the specialized agents involved in the development and mai
 
 - **Role**: Maintains the product vision and requirement alignment.
 - **Responsibilities**:
-  - Keep the PRD (`docs/PRD.md`) and technical design (`docs/TECHNICAL_DESIGN.md`) up to date.
   - Verify that implemented features match the prioritized functional modules (P0, P1, P2).
 
 ## Backend Engineer Agent
 
 - **Focus**: Go, Gin, API Handlers, and Services.
 - **Responsibilities**:
-  - Implement RESTful APIs following the designs in `docs/TECHNICAL_DESIGN.md`.
+  - Implement RESTful APIs.
   - Maintain business logic in the `internal/services` layer.
   - Ensure robust error handling and request validation.
 

@@ -36,7 +36,7 @@ The initial administrator must change this password before using other API opera
 
 ### Production / shared environments
 
-The chart requires `config.jwtSecret` and `config.secretEncryptionKey` on every install or upgrade. When the bundled PostgreSQL instance is enabled, set `postgres.auth.password` as well. See [Production Deployment Guide](../../../docs/PRODUCTION_DEPLOYMENT.md) before using this chart in shared or production environments.
+The chart requires `config.jwtSecret` and `config.secretEncryptionKey` on every install or upgrade. When the bundled PostgreSQL instance is enabled, set `postgres.auth.password` as well.
 
 Relevant auth-related values:
 
