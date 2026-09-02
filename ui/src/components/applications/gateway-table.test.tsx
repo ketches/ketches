@@ -4,10 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
   mockGateways,
+  mockProjectRole,
   mockUseQuery,
   mockWindowOpen,
 } = vi.hoisted(() => ({
   mockGateways: [] as unknown[],
+  mockProjectRole: vi.fn(),
   mockUseQuery: vi.fn(),
   mockWindowOpen: vi.fn(),
 }))
@@ -31,7 +33,7 @@ vi.mock("@/api/apps", () => ({
 }))
 
 vi.mock("@/hooks/useProjectRole", () => ({
-  useProjectRole: () => "admin",
+  useProjectRole: () => mockProjectRole(),
 }))
 
 vi.mock("@/components/applications/gateway-editor", () => ({
@@ -249,6 +251,7 @@ async function clickButton(button: HTMLButtonElement | undefined) {
 describe("NetworkConfig gateway table", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockProjectRole.mockReturnValue("owner")
       ; (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     Object.defineProperty(window, "open", {
       value: mockWindowOpen,
@@ -326,6 +329,20 @@ describe("NetworkConfig gateway table", () => {
 
     await clickButton(enabledRouteButton)
     expect(mockWindowOpen).toHaveBeenCalledWith("https://secure.example.com/login", "_blank")
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it("hides write controls while the project role is unknown", async () => {
+    mockProjectRole.mockReturnValue(null)
+
+    const { container, root } = await renderNetworkConfig([buildGateway()])
+
+    const addButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Add Gateway"))
+    expect(addButton).toBeUndefined()
 
     await act(async () => {
       root.unmount()

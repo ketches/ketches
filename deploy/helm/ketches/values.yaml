@@ -4,6 +4,7 @@ fullnameOverride: ""
 imagePullSecrets: []
 
 config:
+  environment: production
   port: "8080"
   logLevel: info
   dbDriver: postgres
@@ -13,9 +14,11 @@ config:
   dbName: ""
   dbUsername: ""
   dbPassword: ""
-  dbSSLMode: disable
+  dbSSLMode: require
+  dbTLS: ""
   dbAutoMigrate: true
   corsAllowedOrigins: "https://app.example.com"
+  trustedProxies: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
   backendUrl: ""
   signUpEmailVerificationRequired: true
   bootstrapAdminUsername: ""
@@ -27,6 +30,7 @@ config:
   smtpFrom: ""
   jwtSecret: ""
   secretEncryptionKey: ""
+  previousSecretEncryptionKeys: ""
   buildLogBaseDir: /app/data/build-logs
   buildLogRetentionDays: 15
 
@@ -111,6 +115,13 @@ postgres:
     database: ketches
     username: ketches
     password: ""
+  tls:
+    enabled: true
+    generatorImage:
+      repository: alpine/openssl
+      tag: 3.5.1
+      pullPolicy: IfNotPresent
+    serverGroupID: 70
   persistence:
     enabled: true
     accessModes:

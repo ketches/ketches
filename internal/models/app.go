@@ -174,6 +174,7 @@ type CreateConfigFileRequest struct {
 	MountPath string `json:"mount_path" binding:"required"`
 	Content   string `json:"content" binding:"required"`
 	FileMode  string `json:"file_mode"`
+	IsSecret  bool   `json:"is_secret"`
 }
 
 type UpdateConfigFileRequest struct {
@@ -181,6 +182,7 @@ type UpdateConfigFileRequest struct {
 	MountPath string `json:"mount_path" binding:"required"`
 	Content   string `json:"content" binding:"required"`
 	FileMode  string `json:"file_mode"`
+	IsSecret  *bool  `json:"is_secret"`
 }
 
 type CreateVolumeRequest struct {
@@ -188,6 +190,7 @@ type CreateVolumeRequest struct {
 	VolumeType   string `json:"volume_type" binding:"required"`
 	MountPath    string `json:"mount_path" binding:"required"`
 	SubPath      string `json:"sub_path"`
+	HostPath     string `json:"host_path"`
 	Capacity     int    `json:"capacity" binding:"required"`
 	StorageClass string `json:"storage_class"`
 	VolumeMode   string `json:"volume_mode"`
@@ -199,6 +202,7 @@ type UpdateVolumeRequest struct {
 	VolumeType   string `json:"volume_type" binding:"required"`
 	MountPath    string `json:"mount_path" binding:"required"`
 	SubPath      string `json:"sub_path"`
+	HostPath     string `json:"host_path"`
 	Capacity     int    `json:"capacity" binding:"required"`
 	StorageClass string `json:"storage_class"`
 	VolumeMode   string `json:"volume_mode"`
@@ -285,13 +289,16 @@ type AppEnvVarResponse struct {
 	AppID     string    `json:"app_id"`
 	Key       string    `json:"key"`
 	Value     string    `json:"value"`
+	IsSecret  bool      `json:"is_secret"`
+	HasValue  bool      `json:"has_value"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type AppEnvVarRequest struct {
-	Key   string `json:"key" binding:"required"`
-	Value string `json:"value"`
+	Key      string `json:"key" binding:"required"`
+	Value    string `json:"value"`
+	IsSecret *bool  `json:"is_secret"`
 }
 
 type AppConfigFileResponse struct {
@@ -300,6 +307,8 @@ type AppConfigFileResponse struct {
 	Slug      string    `json:"slug"`
 	MountPath string    `json:"mount_path"`
 	Content   string    `json:"content"`
+	IsSecret  bool      `json:"is_secret"`
+	HasValue  bool      `json:"has_value"`
 	FileMode  string    `json:"file_mode"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -311,6 +320,7 @@ type AppVolumeResponse struct {
 	Slug         string    `json:"slug"`
 	MountPath    string    `json:"mount_path"`
 	SubPath      string    `json:"sub_path"`
+	HostPath     string    `json:"host_path"`
 	VolumeType   string    `json:"volume_type"`
 	Status       string    `json:"status"`
 	Capacity     int       `json:"capacity"`

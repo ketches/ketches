@@ -272,6 +272,47 @@ func TestCheckEnvNamespaceAvailability_ReturnsDatabaseConflict(t *testing.T) {
 	assert.Contains(t, res.Message, "already used by another environment")
 }
 
+func TestUpdateEnvPreservesNullableClusterNamespace(t *testing.T) {
+	setupEnvTestDB(t)
+
+	env := &entities.Env{
+		Base:             entities.Base{ID: "env-nullable"},
+		Slug:             "environment",
+		Name:             "Environment",
+		Description:      "before",
+		ProjectID:        "project-1",
+		ClusterID:        "cluster-1",
+		ClusterNamespace: "legacy-namespace",
+	}
+	require.NoError(t, db.DB.Create(env).Error)
+	require.NoError(t, db.DB.Model(&entities.Env{}).Where("id = ?", env.ID).UpdateColumn("cluster_namespace", nil).Error)
+
+	_, err := UpdateEnv(env.ID, &models.CreateEnvRequest{
+		Slug:             "environment-renamed",
+		Name:             "Renamed environment",
+		Description:      "after",
+		ClusterID:        "cluster-1",
+		ClusterNamespace: "",
+	})
+	require.NoError(t, err)
+
+	var nullCount int64
+	require.NoError(t, db.DB.Model(&entities.Env{}).
+		Where("id = ? AND cluster_namespace IS NULL", env.ID).
+		Count(&nullCount).Error)
+	assert.EqualValues(t, 1, nullCount)
+
+	_, err = UpdateEnvBasic(env.ID, &models.UpdateBasicInfoRequest{
+		Name:        "Basic update",
+		Description: "basic description",
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.DB.Model(&entities.Env{}).
+		Where("id = ? AND cluster_namespace IS NULL", env.ID).
+		Count(&nullCount).Error)
+	assert.EqualValues(t, 1, nullCount)
+}
+
 func TestCheckEnvNamespaceAvailability_ReturnsClusterConflict(t *testing.T) {
 	setupEnvTestDB(t)
 

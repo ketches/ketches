@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -31,6 +31,7 @@ func setupProjectHandlerTestDB(t *testing.T) {
 		&entities.User{},
 		&entities.Project{},
 		&entities.ProjectMember{},
+		&entities.Notification{},
 	))
 	db.DB = testDB
 }

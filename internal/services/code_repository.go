@@ -497,8 +497,8 @@ func BatchRestoreCodeRepositories(repoIDs []string, actors ...RecycleBinActor) e
 
 // PermanentlyDeleteCodeRepository hard-deletes a code repository and all associated data.
 // Cascade order:
-//  1. build_deployments (via build → build_setting → repo)
-//  2. builds (via build_setting → repo)
+//  1. build_deployments and deployment history references
+//  2. builds (via repository snapshot or legacy build setting)
 //  3. build_settings (by repo)
 //  4. apps.code_repository_id → NULL
 //  5. code_repositories (hard delete)
@@ -524,28 +524,7 @@ func permanentlyDeleteCodeRepositoryTx(tx *gorm.DB, id string) error {
 		return app.WrapErrorf(ErrRecycleBinResourceActive, "code repository %s", id)
 	}
 
-	// 1. Delete build_deployments
-	if err := tx.Exec(`
-		DELETE FROM build_deployments
-		WHERE build_id IN (
-			SELECT b.id FROM builds b
-			JOIN build_settings bs ON bs.id = b.build_setting_id
-			WHERE bs.code_repository_id = ?
-		)`, id).Error; err != nil {
-		return err
-	}
-
-	// 2. Delete builds
-	if err := tx.Exec(`
-		DELETE FROM builds
-		WHERE build_setting_id IN (
-			SELECT id FROM build_settings WHERE code_repository_id = ?
-		)`, id).Error; err != nil {
-		return err
-	}
-
-	// 3. Delete build_settings
-	if err := tx.Exec("DELETE FROM build_settings WHERE code_repository_id = ?", id).Error; err != nil {
+	if err := deleteCodeRepositoryBuildRecordsTx(tx, []string{id}); err != nil {
 		return err
 	}
 

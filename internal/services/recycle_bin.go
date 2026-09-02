@@ -10,6 +10,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"gorm.io/gorm"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // RecycleBinActor is the authenticated identity performing a recycle-bin action.
@@ -25,6 +26,9 @@ var (
 	ErrRecycleBinInvalidIDs       = errors.New("recycle bin resource IDs are required")
 	ErrRecycleBinResourceNotFound = errors.New("recycle bin resource not found")
 	ErrRecycleBinResourceActive   = errors.New("resource is not soft-deleted")
+	ErrRecycleBinResourceDeleting = errors.New("resource is being permanently deleted")
+	ErrRecycleBinParentDeleted    = errors.New("parent resource is soft-deleted")
+	ErrRecycleBinActiveChildren   = errors.New("resource contains active children")
 )
 
 func normalizeRecycleBinIDs(ids []string) ([]string, error) {
@@ -215,7 +219,12 @@ func BatchRestoreApps(appIDs []string, actors ...RecycleBinActor) error {
 				return err
 			}
 		}
-		return tx.Unscoped().Model(&entities.App{}).Where("id IN ?", ids).Update("deleted_at", nil).Error
+		for _, appID := range ids {
+			if err := restoreAppTx(tx, appID); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
@@ -227,6 +236,32 @@ func BatchPermanentlyDeleteApps(appIDs []string, actors ...RecycleBinActor) erro
 	ids, err := normalizeRecycleBinIDs(appIDs)
 	if err != nil {
 		return err
+	}
+
+	cleanupContexts := make([]*models.AppContext, 0, len(ids))
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		targets := make([]recycleBinDeletionTarget, 0, len(ids))
+		for _, appID := range ids {
+			if _, err := loadRecycleBinApp(tx, appID, actor); err != nil {
+				return err
+			}
+			cleanupContext, err := loadDeletedAppCleanupContext(tx, appID)
+			if err != nil {
+				return err
+			}
+			cleanupContexts = append(cleanupContexts, cleanupContext)
+			targets = append(targets, newRecycleBinDeletionTarget(
+				recycleBinResourceApp, appID, &entities.App{}, "app",
+			))
+		}
+		return claimRecycleBinDeletionTargets(tx, targets...)
+	}); err != nil {
+		return err
+	}
+	for _, cleanupContext := range cleanupContexts {
+		if err := deleteAppK8sResources(context.Background(), cleanupContext, false); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	return db.DB.Transaction(func(tx *gorm.DB) error {
@@ -260,7 +295,12 @@ func BatchRestoreEnvs(envIDs []string, actors ...RecycleBinActor) error {
 				return err
 			}
 		}
-		return tx.Unscoped().Model(&entities.Env{}).Where("id IN ?", ids).Update("deleted_at", nil).Error
+		for _, envID := range ids {
+			if err := restoreEnvTx(tx, envID); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
@@ -272,6 +312,34 @@ func BatchPermanentlyDeleteEnvs(envIDs []string, actors ...RecycleBinActor) erro
 	ids, err := normalizeRecycleBinIDs(envIDs)
 	if err != nil {
 		return err
+	}
+
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		targets := make([]recycleBinDeletionTarget, 0, len(ids))
+		for _, envID := range ids {
+			if _, err := loadRecycleBinEnv(tx, envID, actor); err != nil {
+				return err
+			}
+			targets = append(targets, newRecycleBinDeletionTarget(
+				recycleBinResourceEnvironment, envID, &entities.Env{}, "environment",
+			))
+		}
+		if err := claimRecycleBinDeletionTargets(tx, targets...); err != nil {
+			return err
+		}
+		for _, envID := range ids {
+			if err := validateEnvPermanentDeletionTx(tx, envID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	for _, envID := range ids {
+		if err := cleanupDeletedEnvNamespace(context.Background(), envID); err != nil {
+			return err
+		}
 	}
 
 	return db.DB.Transaction(func(tx *gorm.DB) error {
@@ -358,7 +426,12 @@ func BatchRestoreProjects(projectIDs []string, actors ...RecycleBinActor) error 
 				return err
 			}
 		}
-		return tx.Unscoped().Model(&entities.Project{}).Where("id IN ?", ids).Update("deleted_at", nil).Error
+		for _, projectID := range ids {
+			if err := restoreProjectTx(tx, projectID); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
@@ -371,6 +444,34 @@ func BatchPermanentlyDeleteProjects(projectIDs []string, actors ...RecycleBinAct
 	ids, err := normalizeRecycleBinIDs(projectIDs)
 	if err != nil {
 		return err
+	}
+
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		targets := make([]recycleBinDeletionTarget, 0, len(ids))
+		for _, projectID := range ids {
+			if _, err := loadRecycleBinProject(tx, projectID, actor); err != nil {
+				return err
+			}
+			targets = append(targets, newRecycleBinDeletionTarget(
+				recycleBinResourceProject, projectID, &entities.Project{}, "project",
+			))
+		}
+		if err := claimRecycleBinDeletionTargets(tx, targets...); err != nil {
+			return err
+		}
+		for _, projectID := range ids {
+			if err := validateProjectPermanentDeletionTx(tx, projectID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	for _, projectID := range ids {
+		if err := cleanupProjectNamespaces(context.Background(), projectID); err != nil {
+			return err
+		}
 	}
 
 	return db.DB.Transaction(func(tx *gorm.DB) error {
@@ -421,13 +522,22 @@ func ListDeletedUsers(page, pageSize int, search string) (int64, []models.Recycl
 	return total, result, nil
 }
 
-func BatchRestoreUsers(ids []string) error {
-	for _, id := range ids {
-		if err := RestoreUser(id); err != nil {
-			return err
-		}
+func BatchRestoreUsers(userIDs []string) error {
+	ids, err := normalizeRecycleBinIDs(userIDs)
+	if err != nil {
+		return err
 	}
-	return nil
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, id := range ids {
+			if err := restoreUserTx(tx, id); err != nil {
+				if errors.Is(err, ErrRecycleBinResourceActive) {
+					return app.WrapError("cannot restore active user", err)
+				}
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func BatchPermanentlyDeleteUsers(ids []string) error {

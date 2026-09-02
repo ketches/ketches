@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
@@ -19,6 +20,12 @@ func SignUp(c *gin.Context) {
 	var req models.SignUpRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		api.Error(c, http.StatusBadRequest, err)
+		return
+	}
+	if !enforceAuthRateLimits(c,
+		authRateLimitRule{scope: services.AuthRateScopeSignUpIP, identity: c.ClientIP(), limit: 10, window: time.Hour},
+		authRateLimitRule{scope: services.AuthRateScopeSignUpEmail, identity: req.Email, limit: 5, window: time.Hour},
+	) {
 		return
 	}
 
@@ -41,6 +48,12 @@ func SignIn(c *gin.Context) {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
+	if !enforceAuthRateLimits(c,
+		authRateLimitRule{scope: services.AuthRateScopeSignInIP, identity: c.ClientIP(), limit: 30, window: 5 * time.Minute},
+		authRateLimitRule{scope: services.AuthRateScopeSignInAccount, identity: req.Username, limit: 10, window: 15 * time.Minute},
+	) {
+		return
+	}
 
 	user, mustChangePassword, err := services.SignIn(&req)
 	if err != nil {
@@ -49,6 +62,10 @@ func SignIn(c *gin.Context) {
 			status = http.StatusForbidden
 		}
 		api.Error(c, status, err)
+		return
+	}
+	if err := services.ResetAuthRateLimit(services.AuthRateScopeSignInAccount, req.Username); err != nil {
+		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}
 

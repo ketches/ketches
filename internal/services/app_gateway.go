@@ -20,9 +20,10 @@ import (
 var ErrInvalidGatewayCertificate = errors.New("invalid gateway certificate")
 
 var (
-	syncGatewaysToK8s    = core.SyncGatewaysToK8s
-	readNodePortsFromK8s = core.ReadNodePortsFromK8s
-	deleteGatewayFromK8s = core.DeleteGatewayFromK8s
+	syncGatewaysToK8s                     = core.SyncGatewaysToK8s
+	readNodePortsFromK8s                  = core.ReadNodePortsFromK8s
+	deleteGatewayFromK8s                  = core.DeleteGatewayFromK8s
+	ensureSharedGatewayAfterGatewayDelete = core.EnsureSharedGateway
 )
 
 type gatewayCertificateError struct {
@@ -144,8 +145,8 @@ func UpdateAppGateway(ctx context.Context, id string, req *models.UpdateGatewayR
 
 // DeleteAppGateway deletes a gateway and its nested route graph.
 func DeleteAppGateway(ctx context.Context, id string) error {
-	var gateway entities.AppGateway
-	err := db.DB.First(&gateway, "id = ?", id).Error
+	var target entities.AppGateway
+	err := db.DB.Select("id", "app_id").First(&target, "id = ?", id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("gateway not found")
@@ -153,29 +154,40 @@ func DeleteAppGateway(ctx context.Context, id string) error {
 		return err
 	}
 
-	appCtx, err := GetAppContext(ctx, gateway.AppID)
-	if err != nil {
-		return err
-	}
-	if err := deleteGatewayFromK8s(ctx, appCtx, &gateway); err != nil {
-		return err
-	}
-
-	return db.DB.Transaction(func(tx *gorm.DB) error {
-		var routeIDs []string
-		if err := tx.Model(&entities.AppGatewayHTTPRoute{}).Where("app_gateway_id = ?", gateway.ID).Pluck("id", &routeIDs).Error; err != nil {
+	var clusterID string
+	if err := core.WithAppReconcileFence(ctx, target.AppID, func() error {
+		var gateway entities.AppGateway
+		if err := db.DB.First(&gateway, "id = ? AND app_id = ?", id, target.AppID).Error; err != nil {
 			return err
 		}
-		if len(routeIDs) > 0 {
-			if err := tx.Where("route_id IN ?", routeIDs).Delete(&entities.AppGatewayHTTPRouteBackend{}).Error; err != nil {
+		appCtx, err := GetAppContext(ctx, gateway.AppID)
+		if err != nil {
+			return err
+		}
+		clusterID = appCtx.EnvContext.Env.ClusterID
+		if err := deleteGatewayFromK8s(ctx, appCtx, &gateway); err != nil {
+			return err
+		}
+
+		return db.DB.Transaction(func(tx *gorm.DB) error {
+			var routeIDs []string
+			if err := tx.Model(&entities.AppGatewayHTTPRoute{}).Where("app_gateway_id = ?", gateway.ID).Pluck("id", &routeIDs).Error; err != nil {
 				return err
 			}
-		}
-		if err := tx.Where("app_gateway_id = ?", gateway.ID).Delete(&entities.AppGatewayHTTPRoute{}).Error; err != nil {
-			return err
-		}
-		return tx.Delete(&gateway).Error
-	})
+			if len(routeIDs) > 0 {
+				if err := tx.Where("route_id IN ?", routeIDs).Delete(&entities.AppGatewayHTTPRouteBackend{}).Error; err != nil {
+					return err
+				}
+			}
+			if err := tx.Where("app_gateway_id = ?", gateway.ID).Delete(&entities.AppGatewayHTTPRoute{}).Error; err != nil {
+				return err
+			}
+			return tx.Delete(&gateway).Error
+		})
+	}); err != nil {
+		return err
+	}
+	return ensureSharedGatewayAfterGatewayDelete(ctx, clusterID)
 }
 
 type normalizedGatewayRequest struct {

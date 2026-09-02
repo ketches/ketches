@@ -10,11 +10,17 @@ import (
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // CreateNotification inserts a new notification record.
 func CreateNotification(recipientID, senderID, category, eventType, title, message, resourceType, resourceID, projectID, actionData string) error {
-	notif := &entities.Notification{
+	notif := newNotification(recipientID, senderID, category, eventType, title, message, resourceType, resourceID, projectID, actionData)
+	return db.DB.Create(notif).Error
+}
+
+func newNotification(recipientID, senderID, category, eventType, title, message, resourceType, resourceID, projectID, actionData string) *entities.Notification {
+	return &entities.Notification{
 		Base:         entities.Base{ID: uuid.New()},
 		RecipientID:  recipientID,
 		SenderID:     senderID,
@@ -28,7 +34,6 @@ func CreateNotification(recipientID, senderID, category, eventType, title, messa
 		ProjectID:    projectID,
 		ActionData:   actionData,
 	}
-	return db.DB.Create(notif).Error
 }
 
 // ListNotifications returns paginated notifications for a user with joined sender/project names.
@@ -74,61 +79,100 @@ func GetUnreadCount(userID string) (int64, error) {
 
 // HandleNotificationAction processes an action on a notification.
 func HandleNotificationAction(notifID string, userID string, action string) error {
-	var notif entities.Notification
-	if err := db.DB.Where("id = ? AND recipient_id = ?", notifID, userID).First(&notif).Error; err != nil {
-		return errors.New("notification not found")
-	}
-
-	now := time.Now()
-
-	switch action {
-	case "accept":
-		if notif.Category != "invitation" || notif.Status != "pending" {
-			return errors.New("notification cannot be accepted")
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var notif entities.Notification
+		if err := lockForUpdate(tx).Where("id = ? AND recipient_id = ?", notifID, userID).First(&notif).Error; err != nil {
+			return errors.New("notification not found")
 		}
-		// Parse action data for role
-		role := "developer"
-		if notif.ActionData != "" {
-			var data map[string]string
-			if err := json.Unmarshal([]byte(notif.ActionData), &data); err == nil {
-				if r, ok := data["role"]; ok && r != "" {
-					role = r
+
+		// Replaying an already completed action is intentionally idempotent. This
+		// is important when a client retries after a response timeout.
+		if action == "accept" && notif.Status == "accepted" {
+			return nil
+		}
+		if action == "refuse" && notif.Status == "refused" {
+			return nil
+		}
+
+		now := time.Now()
+		switch action {
+		case "accept":
+			if notif.Category != "invitation" || notif.Status != "pending" {
+				return errors.New("notification cannot be accepted")
+			}
+			// Parse action data for role.
+			role := "developer"
+			if notif.ActionData != "" {
+				var data map[string]string
+				if err := json.Unmarshal([]byte(notif.ActionData), &data); err == nil {
+					if r, ok := data["role"]; ok && r != "" {
+						role = r
+					}
 				}
 			}
+			if err := validateProjectRole(role); err != nil {
+				return err
+			}
+
+			// The notification row lock serializes retries for one invitation. A
+			// unique project/user index plus DoNothing makes acceptance safe even
+			// when multiple invitation records exist due to legacy data.
+			member := &entities.ProjectMember{
+				ID:          uuid.New(),
+				ProjectID:   notif.ResourceID,
+				UserID:      userID,
+				ProjectRole: role,
+			}
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "project_id"}, {Name: "user_id"}},
+				DoNothing: true,
+			}).Create(member).Error; err != nil {
+				return err
+			}
+			result := tx.Model(&entities.Notification{}).
+				Where("id = ? AND recipient_id = ? AND status = ?", notifID, userID, "pending").
+				Updates(map[string]any{"status": "accepted", "read_at": now})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected != 1 {
+				return errors.New("notification state changed")
+			}
+
+		case "refuse":
+			if notif.Category != "invitation" || notif.Status != "pending" {
+				return errors.New("notification cannot be refused")
+			}
+			result := tx.Model(&entities.Notification{}).
+				Where("id = ? AND recipient_id = ? AND status = ?", notifID, userID, "pending").
+				Updates(map[string]any{"status": "refused", "read_at": now})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected != 1 {
+				return errors.New("notification state changed")
+			}
+
+		case "read", "dismiss":
+			status := "read"
+			if action == "dismiss" {
+				status = "dismissed"
+			}
+			result := tx.Model(&entities.Notification{}).
+				Where("id = ? AND recipient_id = ? AND status = ?", notifID, userID, notif.Status).
+				Updates(map[string]any{"status": status, "read_at": now})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected != 1 {
+				return errors.New("notification state changed")
+			}
+
+		default:
+			return errors.New("invalid action")
 		}
-		// Add the user as a project member
-		member := &entities.ProjectMember{
-			ID:          uuid.New(),
-			ProjectID:   notif.ResourceID,
-			UserID:      userID,
-			ProjectRole: role,
-		}
-		if err := db.DB.Create(member).Error; err != nil {
-			return err
-		}
-		notif.Status = "accepted"
-		notif.ReadAt = &now
-
-	case "refuse":
-		if notif.Category != "invitation" || notif.Status != "pending" {
-			return errors.New("notification cannot be refused")
-		}
-		notif.Status = "refused"
-		notif.ReadAt = &now
-
-	case "read":
-		notif.Status = "read"
-		notif.ReadAt = &now
-
-	case "dismiss":
-		notif.Status = "dismissed"
-		notif.ReadAt = &now
-
-	default:
-		return errors.New("invalid action")
-	}
-
-	return db.DB.Save(&notif).Error
+		return nil
+	})
 }
 
 // MarkAllRead marks all pending notifications as read for a user.

@@ -1,13 +1,19 @@
 package core
 
 import (
+	"context"
 	"testing"
 
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayfake "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/fake"
 )
 
 func TestBuildSharedGateway_UsesSingleHTTPListenerForAllNamespaces(t *testing.T) {
@@ -46,6 +52,67 @@ func TestBuildSharedGateway_AddsHTTPSListenersWithCertificateRefs(t *testing.T) 
 	require.NotNil(t, httpsListener.TLS)
 	require.Len(t, httpsListener.TLS.CertificateRefs, 1)
 	assert.Equal(t, gatewayv1.ObjectName("ketches-cert-cert-1"), httpsListener.TLS.CertificateRefs[0].Name)
+}
+
+func TestCleanupStaleSharedGatewayTLSSecretsPreservesLiveGatewayReferences(t *testing.T) {
+	const (
+		referencedSecret = "ketches-cert-new"
+		staleSecret      = "ketches-cert-stale"
+	)
+	managedTLSSecret := func(name string) *corev1.Secret {
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: SharedGatewayNamespace(),
+			Labels: map[string]string{
+				kube.LabelManagedBy: "true",
+				kube.LabelComponent: "gateway-tls",
+			},
+		}}
+	}
+
+	client := fake.NewSimpleClientset(
+		managedTLSSecret(referencedSecret),
+		managedTLSSecret(staleSecret),
+	)
+	gateway := BuildSharedGateway("ketches", []sharedGatewayHTTPSListener{{
+		Name:                  "https-live",
+		Hostname:              "live.example.com",
+		CertificateSecretName: referencedSecret,
+	}})
+	gwClient := gatewayfake.NewSimpleClientset()
+	_, err := gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Create(context.Background(), gateway, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// The desired slice intentionally represents an obsolete database snapshot.
+	// The live Gateway reference must win over cleanup from that snapshot.
+	require.NoError(t, cleanupStaleSharedGatewayTLSSecrets(
+		context.Background(),
+		client,
+		gwClient,
+		nil,
+	))
+
+	_, err = client.CoreV1().Secrets(SharedGatewayNamespace()).Get(context.Background(), referencedSecret, metav1.GetOptions{})
+	require.NoError(t, err)
+	_, err = client.CoreV1().Secrets(SharedGatewayNamespace()).Get(context.Background(), staleSecret, metav1.GetOptions{})
+	assert.True(t, apierrors.IsNotFound(err), "an unreferenced stale Secret should be removed")
+}
+
+func TestCleanupStaleSharedGatewayTLSSecretsKeepsSecretsWhenGatewayIsMissing(t *testing.T) {
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name:      "ketches-cert-orphan",
+		Namespace: SharedGatewayNamespace(),
+		Labels: map[string]string{
+			kube.LabelManagedBy: "true",
+			kube.LabelComponent: "gateway-tls",
+		},
+	}}
+	client := fake.NewSimpleClientset(secret)
+	gwClient := gatewayfake.NewSimpleClientset()
+
+	require.NoError(t, cleanupStaleSharedGatewayTLSSecrets(context.Background(), client, gwClient, nil))
+	_, err := client.CoreV1().Secrets(SharedGatewayNamespace()).Get(context.Background(), secret.Name, metav1.GetOptions{})
+	require.NoError(t, err)
 }
 
 func TestBuildGatewayClass_UsesRequestedControllerName(t *testing.T) {
@@ -119,4 +186,92 @@ func TestBuildGatewayHTTPRoute_UsesRouteIDAndHTTPSListener(t *testing.T) {
 	assert.Equal(t, gatewayv1.ObjectName("demo-app-canary"), rule.BackendRefs[1].Name)
 	require.NotNil(t, rule.BackendRefs[1].Weight)
 	assert.Equal(t, int32(10), *rule.BackendRefs[1].Weight)
+}
+
+func TestCleanupStaleSharedGatewayTLSSecretsDoesNotDeleteUntrustedLegacyPrefix(t *testing.T) {
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name:      "ketches-cert-not-from-this-cluster",
+		Namespace: SharedGatewayNamespace(),
+	}, Type: corev1.SecretTypeTLS, Data: map[string][]byte{
+		corev1.TLSCertKey:       []byte("certificate"),
+		corev1.TLSPrivateKeyKey: []byte("private-key"),
+	}}
+	client := fake.NewSimpleClientset(secret)
+	gwClient := gatewayfake.NewSimpleClientset()
+	_, err := gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Create(
+		context.Background(),
+		BuildSharedGateway("ketches", nil),
+		metav1.CreateOptions{},
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, cleanupStaleSharedGatewayTLSSecrets(context.Background(), client, gwClient, nil))
+	_, err = client.CoreV1().Secrets(SharedGatewayNamespace()).Get(context.Background(), secret.Name, metav1.GetOptions{})
+	require.NoError(t, err, "an unlabelled Secret must not be trusted solely because of its name")
+}
+
+func TestCleanupStaleSharedGatewayTLSSecretsAllowsValidatedLegacyCertificate(t *testing.T) {
+	const certificateID = "certificate-current"
+	secretName := sharedGatewayTLSSecretName(certificateID)
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name:      secretName,
+		Namespace: SharedGatewayNamespace(),
+	}, Type: corev1.SecretTypeTLS, Data: map[string][]byte{
+		corev1.TLSCertKey:       []byte("certificate"),
+		corev1.TLSPrivateKeyKey: []byte("private-key"),
+	}}
+	client := fake.NewSimpleClientset(secret)
+	gwClient := gatewayfake.NewSimpleClientset()
+	_, err := gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Create(
+		context.Background(),
+		BuildSharedGateway("ketches", nil),
+		metav1.CreateOptions{},
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, cleanupStaleSharedGatewayTLSSecretsWithLegacyNames(
+		context.Background(),
+		client,
+		gwClient,
+		nil,
+		map[string]struct{}{secretName: {}},
+	))
+	_, err = client.CoreV1().Secrets(SharedGatewayNamespace()).Get(context.Background(), secretName, metav1.GetOptions{})
+	assert.True(t, apierrors.IsNotFound(err), "a validated legacy Ketches Secret should be removed")
+}
+
+func TestTrustedLegacySharedGatewayTLSSecretRequiresTLSMaterial(t *testing.T) {
+	allowed := map[string]struct{}{sharedGatewayTLSSecretName("certificate-current"): {}}
+	for _, test := range []struct {
+		name   string
+		secret *corev1.Secret
+	}{
+		{
+			name: "opaque secret",
+			secret: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+				Name: sharedGatewayTLSSecretName("certificate-current"),
+			}, Type: corev1.SecretTypeOpaque},
+		},
+		{
+			name: "missing key",
+			secret: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+				Name: sharedGatewayTLSSecretName("certificate-current"),
+			}, Type: corev1.SecretTypeTLS, Data: map[string][]byte{
+				corev1.TLSCertKey: []byte("certificate"),
+			}},
+		},
+		{
+			name: "different certificate id",
+			secret: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+				Name: sharedGatewayTLSSecretName("certificate-other"),
+			}, Type: corev1.SecretTypeTLS, Data: map[string][]byte{
+				corev1.TLSCertKey:       []byte("certificate"),
+				corev1.TLSPrivateKeyKey: []byte("private-key"),
+			}},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			assert.False(t, trustedLegacySharedGatewayTLSSecret(test.secret, allowed))
+		})
+	}
 }

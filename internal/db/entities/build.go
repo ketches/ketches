@@ -38,7 +38,12 @@ type Build struct {
 	// BuildSettingID: the config used for this build (required).
 	BuildSettingID string `gorm:"type:varchar(36);not null;index"`
 
-	BuildNumber int         `gorm:"type:int;not null"`
+	// CodeRepositoryID snapshots the repository scope used for build numbering.
+	// It is nullable for legacy rows created before repository-scoped numbering
+	// was introduced. New builds always populate it.
+	CodeRepositoryID *string `gorm:"type:varchar(36);index:idx_builds_code_repository_id;uniqueIndex:idx_builds_code_repository_number"`
+
+	BuildNumber int         `gorm:"type:int;not null;uniqueIndex:idx_builds_code_repository_number"`
 	Status      BuildStatus `gorm:"type:varchar(32);default:'pending';index:idx_builds_status"`
 
 	// Build environment

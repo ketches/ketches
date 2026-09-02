@@ -591,7 +591,7 @@ func ListStorageClasses(clusterID string) ([]StorageClassInfo, error) {
 	return res, nil
 }
 
-func ExecClusterNodeTerminal(clusterID string, nodeName string, stdin io.Reader, stdout, stderr io.Writer) error {
+func ExecClusterNodeTerminal(ctx context.Context, clusterID string, nodeName string, stdin io.Reader, stdout, stderr io.Writer) error {
 	client, err := kube.GlobalClusterStore.GetClient(clusterID)
 	if err != nil {
 		return err
@@ -602,7 +602,7 @@ func ExecClusterNodeTerminal(clusterID string, nodeName string, stdin io.Reader,
 		return err
 	}
 
-	plaintextKubeConfig, err := secrets.DecryptString(cluster.KubeConfig)
+	plaintextKubeConfig, err := decryptClusterKubeConfig(cluster)
 	if err != nil {
 		return err
 	}
@@ -614,17 +614,17 @@ func ExecClusterNodeTerminal(clusterID string, nodeName string, stdin io.Reader,
 
 	pods := client.CoreV1().Pods(nodeTerminalNamespace)
 	now := nodeTerminalNow()
-	pod, err := ensureNodeTerminalPod(context.Background(), pods, nodeName, now)
+	pod, err := ensureNodeTerminalPod(ctx, pods, nodeName, now)
 	if err != nil {
 		return app.WrapErrorf(err, "failed to prepare node terminal pod: %w", err)
 	}
 
-	waitCtx, cancel := context.WithTimeout(context.Background(), nodeTerminalStartupTimeout)
+	waitCtx, cancel := context.WithTimeout(ctx, nodeTerminalStartupTimeout)
 	defer cancel()
 
 	pod, err = waitForNodeTerminalPodRunning(waitCtx, pods, nodeName, pod.Name)
 	if err != nil {
-		if deleteErr := deleteNodeTerminalPod(context.Background(), pods, pod.Name); deleteErr != nil {
+		if deleteErr := deleteNodeTerminalPod(ctx, pods, pod.Name); deleteErr != nil {
 			slog.Error(fmt.Sprintf("ExecClusterNodeTerminal: failed to delete unhealthy pod %s: %v", pod.Name, deleteErr))
 		}
 		return err
@@ -649,7 +649,7 @@ func ExecClusterNodeTerminal(clusterID string, nodeName string, stdin io.Reader,
 		return err
 	}
 
-	return exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+	return exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:  stdin,
 		Stdout: stdout,
 		Stderr: stderr,
@@ -661,6 +661,43 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
+func decryptClusterKubeConfig(cluster *entities.Cluster) (string, error) {
+	if cluster == nil {
+		return "", errors.New("cluster is required")
+	}
+
+	for range 2 {
+		storedKubeConfig := cluster.KubeConfig
+		plaintextKubeConfig, err := secrets.DecryptStringCompatible(storedKubeConfig)
+		if err != nil {
+			return "", err
+		}
+		if secrets.IsEncrypted(storedKubeConfig) && !secrets.NeedsRotation(storedKubeConfig) {
+			return plaintextKubeConfig, nil
+		}
+
+		encryptedKubeConfig, err := secrets.EncryptString(plaintextKubeConfig)
+		if err != nil {
+			return "", err
+		}
+		result := db.DB.Model(&entities.Cluster{}).
+			Where("id = ? AND kube_config = ?", cluster.ID, storedKubeConfig).
+			Update("kube_config", encryptedKubeConfig)
+		if result.Error != nil {
+			return "", result.Error
+		}
+		if result.RowsAffected == 1 {
+			cluster.KubeConfig = encryptedKubeConfig
+			return plaintextKubeConfig, nil
+		}
+		if err := db.DB.First(cluster, "id = ?", cluster.ID).Error; err != nil {
+			return "", err
+		}
+	}
+
+	return "", errors.New("cluster kubeconfig changed while it was being migrated")
+}
+
 func InitClusters() error {
 	var clusters []entities.Cluster
 	if err := db.DB.Find(&clusters).Error; err != nil {
@@ -668,26 +705,15 @@ func InitClusters() error {
 	}
 	slog.Info(fmt.Sprintf("InitClusters: found %d clusters to initialize", len(clusters)))
 
-	for _, cluster := range clusters {
+	for i := range clusters {
+		cluster := &clusters[i]
 		if cluster.Enabled {
-			plaintextKubeConfig, err := secrets.DecryptString(cluster.KubeConfig)
+			plaintextKubeConfig, err := decryptClusterKubeConfig(cluster)
 			if err != nil {
-				if strings.Contains(err.Error(), `ciphertext missing "enc:v1:" prefix`) {
-					plaintextKubeConfig = cluster.KubeConfig
-					encryptedKubeConfig, encryptErr := secrets.EncryptString(plaintextKubeConfig)
-					if encryptErr != nil {
-						return encryptErr
-					}
-					if saveErr := db.DB.Model(&entities.Cluster{}).Where("id = ?", cluster.ID).Update("kube_config", encryptedKubeConfig).Error; saveErr != nil {
-						return saveErr
-					}
-					cluster.KubeConfig = encryptedKubeConfig
-				} else {
-					kube.GlobalClusterStore.RemoveClient(cluster.ID)
-					updateClusterConnectionStatus(cluster.ID, "disconnected", err.Error(), "")
-					slog.Error(fmt.Sprintf("InitClusters: failed to decrypt kubeconfig for cluster %s (%s): %v", cluster.Name, cluster.ID, err))
-					continue
-				}
+				kube.GlobalClusterStore.RemoveClient(cluster.ID)
+				updateClusterConnectionStatus(cluster.ID, "disconnected", err.Error(), "")
+				slog.Error(fmt.Sprintf("InitClusters: failed to decrypt kubeconfig for cluster %s (%s): %v", cluster.Name, cluster.ID, err))
+				continue
 			}
 			if err := kube.GlobalClusterStore.AddClient(cluster.ID, plaintextKubeConfig); err != nil {
 				kube.GlobalClusterStore.RemoveClient(cluster.ID)
@@ -722,7 +748,7 @@ func CheckClusterConnectivity(clusterID string) {
 			return
 		}
 
-		plaintextKubeConfig, decryptErr := secrets.DecryptString(cluster.KubeConfig)
+		plaintextKubeConfig, decryptErr := decryptClusterKubeConfig(cluster)
 		if decryptErr != nil {
 			updateClusterConnectionStatus(clusterID, "disconnected", decryptErr.Error(), "")
 			return

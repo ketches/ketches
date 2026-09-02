@@ -1,14 +1,16 @@
 package services
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/glebarez/sqlite"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -27,11 +29,36 @@ func setupUserRecycleServiceTestDB(t *testing.T) {
 
 	require.NoError(t, testDB.AutoMigrate(
 		&entities.User{},
+		&entities.RecycleBinDeletionClaim{},
 		&entities.Project{},
 		&entities.ProjectMember{},
+		&entities.Env{},
+		&entities.App{},
+		&entities.AppFavorite{},
+		&entities.Notification{},
+		&entities.OperationLog{},
 	))
 
 	db.DB = testDB
+}
+
+func setupFullUserRecycleServiceTestDB(t *testing.T) {
+	t.Helper()
+
+	originalDB := db.DB
+	originalConfig := app.Config
+	t.Cleanup(func() {
+		db.DB = originalDB
+		app.Config = originalConfig
+	})
+
+	testDB, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
+	require.NoError(t, err)
+	app.Config.SecretEncryptionKey = "user-recycle-test-key-32-bytes-minimum"
+	db.DB = testDB
+	require.NoError(t, db.Migrate())
 }
 
 func seedUserOwnedProject(t *testing.T, userID, projectID string) {
@@ -106,6 +133,90 @@ func TestPermanentlyDeleteUserDeletesOwnedProjects(t *testing.T) {
 		Where("user_id = ? OR project_id = ?", userID, projectID).
 		Count(&memberCount).Error)
 	assert.Equal(t, int64(0), memberCount)
+}
+
+func TestPermanentlyDeleteUserCleansPersonalAndAuditReferences(t *testing.T) {
+	setupUserRecycleServiceTestDB(t)
+
+	userID := "user-record-cleanup"
+	projectID := "project-record-cleanup"
+	seedUserOwnedProject(t, userID, projectID)
+	require.NoError(t, db.DB.Create(&entities.AppFavorite{
+		ID: "favorite-record-cleanup", UserID: userID, EnvID: "env-1", AppID: "app-1",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Notification{
+		Base: entities.Base{ID: "notification-recipient-cleanup"}, RecipientID: userID,
+		Category: "info", EventType: "test", Title: "Recipient notification", Status: "pending",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Notification{
+		Base: entities.Base{ID: "notification-sender-cleanup"}, RecipientID: "other-user", SenderID: userID,
+		Category: "info", EventType: "test", Title: "Sender notification", Status: "pending",
+	}).Error)
+	logUserID := userID
+	require.NoError(t, db.DB.Create(&entities.OperationLog{
+		Base: entities.Base{ID: "operation-log-record-cleanup"}, UserID: &logUserID,
+		Username: "deleted-user", Action: "test", ResourceType: "user", Status: "success", StatusCode: 200,
+	}).Error)
+	require.NoError(t, db.DB.Delete(&entities.Project{}, "id = ?", projectID).Error)
+	require.NoError(t, db.DB.Delete(&entities.User{}, "id = ?", userID).Error)
+
+	require.NoError(t, PermanentlyDeleteUser(userID))
+
+	for _, model := range []any{&entities.AppFavorite{}} {
+		var count int64
+		require.NoError(t, db.DB.Unscoped().Model(model).Count(&count).Error)
+		assert.Zero(t, count)
+	}
+	var recipientCount int64
+	require.NoError(t, db.DB.Unscoped().Model(&entities.Notification{}).
+		Where("recipient_id = ?", userID).Count(&recipientCount).Error)
+	assert.Zero(t, recipientCount)
+	var senderNotification entities.Notification
+	require.NoError(t, db.DB.Unscoped().First(&senderNotification, "id = ?", "notification-sender-cleanup").Error)
+	assert.Empty(t, senderNotification.SenderID)
+	var operationLog entities.OperationLog
+	require.NoError(t, db.DB.Unscoped().First(&operationLog, "id = ?", "operation-log-record-cleanup").Error)
+	assert.Nil(t, operationLog.UserID)
+}
+
+func TestPermanentlyDeleteUserCleansOwnedProjectNamespaces(t *testing.T) {
+	setupFullUserRecycleServiceTestDB(t)
+
+	deletedNamespace := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodDelete && request.URL.Path == "/api/v1/namespaces/work" {
+			deletedNamespace = true
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, request)
+	}))
+	defer server.Close()
+
+	userID := "user-namespace-cleanup"
+	projectID := "project-namespace-cleanup"
+	seedUserOwnedProject(t, userID, projectID)
+	clusterID := registerAppVolumeTestCluster(t, server.URL)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:             entities.Base{ID: "env-namespace-cleanup"},
+		Slug:             "prod",
+		Name:             "Production",
+		ProjectID:        projectID,
+		ClusterID:        clusterID,
+		ClusterNamespace: "work",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.App{
+		Base: entities.Base{ID: "app-namespace-cleanup"}, Slug: "active-app", Name: "Active App",
+		EnvID: "env-namespace-cleanup", ContainerImage: "nginx:latest",
+	}).Error)
+	require.NoError(t, DeleteUser(userID))
+
+	require.NoError(t, PermanentlyDeleteUser(userID))
+	assert.True(t, deletedNamespace)
+	var appCount int64
+	require.NoError(t, db.DB.Unscoped().Model(&entities.App{}).
+		Where("id = ?", "app-namespace-cleanup").Count(&appCount).Error)
+	assert.Zero(t, appCount)
 }
 
 func TestPermanentlyDeleteUserRejectsActiveUser(t *testing.T) {

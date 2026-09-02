@@ -87,8 +87,6 @@ export function ApplicationDetailPage() {
   const { currentTab, setCurrentTab, viewMode, setViewMode } = useApplicationDetailTabs()
   const { openPanel } = useBottomPanel()
   const { activeProjectId, activeEnvId, activeProjectName, setActiveContextWithNames } = useProjectStore()
-  const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
 
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
@@ -104,6 +102,8 @@ export function ApplicationDetailPage() {
 
   const projectIdToUse = currentEnv?.project_id || activeProjectId
   const projectNameToUse = currentEnv?.project_name || activeProjectName
+  const projectRole = useProjectRole(currentEnv?.project_id ?? null)
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
 
   const { data: envs = [] } = useQuery({
     queryKey: ['envs-simple', projectIdToUse],

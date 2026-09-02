@@ -37,7 +37,7 @@ interface ConfigFilesTableProps {
 export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingConfigFile, setEditingConfigFile] = React.useState<ConfigFileSpec | null>(
     null
@@ -59,6 +59,8 @@ export function ConfigFilesTable({ app }: ConfigFilesTableProps) {
         mount_path: cf.mount_path,
         file_mode: cf.file_mode || "0644",
         content: cf.content,
+        is_secret: cf.is_secret,
+        has_value: cf.has_value,
       }))
     },
   })

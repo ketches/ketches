@@ -286,6 +286,8 @@ describe("CreateAppDialog", () => {
     expect(mockToastError).toHaveBeenCalledWith("Error", {
       description: "Registry username is required when password is provided",
     })
+    expect(container.querySelector('input[name="registry_username"]')?.getAttribute("aria-invalid")).toBe("true")
+    expect(container.textContent).toContain("Registry username is required when password is provided")
 
     await act(async () => {
       root.unmount()

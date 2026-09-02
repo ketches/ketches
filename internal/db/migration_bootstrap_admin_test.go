@@ -46,4 +46,13 @@ func TestMigrateRequiresLegacyBootstrapAdminPasswordChange(t *testing.T) {
 	require.NoError(t, DB.First(&localUser, "id = ?", "local-user").Error)
 	assert.Equal(t, app.UserRoleUser, localUser.Role)
 	assert.False(t, localUser.MustChangePassword)
+
+	// The compatibility backfill is a one-time migration. Once the column
+	// exists, a later startup must not overwrite an administrator's decision.
+	require.NoError(t, DB.Model(&entities.User{}).
+		Where("id = ?", "bootstrap-admin").
+		Update("must_change_password", false).Error)
+	require.NoError(t, Migrate())
+	require.NoError(t, DB.First(&bootstrapAdmin, "id = ?", "bootstrap-admin").Error)
+	assert.False(t, bootstrapAdmin.MustChangePassword)
 }

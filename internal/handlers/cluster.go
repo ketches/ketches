@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -9,10 +10,10 @@ import (
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
+	"github.com/ketches/ketches/internal/middlewares"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 	wsPkg "github.com/ketches/ketches/pkg/websocket"
-	"golang.org/x/net/websocket"
 )
 
 func ListClusters(c *gin.Context) {
@@ -486,7 +487,7 @@ func ExecClusterNodeTerminal(c *gin.Context) {
 	w := c.Writer
 	r := c.Request
 
-	conn, err := wsPkg.NewConn(w, r)
+	conn, err := wsPkg.NewConn(w, r, wsPkg.OriginValidator(middlewares.IsAllowedOrigin))
 	if err != nil {
 		_ = c.Error(app.NewErrorf("failed to upgrade to websocket: %v", err))
 		return
@@ -503,12 +504,26 @@ func ExecClusterNodeTerminal(c *gin.Context) {
 		_ = stdinReader.Close()
 	}()
 
-	stdout := wsPkg.NewWriter(conn)
-	stderr := wsPkg.NewWriter(conn)
+	stdout, stderr := wsPkg.NewWriterPair(conn)
+	defer stdout.Close()
+	defer stderr.Close()
 
-	err = services.ExecClusterNodeTerminal(clusterID, nodeName, stdinReader, stdout, stderr)
-	if err != nil {
-		if sendErr := websocket.Message.Send(conn, []byte(fmt.Sprintf("Error: %v", err))); sendErr != nil {
+	execCtx, cancel := context.WithTimeout(r.Context(), wsPkg.SessionTimeout)
+	defer cancel()
+	go func() {
+		select {
+		case <-stdinReader.Done():
+			cancel()
+		case <-stdout.Done():
+			cancel()
+		case <-execCtx.Done():
+			_ = conn.Close()
+		}
+	}()
+
+	err = services.ExecClusterNodeTerminal(execCtx, clusterID, nodeName, stdinReader, stdout, stderr)
+	if err != nil && execCtx.Err() == nil {
+		if _, sendErr := stderr.Write([]byte(fmt.Sprintf("Error: %v", err))); sendErr != nil {
 			_ = c.Error(sendErr)
 		}
 	}

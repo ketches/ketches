@@ -218,7 +218,7 @@ func execCommandWithStdinStream(appCtx *models.AppContext, instanceName, contain
 			TTY:       false,
 		}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	exec, err := newRemoteCommandExecutor(config, "POST", req.URL())
 	if err != nil {
 		return err
 	}
@@ -513,38 +513,80 @@ func DownloadFile(appCtx *models.AppContext, instanceName, containerName, path s
 	)
 }
 
+// DownloadFileContents streams the first tar entry without buffering the
+// archive in memory.
+func DownloadFileContents(appCtx *models.AppContext, instanceName, containerName, path string, writer io.Writer) (int64, error) {
+	pipeReader, pipeWriter := io.Pipe()
+	errorCh := make(chan error, 1)
+	go func() {
+		err := DownloadFile(appCtx, instanceName, containerName, path, pipeWriter)
+		_ = pipeWriter.CloseWithError(err)
+		errorCh <- err
+	}()
+
+	reader := tar.NewReader(pipeReader)
+	header, err := reader.Next()
+	if err != nil {
+		_ = pipeReader.CloseWithError(err)
+		<-errorCh
+		return 0, err
+	}
+	written, copyErr := io.Copy(writer, reader)
+	if copyErr != nil {
+		_ = pipeReader.CloseWithError(copyErr)
+		<-errorCh
+		return written, copyErr
+	}
+	if _, err := io.Copy(io.Discard, pipeReader); err != nil {
+		<-errorCh
+		return written, err
+	}
+	if err := <-errorCh; err != nil {
+		return written, err
+	}
+	return header.Size, nil
+}
+
 // UploadFile uploads a file to the container using tar
 func UploadFile(appCtx *models.AppContext, instanceName, containerName, destDir, fileName string, fileContent io.Reader, fileSize int64) error {
+	if fileSize < 0 {
+		return app.NewErrorf("upload file size must be known")
+	}
 	destDir = filepath.Clean(destDir)
 	fileName = filepath.Base(fileName)
 	if fileName == "." || fileName == "/" || fileName == "" {
 		fileName = "upload"
 	}
 
-	// Create a tar archive in memory containing the file
-	var tarBuf bytes.Buffer
-	tw := tar.NewWriter(&tarBuf)
+	pipeReader, pipeWriter := io.Pipe()
+	errorCh := make(chan error, 1)
+	go func() {
+		tw := tar.NewWriter(pipeWriter)
+		err := tw.WriteHeader(&tar.Header{Name: fileName, Mode: 0644, Size: fileSize})
+		if err == nil {
+			_, err = io.CopyN(tw, fileContent, fileSize)
+		}
+		if closeErr := tw.Close(); err == nil {
+			err = closeErr
+		}
+		_ = pipeWriter.CloseWithError(err)
+		errorCh <- err
+	}()
 
-	header := &tar.Header{
-		Name: fileName,
-		Mode: 0644,
-		Size: fileSize,
-	}
-	if err := tw.WriteHeader(header); err != nil {
-		return app.NewErrorf("failed to write tar header: %v", err)
-	}
-	if _, err := io.Copy(tw, fileContent); err != nil {
-		return app.NewErrorf("failed to write tar content: %v", err)
-	}
-	if err := tw.Close(); err != nil {
-		return app.NewErrorf("failed to close tar writer: %v", err)
-	}
-
-	// Extract the tar archive in the destination directory
-	return execCommandWithStdinStream(
+	// Extract the tar archive in the destination directory while the archive is produced.
+	err := execCommandWithStdinStream(
 		appCtx, instanceName, containerName,
 		[]string{"tar", "xf", "-", "-C", destDir},
-		&tarBuf,
+		pipeReader,
 		io.Discard,
 	)
+	_ = pipeReader.CloseWithError(err)
+	producerErr := <-errorCh
+	if err != nil {
+		return err
+	}
+	if producerErr != nil {
+		return app.NewErrorf("failed to create upload archive: %v", producerErr)
+	}
+	return nil
 }

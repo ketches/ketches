@@ -6,6 +6,10 @@ vi.mock("@/components/notifications/notification-bell", () => ({
   NotificationBell: () => <div data-testid="notification-bell">notifications</div>,
 }))
 
+vi.mock("@/components/platform-updates/platform-update-bell", () => ({
+  PlatformUpdateBell: () => <div data-testid="platform-update-bell">updates</div>,
+}))
+
 vi.mock("@/contexts/use-breadcrumbs", () => ({
   useBreadcrumbs: () => ({ breadcrumbs: [] }),
 }))
@@ -30,7 +34,7 @@ describe("AppHeader", () => {
     vi.clearAllMocks()
   })
 
-  it("renders the notification bell in the right-side action area", async () => {
+  it("renders the notification and platform update bells in the right-side action area", async () => {
     const container = document.createElement("div")
     document.body.appendChild(container)
     const root = ReactDOMClient.createRoot(container)
@@ -40,6 +44,7 @@ describe("AppHeader", () => {
     })
 
     expect(container.querySelector('[data-testid="notification-bell"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="platform-update-bell"]')).not.toBeNull()
 
     await act(async () => {
       root.unmount()

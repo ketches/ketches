@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,8 @@ export interface EnvVarSpec {
   id?: string
   key: string
   value: string
+  is_secret?: boolean
+  has_value?: boolean
 }
 
 interface EnvVarEditorProps {
@@ -44,6 +47,7 @@ export function EnvVarEditor({
   const [formData, setFormData] = React.useState<EnvVarSpec>({
     key: "",
     value: "",
+    is_secret: false,
   })
 
   const [errors, setErrors] = React.useState<Record<string, string>>({})
@@ -56,11 +60,13 @@ export function EnvVarEditor({
           id: envVar.id,
           key: envVar.key || "",
           value: envVar.value || "",
+          is_secret: envVar.is_secret || false,
         })
       } else {
         setFormData({
           key: "",
           value: "",
+          is_secret: false,
         })
       }
       setErrors({})
@@ -144,6 +150,19 @@ export function EnvVarEditor({
                   Key cannot be changed after creation
                 </p>
               )}
+            </Field>
+
+            <Field orientation="horizontal">
+              <Checkbox
+                id="is-secret"
+                checked={formData.is_secret}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, is_secret: checked === true }))
+                }
+              />
+              <FieldContent>
+                <FieldLabel htmlFor="is-secret">Sensitive value</FieldLabel>
+              </FieldContent>
             </Field>
 
             <Field>

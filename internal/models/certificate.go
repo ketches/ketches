@@ -5,13 +5,14 @@ import "time"
 // CertificateResponse represents the API response for a certificate.
 // Cert and Key fields are intentionally excluded for security.
 type CertificateResponse struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Scope       string    `json:"scope"`
-	ClusterID   string    `json:"cluster_id"`
-	EnvID       string    `json:"env_id,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Description   string    `json:"description"`
+	Scope         string    `json:"scope"`
+	ClusterID     string    `json:"cluster_id"`
+	EnvID         string    `json:"env_id,omitempty"`
+	HasPrivateKey bool      `json:"has_private_key"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // ListCertificatesResponse represents the paginated list of certificates

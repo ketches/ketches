@@ -8,14 +8,21 @@ import (
 	"gorm.io/gorm"
 )
 
+// Migrate keeps the development database schema aligned with the entity definitions.
 func Migrate() error {
 	slog.Info("running database automigrate")
 	hadUserTable := DB.Migrator().HasTable(&entities.User{})
 	hadPasswordChangeColumn := DB.Migrator().HasColumn(&entities.User{}, "MustChangePassword")
 
+	if err := prepareLegacyUniqueIndexData(DB); err != nil {
+		return err
+	}
+
 	if err := DB.AutoMigrate(
 		&entities.User{},
+		&entities.RecycleBinDeletionClaim{},
 		&entities.SignupVerificationCode{},
+		&entities.AuthRateLimit{},
 		&entities.Cluster{},
 		&entities.ClusterIntegration{},
 		&entities.Project{},
@@ -38,18 +45,6 @@ func Migrate() error {
 		&entities.AppGroupMember{},
 		&entities.AppFavorite{},
 		&entities.ContainerRegistry{},
-		&entities.UserAIProvider{},
-		&entities.ProjectAIProvider{},
-		&entities.BuilderSession{},
-		&entities.BuilderMessage{},
-		&entities.BuilderRun{},
-		&entities.BuilderExecutorHandle{},
-		&entities.BuilderRunEvent{},
-		&entities.BuilderWorkspace{},
-		&entities.BuilderArtifact{},
-		&entities.BuilderExport{},
-		&entities.BuilderOutputSnapshot{},
-		&entities.BuilderOutputSnapshotFile{},
 		&entities.BuildSetting{},
 		&entities.Build{},
 		&entities.BuildDeployment{},
@@ -72,12 +67,10 @@ func Migrate() error {
 	); err != nil {
 		return err
 	}
-	if hadUserTable && !hadPasswordChangeColumn {
-		if err := requireLegacyBootstrapAdminPasswordChange(DB); err != nil {
-			return err
-		}
-	}
 
+	if hadUserTable && !hadPasswordChangeColumn {
+		return requireLegacyBootstrapAdminPasswordChange(DB)
+	}
 	return nil
 }
 

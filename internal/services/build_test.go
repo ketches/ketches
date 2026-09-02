@@ -187,6 +187,113 @@ func TestTriggerCodeRepositoryBuildRejectsCrossProjectAutoDeployBeforeCreatingRe
 	assert.Zero(t, deploymentCount)
 }
 
+func TestBuildRepositoryNumberCompositeUniqueIndex(t *testing.T) {
+	setupBuildServiceTestDB(t)
+
+	repositoryID := "repo-1"
+	otherRepositoryID := "repo-2"
+	require.NoError(t, db.DB.Create(&entities.Build{
+		ID:               "build-1",
+		BuildSettingID:   "setting-1",
+		CodeRepositoryID: &repositoryID,
+		BuildEnvID:       "build-env",
+		BuildNumber:      1,
+		Status:           entities.BuildStatusSucceeded,
+	}).Error)
+
+	err := db.DB.Create(&entities.Build{
+		ID:               "build-duplicate",
+		BuildSettingID:   "setting-2",
+		CodeRepositoryID: &repositoryID,
+		BuildEnvID:       "build-env",
+		BuildNumber:      1,
+		Status:           entities.BuildStatusSucceeded,
+	}).Error
+	assert.Error(t, err)
+	require.NoError(t, db.DB.Create(&entities.Build{
+		ID:               "build-other-repository",
+		BuildSettingID:   "setting-3",
+		CodeRepositoryID: &otherRepositoryID,
+		BuildEnvID:       "build-env",
+		BuildNumber:      1,
+		Status:           entities.BuildStatusSucceeded,
+	}).Error)
+}
+
+func TestNextCodeRepositoryBuildNumberUsesRepositoryScope(t *testing.T) {
+	setupBuildServiceTestDB(t)
+
+	repositoryID := "repo-1"
+	otherRepositoryID := "repo-2"
+	settings := []entities.BuildSetting{
+		{ID: "setting-1", CodeRepositoryID: &repositoryID, ImageName: "repo/app", RegistryID: "registry-1"},
+		{ID: "setting-2", CodeRepositoryID: &repositoryID, ImageName: "repo/worker", RegistryID: "registry-1"},
+		{ID: "setting-3", CodeRepositoryID: &otherRepositoryID, ImageName: "other/app", RegistryID: "registry-1"},
+	}
+	require.NoError(t, db.DB.Create(&settings).Error)
+	builds := []entities.Build{
+		{ID: "build-1", BuildSettingID: "setting-1", CodeRepositoryID: &repositoryID, BuildEnvID: "env-1", BuildNumber: 1, Status: entities.BuildStatusSucceeded},
+		{ID: "build-2", BuildSettingID: "setting-2", CodeRepositoryID: &repositoryID, BuildEnvID: "env-1", BuildNumber: 3, Status: entities.BuildStatusSucceeded},
+		{ID: "build-3", BuildSettingID: "setting-3", CodeRepositoryID: &otherRepositoryID, BuildEnvID: "env-1", BuildNumber: 7, Status: entities.BuildStatusSucceeded},
+	}
+	require.NoError(t, db.DB.Create(&builds).Error)
+
+	next, err := nextCodeRepositoryBuildNumber(db.DB, repositoryID)
+	require.NoError(t, err)
+	assert.Equal(t, 4, next)
+	otherNext, err := nextCodeRepositoryBuildNumber(db.DB, otherRepositoryID)
+	require.NoError(t, err)
+	assert.Equal(t, 8, otherNext)
+}
+
+func TestNextCodeRepositoryBuildNumberContinuesAfterBuildSettingDeletion(t *testing.T) {
+	setupBuildServiceTestDB(t)
+
+	repositoryID := "repo-1"
+	oldSetting := entities.BuildSetting{
+		ID:               "setting-old",
+		CodeRepositoryID: &repositoryID,
+		Name:             "Old",
+		ImageName:        "repo/old",
+		RegistryID:       "registry-1",
+	}
+	require.NoError(t, db.DB.Create(&oldSetting).Error)
+	require.NoError(t, db.DB.Create(&entities.Build{
+		ID:               "build-history",
+		BuildSettingID:   oldSetting.ID,
+		CodeRepositoryID: &repositoryID,
+		BuildEnvID:       "env-1",
+		BuildNumber:      7,
+		Status:           entities.BuildStatusSucceeded,
+	}).Error)
+
+	require.NoError(t, DeleteRepoBuildSetting(oldSetting.ID))
+	newSetting := entities.BuildSetting{
+		ID:               "setting-new",
+		CodeRepositoryID: &repositoryID,
+		Name:             "New",
+		ImageName:        "repo/new",
+		RegistryID:       "registry-1",
+	}
+	require.NoError(t, db.DB.Create(&newSetting).Error)
+
+	next, err := nextCodeRepositoryBuildNumber(db.DB, repositoryID)
+	require.NoError(t, err)
+	assert.Equal(t, 8, next)
+	require.NoError(t, db.DB.Create(&entities.Build{
+		ID:               "build-new",
+		BuildSettingID:   newSetting.ID,
+		CodeRepositoryID: &repositoryID,
+		BuildEnvID:       "env-1",
+		BuildNumber:      next,
+		Status:           entities.BuildStatusPending,
+	}).Error)
+
+	var buildCount int64
+	require.NoError(t, db.DB.Model(&entities.Build{}).Where("code_repository_id = ?", repositoryID).Count(&buildCount).Error)
+	assert.EqualValues(t, 2, buildCount)
+}
+
 func TestListDeployedAppsByEnvironmentAndBuildSetting(t *testing.T) {
 	setupBuildServiceTestDB(t)
 

@@ -26,7 +26,10 @@ func writeRecycleBinActionError(c *gin.Context, err error) {
 		api.Error(c, http.StatusForbidden, err)
 	case errors.Is(err, services.ErrRecycleBinInvalidIDs):
 		api.Error(c, http.StatusBadRequest, err)
-	case errors.Is(err, services.ErrRecycleBinResourceActive):
+	case errors.Is(err, services.ErrRecycleBinResourceActive),
+		errors.Is(err, services.ErrRecycleBinResourceDeleting),
+		errors.Is(err, services.ErrRecycleBinParentDeleted),
+		errors.Is(err, services.ErrRecycleBinActiveChildren):
 		api.Error(c, http.StatusConflict, err)
 	case errors.Is(err, services.ErrRecycleBinResourceNotFound):
 		api.Error(c, http.StatusNotFound, err)

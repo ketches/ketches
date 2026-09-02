@@ -5,15 +5,25 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
 )
 
 func ListAppConfigFiles(appID string) ([]models.AppConfigFileResponse, error) {
+	return ListAppConfigFilesForProjectRole(appID, "")
+}
+
+func ListAppConfigFilesForProjectRole(appID string, projectRole app.ProjectRole) ([]models.AppConfigFileResponse, error) {
+	return listAppConfigFiles(appID, canRevealAppConfigurationValues(projectRole))
+}
+
+func listAppConfigFiles(appID string, revealSecrets bool) ([]models.AppConfigFileResponse, error) {
 	var configFiles []entities.AppConfigFile
 	err := db.DB.Where("app_id = ?", appID).Find(&configFiles).Error
 	if err != nil {
@@ -21,9 +31,22 @@ func ListAppConfigFiles(appID string) ([]models.AppConfigFileResponse, error) {
 	}
 	result := make([]models.AppConfigFileResponse, 0, len(configFiles))
 	for _, cf := range configFiles {
-		result = append(result, toAppConfigFileResponse(&cf))
+		response, err := toAppConfigFileResponse(&cf, revealSecrets)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, response)
 	}
 	return result, nil
+}
+
+func canRevealAppConfigurationValues(projectRole app.ProjectRole) bool {
+	switch projectRole {
+	case app.ProjectRoleOwner, app.ProjectRoleDeveloper:
+		return true
+	default:
+		return false
+	}
 }
 
 func CreateAppConfigFile(ctx context.Context, appID string, req *models.CreateConfigFileRequest) (*models.AppConfigFileResponse, error) {
@@ -32,13 +55,22 @@ func CreateAppConfigFile(ctx context.Context, appID string, req *models.CreateCo
 		fileMode = "0644"
 	}
 
+	content := req.Content
+	if req.IsSecret {
+		var err error
+		content, err = secrets.EncryptString(req.Content)
+		if err != nil {
+			return nil, err
+		}
+	}
 	entity := &entities.AppConfigFile{
 		ID:        uuid.New(),
 		AppID:     appID,
 		Slug:      req.Slug,
 		MountPath: req.MountPath,
-		Content:   req.Content,
+		Content:   content,
 		FileMode:  fileMode,
+		IsSecret:  req.IsSecret,
 	}
 
 	// Check slug uniqueness
@@ -72,7 +104,10 @@ func CreateAppConfigFile(ctx context.Context, appID string, req *models.CreateCo
 		return nil, err
 	}
 
-	res := toAppConfigFileResponse(entity)
+	res, err := toAppConfigFileResponse(entity, true)
+	if err != nil {
+		return nil, err
+	}
 	return &res, nil
 }
 
@@ -108,7 +143,19 @@ func UpdateAppConfigFile(ctx context.Context, id string, req *models.UpdateConfi
 	// Update fields
 	configFile.Slug = req.Slug
 	configFile.MountPath = req.MountPath
-	configFile.Content = req.Content
+	isSecret := configFile.IsSecret
+	if req.IsSecret != nil {
+		isSecret = *req.IsSecret
+	}
+	content := req.Content
+	if isSecret {
+		content, err = secrets.EncryptString(req.Content)
+		if err != nil {
+			return nil, err
+		}
+	}
+	configFile.Content = content
+	configFile.IsSecret = isSecret
 	if req.FileMode != "" {
 		configFile.FileMode = req.FileMode
 	}
@@ -129,7 +176,10 @@ func UpdateAppConfigFile(ctx context.Context, id string, req *models.UpdateConfi
 		return nil, err
 	}
 
-	res := toAppConfigFileResponse(&configFile)
+	res, err := toAppConfigFileResponse(&configFile, true)
+	if err != nil {
+		return nil, err
+	}
 	return &res, nil
 }
 
@@ -143,14 +193,12 @@ func DeleteAppConfigFile(ctx context.Context, id string) error {
 		return err
 	}
 
-	// Fetch full app context from DB
-	appCtx, err := GetAppContext(ctx, configFile.AppID)
-	if err != nil {
-		return err
-	}
-
 	// Delete from database
 	if err := db.DB.Delete(&configFile).Error; err != nil {
+		return err
+	}
+	appCtx, err := GetAppContext(ctx, configFile.AppID)
+	if err != nil {
 		return err
 	}
 
@@ -163,17 +211,29 @@ func DeleteAppConfigFile(ctx context.Context, id string) error {
 }
 
 // toAppConfigFileResponse converts an AppConfigFile entity to a response model with snake_case JSON fields.
-func toAppConfigFileResponse(cf *entities.AppConfigFile) models.AppConfigFileResponse {
+func toAppConfigFileResponse(cf *entities.AppConfigFile, revealSecret bool) (models.AppConfigFileResponse, error) {
+	content := cf.Content
+	if !revealSecret {
+		content = ""
+	} else if cf.IsSecret {
+		plaintext, err := secrets.DecryptStringCompatible(cf.Content)
+		if err != nil {
+			return models.AppConfigFileResponse{}, err
+		}
+		content = plaintext
+	}
 	return models.AppConfigFileResponse{
 		ID:        cf.ID,
 		AppID:     cf.AppID,
 		Slug:      cf.Slug,
 		MountPath: cf.MountPath,
-		Content:   cf.Content,
+		Content:   content,
 		FileMode:  cf.FileMode,
+		IsSecret:  cf.IsSecret,
+		HasValue:  cf.Content != "",
 		CreatedAt: cf.CreatedAt,
 		UpdatedAt: cf.UpdatedAt,
-	}
+	}, nil
 }
 
 // checkMountPathConflicts checks if the mount path conflicts with existing config files or volumes

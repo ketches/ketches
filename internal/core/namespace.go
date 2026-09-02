@@ -2,10 +2,13 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/kube"
 	"github.com/ketches/ketches/internal/models"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +17,8 @@ import (
 )
 
 const (
-	maxNamespaceLength = 63
+	maxNamespaceLength  = 63
+	namespaceHashLength = 10
 )
 
 var invalidNamespaceChars = regexp.MustCompile(`[^a-z0-9-]+`)
@@ -28,8 +32,10 @@ func GenerateNamespaceName(projectSlug, envSlug string) string {
 	}), "-")
 
 	if len(base) > maxNamespaceLength {
-		base = base[:maxNamespaceLength]
-		base = strings.Trim(base, "-")
+		sum := sha256.Sum256([]byte(base))
+		suffix := hex.EncodeToString(sum[:])[:namespaceHashLength]
+		prefixLength := maxNamespaceLength - namespaceHashLength - 1
+		base = strings.Trim(base[:prefixLength], "-") + "-" + suffix
 	}
 
 	return base
@@ -58,10 +64,22 @@ func CreateNamespace(ctx context.Context, clusterID, namespaceName string, envCt
 		},
 	}
 
+	existing, err := client.CoreV1().Namespaces().Get(ctx, namespaceName, metav1.GetOptions{})
+	if err == nil {
+		return validateNamespaceOwnership(existing, labels)
+	}
+	if !k8serrors.IsNotFound(err) {
+		return err
+	}
+
 	_, err = client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil {
 		if k8serrors.IsAlreadyExists(err) {
-			return nil
+			existing, getErr := client.CoreV1().Namespaces().Get(ctx, namespaceName, metav1.GetOptions{})
+			if getErr != nil {
+				return getErr
+			}
+			return validateNamespaceOwnership(existing, labels)
 		}
 		return err
 	}
@@ -70,6 +88,25 @@ func CreateNamespace(ctx context.Context, clusterID, namespaceName string, envCt
 		return err
 	}
 
+	return nil
+}
+
+func validateNamespaceOwnership(namespace *corev1.Namespace, expectedLabels map[string]string) error {
+	if namespace == nil {
+		return app.NewErrorf("namespace is required")
+	}
+	expectedEnvID := expectedLabels[kube.LabelEnvID]
+	actualEnvID := namespace.Labels[kube.LabelEnvID]
+	if namespace.Labels[kube.LabelManagedBy] != "true" || expectedEnvID == "" || actualEnvID != expectedEnvID {
+		return app.NewErrorf(
+			"namespace %q is not owned by environment %q",
+			namespace.Name,
+			expectedEnvID,
+		)
+	}
+	if expectedProjectID := expectedLabels[kube.LabelProjectID]; namespace.Labels[kube.LabelProjectID] != expectedProjectID {
+		return app.NewErrorf("namespace %q is not owned by project %q", namespace.Name, expectedProjectID)
+	}
 	return nil
 }
 

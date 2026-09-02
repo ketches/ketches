@@ -215,9 +215,10 @@ make dev-ui
 | `DB_USERNAME` | 按驱动决定 | 未设置 `DB_SOURCE` 时的数据库用户名 |
 | `DB_PASSWORD` | 空 | 未设置 `DB_SOURCE` 时的数据库密码 |
 | `DB_SSLMODE` | `disable` | 未设置 `DB_SOURCE` 时 PostgreSQL 的 SSL 模式 |
-| `DB_AUTO_MIGRATE` | `true` | 是否在数据库初始化时执行 GORM AutoMigrate |
+| `DB_AUTO_MIGRATE` | `true` | 数据库初始化时是否执行 GORM AutoMigrate；由外部流程管理迁移时设为 `false` |
 | `JWT_SECRET` | *（必填）* | JWT Token 签名密钥 |
 | `SECRET_ENCRYPTION_KEY` | *（必填）* | 用于静态加密敏感数据的密钥 |
+| `PREVIOUS_SECRET_ENCRYPTION_KEYS` | 空 | 手动轮换密钥时用于解密旧数据的可选密钥，多个值用逗号分隔 |
 | `BOOTSTRAP_ADMIN_USERNAME` | `kadmin` | 可选，覆盖 bootstrap 管理员用户名 |
 | `BOOTSTRAP_ADMIN_PASSWORD` | *（必填）* | bootstrap 管理员初始口令；请生成随机值并通过 Secret/环境注入 |
 | `SIGN_UP_EMAIL_VERIFICATION_REQUIRED` | `true` | 公共注册是否要求邮箱验证码 |
@@ -228,7 +229,9 @@ make dev-ui
 | `SMTP_FROM` | 空 | 验证邮件的发件人地址 |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | 允许跨域的源地址，逗号分隔 |
 
-**Note**：生产环境建议设置 `DB_AUTO_MIGRATE=false`，并通过可控的迁移流程管理数据库结构变更。
+API 默认在启动时根据实体定义执行 GORM `AutoMigrate`。如果由受控的外部流程管理数据库结构变更，请设置 `DB_AUTO_MIGRATE=false`；此时 API 只连接数据库，不执行迁移 DDL。
+
+已有开发数据库应保持 `SECRET_ENCRYPTION_KEY` 不变。需要更换密钥时，直接重建开发数据，不再维护 legacy 迁移流程。
 
 SQLite 不再作为运行时支持的数据库，仅在测试中通过纯 Go 驱动保留，以便后端构建彻底去掉 CGO。
 

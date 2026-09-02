@@ -67,6 +67,9 @@ func (g *K8sManifestGenerator) Generate(appMetadatas []models.AppMetadata) (stri
 		// Environment variables
 		if len(app.EnvVars) > 0 {
 			for _, env := range app.EnvVars {
+				if env.IsSecret {
+					continue
+				}
 				container.Env = append(container.Env, corev1.EnvVar{
 					Name:  env.Key,
 					Value: env.Value,
@@ -99,7 +102,7 @@ func (g *K8sManifestGenerator) Generate(appMetadatas []models.AppMetadata) (stri
 		}
 
 		// Workload (Deployment or StatefulSet)
-		var workload interface{}
+		var workload any
 		objectMeta := metav1.ObjectMeta{
 			Name: app.AppSlug,
 		}
@@ -191,6 +194,9 @@ func (g *K8sManifestGenerator) Generate(appMetadatas []models.AppMetadata) (stri
 		if len(app.ConfigFiles) > 0 {
 			data := make(map[string]string)
 			for _, cf := range app.ConfigFiles {
+				if cf.IsSecret {
+					continue
+				}
 				// Use slug or filename as key? The requirement says "data: ConfigFiles content"
 				// Typically ConfigMap keys are filenames.
 				// Requirement says: "metadata.name: AppSlug + "-config""
@@ -203,6 +209,9 @@ func (g *K8sManifestGenerator) Generate(appMetadatas []models.AppMetadata) (stri
 				data[key] = cf.Content
 			}
 
+			if len(data) == 0 {
+				continue
+			}
 			configMap := &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "v1",
@@ -333,6 +342,9 @@ func (g *HelmChartGenerator) Generate(appMetadatas []models.AppMetadata) (string
 
 		// Env vars
 		for _, env := range app.EnvVars {
+			if env.IsSecret {
+				continue
+			}
 			values.Env = append(values.Env, map[string]string{"name": env.Key, "value": env.Value})
 		}
 
@@ -571,6 +583,9 @@ func (g *DockerComposeGenerator) Generate(appMetadatas []models.AppMetadata) (st
 		if len(app.EnvVars) > 0 {
 			svc.Environment = make(map[string]string)
 			for _, env := range app.EnvVars {
+				if env.IsSecret {
+					continue
+				}
 				svc.Environment[env.Key] = env.Value
 			}
 		}

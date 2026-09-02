@@ -1,6 +1,7 @@
 package services
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -29,6 +30,31 @@ import (
 
 type fakeRemoteCommandExecutor struct {
 	seenCtx context.Context
+}
+
+type tarStreamExecutor struct {
+	stdout []byte
+	stdin  []byte
+}
+
+func (f *tarStreamExecutor) Stream(options remotecommand.StreamOptions) error {
+	return f.StreamWithContext(context.Background(), options)
+}
+
+func (f *tarStreamExecutor) StreamWithContext(_ context.Context, options remotecommand.StreamOptions) error {
+	if options.Stdout != nil && len(f.stdout) > 0 {
+		if _, err := options.Stdout.Write(f.stdout); err != nil {
+			return err
+		}
+	}
+	if options.Stdin != nil {
+		data, err := io.ReadAll(options.Stdin)
+		if err != nil {
+			return err
+		}
+		f.stdin = data
+	}
+	return nil
 }
 
 func (f *fakeRemoteCommandExecutor) Stream(_ remotecommand.StreamOptions) error {
@@ -114,18 +140,18 @@ func buildFileExplorerTestAppContext(t *testing.T) *models.AppContext {
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "builder-pod",
-			Namespace: "builder-ns",
+			Name:      "workspace-pod",
+			Namespace: "workspace-ns",
 			Labels: map[string]string{
-				kube.LabelManagedBy:        "true",
-				kube.LabelBuilderWorkspace: "true",
-				kube.LabelBuilderSessionID: "session-1",
+				kube.LabelManagedBy:         "true",
+				"ketches.cn/workspace-role": "interactive",
+				"ketches.cn/workspace-id":   "workspace-1",
 			},
 		},
 		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "workspace"}}},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/namespaces/builder-ns/pods/builder-pod" {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/namespaces/workspace-ns/pods/workspace-pod" {
 			http.NotFound(w, r)
 			return
 		}
@@ -162,11 +188,11 @@ current-context: test
 
 	return &models.AppContext{
 		PodAccessPolicy: &models.PodAccessPolicy{RequiredLabels: map[string]string{
-			kube.LabelBuilderWorkspace: "true",
-			kube.LabelBuilderSessionID: "session-1",
+			"ketches.cn/workspace-role": "interactive",
+			"ketches.cn/workspace-id":   "workspace-1",
 		}},
 		EnvContext: models.EnvContext{
-			Env:     entities.Env{ClusterNamespace: "builder-ns"},
+			Env:     entities.Env{ClusterNamespace: "workspace-ns"},
 			Cluster: entities.Cluster{KubeConfig: encryptedKubeConfig},
 		},
 	}
@@ -188,7 +214,7 @@ func TestExecCommandStreamStdoutWithContext_StopsBeforeExecWhenContextCanceled(t
 	cancel()
 
 	var stdout bytes.Buffer
-	err := execCommandStreamStdoutWithContext(ctx, appCtx, "builder-pod", "workspace", []string{"cat", "/workspace/dist/index.html"}, &stdout)
+	err := execCommandStreamStdoutWithContext(ctx, appCtx, "workspace-pod", "workspace", []string{"cat", "/workspace/dist/index.html"}, &stdout)
 	require.ErrorIs(t, err, context.Canceled)
 	assert.Nil(t, fakeExecutor.seenCtx)
 	assert.Empty(t, stdout.String())
@@ -208,7 +234,7 @@ func TestExecCommandRejectsPodOutsideApplicationBeforeExec(t *testing.T) {
 		newRemoteCommandExecutor = originalFactory
 	})
 
-	_, _, err := execCommand(appCtx, "builder-pod", "workspace", []string{"id"})
+	_, _, err := execCommand(appCtx, "workspace-pod", "workspace", []string{"id"})
 	require.ErrorIs(t, err, errPodAccessDenied)
 	assert.False(t, executorCreated)
 }
@@ -235,7 +261,7 @@ func TestWriteFile_AllowsCreatingNestedParentDirectoriesInsideWritableWorkspace(
 		newRemoteCommandExecutor = originalFactory
 	})
 
-	err := WriteFile(appCtx, "builder-pod", "workspace", "/workspace/src/main.tsx", "export {}")
+	err := WriteFile(appCtx, "workspace-pod", "workspace", "/workspace/src/main.tsx", "export {}")
 	require.NoError(t, err)
 	assert.Contains(t, fs.files, "/workspace/src/main.tsx")
 	assert.Equal(t, "export {}", fs.files["/workspace/src/main.tsx"])
@@ -258,7 +284,54 @@ func TestCompressFilesUsesTarArgumentsInsteadOfShellInterpolation(t *testing.T) 
 		newRemoteCommandExecutor = originalFactory
 	})
 
-	err := CompressFiles(appCtx, "builder-pod", "workspace", "/workspace/app", []string{"src/main.tsx", "package.json"}, "/workspace/archive.tar.gz")
+	err := CompressFiles(appCtx, "workspace-pod", "workspace", "/workspace/app", []string{"src/main.tsx", "package.json"}, "/workspace/archive.tar.gz")
 	require.NoError(t, err)
 	require.Equal(t, []string{"tar", "czf", "/workspace/archive.tar.gz", "-C", "/workspace/app", "src/main.tsx", "package.json"}, seenCommands)
+}
+
+func TestDownloadFileContentsStreamsTarEntry(t *testing.T) {
+	appCtx := buildFileExplorerTestAppContext(t)
+	var archive bytes.Buffer
+	tarWriter := tar.NewWriter(&archive)
+	content := bytes.Repeat([]byte("download-data"), 1024)
+	require.NoError(t, tarWriter.WriteHeader(&tar.Header{Name: "artifact.bin", Mode: 0600, Size: int64(len(content))}))
+	_, err := tarWriter.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, tarWriter.Close())
+
+	executor := &tarStreamExecutor{stdout: archive.Bytes()}
+	originalFactory := newRemoteCommandExecutor
+	newRemoteCommandExecutor = func(_ *rest.Config, _ string, _ *url.URL) (remotecommand.Executor, error) {
+		return executor, nil
+	}
+	t.Cleanup(func() { newRemoteCommandExecutor = originalFactory })
+
+	var output bytes.Buffer
+	size, err := DownloadFileContents(appCtx, "workspace-pod", "workspace", "/workspace/artifact.bin", &output)
+	require.NoError(t, err)
+	assert.Equal(t, int64(len(content)), size)
+	assert.Equal(t, content, output.Bytes())
+}
+
+func TestUploadFileStreamsTarArchive(t *testing.T) {
+	appCtx := buildFileExplorerTestAppContext(t)
+	content := bytes.Repeat([]byte("upload-data"), 1024)
+	executor := &tarStreamExecutor{}
+	originalFactory := newRemoteCommandExecutor
+	newRemoteCommandExecutor = func(_ *rest.Config, _ string, _ *url.URL) (remotecommand.Executor, error) {
+		return executor, nil
+	}
+	t.Cleanup(func() { newRemoteCommandExecutor = originalFactory })
+
+	err := UploadFile(appCtx, "workspace-pod", "workspace", "/workspace", "artifact.bin", bytes.NewReader(content), int64(len(content)))
+	require.NoError(t, err)
+
+	tarReader := tar.NewReader(bytes.NewReader(executor.stdin))
+	header, err := tarReader.Next()
+	require.NoError(t, err)
+	assert.Equal(t, "artifact.bin", header.Name)
+	assert.Equal(t, int64(len(content)), header.Size)
+	uploaded, err := io.ReadAll(tarReader)
+	require.NoError(t, err)
+	assert.Equal(t, content, uploaded)
 }

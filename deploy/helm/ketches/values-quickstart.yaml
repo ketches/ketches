@@ -3,11 +3,15 @@
 # Do NOT reuse them in shared, staging, or production environments.
 
 config:
+  environment: development
+  dbSSLMode: disable
   jwtSecret: ketches-quickstart-jwt-secret
   secretEncryptionKey: ketches-quickstart-encryption-key
   corsAllowedOrigins: http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:30080,http://localhost:30080
   signUpEmailVerificationRequired: false
 
 postgres:
+  tls:
+    enabled: false
   auth:
     password: ketches-quickstart-postgres

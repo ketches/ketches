@@ -135,7 +135,14 @@ vi.mock("@/components/ui/combobox", () => ({
 }))
 
 vi.mock("@/components/ui/input-group", () => ({
-  InputGroupButton: ({ children, type, ...props }: React.ComponentProps<"button">) => <button type={type ?? "button"} {...props}>{children}</button>,
+  InputGroup: ({ children, ...props }: React.ComponentProps<"div">) => <div {...props}>{children}</div>,
+  InputGroupAddon: ({ children, align: _align, ...props }: React.ComponentProps<"div"> & { align?: string }) => (
+    <div {...props}>{children}</div>
+  ),
+  InputGroupButton: ({ children, type, ...props }: React.ComponentProps<"button">) => (
+    <button type={type ?? "button"} {...props}>{children}</button>
+  ),
+  InputGroupInput: (props: React.ComponentProps<"input">) => <input {...props} />,
 }))
 
 import type { App } from "@/api/apps"

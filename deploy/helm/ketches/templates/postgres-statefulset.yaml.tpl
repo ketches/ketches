@@ -29,10 +29,35 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.postgres.tls.enabled }}
+      initContainers:
+        - name: generate-postgres-tls
+          image: "{{ .Values.postgres.tls.generatorImage.repository }}:{{ .Values.postgres.tls.generatorImage.tag }}"
+          imagePullPolicy: {{ .Values.postgres.tls.generatorImage.pullPolicy }}
+          command:
+            - sh
+            - -ec
+            - |
+              openssl req -new -x509 -nodes -days 3650 -subj "/CN={{ include "ketches.postgres.fullname" . }}" -keyout /tls/tls.key -out /tls/tls.crt
+              chown 0:{{ .Values.postgres.tls.serverGroupID }} /tls/tls.key /tls/tls.crt
+              chmod 0640 /tls/tls.key
+          volumeMounts:
+            - name: postgres-tls
+              mountPath: /tls
+      {{- end }}
       containers:
         - name: postgres
           image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
           imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          {{- if .Values.postgres.tls.enabled }}
+          args:
+            - -c
+            - ssl=on
+            - -c
+            - ssl_cert_file=/tls/tls.crt
+            - -c
+            - ssl_key_file=/tls/tls.key
+          {{- end }}
           ports:
             - name: postgres
               containerPort: {{ .Values.postgres.service.port }}
@@ -50,12 +75,23 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+            {{- if .Values.postgres.tls.enabled }}
+            - name: postgres-tls
+              mountPath: /tls
+              readOnly: true
+            {{- end }}
           resources:
             {{- toYaml .Values.postgres.resources | nindent 12 }}
-      {{- if not .Values.postgres.persistence.enabled }}
+      {{- if or .Values.postgres.tls.enabled (not .Values.postgres.persistence.enabled) }}
       volumes:
+        {{- if .Values.postgres.tls.enabled }}
+        - name: postgres-tls
+          emptyDir: {}
+        {{- end }}
+        {{- if not .Values.postgres.persistence.enabled }}
         - name: data
           emptyDir: {}
+        {{- end }}
       {{- end }}
       {{- with .Values.postgres.nodeSelector }}
       nodeSelector:

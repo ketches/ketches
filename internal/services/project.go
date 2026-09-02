@@ -1,15 +1,30 @@
 package services
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/ketches/ketches/internal/app"
+	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
+
+// lockForUpdate serializes read/modify/write operations on PostgreSQL and
+// MySQL. SQLite has no row-level locking clause, so the transaction itself is
+// the strongest portable primitive available there.
+func lockForUpdate(tx *gorm.DB) *gorm.DB {
+	if tx == nil || tx.Dialector.Name() == "sqlite" {
+		return tx
+	}
+	return tx.Clauses(clause.Locking{Strength: "UPDATE"})
+}
 
 // ListProjects returns a paginated list of projects using an explicit JOIN to
 // fetch the owner name instead of GORM Preload. Results are scanned into the
@@ -152,12 +167,51 @@ func PermanentlyDeleteProject(projectID string, actors ...RecycleBinActor) error
 	if err != nil {
 		return err
 	}
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if _, err := loadRecycleBinProject(tx, projectID, actor); err != nil {
+			return err
+		}
+		if err := claimRecycleBinDeletionTargets(tx, newRecycleBinDeletionTarget(
+			recycleBinResourceProject, projectID, &entities.Project{}, "project",
+		)); err != nil {
+			return err
+		}
+		return validateProjectPermanentDeletionTx(tx, projectID)
+	}); err != nil {
+		return err
+	}
+	if err := cleanupProjectNamespaces(context.Background(), projectID); err != nil {
+		return err
+	}
 	return db.DB.Transaction(func(tx *gorm.DB) error {
 		if _, err := loadRecycleBinProject(tx, projectID, actor); err != nil {
 			return err
 		}
 		return permanentlyDeleteProjectTx(tx, projectID)
 	})
+}
+
+func cleanupProjectNamespaces(ctx context.Context, projectID string) error {
+	if !db.DB.Migrator().HasTable(&entities.Env{}) {
+		return nil
+	}
+	var envs []entities.Env
+	if err := db.DB.Unscoped().Where("project_id = ?", projectID).Find(&envs).Error; err != nil {
+		return err
+	}
+	for _, env := range envs {
+		if env.ClusterID == "" || env.ClusterNamespace == "" {
+			continue
+		}
+		err := core.DeleteNamespace(ctx, env.ClusterID, env.ClusterNamespace)
+		if k8serrors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func permanentlyDeleteProjectTx(tx *gorm.DB, projectID string) error {
@@ -169,7 +223,13 @@ func permanentlyDeleteProjectTx(tx *gorm.DB, projectID string) error {
 		return app.WrapErrorf(ErrRecycleBinResourceActive, "project %s", projectID)
 	}
 
-	return tx.Unscoped().Delete(&entities.Project{}, "id = ?", projectID).Error
+	if err := deleteProjectOwnedRecordsTx(context.Background(), tx, projectID); err != nil {
+		return err
+	}
+	if err := tx.Unscoped().Delete(&entities.Project{}, "id = ?", projectID).Error; err != nil {
+		return err
+	}
+	return deleteRecycleBinDeletionClaim(tx, recycleBinResourceProject, projectID)
 }
 
 func IsProjectMember(projectID, userID string) (bool, error) {
@@ -181,7 +241,9 @@ func IsProjectMember(projectID, userID string) (bool, error) {
 }
 
 func RestoreProject(projectID string) error {
-	return db.DB.Unscoped().Model(&entities.Project{}).Where("id = ?", projectID).Update("deleted_at", nil).Error
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		return restoreProjectTx(tx, projectID)
+	})
 }
 
 type ProjectMemberWithUser struct {
@@ -219,67 +281,130 @@ func ListProjectMembers(projectID string, page, pageSize int, search string) (in
 	return listProjectMembersWithUsers(projectID, page, pageSize, search)
 }
 
+var ErrInvalidProjectRole = errors.New("invalid project role")
+
+func validateProjectRole(role string) error {
+	switch role {
+	case app.ProjectRoleOwner, app.ProjectRoleDeveloper, app.ProjectRoleViewer:
+		return nil
+	default:
+		return ErrInvalidProjectRole
+	}
+}
+
 func UpdateProjectMemberRole(projectID, userID, role string) error {
-	var member entities.ProjectMember
-	if err := db.DB.Where("project_id = ? AND user_id = ?", projectID, userID).First(&member).Error; err != nil {
+	if err := validateProjectRole(role); err != nil {
 		return err
 	}
 
-	if member.ProjectRole == app.ProjectRoleOwner && role != app.ProjectRoleOwner {
-		var ownerCount int64
-		db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND project_role = ?", projectID, app.ProjectRoleOwner).Count(&ownerCount)
-		if ownerCount <= 1 {
-			return errors.New("at least one owner is required")
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		// Lock the project before counting owners. All owner mutations use the
+		// same lock order, preventing two concurrent demotions from both
+		// observing the last owner.
+		var project entities.Project
+		if err := lockForUpdate(tx).First(&project, "id = ?", projectID).Error; err != nil {
+			return err
 		}
-	}
 
-	return db.DB.Model(&member).Update("project_role", role).Error
+		var member entities.ProjectMember
+		if err := lockForUpdate(tx).Where("project_id = ? AND user_id = ?", projectID, userID).First(&member).Error; err != nil {
+			return err
+		}
+		if member.ProjectRole == app.ProjectRoleOwner && role != app.ProjectRoleOwner {
+			var ownerCount int64
+			if err := tx.Model(&entities.ProjectMember{}).
+				Where("project_id = ? AND project_role = ?", projectID, app.ProjectRoleOwner).
+				Count(&ownerCount).Error; err != nil {
+				return err
+			}
+			if ownerCount <= 1 {
+				return errors.New("at least one owner is required")
+			}
+		}
+		return tx.Model(&entities.ProjectMember{}).
+			Where("id = ?", member.ID).
+			Update("project_role", role).Error
+	})
 }
 
 func InviteProjectMembers(projectID string, userIDs []string, role string, senderID string) error {
-	// Get project name for notification content
-	var project entities.Project
-	if err := db.DB.First(&project, "id = ?", projectID).Error; err != nil {
+	if err := validateProjectRole(role); err != nil {
 		return err
 	}
 
-	for _, userID := range userIDs {
-		var count int64
-		db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND user_id = ?", projectID, userID).Count(&count)
-		if count > 0 {
-			if err := UpdateProjectMemberRole(projectID, userID, role); err != nil {
-				return err
-			}
-			continue
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		// Serializing invitations by project makes the member/pending-notification
+		// decision atomic and prevents duplicate invitations under concurrent
+		// requests.
+		var project entities.Project
+		if err := lockForUpdate(tx).First(&project, "id = ?", projectID).Error; err != nil {
+			return err
 		}
 
-		// Check for existing pending invitation
-		hasPending, existingID, err := HasPendingInvitation(userID, projectID)
+		actionDataBytes, err := json.Marshal(map[string]string{"role": role})
 		if err != nil {
 			return err
 		}
-		if hasPending {
-			// Update existing invitation's action data
-			actionData := `{"role":"` + role + `"}`
-			if err := db.DB.Model(&entities.Notification{}).Where("id = ?", existingID).
-				Update("action_data", actionData).Error; err != nil {
-				return err
+		actionData := string(actionDataBytes)
+		for _, userID := range userIDs {
+			var member entities.ProjectMember
+			memberErr := lockForUpdate(tx).
+				Where("project_id = ? AND user_id = ?", projectID, userID).
+				First(&member).Error
+			if memberErr == nil {
+				if member.ProjectRole == app.ProjectRoleOwner && role != app.ProjectRoleOwner {
+					var ownerCount int64
+					if err := tx.Model(&entities.ProjectMember{}).
+						Where("project_id = ? AND project_role = ?", projectID, app.ProjectRoleOwner).
+						Count(&ownerCount).Error; err != nil {
+						return err
+					}
+					if ownerCount <= 1 {
+						return errors.New("at least one owner is required")
+					}
+				}
+				if err := tx.Model(&entities.ProjectMember{}).
+					Where("id = ?", member.ID).
+					Update("project_role", role).Error; err != nil {
+					return err
+				}
+				continue
 			}
-			continue
-		}
+			if !errors.Is(memberErr, gorm.ErrRecordNotFound) {
+				return memberErr
+			}
 
-		// Create invitation notification instead of directly adding member
-		actionData := `{"role":"` + role + `"}`
-		title := "Project Invitation"
-		message := "You have been invited to join project \"" + project.Name + "\""
-		if err := CreateNotification(
-			userID, senderID, "invitation", "project_invitation",
-			title, message, "project", projectID, projectID, actionData,
-		); err != nil {
-			return err
+			var invitation entities.Notification
+			pendingErr := lockForUpdate(tx).
+				Where("recipient_id = ? AND resource_id = ? AND event_type = ? AND status = ?", userID, projectID, "project_invitation", "pending").
+				First(&invitation).Error
+			switch {
+			case pendingErr == nil:
+				if err := tx.Model(&entities.Notification{}).Where("id = ?", invitation.ID).Update("action_data", actionData).Error; err != nil {
+					return err
+				}
+			case errors.Is(pendingErr, gorm.ErrRecordNotFound):
+				notification := newNotification(
+					userID,
+					senderID,
+					"invitation",
+					"project_invitation",
+					"Project Invitation",
+					"You have been invited to join project \""+project.Name+"\"",
+					"project",
+					projectID,
+					projectID,
+					actionData,
+				)
+				if err := tx.Create(notification).Error; err != nil {
+					return err
+				}
+			default:
+				return pendingErr
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // ListInvitableUsers returns users who can be invited to a project.
@@ -309,18 +434,26 @@ func ListInvitableUsers(projectID string, search string) ([]entities.User, error
 }
 
 func RemoveProjectMember(projectID, userID string) error {
-	var member entities.ProjectMember
-	if err := db.DB.Where("project_id = ? AND user_id = ?", projectID, userID).First(&member).Error; err != nil {
-		return err
-	}
-
-	if member.ProjectRole == app.ProjectRoleOwner {
-		var ownerCount int64
-		db.DB.Model(&entities.ProjectMember{}).Where("project_id = ? AND project_role = ?", projectID, app.ProjectRoleOwner).Count(&ownerCount)
-		if ownerCount <= 1 {
-			return errors.New("at least one owner is required")
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var project entities.Project
+		if err := lockForUpdate(tx).First(&project, "id = ?", projectID).Error; err != nil {
+			return err
 		}
-	}
-
-	return db.DB.Delete(&member).Error
+		var member entities.ProjectMember
+		if err := lockForUpdate(tx).Where("project_id = ? AND user_id = ?", projectID, userID).First(&member).Error; err != nil {
+			return err
+		}
+		if member.ProjectRole == app.ProjectRoleOwner {
+			var ownerCount int64
+			if err := tx.Model(&entities.ProjectMember{}).
+				Where("project_id = ? AND project_role = ?", projectID, app.ProjectRoleOwner).
+				Count(&ownerCount).Error; err != nil {
+				return err
+			}
+			if ownerCount <= 1 {
+				return errors.New("at least one owner is required")
+			}
+		}
+		return tx.Delete(&entities.ProjectMember{}, "id = ?", member.ID).Error
+	})
 }

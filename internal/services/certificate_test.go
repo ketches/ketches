@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/glebarez/sqlite"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -17,9 +18,12 @@ func setupCertificateServiceTestDB(t *testing.T) {
 	t.Helper()
 
 	originalDB := db.DB
+	originalConfig := app.Config
 	t.Cleanup(func() {
 		db.DB = originalDB
+		app.Config = originalConfig
 	})
+	app.Config.SecretEncryptionKey = "certificate-test-key"
 
 	testDB, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,

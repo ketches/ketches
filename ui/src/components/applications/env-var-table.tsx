@@ -36,7 +36,7 @@ interface EnvVarTableProps {
 export function EnvVarTable({ app }: EnvVarTableProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingEnvVar, setEditingEnvVar] = React.useState<EnvVarSpec | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -55,6 +55,8 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
         id: ev.id,
         key: ev.key,
         value: ev.value,
+        is_secret: ev.is_secret,
+        has_value: ev.has_value,
       }))
     },
   })
@@ -156,7 +158,9 @@ export function EnvVarTable({ app }: EnvVarTableProps) {
       header: "Value",
       cell: ({ row }) => {
         const value = row.original.value
-        const displayValue = value && value.length > 50 ? value.substring(0, 50) + "..." : value
+        const displayValue = !value && row.original.has_value
+          ? "Configured"
+          : value && value.length > 50 ? value.substring(0, 50) + "..." : value
         return (
           <span className="font-mono text-xs text-muted-foreground" title={value}>
             {displayValue || <span className="text-muted-foreground">-</span>}

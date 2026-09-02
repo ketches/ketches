@@ -16,9 +16,8 @@ func TestInitDB_RejectsSQLiteDriver(t *testing.T) {
 	})
 
 	app.Config = app.AppConfig{
-		DBDriver:      "sqlite",
-		DBSource:      "file::memory:?cache=shared",
-		DBAutoMigrate: false,
+		DBDriver: "sqlite",
+		DBSource: "file::memory:?cache=shared",
 	}
 
 	err := InitDB()
@@ -37,4 +36,32 @@ func TestNewGormConfig_DisablesForeignKeyConstraintWhenMigrating(t *testing.T) {
 	}
 
 	assert.True(t, config.DisableForeignKeyConstraintWhenMigrating)
+}
+
+func TestMigrateConfiguredDatabaseSkipsSchemaChangesWhenDisabled(t *testing.T) {
+	testDB := useSQLiteMigrationTestDB(t)
+	originalConfig := app.Config
+	t.Cleanup(func() { app.Config = originalConfig })
+	app.Config.DBAutoMigrate = false
+
+	if err := migrateConfiguredDatabase(); err != nil {
+		t.Fatalf("skip configured migration: %v", err)
+	}
+	if testDB.Migrator().HasTable("users") {
+		t.Fatal("expected DB_AUTO_MIGRATE=false to leave the schema unchanged")
+	}
+}
+
+func TestMigrateConfiguredDatabaseAppliesSchemaWhenEnabled(t *testing.T) {
+	testDB := useSQLiteMigrationTestDB(t)
+	originalConfig := app.Config
+	t.Cleanup(func() { app.Config = originalConfig })
+	app.Config.DBAutoMigrate = true
+
+	if err := migrateConfiguredDatabase(); err != nil {
+		t.Fatalf("run configured migration: %v", err)
+	}
+	if !testDB.Migrator().HasTable("users") {
+		t.Fatal("expected DB_AUTO_MIGRATE=true to apply the schema")
+	}
 }

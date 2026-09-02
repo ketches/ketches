@@ -48,7 +48,7 @@ export function PluginsPage({ projectId: projectIdProp }: { projectId?: string }
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectNameToUse = activeProjectName
   const projectRole = useProjectRole(activeProjectId)
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)

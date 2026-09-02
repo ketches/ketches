@@ -25,6 +25,7 @@ func setupRecycleBinSecurityDB(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, testDB.AutoMigrate(
 		&entities.Project{},
+		&entities.RecycleBinDeletionClaim{},
 		&entities.ProjectMember{},
 		&entities.Env{},
 		&entities.App{},

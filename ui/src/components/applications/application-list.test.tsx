@@ -60,7 +60,7 @@ vi.mock("@/hooks/use-debounce", () => ({
 }))
 
 vi.mock("@/hooks/useProjectRole", () => ({
-  useProjectRole: () => "admin",
+  useProjectRole: () => "owner",
 }))
 
 vi.mock("@/components/data-table/data-table", () => ({

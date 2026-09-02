@@ -11,6 +11,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
@@ -52,6 +53,13 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 
 	if err := converter.Validate(appMetadatas); err != nil {
 		return nil, err
+	}
+	for _, appMetadata := range appMetadatas {
+		for _, volume := range appMetadata.Volumes {
+			if err := validateAppVolumeRequest(volume.VolumeType, volume.HostPath); err != nil {
+				return nil, app.WrapErrorf(err, "invalid imported volume %s: %w", volume.Slug, err)
+			}
+		}
 	}
 
 	result := &ImportResult{
@@ -104,11 +112,19 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 		if len(appMeta.EnvVars) > 0 {
 			var envVars []entities.AppEnvVar
 			for _, ev := range appMeta.EnvVars {
+				value := ev.Value
+				if ev.IsSecret {
+					value, err = secrets.EncryptString(ev.Value)
+					if err != nil {
+						return nil, err
+					}
+				}
 				envVars = append(envVars, entities.AppEnvVar{
-					ID:    uuid.New(),
-					AppID: createdApp.App.ID,
-					Key:   ev.Key,
-					Value: ev.Value,
+					ID:       uuid.New(),
+					AppID:    createdApp.App.ID,
+					Key:      ev.Key,
+					Value:    value,
+					IsSecret: ev.IsSecret,
 				})
 			}
 			if err := db.DB.Create(&envVars).Error; err != nil {
@@ -195,13 +211,21 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 		// Add ConfigFiles
 		if len(appMeta.ConfigFiles) > 0 {
 			for _, cf := range appMeta.ConfigFiles {
+				content := cf.Content
+				if cf.IsSecret {
+					content, err = secrets.EncryptString(cf.Content)
+					if err != nil {
+						return nil, err
+					}
+				}
 				configFile := &entities.AppConfigFile{
 					ID:        uuid.New(),
 					AppID:     createdApp.App.ID,
 					Slug:      cf.Slug,
 					MountPath: cf.MountPath,
-					Content:   cf.Content,
+					Content:   content,
 					FileMode:  cf.FileMode,
+					IsSecret:  cf.IsSecret,
 				}
 				if configFile.FileMode == "" {
 					configFile.FileMode = "0644"
@@ -221,9 +245,12 @@ func ImportApps(envID string, importType string, content string, conflictStrateg
 					Slug:         vol.Slug,
 					MountPath:    vol.MountPath,
 					SubPath:      vol.SubPath,
+					HostPath:     vol.HostPath,
 					VolumeType:   vol.VolumeType,
 					Capacity:     vol.Capacity,
 					StorageClass: vol.StorageClass,
+					VolumeMode:   firstNonEmpty(vol.VolumeMode, "Filesystem"),
+					AccessModes:  firstNonEmpty(vol.AccessModes, "ReadWriteOnce"),
 				}
 				if err := db.DB.Create(volume).Error; err != nil {
 					return nil, err
@@ -366,10 +393,11 @@ func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMeta
 		}
 
 		for _, env := range appCtx.EnvVars {
-			meta.EnvVars = append(meta.EnvVars, models.EnvVarMetadata{
-				Key:   env.Key,
-				Value: env.Value,
-			})
+			metadata := models.EnvVarMetadata{Key: env.Key, IsSecret: env.IsSecret, HasValue: env.Value != ""}
+			if !env.IsSecret {
+				metadata.Value = env.Value
+			}
+			meta.EnvVars = append(meta.EnvVars, metadata)
 		}
 
 		routesByGateway := groupGatewayRoutes(appCtx.GatewayRoutes)
@@ -412,12 +440,17 @@ func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMeta
 		}
 
 		for _, cf := range appCtx.ConfigFiles {
-			meta.ConfigFiles = append(meta.ConfigFiles, models.ConfigFileMetadata{
+			metadata := models.ConfigFileMetadata{
 				Slug:      cf.Slug,
 				MountPath: cf.MountPath,
-				Content:   cf.Content,
 				FileMode:  cf.FileMode,
-			})
+				IsSecret:  cf.IsSecret,
+				HasValue:  cf.Content != "",
+			}
+			if !cf.IsSecret {
+				metadata.Content = cf.Content
+			}
+			meta.ConfigFiles = append(meta.ConfigFiles, metadata)
 		}
 
 		for _, vol := range appCtx.Volumes {
@@ -425,9 +458,12 @@ func convertAppContextsToMetadata(appCtxs []*models.AppContext) []models.AppMeta
 				Slug:         vol.Slug,
 				MountPath:    vol.MountPath,
 				SubPath:      vol.SubPath,
+				HostPath:     vol.HostPath,
 				VolumeType:   vol.VolumeType,
 				Capacity:     vol.Capacity,
 				StorageClass: vol.StorageClass,
+				VolumeMode:   vol.VolumeMode,
+				AccessModes:  vol.AccessModes,
 			})
 		}
 

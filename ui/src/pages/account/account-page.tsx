@@ -1,5 +1,4 @@
 import { usersApi } from "@/api/users"
-import { AccountAiProvidersPanel } from "@/components/account/account-ai-providers-panel"
 import { PasswordForm } from "@/components/account/password-form"
 import { ProfileForm } from "@/components/account/profile-form"
 import { ActivitiesContent } from "@/components/activities/activities-content"
@@ -14,14 +13,14 @@ import type { BreadcrumbItem } from "@/contexts/breadcrumb-state"
 import { useAuthStore } from "@/stores/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
-import { Brain, Clock, Copy, Key, Pencil, UserCog, UserKey } from "lucide-react"
+import { Clock, Copy, Key, Pencil, UserCog, UserKey } from "lucide-react"
 import * as React from "react"
 import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { toTitleCase } from "@/lib/utils"
 
-type AccountTab = "overview" | "security" | "ai-providers"
+type AccountTab = "overview" | "security"
 
 export function AccountPage() {
   const authUser = useAuthStore((state) => state.user)
@@ -133,10 +132,6 @@ export function AccountPage() {
           <TabsTrigger value="security">
             <UserKey />
             Security
-          </TabsTrigger>
-          <TabsTrigger value="ai-providers" disabled={mustChangePassword}>
-            <Brain />
-            AI Providers
           </TabsTrigger>
         </TabsList>
 
@@ -299,23 +294,6 @@ export function AccountPage() {
               />
             </DialogContent>
           </Dialog>
-        </TabsContent>
-
-        <TabsContent value="ai-providers" className="space-y-4 mt-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Brain className="h-4 w-4" />
-                AI Provider
-              </CardTitle>
-              <CardDescription>
-                Configure personal AI providers for Builder sessions and future AI workflows.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AccountAiProvidersPanel />
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -292,3 +292,40 @@ func TestCancelBuild_PersistsAvailableLogsBeforeDeletingJob(t *testing.T) {
 	assert.Equal(t, entities.BuildStatusCancelled, updatedBuild.Status)
 	assert.Contains(t, order, "cleanup")
 }
+
+func TestCancelBuildRunsTerminalSideEffectsOnce(t *testing.T) {
+	setupBuildLogsServiceTestDB(t)
+	build := seedBuildLogsServiceFixture(t, entities.BuildStatusBuilding)
+
+	originalPersistBuildLogs := persistBuildLogs
+	originalCancelBuildJob := cancelBuildJob
+	originalCleanupBuildSecrets := cleanupBuildSecrets
+	t.Cleanup(func() {
+		persistBuildLogs = originalPersistBuildLogs
+		cancelBuildJob = originalCancelBuildJob
+		cleanupBuildSecrets = originalCleanupBuildSecrets
+	})
+
+	persistCalls := 0
+	cancelCalls := 0
+	cleanupCalls := 0
+	persistBuildLogs = func(context.Context, string) error {
+		persistCalls++
+		return nil
+	}
+	cancelBuildJob = func(context.Context, string, string, string) error {
+		cancelCalls++
+		return nil
+	}
+	cleanupBuildSecrets = func(context.Context, string, string, string) {
+		cleanupCalls++
+	}
+
+	_, err := CancelBuild(build.ID)
+	require.NoError(t, err)
+	_, err = CancelBuild(build.ID)
+	assert.ErrorContains(t, err, "not active")
+	assert.Equal(t, 1, persistCalls)
+	assert.Equal(t, 1, cancelCalls)
+	assert.Equal(t, 1, cleanupCalls)
+}

@@ -60,7 +60,7 @@ function getGatewaySearchText(gateway: GatewaySpec): string {
 export function NetworkConfig({ app }: GatewayConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingGateway, setEditingGateway] = React.useState<GatewaySpec | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")

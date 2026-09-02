@@ -129,10 +129,6 @@ vi.mock("@/components/project/edit-project-dialog", () => ({
   EditProjectDialog: () => null,
 }))
 
-vi.mock("@/components/project/project-ai-providers-panel", () => ({
-  ProjectAiProvidersPanel: () => null,
-}))
-
 vi.mock("@/components/shared/color-badge", () => ({
   ColorBadge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }))

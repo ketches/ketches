@@ -28,8 +28,10 @@ type AppMetadata struct {
 
 // EnvVarMetadata represents environment variable metadata.
 type EnvVarMetadata struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key      string `json:"key"`
+	Value    string `json:"value,omitempty"`
+	IsSecret bool   `json:"is_secret,omitempty"`
+	HasValue bool   `json:"has_value,omitempty"`
 }
 
 // VolumeMetadata represents volume metadata.
@@ -37,17 +39,22 @@ type VolumeMetadata struct {
 	Slug         string `json:"slug"`
 	MountPath    string `json:"mount_path"`
 	SubPath      string `json:"sub_path,omitempty"`
+	HostPath     string `json:"host_path,omitempty"`
 	VolumeType   string `json:"volume_type"`
 	Capacity     int    `json:"capacity"`
 	StorageClass string `json:"storage_class,omitempty"`
+	VolumeMode   string `json:"volume_mode,omitempty"`
+	AccessModes  string `json:"access_modes,omitempty"`
 }
 
 // ConfigFileMetadata represents configuration file metadata.
 type ConfigFileMetadata struct {
 	Slug      string `json:"slug"`
 	MountPath string `json:"mount_path"`
-	Content   string `json:"content"`
+	Content   string `json:"content,omitempty"`
 	FileMode  string `json:"file_mode,omitempty"`
+	IsSecret  bool   `json:"is_secret,omitempty"`
+	HasValue  bool   `json:"has_value,omitempty"`
 }
 
 // GatewayMetadata represents gateway metadata.

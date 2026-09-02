@@ -1,9 +1,12 @@
 package core
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ketches/ketches/internal/app"
@@ -20,15 +23,30 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+const configRevisionAnnotation = "ketches.cn/config-revision"
+
 type AppMetadata struct {
-	AppContext *models.AppContext
+	AppContext     *models.AppContext
+	configRevision string
+}
+
+type configFileRevision struct {
+	Slug      string `json:"slug"`
+	MountPath string `json:"mount_path"`
+	IsSecret  bool   `json:"is_secret"`
 }
 
 func (m *AppMetadata) BuildNamespace() *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   m.AppContext.EnvContext.Env.ClusterNamespace,
-			Labels: m.getLabels(),
+			Name: m.AppContext.EnvContext.Env.ClusterNamespace,
+			Labels: map[string]string{
+				kube.LabelEnvID:       m.AppContext.EnvContext.Env.ID,
+				kube.LabelEnvSlug:     m.AppContext.EnvContext.Env.Slug,
+				kube.LabelProjectID:   m.AppContext.EnvContext.Project.ID,
+				kube.LabelProjectSlug: m.AppContext.EnvContext.Project.Slug,
+				kube.LabelManagedBy:   "true",
+			},
 		},
 	}
 }
@@ -48,7 +66,8 @@ func (m *AppMetadata) BuildDeployment() *appsv1.Deployment {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: m.getLabels(),
+					Labels:      m.getLabels(),
+					Annotations: m.configRevisionAnnotations(),
 				},
 				Spec: corev1.PodSpec{
 					InitContainers: m.buildInitContainers(),
@@ -71,6 +90,77 @@ func (m *AppMetadata) BuildDeployment() *appsv1.Deployment {
 	m.applySchedulingRules(&deployment.Spec.Template.Spec)
 
 	return deployment
+}
+
+func (m *AppMetadata) BuildConfigRevision() (string, error) {
+	var envSecretData map[string][]byte
+	if m.hasSecretEnvVars() {
+		envSecret, err := m.BuildEnvSecret()
+		if err != nil {
+			return "", err
+		}
+		envSecretData = envSecret.Data
+	}
+	return m.buildConfigRevisionWithEnvSecretData(envSecretData)
+}
+
+func (m *AppMetadata) buildConfigRevisionWithEnvSecretData(envSecretData map[string][]byte) (string, error) {
+	var configMapData map[string]string
+	if m.hasNonSecretConfigFiles() {
+		configMapData = m.BuildConfigMap().Data
+	}
+
+	var configSecretData map[string][]byte
+	if m.hasSecretConfigFiles() {
+		configSecret, err := m.BuildConfigSecret()
+		if err != nil {
+			return "", err
+		}
+		configSecretData = configSecret.Data
+	}
+
+	configFiles := make([]configFileRevision, 0, len(m.AppContext.ConfigFiles))
+	for _, configFile := range m.AppContext.ConfigFiles {
+		configFiles = append(configFiles, configFileRevision{
+			Slug:      configFile.Slug,
+			MountPath: configFile.MountPath,
+			IsSecret:  configFile.IsSecret,
+		})
+	}
+	sort.Slice(configFiles, func(i, j int) bool {
+		if configFiles[i].Slug != configFiles[j].Slug {
+			return configFiles[i].Slug < configFiles[j].Slug
+		}
+		if configFiles[i].MountPath != configFiles[j].MountPath {
+			return configFiles[i].MountPath < configFiles[j].MountPath
+		}
+		return !configFiles[i].IsSecret && configFiles[j].IsSecret
+	})
+
+	payload := struct {
+		ConfigFiles      []configFileRevision
+		ConfigMapData    map[string]string
+		ConfigSecretData map[string][]byte
+		EnvSecretData    map[string][]byte
+	}{
+		ConfigFiles:      configFiles,
+		ConfigMapData:    configMapData,
+		ConfigSecretData: configSecretData,
+		EnvSecretData:    envSecretData,
+	}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return "", app.WrapErrorf(err, "encode app configuration revision")
+	}
+	revision := sha256.Sum256(encoded)
+	return hex.EncodeToString(revision[:]), nil
+}
+
+func (m *AppMetadata) configRevisionAnnotations() map[string]string {
+	if m.configRevision == "" {
+		return nil
+	}
+	return map[string]string{configRevisionAnnotation: m.configRevision}
 }
 
 func (m *AppMetadata) BuildRegistrySecret() (*corev1.Secret, error) {
@@ -108,7 +198,7 @@ func (m *AppMetadata) BuildRegistrySecret() (*corev1.Secret, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.AppContext.App.Slug + "-registry",
 			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
-			Labels:    m.getLabels(),
+			Labels:    withAppComponent(m.getLabels(), "registry-secret"),
 		},
 		Type: corev1.SecretTypeDockerConfigJson,
 		Data: map[string][]byte{
@@ -120,27 +210,40 @@ func (m *AppMetadata) BuildRegistrySecret() (*corev1.Secret, error) {
 func (m *AppMetadata) buildVolumes() []corev1.Volume {
 	var volumes []corev1.Volume
 	for _, v := range m.AppContext.Volumes {
-		if v.VolumeType == app.VolumeTypePVC && m.AppContext.App.AppType != app.AppTypeStatefulSet {
-			volumes = append(volumes, corev1.Volume{
-				Name: v.Slug,
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: v.Slug,
-					},
-				},
-			})
+		volume := corev1.Volume{Name: v.Slug}
+		switch v.VolumeType {
+		case app.VolumeTypePVC:
+			if m.AppContext.App.AppType == app.AppTypeStatefulSet {
+				continue
+			}
+			volume.VolumeSource.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: v.Slug}
+		case app.VolumeTypeEmptyDir:
+			volume.VolumeSource.EmptyDir = &corev1.EmptyDirVolumeSource{}
+		case app.VolumeTypeHostPath:
+			hostPathType := corev1.HostPathDirectoryOrCreate
+			volume.VolumeSource.HostPath = &corev1.HostPathVolumeSource{Path: v.HostPath, Type: &hostPathType}
+		default:
+			continue
 		}
+		volumes = append(volumes, volume)
 	}
 
 	if len(m.AppContext.ConfigFiles) > 0 {
+		projectedSources := []corev1.VolumeProjection{}
+		if m.hasNonSecretConfigFiles() {
+			projectedSources = append(projectedSources, corev1.VolumeProjection{ConfigMap: &corev1.ConfigMapProjection{
+				LocalObjectReference: corev1.LocalObjectReference{Name: m.AppContext.App.Slug + "-config"},
+			}})
+		}
+		if m.hasSecretConfigFiles() {
+			projectedSources = append(projectedSources, corev1.VolumeProjection{Secret: &corev1.SecretProjection{
+				LocalObjectReference: corev1.LocalObjectReference{Name: m.AppContext.App.Slug + "-config-secret"},
+			}})
+		}
 		volumes = append(volumes, corev1.Volume{
 			Name: "config-files",
 			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: m.AppContext.App.Slug + "-config",
-					},
-				},
+				Projected: &corev1.ProjectedVolumeSource{Sources: projectedSources},
 			},
 		})
 	}
@@ -150,21 +253,93 @@ func (m *AppMetadata) buildVolumes() []corev1.Volume {
 func (m *AppMetadata) BuildConfigMap() *corev1.ConfigMap {
 	data := make(map[string]string)
 	for _, cf := range m.AppContext.ConfigFiles {
-		data[cf.Slug] = cf.Content
+		if !cf.IsSecret {
+			data[cf.Slug] = cf.Content
+		}
 	}
 
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.AppContext.App.Slug + "-config",
 			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
-			Labels:    m.getLabels(),
+			Labels:    withAppComponent(m.getLabels(), "config"),
 		},
 		Data: data,
 	}
 }
 
+func (m *AppMetadata) BuildConfigSecret() (*corev1.Secret, error) {
+	data := make(map[string][]byte)
+	for _, cf := range m.AppContext.ConfigFiles {
+		if !cf.IsSecret {
+			continue
+		}
+		content, err := secrets.DecryptStringCompatible(cf.Content)
+		if err != nil {
+			return nil, app.WrapErrorf(err, "decrypt secret config file %s: %w", cf.Slug, err)
+		}
+		data[cf.Slug] = []byte(content)
+	}
+	return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name: m.AppContext.App.Slug + "-config-secret", Namespace: m.AppContext.EnvContext.Env.ClusterNamespace, Labels: withAppComponent(m.getLabels(), "config-secret"),
+	}, Type: corev1.SecretTypeOpaque, Data: data}, nil
+}
+
+func (m *AppMetadata) BuildEnvSecret() (*corev1.Secret, error) {
+	data := make(map[string][]byte)
+	for _, ev := range m.AppContext.EnvVars {
+		if !ev.IsSecret {
+			continue
+		}
+		value, err := secrets.DecryptStringCompatible(ev.Value)
+		if err != nil {
+			return nil, app.WrapErrorf(err, "decrypt secret environment variable %s: %w", ev.Key, err)
+		}
+		data[ev.Key] = []byte(value)
+	}
+	return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name: m.AppContext.App.Slug + "-env-secret", Namespace: m.AppContext.EnvContext.Env.ClusterNamespace, Labels: withAppComponent(m.getLabels(), "env-secret"),
+	}, Type: corev1.SecretTypeOpaque, Data: data}, nil
+}
+
+func (m *AppMetadata) hasNonSecretConfigFiles() bool {
+	for _, cf := range m.AppContext.ConfigFiles {
+		if !cf.IsSecret {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *AppMetadata) hasSecretConfigFiles() bool {
+	for _, cf := range m.AppContext.ConfigFiles {
+		if cf.IsSecret {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *AppMetadata) hasSecretEnvVars() bool {
+	for _, ev := range m.AppContext.EnvVars {
+		if ev.IsSecret {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *AppMetadata) BuildPVC(v entities.AppVolume) *corev1.PersistentVolumeClaim {
 	quantity := resource.MustParse(fmt.Sprintf("%dGi", v.Capacity))
+	volumeMode := corev1.PersistentVolumeFilesystem
+	if v.VolumeMode == string(corev1.PersistentVolumeBlock) {
+		volumeMode = corev1.PersistentVolumeBlock
+	}
+	var storageClassName *string
+	if strings.TrimSpace(v.StorageClass) != "" {
+		storageClass := strings.TrimSpace(v.StorageClass)
+		storageClassName = &storageClass
+	}
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      v.Slug,
@@ -172,7 +347,9 @@ func (m *AppMetadata) BuildPVC(v entities.AppVolume) *corev1.PersistentVolumeCla
 			Labels:    m.getLabels(),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			AccessModes:      parsePersistentVolumeAccessModes(v.AccessModes),
+			StorageClassName: storageClassName,
+			VolumeMode:       &volumeMode,
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: quantity,
@@ -197,7 +374,8 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: m.getLabels(),
+					Labels:      m.getLabels(),
+					Annotations: m.configRevisionAnnotations(),
 				},
 				Spec: corev1.PodSpec{
 					InitContainers: m.buildInitContainers(),
@@ -219,20 +397,10 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 
 	for _, v := range m.AppContext.Volumes {
 		if v.VolumeType == app.VolumeTypePVC {
+			claim := m.BuildPVC(v)
 			statefulSet.Spec.VolumeClaimTemplates = append(statefulSet.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      v.Slug,
-					Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
-					Labels:    m.getLabels(),
-				},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-					Resources: corev1.VolumeResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dGi", v.Capacity)),
-						},
-					},
-				},
+				ObjectMeta: claim.ObjectMeta,
+				Spec:       claim.Spec,
 			})
 		}
 	}
@@ -240,6 +408,29 @@ func (m *AppMetadata) BuildStatefulSet() *appsv1.StatefulSet {
 	m.applySchedulingRules(&statefulSet.Spec.Template.Spec)
 
 	return statefulSet
+}
+
+func parsePersistentVolumeAccessModes(value string) []corev1.PersistentVolumeAccessMode {
+	parts := strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == ';' || r == ' '
+	})
+	modes := make([]corev1.PersistentVolumeAccessMode, 0, len(parts))
+	seen := make(map[corev1.PersistentVolumeAccessMode]struct{}, len(parts))
+	for _, part := range parts {
+		mode := corev1.PersistentVolumeAccessMode(strings.TrimSpace(part))
+		switch mode {
+		case corev1.ReadWriteOnce, corev1.ReadOnlyMany, corev1.ReadWriteMany, corev1.ReadWriteOncePod:
+			if _, ok := seen[mode]; ok {
+				continue
+			}
+			seen[mode] = struct{}{}
+			modes = append(modes, mode)
+		}
+	}
+	if len(modes) == 0 {
+		return []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+	}
+	return modes
 }
 
 func (m *AppMetadata) getLabels() map[string]string {
@@ -252,6 +443,15 @@ func (m *AppMetadata) getLabels() map[string]string {
 		kube.LabelProjectSlug: m.AppContext.EnvContext.Project.Slug,
 		kube.LabelManagedBy:   "true",
 	}
+}
+
+func withAppComponent(labels map[string]string, component string) map[string]string {
+	result := make(map[string]string, len(labels)+1)
+	for key, value := range labels {
+		result[key] = value
+	}
+	result[kube.LabelComponent] = component
+	return result
 }
 
 func (m *AppMetadata) getSelectorLabels() map[string]string {
@@ -283,13 +483,23 @@ func (m *AppMetadata) buildContainer() corev1.Container {
 	}
 
 	for _, ev := range m.AppContext.EnvVars {
-		container.Env = append(container.Env, corev1.EnvVar{
-			Name:  ev.Key,
-			Value: ev.Value,
-		})
+		if ev.IsSecret {
+			container.Env = append(container.Env, corev1.EnvVar{Name: ev.Key, ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: m.AppContext.App.Slug + "-env-secret"}, Key: ev.Key},
+			}})
+		} else {
+			container.Env = append(container.Env, corev1.EnvVar{Name: ev.Key, Value: ev.Value})
+		}
 	}
 
 	for _, v := range m.AppContext.Volumes {
+		if isBlockVolume(v) {
+			container.VolumeDevices = append(container.VolumeDevices, corev1.VolumeDevice{
+				Name:       v.Slug,
+				DevicePath: v.MountPath,
+			})
+			continue
+		}
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      v.Slug,
 			MountPath: v.MountPath,
@@ -378,6 +588,7 @@ func (m *AppMetadata) buildPluginContainer(plugin *entities.Plugin, appPlugin *e
 
 	container.Env = m.buildPluginEnvVars(plugin, appPlugin)
 	container.VolumeMounts = m.buildPluginVolumeMounts()
+	container.VolumeDevices = m.buildPluginVolumeDevices()
 	m.applyPluginResources(&container, appPlugin)
 
 	return container
@@ -387,10 +598,13 @@ func (m *AppMetadata) buildPluginEnvVars(plugin *entities.Plugin, appPlugin *ent
 	envVars := []corev1.EnvVar{}
 
 	for _, ev := range m.AppContext.EnvVars {
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  ev.Key,
-			Value: ev.Value,
-		})
+		if ev.IsSecret {
+			envVars = append(envVars, corev1.EnvVar{Name: ev.Key, ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: m.AppContext.App.Slug + "-env-secret"}, Key: ev.Key},
+			}})
+		} else {
+			envVars = append(envVars, corev1.EnvVar{Name: ev.Key, Value: ev.Value})
+		}
 	}
 
 	rawPluginEnvVars := plugin.EnvVars
@@ -453,6 +667,9 @@ func (m *AppMetadata) buildPluginVolumeMounts() []corev1.VolumeMount {
 	var volumeMounts []corev1.VolumeMount
 
 	for _, v := range m.AppContext.Volumes {
+		if isBlockVolume(v) {
+			continue
+		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      v.Slug,
 			MountPath: v.MountPath,
@@ -469,6 +686,20 @@ func (m *AppMetadata) buildPluginVolumeMounts() []corev1.VolumeMount {
 	}
 
 	return volumeMounts
+}
+
+func (m *AppMetadata) buildPluginVolumeDevices() []corev1.VolumeDevice {
+	var volumeDevices []corev1.VolumeDevice
+	for _, volume := range m.AppContext.Volumes {
+		if isBlockVolume(volume) {
+			volumeDevices = append(volumeDevices, corev1.VolumeDevice{Name: volume.Slug, DevicePath: volume.MountPath})
+		}
+	}
+	return volumeDevices
+}
+
+func isBlockVolume(volume entities.AppVolume) bool {
+	return volume.VolumeType == app.VolumeTypePVC && volume.VolumeMode == string(corev1.PersistentVolumeBlock)
 }
 
 func (m *AppMetadata) applySchedulingRules(podSpec *corev1.PodSpec) {

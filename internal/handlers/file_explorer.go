@@ -1,10 +1,7 @@
 package handlers
 
 import (
-	"archive/tar"
-	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -339,43 +336,11 @@ func DownloadFile(c *gin.Context) {
 		return
 	}
 
-	// Stream the tar output to a buffer, then extract the actual file from it
-	var tarBuf bytes.Buffer
-	if err := services.DownloadFile(app, instanceName, containerName, path, &tarBuf); err != nil {
-		api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("failed to download file: %v", err))
-		return
-	}
-
-	// Extract the file from the tar archive so the browser gets the raw file
-	tr := tar.NewReader(&tarBuf)
-	header, err := tr.Next()
-	if err != nil {
-		// Fallback: send the raw tar if extraction fails
-		c.Header("Content-Type", "application/octet-stream")
-		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.tar"`, sanitizeFilename(path)))
-		tarBuf.Reset()
-		if err := services.DownloadFile(app, instanceName, containerName, path, &tarBuf); err != nil {
-			api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("failed to download file: %v", err))
-			return
-		}
-		c.Header("Content-Length", fmt.Sprintf("%d", tarBuf.Len()))
-		if _, err := io.Copy(c.Writer, &tarBuf); err != nil {
-			_ = c.Error(appcore.NewErrorf("failed to stream archive: %v", err))
-		}
-		return
-	}
-
 	filename := sanitizeFilename(path)
-	contentType := detectContentType(filename)
-
-	c.Header("Content-Type", contentType)
+	c.Header("Content-Type", detectContentType(filename))
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	if header.Size > 0 {
-		c.Header("Content-Length", fmt.Sprintf("%d", header.Size))
-	}
-
-	if _, err := io.Copy(c.Writer, tr); err != nil {
-		_ = c.Error(appcore.NewErrorf("failed to stream file: %v", err))
+	if _, err := services.DownloadFileContents(app, instanceName, containerName, path, c.Writer); err != nil {
+		api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("failed to download file: %v", err))
 	}
 }
 
@@ -402,18 +367,10 @@ func DownloadFileDir(c *gin.Context) {
 		return
 	}
 
-	var tarBuf bytes.Buffer
-	if err := services.DownloadFile(app, instanceName, containerName, path, &tarBuf); err != nil {
-		api.Error(c, http.StatusInternalServerError, appcore.NewErrorf("failed to download: %v", err))
-		return
-	}
-
 	filename := sanitizeFilename(path)
 	c.Header("Content-Type", "application/x-tar")
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.tar"`, filename))
-	c.Header("Content-Length", fmt.Sprintf("%d", tarBuf.Len()))
-
-	if _, err := io.Copy(c.Writer, &tarBuf); err != nil {
+	if err := services.DownloadFile(app, instanceName, containerName, path, c.Writer); err != nil {
 		_ = c.Error(appcore.NewErrorf("failed to stream archive: %v", err))
 	}
 }

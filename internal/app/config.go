@@ -3,59 +3,51 @@ package app
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 )
 
 type AppConfig struct {
-	LogLevel                          string
-	Port                              string
-	DBDriver                          string
-	DBSource                          string
-	DBHost                            string
-	DBPort                            string
-	DBName                            string
-	DBUsername                        string
-	DBPassword                        string
-	DBSSLMode                         string
-	DBAutoMigrate                     bool
-	DBMaxIdleConns                    int
-	DBMaxOpenConns                    int
-	DBConnMaxLifetimeMinutes          int
-	DBConnMaxIdleTimeMinutes          int
-	JWTSecret                         string
-	JWTIssuer                         string
-	JWTAudience                       string
-	AccessTokenTTLMinutes             int
-	RefreshTokenTTLHours              int
-	SecretEncryptionKey               string
-	BootstrapAdminUsername            string
-	BootstrapAdminPassword            string
-	SignUpEmailVerificationRequired   bool
-	CORSAllowedOrigins                string
-	SMTPHost                          string
-	SMTPPort                          int
-	SMTPUsername                      string
-	SMTPPassword                      string
-	SMTPFrom                          string
-	BuildLogBaseDir                   string
-	BuildLogRetentionDays             int
-	BuilderSnapshotBaseDir            string
-	BuilderProviderRegistryJSON       string
-	BuilderModelProfileRegistryJSON   string
-	BuilderExecutorPolicyRegistryJSON string
-	BuilderExecutionCatalogJSON       string
-	BuilderDefaultProviderKey         string
-	BuilderDefaultModelProfileKey     string
-	BuilderDefaultExecutorPolicyKey   string
-	BuilderAgentBaseURL               string
-	BuilderAgentAPIKey                string
-	BuilderAgentModel                 string
-	BuilderWorkspaceImage             string
-	BuilderWorkspaceRoot              string
-	BuilderSessionTTLHours            int
-	EgressAllowedHosts                string
+	LogLevel                        string
+	Environment                     string
+	Port                            string
+	DBDriver                        string
+	DBSource                        string
+	DBHost                          string
+	DBPort                          string
+	DBName                          string
+	DBUsername                      string
+	DBPassword                      string
+	DBSSLMode                       string
+	DBTLSMode                       string
+	DBAutoMigrate                   bool
+	DBMaxIdleConns                  int
+	DBMaxOpenConns                  int
+	DBConnMaxLifetimeMinutes        int
+	DBConnMaxIdleTimeMinutes        int
+	JWTSecret                       string
+	JWTIssuer                       string
+	JWTAudience                     string
+	AccessTokenTTLMinutes           int
+	RefreshTokenTTLHours            int
+	SecretEncryptionKey             string
+	PreviousSecretEncryptionKeys    string
+	BootstrapAdminUsername          string
+	BootstrapAdminPassword          string
+	SignUpEmailVerificationRequired bool
+	CORSAllowedOrigins              string
+	TrustedProxies                  []string
+	SMTPHost                        string
+	SMTPPort                        int
+	SMTPUsername                    string
+	SMTPPassword                    string
+	SMTPFrom                        string
+	BuildLogBaseDir                 string
+	BuildLogRetentionDays           int
+	EgressAllowedHosts              string
+	AllowHostPathVolumes            bool
 }
 
 var Config AppConfig
@@ -63,8 +55,10 @@ var Config AppConfig
 var (
 	ErrJWTSecretNotConfigured              = errors.New("JWT_SECRET must be configured")
 	ErrSecretEncryptionKeyNotConfigured    = errors.New("SECRET_ENCRYPTION_KEY must be configured")
+	ErrSecretEncryptionKeyTooShort         = errors.New("SECRET_ENCRYPTION_KEY must be at least 32 bytes")
 	ErrBootstrapAdminPasswordNotConfigured = errors.New("BOOTSTRAP_ADMIN_PASSWORD must be configured")
 	ErrBootstrapAdminPasswordTooShort      = errors.New("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters")
+	ErrDatabaseTLSRequired                 = errors.New("database TLS is required outside local development")
 )
 
 func InitConfig() {
@@ -75,56 +69,47 @@ func InitConfig() {
 	dbUsername := getEnv("DB_USERNAME", "")
 	dbPassword := getEnv("DB_PASSWORD", "")
 	dbSSLMode := getEnv("DB_SSLMODE", "disable")
-	dbAutoMigrate := getEnvBool("DB_AUTO_MIGRATE", false)
-
+	dbTLSMode := strings.TrimSpace(getEnv("DB_TLS", ""))
+	dbAutoMigrate := getEnvBool("DB_AUTO_MIGRATE", true)
 	Config = AppConfig{
-		LogLevel:                          getEnv("LOG_LEVEL", "info"),
-		Port:                              getEnv("PORT", "8080"),
-		DBDriver:                          dbDriver,
-		DBSource:                          buildDBSource(dbDriver, dbHost, dbPort, dbName, dbUsername, dbPassword, dbSSLMode),
-		DBHost:                            dbHost,
-		DBPort:                            dbPort,
-		DBName:                            dbName,
-		DBUsername:                        dbUsername,
-		DBPassword:                        dbPassword,
-		DBSSLMode:                         dbSSLMode,
-		DBAutoMigrate:                     dbAutoMigrate,
-		DBMaxIdleConns:                    getEnvInt("DB_MAX_IDLE_CONNS", 10),
-		DBMaxOpenConns:                    getEnvInt("DB_MAX_OPEN_CONNS", 50),
-		DBConnMaxLifetimeMinutes:          getEnvInt("DB_CONN_MAX_LIFETIME_MINUTES", 60),
-		DBConnMaxIdleTimeMinutes:          getEnvInt("DB_CONN_MAX_IDLE_TIME_MINUTES", 30),
-		JWTSecret:                         strings.TrimSpace(getEnv("JWT_SECRET", "")),
-		JWTIssuer:                         fallbackString(getEnv("JWT_ISSUER", ""), "ketches"),
-		JWTAudience:                       fallbackString(getEnv("JWT_AUDIENCE", ""), "ketches-ui"),
-		AccessTokenTTLMinutes:             getEnvInt("ACCESS_TOKEN_TTL_MINUTES", 60),
-		RefreshTokenTTLHours:              getEnvInt("REFRESH_TOKEN_TTL_HOURS", 24*7),
-		SecretEncryptionKey:               strings.TrimSpace(getEnv("SECRET_ENCRYPTION_KEY", "")),
-		BootstrapAdminUsername:            strings.TrimSpace(getEnv("BOOTSTRAP_ADMIN_USERNAME", "")),
-		BootstrapAdminPassword:            getEnv("BOOTSTRAP_ADMIN_PASSWORD", ""),
-		SignUpEmailVerificationRequired:   getEnvBool("SIGN_UP_EMAIL_VERIFICATION_REQUIRED", true),
-		CORSAllowedOrigins:                getEnv("CORS_ALLOWED_ORIGINS", ""),
-		SMTPHost:                          strings.TrimSpace(getEnv("SMTP_HOST", "")),
-		SMTPPort:                          getEnvInt("SMTP_PORT", 587),
-		SMTPUsername:                      strings.TrimSpace(getEnv("SMTP_USERNAME", "")),
-		SMTPPassword:                      getEnv("SMTP_PASSWORD", ""),
-		SMTPFrom:                          strings.TrimSpace(getEnv("SMTP_FROM", "")),
-		BuildLogBaseDir:                   fallbackString(getEnv("BUILD_LOG_BASE_DIR", ""), "data/build-logs"),
-		BuildLogRetentionDays:             getEnvInt("BUILD_LOG_RETENTION_DAYS", 15),
-		BuilderSnapshotBaseDir:            fallbackString(getEnv("BUILDER_SNAPSHOT_BASE_DIR", ""), "data/builder-previews"),
-		BuilderProviderRegistryJSON:       getEnv("BUILDER_PROVIDER_REGISTRY_JSON", ""),
-		BuilderModelProfileRegistryJSON:   getEnv("BUILDER_MODEL_PROFILE_REGISTRY_JSON", ""),
-		BuilderExecutorPolicyRegistryJSON: getEnv("BUILDER_EXECUTOR_POLICY_REGISTRY_JSON", ""),
-		BuilderExecutionCatalogJSON:       getEnv("BUILDER_EXECUTION_CATALOG_JSON", ""),
-		BuilderDefaultProviderKey:         fallbackString(getEnv("BUILDER_DEFAULT_PROVIDER_KEY", ""), "default"),
-		BuilderDefaultModelProfileKey:     fallbackString(getEnv("BUILDER_DEFAULT_MODEL_PROFILE_KEY", ""), "builder-default"),
-		BuilderDefaultExecutorPolicyKey:   fallbackString(getEnv("BUILDER_DEFAULT_EXECUTOR_POLICY_KEY", ""), "workspace-only"),
-		BuilderAgentBaseURL:               getEnv("BUILDER_AGENT_BASE_URL", ""),
-		BuilderAgentAPIKey:                getEnv("BUILDER_AGENT_API_KEY", ""),
-		BuilderAgentModel:                 getEnv("BUILDER_AGENT_MODEL", ""),
-		BuilderWorkspaceImage:             fallbackString(getEnv("BUILDER_WORKSPACE_IMAGE", ""), "node:22-bookworm"),
-		BuilderWorkspaceRoot:              fallbackString(getEnv("BUILDER_WORKSPACE_ROOT", ""), "/workspace"),
-		BuilderSessionTTLHours:            getEnvInt("BUILDER_SESSION_TTL_HOURS", 24),
-		EgressAllowedHosts:                getEnv("EGRESS_ALLOWED_HOSTS", ""),
+		LogLevel:                        getEnv("LOG_LEVEL", "info"),
+		Environment:                     strings.ToLower(strings.TrimSpace(getEnv("APP_ENV", "development"))),
+		Port:                            getEnv("PORT", "8080"),
+		DBDriver:                        dbDriver,
+		DBSource:                        buildDBSource(dbDriver, dbHost, dbPort, dbName, dbUsername, dbPassword, dbSSLMode, dbTLSMode),
+		DBHost:                          dbHost,
+		DBPort:                          dbPort,
+		DBName:                          dbName,
+		DBUsername:                      dbUsername,
+		DBPassword:                      dbPassword,
+		DBSSLMode:                       dbSSLMode,
+		DBTLSMode:                       dbTLSMode,
+		DBAutoMigrate:                   dbAutoMigrate,
+		DBMaxIdleConns:                  getEnvInt("DB_MAX_IDLE_CONNS", 10),
+		DBMaxOpenConns:                  getEnvInt("DB_MAX_OPEN_CONNS", 50),
+		DBConnMaxLifetimeMinutes:        getEnvInt("DB_CONN_MAX_LIFETIME_MINUTES", 60),
+		DBConnMaxIdleTimeMinutes:        getEnvInt("DB_CONN_MAX_IDLE_TIME_MINUTES", 30),
+		JWTSecret:                       strings.TrimSpace(getEnv("JWT_SECRET", "")),
+		JWTIssuer:                       fallbackString(getEnv("JWT_ISSUER", ""), "ketches"),
+		JWTAudience:                     fallbackString(getEnv("JWT_AUDIENCE", ""), "ketches-ui"),
+		AccessTokenTTLMinutes:           getEnvInt("ACCESS_TOKEN_TTL_MINUTES", 60),
+		RefreshTokenTTLHours:            getEnvInt("REFRESH_TOKEN_TTL_HOURS", 24*7),
+		SecretEncryptionKey:             strings.TrimSpace(getEnv("SECRET_ENCRYPTION_KEY", "")),
+		PreviousSecretEncryptionKeys:    strings.TrimSpace(getEnv("PREVIOUS_SECRET_ENCRYPTION_KEYS", "")),
+		BootstrapAdminUsername:          strings.TrimSpace(getEnv("BOOTSTRAP_ADMIN_USERNAME", "")),
+		BootstrapAdminPassword:          getEnv("BOOTSTRAP_ADMIN_PASSWORD", ""),
+		SignUpEmailVerificationRequired: getEnvBool("SIGN_UP_EMAIL_VERIFICATION_REQUIRED", true),
+		CORSAllowedOrigins:              getEnv("CORS_ALLOWED_ORIGINS", ""),
+		TrustedProxies:                  splitCommaSeparated(getEnv("TRUSTED_PROXIES", "")),
+		SMTPHost:                        strings.TrimSpace(getEnv("SMTP_HOST", "")),
+		SMTPPort:                        getEnvInt("SMTP_PORT", 587),
+		SMTPUsername:                    strings.TrimSpace(getEnv("SMTP_USERNAME", "")),
+		SMTPPassword:                    getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:                        strings.TrimSpace(getEnv("SMTP_FROM", "")),
+		BuildLogBaseDir:                 fallbackString(getEnv("BUILD_LOG_BASE_DIR", ""), "data/build-logs"),
+		BuildLogRetentionDays:           getEnvInt("BUILD_LOG_RETENTION_DAYS", 15),
+		EgressAllowedHosts:              getEnv("EGRESS_ALLOWED_HOSTS", ""),
+		AllowHostPathVolumes:            getEnvBool("ALLOW_HOSTPATH_VOLUMES", false),
 	}
 }
 
@@ -134,12 +119,17 @@ func ValidateRuntimeConfig() error {
 		return ErrJWTSecretNotConfigured
 	case Config.SecretEncryptionKey == "":
 		return ErrSecretEncryptionKeyNotConfigured
+	case len([]byte(strings.TrimSpace(Config.SecretEncryptionKey))) < 32:
+		return ErrSecretEncryptionKeyTooShort
 	case strings.TrimSpace(Config.BootstrapAdminPassword) == "":
 		return ErrBootstrapAdminPasswordNotConfigured
 	}
 
 	if len(strings.TrimSpace(Config.BootstrapAdminPassword)) < 12 {
 		return ErrBootstrapAdminPasswordTooShort
+	}
+	if err := ValidateDatabaseTLS(); err != nil {
+		return err
 	}
 	if Config.AccessTokenTTLMinutes < 1 {
 		Config.AccessTokenTTLMinutes = 60
@@ -163,13 +153,13 @@ func ValidateRuntimeConfig() error {
 	return nil
 }
 
-func buildDBSource(driver, host, port, name, username, password, sslMode string) string {
+func buildDBSource(driver, host, port, name, username, password, sslMode, tlsMode string) string {
 	if source, ok := os.LookupEnv("DB_SOURCE"); ok && strings.TrimSpace(source) != "" {
 		return source
 	}
 
 	switch driver {
-	case "postgres":
+	case "postgres", "postgresql":
 		resolvedHost := fallbackString(host, "localhost")
 		resolvedPort := fallbackString(port, "5432")
 		resolvedName := fallbackString(name, "ketches")
@@ -189,7 +179,7 @@ func buildDBSource(driver, host, port, name, username, password, sslMode string)
 		resolvedPort := fallbackString(port, "3306")
 		resolvedName := fallbackString(name, "ketches")
 		resolvedUsername := fallbackString(username, "root")
-		return fmt.Sprintf(
+		source := fmt.Sprintf(
 			"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 			resolvedUsername,
 			password,
@@ -197,9 +187,89 @@ func buildDBSource(driver, host, port, name, username, password, sslMode string)
 			resolvedPort,
 			resolvedName,
 		)
+		if strings.TrimSpace(tlsMode) != "" {
+			source += "&tls=" + url.QueryEscape(strings.TrimSpace(tlsMode))
+		}
+		return source
 	default:
 		return ""
 	}
+}
+
+func ValidateDatabaseTLS() error {
+	if isLocalEnvironment(Config.Environment) {
+		return nil
+	}
+
+	switch strings.ToLower(strings.TrimSpace(Config.DBDriver)) {
+	case "postgres", "postgresql":
+		mode := postgresSSLMode(Config.DBSource, Config.DBSSLMode)
+		switch mode {
+		case "require", "verify-ca", "verify-full":
+			return nil
+		default:
+			return WrapErrorf(ErrDatabaseTLSRequired, "PostgreSQL sslmode=%q is not allowed in %s", mode, Config.Environment)
+		}
+	case "mysql":
+		mode := mysqlTLSMode(Config.DBSource, Config.DBTLSMode)
+		if mode == "" || mode == "false" || mode == "skip-verify" || mode == "preferred" {
+			return WrapErrorf(ErrDatabaseTLSRequired, "MySQL tls=%q is not allowed in %s", mode, Config.Environment)
+		}
+	}
+	return nil
+}
+
+func isLocalEnvironment(environment string) bool {
+	switch strings.ToLower(strings.TrimSpace(environment)) {
+	case "", "local", "development", "dev", "test":
+		return true
+	default:
+		return false
+	}
+}
+
+func postgresSSLMode(source, fallback string) string {
+	trimmed := strings.TrimSpace(source)
+	if parsed, err := url.Parse(trimmed); err == nil && (parsed.Scheme == "postgres" || parsed.Scheme == "postgresql") {
+		if mode := strings.TrimSpace(parsed.Query().Get("sslmode")); mode != "" {
+			return strings.ToLower(mode)
+		}
+	}
+	for _, field := range strings.Fields(trimmed) {
+		key, value, ok := strings.Cut(field, "=")
+		if ok && strings.EqualFold(strings.TrimSpace(key), "sslmode") {
+			return strings.ToLower(strings.Trim(strings.TrimSpace(value), "'\""))
+		}
+	}
+	if trimmed != "" {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(fallback))
+}
+
+func mysqlTLSMode(source, fallback string) string {
+	if index := strings.Index(source, "?"); index >= 0 {
+		if values, err := url.ParseQuery(source[index+1:]); err == nil {
+			if mode := strings.TrimSpace(values.Get("tls")); mode != "" {
+				return strings.ToLower(mode)
+			}
+		}
+	}
+	if strings.TrimSpace(source) != "" {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(fallback))
+}
+
+func splitCommaSeparated(value string) []string {
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 func fallbackString(value, fallback string) string {

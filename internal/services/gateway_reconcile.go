@@ -6,31 +6,23 @@ import (
 
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
+	"github.com/ketches/ketches/internal/db/entities"
 )
 
-func ReconcilePublicGatewayResources(ctx context.Context) error {
-	type clusterRow struct {
-		ClusterID string
-	}
+var ensureSharedGatewayForReconcile = core.EnsureSharedGateway
 
-	var rows []clusterRow
-	err := db.DB.Table("app_gateway_http_routes r").
-		Select("DISTINCT e.cluster_id AS cluster_id").
-		Joins("JOIN app_gateways ag ON ag.id = r.app_gateway_id").
-		Joins("JOIN apps a ON a.id = ag.app_id").
-		Joins("JOIN envs e ON e.id = a.env_id").
-		Where("r.enabled = ? AND LOWER(ag.protocol) = ? AND e.cluster_id <> ''", true, "http").
-		Scan(&rows).Error
-	if err != nil {
+func ReconcilePublicGatewayResources(ctx context.Context) error {
+	var clusters []entities.Cluster
+	if err := db.DB.Select("id").Where("enabled = ?", true).Find(&clusters).Error; err != nil {
 		return err
 	}
 
-	for _, row := range rows {
-		if row.ClusterID == "" {
+	for _, cluster := range clusters {
+		if cluster.ID == "" {
 			continue
 		}
-		if err := core.EnsureSharedGateway(ctx, row.ClusterID); err != nil {
-			slog.Warn("failed to reconcile shared gateway resources", "cluster_id", row.ClusterID, "error", err)
+		if err := ensureSharedGatewayForReconcile(ctx, cluster.ID); err != nil {
+			slog.Warn("failed to reconcile shared gateway resources", "cluster_id", cluster.ID, "error", err)
 		}
 	}
 

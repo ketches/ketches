@@ -89,14 +89,6 @@ vi.mock("@/pages/projects/project-detail-page", () => ({
   ProjectDetailPage: () => <div data-testid="project-detail-page">project-detail-page</div>,
 }))
 
-vi.mock("@/pages/builder-sessions/builder-page", () => ({
-  BuilderPage: () => <div data-testid="builder-page">builder-page</div>,
-}))
-
-vi.mock("@/pages/builder-sessions/builder-session-page", () => ({
-  BuilderSessionPage: () => <div data-testid="builder-session-page">builder-session-page</div>,
-}))
-
 vi.mock("@/pages/collaborations/collaborations-page", () => ({
   CollaborationsPage: () => <div data-testid="collaborations-page">collaborations-page</div>,
 }))

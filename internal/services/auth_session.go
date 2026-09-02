@@ -26,6 +26,7 @@ const (
 	signupVerificationCodeLength         = 6
 	signupVerificationCodeExpiresIn      = 5 * time.Minute
 	signupVerificationCodeResendCooldown = 60 * time.Second
+	signupVerificationCodeMaxAttempts    = 5
 )
 
 var (
@@ -129,17 +130,19 @@ func RequestSignUpVerificationCode(email string) (*models.SignUpVerificationCode
 		return nil, err
 	}
 
-	now := currentTime()
-	var latest entities.SignupVerificationCode
-	if err := db.DB.Where("email = ?", normalizedEmail).Order("created_at DESC").First(&latest).Error; err == nil {
-		if latest.ResendAvailableAt.After(now) {
+	if err := EnforceAuthRateLimit(AuthRateScopeVerifyEmail, normalizedEmail, 1, signupVerificationCodeResendCooldown); err != nil {
+		if errors.Is(err, ErrAuthRateLimited) {
 			return nil, ErrVerificationCodeResendTooSoon
 		}
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
-	code := signupVerificationCodeGenerator()
+	now := currentTime()
+	code, err := signupVerificationCodeGenerator()
+	if err != nil {
+		_ = ResetAuthRateLimit(AuthRateScopeVerifyEmail, normalizedEmail)
+		return nil, err
+	}
 	record := entities.SignupVerificationCode{
 		Base:              entities.Base{ID: uuid.New()},
 		Email:             normalizedEmail,
@@ -149,7 +152,15 @@ func RequestSignUpVerificationCode(email string) (*models.SignUpVerificationCode
 	}
 
 	if err := db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("email = ?", normalizedEmail).Delete(&entities.SignupVerificationCode{}).Error; err != nil {
+		var latest entities.SignupVerificationCode
+		if err := tx.Unscoped().Where("email = ?", normalizedEmail).First(&latest).Error; err == nil {
+			if latest.ResendAvailableAt.After(now) {
+				return ErrVerificationCodeResendTooSoon
+			}
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if err := tx.Unscoped().Where("email = ?", normalizedEmail).Delete(&entities.SignupVerificationCode{}).Error; err != nil {
 			return err
 		}
 		if err := tx.Create(&record).Error; err != nil {
@@ -160,6 +171,7 @@ func RequestSignUpVerificationCode(email string) (*models.SignUpVerificationCode
 		}
 		return nil
 	}); err != nil {
+		_ = ResetAuthRateLimit(AuthRateScopeVerifyEmail, normalizedEmail)
 		return nil, err
 	}
 
@@ -219,32 +231,60 @@ func consumeSignupVerificationCode(tx *gorm.DB, email, code string) error {
 		return err
 	}
 
-	var latest entities.SignupVerificationCode
-	if err := tx.Where("email = ?", normalizedEmail).Order("created_at DESC").First(&latest).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrInvalidVerificationCode
-		}
+	now := currentTime()
+	codeHash := hashOpaqueValue(strings.TrimSpace(code))
+	result := tx.Unscoped().Where(
+		"email = ? AND code_hash = ? AND expires_at > ? AND attempt_count < ?",
+		normalizedEmail, codeHash, now, signupVerificationCodeMaxAttempts,
+	).Delete(&entities.SignupVerificationCode{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 1 {
+		return nil
+	}
+
+	if err := tx.Model(&entities.SignupVerificationCode{}).
+		Where("email = ? AND expires_at > ? AND attempt_count < ?", normalizedEmail, now, signupVerificationCodeMaxAttempts).
+		UpdateColumn("attempt_count", gorm.Expr("attempt_count + 1")).Error; err != nil {
 		return err
 	}
-
-	now := currentTime()
-	if latest.ExpiresAt.Before(now) || !secureCompareHash(latest.CodeHash, strings.TrimSpace(code)) {
-		return ErrInvalidVerificationCode
+	if err := tx.Unscoped().Where("email = ? AND (expires_at <= ? OR attempt_count >= ?)", normalizedEmail, now, signupVerificationCodeMaxAttempts).
+		Delete(&entities.SignupVerificationCode{}).Error; err != nil {
+		return err
 	}
-
-	return tx.Where("email = ?", normalizedEmail).Delete(&entities.SignupVerificationCode{}).Error
+	return ErrInvalidVerificationCode
 }
 
-func generateSignupVerificationCode() string {
+func consumeSignupVerificationCodeAtomically(email, code string) error {
+	invalid := false
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		err := consumeSignupVerificationCode(tx, email, code)
+		if errors.Is(err, ErrInvalidVerificationCode) {
+			invalid = true
+			return nil
+		}
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	if invalid {
+		return ErrInvalidVerificationCode
+	}
+	return nil
+}
+
+func generateSignupVerificationCode() (string, error) {
 	buf := make([]byte, signupVerificationCodeLength)
 	if _, err := rand.Read(buf); err != nil {
-		return "000000"
+		return "", err
 	}
 
 	for i := range buf {
 		buf[i] = '0' + (buf[i] % 10)
 	}
-	return string(buf)
+	return string(buf), nil
 }
 
 func sendSignupVerificationEmail(email, code string) error {

@@ -245,100 +245,18 @@ func GetAppSimple(ctx context.Context, appID string) (*models.SimpleApp, error) 
 }
 
 func GetAppContext(ctx context.Context, appID string) (*models.AppContext, error) {
-	var application entities.App
-	if err := db.DB.First(&application, "id = ?", appID).Error; err != nil {
-		return nil, err
-	}
-
-	envCtx, err := GetEnvContext(application.EnvID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Batch-fetch 1:N relations
-	var envVars []entities.AppEnvVar
-	db.DB.Where("app_id = ?", appID).Find(&envVars)
-	var volumes []entities.AppVolume
-	db.DB.Where("app_id = ?", appID).Find(&volumes)
-	var configFiles []entities.AppConfigFile
-	db.DB.Where("app_id = ?", appID).Find(&configFiles)
-	var probes []entities.AppProbe
-	db.DB.Where("app_id = ?", appID).Find(&probes)
-	var gateways []entities.AppGateway
-	db.DB.Where("app_id = ?", appID).Order("port ASC").Find(&gateways)
-	gatewayIDs := make([]string, 0, len(gateways))
-	for _, gateway := range gateways {
-		gatewayIDs = append(gatewayIDs, gateway.ID)
-	}
-	var gatewayRoutes []entities.AppGatewayHTTPRoute
-	var gatewayBackends []entities.AppGatewayHTTPRouteBackend
-	if len(gatewayIDs) > 0 {
-		db.DB.Where("app_gateway_id IN ?", gatewayIDs).Order("sort_order ASC, host ASC, path ASC").Find(&gatewayRoutes)
-		routeIDs := make([]string, 0, len(gatewayRoutes))
-		for _, route := range gatewayRoutes {
-			routeIDs = append(routeIDs, route.ID)
-		}
-		if len(routeIDs) > 0 {
-			db.DB.Where("route_id IN ?", routeIDs).Order("id ASC").Find(&gatewayBackends)
-		}
-	}
-
-	// Fetch 1:1 optional relations
-	var autoScaling *entities.AppAutoScaling
-	var as entities.AppAutoScaling
-	if err := db.DB.Where("app_id = ?", appID).First(&as).Error; err == nil {
-		autoScaling = &as
-	}
-	var schedulingRule *entities.AppSchedulingRule
-	var sr entities.AppSchedulingRule
-	if err := db.DB.Where("app_id = ?", appID).First(&sr).Error; err == nil {
-		schedulingRule = &sr
-	}
-
-	// Fetch AppPlugins with their Plugin (N:1)
-	var appPlugins []entities.AppPlugin
-	db.DB.Where("app_id = ?", appID).Find(&appPlugins)
-	plugins := make(map[string]entities.Plugin)
-	pluginIDs := make(map[string]struct{})
-	for i := range appPlugins {
-		if appPlugins[i].PluginID != "" {
-			pluginIDs[appPlugins[i].PluginID] = struct{}{}
-		}
-	}
-	if len(pluginIDs) > 0 {
-		ids := make([]string, 0, len(pluginIDs))
-		for id := range pluginIDs {
-			ids = append(ids, id)
-		}
-		var pluginRows []entities.Plugin
-		db.DB.Where("id IN ?", ids).Find(&pluginRows)
-		for _, p := range pluginRows {
-			plugins[p.ID] = p
-		}
-	}
-
-	return &models.AppContext{
-		App:             application,
-		EnvContext:      *envCtx,
-		EnvVars:         envVars,
-		Volumes:         volumes,
-		Gateways:        gateways,
-		GatewayRoutes:   gatewayRoutes,
-		GatewayBackends: gatewayBackends,
-		Probes:          probes,
-		ConfigFiles:     configFiles,
-		SchedulingRule:  schedulingRule,
-		AutoScaling:     autoScaling,
-		AppPlugins:      appPlugins,
-		Plugins:         plugins,
-	}, nil
+	return core.LoadAppContext(ctx, appID)
 }
 
 func ApplyApp(ctx context.Context, appCtx *models.AppContext) error {
 	return core.ApplyApp(ctx, appCtx)
 }
 
-var applyAppFn = ApplyApp
+var (
+	applyAppFn                      = ApplyApp
+	deleteAppK8sResources           = core.DeleteAppResources
+	ensureSharedGatewayForAppDelete = core.EnsureSharedGateway
+)
 
 func UpdateAppBasic(ctx context.Context, appID string, req *models.UpdateBasicInfoRequest) (*models.AppContext, error) {
 	appCtx, err := GetAppContext(ctx, appID)
@@ -611,18 +529,30 @@ func UpdateAppCommand(ctx context.Context, appID string, req *models.UpdateAppCo
 }
 
 func DeleteApp(ctx context.Context, appID string) error {
-	appCtx, err := GetAppContext(ctx, appID)
-	if err != nil {
+	var clusterID string
+	if err := core.WithAppReconcileFence(ctx, appID, func() error {
+		appCtx, err := GetAppContext(ctx, appID)
+		if err != nil {
+			return err
+		}
+		clusterID = appCtx.EnvContext.Env.ClusterID
+
+		if err := deleteAppK8sResources(ctx, appCtx, true); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		} else if err != nil {
+			slog.Warn("ignore missing Kubernetes resource during app delete", "appID", appID, "appSlug", appCtx.App.Slug, "error", err)
+		}
+
+		return db.DB.Transaction(func(tx *gorm.DB) error {
+			return tx.Model(&entities.App{}).Where("id = ?", appID).Updates(map[string]any{
+				"deploy_status": "undeployed",
+				"deleted_at":    gorm.Expr("CURRENT_TIMESTAMP"),
+			}).Error
+		})
+	}); err != nil {
 		return err
 	}
-
-	if _, err := executeStopAction(ctx, appCtx); err != nil && !k8serrors.IsNotFound(err) {
-		return err
-	} else if err != nil {
-		slog.Warn("ignore missing Kubernetes resource during app delete", "appID", appID, "appSlug", appCtx.App.Slug, "error", err)
-	}
-
-	return db.DB.Delete(&entities.App{}, "id = ?", appID).Error
+	return ensureSharedGatewayForAppDelete(ctx, clusterID)
 }
 
 // BatchDeleteApps deletes multiple applications by their IDs
@@ -644,47 +574,115 @@ func PermanentlyDeleteApp(ctx context.Context, appID string, actors ...RecycleBi
 	if err != nil {
 		return err
 	}
-	return db.DB.Transaction(func(tx *gorm.DB) error {
-		if _, err := loadRecycleBinApp(tx, appID, actor); err != nil {
+	return core.WithAppReconcileFence(ctx, appID, func() error {
+		var cleanupContext *models.AppContext
+		if err := db.DB.Transaction(func(tx *gorm.DB) error {
+			if _, err := loadRecycleBinApp(tx, appID, actor); err != nil {
+				return err
+			}
+			var err error
+			cleanupContext, err = loadDeletedAppCleanupContext(tx, appID)
+			if err != nil {
+				return err
+			}
+			return claimRecycleBinDeletionTargets(tx, newRecycleBinDeletionTarget(
+				recycleBinResourceApp, appID, &entities.App{}, "app",
+			))
+		}); err != nil {
 			return err
 		}
-		return permanentlyDeleteAppTx(ctx, tx, appID)
+		if err := deleteAppK8sResources(ctx, cleanupContext, false); err != nil && !k8serrors.IsNotFound(err) {
+			return err
+		}
+
+		return db.DB.Transaction(func(tx *gorm.DB) error {
+			if _, err := loadRecycleBinApp(tx, appID, actor); err != nil {
+				return err
+			}
+			return permanentlyDeleteAppTx(ctx, tx, appID)
+		})
 	})
 }
 
-func permanentlyDeleteAppTx(ctx context.Context, tx *gorm.DB, appID string) error {
+func loadDeletedAppCleanupContext(tx *gorm.DB, appID string) (*models.AppContext, error) {
+	var application entities.App
+	if err := tx.Unscoped().First(&application, "id = ?", appID).Error; err != nil {
+		return nil, err
+	}
+	var env entities.Env
+	if err := tx.Unscoped().First(&env, "id = ?", application.EnvID).Error; err != nil {
+		return nil, err
+	}
+
+	cleanupContext := &models.AppContext{
+		App:        application,
+		EnvContext: models.EnvContext{Env: env},
+	}
+	if err := tx.Unscoped().Where("app_id = ?", appID).Find(&cleanupContext.Volumes).Error; err != nil {
+		return nil, err
+	}
+	if err := tx.Unscoped().Where("app_id = ?", appID).Find(&cleanupContext.Gateways).Error; err != nil {
+		return nil, err
+	}
+
+	if len(cleanupContext.Gateways) == 0 {
+		return cleanupContext, nil
+	}
+	gatewayIDs := make([]string, 0, len(cleanupContext.Gateways))
+	for _, gateway := range cleanupContext.Gateways {
+		gatewayIDs = append(gatewayIDs, gateway.ID)
+	}
+	if err := tx.Unscoped().Where("app_gateway_id IN ?", gatewayIDs).Find(&cleanupContext.GatewayRoutes).Error; err != nil {
+		return nil, err
+	}
+	if len(cleanupContext.GatewayRoutes) == 0 {
+		return cleanupContext, nil
+	}
+	routeIDs := make([]string, 0, len(cleanupContext.GatewayRoutes))
+	for _, route := range cleanupContext.GatewayRoutes {
+		routeIDs = append(routeIDs, route.ID)
+	}
+	if err := tx.Unscoped().Where("route_id IN ?", routeIDs).Find(&cleanupContext.GatewayBackends).Error; err != nil {
+		return nil, err
+	}
+	return cleanupContext, nil
+}
+
+func permanentlyDeleteAppTx(ctx context.Context, tx *gorm.DB, appID string, allowActiveCascade ...bool) error {
 	var application entities.App
 	if err := tx.Unscoped().First(&application, "id = ?", appID).Error; err != nil {
 		return err
 	}
-	if !application.DeletedAt.Valid {
+	allowActive := len(allowActiveCascade) > 0 && allowActiveCascade[0]
+	if !application.DeletedAt.Valid && !allowActive {
 		return app.WrapErrorf(ErrRecycleBinResourceActive, "app %s", appID)
 	}
 
-	// Build a minimal AppContext for K8s resource cleanup
-	var env entities.Env
-	if err := tx.Unscoped().First(&env, "id = ?", application.EnvID).Error; err != nil {
+	var gatewayIDs []string
+	if err := tx.Unscoped().Model(&entities.AppGateway{}).Where("app_id = ?", appID).Pluck("id", &gatewayIDs).Error; err != nil {
+		return err
+	}
+	var routeIDs []string
+	if len(gatewayIDs) > 0 {
+		if err := tx.Unscoped().Model(&entities.AppGatewayHTTPRoute{}).Where("app_gateway_id IN ?", gatewayIDs).Pluck("id", &routeIDs).Error; err != nil {
+			return err
+		}
+	}
+	if len(routeIDs) > 0 {
+		if err := tx.Unscoped().Where("route_id IN ?", routeIDs).Delete(&entities.AppGatewayHTTPRouteBackend{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Where("id IN ?", routeIDs).Delete(&entities.AppGatewayHTTPRoute{}).Error; err != nil {
+			return err
+		}
+	}
+	if err := tx.Unscoped().Where("backend_app_id = ?", appID).Delete(&entities.AppGatewayHTTPRouteBackend{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppGateway{}).Error; err != nil {
 		return err
 	}
 
-	var autoScaling *entities.AppAutoScaling
-	var as entities.AppAutoScaling
-	if err := tx.Where("app_id = ?", appID).First(&as).Error; err == nil {
-		autoScaling = &as
-	}
-
-	appCtx := &models.AppContext{
-		App:         application,
-		EnvContext:  models.EnvContext{Env: env},
-		AutoScaling: autoScaling,
-	}
-
-	// Delete Kubernetes resources created by this app
-	if err := deleteAppK8sResources(ctx, appCtx, false); err != nil {
-		return err
-	}
-
-	// Hard-delete all child records directly (no need to fetch first)
 	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppEnvVar{}).Error; err != nil {
 		return err
 	}
@@ -692,9 +690,6 @@ func permanentlyDeleteAppTx(ctx context.Context, tx *gorm.DB, appID string) erro
 		return err
 	}
 	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppConfigFile{}).Error; err != nil {
-		return err
-	}
-	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppGateway{}).Error; err != nil {
 		return err
 	}
 	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppProbe{}).Error; err != nil {
@@ -709,86 +704,32 @@ func permanentlyDeleteAppTx(ctx context.Context, tx *gorm.DB, appID string) erro
 	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppSchedulingRule{}).Error; err != nil {
 		return err
 	}
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppGroupMember{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.AppFavorite{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Unscoped().Where("app_id = ?", appID).Delete(&entities.DeploymentHistory{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Unscoped().Model(&entities.BuildDeployment{}).Where("app_id = ?", appID).Update("app_id", nil).Error; err != nil {
+		return err
+	}
+	if err := tx.Unscoped().Model(&entities.OperationLog{}).Where("app_id = ?", appID).Update("app_id", nil).Error; err != nil {
+		return err
+	}
 
-	return tx.Unscoped().Delete(&entities.App{}, "id = ?", appID).Error
+	if err := tx.Unscoped().Delete(&entities.App{}, "id = ?", appID).Error; err != nil {
+		return err
+	}
+	return deleteRecycleBinDeletionClaim(tx, recycleBinResourceApp, appID)
 }
 
-// deleteAppK8sResources deletes all Kubernetes resources created by an app
-func deleteAppK8sResources(ctx context.Context, appCtx *models.AppContext, keepStorageData bool) error {
-	if appCtx.EnvContext.Env.ClusterID == "" {
-		return nil
-	}
-
-	client, err := kube.GlobalClusterStore.GetClient(appCtx.EnvContext.Env.ClusterID)
-	if err != nil {
-		return err
-	}
-
-	ns := appCtx.EnvContext.Env.ClusterNamespace
-	appLabel := kube.LabelAppSlug + "=" + appCtx.App.Slug
-
-	// Delete Deployment or StatefulSet
-	switch appCtx.App.AppType {
-	case app.AppTypeDeployment:
-		if err := client.AppsV1().Deployments(ns).Delete(ctx, appCtx.App.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
-			return err
-		}
-	case app.AppTypeStatefulSet:
-		if err := client.AppsV1().StatefulSets(ns).Delete(ctx, appCtx.App.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	// Delete Service
-	if err := client.CoreV1().Services(ns).Delete(ctx, appCtx.App.Slug, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
-		return err
-	}
-
-	// Delete ConfigMap if exists
-	configMapName := appCtx.App.Slug + "-config"
-	if err := client.CoreV1().ConfigMaps(ns).Delete(ctx, configMapName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
-		return err
-	}
-
-	// Delete registry Secret if exists
-	if appCtx.App.RegistryUsername != "" {
-		secretName := appCtx.App.Slug + "-registry"
-		if err := client.CoreV1().Secrets(ns).Delete(ctx, secretName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	// Delete PVCs
-	if !keepStorageData {
-		if err := client.CoreV1().PersistentVolumeClaims(ns).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: appLabel,
-		}); err != nil && !k8serrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	// Delete HPA if exists
-	if appCtx.AutoScaling != nil {
-		hpaName := appCtx.App.Slug
-		if err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	// Delete Gateway API resources
-	if gwClient, err := kube.GlobalClusterStore.GetGatewayClient(appCtx.EnvContext.Env.ClusterID); err == nil {
-		if err := gwClient.GatewayV1().HTTPRoutes(ns).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: appLabel,
-		}); err != nil && !k8serrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func RestoreApp(ctx context.Context, appID string) error {
-	return db.DB.Unscoped().Model(&entities.App{}).Where("id = ?", appID).Update("deleted_at", nil).Error
+func RestoreApp(_ context.Context, appID string) error {
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		return restoreAppTx(tx, appID)
+	})
 }
 
 func ListAppInstances(ctx context.Context, appID string) ([]models.AppInstanceResponse, error) {
@@ -903,7 +844,7 @@ func StreamAppLogs(ctx context.Context, appCtx *models.AppContext, instanceName,
 	return stream, nil
 }
 
-func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName string, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
+func ExecAppContainer(ctx context.Context, appCtx *models.AppContext, instanceName, containerName string, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
 	plaintextKubeConfig, err := secrets.DecryptString(appCtx.EnvContext.Cluster.KubeConfig)
 	if err != nil {
 		return app.WrapErrorf(err, "failed to decrypt kubeconfig: %w", err)
@@ -918,7 +859,7 @@ func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName str
 	if err != nil {
 		return app.WrapErrorf(err, "failed to create kubernetes client: %w", err)
 	}
-	if _, err := validateAppPodContainer(context.Background(), client, appCtx, instanceName, containerName); err != nil {
+	if _, err := validateAppPodContainer(ctx, client, appCtx, instanceName, containerName); err != nil {
 		return err
 	}
 
@@ -951,7 +892,7 @@ func ExecAppContainer(appCtx *models.AppContext, instanceName, containerName str
 		streamOptions.TerminalSizeQueue = terminalSizeQueue
 	}
 
-	if err := executor.StreamWithContext(context.Background(), streamOptions); err != nil {
+	if err := executor.StreamWithContext(ctx, streamOptions); err != nil {
 		return app.WrapErrorf(err, "failed to stream exec session: %w", err)
 	}
 
@@ -1092,10 +1033,20 @@ func executeUpdateAction(ctx context.Context, appCtx *models.AppContext) (*model
 }
 
 func executeRedeployAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {
-	if err := deleteAppK8sResources(ctx, appCtx, true); err != nil {
+	if err := core.WithAppReconcileFence(ctx, appCtx.App.ID, func() error {
+		latest, err := GetAppContext(ctx, appCtx.App.ID)
+		if err != nil {
+			return err
+		}
+		return deleteAppK8sResources(ctx, latest, true)
+	}); err != nil {
 		return nil, err
 	}
-	return executeDeployAction(ctx, appCtx)
+	latest, err := GetAppContext(ctx, appCtx.App.ID)
+	if err != nil {
+		return nil, err
+	}
+	return executeDeployAction(ctx, latest)
 }
 
 func executeRollbackAction(ctx context.Context, appCtx *models.AppContext) (*models.AppContext, error) {

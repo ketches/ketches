@@ -278,6 +278,7 @@ func RequireProjectRole(minRole string) gin.HandlerFunc {
 
 		// Admin system role bypasses project role check
 		if claims.Role == app.UserRoleAdmin {
+			api.SetProjectRole(c, app.ProjectRoleOwner)
 			c.Next()
 			return
 		}
@@ -312,6 +313,7 @@ func RequireProjectRole(minRole string) gin.HandlerFunc {
 			return
 		}
 
+		api.SetProjectRole(c, member.ProjectRole)
 		c.Next()
 	}
 }

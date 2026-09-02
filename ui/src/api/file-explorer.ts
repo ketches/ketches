@@ -21,21 +21,24 @@ export interface ReadFileResponse {
 }
 
 export const fileExplorerApi = {
-  getHomeDir: async (appId: string, instanceName: string, container: string) => {
+  getHomeDir: async (appId: string, instanceName: string, container: string, signal?: AbortSignal) => {
     return client.get(`/v1/apps/${appId}/instances/${instanceName}/files/home`, {
       params: { container },
+      signal,
     }) as Promise<{ path: string }>
   },
 
-  listFiles: async (appId: string, instanceName: string, container: string, path: string = '/') => {
+  listFiles: async (appId: string, instanceName: string, container: string, path: string = '/', signal?: AbortSignal) => {
     return client.get(`/v1/apps/${appId}/instances/${instanceName}/files`, {
       params: { container, path },
+      signal,
     }) as Promise<ListFilesResponse>
   },
 
-  readFile: async (appId: string, instanceName: string, container: string, path: string) => {
+  readFile: async (appId: string, instanceName: string, container: string, path: string, signal?: AbortSignal) => {
     return client.get(`/v1/apps/${appId}/instances/${instanceName}/files/read`, {
       params: { container, path },
+      signal,
     }) as Promise<ReadFileResponse>
   },
 

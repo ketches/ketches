@@ -8,6 +8,7 @@ import (
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
+	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/pkg/uuid"
 )
 
@@ -68,6 +69,11 @@ func getCertificateForGateway(clusterID, envID, certID string) (*entities.Certif
 	).First(&cert).Error; err != nil {
 		return nil, err
 	}
+	plaintextKey, err := secrets.DecryptStringCompatible(cert.Key)
+	if err != nil {
+		return nil, err
+	}
+	cert.Key = plaintextKey
 	return &cert, nil
 }
 
@@ -78,12 +84,16 @@ func CreateClusterCertificate(clusterID string, req *models.CreateCertificateReq
 		return nil, err
 	}
 
+	encryptedKey, err := secrets.EncryptString(req.Key)
+	if err != nil {
+		return nil, err
+	}
 	cert := &entities.Certificate{
 		ID:          uuid.New(),
 		Name:        req.Name,
 		Description: req.Description,
 		Cert:        req.Cert,
-		Key:         req.Key,
+		Key:         encryptedKey,
 		Scope:       "cluster",
 		ClusterID:   cluster.ID,
 	}
@@ -104,12 +114,16 @@ func CreateEnvCertificate(envID string, req *models.CreateCertificateRequest) (*
 		return nil, errors.New("environment is not bound to a cluster")
 	}
 
+	encryptedKey, err := secrets.EncryptString(req.Key)
+	if err != nil {
+		return nil, err
+	}
 	cert := &entities.Certificate{
 		ID:          uuid.New(),
 		Name:        req.Name,
 		Description: req.Description,
 		Cert:        req.Cert,
-		Key:         req.Key,
+		Key:         encryptedKey,
 		Scope:       "env",
 		ClusterID:   env.ClusterID,
 	}
@@ -145,8 +159,12 @@ func UpdateCertificate(envID, certID string, req *models.UpdateCertificateReques
 		updates["cert"] = *req.Cert
 	}
 	if req.Key != nil {
-		cert.Key = *req.Key
-		updates["key"] = *req.Key
+		encryptedKey, err := secrets.EncryptString(*req.Key)
+		if err != nil {
+			return nil, err
+		}
+		cert.Key = encryptedKey
+		updates["key"] = encryptedKey
 	}
 
 	if len(updates) > 0 {

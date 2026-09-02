@@ -3,6 +3,33 @@ const AUTH_SESSION_REFRESHED_AT_KEY = "auth-session-refreshed-at"
 const CSRF_COOKIE_NAME = "X-Ketches-CSRF"
 const CSRF_HEADER_NAME = "X-CSRF-Token"
 
+// Session generations invalidate refreshes that were started before a logout.
+let sessionGeneration = 0
+let sessionLogoutInProgress = false
+
+export function getSessionGeneration(): number {
+  return sessionGeneration
+}
+
+export function isSessionLogoutInProgress(): boolean {
+  return sessionLogoutInProgress
+}
+
+export function beginSessionLogout(): number {
+  sessionGeneration += 1
+  sessionLogoutInProgress = true
+  return sessionGeneration
+}
+
+export function completeSessionLogout(): void {
+  sessionLogoutInProgress = false
+}
+
+export function cancelSessionLogout(): void {
+  sessionGeneration += 1
+  sessionLogoutInProgress = false
+}
+
 type PersistedAuthState = {
   state?: {
     isAuthenticated?: boolean

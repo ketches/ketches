@@ -240,13 +240,26 @@ func UpdateEnv(envID string, req *models.CreateEnvRequest) (*entities.Env, error
 		}
 	}
 
+	requestedNamespace := strings.TrimSpace(req.ClusterNamespace)
+	if requestedNamespace == "" {
+		requestedNamespace = env.ClusterNamespace
+	}
+	if req.ClusterID != env.ClusterID || requestedNamespace != env.ClusterNamespace {
+		return nil, errors.New("changing an environment cluster or namespace requires the dedicated migration workflow")
+	}
+
 	env.Slug = req.Slug
 	env.Name = req.Name
 	env.Description = req.Description
-	env.ClusterID = req.ClusterID
-	env.ClusterNamespace = req.ClusterNamespace
 
-	if err := db.DB.Save(env).Error; err != nil {
+	// Update only mutable environment fields. ClusterNamespace may be NULL in
+	// legacy databases, and saving the whole entity would turn that NULL into
+	// an empty string when GORM scans it into the string field.
+	if err := db.DB.Model(&entities.Env{}).Where("id = ?", env.ID).Updates(map[string]any{
+		"slug":        env.Slug,
+		"name":        env.Name,
+		"description": env.Description,
+	}).Error; err != nil {
 		return nil, err
 	}
 	return env, nil
@@ -261,7 +274,12 @@ func UpdateEnvBasic(envID string, req *models.UpdateBasicInfoRequest) (*entities
 	env.Name = req.Name
 	env.Description = req.Description
 
-	if err := db.DB.Save(env).Error; err != nil {
+	// Do not use Save here: it writes every column, including a nullable
+	// legacy ClusterNamespace that was scanned into an empty string.
+	if err := db.DB.Model(&entities.Env{}).Where("id = ?", env.ID).Updates(map[string]any{
+		"name":        env.Name,
+		"description": env.Description,
+	}).Error; err != nil {
 		return nil, err
 	}
 	return env, nil
@@ -285,6 +303,22 @@ func PermanentlyDeleteEnv(envID string, actors ...RecycleBinActor) error {
 	if err != nil {
 		return err
 	}
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if _, err := loadRecycleBinEnv(tx, envID, actor); err != nil {
+			return err
+		}
+		if err := claimRecycleBinDeletionTargets(tx, newRecycleBinDeletionTarget(
+			recycleBinResourceEnvironment, envID, &entities.Env{}, "environment",
+		)); err != nil {
+			return err
+		}
+		return validateEnvPermanentDeletionTx(tx, envID)
+	}); err != nil {
+		return err
+	}
+	if err := cleanupDeletedEnvNamespace(context.Background(), envID); err != nil {
+		return err
+	}
 	return db.DB.Transaction(func(tx *gorm.DB) error {
 		if _, err := loadRecycleBinEnv(tx, envID, actor); err != nil {
 			return err
@@ -302,50 +336,35 @@ func permanentlyDeleteEnvTx(ctx context.Context, tx *gorm.DB, envID string) erro
 		return app.WrapErrorf(ErrRecycleBinResourceActive, "environment %s", envID)
 	}
 
-	var activeAppCount int64
-	if err := tx.Model(&entities.App{}).Where("env_id = ?", envID).Count(&activeAppCount).Error; err != nil {
-		return err
-	}
-	if activeAppCount > 0 {
-		return app.NewErrorf("cannot permanently delete environment %s: it contains active applications", envID)
-	}
-
-	// Get all soft-deleted apps in this environment
-	var deletedApps []entities.App
-	if err := tx.Unscoped().Where("env_id = ? AND deleted_at IS NOT NULL", envID).Find(&deletedApps).Error; err != nil {
+	if err := deleteEnvOwnedRecordsTx(ctx, tx, envID); err != nil {
 		return err
 	}
 
-	// Permanently delete all soft-deleted apps
-	for _, app := range deletedApps {
-		if err := permanentlyDeleteAppTx(ctx, tx, app.ID); err != nil {
-			return err
-		}
-	}
-
-	// Delete environment-level certificates
-	var certs []entities.Certificate
-	if err := tx.Unscoped().Where("env_id = ? AND scope = ?", envID, "env").Find(&certs).Error; err != nil {
+	if err := tx.Unscoped().Delete(&entities.Env{}, "id = ?", envID).Error; err != nil {
 		return err
 	}
-	for _, cert := range certs {
-		if err := tx.Unscoped().Delete(&cert).Error; err != nil {
-			return err
-		}
-	}
+	return deleteRecycleBinDeletionClaim(tx, recycleBinResourceEnvironment, envID)
+}
 
-	// Delete the namespace in the cluster (if not already deleted during soft delete)
-	if env.ClusterID != "" && env.ClusterNamespace != "" {
-		if err := core.DeleteNamespace(ctx, env.ClusterID, env.ClusterNamespace); err != nil && !k8serrors.IsNotFound(err) {
-			return err
-		}
+func cleanupDeletedEnvNamespace(ctx context.Context, envID string) error {
+	var env entities.Env
+	if err := db.DB.Unscoped().First(&env, "id = ?", envID).Error; err != nil {
+		return err
 	}
-
-	return tx.Unscoped().Delete(&entities.Env{}, "id = ?", envID).Error
+	if env.ClusterID == "" || env.ClusterNamespace == "" {
+		return nil
+	}
+	err := core.DeleteNamespace(ctx, env.ClusterID, env.ClusterNamespace)
+	if k8serrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 func RestoreEnv(envID string) error {
-	return db.DB.Unscoped().Model(&entities.Env{}).Where("id = ?", envID).Update("deleted_at", nil).Error
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		return restoreEnvTx(tx, envID)
+	})
 }
 
 func CheckEnvDeletionConflicts(envID string) ([]entities.App, error) {

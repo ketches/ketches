@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
@@ -160,6 +162,31 @@ func ListProjectMembers(c *gin.Context) {
 	})
 }
 
+// GetProjectCapabilities returns the current user's effective project access.
+// RequireProjectRole on the route has already performed the exact membership
+// lookup, so this endpoint never relies on a paginated member response.
+func GetProjectCapabilities(c *gin.Context) {
+	if _, err := services.GetProject(c.Param("projectID")); err != nil {
+		api.Error(c, http.StatusNotFound, err)
+		return
+	}
+
+	role := api.GetProjectRole(c)
+	if role == "" {
+		api.Error(c, http.StatusForbidden, errors.New("insufficient permissions"))
+		return
+	}
+
+	api.Success(c, models.ProjectCapabilitiesResponse{
+		ProjectRole: role,
+		Capabilities: models.ProjectCapabilities{
+			Read:   true,
+			Write:  role == app.ProjectRoleOwner || role == app.ProjectRoleDeveloper,
+			Manage: role == app.ProjectRoleOwner,
+		},
+	})
+}
+
 func ListInvitableUsers(c *gin.Context) {
 	projectID := c.Param("projectID")
 	search := c.Query("search")
@@ -197,6 +224,10 @@ func InviteProjectMembers(c *gin.Context) {
 
 	claims := api.GetClaims(c)
 	if err := services.InviteProjectMembers(projectID, req.UserIDs, req.Role, claims.UserID); err != nil {
+		if errors.Is(err, services.ErrInvalidProjectRole) {
+			api.Error(c, http.StatusBadRequest, err)
+			return
+		}
 		api.Error(c, http.StatusInternalServerError, err)
 		return
 	}

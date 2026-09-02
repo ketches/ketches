@@ -257,6 +257,50 @@ func TestUpdateBuildFailed_MarksPendingBuildDeploymentsFailed(t *testing.T) {
 	assert.Nil(t, updatedDeployed.DeployedAt)
 }
 
+func TestUpdateBuildFailedClaimsTerminalTransitionOnce(t *testing.T) {
+	setupBuildWatcherTestDB(t)
+
+	build := entities.Build{
+		ID:             "build-terminal-cas",
+		BuildSettingID: "setting-1",
+		BuildEnvID:     "env-1",
+		BuildNumber:    1,
+		Status:         entities.BuildStatusBuilding,
+	}
+	require.NoError(t, db.DB.Create(&build).Error)
+
+	assert.True(t, updateBuildFailed(build.ID, "first failure"))
+	assert.False(t, updateBuildFailed(build.ID, "stale failure"))
+
+	var updated entities.Build
+	require.NoError(t, db.DB.First(&updated, "id = ?", build.ID).Error)
+	assert.Equal(t, entities.BuildStatusFailed, updated.Status)
+	assert.Equal(t, "first failure", updated.ErrorMessage)
+}
+
+func TestUpdateBuildFailedDoesNotOverwriteCancelledBuild(t *testing.T) {
+	setupBuildWatcherTestDB(t)
+
+	completedAt := time.Now().Add(-time.Minute)
+	build := entities.Build{
+		ID:             "build-cancelled",
+		BuildSettingID: "setting-1",
+		BuildEnvID:     "env-1",
+		BuildNumber:    1,
+		Status:         entities.BuildStatusCancelled,
+		CompletedAt:    &completedAt,
+	}
+	require.NoError(t, db.DB.Create(&build).Error)
+
+	assert.False(t, updateBuildFailed(build.ID, "stale watcher failure"))
+
+	var updated entities.Build
+	require.NoError(t, db.DB.First(&updated, "id = ?", build.ID).Error)
+	assert.Equal(t, entities.BuildStatusCancelled, updated.Status)
+	assert.Empty(t, updated.ErrorMessage)
+	assert.WithinDuration(t, completedAt, *updated.CompletedAt, time.Millisecond)
+}
+
 func TestRecoverActiveBuilds_FailsRowsMissingJobMetadata(t *testing.T) {
 	setupBuildWatcherTestDB(t)
 

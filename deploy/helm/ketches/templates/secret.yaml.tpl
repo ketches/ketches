@@ -22,6 +22,7 @@ type: Opaque
 stringData:
   jwt-secret: {{ required "values.config.jwtSecret is required" .Values.config.jwtSecret | quote }}
   secret-encryption-key: {{ required "values.config.secretEncryptionKey is required" .Values.config.secretEncryptionKey | quote }}
+  previous-secret-encryption-keys: {{ .Values.config.previousSecretEncryptionKeys | quote }}
   bootstrap-admin-username: {{ .Values.config.bootstrapAdminUsername | quote }}
   bootstrap-admin-password: {{ $bootstrapAdminPassword | quote }}
   smtp-password: {{ .Values.config.smtpPassword | quote }}

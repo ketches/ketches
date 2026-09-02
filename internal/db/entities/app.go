@@ -37,6 +37,7 @@ type AppEnvVar struct {
 	AppID     string    `gorm:"type:varchar(36);not null;uniqueIndex:idx_app_env_key;index"`
 	Key       string    `gorm:"type:varchar(256);not null;uniqueIndex:idx_app_env_key"`
 	Value     string    `gorm:"type:text"`
+	IsSecret  bool      `gorm:"type:bool;default:false;not null"`
 }
 
 type AppVolume struct {
@@ -47,6 +48,7 @@ type AppVolume struct {
 	Slug         string    `gorm:"type:varchar(64);not null;uniqueIndex:idx_app_volume_slug"`
 	MountPath    string    `gorm:"type:varchar(256);not null;uniqueIndex:idx_app_volume_mount_path"`
 	SubPath      string    `gorm:"type:varchar(256)"`
+	HostPath     string    `gorm:"type:varchar(256)"`
 	VolumeType   string    `gorm:"type:varchar(32);not null"`
 	Capacity     int       `gorm:"type:int;default:1"`
 	StorageClass string    `gorm:"type:varchar(64)"`
@@ -124,6 +126,7 @@ type AppConfigFile struct {
 	MountPath string    `gorm:"type:varchar(256);not null;uniqueIndex:idx_app_config_file_mount_path"`
 	Content   string    `gorm:"type:text;not null"`
 	FileMode  string    `gorm:"type:varchar(8);default:'0644'"`
+	IsSecret  bool      `gorm:"type:bool;default:false;not null"`
 }
 
 type AppSchedulingRule struct {

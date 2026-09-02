@@ -14,6 +14,8 @@ import (
 )
 
 const maxOperationLogBodySize = 4096
+
+const maxOperationLogCaptureBytes = maxOperationLogBodySize + 1
 const redactedOperationLogValue = "[REDACTED]"
 
 func OperationLog() gin.HandlerFunc {
@@ -113,11 +115,17 @@ func captureRequestBody(c *gin.Context) (string, string, string) {
 		return "", "", ""
 	}
 	contentType := strings.ToLower(strings.TrimSpace(c.ContentType()))
-	body, err := io.ReadAll(c.Request.Body)
+	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxOperationLogCaptureBytes))
 	if err != nil {
 		return "", "", ""
 	}
-	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+	// The logger only samples a bounded prefix but restores the complete body
+	// stream so downstream handlers still receive every byte.
+	originalBody := c.Request.Body
+	c.Request.Body = &sampledRequestBody{
+		Reader: io.MultiReader(bytes.NewReader(body), originalBody),
+		Closer: originalBody,
+	}
 	if len(body) == 0 {
 		return "", "", ""
 	}
@@ -156,6 +164,11 @@ func captureRequestBody(c *gin.Context) (string, string, string) {
 		body = body[:maxOperationLogBodySize]
 	}
 	return strings.TrimSpace(string(body)), bodyAction, bodyUsername
+}
+
+type sampledRequestBody struct {
+	io.Reader
+	io.Closer
 }
 
 func sanitizeOperationLogValue(value any) any {

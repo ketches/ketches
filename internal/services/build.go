@@ -14,6 +14,7 @@ import (
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/pkg/uuid"
+	"gorm.io/gorm"
 )
 
 func ListAppBuilds(appID string, page, pageSize int) (int64, []models.AppBuildResponse, error) {
@@ -94,19 +95,45 @@ func CancelBuild(buildID string) (*entities.Build, error) {
 		return nil, errors.New("build is not active")
 	}
 
-	// Stop watching
-	core.GlobalBuildWatcher.StopWatching(buildID)
+	now := time.Now()
+	duration := 0
+	if build.StartedAt != nil {
+		duration = int(now.Sub(*build.StartedAt).Seconds())
+	}
+	var buildEnv entities.Env
+	if err := db.DB.First(&buildEnv, "id = ?", build.BuildEnvID).Error; err != nil {
+		return nil, err
+	}
+	result := db.DB.Model(&entities.Build{}).
+		Where("id = ? AND status IN ?", buildID, []entities.BuildStatus{
+			entities.BuildStatusPending,
+			entities.BuildStatusCloning,
+			entities.BuildStatusBuilding,
+		}).
+		Updates(map[string]any{
+			"status":       entities.BuildStatusCancelled,
+			"completed_at": &now,
+			"duration":     duration,
+		})
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected != 1 {
+		return nil, errors.New("build is not active")
+	}
 
+	build.Status = entities.BuildStatusCancelled
+	build.CompletedAt = &now
+	build.Duration = duration
+
+	// Only the caller that wins the terminal-state transition owns the
+	// cancellation side effects.
+	core.GlobalBuildWatcher.StopWatching(buildID)
 	if err := persistBuildLogs(context.Background(), buildID); err != nil {
 		slog.Error(fmt.Sprintf("Failed to persist build logs before cancel: %v", err))
 	}
 
-	// Cancel the K8s job
 	if build.JobName != "" {
-		var buildEnv entities.Env
-		if err := db.DB.First(&buildEnv, "id = ?", build.BuildEnvID).Error; err != nil {
-			return nil, err
-		}
 		if err := cancelBuildJob(
 			context.Background(),
 			buildEnv.ClusterID,
@@ -116,23 +143,7 @@ func CancelBuild(buildID string) (*entities.Build, error) {
 			slog.Error(fmt.Sprintf("Failed to cancel build job: %v", err))
 		}
 	}
-
-	// Cleanup secrets
-	if buildEnv, err := GetEnv(build.BuildEnvID); err == nil {
-		cleanupBuildSecrets(context.Background(), buildEnv.ClusterID, buildID, build.JobNamespace)
-	}
-
-	// Update build status
-	now := time.Now()
-	build.Status = entities.BuildStatusCancelled
-	build.CompletedAt = &now
-	if build.StartedAt != nil {
-		build.Duration = int(now.Sub(*build.StartedAt).Seconds())
-	}
-
-	if err := db.DB.Save(build).Error; err != nil {
-		return nil, err
-	}
+	cleanupBuildSecrets(context.Background(), buildEnv.ClusterID, buildID, build.JobNamespace)
 
 	return build, nil
 }
@@ -251,6 +262,17 @@ func sanitizeRef(ref string) string {
 		ref = ref[:32]
 	}
 	return ref
+}
+
+func nextCodeRepositoryBuildNumber(tx *gorm.DB, repositoryID string) (int, error) {
+	var lastBuildNumber int
+	if err := tx.Model(&entities.Build{}).
+		Select("COALESCE(MAX(builds.build_number), 0)").
+		Where("builds.code_repository_id = ?", repositoryID).
+		Scan(&lastBuildNumber).Error; err != nil {
+		return 0, err
+	}
+	return lastBuildNumber + 1, nil
 }
 
 // ListBuildsByCodeRepository returns builds for a code repository.
@@ -423,86 +445,102 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 		}
 	}
 
-	var activeCount int64
-	if err := db.DB.Model(&entities.Build{}).
-		Where("build_setting_id = ? AND status IN ?",
-			setting.ID, []entities.BuildStatus{
-				entities.BuildStatusPending, entities.BuildStatusCloning, entities.BuildStatusBuilding,
+	var build *entities.Build
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		// The repository row is the serialization point for repository-scoped
+		// build numbers. Locking the setting as well keeps the active-build check
+		// tied to the configuration snapshot used by this build.
+		var lockedRepo entities.CodeRepository
+		if err := lockForUpdate(tx).First(&lockedRepo, "id = ?", repoID).Error; err != nil {
+			return err
+		}
+		var lockedSetting entities.BuildSetting
+		if err := lockForUpdate(tx).First(&lockedSetting, "id = ?", setting.ID).Error; err != nil {
+			return err
+		}
+		if lockedSetting.CodeRepositoryID == nil || *lockedSetting.CodeRepositoryID != repoID {
+			return errors.New("build setting does not belong to this code repository")
+		}
+
+		var activeCount int64
+		if err := tx.Model(&entities.Build{}).
+			Where("build_setting_id = ? AND status IN ?", lockedSetting.ID, []entities.BuildStatus{
+				entities.BuildStatusPending,
+				entities.BuildStatusCloning,
+				entities.BuildStatusBuilding,
 			}).Count(&activeCount).Error; err != nil {
+			return err
+		}
+		if activeCount > 0 {
+			return errors.New("an active build already exists for this build setting")
+		}
+
+		buildNumber, err := nextCodeRepositoryBuildNumber(tx, repoID)
+		if err != nil {
+			return err
+		}
+
+		gitRef := lockedSetting.GitRef
+		if req.GitRef != "" {
+			gitRef = req.GitRef
+		}
+		if gitRef == "" {
+			gitRef = "main"
+		}
+		imageTag := fmt.Sprintf("%s-%d", sanitizeRef(gitRef), buildNumber)
+		if req.ImageTag != "" {
+			imageTag = req.ImageTag
+		}
+		imageFullName := core.BuildImageFullName(registry, lockedSetting.ImageName, imageTag)
+
+		now := time.Now()
+		var triggeredByPtr *string
+		if userID != "" {
+			triggeredBy := userID
+			triggeredByPtr = &triggeredBy
+		}
+		repositoryID := repoID
+		build = &entities.Build{
+			ID:               uuid.New(),
+			BuildSettingID:   lockedSetting.ID,
+			CodeRepositoryID: &repositoryID,
+			BuildNumber:      buildNumber,
+			Status:           entities.BuildStatusPending,
+			BuildEnvID:       buildEnv.ID,
+			GitRepoURL:       lockedRepo.GitRepoURL,
+			GitRef:           gitRef,
+			ImageFullName:    imageFullName,
+			TriggerType:      entities.BuildTriggerManual,
+			TriggeredBy:      triggeredByPtr,
+			StartedAt:        &now,
+		}
+		if err := tx.Create(build).Error; err != nil {
+			return err
+		}
+
+		if autoDeploy {
+			var appIDPtr *string
+			if req.DeployAppID != "" {
+				appID := req.DeployAppID
+				appIDPtr = &appID
+			}
+			buildDeployment := &entities.BuildDeployment{
+				ID:         uuid.New(),
+				BuildID:    build.ID,
+				AppID:      appIDPtr,
+				EnvID:      req.DeployEnvID,
+				AppName:    req.DeployAppName,
+				AppSlug:    req.DeployAppSlug,
+				Status:     entities.BuildDeploymentStatusPending,
+				DeployedBy: "auto",
+			}
+			if err := tx.Create(buildDeployment).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return nil, err
-	}
-	if activeCount > 0 {
-		return nil, errors.New("an active build already exists for this build setting")
-	}
-
-	var lastBuild entities.Build
-	var buildNumber int
-	if err := db.DB.
-		Joins("JOIN build_settings ON build_settings.id = builds.build_setting_id").
-		Where("build_settings.code_repository_id = ?", repoID).
-		Order("builds.build_number DESC").
-		First(&lastBuild).Error; err != nil {
-		buildNumber = 1
-	} else {
-		buildNumber = lastBuild.BuildNumber + 1
-	}
-
-	gitRef := setting.GitRef
-	if req.GitRef != "" {
-		gitRef = req.GitRef
-	}
-	if gitRef == "" {
-		gitRef = "main"
-	}
-	imageTag := fmt.Sprintf("%s-%d", sanitizeRef(gitRef), buildNumber)
-	if req.ImageTag != "" {
-		imageTag = req.ImageTag
-	}
-	// Store full image reference (registry/namespace/image:tag; for Docker Hub omit URL) for deploy
-	imageFullName := core.BuildImageFullName(registry, setting.ImageName, imageTag)
-
-	now := time.Now()
-	triggeredBy := userID
-	var triggeredByPtr *string
-	if triggeredBy != "" {
-		triggeredByPtr = &triggeredBy
-	}
-	build := &entities.Build{
-		ID:             uuid.New(),
-		BuildSettingID: setting.ID,
-		BuildNumber:    buildNumber,
-		Status:         entities.BuildStatusPending,
-		BuildEnvID:     buildEnv.ID,
-		GitRepoURL:     repo.GitRepoURL,
-		GitRef:         gitRef,
-		ImageFullName:  imageFullName,
-		TriggerType:    entities.BuildTriggerManual,
-		TriggeredBy:    triggeredByPtr,
-		StartedAt:      &now,
-	}
-
-	if err := db.DB.Create(build).Error; err != nil {
-		return nil, err
-	}
-
-	if autoDeploy {
-		var appIDPtr *string
-		if req.DeployAppID != "" {
-			appIDPtr = &req.DeployAppID
-		}
-		buildDeployment := &entities.BuildDeployment{
-			ID:         uuid.New(),
-			BuildID:    build.ID,
-			AppID:      appIDPtr,
-			EnvID:      req.DeployEnvID,
-			AppName:    req.DeployAppName,
-			AppSlug:    req.DeployAppSlug,
-			Status:     entities.BuildDeploymentStatusPending,
-			DeployedBy: "auto",
-		}
-		if err := db.DB.Create(buildDeployment).Error; err != nil {
-			slog.Error(fmt.Sprintf("TriggerCodeRepositoryBuild: failed to create build deployment record: %v", err))
-		}
 	}
 
 	jobSlug := CodeRepositorySlugForJob(repo.Name, setting.Name)
@@ -524,8 +562,22 @@ func TriggerCodeRepositoryBuild(repoID, userID string, req *models.TriggerCodeRe
 
 	build.JobName = jobName
 	build.JobNamespace = jobNamespace
-	if err := db.DB.Save(build).Error; err != nil {
-		return nil, err
+	jobUpdate := db.DB.Model(&entities.Build{}).
+		Where("id = ? AND status IN ?", build.ID, []entities.BuildStatus{
+			entities.BuildStatusPending,
+			entities.BuildStatusCloning,
+			entities.BuildStatusBuilding,
+		}).
+		Updates(map[string]any{"job_name": jobName, "job_namespace": jobNamespace})
+	if jobUpdate.Error != nil {
+		return nil, jobUpdate.Error
+	}
+	if jobUpdate.RowsAffected != 1 {
+		if err := cancelBuildJob(context.Background(), buildEnv.ClusterID, jobName, jobNamespace); err != nil {
+			slog.Error(fmt.Sprintf("TriggerCodeRepositoryBuild: failed to cancel terminal build job: %v", err))
+		}
+		cleanupBuildSecrets(context.Background(), buildEnv.ClusterID, build.ID, jobNamespace)
+		return nil, errors.New("build is no longer active")
 	}
 	core.GlobalBuildWatcher.StartWatching(build)
 	return build, nil

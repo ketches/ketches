@@ -31,6 +31,10 @@ func Error(c *gin.Context, status int, err error) {
 	if err == nil {
 		err = errors.New(http.StatusText(status))
 	}
+	var maxBytesError *http.MaxBytesError
+	if errors.As(err, &maxBytesError) {
+		status = http.StatusRequestEntityTooLarge
+	}
 
 	if status >= http.StatusInternalServerError {
 		slog.Error("request failed",

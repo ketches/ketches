@@ -173,3 +173,32 @@ func TestKetchesMetadataRoundTrip_OmitsRegistryPassword(t *testing.T) {
 	assert.Empty(t, apps[0].RegistryPassword)
 	assert.True(t, strings.Contains(content, "registry_username"))
 }
+
+func TestConvertAppsToMetadataRedactsSecretValues(t *testing.T) {
+	metadatas := convertAppContextsToMetadata([]*models.AppContext{{
+		App: entities.App{Name: "test-app", Slug: "test-app"},
+		EnvVars: []entities.AppEnvVar{
+			{Key: "PUBLIC_URL", Value: "https://example.com"},
+			{Key: "API_TOKEN", Value: "enc:v1:ciphertext", IsSecret: true},
+		},
+		ConfigFiles: []entities.AppConfigFile{
+			{Slug: "public", Content: "debug=false"},
+			{Slug: "secret", Content: "enc:v1:ciphertext", IsSecret: true},
+		},
+	}})
+
+	require.Len(t, metadatas, 1)
+	require.Len(t, metadatas[0].EnvVars, 2)
+	assert.Equal(t, "https://example.com", metadatas[0].EnvVars[0].Value)
+	assert.Empty(t, metadatas[0].EnvVars[1].Value)
+	assert.True(t, metadatas[0].EnvVars[1].IsSecret)
+	assert.True(t, metadatas[0].EnvVars[1].HasValue)
+	require.Len(t, metadatas[0].ConfigFiles, 2)
+	assert.Equal(t, "debug=false", metadatas[0].ConfigFiles[0].Content)
+	assert.Empty(t, metadatas[0].ConfigFiles[1].Content)
+	assert.True(t, metadatas[0].ConfigFiles[1].IsSecret)
+
+	content, err := generateExport(metadatas, exporter.FormatKetches)
+	require.NoError(t, err)
+	assert.NotContains(t, content, "enc:v1:ciphertext")
+}

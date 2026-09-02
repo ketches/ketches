@@ -12,7 +12,7 @@ import (
 
 func ListAppConfigFiles(c *gin.Context) {
 	appID := c.Param("appID")
-	cfs, err := services.ListAppConfigFiles(appID)
+	cfs, err := services.ListAppConfigFilesForProjectRole(appID, api.GetProjectRole(c))
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return

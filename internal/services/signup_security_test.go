@@ -1,6 +1,8 @@
 package services
 
 import (
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -30,7 +32,7 @@ func setupSignupSecurityTestDB(t *testing.T) {
 		currentTime = originalNow
 	})
 
-	testDB, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{
+	testDB, err := gorm.Open(sqlite.Open(t.TempDir()+"/signup-security.db?_pragma=busy_timeout(5000)"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	require.NoError(t, err)
@@ -41,6 +43,7 @@ func setupSignupSecurityTestDB(t *testing.T) {
 		&entities.ProjectMember{},
 		&entities.SystemSetting{},
 		&entities.SignupVerificationCode{},
+		&entities.AuthRateLimit{},
 	))
 
 	db.DB = testDB
@@ -58,7 +61,7 @@ func TestRequestSignUpVerificationCodeEnforcesResendCooldown(t *testing.T) {
 		sentCodes = append(sentCodes, code)
 		return nil
 	}
-	signupVerificationCodeGenerator = func() string { return "123456" }
+	signupVerificationCodeGenerator = func() (string, error) { return "123456", nil }
 	currentTime = func() time.Time {
 		return time.Date(2026, 4, 3, 12, 0, 0, 0, time.UTC)
 	}
@@ -76,7 +79,7 @@ func TestSignUpRequiresValidVerificationCodeWhenPublicRegistrationEnabled(t *tes
 	setupSignupSecurityTestDB(t)
 
 	signupVerificationMailer = func(email, code string) error { return nil }
-	signupVerificationCodeGenerator = func() string { return "123456" }
+	signupVerificationCodeGenerator = func() (string, error) { return "123456", nil }
 	currentTime = func() time.Time {
 		return time.Date(2026, 4, 3, 12, 0, 0, 0, time.UTC)
 	}
@@ -98,7 +101,7 @@ func TestSignUpCreatesUserAfterSuccessfulVerification(t *testing.T) {
 	setupSignupSecurityTestDB(t)
 
 	signupVerificationMailer = func(email, code string) error { return nil }
-	signupVerificationCodeGenerator = func() string { return "123456" }
+	signupVerificationCodeGenerator = func() (string, error) { return "123456", nil }
 	currentTime = func() time.Time {
 		return time.Date(2026, 4, 3, 12, 0, 0, 0, time.UTC)
 	}
@@ -120,6 +123,52 @@ func TestSignUpCreatesUserAfterSuccessfulVerification(t *testing.T) {
 	var codeCount int64
 	require.NoError(t, db.DB.Model(&entities.SignupVerificationCode{}).Where("email = ?", "alice@example.com").Count(&codeCount).Error)
 	assert.Equal(t, int64(0), codeCount)
+}
+
+func TestSignUpKeepsValidVerificationCodeWhenAccountCreationFails(t *testing.T) {
+	setupSignupSecurityTestDB(t)
+
+	signupVerificationMailer = func(email, code string) error { return nil }
+	signupVerificationCodeGenerator = func() (string, error) { return "123456", nil }
+	currentTime = func() time.Time {
+		return time.Date(2026, 4, 3, 12, 0, 0, 0, time.UTC)
+	}
+
+	require.NoError(t, db.DB.Create(&entities.User{
+		Base:     entities.Base{ID: "existing-user"},
+		Username: "alice",
+		Email:    "existing@example.com",
+		Password: "unused-password-hash",
+		Role:     app.UserRoleUser,
+	}).Error)
+	require.NoError(t, func() error {
+		_, err := RequestSignUpVerificationCode("new@example.com")
+		return err
+	}())
+
+	_, err := SignUp(&models.SignUpRequest{
+		Username:         "alice",
+		Email:            "new@example.com",
+		Password:         "Password#123",
+		Fullname:         "New User",
+		VerificationCode: "123456",
+	})
+	require.ErrorIs(t, err, ErrUsernameAlreadyExists)
+
+	var codeCount int64
+	require.NoError(t, db.DB.Model(&entities.SignupVerificationCode{}).
+		Where("email = ?", "new@example.com").Count(&codeCount).Error)
+	assert.Equal(t, int64(1), codeCount)
+
+	user, err := SignUp(&models.SignUpRequest{
+		Username:         "new-user",
+		Email:            "new@example.com",
+		Password:         "Password#123",
+		Fullname:         "New User",
+		VerificationCode: "123456",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "new-user", user.Username)
 }
 
 func TestSignUpRejectsWhenPublicRegistrationIsDisabled(t *testing.T) {
@@ -163,4 +212,105 @@ func TestRequestSignUpVerificationCodeRejectsWhenEmailVerificationDisabled(t *te
 
 	_, err := RequestSignUpVerificationCode("alice@example.com")
 	require.ErrorIs(t, err, ErrSignUpEmailVerificationDisabled)
+}
+
+func TestRequestSignUpVerificationCodeReturnsRandomSourceFailure(t *testing.T) {
+	setupSignupSecurityTestDB(t)
+	expected := errors.New("random source unavailable")
+	signupVerificationCodeGenerator = func() (string, error) { return "", expected }
+	signupVerificationMailer = func(email, code string) error {
+		t.Fatal("mailer must not run when code generation fails")
+		return nil
+	}
+
+	_, err := RequestSignUpVerificationCode("alice@example.com")
+	require.ErrorIs(t, err, expected)
+
+	signupVerificationCodeGenerator = func() (string, error) { return "123456", nil }
+	signupVerificationMailer = func(email, code string) error { return nil }
+	_, err = RequestSignUpVerificationCode("alice@example.com")
+	require.NoError(t, err, "failed generation must not consume the resend budget")
+}
+
+func TestSignupVerificationCodeExpiresAfterFailedAttemptLimit(t *testing.T) {
+	setupSignupSecurityTestDB(t)
+	signupVerificationCodeGenerator = func() (string, error) { return "123456", nil }
+	signupVerificationMailer = func(email, code string) error { return nil }
+
+	_, err := RequestSignUpVerificationCode("alice@example.com")
+	require.NoError(t, err)
+	for range signupVerificationCodeMaxAttempts {
+		require.ErrorIs(t, consumeSignupVerificationCodeAtomically("alice@example.com", "000000"), ErrInvalidVerificationCode)
+	}
+	require.ErrorIs(t, consumeSignupVerificationCodeAtomically("alice@example.com", "123456"), ErrInvalidVerificationCode)
+
+	var count int64
+	require.NoError(t, db.DB.Model(&entities.SignupVerificationCode{}).Where("email = ?", "alice@example.com").Count(&count).Error)
+	assert.Zero(t, count)
+}
+
+func TestAuthRateLimitIsResettable(t *testing.T) {
+	setupSignupSecurityTestDB(t)
+	const identity = "alice"
+	require.NoError(t, EnforceAuthRateLimit(AuthRateScopeSignInAccount, identity, 2, time.Minute))
+	require.NoError(t, EnforceAuthRateLimit(AuthRateScopeSignInAccount, identity, 2, time.Minute))
+	require.ErrorIs(t, EnforceAuthRateLimit(AuthRateScopeSignInAccount, identity, 2, time.Minute), ErrAuthRateLimited)
+	require.NoError(t, ResetAuthRateLimit(AuthRateScopeSignInAccount, identity))
+	require.NoError(t, EnforceAuthRateLimit(AuthRateScopeSignInAccount, identity, 2, time.Minute))
+}
+
+func TestAuthRateLimitConcurrentConsumersUseTheirOwnAtomicCount(t *testing.T) {
+	setupSignupSecurityTestDB(t)
+
+	sqlDB, err := db.DB.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(2)
+
+	firstUpserted := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	var closeOnce sync.Once
+	now := time.Date(2026, 4, 3, 12, 0, 0, 0, time.UTC)
+
+	firstResult := make(chan error, 1)
+	go func() {
+		firstResult <- enforceAuthRateLimitAt(
+			AuthRateScopeSignInAccount,
+			"concurrent-alice",
+			1,
+			time.Minute,
+			now,
+			func() {
+				closeOnce.Do(func() { close(firstUpserted) })
+				<-releaseFirst
+			},
+		)
+	}()
+
+	select {
+	case <-firstUpserted:
+	case <-time.After(5 * time.Second):
+		t.Fatal("first rate-limit transaction did not reach its atomic read")
+	}
+
+	secondResult := make(chan error, 1)
+	go func() {
+		secondResult <- enforceAuthRateLimitAt(
+			AuthRateScopeSignInAccount,
+			"concurrent-alice",
+			1,
+			time.Minute,
+			now,
+			nil,
+		)
+	}()
+
+	select {
+	case err := <-secondResult:
+		t.Fatalf("second consumer completed before the first transaction released its row lock: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(releaseFirst)
+	require.NoError(t, <-firstResult)
+	require.ErrorIs(t, <-secondResult, ErrAuthRateLimited)
 }

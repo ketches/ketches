@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { User } from "@/stores/auth"
 
 type RequestConfig = {
   url?: string
@@ -28,8 +29,17 @@ const testState = vi.hoisted(() => {
   const refreshPostMock = vi.fn(async () => ({ data: { data: {} } }))
   const clearPersistedAuthStateMock = vi.fn()
   const markSessionRefreshedMock = vi.fn()
+  const beginSessionLogoutMock = vi.fn()
+  const completeSessionLogoutMock = vi.fn()
+  let sessionGeneration = 0
+  let sessionLogoutInProgress = false
+  const cancelSessionLogoutMock = vi.fn(() => {
+    sessionGeneration += 1
+    sessionLogoutInProgress = false
+  })
   const buildUnauthenticatedLoginHrefMock = vi.fn(() => "/login")
   const getCurrentRelativePathMock = vi.fn(() => "/projects")
+  const setAuthMock = vi.fn()
 
   function reset() {
     requestAttempts.clear()
@@ -37,8 +47,14 @@ const testState = vi.hoisted(() => {
     refreshPostMock.mockImplementation(async () => ({ data: { data: {} } }))
     clearPersistedAuthStateMock.mockClear()
     markSessionRefreshedMock.mockClear()
+    beginSessionLogoutMock.mockClear()
+    completeSessionLogoutMock.mockClear()
+    cancelSessionLogoutMock.mockClear()
+    sessionGeneration = 0
+    sessionLogoutInProgress = false
     buildUnauthenticatedLoginHrefMock.mockClear()
     getCurrentRelativePathMock.mockClear()
+    setAuthMock.mockClear()
   }
 
   async function dispatch(config: RequestConfig): Promise<unknown> {
@@ -147,10 +163,20 @@ const testState = vi.hoisted(() => {
     buildUnauthenticatedLoginHrefMock,
     clearPersistedAuthStateMock,
     markSessionRefreshedMock,
+    beginSessionLogoutMock,
+    completeSessionLogoutMock,
+    cancelSessionLogoutMock,
+    getSessionGeneration: () => sessionGeneration,
+    isSessionLogoutInProgress: () => sessionLogoutInProgress,
+    startLogout: () => {
+      sessionGeneration += 1
+      sessionLogoutInProgress = true
+    },
     clientInstance,
     getCurrentRelativePathMock,
     refreshPostMock,
     reset,
+    setAuthMock,
   }
 })
 
@@ -163,7 +189,12 @@ vi.mock("axios", () => ({
 
 vi.mock("@/lib/auth-session", () => ({
   applyCSRFHeader: vi.fn((headers: Headers) => headers),
+  beginSessionLogout: () => testState.startLogout(),
+  cancelSessionLogout: testState.cancelSessionLogoutMock,
   clearPersistedAuthState: testState.clearPersistedAuthStateMock,
+  completeSessionLogout: testState.completeSessionLogoutMock,
+  getSessionGeneration: testState.getSessionGeneration,
+  isSessionLogoutInProgress: testState.isSessionLogoutInProgress,
   markSessionRefreshed: testState.markSessionRefreshedMock,
   getCSRFToken: vi.fn(() => "csrf-token"),
   shouldAttachCSRF: vi.fn(() => true),
@@ -174,7 +205,13 @@ vi.mock("@/lib/auth-redirect", () => ({
   getCurrentRelativePath: testState.getCurrentRelativePathMock,
 }))
 
-import client from "./client"
+vi.mock("@/stores/auth", () => ({
+  useAuthStore: {
+    getState: () => ({ setAuth: testState.setAuthMock }),
+  },
+}))
+
+import client, { refreshSession } from "./client"
 
 describe("api client refresh handling", () => {
   beforeEach(() => {
@@ -211,5 +248,49 @@ describe("api client refresh handling", () => {
     await expect(client.get("/v1/lowercase-message")).resolves.toEqual({
       message: "Namespace is available",
     })
+  })
+
+  it("updates the auth store when a refresh returns changed user state", async () => {
+    const refreshedUser = {
+      id: "user-1",
+      username: "alice",
+      email: "alice@example.com",
+      role: "admin",
+    }
+    testState.refreshPostMock.mockResolvedValueOnce({
+      data: { data: { user: refreshedUser, must_change_password: true } },
+    })
+
+    await expect(refreshSession({ redirectOnFailure: false })).resolves.toMatchObject({ user: refreshedUser })
+    expect(testState.setAuthMock).toHaveBeenCalledWith(refreshedUser, true)
+  })
+
+  it("ignores a refresh response that completes after logout starts", async () => {
+    let resolveRefresh: ((response: { data: { data: { user: User } } }) => void) | undefined
+    testState.refreshPostMock.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveRefresh = resolve
+    }))
+
+    const pendingRefresh = refreshSession()
+    testState.startLogout()
+    testState.cancelSessionLogoutMock()
+    resolveRefresh?.({
+      data: {
+        data: {
+          user: {
+            id: "user-1",
+            username: "alice",
+            email: "alice@example.com",
+            role: "admin",
+          },
+        },
+      },
+    })
+
+    await expect(pendingRefresh).rejects.toThrow("Session refresh was invalidated")
+    expect(testState.setAuthMock).not.toHaveBeenCalled()
+    expect(testState.markSessionRefreshedMock).not.toHaveBeenCalled()
+    expect(testState.clearPersistedAuthStateMock).not.toHaveBeenCalled()
+    expect(testState.buildUnauthenticatedLoginHrefMock).not.toHaveBeenCalled()
   })
 })

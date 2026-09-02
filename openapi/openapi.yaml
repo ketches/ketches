@@ -75,8 +75,12 @@ components:
           type: string
         file_mode:
           type: string
+        has_value:
+          type: boolean
         id:
           type: string
+        is_secret:
+          type: boolean
         mount_path:
           type: string
         slug:
@@ -87,6 +91,8 @@ components:
       type: object
     AppEnvVarRequest:
       properties:
+        is_secret:
+          type: boolean
         key:
           type: string
         value:
@@ -101,8 +107,12 @@ components:
         created_at:
           format: date-time
           type: string
+        has_value:
+          type: boolean
         id:
           type: string
+        is_secret:
+          type: boolean
         key:
           type: string
         updated_at:
@@ -384,6 +394,8 @@ components:
         created_at:
           format: date-time
           type: string
+        host_path:
+          type: string
         id:
           type: string
         mount_path:
@@ -461,6 +473,10 @@ components:
           type: string
         file_mode:
           type: string
+        has_value:
+          type: boolean
+        is_secret:
+          type: boolean
         mount_path:
           type: string
         slug:
@@ -529,6 +545,8 @@ components:
           type: string
         file_mode:
           type: string
+        is_secret:
+          type: boolean
         mount_path:
           type: string
         slug:
@@ -564,6 +582,8 @@ components:
           type: string
         capacity:
           type: integer
+        host_path:
+          type: string
         mount_path:
           type: string
         slug:
@@ -624,6 +644,10 @@ components:
       type: object
     EnvVarMetadata:
       properties:
+        has_value:
+          type: boolean
+        is_secret:
+          type: boolean
         key:
           type: string
         value:
@@ -1320,6 +1344,8 @@ components:
           type: string
         file_mode:
           type: string
+        is_secret:
+          type: boolean
         mount_path:
           type: string
         slug:
@@ -1355,6 +1381,8 @@ components:
           type: string
         capacity:
           type: integer
+        host_path:
+          type: string
         mount_path:
           type: string
         slug:
@@ -1398,8 +1426,12 @@ components:
       type: object
     VolumeMetadata:
       properties:
+        access_modes:
+          type: string
         capacity:
           type: integer
+        host_path:
+          type: string
         mount_path:
           type: string
         slug:
@@ -1407,6 +1439,8 @@ components:
         storage_class:
           type: string
         sub_path:
+          type: string
+        volume_mode:
           type: string
         volume_type:
           type: string
@@ -10430,184 +10464,6 @@ paths:
       summary: PUT /api/v1/projects/{projectID}
       tags:
       - projects
-  /api/v1/projects/{projectID}/ai-providers:
-    get:
-      operationId: get_api_v1_projects_projectid_ai_providers
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/ai-providers
-      tags:
-      - projects
-    post:
-      operationId: post_api_v1_projects_projectid_ai_providers
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: POST /api/v1/projects/{projectID}/ai-providers
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/ai-providers/{providerID}:
-    delete:
-      operationId: delete_api_v1_projects_projectid_ai_providers_providerid
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: providerID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: DELETE /api/v1/projects/{projectID}/ai-providers/{providerID}
-      tags:
-      - projects
-    put:
-      operationId: put_api_v1_projects_projectid_ai_providers_providerid
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: providerID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: PUT /api/v1/projects/{projectID}/ai-providers/{providerID}
-      tags:
-      - projects
   /api/v1/projects/{projectID}/backlog:
     get:
       operationId: get_api_v1_projects_projectid_backlog
@@ -10776,9 +10632,9 @@ paths:
       summary: POST /api/v1/projects/{projectID}/backlog/return
       tags:
       - projects
-  /api/v1/projects/{projectID}/builder-model-options:
+  /api/v1/projects/{projectID}/capabilities:
     get:
-      operationId: get_api_v1_projects_projectid_builder_model_options
+      operationId: get_api_v1_projects_projectid_capabilities
       parameters:
       - description: Path parameter
         in: path
@@ -10815,1001 +10671,7 @@ paths:
           description: Internal Server Error
       security:
       - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-model-options
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-model-selection:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_model_selection
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-model-selection
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions
-      tags:
-      - projects
-    post:
-      operationId: post_api_v1_projects_projectid_builder_sessions
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: POST /api/v1/projects/{projectID}/builder-sessions
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_exports
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports
-      tags:
-      - projects
-    post:
-      operationId: post_api_v1_projects_projectid_builder_sessions_sessionid_exports
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: POST /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/deploy-build:
-    post:
-      operationId: post_api_v1_projects_projectid_builder_sessions_sessionid_exports_exportid_deploy_build
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: exportID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: POST /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/deploy-build
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/download:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_exports_exportid_download
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: exportID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/download
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/promote-build:
-    post:
-      operationId: post_api_v1_projects_projectid_builder_sessions_sessionid_exports_exportid_promote_build
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: exportID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: POST /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/promote-build
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/promote-repository:
-    post:
-      operationId: post_api_v1_projects_projectid_builder_sessions_sessionid_exports_exportid_promote_repository
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: exportID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: POST /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/promote-repository
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/promotion-plan:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_exports_exportid_promotion_plan
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: exportID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/exports/{exportID}/promotion-plan
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_files
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files/download:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_files_download
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files/download
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files/read:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_files_read
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/files/read
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/messages:
-    post:
-      operationId: post_api_v1_projects_projectid_builder_sessions_sessionid_messages
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: POST /api/v1/projects/{projectID}/builder-sessions/{sessionID}/messages
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/preview:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_preview
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/preview
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/cancel:
-    post:
-      operationId: post_api_v1_projects_projectid_builder_sessions_sessionid_runs_runid_cancel
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: runID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: POST /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/cancel
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/delivery/download:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_runs_runid_delivery_download
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: runID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/delivery/download
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/logs:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_runs_runid_logs
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: runID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/logs
-      tags:
-      - projects
-  /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/preview/launch:
-    get:
-      operationId: get_api_v1_projects_projectid_builder_sessions_sessionid_runs_runid_preview_launch
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: runID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/projects/{projectID}/builder-sessions/{sessionID}/runs/{runID}/preview/launch
+      summary: GET /api/v1/projects/{projectID}/capabilities
       tags:
       - projects
   /api/v1/projects/{projectID}/code-repositories:
@@ -15108,158 +13970,6 @@ paths:
       summary: GET /api/v1/users/me
       tags:
       - users
-  /api/v1/users/me/ai-providers:
-    get:
-      operationId: get_api_v1_users_me_ai_providers
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: GET /api/v1/users/me/ai-providers
-      tags:
-      - users
-    post:
-      operationId: post_api_v1_users_me_ai_providers
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: POST /api/v1/users/me/ai-providers
-      tags:
-      - users
-  /api/v1/users/me/ai-providers/{providerID}:
-    delete:
-      operationId: delete_api_v1_users_me_ai_providers_providerid
-      parameters:
-      - description: Path parameter
-        in: path
-        name: providerID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: DELETE /api/v1/users/me/ai-providers/{providerID}
-      tags:
-      - users
-    put:
-      operationId: put_api_v1_users_me_ai_providers_providerid
-      parameters:
-      - description: Path parameter
-        in: path
-        name: providerID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: PUT /api/v1/users/me/ai-providers/{providerID}
-      tags:
-      - users
   /api/v1/users/me/password:
     patch:
       operationId: patch_api_v1_users_me_password
@@ -15659,64 +14369,6 @@ paths:
       summary: PUT /api/v1/volumes/{id}
       tags:
       - volumes
-  /builder-preview/projects/{projectID}/sessions/{sessionID}/runs/{runID}/{assetPath}:
-    get:
-      operationId: get_builder_preview_projects_projectid_sessions_sessionid_runs_runid_assetpath
-      parameters:
-      - description: Path parameter
-        in: path
-        name: projectID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: sessionID
-        required: true
-        schema:
-          type: string
-      - description: Path parameter
-        in: path
-        name: runID
-        required: true
-        schema:
-          type: string
-      - description: Wildcard path parameter
-        in: path
-        name: assetPath
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal Server Error
-      summary: GET /builder-preview/projects/{projectID}/sessions/{sessionID}/runs/{runID}/{assetPath}
-      tags:
-      - builder-preview
   /openapi:
     get:
       operationId: get_openapi

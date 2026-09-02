@@ -432,7 +432,7 @@ interface HealthConfigProps {
 export function HealthConfig({ app }: HealthConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
-  const isViewer = projectRole === "viewer"
+  const isViewer = projectRole !== "owner" && projectRole !== "developer"
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingProbe, setEditingProbe] = React.useState<ProbeSpec | null>(null)

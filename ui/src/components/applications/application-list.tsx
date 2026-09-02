@@ -103,7 +103,7 @@ export function ApplicationList({
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
   // Hide action buttons for viewers
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingApp, setEditingApp] = React.useState<App | null>(null)

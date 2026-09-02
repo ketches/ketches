@@ -23,6 +23,14 @@ import (
 
 const serverShutdownTimeout = 10 * time.Second
 
+const (
+	serverReadHeaderTimeout = 10 * time.Second
+	serverReadTimeout       = 5 * time.Minute
+	serverWriteTimeout      = 5 * time.Minute
+	serverIdleTimeout       = 2 * time.Minute
+	serverMaxHeaderBytes    = 1 << 20
+)
+
 func init() {
 	app.PrintVersionBanner()
 }
@@ -63,11 +71,6 @@ func main() {
 	// Recover active build watchers
 	core.GlobalBuildWatcher.SetParentContext(rootCtx)
 	core.GlobalBuildWatcher.RecoverActiveBuilds()
-	services.GlobalBuilderWorker.SetParentContext(rootCtx)
-	if err := services.GlobalBuilderWorker.RecoverActiveRuns(rootCtx); err != nil {
-		fatal("failed to recover builder worker state", err)
-	}
-	services.GlobalBuilderWorker.Start()
 	go func() {
 		recoveryCtx, cancel := context.WithTimeout(rootCtx, 30*time.Second)
 		defer cancel()
@@ -79,6 +82,9 @@ func main() {
 	go core.StartBuildLogMaintenance(rootCtx)
 
 	r := gin.Default()
+	if err := r.SetTrustedProxies(app.Config.TrustedProxies); err != nil {
+		fatal("invalid TRUSTED_PROXIES configuration", err)
+	}
 	routes.SetupRoutes(r)
 
 	slog.Info("server starting", "port", app.Config.Port)
@@ -87,10 +93,7 @@ func main() {
 		fatal(fmt.Sprintf("failed to listen on :%s", app.Config.Port), err)
 	}
 
-	srv := &http.Server{
-		Addr:    ":" + app.Config.Port,
-		Handler: r,
-	}
+	srv := newAPIServer(":"+app.Config.Port, r)
 
 	if err := runServer(rootCtx, srv, listener, serverShutdownTimeout); err != nil {
 		fatal("failed to start server", err)
@@ -103,9 +106,20 @@ func main() {
 	defer cancel()
 
 	core.GlobalBuildWatcher.StopAll()
-	services.GlobalBuilderWorker.Stop()
-	if err := waitForGracefulShutdown(shutdownCtx, nodeTerminalCleanupDone, core.GlobalBuildWatcher.Wait, services.GlobalBuilderWorker.Wait); err != nil {
+	if err := waitForGracefulShutdown(shutdownCtx, nodeTerminalCleanupDone, core.GlobalBuildWatcher.Wait); err != nil {
 		slog.Error("graceful shutdown incomplete", "error", err)
+	}
+}
+
+func newAPIServer(address string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              address,
+		Handler:           handler,
+		ReadHeaderTimeout: serverReadHeaderTimeout,
+		ReadTimeout:       serverReadTimeout,
+		WriteTimeout:      serverWriteTimeout,
+		IdleTimeout:       serverIdleTimeout,
+		MaxHeaderBytes:    serverMaxHeaderBytes,
 	}
 }
 
@@ -146,7 +160,6 @@ func waitForGracefulShutdown(
 	ctx context.Context,
 	nodeTerminalCleanupDone <-chan struct{},
 	waitForBuildWatchers func(),
-	waitForBuilderWorker func(),
 ) error {
 	if nodeTerminalCleanupDone != nil {
 		select {
@@ -167,20 +180,6 @@ func waitForGracefulShutdown(
 		case <-done:
 		case <-ctx.Done():
 			return app.WrapError("build watchers did not stop before timeout", ctx.Err())
-		}
-	}
-
-	if waitForBuilderWorker != nil {
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			waitForBuilderWorker()
-		}()
-
-		select {
-		case <-done:
-		case <-ctx.Done():
-			return app.WrapError("builder worker did not stop before timeout", ctx.Err())
 		}
 	}
 

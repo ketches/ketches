@@ -12,7 +12,7 @@ import (
 
 func ListAppEnvVars(c *gin.Context) {
 	appID := c.Param("appID")
-	evs, err := services.ListAppEnvVars(appID)
+	evs, err := services.ListAppEnvVarsForProjectRole(appID, api.GetProjectRole(c))
 	if err != nil {
 		api.Error(c, http.StatusInternalServerError, err)
 		return
@@ -28,7 +28,8 @@ func CreateAppEnvVar(c *gin.Context) {
 		return
 	}
 
-	ev, err := services.CreateAppEnvVar(appID, req.Key, req.Value)
+	isSecret := req.IsSecret != nil && *req.IsSecret
+	ev, err := services.CreateAppEnvVar(appID, req.Key, req.Value, isSecret)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			api.Error(c, http.StatusBadRequest, err)
@@ -48,7 +49,13 @@ func UpdateAppEnvVar(c *gin.Context) {
 		return
 	}
 
-	ev, err := services.UpdateAppEnvVar(id, req.Value)
+	var ev *models.AppEnvVarResponse
+	var err error
+	if req.IsSecret == nil {
+		ev, err = services.UpdateAppEnvVar(id, req.Value)
+	} else {
+		ev, err = services.UpdateAppEnvVar(id, req.Value, *req.IsSecret)
+	}
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			api.Error(c, http.StatusNotFound, err)

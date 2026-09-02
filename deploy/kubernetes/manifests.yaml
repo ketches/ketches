@@ -31,9 +31,29 @@ spec:
       labels:
         app: ketches-db
     spec:
+      initContainers:
+        - name: generate-postgres-tls
+          image: alpine/openssl:3.5.1
+          command:
+            - sh
+            - -ec
+            - |
+              openssl req -new -x509 -nodes -days 3650 -subj "/CN=ketches-db" -keyout /tls/tls.key -out /tls/tls.crt
+              chown 0:70 /tls/tls.key /tls/tls.crt
+              chmod 0640 /tls/tls.key
+          volumeMounts:
+            - name: postgres-tls
+              mountPath: /tls
       containers:
         - name: postgres
           image: postgres:17-alpine
+          args:
+            - -c
+            - ssl=on
+            - -c
+            - ssl_cert_file=/tls/tls.crt
+            - -c
+            - ssl_key_file=/tls/tls.key
           ports:
             - containerPort: 5432
           env:
@@ -49,6 +69,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+            - name: postgres-tls
+              mountPath: /tls
+              readOnly: true
           resources:
             limits:
               memory: "2Gi"
@@ -56,6 +79,9 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "250m"
+      volumes:
+        - name: postgres-tls
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -99,6 +125,8 @@ spec:
           ports:
             - containerPort: 8080
           env:
+            - name: APP_ENV
+              value: "production"
             - name: PORT
               value: "8080"
             - name: LOG_LEVEL
@@ -121,7 +149,7 @@ spec:
                   name: ketches-secrets
                   key: db-password
             - name: DB_SSLMODE
-              value: "disable"
+              value: "require"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -159,6 +187,8 @@ spec:
               value: ""
             - name: CORS_ALLOWED_ORIGINS
               value: "https://app.example.com"
+            - name: TRUSTED_PROXIES
+              value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
           resources:
             limits:
               memory: "2Gi"

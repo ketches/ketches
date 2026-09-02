@@ -33,14 +33,73 @@ interface LogPanelProps {
   containerName: string
 }
 
+interface LogEntry {
+  id: number
+  text: string
+}
+
+const LOG_BUFFER_CAPACITY = 10000
+const LOG_FLUSH_INTERVAL_MS = 50
+const LOG_ROW_HEIGHT = 24
+const LOG_OVERSCAN_ROWS = 10
+const DEFAULT_VIEWPORT_HEIGHT = 600
+
+class LogRingBuffer {
+  private readonly entries: Array<LogEntry | undefined>
+  private readonly capacity: number
+  private head = 0
+  private size = 0
+
+  constructor(capacity: number) {
+    this.capacity = capacity
+    this.entries = new Array(capacity)
+  }
+
+  append(entry: LogEntry) {
+    if (this.size < this.capacity) {
+      this.entries[(this.head + this.size) % this.capacity] = entry
+      this.size += 1
+      return
+    }
+
+    this.entries[this.head] = entry
+    this.head = (this.head + 1) % this.capacity
+  }
+
+  clear() {
+    this.head = 0
+    this.size = 0
+  }
+
+  snapshot() {
+    const result: LogEntry[] = []
+    for (let index = 0; index < this.size; index += 1) {
+      const entry = this.entries[(this.head + index) % this.capacity]
+      if (entry) result.push(entry)
+    }
+    return result
+  }
+}
+
 export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) {
-  const [logs, setLogs] = React.useState<string[]>([])
+  const [logs, setLogs] = React.useState<LogEntry[]>([])
   const [tailLines, setTailLines] = React.useState(500)
   const [autoRefresh, setAutoRefresh] = React.useState(true)
   const [showTimestamp, setShowTimestamp] = React.useState(false)
   const [searchText, setSearchText] = React.useState("")
+  const [scrollTop, setScrollTop] = React.useState(0)
+  const [viewportHeight, setViewportHeight] = React.useState(0)
   const logContainerRef = React.useRef<HTMLDivElement>(null)
   const followTailRef = React.useRef(true)
+  const autoRefreshRef = React.useRef(autoRefresh)
+  const logBufferRef = React.useRef(new LogRingBuffer(LOG_BUFFER_CAPACITY))
+  const pendingLogsRef = React.useRef(new LogRingBuffer(LOG_BUFFER_CAPACITY))
+  const nextLogIdRef = React.useRef(1)
+  const flushTimerRef = React.useRef<number | null>(null)
+
+  React.useEffect(() => {
+    autoRefreshRef.current = autoRefresh
+  }, [autoRefresh])
 
   const isNearBottom = React.useCallback((container: HTMLDivElement) => {
     const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight
@@ -51,21 +110,41 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const container = logContainerRef.current
-        if (!container || !autoRefresh || !followTailRef.current) return
+        if (!container || !autoRefreshRef.current || !followTailRef.current) return
         container.scrollTop = container.scrollHeight
+        setScrollTop(container.scrollTop)
       })
     })
-  }, [autoRefresh])
+  }, [])
 
   const handleContainerScroll = React.useCallback(() => {
     const container = logContainerRef.current
     if (!container) return
     followTailRef.current = isNearBottom(container)
+    setScrollTop(container.scrollTop)
   }, [isNearBottom])
+
+  const flushPendingLogs = React.useCallback(() => {
+    flushTimerRef.current = null
+    const pendingLogs = pendingLogsRef.current.snapshot()
+    if (pendingLogs.length === 0) return
+
+    pendingLogsRef.current.clear()
+    for (const entry of pendingLogs) {
+      logBufferRef.current.append(entry)
+    }
+    setLogs(logBufferRef.current.snapshot())
+  }, [])
+
+  const scheduleLogFlush = React.useCallback(() => {
+    if (flushTimerRef.current !== null) return
+    flushTimerRef.current = window.setTimeout(flushPendingLogs, LOG_FLUSH_INTERVAL_MS)
+  }, [flushPendingLogs])
 
   React.useEffect(() => {
     if (!appId || !instanceName || !containerName) return
     followTailRef.current = true
+    const pendingLogs = pendingLogsRef.current
 
     if (!hasPersistedAuthSession()) {
       toast.error("Authentication required")
@@ -78,21 +157,22 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
     )
 
     eventSource.onopen = () => {
+      logBufferRef.current.clear()
+      pendingLogs.clear()
+      nextLogIdRef.current = 1
       setLogs([])
       followTailRef.current = true
       scheduleScrollToBottom()
     }
 
     eventSource.onmessage = (event) => {
-      if (autoRefresh) {
-        setLogs((prev) => {
-          const newLogs = [...prev, event.data]
-          if (newLogs.length > 10000) {
-            return newLogs.slice(newLogs.length - 5000)
-          }
-          return newLogs
-        })
-      }
+      if (!autoRefreshRef.current) return
+      pendingLogs.append({
+        id: nextLogIdRef.current,
+        text: event.data,
+      })
+      nextLogIdRef.current += 1
+      scheduleLogFlush()
     }
 
     eventSource.onerror = () => {
@@ -100,8 +180,15 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
       eventSource.close()
     }
 
-    return () => eventSource.close()
-  }, [appId, instanceName, containerName, tailLines, showTimestamp, autoRefresh, isNearBottom, scheduleScrollToBottom])
+    return () => {
+      eventSource.close()
+      pendingLogs.clear()
+      if (flushTimerRef.current !== null) {
+        window.clearTimeout(flushTimerRef.current)
+        flushTimerRef.current = null
+      }
+    }
+  }, [appId, instanceName, containerName, tailLines, showTimestamp, scheduleLogFlush, scheduleScrollToBottom])
 
   React.useLayoutEffect(() => {
     if (!autoRefresh || !followTailRef.current) return
@@ -113,10 +200,14 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
     const container = logContainerRef.current
     if (!container) return
 
-    const observer = new ResizeObserver(() => {
+    const updateViewportHeight = () => {
+      setViewportHeight(container.clientHeight)
       if (!autoRefresh || !followTailRef.current || logs.length === 0) return
       scheduleScrollToBottom()
-    })
+    }
+
+    updateViewportHeight()
+    const observer = new ResizeObserver(updateViewportHeight)
     observer.observe(container)
 
     return () => observer.disconnect()
@@ -127,11 +218,14 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
   }
 
   const handleRefresh = () => {
+    logBufferRef.current.clear()
+    pendingLogsRef.current.clear()
+    nextLogIdRef.current = 1
     setLogs([])
   }
 
   const handleDownload = () => {
-    const content = logs.join("\n")
+    const content = logs.map((log) => log.text).join("\n")
     const blob = new Blob([content], { type: "text/plain" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -146,22 +240,74 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
 
   const filteredLogs = React.useMemo(() => {
     if (!searchText) return logs
+    const normalizedSearch = searchText.toLowerCase()
     return logs.filter(log =>
-      log.toLowerCase().includes(searchText.toLowerCase())
+      log.text.toLowerCase().includes(normalizedSearch)
     )
   }, [logs, searchText])
 
-  const highlightSearch = (line: string) => {
-    if (!searchText) return formatLogLine(line)
-    const formattedLine = formatLogLine(line)
-    const regex = new RegExp(`(${searchText})`, "gi")
-    return formattedLine.split(regex).map((part, i) =>
-      regex.test(part) ? (
-        <span key={i} className="bg-yellow-500/40 text-yellow-200 rounded px-0.5">
-          {part}
-        </span>
-      ) : part
+  const visibleRange = React.useMemo(() => {
+    const measuredHeight = viewportHeight || DEFAULT_VIEWPORT_HEIGHT
+    const start = Math.max(0, Math.floor(scrollTop / LOG_ROW_HEIGHT) - LOG_OVERSCAN_ROWS)
+    const end = Math.min(
+      filteredLogs.length,
+      Math.ceil((scrollTop + measuredHeight) / LOG_ROW_HEIGHT) + LOG_OVERSCAN_ROWS
     )
+    return { start, end }
+  }, [filteredLogs.length, scrollTop, viewportHeight])
+
+  const visibleLogs = React.useMemo(
+    () => filteredLogs.slice(visibleRange.start, visibleRange.end),
+    [filteredLogs, visibleRange]
+  )
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchText(event.target.value)
+    setScrollTop(0)
+    if (logContainerRef.current) logContainerRef.current.scrollTop = 0
+  }
+
+  const handleAutoRefreshToggle = () => {
+    setAutoRefresh((current) => {
+      const next = !current
+      autoRefreshRef.current = next
+      return next
+    })
+  }
+
+  const highlightSearch = (line: string) => {
+    const formattedLine = formatLogLine(line)
+    if (!searchText) return formattedLine
+
+    const normalizedLine = formattedLine.toLowerCase()
+    const normalizedSearch = searchText.toLowerCase()
+    const parts: React.ReactNode[] = []
+    let cursor = 0
+    let matchIndex = normalizedLine.indexOf(normalizedSearch)
+
+    while (matchIndex !== -1) {
+      if (matchIndex > cursor) {
+        parts.push(formattedLine.slice(cursor, matchIndex))
+      }
+
+      const matchEnd = matchIndex + searchText.length
+      parts.push(
+        <span
+          key={`${matchIndex}-${matchEnd}`}
+          className="bg-yellow-500/40 text-yellow-200 rounded px-0.5"
+        >
+          {formattedLine.slice(matchIndex, matchEnd)}
+        </span>
+      )
+      cursor = matchEnd
+      matchIndex = normalizedLine.indexOf(normalizedSearch, cursor)
+    }
+
+    if (cursor < formattedLine.length) {
+      parts.push(formattedLine.slice(cursor))
+    }
+
+    return parts
   }
 
   return (
@@ -172,7 +318,7 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
             <Input
               placeholder="Search logs..."
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={handleSearchChange}
               className="h-6 w-50 text-xs"
             />
             {searchText && (
@@ -195,7 +341,7 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
             <Tooltip>
               <TooltipTrigger
                 delay={200}
-                render={<Button variant="ghost" size="icon-sm" onClick={() => setAutoRefresh(!autoRefresh)} />}
+                render={<Button variant="ghost" size="icon-sm" onClick={handleAutoRefreshToggle} />}
               >
                 {autoRefresh ? (
                   <Pause className="h-3.5 w-3.5" />
@@ -301,23 +447,45 @@ export function LogPanel({ appId, instanceName, containerName }: LogPanelProps) 
             )}
           </div>
         ) : (
-          <>
-            {filteredLogs.map((log, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "whitespace-pre-wrap break-all py-0.5 leading-relaxed hover:bg-zinc-900/50 px-1 -mx-1 rounded",
-                  log.toLowerCase().includes("error") && "text-red-400",
-                  log.toLowerCase().includes("warn") && "text-yellow-400"
-                )}
-              >
-                <span className="text-zinc-600 select-none mr-3 inline-block w-8 text-right">
-                  {i + 1}
-                </span>
-                {highlightSearch(log)}
-              </div>
-            ))}
-          </>
+          <div
+            data-testid="virtual-log-list"
+            className="min-w-full"
+          >
+            <svg
+              aria-hidden="true"
+              data-testid="virtual-log-spacer"
+              className="block w-px"
+              height={visibleRange.start * LOG_ROW_HEIGHT}
+              width="1"
+            />
+            {visibleLogs.map((log, visibleIndex) => {
+              const logIndex = visibleRange.start + visibleIndex
+              const normalizedLog = log.text.toLowerCase()
+              return (
+                <div
+                  key={log.id}
+                  data-testid="virtual-log-row"
+                  className={cn(
+                    "h-6 whitespace-pre px-1 py-0.5 leading-relaxed hover:bg-zinc-900/50",
+                    normalizedLog.includes("error") && "text-red-400",
+                    normalizedLog.includes("warn") && "text-yellow-400"
+                  )}
+                >
+                  <span className="text-zinc-600 select-none mr-3 inline-block w-8 text-right">
+                    {logIndex + 1}
+                  </span>
+                  {highlightSearch(log.text)}
+                </div>
+              )
+            })}
+            <svg
+              aria-hidden="true"
+              data-testid="virtual-log-spacer"
+              className="block w-px"
+              height={(filteredLogs.length - visibleRange.end) * LOG_ROW_HEIGHT}
+              width="1"
+            />
+          </div>
         )}
       </div>
     </WorkloadPanelFrame>

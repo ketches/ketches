@@ -35,8 +35,6 @@ export function CodeRepositoryDetailPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
-  const projectRole = useProjectRole()
-  const isViewer = projectRole === "viewer"
   const currentTab = searchParams.get("tab") || "overview"
 
   const [triggerBuildDialogOpen, setTriggerBuildDialogOpen] = React.useState(false)
@@ -51,6 +49,8 @@ export function CodeRepositoryDetailPage() {
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
 
   const detail = useCodeRepositoryDetail(repoId)
+  const projectRole = useProjectRole(detail.repo?.project_id ?? null)
+  const isViewer = projectRole !== "owner" && projectRole !== "developer"
 
   React.useEffect(() => {
     if (!triggerBuildDialogOpen) {

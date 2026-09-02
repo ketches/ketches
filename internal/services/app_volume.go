@@ -3,7 +3,10 @@ package services
 import (
 	"context"
 	"errors"
+	"path/filepath"
+	"strings"
 
+	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
@@ -13,6 +16,11 @@ import (
 	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+var (
+	validateAppVolumeDeleteForService = core.ValidateAppVolumeDelete
+	deleteVolumeFromK8sForService     = core.DeleteVolumeFromK8s
 )
 
 func ListAppVolumes(appID string) ([]models.AppVolumeResponse, error) {
@@ -50,6 +58,9 @@ func ListAppVolumes(appID string) ([]models.AppVolumeResponse, error) {
 }
 
 func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolumeRequest) (*models.AppVolumeResponse, error) {
+	if err := validateAppVolumeRequest(req.VolumeType, req.HostPath); err != nil {
+		return nil, err
+	}
 	volumeMode := req.VolumeMode
 	if volumeMode == "" {
 		volumeMode = "Filesystem"
@@ -66,6 +77,7 @@ func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolume
 		VolumeType:   req.VolumeType,
 		MountPath:    req.MountPath,
 		SubPath:      req.SubPath,
+		HostPath:     req.HostPath,
 		Capacity:     req.Capacity,
 		StorageClass: req.StorageClass,
 		VolumeMode:   volumeMode,
@@ -86,6 +98,13 @@ func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolume
 	if err := checkVolumeMountPathConflicts(appID, req.MountPath, ""); err != nil {
 		return nil, err
 	}
+	appCtx, err := GetAppContext(ctx, appID)
+	if err != nil {
+		return nil, err
+	}
+	if err := core.ValidateAppVolumeCreate(ctx, appCtx, entity); err != nil {
+		return nil, err
+	}
 
 	// Create in database
 	if err := db.DB.Create(entity).Error; err != nil {
@@ -93,7 +112,7 @@ func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolume
 	}
 
 	// Fetch full app context from DB
-	appCtx, err := GetAppContext(ctx, appID)
+	appCtx, err = GetAppContext(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -110,16 +129,27 @@ func CreateAppVolume(ctx context.Context, appID string, req *models.CreateVolume
 }
 
 func UpdateAppVolume(ctx context.Context, id string, req *models.UpdateVolumeRequest) (*models.AppVolumeResponse, error) {
+	if err := validateAppVolumeRequest(req.VolumeType, req.HostPath); err != nil {
+		return nil, err
+	}
 	var volume entities.AppVolume
-	err := db.DB.First(&volume, "id = ?", id).Error
-	if err != nil {
+	if err := db.DB.First(&volume, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("volume not found")
 		}
 		return nil, err
 	}
 
-	// Check slug uniqueness (excluding current volume)
+	// Fetch the current app context before mutating the entity so PVC changes
+	// can be validated against the live Kubernetes object before the database
+	// claims that the new specification is active.
+	appCtx, err := GetAppContext(ctx, volume.AppID)
+	if err != nil {
+		return nil, err
+	}
+	currentVolume := volume
+
+	// Check slug uniqueness (excluding current volume).
 	if req.Slug != volume.Slug {
 		var existing entities.AppVolume
 		err := db.DB.Where("app_id = ? AND slug = ? AND id != ?", volume.AppID, req.Slug, id).First(&existing).Error
@@ -131,36 +161,54 @@ func UpdateAppVolume(ctx context.Context, id string, req *models.UpdateVolumeReq
 		}
 	}
 
-	// Check mount path conflicts (excluding current volume)
+	// Check mount path conflicts (excluding current volume).
 	if req.MountPath != volume.MountPath {
 		if err := checkVolumeMountPathConflicts(volume.AppID, req.MountPath, id); err != nil {
 			return nil, err
 		}
 	}
 
-	// Update fields
 	volume.Slug = req.Slug
 	volume.MountPath = req.MountPath
 	volume.SubPath = req.SubPath
+	volume.HostPath = req.HostPath
 	volume.VolumeType = req.VolumeType
 	volume.Capacity = req.Capacity
 	volume.StorageClass = req.StorageClass
+	if strings.TrimSpace(volume.StorageClass) == "" {
+		volume.StorageClass = currentVolume.StorageClass
+	}
 	volume.VolumeMode = req.VolumeMode
+	if volume.VolumeMode == "" {
+		volume.VolumeMode = currentVolume.VolumeMode
+		if volume.VolumeMode == "" {
+			volume.VolumeMode = "Filesystem"
+		}
+	}
 	volume.AccessModes = req.AccessModes
+	if volume.AccessModes == "" {
+		volume.AccessModes = currentVolume.AccessModes
+		if volume.AccessModes == "" {
+			volume.AccessModes = "ReadWriteOnce"
+		}
+	}
 
-	// Save to database
+	if err := core.ValidateAppVolumeUpdate(ctx, appCtx, &currentVolume, &volume); err != nil {
+		return nil, err
+	}
+
+	// Save to database only after immutable PVC fields have passed preflight.
 	if err := db.DB.Save(&volume).Error; err != nil {
 		return nil, err
 	}
 
-	// Fetch full app context from DB
-	appCtx, err := GetAppContext(ctx, volume.AppID)
+	// Refresh the context so later Kubernetes operations see the persisted
+	// volume. Capacity expansion is applied by SyncVolumeToK8s.
+	appCtx, err = GetAppContext(ctx, volume.AppID)
 	if err != nil {
 		return nil, err
 	}
-
-	// Sync PVC to Kubernetes if needed
-	if volume.VolumeType == "pvc" {
+	if volume.VolumeType == app.VolumeTypePVC {
 		if err := core.SyncVolumeToK8s(ctx, appCtx, &volume); err != nil {
 			return nil, err
 		}
@@ -171,8 +219,8 @@ func UpdateAppVolume(ctx context.Context, id string, req *models.UpdateVolumeReq
 }
 
 func DeleteAppVolume(ctx context.Context, id string) error {
-	var volume entities.AppVolume
-	err := db.DB.First(&volume, "id = ?", id).Error
+	var target entities.AppVolume
+	err := db.DB.Select("id", "app_id").First(&target, "id = ?", id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("volume not found")
@@ -180,25 +228,26 @@ func DeleteAppVolume(ctx context.Context, id string) error {
 		return err
 	}
 
-	// Fetch full app context from DB
-	appCtx, err := GetAppContext(ctx, volume.AppID)
-	if err != nil {
-		return err
-	}
-
-	// Delete PVC from Kubernetes if applicable
-	if volume.VolumeType == "pvc" {
-		if err := core.DeleteVolumeFromK8s(ctx, appCtx, &volume); err != nil {
+	return core.WithAppReconcileFence(ctx, target.AppID, func() error {
+		var volume entities.AppVolume
+		if err := db.DB.First(&volume, "id = ? AND app_id = ?", id, target.AppID).Error; err != nil {
 			return err
 		}
-	}
+		appCtx, err := GetAppContext(ctx, volume.AppID)
+		if err != nil {
+			return err
+		}
+		if err := validateAppVolumeDeleteForService(ctx, appCtx, &volume); err != nil {
+			return err
+		}
 
-	// Delete from database
-	if err := db.DB.Delete(&volume).Error; err != nil {
-		return err
-	}
-
-	return nil
+		if volume.VolumeType == app.VolumeTypePVC {
+			if err := deleteVolumeFromK8sForService(ctx, appCtx, &volume); err != nil {
+				return err
+			}
+		}
+		return db.DB.Delete(&volume).Error
+	})
 }
 
 // toAppVolumeResponse converts an AppVolume entity to a response model with snake_case JSON fields.
@@ -209,6 +258,7 @@ func toAppVolumeResponse(vol *entities.AppVolume) models.AppVolumeResponse {
 		Slug:         vol.Slug,
 		MountPath:    vol.MountPath,
 		SubPath:      vol.SubPath,
+		HostPath:     vol.HostPath,
 		VolumeType:   vol.VolumeType,
 		Status:       "",
 		Capacity:     vol.Capacity,
@@ -217,6 +267,24 @@ func toAppVolumeResponse(vol *entities.AppVolume) models.AppVolumeResponse {
 		AccessModes:  vol.AccessModes,
 		CreatedAt:    vol.CreatedAt,
 		UpdatedAt:    vol.UpdatedAt,
+	}
+}
+
+func validateAppVolumeRequest(volumeType, hostPath string) error {
+	switch volumeType {
+	case app.VolumeTypePVC, app.VolumeTypeEmptyDir:
+		return nil
+	case app.VolumeTypeHostPath:
+		if !app.Config.AllowHostPathVolumes {
+			return errors.New("hostPath volumes are disabled by server policy")
+		}
+		cleanPath := filepath.Clean(strings.TrimSpace(hostPath))
+		if !filepath.IsAbs(cleanPath) || cleanPath == "/" {
+			return errors.New("hostPath must be an absolute path other than root")
+		}
+		return nil
+	default:
+		return errors.New("unsupported volume type")
 	}
 }
 

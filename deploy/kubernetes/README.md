@@ -20,6 +20,8 @@ kubectl -n ketches create secret generic ketches-secrets \
 kubectl apply -f https://raw.githubusercontent.com/ketches/ketches/master/deploy/kubernetes/manifests.quickstart.yaml
 ```
 
+The API applies the entity schema at startup by default. Set `DB_AUTO_MIGRATE=false` when a separate migration process owns schema changes.
+
 This file intentionally includes:
 
 - localhost-friendly `CORS_ALLOWED_ORIGINS`

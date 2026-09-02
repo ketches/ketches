@@ -9,7 +9,6 @@ import {
   Settings2,
   Share2,
   ShipWheel,
-  Sparkles,
   Trash2,
   User
 } from "lucide-react"
@@ -41,7 +40,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const activeProjectId = useProjectStore((state) => state.activeProjectId)
 
   const isAdmin = userRole === "admin"
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
 
   const { data: activeProject } = useQuery({
     queryKey: ['project', activeProjectId],
@@ -97,7 +96,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavGlobalSearch onOpenSearch={() => setSearchOpen(true)} />
         <NavMain
           dashboardItem={{ title: "Dashboard", url: "/", icon: LayoutDashboard }}
-          topItems={isAdmin ? [] : [{ title: "Builder", url: "/builder-sessions", icon: Sparkles, hidden: !activeProjectId }]}
+          topItems={[]}
           projectItems={isAdmin ? [] : projectItems}
           globalItems={isAdmin ? [] : globalItems}
           infrastructureItems={isAdmin ? infrastructureItems : []}

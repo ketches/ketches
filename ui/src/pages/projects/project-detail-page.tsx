@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAxiosError, type AxiosError } from "axios"
 import {
   Box,
-  Brain,
   ChevronsUpDown,
   CircleAlert,
   Clock,
@@ -28,7 +27,6 @@ import { ProjectRoleLabels, projectsApi } from "@/api/projects"
 import { NotFoundPage } from "@/components/layout/not-found-page"
 import { PageHeader } from "@/components/layout/page-header"
 import { EditProjectDialog } from "@/components/project/edit-project-dialog"
-import { ProjectAiProvidersPanel } from "@/components/project/project-ai-providers-panel"
 import { DetailPageScrollArea } from "@/components/layout/detail-page-scroll-area"
 import { ColorBadge } from "@/components/shared/color-badge"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -78,10 +76,10 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
   const isAdmin = authUser?.role === "admin"
   const { activeProjectId, setActiveContextWithNames } = useProjectStore()
   const projectRole = useProjectRole(projectId)
-  const isViewer = projectRole === "viewer"
+  const isViewer = projectRole !== "owner" && projectRole !== "developer"
   const canManageProject = isAdmin || projectRole === "owner"
-  const adminTabs = ["overview", "dashboard", "environments", "applications", "code-repositories", "container-registries", "plugins", "members", "collaboration", "ai-providers"]
-  const memberTabs = ["overview", "container-registries", "plugins", "members", "ai-providers"]
+  const adminTabs = ["overview", "dashboard", "environments", "applications", "code-repositories", "container-registries", "plugins", "members", "collaboration"]
+  const memberTabs = ["overview", "container-registries", "plugins", "members"]
   const viewerTabs = ["overview", "members"]
   const allowedTabs = isAdmin ? adminTabs : isViewer ? viewerTabs : memberTabs
 
@@ -119,7 +117,7 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
   const ownerDisplayName = ownerMember?.fullname || ownerMember?.username || project?.owner_name || "-"
   const safeProjects = React.useMemo(() => (
     Array.isArray(projectsResponse?.items) ? projectsResponse.items : []
-  ), [projectsResponse?.items])
+  ), [projectsResponse])
 
   React.useEffect(() => {
     if (project && activeProjectId !== project.id) {
@@ -311,12 +309,6 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
               Collaborations
             </TabsTrigger>
           ) : null}
-          {!isViewer ? (
-            <TabsTrigger value="ai-providers">
-              <Brain />
-              AI Providers
-            </TabsTrigger>
-          ) : null}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-2">
@@ -432,22 +424,6 @@ export function ProjectDetailPage({ initialTab = "overview" }: ProjectDetailPage
         {isAdmin ? (
           <TabsContent value="collaboration" className="space-y-4 mt-2">
             <CollaborationsPage projectId={projectId!} />
-          </TabsContent>
-        ) : null}
-
-        {!isViewer ? (
-          <TabsContent value="ai-providers" className="space-y-4 mt-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Brain className="h-4 w-4" />
-                  AI Providers
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ProjectAiProvidersPanel projectId={projectId!} isViewer={isViewer} />
-              </CardContent>
-            </Card>
           </TabsContent>
         ) : null}
       </Tabs>

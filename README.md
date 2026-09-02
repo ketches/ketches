@@ -215,9 +215,10 @@ All configuration is done via environment variables. A `.env` file is optional f
 | `DB_USERNAME` | driver-specific | Database username when `DB_SOURCE` is not set |
 | `DB_PASSWORD` | empty | Database password when `DB_SOURCE` is not set |
 | `DB_SSLMODE` | `disable` | PostgreSQL SSL mode when `DB_SOURCE` is not set |
-| `DB_AUTO_MIGRATE` | `true` | Whether to run GORM AutoMigrate during database initialization |
+| `DB_AUTO_MIGRATE` | `true` | Run GORM AutoMigrate during database initialization; set to `false` when migrations are managed externally |
 | `JWT_SECRET` | *(required)* | Secret key for signing JWT tokens |
 | `SECRET_ENCRYPTION_KEY` | *(required)* | Encryption key for sensitive values stored at rest |
+| `PREVIOUS_SECRET_ENCRYPTION_KEYS` | empty | Optional comma-separated previous keys accepted when decrypting rotated secrets |
 | `BOOTSTRAP_ADMIN_USERNAME` | `kadmin` | Optional override for the bootstrap admin username |
 | `BOOTSTRAP_ADMIN_PASSWORD` | *(required)* | Initial bootstrap admin password; generate a random value and deliver it through a secret |
 | `SIGN_UP_EMAIL_VERIFICATION_REQUIRED` | `true` | Whether public sign-up requires an email verification code |
@@ -228,7 +229,9 @@ All configuration is done via environment variables. A `.env` file is optional f
 | `SMTP_FROM` | empty | Sender address used for verification emails |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,...` | Comma-separated allowed CORS origins |
 
-**Note**: For production environments, set `DB_AUTO_MIGRATE=false` and manage schema migrations through a controlled migration process.
+The API runs GORM `AutoMigrate` from the entity definitions at startup by default. Set `DB_AUTO_MIGRATE=false` when a controlled external process manages schema changes; the API will then connect without issuing migration DDL.
+
+Keep `SECRET_ENCRYPTION_KEY` stable for an existing development database. When changing it, recreate the development data instead of relying on legacy migration behavior.
 
 SQLite is no longer a supported runtime database. It remains test-only through a pure-Go driver so backend builds do not require CGO.
 

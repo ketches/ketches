@@ -22,10 +22,10 @@ describe("user avatar helpers", () => {
     const userAvatarFallback = screen.getByTestId("user-avatar-fallback")
 
     expect(memberAvatar).not.toBeNull()
-    expect(memberAvatar!.className).toContain("bg-amber-100")
-    expect(memberAvatar!.className).toContain("text-amber-700")
-    expect(userAvatarFallback.className).toContain("bg-amber-100")
-    expect(userAvatarFallback.className).toContain("text-amber-700")
+    expect(memberAvatar!.className).toContain("bg-amber-500/10")
+    expect(memberAvatar!.className).toContain("text-amber-600")
+    expect(userAvatarFallback.className).toContain("bg-amber-500/10")
+    expect(userAvatarFallback.className).toContain("text-amber-600")
   })
 
   it("falls back to a question mark when no user name is provided", () => {

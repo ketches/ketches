@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,11 +11,11 @@ import (
 	"github.com/ketches/ketches/internal/api"
 	appcore "github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/core"
+	"github.com/ketches/ketches/internal/middlewares"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 	"github.com/ketches/ketches/pkg/containerregistry"
 	wsPkg "github.com/ketches/ketches/pkg/websocket"
-	"golang.org/x/net/websocket"
 )
 
 const maxAppListPageSize = 60
@@ -106,7 +107,7 @@ func ExecAppContainerTerminal(c *gin.Context) {
 	w := c.Writer
 	r := c.Request
 
-	conn, err := wsPkg.NewConn(w, r)
+	conn, err := wsPkg.NewConn(w, r, wsPkg.OriginValidator(middlewares.IsAllowedOrigin))
 	if err != nil {
 		_ = c.Error(appcore.NewErrorf("failed to upgrade to websocket: %v", err))
 		return
@@ -123,12 +124,26 @@ func ExecAppContainerTerminal(c *gin.Context) {
 		_ = stdinReader.Close()
 	}()
 
-	stdout := wsPkg.NewWriter(conn)
-	stderr := wsPkg.NewWriter(conn)
+	stdout, stderr := wsPkg.NewWriterPair(conn)
+	defer stdout.Close()
+	defer stderr.Close()
 
-	err = services.ExecAppContainer(app, instanceName, containerName, stdinReader, stdout, stderr, true, sizeQueue)
-	if err != nil {
-		if sendErr := websocket.Message.Send(conn, []byte(fmt.Sprintf("Error: %v", err))); sendErr != nil {
+	execCtx, cancel := context.WithTimeout(r.Context(), wsPkg.SessionTimeout)
+	defer cancel()
+	go func() {
+		select {
+		case <-stdinReader.Done():
+			cancel()
+		case <-stdout.Done():
+			cancel()
+		case <-execCtx.Done():
+			_ = conn.Close()
+		}
+	}()
+
+	err = services.ExecAppContainer(execCtx, app, instanceName, containerName, stdinReader, stdout, stderr, true, sizeQueue)
+	if err != nil && execCtx.Err() == nil {
+		if _, sendErr := stderr.Write([]byte(fmt.Sprintf("Error: %v", err))); sendErr != nil {
 			_ = c.Error(sendErr)
 		}
 	}

@@ -185,16 +185,27 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 					return
 				}
 
-				build.Status = entities.BuildStatusSucceeded
-				build.CompletedAt = &now
+				duration := 0
 				if build.StartedAt != nil {
-					build.Duration = int(now.Sub(*build.StartedAt).Seconds())
+					duration = int(now.Sub(*build.StartedAt).Seconds())
 				}
-
-				if err := db.DB.Save(&build).Error; err != nil {
-					slog.Error(fmt.Sprintf("Build watcher: failed to update build %s: %v", buildID, err))
+				result := db.DB.Model(&entities.Build{}).
+					Where("id = ? AND status IN ?", buildID, activeBuildStatuses()).
+					Updates(map[string]any{
+						"status":       entities.BuildStatusSucceeded,
+						"completed_at": &now,
+						"duration":     duration,
+					})
+				if result.Error != nil {
+					slog.Error(fmt.Sprintf("Build watcher: failed to update build %s: %v", buildID, result.Error))
 					return
 				}
+				if result.RowsAffected != 1 {
+					return
+				}
+				build.Status = entities.BuildStatusSucceeded
+				build.CompletedAt = &now
+				build.Duration = duration
 				if err := PersistBuildLogs(context.Background(), buildID); err != nil {
 					slog.Error(fmt.Sprintf("Build watcher: failed to persist logs for build %s: %v", buildID, err))
 				}
@@ -230,7 +241,9 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 					errMsg = normalizeBuildFailureMessage(errMsg, logTail)
 				}
 
-				updateBuildFailed(buildID, errMsg)
+				if !updateBuildFailed(buildID, errMsg) {
+					return
+				}
 				if err := PersistBuildLogs(context.Background(), buildID); err != nil {
 					slog.Error(fmt.Sprintf("Build watcher: failed to persist logs for build %s: %v", buildID, err))
 				}
@@ -263,16 +276,24 @@ func (bw *BuildWatcher) watchBuild(ctx context.Context, buildID, buildEnvID, job
 				}
 
 				if newStatus != "" {
-					var build entities.Build
-					if err := db.DB.First(&build, "id = ?", buildID).Error; err == nil {
-						if build.Status != newStatus {
-							build.Status = newStatus
-							if newStatus == entities.BuildStatusBuilding && build.StartedAt == nil {
-								now := time.Now()
-								build.StartedAt = &now
-							}
-							db.DB.Save(&build)
+					allowedStatuses := []entities.BuildStatus{entities.BuildStatusPending}
+					if newStatus == entities.BuildStatusBuilding {
+						allowedStatuses = []entities.BuildStatus{
+							entities.BuildStatusPending,
+							entities.BuildStatusCloning,
 						}
+					}
+					result := db.DB.Model(&entities.Build{}).
+						Where("id = ? AND status IN ?", buildID, allowedStatuses).
+						Update("status", newStatus)
+					if result.Error != nil {
+						slog.Error(fmt.Sprintf("Build watcher: failed to update build %s phase: %v", buildID, result.Error))
+					} else if result.RowsAffected == 1 && newStatus == entities.BuildStatusBuilding {
+						// Set the start timestamp only when it was not already set by the
+						// build submitter; this is intentionally a conditional update too.
+						db.DB.Model(&entities.Build{}).
+							Where("id = ? AND status = ? AND started_at IS NULL", buildID, newStatus).
+							Update("started_at", time.Now())
 					}
 				}
 			}
@@ -618,19 +639,35 @@ func MarkBuildFailed(buildID, errMsg string) {
 	updateBuildFailed(buildID, errMsg)
 }
 
-func updateBuildFailed(buildID, errMsg string) {
+func activeBuildStatuses() []entities.BuildStatus {
+	return []entities.BuildStatus{
+		entities.BuildStatusPending,
+		entities.BuildStatusCloning,
+		entities.BuildStatusBuilding,
+	}
+}
+
+func updateBuildFailed(buildID, errMsg string) bool {
 	now := time.Now()
 	var build entities.Build
-	if err := db.DB.First(&build, "id = ?", buildID).Error; err == nil && build.StartedAt != nil {
+	if err := db.DB.Where("id = ? AND status IN ?", buildID, activeBuildStatuses()).First(&build).Error; err != nil {
+		return false
+	}
+	if build.StartedAt != nil {
 		build.Duration = int(now.Sub(*build.StartedAt).Seconds())
 	}
 
-	db.DB.Model(&entities.Build{}).Where("id = ?", buildID).Updates(map[string]any{
-		"status":        entities.BuildStatusFailed,
-		"completed_at":  &now,
-		"duration":      build.Duration,
-		"error_message": errMsg,
-	})
+	result := db.DB.Model(&entities.Build{}).
+		Where("id = ? AND status IN ?", buildID, activeBuildStatuses()).
+		Updates(map[string]any{
+			"status":        entities.BuildStatusFailed,
+			"completed_at":  &now,
+			"duration":      build.Duration,
+			"error_message": errMsg,
+		})
+	if result.Error != nil || result.RowsAffected != 1 {
+		return false
+	}
 
 	db.DB.Model(&entities.BuildDeployment{}).
 		Where("build_id = ? AND status = ?", buildID, entities.BuildDeploymentStatusPending).
@@ -639,4 +676,5 @@ func updateBuildFailed(buildID, errMsg string) {
 			"error_message": errMsg,
 			"deployed_at":   &now,
 		})
+	return true
 }

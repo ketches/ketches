@@ -44,7 +44,7 @@ interface AutoScalingConfigProps {
 export function AutoScalingConfig({ app }: AutoScalingConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<z.infer<typeof autoScalingSchema>>({
     resolver: zodResolver(autoScalingSchema),
     defaultValues: {

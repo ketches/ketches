@@ -1,16 +1,21 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/glebarez/sqlite"
+	"github.com/ketches/ketches/internal/app"
+	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -22,8 +27,12 @@ func setupAppVolumeTestDB(t *testing.T) {
 	t.Helper()
 
 	originalDB := db.DB
+	originalValidateDelete := validateAppVolumeDeleteForService
+	originalDeleteFromK8s := deleteVolumeFromK8sForService
 	t.Cleanup(func() {
 		db.DB = originalDB
+		validateAppVolumeDeleteForService = originalValidateDelete
+		deleteVolumeFromK8sForService = originalDeleteFromK8s
 	})
 
 	testDB, err := gorm.Open(sqlite.Open(t.TempDir()+"/app-volume-test.db"), &gorm.Config{
@@ -47,6 +56,26 @@ func setupAppVolumeTestDB(t *testing.T) {
 	))
 
 	db.DB = testDB
+}
+
+func TestValidateAppVolumeRequestDisablesHostPathByDefault(t *testing.T) {
+	originalConfig := app.Config
+	t.Cleanup(func() { app.Config = originalConfig })
+	app.Config.AllowHostPathVolumes = false
+
+	err := validateAppVolumeRequest(app.VolumeTypeHostPath, "/var/lib/ketches")
+	require.ErrorContains(t, err, "disabled")
+	require.NoError(t, validateAppVolumeRequest(app.VolumeTypeEmptyDir, ""))
+}
+
+func TestValidateAppVolumeRequestAllowsSafeHostPathWhenEnabled(t *testing.T) {
+	originalConfig := app.Config
+	t.Cleanup(func() { app.Config = originalConfig })
+	app.Config.AllowHostPathVolumes = true
+
+	require.NoError(t, validateAppVolumeRequest(app.VolumeTypeHostPath, "/var/lib/ketches"))
+	require.Error(t, validateAppVolumeRequest(app.VolumeTypeHostPath, "/"))
+	require.Error(t, validateAppVolumeRequest(app.VolumeTypeHostPath, "relative/path"))
 }
 
 func registerAppVolumeTestCluster(t *testing.T, serverURL string) string {
@@ -169,4 +198,87 @@ func TestListAppVolumes_LoadsPVCStatusFromCluster(t *testing.T) {
 
 	assert.Equal(t, "Bound", statusBySlug["data"])
 	assert.Empty(t, statusBySlug["cache"])
+}
+
+func TestDeleteAppVolumeUsesAppReconcileFence(t *testing.T) {
+	setupAppVolumeTestDB(t)
+
+	require.NoError(t, db.DB.Create(&entities.Project{
+		Base: entities.Base{ID: "project-delete"},
+		Slug: "project-delete",
+		Name: "Project Delete",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Cluster{
+		Base:       entities.Base{ID: "cluster-delete"},
+		Slug:       "cluster-delete",
+		Name:       "Cluster Delete",
+		KubeConfig: "test",
+		Enabled:    true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.Env{
+		Base:             entities.Base{ID: "env-delete"},
+		Slug:             "env-delete",
+		Name:             "Environment Delete",
+		ProjectID:        "project-delete",
+		ClusterID:        "cluster-delete",
+		ClusterNamespace: "work-delete",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.App{
+		Base:           entities.Base{ID: "app-delete-volume"},
+		Slug:           "app-delete-volume",
+		Name:           "App Delete Volume",
+		EnvID:          "env-delete",
+		AppType:        app.AppTypeDeployment,
+		ContainerImage: "nginx:latest",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.AppVolume{
+		ID:         "volume-delete",
+		AppID:      "app-delete-volume",
+		Slug:       "data",
+		MountPath:  "/data",
+		VolumeType: app.VolumeTypePVC,
+		Capacity:   10,
+	}).Error)
+
+	fenceHeld := make(chan struct{})
+	releaseFence := make(chan struct{})
+	fenceResult := make(chan error, 1)
+	go func() {
+		fenceResult <- core.WithAppReconcileFence(context.Background(), "app-delete-volume", func() error {
+			close(fenceHeld)
+			<-releaseFence
+			return nil
+		})
+	}()
+	select {
+	case <-fenceHeld:
+	case <-time.After(5 * time.Second):
+		t.Fatal("test fence was not acquired")
+	}
+
+	validateAppVolumeDeleteForService = func(context.Context, *models.AppContext, *entities.AppVolume) error {
+		return nil
+	}
+	kubernetesDeleteCalled := make(chan struct{})
+	deleteVolumeFromK8sForService = func(context.Context, *models.AppContext, *entities.AppVolume) error {
+		close(kubernetesDeleteCalled)
+		return nil
+	}
+	deleteResult := make(chan error, 1)
+	go func() {
+		deleteResult <- DeleteAppVolume(context.Background(), "volume-delete")
+	}()
+
+	select {
+	case <-kubernetesDeleteCalled:
+		t.Fatal("volume deletion entered Kubernetes while the app fence was held")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(releaseFence)
+	require.NoError(t, <-fenceResult)
+	require.NoError(t, <-deleteResult)
+
+	var count int64
+	require.NoError(t, db.DB.Model(&entities.AppVolume{}).Where("id = ?", "volume-delete").Count(&count).Error)
+	require.Zero(t, count)
 }

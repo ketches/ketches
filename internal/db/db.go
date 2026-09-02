@@ -24,7 +24,7 @@ func InitDB() error {
 	var dialector gorm.Dialector
 
 	switch app.Config.DBDriver {
-	case "postgres":
+	case "postgres", "postgresql":
 		dialector = postgres.Open(app.Config.DBSource)
 	case "mysql":
 		dialector = mysql.Open(app.Config.DBSource)
@@ -37,10 +37,8 @@ func InitDB() error {
 		return app.WrapError("failed to connect to database", err)
 	}
 
-	if app.Config.DBAutoMigrate {
-		if err := Migrate(); err != nil {
-			return app.WrapError("failed to migrate database", err)
-		}
+	if err := migrateConfiguredDatabase(); err != nil {
+		return app.WrapError("failed to migrate database", err)
 	}
 
 	if err := configureConnectionPool(DB); err != nil {
@@ -49,6 +47,13 @@ func InitDB() error {
 
 	slog.Info("database connected", "driver", app.Config.DBDriver)
 	return nil
+}
+
+func migrateConfiguredDatabase() error {
+	if !app.Config.DBAutoMigrate {
+		return nil
+	}
+	return Migrate()
 }
 
 func configureConnectionPool(gormDB *gorm.DB) error {

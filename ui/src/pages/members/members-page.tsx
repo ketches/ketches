@@ -45,7 +45,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectNameToUse = activeProjectName
   const projectRole = useProjectRole(activeProjectId)
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -70,6 +70,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       projectsApi.inviteProjectMembers(activeProjectId!, { user_ids: userIds, role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-members', activeProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-capabilities', activeProjectId] })
       queryClient.invalidateQueries({ queryKey: ['invitable-users', activeProjectId] })
       toast.success("Members invited successfully")
     },
@@ -85,6 +86,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       projectsApi.inviteProjectMembers(activeProjectId!, { user_ids: [userId], role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-members', activeProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-capabilities', activeProjectId] })
       toast.success("Member role updated")
     },
     onError: (error: AxiosError<{ error: string }>) => {
@@ -99,6 +101,7 @@ export function MembersPage({ projectId: projectIdProp }: { projectId?: string }
       projectsApi.removeProjectMember(activeProjectId!, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-members', activeProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-capabilities', activeProjectId] })
       toast.success("Member removed from project")
     },
     onError: (error: AxiosError<{ error: string }>) => {

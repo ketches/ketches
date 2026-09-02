@@ -67,7 +67,7 @@ interface SchedulingConfigProps {
 export function SchedulingConfig({ app }: SchedulingConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
 
 
   let initialNodeSelectors: any[] = []
@@ -350,4 +350,3 @@ export function SchedulingConfig({ app }: SchedulingConfigProps) {
     </Card>
   )
 }
-

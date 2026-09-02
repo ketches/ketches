@@ -13,7 +13,6 @@ func SetupRoutes(r *gin.Engine) {
 	r.Use(middlewares.RequestBodyLimit())
 
 	setupV1Routes(r)
-	setupBuilderPreviewRoutes(r)
 
 	openapi.RegisterRoutes(r, openapi.Config{
 		Title:       "Ketches API",
@@ -72,10 +71,6 @@ func setupV1Routes(r *gin.Engine) {
 				users.POST("/logout", handlers.SignOut)
 				users.PUT("/me/profile", handlers.UpdateCurrentUserProfile)
 				users.PATCH("/me/password", handlers.ChangeCurrentUserPassword)
-				users.GET("/me/ai-providers", handlers.ListCurrentUserAIProviders)
-				users.POST("/me/ai-providers", handlers.CreateCurrentUserAIProvider)
-				users.PUT("/me/ai-providers/:providerID", handlers.UpdateCurrentUserAIProvider)
-				users.DELETE("/me/ai-providers/:providerID", handlers.DeleteCurrentUserAIProvider)
 				users.POST("", middlewares.AdminOnly(), handlers.CreateUser)
 				users.POST("/import", middlewares.AdminOnly(), handlers.ImportUsers)
 				users.PUT("/:userID", middlewares.AdminOnly(), handlers.UpdateUser)
@@ -94,6 +89,7 @@ func setupV1Routes(r *gin.Engine) {
 
 				projectsRead := projects.Group("", middlewares.RequireProjectRole(app.ProjectRoleViewer))
 				projectsRead.GET("/:projectID", handlers.GetProject)
+				projectsRead.GET("/:projectID/capabilities", handlers.GetProjectCapabilities)
 				projectsRead.GET("/:projectID/members", handlers.ListProjectMembers)
 				projectsRead.GET("/:projectID/invitable-users", handlers.ListInvitableUsers)
 				projectsRead.GET("/:projectID/envs", handlers.ListEnvs)
@@ -103,17 +99,6 @@ func setupV1Routes(r *gin.Engine) {
 				projectsRead.GET("/:projectID/container-registries/simple", handlers.ListProjectContainerRegistriesSimple)
 				projectsRead.GET("/:projectID/code-repositories", handlers.ListCodeRepositories)
 				projectsRead.GET("/:projectID/code-repositories/simple", handlers.ListCodeRepositoriesSimple)
-				projectsRead.GET("/:projectID/ai-providers", handlers.ListProjectAIProviders)
-				projectsRead.GET("/:projectID/builder-model-options", handlers.ListBuilderAvailableModelOptions)
-				projectsRead.GET("/:projectID/builder-model-selection", handlers.GetBuilderDefaultModelSelection)
-				projectsRead.GET("/:projectID/builder-sessions", handlers.ListBuilderSessions)
-				projectsRead.GET("/:projectID/builder-sessions/:sessionID", handlers.GetBuilderSession)
-				projectsRead.GET("/:projectID/builder-sessions/:sessionID/exports", handlers.ListBuilderSessionExports)
-				projectsRead.GET("/:projectID/builder-sessions/:sessionID/exports/:exportID/promotion-plan", handlers.GetBuilderSessionExportPromotionPlan)
-				projectsRead.GET("/:projectID/builder-sessions/:sessionID/exports/:exportID/download", handlers.DownloadBuilderSessionExport)
-				projectsRead.GET("/:projectID/builder-sessions/:sessionID/preview", handlers.GetBuilderSessionPreview)
-				projectsRead.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/preview/launch", handlers.LaunchBuilderSessionPreview)
-				projectsRead.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/delivery/download", handlers.DownloadBuilderSessionSnapshot)
 				projectsRead.GET("/:projectID/plugins", handlers.ListPlugins)
 				projectsRead.GET("/:projectID/plugins/simple", handlers.ListPluginsSimple)
 				projectsRead.GET("/:projectID/plugins/:pluginID", handlers.GetPlugin)
@@ -123,28 +108,15 @@ func setupV1Routes(r *gin.Engine) {
 				projectsWrite := projects.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
 				projectsWrite.PUT("/:projectID", handlers.UpdateProject)
 				projectsWrite.DELETE("/:projectID", handlers.DeleteProject)
-				projectsWrite.POST("/:projectID/members", handlers.InviteProjectMembers)
-				projectsWrite.DELETE("/:projectID/members", handlers.RemoveProjectMember)
 				projectsWrite.POST("/:projectID/envs", handlers.CreateEnv)
 				projectsWrite.POST("/:projectID/container-registries", handlers.CreateProjectContainerRegistry)
 				projectsWrite.POST("/:projectID/code-repositories", handlers.CreateCodeRepository)
-				projectsWrite.POST("/:projectID/ai-providers", handlers.CreateProjectAIProvider)
-				projectsWrite.PUT("/:projectID/ai-providers/:providerID", handlers.UpdateProjectAIProvider)
-				projectsWrite.DELETE("/:projectID/ai-providers/:providerID", handlers.DeleteProjectAIProvider)
-				projectsWrite.POST("/:projectID/builder-sessions", handlers.CreateBuilderSession)
-				projectsWrite.POST("/:projectID/builder-sessions/:sessionID/messages", handlers.PostBuilderSessionMessage)
-				projectsWrite.POST("/:projectID/builder-sessions/:sessionID/exports", handlers.CreateBuilderSessionExport)
-				projectsWrite.POST("/:projectID/builder-sessions/:sessionID/exports/:exportID/promote-repository", handlers.PromoteBuilderSessionExportToCodeRepository)
-				projectsWrite.POST("/:projectID/builder-sessions/:sessionID/exports/:exportID/promote-build", handlers.PromoteBuilderSessionExportToInitialBuild)
-				projectsWrite.POST("/:projectID/builder-sessions/:sessionID/exports/:exportID/deploy-build", handlers.DeployBuilderExportBuild)
-				projectsWrite.POST("/:projectID/builder-sessions/:sessionID/runs/:runID/cancel", handlers.RequestBuilderRunCancel)
-				projectsWrite.GET("/:projectID/builder-sessions/:sessionID/runs/:runID/logs", handlers.StreamBuilderRunLogs)
-				projectsWrite.GET("/:projectID/builder-sessions/:sessionID/files", handlers.ListBuilderWorkspaceFiles)
-				projectsWrite.GET("/:projectID/builder-sessions/:sessionID/files/read", handlers.ReadBuilderWorkspaceFile)
-				projectsWrite.GET("/:projectID/builder-sessions/:sessionID/files/download", handlers.DownloadBuilderWorkspace)
 				projectsWrite.POST("/:projectID/plugins", handlers.CreatePlugin)
 				projectsWrite.PUT("/:projectID/plugins/:pluginID", handlers.UpdatePlugin)
 				projectsWrite.DELETE("/:projectID/plugins/:pluginID", handlers.DeletePlugin)
+				projectsManage := projects.Group("", middlewares.RequireProjectRole(app.ProjectRoleOwner))
+				projectsManage.POST("/:projectID/members", handlers.InviteProjectMembers)
+				projectsManage.DELETE("/:projectID/members", handlers.RemoveProjectMember)
 
 				// ── Collaboration (Sprints / Requirements / Tasks) ──────
 				projectsRead.GET("/:projectID/sprints", handlers.ListSprints)
@@ -197,7 +169,7 @@ func setupV1Routes(r *gin.Engine) {
 				codeReposRead.GET("/:repoID/build-settings/:settingID", handlers.GetRepoBuildSetting)
 				codeReposRead.GET("/:repoID/builds", handlers.ListCodeRepositoryBuilds)
 				codeReposRead.GET("/:repoID/builds/:buildID", handlers.GetCodeRepositoryBuild)
-				codeReposRead.GET("/:repoID/builds/:buildID/logs", handlers.StreamCodeRepositoryBuildLogs)
+				codeReposRead.GET("/:repoID/builds/:buildID/logs", middlewares.StreamingResponse(), handlers.StreamCodeRepositoryBuildLogs)
 				codeReposRead.GET("/:repoID/deployments", handlers.ListBuildDeployments)
 				codeReposRead.GET("/:repoID/build-settings/:settingID/deployed-apps", handlers.ListDeployedAppsByEnvironment)
 				codeReposRead.GET("/:repoID/operation-logs", handlers.ListCodeRepositoryOperationLogs)
@@ -223,7 +195,6 @@ func setupV1Routes(r *gin.Engine) {
 				envsRead.GET("/:envID/resource-quota", handlers.GetEnvResourceQuota)
 				envsRead.GET("/:envID/apps", handlers.ListApps)
 				envsRead.GET("/:envID/apps/simple", handlers.ListAppsSimple)
-				envsRead.GET("/:envID/apps/export", handlers.ExportEnvApps)
 				envsRead.GET("/:envID/app-groups", handlers.ListAppGroups)
 				envsRead.GET("/:envID/apps/favorites", handlers.ListFavoriteApps)
 				envsRead.GET("/:envID/certificates", handlers.ListEnvCertificates)
@@ -240,6 +211,7 @@ func setupV1Routes(r *gin.Engine) {
 				envsWrite.PUT("/:envID/resource-quota", handlers.UpdateEnvResourceQuota)
 				envsWrite.POST("/:envID/apps", handlers.CreateApp)
 				envsWrite.POST("/:envID/apps/import", handlers.ImportApps)
+				envsWrite.GET("/:envID/apps/export", handlers.ExportEnvApps)
 				envsWrite.POST("/:envID/app-groups", handlers.CreateAppGroup)
 				envsWrite.POST("/:envID/certificates", handlers.CreateEnvCertificate)
 				envsWrite.POST("/:envID/domains", handlers.CreateEnvDomain)
@@ -255,7 +227,6 @@ func setupV1Routes(r *gin.Engine) {
 				appsRead := apps.Group("", middlewares.RequireProjectRole(app.ProjectRoleViewer))
 				appsRead.GET("/:appID", handlers.GetApp)
 				appsRead.GET("/:appID/simple", handlers.GetAppSimple)
-				appsRead.GET("/:appID/export", handlers.ExportApps)
 				appsRead.GET("/:appID/available-actions", handlers.GetAppAvailableActions)
 				appsRead.GET("/:appID/topology", handlers.GetAppTopology)
 				appsRead.GET("/:appID/instances", handlers.ListAppInstances)
@@ -274,7 +245,7 @@ func setupV1Routes(r *gin.Engine) {
 				// Exec / Log / Files (block viewer — require at least developer)
 				appsExec := apps.Group("", middlewares.BlockViewer())
 				appsExec.GET("/:appID/topology/nodes/:nodeID/resource-yaml", handlers.GetAppTopologyResourceYaml)
-				appsExec.GET("/:appID/instances/:instanceName/logs", handlers.StreamAppLogs)
+				appsExec.GET("/:appID/instances/:instanceName/logs", middlewares.StreamingResponse(), handlers.StreamAppLogs)
 				appsExec.GET("/:appID/instances/:instanceName/exec", handlers.ExecAppContainerTerminal)
 				appsExec.GET("/:appID/instances/:instanceName/files", handlers.ListFiles)
 				appsExec.GET("/:appID/instances/:instanceName/files/home", handlers.GetHomeDir)
@@ -292,6 +263,7 @@ func setupV1Routes(r *gin.Engine) {
 
 				// Write (require at least developer role)
 				appsWrite := apps.Group("", middlewares.RequireProjectRole(app.ProjectRoleDeveloper))
+				appsWrite.GET("/:appID/export", handlers.ExportApps)
 				appsWrite.PATCH("/:appID/basic", handlers.UpdateAppBasic)
 				appsWrite.PATCH("/:appID/image", handlers.UpdateAppImage)
 				appsWrite.PATCH("/:appID/replicas", handlers.UpdateAppReplicas)
@@ -467,9 +439,4 @@ func setupV1Routes(r *gin.Engine) {
 
 		}
 	}
-}
-
-func setupBuilderPreviewRoutes(r *gin.Engine) {
-	builderPreview := r.Group("/builder-preview")
-	builderPreview.GET("/projects/:projectID/sessions/:sessionID/runs/:runID/*assetPath", middlewares.BuilderPreviewAuth(), middlewares.RequireProjectRole(app.ProjectRoleViewer), handlers.ReadBuilderPreviewAsset)
 }

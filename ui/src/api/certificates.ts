@@ -8,6 +8,7 @@ export interface Certificate {
   scope: 'cluster' | 'env'
   cluster_id: string
   env_id: string
+  has_private_key: boolean
   created_at: string
 }
 

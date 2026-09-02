@@ -34,7 +34,7 @@ func setupAuthSessionHandlerTestDB(t *testing.T) {
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	require.NoError(t, err)
-	require.NoError(t, testDB.AutoMigrate(&entities.User{}))
+	require.NoError(t, testDB.AutoMigrate(&entities.User{}, &entities.AuthRateLimit{}))
 
 	db.DB = testDB
 	app.Config.JWTSecret = "auth-session-handler-test-secret"
@@ -96,6 +96,28 @@ func TestSignInSetsSessionCookiesAndReturnsUserOnly(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Equal(t, "alice", resp.Data.User.Username)
 	assert.True(t, resp.Data.MustChangePassword)
+}
+
+func TestSignInRateLimitsRepeatedAccountAttempts(t *testing.T) {
+	setupAuthSessionHandlerTestDB(t)
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/api/v1/users/sign-in", SignIn)
+
+	for attempt := 0; attempt < 10; attempt++ {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/users/sign-in", strings.NewReader(`{"username":"missing","password":"Password#123"}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/sign-in", strings.NewReader(`{"username":"missing","password":"Password#123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	require.Equal(t, http.StatusTooManyRequests, w.Code)
 }
 
 func TestRefreshTokenRotatesSessionCookies(t *testing.T) {

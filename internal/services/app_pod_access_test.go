@@ -104,31 +104,31 @@ func TestValidateAppPodAccessRequiresApplicationIdentity(t *testing.T) {
 	}
 }
 
-func TestValidateAppPodAccessUsesScopedPolicyForBuilderWorkspace(t *testing.T) {
+func TestValidateAppPodAccessUsesScopedPodPolicy(t *testing.T) {
 	client := fake.NewSimpleClientset(&corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "workspace-pod",
-			Namespace: "builder-ns",
+			Namespace: "workspace-ns",
 			Labels: map[string]string{
-				kube.LabelManagedBy:        "true",
-				kube.LabelBuilderWorkspace: "true",
-				kube.LabelBuilderSessionID: "session-1",
+				kube.LabelManagedBy:         "true",
+				"ketches.cn/workspace-role": "interactive",
+				"ketches.cn/workspace-id":   "workspace-1",
 			},
 		},
 		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "workspace"}}},
 	})
 	appContext := &models.AppContext{
-		EnvContext: models.EnvContext{Env: entities.Env{ClusterNamespace: "builder-ns"}},
+		EnvContext: models.EnvContext{Env: entities.Env{ClusterNamespace: "workspace-ns"}},
 		PodAccessPolicy: &models.PodAccessPolicy{RequiredLabels: map[string]string{
-			kube.LabelBuilderWorkspace: "true",
-			kube.LabelBuilderSessionID: "session-1",
+			"ketches.cn/workspace-role": "interactive",
+			"ketches.cn/workspace-id":   "workspace-1",
 		}},
 	}
 
 	_, err := validateAppPodContainer(context.Background(), client, appContext, "workspace-pod", "workspace")
 	require.NoError(t, err)
 
-	appContext.PodAccessPolicy.RequiredLabels[kube.LabelBuilderSessionID] = "session-2"
+	appContext.PodAccessPolicy.RequiredLabels["ketches.cn/workspace-id"] = "workspace-2"
 	_, err = validateAppPodAccess(context.Background(), client, appContext, "workspace-pod")
 	require.ErrorIs(t, err, errPodAccessDenied)
 }

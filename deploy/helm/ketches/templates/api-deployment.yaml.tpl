@@ -36,6 +36,8 @@ spec:
               containerPort: {{ .Values.api.containerPort }}
               protocol: TCP
           env:
+            - name: APP_ENV
+              value: {{ .Values.config.environment | quote }}
             - name: PORT
               value: {{ .Values.config.port | quote }}
             - name: LOG_LEVEL
@@ -44,6 +46,10 @@ spec:
               value: {{ .Values.config.dbDriver | quote }}
             - name: DB_AUTO_MIGRATE
               value: {{ .Values.config.dbAutoMigrate | quote }}
+            {{- if eq .Values.config.dbDriver "mysql" }}
+            - name: DB_TLS
+              value: {{ .Values.config.dbTLS | quote }}
+            {{- end }}
             {{- if .Values.config.dbSource }}
             - name: DB_SOURCE
               valueFrom:
@@ -74,6 +80,16 @@ spec:
                 secretKeyRef:
                   name: {{ include "ketches.secretName" . | quote }}
                   key: jwt-secret
+            - name: SECRET_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ketches.secretName" . | quote }}
+                  key: secret-encryption-key
+            - name: PREVIOUS_SECRET_ENCRYPTION_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ketches.secretName" . | quote }}
+                  key: previous-secret-encryption-keys
             - name: BOOTSTRAP_ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -86,6 +102,8 @@ spec:
                   key: bootstrap-admin-password
             - name: CORS_ALLOWED_ORIGINS
               value: {{ .Values.config.corsAllowedOrigins | quote }}
+            - name: TRUSTED_PROXIES
+              value: {{ .Values.config.trustedProxies | quote }}
             - name: SIGN_UP_EMAIL_VERIFICATION_REQUIRED
               value: {{ .Values.config.signUpEmailVerificationRequired | quote }}
             - name: SMTP_HOST

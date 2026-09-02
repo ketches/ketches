@@ -57,7 +57,7 @@ const VOLUME_PVC_STATUSES: ReadonlyArray<{
 export function VolumesTable({ app }: VolumesTableProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingVolume, setEditingVolume] = React.useState<VolumeSpec | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -79,6 +79,7 @@ export function VolumesTable({ app }: VolumesTableProps) {
         status: vol.status || "",
         mount_path: vol.mount_path,
         sub_path: vol.sub_path,
+        host_path: vol.host_path,
         storage_class: vol.storage_class,
         capacity: vol.capacity || 1,
         access_modes: vol.access_modes || "ReadWriteOnce",

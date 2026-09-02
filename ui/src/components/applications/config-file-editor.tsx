@@ -2,6 +2,7 @@ import type { App } from "@/api/apps"
 import { appsApi } from "@/api/apps"
 import { useTheme } from "@/components/theme-provider/theme-provider"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Combobox,
   ComboboxContent,
@@ -33,6 +34,8 @@ export interface ConfigFileSpec {
   mount_path: string
   file_mode: string
   content: string
+  is_secret?: boolean
+  has_value?: boolean
 }
 
 interface ConfigFileEditorProps {
@@ -66,6 +69,7 @@ export function ConfigFileEditor({
     mount_path: "",
     file_mode: "0644",
     content: "",
+    is_secret: false,
   })
 
   const [errors, setErrors] = React.useState<Record<string, string>>({})
@@ -98,6 +102,7 @@ export function ConfigFileEditor({
           mount_path: configFile.mount_path || "",
           file_mode: configFile.file_mode || "0644",
           content: configFile.content || "",
+          is_secret: configFile.is_secret || false,
         })
       } else {
         setFormData({
@@ -105,6 +110,7 @@ export function ConfigFileEditor({
           mount_path: "",
           file_mode: "0644",
           content: "",
+          is_secret: false,
         })
       }
       setErrors({})
@@ -194,6 +200,19 @@ export function ConfigFileEditor({
                   />
                 </FieldContent>
                 {errors.slug && <FieldError>{errors.slug}</FieldError>}
+              </Field>
+
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="config-is-secret"
+                  checked={formData.is_secret}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, is_secret: checked === true }))
+                  }
+                />
+                <FieldContent>
+                  <FieldLabel htmlFor="config-is-secret">Sensitive content</FieldLabel>
+                </FieldContent>
               </Field>
 
               <Field>

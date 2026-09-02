@@ -82,6 +82,7 @@ export function CreateAppDialog({
     name?: string
     slug?: string
     container_image?: string
+    registry_username?: string
   }>({})
 
   const [formData, setFormData] = React.useState<CreateAppFormData>({ ...INITIAL_FORM_DATA })
@@ -172,6 +173,7 @@ export function CreateAppDialog({
 
     if (formData.registry_password.trim() && !formData.registry_username.trim()) {
       const errMsg = "Registry username is required when password is provided"
+      newErrors.registry_username = errMsg
       sonnerToast.error("Error", { description: errMsg })
     }
 
@@ -329,8 +331,10 @@ export function CreateAppDialog({
                       value={formData.registry_username}
                       onChange={(e) => setFormData((prev) => ({ ...prev, registry_username: e.target.value }))}
                       autoComplete="off"
+                      aria-invalid={!!errors.registry_username}
                     />
                   </FieldContent>
+                  {errors.registry_username && <FieldError><span className="text-destructive text-xs">{errors.registry_username}</span></FieldError>}
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="registry-password">Registry Password</FieldLabel>

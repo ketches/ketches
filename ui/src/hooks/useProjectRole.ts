@@ -1,32 +1,31 @@
-// useProjectRole returns the current user's role in the active project.
-// Admin system users always get 'owner'. Returns null if no active project or not loaded.
 import { useQuery } from '@tanstack/react-query'
-import { projectsApi, type ProjectRole } from '@/api/projects'
+import { projectsApi, type ProjectCapabilitiesResponse, type ProjectRole } from '@/api/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectStore } from '@/stores/project'
 
-export function useProjectRole(projectIdOverride?: string | null): ProjectRole | null {
+export function useProjectCapabilities(projectIdOverride?: string | null): ProjectCapabilitiesResponse | null {
   const user = useAuthStore((state) => state.user)
   const activeProjectIdFromStore = useProjectStore((state) => state.activeProjectId)
-  const activeProjectId = projectIdOverride ?? activeProjectIdFromStore
+  const activeProjectId = projectIdOverride === undefined
+    ? activeProjectIdFromStore
+    : projectIdOverride
 
-  const isAdmin = user?.role === 'admin'
-
-  // Only fetch members for non-admin users with an active project
-  const { data } = useQuery({
-    queryKey: ['project-members', activeProjectId],
-    queryFn: () => projectsApi.listMembers(activeProjectId!),
-    enabled: !isAdmin && !!activeProjectId && !!user,
-    staleTime: 5 * 60 * 1000,
+  const { data, isError } = useQuery({
+    queryKey: ['project-capabilities', activeProjectId, user?.id, user?.role],
+    queryFn: () => projectsApi.getCapabilities(activeProjectId!),
+    enabled: !!activeProjectId && !!user,
+    staleTime: 60 * 1000,
   })
 
-  // Admin system role gets full owner-equivalent access
-  if (isAdmin) {
-    return 'owner'
-  }
+  // React Query keeps the previous value when a background refetch fails.
+  // Treat that stale capability as unknown so callers fail closed.
+  return isError ? null : data ?? null
+}
 
-  if (!data || !user) return null
+// Returns null while access is unknown or the request failed. Consumers must
+// treat null as read-only so permissions fail closed.
+export function useProjectRole(projectIdOverride?: string | null): ProjectRole | null {
+  const capabilities = useProjectCapabilities(projectIdOverride)
 
-  const membership = data.items.find((m) => m.user_id === user.id)
-  return membership?.project_role ?? null
+  return capabilities?.project_role ?? null
 }

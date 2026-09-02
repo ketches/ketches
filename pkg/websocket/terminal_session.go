@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"sync"
+	"time"
 
 	"golang.org/x/net/websocket"
 	"k8s.io/client-go/tools/remotecommand"
@@ -16,8 +17,10 @@ type ResizeMessage struct {
 }
 
 type TerminalSizeQueue struct {
-	ch chan remotecommand.TerminalSize
-	mu sync.Mutex
+	ch        chan remotecommand.TerminalSize
+	mu        sync.Mutex
+	closed    bool
+	closeOnce sync.Once
 }
 
 func NewTerminalSizeQueue() *TerminalSizeQueue {
@@ -37,17 +40,32 @@ func (q *TerminalSizeQueue) Next() *remotecommand.TerminalSize {
 func (q *TerminalSizeQueue) Send(size remotecommand.TerminalSize) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	if q.closed {
+		return
+	}
 
 	select {
 	case q.ch <- size:
 	default:
-		<-q.ch
-		q.ch <- size
+		// Keep the newest resize event without blocking the reader.
+		select {
+		case <-q.ch:
+		default:
+		}
+		select {
+		case q.ch <- size:
+		default:
+		}
 	}
 }
 
 func (q *TerminalSizeQueue) Close() {
-	close(q.ch)
+	q.closeOnce.Do(func() {
+		q.mu.Lock()
+		q.closed = true
+		close(q.ch)
+		q.mu.Unlock()
+	})
 }
 
 type DemuxReader struct {
@@ -56,6 +74,9 @@ type DemuxReader struct {
 	pipeR     *io.PipeReader
 	pipeW     *io.PipeWriter
 	done      chan struct{}
+	closeOnce sync.Once
+	errMu     sync.RWMutex
+	err       error
 }
 
 func NewDemuxReader(conn *websocket.Conn, sizeQueue *TerminalSizeQueue) *DemuxReader {
@@ -82,9 +103,13 @@ func (dr *DemuxReader) readLoop() {
 	defer close(dr.done)
 
 	for {
+		_ = dr.conn.SetReadDeadline(time.Now().Add(IdleTimeout))
 		var data []byte
 		err := websocket.Message.Receive(dr.conn, &data)
 		if err != nil {
+			dr.errMu.Lock()
+			dr.err = err
+			dr.errMu.Unlock()
 			return
 		}
 
@@ -106,7 +131,23 @@ func (dr *DemuxReader) readLoop() {
 }
 
 func (dr *DemuxReader) Close() error {
-	_ = dr.pipeW.Close()
+	dr.closeOnce.Do(func() {
+		// A blocked Receive must be interrupted before waiting for readLoop.
+		_ = dr.conn.SetReadDeadline(time.Now())
+		_ = dr.pipeW.Close()
+	})
 	<-dr.done
 	return nil
+}
+
+// Done is closed when the client stops sending data or the reader is closed.
+func (dr *DemuxReader) Done() <-chan struct{} {
+	return dr.done
+}
+
+// Err returns the terminal read error, if any.
+func (dr *DemuxReader) Err() error {
+	dr.errMu.RLock()
+	defer dr.errMu.RUnlock()
+	return dr.err
 }

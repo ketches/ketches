@@ -52,27 +52,6 @@ export interface UpdateMyPasswordRequest {
   new_password: string
 }
 
-export interface UserAiProvider {
-  id: string
-  provider_key: string
-  display_name: string
-  base_url: string
-  default_model_profile_key: string
-  default_model?: string
-  enabled: boolean
-  is_default: boolean
-  created_at: string
-}
-
-export interface UpsertMyAiProviderRequest {
-  provider_key: string
-  display_name: string
-  base_url: string
-  api_key: string
-  default_model_profile_key: string
-  enabled: boolean
-  is_default: boolean
-}
 
 export const usersApi = {
   list: async (params: ListUsersParams = {}) => {
@@ -96,18 +75,6 @@ export const usersApi = {
   },
   updateMyPassword: async (data: UpdateMyPasswordRequest) => {
     return client.patch('/v1/users/me/password', data) as Promise<void>
-  },
-  listMyAiProviders: async () => {
-    return client.get('/v1/users/me/ai-providers') as Promise<UserAiProvider[]>
-  },
-  createMyAiProvider: async (data: UpsertMyAiProviderRequest) => {
-    return client.post('/v1/users/me/ai-providers', data) as Promise<UserAiProvider>
-  },
-  updateMyAiProvider: async (id: string, data: UpsertMyAiProviderRequest) => {
-    return client.put(`/v1/users/me/ai-providers/${id}`, data) as Promise<UserAiProvider>
-  },
-  deleteMyAiProvider: async (id: string) => {
-    return client.delete(`/v1/users/me/ai-providers/${id}`) as Promise<void>
   },
   importUsers: async (file: File, type: 'json' | 'csv' | 'excel' = 'json') => {
     const formData = new FormData()

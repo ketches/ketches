@@ -34,6 +34,7 @@ export interface VolumeSpec {
   status?: string
   mount_path: string
   sub_path?: string
+  host_path?: string
   storage_class?: string
   capacity?: number
   access_modes?: string
@@ -79,6 +80,7 @@ export function VolumeEditor({
     volume_type: "pvc",
     mount_path: "",
     sub_path: "",
+    host_path: "",
     storage_class: "",
     capacity: 10,
     access_modes: "ReadWriteOnce",
@@ -109,6 +111,7 @@ export function VolumeEditor({
           volume_type: volume.volume_type || "pvc",
           mount_path: volume.mount_path || "",
           sub_path: volume.sub_path || "",
+          host_path: volume.host_path || "",
           storage_class: volume.storage_class || "",
           capacity: volume.capacity || 10,
           access_modes: volume.access_modes || "ReadWriteOnce",
@@ -120,6 +123,7 @@ export function VolumeEditor({
           volume_type: "pvc",
           mount_path: "",
           sub_path: "",
+          host_path: "",
           storage_class: "",
           capacity: 10,
           access_modes: "ReadWriteOnce",
@@ -147,6 +151,10 @@ export function VolumeEditor({
       if (!formData.capacity || formData.capacity < 1) {
         newErrors.capacity = "Capacity must be at least 1 GiB"
       }
+    }
+
+    if (formData.volume_type === "hostPath" && !formData.host_path?.startsWith("/")) {
+      newErrors.host_path = "Host path must be absolute"
     }
 
     setErrors(newErrors)
@@ -283,6 +291,24 @@ export function VolumeEditor({
               </Field>
             </div>
 
+            {formData.volume_type === "hostPath" && (
+              <Field>
+                <FieldLabel htmlFor="host-path">Node Host Path *</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="host-path"
+                    value={formData.host_path}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, host_path: e.target.value }))
+                    }
+                    placeholder="/var/lib/application-data"
+                    required
+                  />
+                </FieldContent>
+                {errors.host_path && <FieldError>{errors.host_path}</FieldError>}
+              </Field>
+            )}
+
             {isPVCType && (
               <>
                 <div className="grid grid-cols-3 gap-4">
@@ -305,7 +331,7 @@ export function VolumeEditor({
                               <ComboboxItem key="default" value="default">
                                 Default (cluster default)
                               </ComboboxItem>
-                              {storageClasses.map((sc: any) => (
+                              {storageClasses.map((sc) => (
                                 <ComboboxItem key={sc.name} value={sc.name}>
                                   <Item size="xs" className="p-0">
                                     <ItemContent>

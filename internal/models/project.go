@@ -38,6 +38,20 @@ type ListProjectMemberResponse struct {
 	Pagination PaginationResponse      `json:"pagination"`
 }
 
+// ProjectCapabilitiesResponse describes the authenticated user's effective
+// access to a project. It is intentionally scoped to one user and project so
+// callers do not need to fetch or scan a paginated member list.
+type ProjectCapabilitiesResponse struct {
+	ProjectRole  string              `json:"project_role"`
+	Capabilities ProjectCapabilities `json:"capabilities"`
+}
+
+type ProjectCapabilities struct {
+	Read   bool `json:"read"`
+	Write  bool `json:"write"`
+	Manage bool `json:"manage"`
+}
+
 // ProjectListRow is a flattened DTO for listing projects via JOIN queries.
 // It avoids GORM Preload by scanning the owner name directly from a joined subquery.
 type ProjectListRow struct {

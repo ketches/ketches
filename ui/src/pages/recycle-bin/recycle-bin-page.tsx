@@ -26,7 +26,7 @@ export function RecycleBinPage() {
   const systemRole = useAuthStore((state) => state.user?.role)
   const isAdmin = systemRole === "admin"
   const projectRole = useProjectRole()
-  const isViewer = projectRole === "viewer"
+  const isViewer = projectRole !== "owner" && projectRole !== "developer"
 
   const [activeTab, setActiveTab] = React.useState<RecycleBinTabKey>("projects")
   const [restoreDialogOpen, setRestoreDialogOpen] = React.useState(false)

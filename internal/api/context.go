@@ -12,3 +12,24 @@ func GetClaims(c *gin.Context) *app.Claims {
 	}
 	return claims.(*app.Claims)
 }
+
+func SetProjectRole(c *gin.Context, role string) {
+	c.Set("projectRole", role)
+}
+
+func GetProjectRole(c *gin.Context) app.ProjectRole {
+	role, ok := c.Get("projectRole")
+	if !ok {
+		return ""
+	}
+	value, ok := role.(string)
+	if !ok {
+		return ""
+	}
+	switch value {
+	case app.ProjectRoleOwner, app.ProjectRoleDeveloper, app.ProjectRoleViewer:
+		return value
+	default:
+		return ""
+	}
+}

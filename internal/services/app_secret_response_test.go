@@ -171,3 +171,136 @@ func TestListAppImageTagsDecryptsRegistryPassword(t *testing.T) {
 	assert.Equal(t, repository, result.Repository)
 	assert.Equal(t, []string{"v1.0.0"}, result.Tags)
 }
+
+func TestViewerAppConfigurationResponsesOnlyExposeValueStatus(t *testing.T) {
+	setupAppVolumeTestDB(t)
+	originalConfig := app.Config
+	t.Cleanup(func() { app.Config = originalConfig })
+	app.Config.SecretEncryptionKey = "app-configuration-test-key"
+
+	encryptedEnvValue, err := secrets.EncryptString("secret-env-value")
+	require.NoError(t, err)
+	encryptedContent, err := secrets.EncryptString("secret-file-content")
+	require.NoError(t, err)
+	require.NoError(t, db.DB.Create([]entities.AppEnvVar{
+		{ID: "env-public", AppID: "app-1", Key: "PUBLIC_URL", Value: "https://example.com"},
+		{ID: "env-secret", AppID: "app-1", Key: "API_TOKEN", Value: encryptedEnvValue, IsSecret: true},
+	}).Error)
+	require.NoError(t, db.DB.Create([]entities.AppConfigFile{
+		{ID: "config-public", AppID: "app-1", Slug: "app.conf", MountPath: "/etc/app.conf", Content: "debug=false"},
+		{ID: "config-secret", AppID: "app-1", Slug: "credentials", MountPath: "/etc/credentials", Content: encryptedContent, IsSecret: true},
+	}).Error)
+
+	envVars, err := ListAppEnvVarsForProjectRole("app-1", app.ProjectRoleViewer)
+	require.NoError(t, err)
+	require.Len(t, envVars, 2)
+	for _, envVar := range envVars {
+		assert.Empty(t, envVar.Value)
+		assert.True(t, envVar.HasValue)
+	}
+
+	configFiles, err := ListAppConfigFilesForProjectRole("app-1", app.ProjectRoleViewer)
+	require.NoError(t, err)
+	require.Len(t, configFiles, 2)
+	for _, configFile := range configFiles {
+		assert.Empty(t, configFile.Content)
+		assert.True(t, configFile.HasValue)
+	}
+
+	developerEnvVars, err := ListAppEnvVarsForProjectRole("app-1", app.ProjectRoleDeveloper)
+	require.NoError(t, err)
+	values := make(map[string]string, len(developerEnvVars))
+	for _, envVar := range developerEnvVars {
+		values[envVar.Key] = envVar.Value
+	}
+	assert.Equal(t, "https://example.com", values["PUBLIC_URL"])
+	assert.Equal(t, "secret-env-value", values["API_TOKEN"])
+}
+
+func seedAppSecretResponseTestData(t *testing.T) {
+	t.Helper()
+
+	encryptedEnvValue, err := secrets.EncryptString("secret-env-value")
+	require.NoError(t, err)
+	encryptedContent, err := secrets.EncryptString("secret-file-content")
+	require.NoError(t, err)
+	require.NoError(t, db.DB.Create([]entities.AppEnvVar{
+		{ID: "env-public", AppID: "app-1", Key: "PUBLIC_URL", Value: "https://example.com"},
+		{ID: "env-secret", AppID: "app-1", Key: "API_TOKEN", Value: encryptedEnvValue, IsSecret: true},
+	}).Error)
+	require.NoError(t, db.DB.Create([]entities.AppConfigFile{
+		{ID: "config-public", AppID: "app-1", Slug: "app.conf", MountPath: "/etc/app.conf", Content: "debug=false"},
+		{ID: "config-secret", AppID: "app-1", Slug: "credentials", MountPath: "/etc/credentials", Content: encryptedContent, IsSecret: true},
+	}).Error)
+}
+
+func TestListAppConfigurationForProjectRoleFailsClosed(t *testing.T) {
+	setupAppVolumeTestDB(t)
+	originalConfig := app.Config
+	t.Cleanup(func() { app.Config = originalConfig })
+	app.Config.SecretEncryptionKey = "app-configuration-role-test-key"
+	seedAppSecretResponseTestData(t)
+
+	tests := []struct {
+		name   string
+		role   app.ProjectRole
+		reveal bool
+	}{
+		{name: "owner", role: app.ProjectRoleOwner, reveal: true},
+		{name: "developer", role: app.ProjectRoleDeveloper, reveal: true},
+		{name: "viewer", role: app.ProjectRoleViewer},
+		{name: "missing", role: ""},
+		{name: "unknown", role: "auditor"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			envVars, err := ListAppEnvVarsForProjectRole("app-1", tt.role)
+			require.NoError(t, err)
+			require.Len(t, envVars, 2)
+			configFiles, err := ListAppConfigFilesForProjectRole("app-1", tt.role)
+			require.NoError(t, err)
+			require.Len(t, configFiles, 2)
+
+			for _, envVar := range envVars {
+				assert.Equal(t, tt.reveal && envVar.Key == "API_TOKEN", envVar.Value == "secret-env-value")
+				if !tt.reveal {
+					assert.Empty(t, envVar.Value)
+				}
+				assert.True(t, envVar.HasValue)
+			}
+			for _, configFile := range configFiles {
+				if tt.reveal {
+					if configFile.Slug == "credentials" {
+						assert.Equal(t, "secret-file-content", configFile.Content)
+					} else {
+						assert.Equal(t, "debug=false", configFile.Content)
+					}
+				} else {
+					assert.Empty(t, configFile.Content)
+				}
+				assert.True(t, configFile.HasValue)
+			}
+		})
+	}
+}
+
+func TestListAppConfigurationCompatibilityWrappersRedactByDefault(t *testing.T) {
+	setupAppVolumeTestDB(t)
+	originalConfig := app.Config
+	t.Cleanup(func() { app.Config = originalConfig })
+	app.Config.SecretEncryptionKey = "app-configuration-wrapper-test-key"
+	seedAppSecretResponseTestData(t)
+
+	envVars, err := ListAppEnvVars("app-1")
+	require.NoError(t, err)
+	for _, envVar := range envVars {
+		assert.Empty(t, envVar.Value)
+	}
+
+	configFiles, err := ListAppConfigFiles("app-1")
+	require.NoError(t, err)
+	for _, configFile := range configFiles {
+		assert.Empty(t, configFile.Content)
+	}
+}

@@ -8,17 +8,21 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/kube"
+	"github.com/ketches/ketches/internal/secrets"
 	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayclient "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
 const (
@@ -33,6 +37,8 @@ const (
 	// sharedGatewayName is the canonical name of the single shared Gateway.
 	sharedGatewayName = "ketches-shared-gateway"
 )
+
+var sharedGatewayReconcileLocks sync.Map
 
 type sharedGatewayHTTPSListener struct {
 	Name                  gatewayv1.SectionName
@@ -227,6 +233,16 @@ func buildSharedGatewayAllowedRoutes() *gatewayv1.AllowedRoutes {
 // EnsureSharedGateway creates or updates the single shared Gateway resource in the
 // cluster. It is a no-op when the cluster does not have the Gateway API CRDs.
 func EnsureSharedGateway(ctx context.Context, clusterID string) error {
+	lock := sharedGatewayReconcileLock(clusterID)
+	lock.Lock()
+	defer lock.Unlock()
+
+	return withDatabaseReconcileLock(ctx, "gateway:"+clusterID, func() error {
+		return ensureSharedGateway(ctx, clusterID)
+	})
+}
+
+func ensureSharedGateway(ctx context.Context, clusterID string) error {
 	hasGW, err := ClusterHasGatewayCRD(clusterID)
 	if err != nil {
 		return app.WrapErrorf(err, "checking gateway CRD: %w", err)
@@ -265,18 +281,54 @@ func EnsureSharedGateway(ctx context.Context, clusterID string) error {
 
 	desired := BuildSharedGateway(gatewayClassName, httpsListeners)
 
-	existing, err := gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Get(ctx, desired.Name, metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			_, err = gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Create(ctx, desired, metav1.CreateOptions{})
-			return err
-		}
+	if err := applySharedGateway(ctx, gwClient, desired); err != nil {
 		return err
 	}
 
-	desired.ResourceVersion = existing.ResourceVersion
-	_, err = gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Update(ctx, desired, metav1.UpdateOptions{})
-	return err
+	// Include a second database snapshot in cleanup protection. A newer request
+	// may have committed its TLS choice while this reconcile was updating the
+	// Gateway, and deleting that Secret would make the following reconcile fail.
+	_, latestTLSSecrets, err := loadSharedGatewayHTTPSMaterial(clusterID)
+	if err != nil {
+		return err
+	}
+	legacySecretNames, err := loadLegacySharedGatewayTLSSecretNames(clusterID)
+	if err != nil {
+		return err
+	}
+	return cleanupStaleSharedGatewayTLSSecretsWithLegacyNames(
+		ctx,
+		client,
+		gwClient,
+		mergeSharedGatewayTLSSecrets(tlsSecrets, latestTLSSecrets),
+		legacySecretNames,
+	)
+}
+
+func sharedGatewayReconcileLock(clusterID string) *sync.Mutex {
+	lock := &sync.Mutex{}
+	actual, _ := sharedGatewayReconcileLocks.LoadOrStore(clusterID, lock)
+	return actual.(*sync.Mutex)
+}
+
+func applySharedGateway(ctx context.Context, client gatewayclient.Interface, desired *gatewayv1.Gateway) error {
+	return retry.OnError(retry.DefaultRetry, func(err error) bool {
+		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
+	}, func() error {
+		existing, err := client.GatewayV1().Gateways(desired.Namespace).Get(ctx, desired.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			_, err = client.GatewayV1().Gateways(desired.Namespace).Create(ctx, desired.DeepCopy(), metav1.CreateOptions{})
+			return err
+		}
+		if err != nil {
+			return err
+		}
+
+		updated := desired.DeepCopy()
+		updated.ResourceVersion = existing.ResourceVersion
+		_, err = client.GatewayV1().Gateways(updated.Namespace).Update(ctx, updated, metav1.UpdateOptions{})
+		return err
+	})
 }
 
 func loadSharedGatewayHTTPSMaterial(clusterID string) ([]sharedGatewayHTTPSListener, []*corev1.Secret, error) {
@@ -286,7 +338,7 @@ func loadSharedGatewayHTTPSMaterial(clusterID string) ([]sharedGatewayHTTPSListe
 		Joins("JOIN app_gateways ag ON ag.id = r.app_gateway_id").
 		Joins("JOIN apps a ON a.id = ag.app_id").
 		Joins("JOIN envs e ON e.id = a.env_id").
-		Where("e.cluster_id = ? AND r.enabled = ? AND LOWER(r.listener_protocol) = ?", clusterID, true, "https").
+		Where("e.cluster_id = ? AND a.deleted_at IS NULL AND e.deleted_at IS NULL AND r.enabled = ? AND LOWER(r.listener_protocol) = ?", clusterID, true, "https").
 		Scan(&bindings).Error
 	if err != nil {
 		return nil, nil, err
@@ -319,6 +371,11 @@ func loadSharedGatewayHTTPSMaterial(clusterID string) ([]sharedGatewayHTTPSListe
 			return nil, nil, err
 		}
 		for _, certificate := range certificates {
+			plaintextKey, err := secrets.DecryptStringCompatible(certificate.Key)
+			if err != nil {
+				return nil, nil, app.WrapErrorf(err, "decrypt certificate %s private key: %w", certificate.ID, err)
+			}
+			certificate.Key = plaintextKey
 			certificatesByID[certificate.ID] = certificate
 		}
 	}
@@ -369,6 +426,28 @@ func loadSharedGatewayHTTPSMaterial(clusterID string) ([]sharedGatewayHTTPSListe
 	return listeners, secrets, nil
 }
 
+// loadLegacySharedGatewayTLSSecretNames returns names that older Ketches
+// versions may have created without ownership labels. The certificate ID must
+// belong to this cluster before the name can be considered safe to remove.
+func loadLegacySharedGatewayTLSSecretNames(clusterID string) (map[string]struct{}, error) {
+	var certificateIDs []string
+	if err := db.DB.Model(&entities.Certificate{}).
+		Where("cluster_id = ?", clusterID).
+		Pluck("id", &certificateIDs).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]struct{}, len(certificateIDs))
+	for _, certificateID := range certificateIDs {
+		certificateID = strings.TrimSpace(certificateID)
+		if certificateID == "" {
+			continue
+		}
+		result[sharedGatewayTLSSecretName(certificateID)] = struct{}{}
+	}
+	return result, nil
+}
+
 func buildSharedGatewayHTTPSListenerName(hostname string) gatewayv1.SectionName {
 	normalized := strings.ToLower(strings.TrimSpace(hostname))
 	sanitized := make([]rune, 0, len(normalized))
@@ -413,7 +492,9 @@ func buildSharedGatewayTLSSecret(secretName string, certificate *entities.Certif
 			Name:      secretName,
 			Namespace: SharedGatewayNamespace(),
 			Labels: map[string]string{
-				kube.LabelManagedBy: "true",
+				kube.LabelManagedBy:     "true",
+				kube.LabelComponent:     "gateway-tls",
+				kube.LabelCertificateID: certificate.ID,
 			},
 		},
 		Type: corev1.SecretTypeTLS,
@@ -425,18 +506,141 @@ func buildSharedGatewayTLSSecret(secretName string, certificate *entities.Certif
 }
 
 func ensureSharedGatewayTLSSecret(ctx context.Context, client *kubernetes.Clientset, desired *corev1.Secret) error {
-	existing, err := client.CoreV1().Secrets(desired.Namespace).Get(ctx, desired.Name, metav1.GetOptions{})
-	if err != nil {
+	return retry.OnError(retry.DefaultRetry, func(err error) bool {
+		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
+	}, func() error {
+		existing, err := client.CoreV1().Secrets(desired.Namespace).Get(ctx, desired.Name, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
-			_, err = client.CoreV1().Secrets(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
+			_, err = client.CoreV1().Secrets(desired.Namespace).Create(ctx, desired.DeepCopy(), metav1.CreateOptions{})
 			return err
 		}
+		if err != nil {
+			return err
+		}
+
+		updated := desired.DeepCopy()
+		updated.ResourceVersion = existing.ResourceVersion
+		_, err = client.CoreV1().Secrets(updated.Namespace).Update(ctx, updated, metav1.UpdateOptions{})
+		return err
+	})
+}
+
+func mergeSharedGatewayTLSSecrets(groups ...[]*corev1.Secret) []*corev1.Secret {
+	byName := make(map[string]*corev1.Secret)
+	for _, group := range groups {
+		for _, secret := range group {
+			if secret == nil || strings.TrimSpace(secret.Name) == "" {
+				continue
+			}
+			byName[secret.Name] = secret
+		}
+	}
+	result := make([]*corev1.Secret, 0, len(byName))
+	for _, secret := range byName {
+		result = append(result, secret)
+	}
+	return result
+}
+
+func cleanupStaleSharedGatewayTLSSecrets(
+	ctx context.Context,
+	client kubernetes.Interface,
+	gwClient gatewayclient.Interface,
+	desired []*corev1.Secret,
+) error {
+	return cleanupStaleSharedGatewayTLSSecretsWithLegacyNames(ctx, client, gwClient, desired, nil)
+}
+
+func cleanupStaleSharedGatewayTLSSecretsWithLegacyNames(
+	ctx context.Context,
+	client kubernetes.Interface,
+	gwClient gatewayclient.Interface,
+	desired []*corev1.Secret,
+	legacySecretNames map[string]struct{},
+) error {
+	desiredNames := make(map[string]struct{}, len(desired))
+	for _, secret := range desired {
+		if secret == nil || strings.TrimSpace(secret.Name) == "" {
+			continue
+		}
+		desiredNames[secret.Name] = struct{}{}
+	}
+	secrets, err := client.CoreV1().Secrets(SharedGatewayNamespace()).List(ctx, metav1.ListOptions{})
+	if err != nil {
 		return err
 	}
+	for i := range secrets.Items {
+		secret := &secrets.Items[i]
+		managedTLSSecret := secret.Labels[kube.LabelManagedBy] == "true" && secret.Labels[kube.LabelComponent] == "gateway-tls"
+		legacyTLSSecret := trustedLegacySharedGatewayTLSSecret(secret, legacySecretNames)
+		if !managedTLSSecret && !legacyTLSSecret {
+			continue
+		}
+		if _, ok := desiredNames[secret.Name]; ok {
+			continue
+		}
 
-	desired.ResourceVersion = existing.ResourceVersion
-	_, err = client.CoreV1().Secrets(desired.Namespace).Update(ctx, desired, metav1.UpdateOptions{})
-	return err
+		// Re-read the live Gateway immediately before each delete. Cleanup is
+		// intentionally fail-safe: a Secret that is still referenced, or whose
+		// reference state cannot be established, is left for a later reconcile.
+		gateway, err := gwClient.GatewayV1().Gateways(SharedGatewayNamespace()).Get(
+			ctx,
+			SharedGatewayName(),
+			metav1.GetOptions{},
+		)
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if sharedGatewayReferencesTLSSecret(gateway, secret.Name) {
+			continue
+		}
+		if err := client.CoreV1().Secrets(secret.Namespace).Delete(ctx, secret.Name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func trustedLegacySharedGatewayTLSSecret(secret *corev1.Secret, allowedNames map[string]struct{}) bool {
+	if secret == nil || len(allowedNames) == 0 || !strings.HasPrefix(secret.Name, "ketches-cert-") {
+		return false
+	}
+	if _, ok := allowedNames[secret.Name]; !ok {
+		return false
+	}
+	if secret.Type != corev1.SecretTypeTLS {
+		return false
+	}
+	return len(secret.Data[corev1.TLSCertKey]) > 0 && len(secret.Data[corev1.TLSPrivateKeyKey]) > 0
+}
+
+func sharedGatewayReferencesTLSSecret(gateway *gatewayv1.Gateway, secretName string) bool {
+	if gateway == nil || strings.TrimSpace(secretName) == "" {
+		return false
+	}
+	for _, listener := range gateway.Spec.Listeners {
+		if listener.Protocol != gatewayv1.HTTPSProtocolType || listener.TLS == nil {
+			continue
+		}
+		for _, certificateRef := range listener.TLS.CertificateRefs {
+			if certificateRef.Group != nil && *certificateRef.Group != gatewayv1.Group("") {
+				continue
+			}
+			if certificateRef.Kind != nil && *certificateRef.Kind != gatewayv1.Kind("Secret") {
+				continue
+			}
+			if certificateRef.Namespace != nil && string(*certificateRef.Namespace) != gateway.Namespace {
+				continue
+			}
+			if string(certificateRef.Name) == secretName {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func certificateAvailableToEnv(certificate *entities.Certificate, envID string) bool {

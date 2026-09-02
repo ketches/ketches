@@ -36,8 +36,8 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectIdToUse = activeProjectId
   const projectNameToUse = activeProjectName
-  const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const projectRole = useProjectRole(activeProjectId)
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const userRole = useAuthStore((state) => state.user?.role)
   const isAdmin = userRole === 'admin'
 
@@ -129,7 +129,7 @@ export function ApplicationsPage({ projectId: projectIdProp }: { projectId?: str
   })
 
   const renderLoadingState = () => (
-    <Skeleton className="h-full w-full rounded-xl" />
+    <Skeleton data-testid="applications-loading" className="h-full w-full rounded-xl" />
   )
 
   return (

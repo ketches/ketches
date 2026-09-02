@@ -26,9 +26,29 @@ var (
 	ensureSharedGatewayForSync      = EnsureSharedGateway
 )
 
-// SyncGatewaysToK8s synchronizes app gateways to Kubernetes cluster
-// It creates/updates Service and HTTPRoute/TCPRoute resources as needed
+// SyncGatewaysToK8s synchronizes an application's gateway resources and then
+// refreshes the cluster-wide shared Gateway. Application resources are fenced by
+// the app reconcile lock; the shared Gateway is deliberately updated after that
+// lock is released so advisory database sessions are never nested.
 func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
+	var clusterID string
+	if err := withAppReconcileLockContext(ctx, appCtx, func(latest *models.AppContext) error {
+		clusterID = latest.EnvContext.Env.ClusterID
+		return syncAppGatewaysToK8s(ctx, latest)
+	}); err != nil {
+		return err
+	}
+	return syncSharedGatewayForApp(ctx, clusterID)
+}
+
+// syncAppGatewaysToK8s synchronizes only resources owned by one application.
+// Keep shared Gateway reconciliation outside this function: callers may already
+// hold the application's advisory lock, while the shared Gateway has its own
+// cluster-wide lock.
+func syncAppGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
+	if appCtx == nil {
+		return app.NewErrorf("app gateway reconcile context is nil")
+	}
 	if appCtx.EnvContext.Env.ClusterID == "" {
 		return app.NewErrorf("app environment has no cluster configured")
 	}
@@ -46,7 +66,6 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 
 	routesByGateway := groupGatewayRoutesForSync(appCtx.GatewayRoutes)
 	backendsByRoute := groupGatewayBackendsForSync(appCtx.GatewayBackends)
-	hasEnabledHTTPRoute := appContextHasEnabledHTTPRoute(appCtx)
 	var gwClientReady bool
 	var gwClientErr error
 
@@ -56,18 +75,8 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 		if gateway.ServiceType == "NodePort" {
 			// Create/update per-gateway NodePort Service
 			npSvc := metadata.BuildNodePortService(gateway)
-			if _, err := client.CoreV1().Services(npSvc.Namespace).Get(ctx, npSvc.Name, metav1.GetOptions{}); err != nil {
-				if errors.IsNotFound(err) {
-					if _, err := client.CoreV1().Services(npSvc.Namespace).Create(ctx, npSvc, metav1.CreateOptions{}); err != nil {
-						return err
-					}
-				} else {
-					return err
-				}
-			} else {
-				if _, err := client.CoreV1().Services(npSvc.Namespace).Update(ctx, npSvc, metav1.UpdateOptions{}); err != nil {
-					return err
-				}
+			if err := applyService(ctx, client, npSvc); err != nil {
+				return err
 			}
 		} else {
 			// Delete per-gateway NodePort Service if it exists (ServiceType changed to ClusterIP)
@@ -119,15 +128,65 @@ func SyncGatewaysToK8s(ctx context.Context, appCtx *models.AppContext) error {
 
 		}
 	}
-
-	if hasEnabledHTTPRoute {
-		if err := cleanupStaleHTTPRoutes(ctx, appCtx); err != nil {
-			return err
-		}
-	} else if err := cleanupStaleHTTPRoutes(ctx, appCtx); err != nil {
+	if err := cleanupStaleNodePortServices(ctx, client, appCtx); err != nil {
 		return err
 	}
 
+	// Gateway API is optional. When it is not installed, there can be no
+	// HTTPRoute cleanup to perform; the shared Gateway step will also be a no-op.
+	hasGatewayAPI, err := clusterHasGatewayAPICRDsForSync(appCtx.EnvContext.Env.ClusterID)
+	if err != nil {
+		return err
+	}
+	if hasGatewayAPI {
+		if err := cleanupStaleHTTPRoutes(ctx, appCtx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// syncSharedGatewayForApp reconciles the cluster-wide Gateway after an app
+// reconcile lock has been released. The discovery hook remains injectable for
+// tests and avoids acquiring a database lock when Gateway API is unavailable.
+func syncSharedGatewayForApp(ctx context.Context, clusterID string) error {
+	if clusterID == "" {
+		return app.NewErrorf("app environment has no cluster configured")
+	}
+	hasGatewayAPI, err := clusterHasGatewayAPICRDsForSync(clusterID)
+	if err != nil || !hasGatewayAPI {
+		return err
+	}
+	return ensureSharedGatewayForSync(ctx, clusterID)
+}
+
+func cleanupStaleNodePortServices(ctx context.Context, client kubernetes.Interface, appCtx *models.AppContext) error {
+	desiredNames := make(map[string]struct{})
+	for _, gateway := range appCtx.Gateways {
+		if gateway.ServiceType == "NodePort" {
+			desiredNames[fmt.Sprintf("%s-np-%d", appCtx.App.Slug, gateway.Port)] = struct{}{}
+		}
+	}
+
+	services, err := client.CoreV1().Services(appCtx.EnvContext.Env.ClusterNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: appOwnedSelector(appCtx.App.ID),
+	})
+	if err != nil {
+		return err
+	}
+	legacyPrefix := appCtx.App.Slug + "-np-"
+	for i := range services.Items {
+		service := &services.Items[i]
+		if _, ok := desiredNames[service.Name]; ok {
+			continue
+		}
+		if service.Labels[kube.LabelComponent] != "node-port" && !strings.HasPrefix(service.Name, legacyPrefix) {
+			continue
+		}
+		if err := client.CoreV1().Services(service.Namespace).Delete(ctx, service.Name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -187,16 +246,7 @@ func syncClusterIPService(ctx context.Context, client *kubernetes.Clientset, met
 	}
 
 	svc := metadata.BuildClusterIPService(gateways)
-	if _, err := client.CoreV1().Services(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{}); err != nil {
-		if errors.IsNotFound(err) {
-			_, err = client.CoreV1().Services(svc.Namespace).Create(ctx, svc, metav1.CreateOptions{})
-			return err
-		}
-		return err
-	}
-
-	_, err := client.CoreV1().Services(svc.Namespace).Update(ctx, svc, metav1.UpdateOptions{})
-	return err
+	return applyService(ctx, client, svc)
 }
 
 func remainingGatewaysAfterDelete(gateways []entities.AppGateway, deletedGatewayID string) []entities.AppGateway {
@@ -233,7 +283,7 @@ func (m *AppMetadata) BuildClusterIPService(gateways []entities.AppGateway) *cor
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.AppContext.App.Slug,
 			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
-			Labels:    m.getLabels(),
+			Labels:    withAppComponent(m.getLabels(), "cluster-ip"),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
@@ -259,7 +309,7 @@ func (m *AppMetadata) BuildNodePortService(gw entities.AppGateway) *corev1.Servi
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-np-%d", m.AppContext.App.Slug, gw.Port),
 			Namespace: m.AppContext.EnvContext.Env.ClusterNamespace,
-			Labels:    m.getLabels(),
+			Labels:    withAppComponent(m.getLabels(), "node-port"),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeNodePort,
@@ -294,7 +344,7 @@ func ReadNodePortsFromK8s(ctx context.Context, appCtx *models.AppContext) (map[i
 	return result, nil
 }
 
-func ensureGatewayAPIReadyForRouteSync(ctx context.Context, appCtx *models.AppContext) error {
+func ensureGatewayAPIReadyForRouteSync(_ context.Context, appCtx *models.AppContext) error {
 	hasGWAPI, err := clusterHasGatewayAPICRDsForSync(appCtx.EnvContext.Env.ClusterID)
 	if err != nil {
 		return err
@@ -302,7 +352,7 @@ func ensureGatewayAPIReadyForRouteSync(ctx context.Context, appCtx *models.AppCo
 	if !hasGWAPI {
 		return app.NewErrorf("Gateway API CRDs are not installed on cluster %s", appCtx.EnvContext.Env.ClusterID)
 	}
-	return ensureSharedGatewayForSync(ctx, appCtx.EnvContext.Env.ClusterID)
+	return nil
 }
 
 func applyHTTPRoute(ctx context.Context, gwClient gatewayclient.Interface, route *gatewayv1.HTTPRoute) error {

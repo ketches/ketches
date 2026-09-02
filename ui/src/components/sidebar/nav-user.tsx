@@ -39,9 +39,13 @@ import {
 } from "@/components/ui/sidebar"
 import { useNotifications } from "@/hooks/use-notifications"
 import { markManualLogout } from "@/lib/auth-redirect"
+import { getErrorMessage } from "@/lib/utils"
+import { logoutSession } from "@/lib/logout-session"
 import { useAuthStore } from "@/stores/auth"
 import { useQueryClient } from "@tanstack/react-query"
+import * as React from "react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import { UserAvatarFallback } from "../shared/user-avatar"
 
 export function NavUser({
@@ -62,6 +66,7 @@ export function NavUser({
   const logout = useAuthStore((state) => state.logout)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false)
 
   const user = {
     name: authUser?.fullname || authUser?.username || initialUser.name,
@@ -69,12 +74,24 @@ export function NavUser({
     avatar: initialUser.avatar,
   }
 
-  const handleLogout = () => {
-    markManualLogout()
-    void authApi.logout().catch(() => undefined)
-    queryClient.clear()
-    logout()
-    navigate("/login", { replace: true })
+  const handleLogout = async () => {
+    if (isLoggingOut) return
+    setIsLoggingOut(true)
+    try {
+      await logoutSession({
+        requestLogout: authApi.logout,
+        markManualLogout,
+        clearQueries: () => queryClient.clear(),
+        clearAuth: logout,
+        navigateToLogin: () => navigate("/login", { replace: true }),
+      })
+    } catch (error: unknown) {
+      toast.error("Failed to log out", {
+        description: getErrorMessage(error, "Please try again."),
+      })
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   return (
@@ -192,7 +209,7 @@ export function NavUser({
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem onClick={handleLogout}>
+                <DropdownMenuItem onClick={() => void handleLogout()} disabled={isLoggingOut}>
                   <LogOut className="mr-2" />
                   Log out
                 </DropdownMenuItem>

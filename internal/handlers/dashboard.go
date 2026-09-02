@@ -16,6 +16,7 @@ import (
 	"github.com/ketches/ketches/internal/api"
 	"github.com/ketches/ketches/internal/app"
 	"github.com/ketches/ketches/internal/db/entities"
+	"github.com/ketches/ketches/internal/egress"
 	"github.com/ketches/ketches/internal/secrets"
 	"github.com/ketches/ketches/internal/services"
 	"k8s.io/client-go/rest"
@@ -272,10 +273,13 @@ func executePrometheusRequest(urlStr string, integration *entities.ClusterIntegr
 		_ = resp.Body.Close()
 	}()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, egress.DefaultMaxResponseBytes+1))
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to read response body: %v", err))
 		return nil, err
+	}
+	if int64(len(body)) > egress.DefaultMaxResponseBytes {
+		return nil, egress.ErrResponseTooLarge
 	}
 
 	if resp.StatusCode != http.StatusOK {

@@ -28,7 +28,7 @@ interface ResourceConfigProps {
 export function ResourceConfig({ app }: ResourceConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof resourceSchema>>({
     resolver: zodResolver(resourceSchema),
     defaultValues: {

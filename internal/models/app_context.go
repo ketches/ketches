@@ -20,7 +20,7 @@ type AppContext struct {
 	AppPlugins      []entities.AppPlugin
 	Plugins         map[string]entities.Plugin
 	// PodAccessPolicy is used by internal workloads that are not application
-	// Pods (for example, a builder workspace). HTTP application operations use
+	// Pods (for example, a workspace). HTTP application operations use
 	// the application identity labels instead.
 	PodAccessPolicy *PodAccessPolicy
 }

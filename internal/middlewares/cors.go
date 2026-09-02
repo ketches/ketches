@@ -77,6 +77,12 @@ func isAllowedOrigin(origin string) bool {
 	return false
 }
 
+// IsAllowedOrigin reports whether origin is allowed by the configured CORS
+// allowlist. WebSocket handshakes use the same policy as HTTP requests.
+func IsAllowedOrigin(origin string) bool {
+	return isAllowedOrigin(origin)
+}
+
 func getAllowedOrigins() []string {
 	originsStr := app.Config.CORSAllowedOrigins
 

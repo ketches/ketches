@@ -25,7 +25,7 @@ interface CommandConfigProps {
 export function CommandConfig({ app }: CommandConfigProps) {
   const queryClient = useQueryClient()
   const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof commandSchema>>({
     resolver: zodResolver(commandSchema),
     defaultValues: {

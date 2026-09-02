@@ -69,8 +69,6 @@ export function EnvironmentDetailPage() {
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const { activeProjectId, activeProjectName, activeEnvId, setActiveContextWithNames } = useProjectStore()
   const hasSyncedProjectFromEnvRef = React.useRef(false)
-  const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
   const { timeRange, setTimeRange, rangeSeconds, step } = useTimeRange()
   const { data: envsResponse } = useQuery({
@@ -87,6 +85,8 @@ export function EnvironmentDetailPage() {
     enabled: !!envId,
     retry: false,
   })
+  const projectRole = useProjectRole(env?.project_id ?? null)
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
 
   React.useEffect(() => {
     hasSyncedProjectFromEnvRef.current = false

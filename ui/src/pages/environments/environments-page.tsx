@@ -63,8 +63,8 @@ export function EnvironmentsPage({ projectId: projectIdProp }: { projectId?: str
   const { activeProjectId: activeProjectIdFromStore, activeProjectName } = useProjectStore()
   const activeProjectId = projectIdProp ?? activeProjectIdFromStore
   const projectNameToUse = activeProjectName
-  const projectRole = useProjectRole()
-  const isViewer = projectRole === 'viewer'
+  const projectRole = useProjectRole(activeProjectId)
+  const isViewer = projectRole !== 'owner' && projectRole !== 'developer'
   const isAdmin = useAuthStore((state) => state.user?.role === "admin")
 
   React.useEffect(() => {

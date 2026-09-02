@@ -40,12 +40,19 @@ func RequestSignUpVerificationCode(c *gin.Context) {
 		api.Error(c, http.StatusBadRequest, err)
 		return
 	}
+	if !enforceAuthRateLimits(c, authRateLimitRule{
+		scope: services.AuthRateScopeVerifyIP, identity: c.ClientIP(), limit: 20, window: time.Hour,
+	}) {
+		return
+	}
 
 	resp, err := services.RequestSignUpVerificationCode(req.Email)
 	if err != nil {
 		status := http.StatusBadRequest
-		if err == services.ErrPublicSignUpDisabled {
+		if errors.Is(err, services.ErrPublicSignUpDisabled) {
 			status = http.StatusForbidden
+		} else if errors.Is(err, services.ErrAuthRateLimited) {
+			status = http.StatusTooManyRequests
 		}
 		api.Error(c, status, err)
 		return

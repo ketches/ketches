@@ -1,6 +1,6 @@
 import { fileExplorerApi, type FileInfo } from "@/api/file-explorer"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type AxiosError } from "axios"
+import { isCancel, type AxiosError } from "axios"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -47,23 +47,31 @@ export function useFileExplorer({
   const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = React.useState(false)
   const [isOpeningFile, setIsOpeningFile] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const openFileRequestRef = React.useRef<AbortController | null>(null)
+
+  React.useEffect(() => () => {
+    openFileRequestRef.current?.abort()
+  }, [appId, containerName, instanceName])
 
   React.useEffect(() => {
     localStorage.setItem(FILE_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
 
-  const filesQueryKey = ["files", appId, instanceName, containerName, currentPath]
+  const filesQueryKey = React.useMemo(
+    () => ["files", appId, instanceName, containerName, currentPath],
+    [appId, containerName, currentPath, instanceName]
+  )
 
   const { data: homeData } = useQuery({
     queryKey: ["home-dir", appId, instanceName, containerName],
-    queryFn: () => fileExplorerApi.getHomeDir(appId, instanceName, containerName),
+    queryFn: ({ signal }) => fileExplorerApi.getHomeDir(appId, instanceName, containerName, signal),
     retry: 1,
     staleTime: Infinity,
   })
 
   const { data: filesData, isLoading, error, refetch } = useQuery({
     queryKey: filesQueryKey,
-    queryFn: () => fileExplorerApi.listFiles(appId, instanceName, containerName, currentPath),
+    queryFn: ({ signal }) => fileExplorerApi.listFiles(appId, instanceName, containerName, currentPath, signal),
     retry: 1,
   })
 
@@ -84,7 +92,7 @@ export function useFileExplorer({
       }
       return a.name.localeCompare(b.name)
     })
-  }, [filesData?.files])
+  }, [filesData])
 
   const isMultiSelect = selectedFiles.size > 0
 
@@ -114,6 +122,7 @@ export function useFileExplorer({
   }, [])
 
   const navigateTo = React.useCallback((path: string) => {
+    openFileRequestRef.current?.abort()
     setCurrentPath(path)
     setSelectedFile(null)
     setSelectedFiles(new Set())
@@ -125,9 +134,13 @@ export function useFileExplorer({
 
   const openFileEditor = React.useCallback((file: FileInfo) => {
     const filePath = buildFilePath(currentPath, file.name)
+    openFileRequestRef.current?.abort()
+    const controller = new AbortController()
+    openFileRequestRef.current = controller
     setIsOpeningFile(true)
-    fileExplorerApi.readFile(appId, instanceName, containerName, filePath)
+    fileExplorerApi.readFile(appId, instanceName, containerName, filePath, controller.signal)
       .then((result) => {
+        if (controller.signal.aborted) return
         setEditingFile({
           path: filePath,
           content: result.content,
@@ -135,11 +148,14 @@ export function useFileExplorer({
         })
       })
       .catch((error: unknown) => {
+        if (isCancel(error) || controller.signal.aborted) return
         toast.error("Failed to read file", {
           description: getErrorMessage(error, "Failed to read file"),
         })
       })
       .finally(() => {
+        if (openFileRequestRef.current !== controller) return
+        openFileRequestRef.current = null
         setIsOpeningFile(false)
       })
   }, [appId, instanceName, containerName, currentPath])

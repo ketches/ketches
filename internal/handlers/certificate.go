@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ketches/ketches/internal/api"
+	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
 	"github.com/ketches/ketches/internal/services"
 )
@@ -34,15 +35,7 @@ func ListClusterCertificates(c *gin.Context) {
 
 	res := make([]models.CertificateResponse, 0, len(certs))
 	for _, cert := range certs {
-		res = append(res, models.CertificateResponse{
-			ID:          cert.ID,
-			Name:        cert.Name,
-			Description: cert.Description,
-			Scope:       cert.Scope,
-			ClusterID:   cert.ClusterID,
-			EnvID:       derefCertString(cert.EnvID),
-			CreatedAt:   cert.CreatedAt,
-		})
+		res = append(res, toCertificateResponse(&cert))
 	}
 
 	api.Success(c, models.ListCertificatesResponse{
@@ -70,15 +63,7 @@ func ListEnvCertificates(c *gin.Context) {
 
 	res := make([]models.CertificateResponse, 0, len(certs))
 	for _, cert := range certs {
-		res = append(res, models.CertificateResponse{
-			ID:          cert.ID,
-			Name:        cert.Name,
-			Description: cert.Description,
-			Scope:       cert.Scope,
-			ClusterID:   cert.ClusterID,
-			EnvID:       derefCertString(cert.EnvID),
-			CreatedAt:   cert.CreatedAt,
-		})
+		res = append(res, toCertificateResponse(&cert))
 	}
 
 	api.Success(c, models.ListCertificatesResponse{
@@ -98,15 +83,7 @@ func GetCertificate(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, models.CertificateResponse{
-		ID:          cert.ID,
-		Name:        cert.Name,
-		Description: cert.Description,
-		Scope:       cert.Scope,
-		ClusterID:   cert.ClusterID,
-		EnvID:       derefCertString(cert.EnvID),
-		CreatedAt:   cert.CreatedAt,
-	})
+	api.Success(c, toCertificateResponse(cert))
 }
 
 // CreateClusterCertificate creates a certificate scoped to a cluster
@@ -125,15 +102,7 @@ func CreateClusterCertificate(c *gin.Context) {
 		return
 	}
 
-	api.Created(c, models.CertificateResponse{
-		ID:          cert.ID,
-		Name:        cert.Name,
-		Description: cert.Description,
-		Scope:       cert.Scope,
-		ClusterID:   cert.ClusterID,
-		EnvID:       derefCertString(cert.EnvID),
-		CreatedAt:   cert.CreatedAt,
-	})
+	api.Created(c, toCertificateResponse(cert))
 }
 
 // CreateEnvCertificate creates a certificate scoped to an environment
@@ -152,15 +121,7 @@ func CreateEnvCertificate(c *gin.Context) {
 		return
 	}
 
-	api.Created(c, models.CertificateResponse{
-		ID:          cert.ID,
-		Name:        cert.Name,
-		Description: cert.Description,
-		Scope:       cert.Scope,
-		ClusterID:   cert.ClusterID,
-		EnvID:       derefCertString(cert.EnvID),
-		CreatedAt:   cert.CreatedAt,
-	})
+	api.Created(c, toCertificateResponse(cert))
 }
 
 // UpdateCertificate updates an environment certificate.
@@ -180,15 +141,7 @@ func UpdateCertificate(c *gin.Context) {
 		return
 	}
 
-	api.Success(c, models.CertificateResponse{
-		ID:          cert.ID,
-		Name:        cert.Name,
-		Description: cert.Description,
-		Scope:       cert.Scope,
-		ClusterID:   cert.ClusterID,
-		EnvID:       derefCertString(cert.EnvID),
-		CreatedAt:   cert.CreatedAt,
-	})
+	api.Success(c, toCertificateResponse(cert))
 }
 
 // DeleteCertificate deletes an environment certificate.
@@ -213,4 +166,17 @@ func derefCertString(v *string) string {
 		return ""
 	}
 	return *v
+}
+
+func toCertificateResponse(cert *entities.Certificate) models.CertificateResponse {
+	return models.CertificateResponse{
+		ID:            cert.ID,
+		Name:          cert.Name,
+		Description:   cert.Description,
+		Scope:         cert.Scope,
+		ClusterID:     cert.ClusterID,
+		EnvID:         derefCertString(cert.EnvID),
+		HasPrivateKey: cert.Key != "",
+		CreatedAt:     cert.CreatedAt,
+	}
 }

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -84,20 +85,25 @@ func SignUp(req *models.SignUpRequest) (*entities.User, error) {
 		Role:     app.UserRoleUser,
 	}
 
+	enabled, err := GetPublicSignUpEnabled()
+	if err != nil {
+		return nil, err
+	}
+	if !enabled {
+		return nil, ErrPublicSignUpDisabled
+	}
+	verificationRequired, err := GetSignUpEmailVerificationRequired()
+	if err != nil {
+		return nil, err
+	}
+	invalidVerificationCode := false
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
-		enabled, err := GetPublicSignUpEnabled()
-		if err != nil {
-			return err
-		}
-		if !enabled {
-			return ErrPublicSignUpDisabled
-		}
-		verificationRequired, err := GetSignUpEmailVerificationRequired()
-		if err != nil {
-			return err
-		}
 		if verificationRequired {
 			if err := consumeSignupVerificationCode(tx, req.Email, req.VerificationCode); err != nil {
+				if errors.Is(err, ErrInvalidVerificationCode) {
+					invalidVerificationCode = true
+					return nil
+				}
 				return err
 			}
 		}
@@ -110,6 +116,9 @@ func SignUp(req *models.SignUpRequest) (*entities.User, error) {
 
 	if err != nil {
 		return nil, err
+	}
+	if invalidVerificationCode {
+		return nil, ErrInvalidVerificationCode
 	}
 
 	return user, nil
@@ -297,7 +306,28 @@ func restoreOwnedProjects(tx *gorm.DB, userID string) error {
 	if len(projectIDs) == 0 {
 		return nil
 	}
-	return tx.Unscoped().Model(&entities.Project{}).Where("id IN ?", projectIDs).Update("deleted_at", nil).Error
+
+	result := tx.Unscoped().Model(&entities.Project{}).
+		Where("projects.id IN ? AND projects.deleted_at IS NOT NULL", projectIDs).
+		Where(`NOT EXISTS (
+			SELECT 1
+			FROM recycle_bin_deletion_claims AS claims
+			WHERE claims.resource_type = ? AND claims.resource_id = projects.id
+		)`, recycleBinResourceProject).
+		Update("deleted_at", nil)
+	if result.Error != nil {
+		return result.Error
+	}
+	for _, projectID := range projectIDs {
+		claimed, err := hasRecycleBinDeletionClaim(tx, recycleBinResourceProject, projectID)
+		if err != nil {
+			return err
+		}
+		if claimed {
+			return app.WrapErrorf(ErrRecycleBinResourceDeleting, "project %s", projectID)
+		}
+	}
+	return nil
 }
 
 func permanentlyDeleteOwnedProjects(tx *gorm.DB, userID string) error {
@@ -309,11 +339,12 @@ func permanentlyDeleteOwnedProjects(tx *gorm.DB, userID string) error {
 		return nil
 	}
 
-	if err := tx.Unscoped().Where("project_id IN ?", projectIDs).Delete(&entities.ProjectMember{}).Error; err != nil {
-		return err
+	for _, projectID := range projectIDs {
+		if err := permanentlyDeleteProjectTx(tx, projectID); err != nil {
+			return err
+		}
 	}
-
-	return tx.Unscoped().Where("id IN ?", projectIDs).Delete(&entities.Project{}).Error
+	return nil
 }
 
 // EnsureBootstrapAdmin creates the bootstrap admin account only when it is
@@ -429,23 +460,51 @@ func DeleteUser(userID string) error {
 
 func RestoreUser(userID string) error {
 	return db.DB.Transaction(func(tx *gorm.DB) error {
+		err := restoreUserTx(tx, userID)
+		if errors.Is(err, ErrRecycleBinResourceActive) {
+			return app.WrapError("cannot restore active user", err)
+		}
+		return err
+	})
+}
+
+func PermanentlyDeleteUser(userID string) error {
+	var ownedProjectIDs []string
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
 		user, err := getUserByID(tx, userID, true)
 		if err != nil {
 			return err
 		}
 		if !user.DeletedAt.Valid {
-			return errors.New("cannot restore active user")
+			return errors.New("cannot permanently delete active user")
 		}
-
-		if err := restoreOwnedProjects(tx, userID); err != nil {
+		ownedProjectIDs, err = listOwnedProjectIDsByUser(tx, userID)
+		if err != nil {
 			return err
 		}
 
-		return tx.Unscoped().Model(&entities.User{}).Where("id = ?", userID).Update("deleted_at", nil).Error
-	})
-}
+		targets := make([]recycleBinDeletionTarget, 0, len(ownedProjectIDs)+1)
+		targets = append(targets, newRecycleBinDeletionTarget(
+			recycleBinResourceUser, userID, &entities.User{}, "user",
+		))
+		for _, projectID := range ownedProjectIDs {
+			targets = append(targets, newRecycleBinDeletionTarget(
+				recycleBinResourceProject, projectID, &entities.Project{}, "project",
+			))
+		}
+		if err := claimRecycleBinDeletionTargets(tx, targets...); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	for _, projectID := range ownedProjectIDs {
+		if err := cleanupProjectNamespaces(context.Background(), projectID); err != nil {
+			return err
+		}
+	}
 
-func PermanentlyDeleteUser(userID string) error {
 	return db.DB.Transaction(func(tx *gorm.DB) error {
 		user, err := getUserByID(tx, userID, true)
 		if err != nil {
@@ -458,12 +517,18 @@ func PermanentlyDeleteUser(userID string) error {
 		if err := permanentlyDeleteOwnedProjects(tx, userID); err != nil {
 			return err
 		}
+		if err := deleteUserOwnedRecordsTx(tx, userID); err != nil {
+			return err
+		}
 
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&entities.ProjectMember{}).Error; err != nil {
 			return err
 		}
 
-		return tx.Unscoped().Delete(&entities.User{}, "id = ?", userID).Error
+		if err := tx.Unscoped().Delete(&entities.User{}, "id = ?", userID).Error; err != nil {
+			return err
+		}
+		return deleteRecycleBinDeletionClaim(tx, recycleBinResourceUser, userID)
 	})
 }
 

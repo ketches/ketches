@@ -70,13 +70,16 @@ helm upgrade --install ketches ./deploy/helm/ketches \
   --set config.dbName=ketches \
   --set config.dbUsername=ketches \
   --set config.dbPassword="$DB_PASSWORD" \
-  --set config.dbSSLMode=disable \
-  --set config.dbAutoMigrate=true
+  --set config.dbSSLMode=verify-full
 ```
 
 If you prefer, you can still set `config.dbSource` directly.
 
-**Note**: `config.dbAutoMigrate` is available. For production environments, set `--set config.dbAutoMigrate=false` and run schema migrations separately.
+The API applies the entity schema at startup by default. Set `config.dbAutoMigrate=false` when schema changes are managed by a separate migration process; the API will then avoid migration DDL.
+
+The bundled `postgres:17-alpine` image uses group ID `70`. If you replace it with a PostgreSQL image that runs the server under a different group, set `postgres.tls.serverGroupID` to that group so PostgreSQL can read the generated private key.
+
+The chart explicitly trusts private-cluster proxy ranges so the bundled UI proxy preserves per-client authentication rate limits. Set `config.trustedProxies` to the narrower CIDRs used by your ingress and UI pods when your cluster network is known.
 
 ### Update images
 

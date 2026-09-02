@@ -14,7 +14,7 @@ type ProjectMember struct {
 	ID          string    `gorm:"type:varchar(36);primaryKey"`
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
-	ProjectID   string    `gorm:"type:varchar(36);index;not null"`
-	UserID      string    `gorm:"type:varchar(36);index;not null"`
+	ProjectID   string    `gorm:"type:varchar(36);index:idx_project_members_project_id;uniqueIndex:idx_project_members_project_user;not null"`
+	UserID      string    `gorm:"type:varchar(36);index:idx_project_members_user_id;uniqueIndex:idx_project_members_project_user;not null"`
 	ProjectRole string    `gorm:"type:varchar(16);not null"`
 }

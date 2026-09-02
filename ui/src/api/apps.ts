@@ -163,20 +163,28 @@ export interface AppVolumeRequest {
   status?: string
   mount_path: string
   sub_path?: string
+  host_path?: string
   storage_class?: string
   capacity?: number
   access_modes?: string
   volume_mode?: string
 }
 
-export type AppEnvVar = WithRequired<GeneratedAppEnvVar, "key" | "value">
-export type AppEnvVarRequest = OperationRequestBody<"/api/v1/apps/{appID}/env-vars", "post">
+export type AppEnvVar = WithRequired<GeneratedAppEnvVar, "key" | "value"> & {
+  is_secret?: boolean
+  has_value?: boolean
+}
+export type AppEnvVarRequest = OperationRequestBody<"/api/v1/apps/{appID}/env-vars", "post"> & {
+  is_secret?: boolean
+}
 
 export type AppConfigFile = WithRequired<
   GeneratedAppConfigFile,
   "slug" | "mount_path" | "content"
->
-export type AppConfigFileRequest = OperationRequestBody<"/api/v1/apps/{appID}/config-files", "post">
+> & { is_secret?: boolean; has_value?: boolean }
+export type AppConfigFileRequest = OperationRequestBody<"/api/v1/apps/{appID}/config-files", "post"> & {
+  is_secret?: boolean
+}
 
 export type AppImportResponse = OperationResponseData<"/api/v1/envs/{envID}/apps/import", "post">
 export type AppImportConflict = NonNullable<AppImportResponse["conflicts"]>[number]

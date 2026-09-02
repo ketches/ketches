@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/glebarez/sqlite"
+	"github.com/ketches/ketches/internal/core"
 	"github.com/ketches/ketches/internal/db"
 	"github.com/ketches/ketches/internal/db/entities"
 	"github.com/ketches/ketches/internal/models"
@@ -21,11 +23,13 @@ func setupAppGatewayServiceTestDB(t *testing.T) {
 	originalSync := syncGatewaysToK8s
 	originalReadNodePorts := readNodePortsFromK8s
 	originalDeleteGateway := deleteGatewayFromK8s
+	originalEnsureSharedGateway := ensureSharedGatewayAfterGatewayDelete
 	t.Cleanup(func() {
 		db.DB = originalDB
 		syncGatewaysToK8s = originalSync
 		readNodePortsFromK8s = originalReadNodePorts
 		deleteGatewayFromK8s = originalDeleteGateway
+		ensureSharedGatewayAfterGatewayDelete = originalEnsureSharedGateway
 	})
 
 	testDB, err := gorm.Open(sqlite.Open(t.TempDir()+"/app-gateway-test.db"), &gorm.Config{
@@ -59,6 +63,9 @@ func setupAppGatewayServiceTestDB(t *testing.T) {
 		return nil, nil
 	}
 	deleteGatewayFromK8s = func(context.Context, *models.AppContext, *entities.AppGateway) error {
+		return nil
+	}
+	ensureSharedGatewayAfterGatewayDelete = func(context.Context, string) error {
 		return nil
 	}
 }
@@ -317,6 +324,94 @@ func TestUpdateAppGatewayReplacesRoutesAndBackends(t *testing.T) {
 	require.NoError(t, db.DB.Find(&backends).Error)
 	require.Len(t, backends, 1)
 	assert.Equal(t, routes[0].ID, backends[0].RouteID)
+}
+
+func TestDeleteAppGatewayUsesAppFenceAndReconcilesSharedGateway(t *testing.T) {
+	setupAppGatewayServiceTestDB(t)
+	seedAppGatewayServiceApp(t)
+
+	require.NoError(t, db.DB.Create(&entities.AppGateway{
+		ID:          "gateway-delete",
+		AppID:       "app-1",
+		Port:        8080,
+		Protocol:    "http",
+		ServiceType: "ClusterIP",
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.AppGatewayHTTPRoute{
+		ID:               "route-delete",
+		AppGatewayID:     "gateway-delete",
+		Host:             "delete.example.com",
+		ListenerProtocol: "https",
+		Path:             "/",
+		PathMatchType:    "PathPrefix",
+		Enabled:          true,
+	}).Error)
+	require.NoError(t, db.DB.Create(&entities.AppGatewayHTTPRouteBackend{
+		ID:           "backend-delete",
+		RouteID:      "route-delete",
+		BackendAppID: "app-1",
+		BackendPort:  8080,
+		Weight:       1,
+	}).Error)
+
+	fenceHeld := make(chan struct{})
+	releaseFence := make(chan struct{})
+	fenceResult := make(chan error, 1)
+	go func() {
+		fenceResult <- core.WithAppReconcileFence(context.Background(), "app-1", func() error {
+			close(fenceHeld)
+			<-releaseFence
+			return nil
+		})
+	}()
+	select {
+	case <-fenceHeld:
+	case <-time.After(5 * time.Second):
+		t.Fatal("test fence was not acquired")
+	}
+
+	kubernetesDeleteCalled := make(chan struct{})
+	deleteGatewayFromK8s = func(context.Context, *models.AppContext, *entities.AppGateway) error {
+		close(kubernetesDeleteCalled)
+		return nil
+	}
+	var reconciledClusterID string
+	var sharedGatewayQueryErr error
+	var sharedGatewayObservedCount int64
+	ensureSharedGatewayAfterGatewayDelete = func(_ context.Context, clusterID string) error {
+		reconciledClusterID = clusterID
+		sharedGatewayQueryErr = db.DB.Model(&entities.AppGateway{}).
+			Where("id = ?", "gateway-delete").
+			Count(&sharedGatewayObservedCount).Error
+		return sharedGatewayQueryErr
+	}
+
+	deleteResult := make(chan error, 1)
+	go func() {
+		deleteResult <- DeleteAppGateway(context.Background(), "gateway-delete")
+	}()
+	select {
+	case <-kubernetesDeleteCalled:
+		t.Fatal("gateway deletion entered Kubernetes while the app fence was held")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(releaseFence)
+	require.NoError(t, <-fenceResult)
+	require.NoError(t, <-deleteResult)
+	assert.Equal(t, "cluster-1", reconciledClusterID)
+	require.NoError(t, sharedGatewayQueryErr)
+	require.Zero(t, sharedGatewayObservedCount, "shared Gateway must be reconciled from committed desired state")
+
+	for _, model := range []any{
+		&entities.AppGateway{},
+		&entities.AppGatewayHTTPRoute{},
+		&entities.AppGatewayHTTPRouteBackend{},
+	} {
+		var count int64
+		require.NoError(t, db.DB.Model(model).Count(&count).Error)
+		require.Zero(t, count)
+	}
 }
 
 func TestCertificateInUseChecksGatewayRoutes(t *testing.T) {

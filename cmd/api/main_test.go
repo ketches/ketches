@@ -57,3 +57,27 @@ func TestRunServerShutsDownOnContextCancel(t *testing.T) {
 		t.Fatal("runServer did not exit after context cancellation")
 	}
 }
+
+func TestNewAPIServerConfiguresTimeoutsAndHeaderLimit(t *testing.T) {
+	handler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+	server := newAPIServer("127.0.0.1:8080", handler)
+
+	if server.ReadHeaderTimeout != serverReadHeaderTimeout {
+		t.Fatalf("ReadHeaderTimeout = %s", server.ReadHeaderTimeout)
+	}
+	if server.ReadTimeout != serverReadTimeout {
+		t.Fatalf("ReadTimeout = %s", server.ReadTimeout)
+	}
+	if server.WriteTimeout != serverWriteTimeout {
+		t.Fatalf("WriteTimeout = %s", server.WriteTimeout)
+	}
+	if server.IdleTimeout != serverIdleTimeout {
+		t.Fatalf("IdleTimeout = %s", server.IdleTimeout)
+	}
+	if server.MaxHeaderBytes != serverMaxHeaderBytes {
+		t.Fatalf("MaxHeaderBytes = %d", server.MaxHeaderBytes)
+	}
+	if server.Handler == nil {
+		t.Fatal("Handler is nil")
+	}
+}

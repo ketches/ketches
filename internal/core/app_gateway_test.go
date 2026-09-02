@@ -307,10 +307,22 @@ func (s *gatewaySyncAPIServer) handleServices(w http.ResponseWriter, r *http.Req
 	namespace, name, collection := parseNamespacedResourcePath(r.URL.Path, "services")
 	switch r.Method {
 	case http.MethodGet:
+		if collection {
+			s.mu.Lock()
+			items := make([]corev1.Service, 0)
+			for _, service := range s.services {
+				if service.Namespace == namespace && matchesLabelSelector(service.Labels, r.URL.Query().Get("labelSelector")) {
+					items = append(items, *service.DeepCopy())
+				}
+			}
+			s.mu.Unlock()
+			writeJSON(w, &corev1.ServiceList{Items: items})
+			return
+		}
 		s.mu.Lock()
 		service, ok := s.services[namespacedKey(namespace, name)]
 		s.mu.Unlock()
-		if !ok || collection {
+		if !ok {
 			writeAPIError(w, apierrors.NewNotFound(schema.GroupResource{Resource: "services"}, name))
 			return
 		}
