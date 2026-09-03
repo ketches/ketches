@@ -1,116 +1,116 @@
-# Ketches Project Agents
+# Ketches
 
-This document defines the specialized agents involved in the development and maintenance of the Ketches platform.
+Ketches is a cloud-native application delivery platform. Users connect Kubernetes clusters, then deploy, operate, and collaborate on containerized applications through a unified web console.
 
-## System Architect Agent
+- Backend (repo root): Go + Gin + GORM + client-go; API contract generated from `cmd/openapi`
+- Frontend (`ui/`): React + TypeScript + Vite + Tailwind + shadcn/ui, with Zustand, TanStack Query, Axios
+- Docs: design specs in `docs/specs/`, implementation plans in `docs/plans/`
 
-- **Role**: Oversees the overall technical design and integration between the backend (ketches) and frontend (ketches-ui).
-- **Responsibilities**:
-  - Maintain architectural consistency across the project.
-  - Review cross-module integrations.
+## Repo layout
 
-## Product & Requirements Agent
+```txt
+cmd/                    cmd/api (entrypoint), cmd/openapi (OpenAPI generator)
+internal/routes         route registration -> internal/middlewares (JWT/RBAC)
+internal/handlers       HTTP handlers -> internal/services (business logic)
+internal/core           Kubernetes resource construction & reconciliation
+internal/db             GORM entities (entities/) + migrations
+internal/kube           cluster client management
+internal/secrets        sensitive data handling (KubeConfigs, credentials)
+pkg/                    shared helpers (concurrency, uuid, websocket, ...)
+openapi/                openapi.yaml/json (GENERATED — never hand-edit)
+ui/src/App.tsx          frontend routing (react-router)
+ui/src/pages            application pages
+ui/src/components/      feature components; ui/ subdir = shadcn components (FROZEN)
+ui/src/api/             API client modules + generated/ TS types (GENERATED)
+ui/src/stores           Zustand stores
+docs/specs/             design docs (yyyy-mm-dd-{feat}.md)
+docs/plans/             implementation plans (yyyy-mm-dd-{feat}.md)
+```
 
-- **Role**: Maintains the product vision and requirement alignment.
-- **Responsibilities**:
-  - Verify that implemented features match the prioritized functional modules (P0, P1, P2).
+## Commands
 
-## Backend Engineer Agent
+```txt
+make run              # start backend locally (reads .env)
+make dev-ui           # start Vite dev server for ui/
+make test             # Go tests with race detector: go test -race ./...
+cd ui && pnpm test    # frontend tests (vitest)
+make lint             # golangci-lint on Go sources
+cd ui && pnpm lint    # eslint
+cd ui && pnpm build   # type-check (tsc -b) + vite build
+make openapi          # regenerate openapi/* and ui/src/api/generated/* types
+make build            # backend binary -> bin/ketches
+```
 
-- **Focus**: Go, Gin, API Handlers, and Services.
-- **Responsibilities**:
-  - Implement RESTful APIs.
-  - Maintain business logic in the `internal/services` layer.
-  - Ensure robust error handling and request validation.
+## Architecture & data rules
 
-## Kubernetes Specialist Agent
-
-- **Focus**: `client-go`, K8s Resource Management.
-- **Responsibilities**:
-  - Manage Kubernetes resource construction (Deployments, StatefulSets, Services, etc.) in the `internal/core` layer.
-  - Implement cluster client management and resource CRUD operations.
-  - Handle real-time event processing and status calculation.
-
-## DB & ORM Specialist Agent
-
-- **Focus**: GORM, PostgreSQL/MySQL/SQLite, Database Entities.
-- **Responsibilities**:
-  - Define and maintain database entities in `internal/db/entities`.
-  - Manage database migrations and ORM query encapsulations.
-  - Optimize database interactions and ensure data integrity.
-
-### Foreign Key Policy (MANDATORY)
-
-- **Never create physical foreign keys** in database DDL/migrations.
-- Keep `gorm.Config{DisableForeignKeyConstraintWhenMigrating: true}` enabled.
-- **Do not use GORM association tags** in entity structs (e.g. `foreignKey`, `references`, `constraint`).
-- Entity structs must keep only scalar columns/IDs. Relationship data must be loaded via explicit query models (DTOs) + `JOIN`/manual queries.
-- For legacy databases, use DDL scripts to drop existing foreign keys and normalize nullable ID columns (empty string -> `NULL`).
-
-## Security & Auth Agent
-
-- **Focus**: JWT, RBAC, Middlewares.
-- **Responsibilities**:
-  - Implement secure JWT-based authentication.
-  - Maintain permission-checking middlewares (AdminOnly, ProjectMember, etc.).
-  - Ensure sensitive data (like KubeConfigs and passwords) is handled securely.
-
-## Frontend Engineer Agent
-
-- **Focus**: React, TypeScript, Component Architecture.
-- **Responsibilities**:
-  - Implement application pages and routing logic in `ui/src/pages` and `ui/src/routes`.
-  - Maintain reusable business components in `ui/src/components/ui`.
-  - Ensure type safety across the entire frontend application.
-  - Use `Combobox` component for all dropdowns and selection inputs, adhering to the design system, never use `Select`.
-  - Always use `min-h-?` for height constraints, never use `"min-h-[?px]` for that purpose.
-  - Always use `space-y-?` for vertical spacing, never use `gap-y-?` for that purpose.
-
-## UI/UX Design Agent
-
-- **Focus**: shadcn/ui, Tailwind CSS, Visual Consistency.
-- **Responsibilities**:
-  - Maintain the design system using shadcn/ui and Tailwind CSS.
-  - Ensure a consistent and user-friendly interface across all modules.
-  - Optimize responsive layouts and accessibility.
-
-## State & Data Agent
-
-- **Focus**: Zustand, TanStack Query, Axios.
-- **Responsibilities**:
-  - Manage global application state using Zustand.
-  - Implement efficient server-state management with TanStack Query.
-  - Maintain the API client and data fetching logic in `ui/src/api`.
-
-## DevOps UI Specialist Agent
-
-- **Focus**: xterm.js, WebSockets, Real-time Visuals.
-- **Responsibilities**:
-  - Implement and optimize real-time features like terminal emulation and log viewing.
-  - Manage WebSocket connections for live application updates.
-  - Ensure high performance when handling large volumes of log data.
+- Request flow: `routes -> handlers -> services -> core` (Kubernetes) or `db` (persistence). Keep layering: handlers validate requests, services hold business logic, core owns resource construction.
+- API changes start in `cmd/openapi`, then run `make openapi` to refresh the contract and TS types (single source of truth; treat generated files as build output).
+- Entities stay scalar-only: no physical foreign keys in DDL/migrations, no GORM association tags (`foreignKey`, `references`, `constraint`). Resolve relationships via DTO/query models + `JOIN`. Legacy DBs: drop existing FKs with DDL scripts and normalize empty-string IDs to `NULL`.
+- Sensitive data (KubeConfigs, registry credentials, passwords) must be handled through `internal/secrets` — never logged, echoed, or returned in API responses.
 
 ## Coding rules
 
 ### Backend
 
-- Always use English code comments;
-- Use `any` rather than `interface{}` for generic types;
-- Never add physical foreign keys or GORM association tags in entities; use query-model + `JOIN` patterns instead;
+- English comments.
+- Prefer `any` over `interface{}` for generic types.
 
 ### Frontend
 
-- Always use English code comments;
-- Always use shadcn components;
-- Do not write css directly, use tailwind;
-- The src/components/ui directory contains standard components. Please do not modify any content within it;
-- Avoid using the `any` type;
-- Prioritize the use of `Field`, `FieldLabel`, and `FieldContent` in forms.
-- Combobox itmes better use const values. For example: `[{ label: "Option 1", value: "option1" },{ label: "Option 2", value: "option2" }]`.
-- Combobox should use `itemToStringLabel` to specify the label field, never use `value` for that purpose. For example: `itemToStringLabel={(v) => FILE_MODE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}`
+- English comments; shadcn components only, no hand-written CSS (use Tailwind utilities).
+- Never modify anything inside `ui/src/components/ui/`.
+- Avoid the `any` type.
+- All dropdowns/selection inputs use `Combobox` with const option arrays — never `Select`, and never use `value` as the displayed label:
+
+```tsx
+itemToStringLabel={(v) => FILE_MODE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+```
+
+- Forms prefer `Field`, `FieldLabel`, `FieldContent`.
+- Heights use `min-h-?` scale classes only (never `min-h-[?px]`); vertical spacing uses `space-y-?` (never `gap-y-?`).
 
 ### Docs
 
-- Compliant with markdown lint:
-  - Keep table pipe space to the right and left for style "compact"
-  - Code blocks should have a language specified, if not, use `txt` as default;
+- Markdown lint: keep a space on both sides of table pipes; every code block declares a language (default `txt`).
+
+## Docs & planning
+
+Write docs for each feature and keep them updated in the same PR as the code:
+
+- Design docs -> `docs/specs/yyyy-mm-dd-{feat}.md` — problem, goals, API/schema impact, alternatives.
+- Implementation plans -> `docs/plans/yyyy-mm-dd-{feat}.md` — ordered steps, files to touch, test strategy.
+- `yyyy-mm-dd` is the start date, `{feat}` a short kebab-case slug, e.g. `docs/specs/2025-06-01-app-gateway.md`.
+
+## Git workflow
+
+- Conventional Commits with optional scope — `cliff.toml` feeds the git-cliff changelog, so malformed subjects break release notes: `feat:`, `fix(ui):`, `docs:`, `refactor:`, `chore:`, `perf:`, `test:`.
+- Use scope for subsystem hints: `ui`, `api`, `core`, `db`, `release`, `ci`.
+- English, imperative subject; explain why in the body when non-obvious.
+
+## Boundaries
+
+Never do:
+
+- Edit `ui/src/components/ui/*` or generated files (`openapi/*`, `ui/src/api/generated/*`, `bin/`, `dist/`) — regenerate instead.
+- Add physical foreign keys or GORM association tags.
+- Use `Select`, hand-written CSS, `min-h-[?px]`, or `gap-y-?`.
+- Commit secrets, KubeConfigs, or `.env` values.
+
+Ask first:
+
+- DB schema changes that drop/rename columns; API contract changes; cross-module refactors.
+
+## Agent roles
+
+| Agent | Focus |
+| --- | --- |
+| System Architect | Cross-module consistency and integrations between backend and `ui/`. |
+| Product & Requirements | Feature alignment with prioritized modules (P0/P1/P2); drives specs/plans docs. |
+| Backend Engineer | RESTful APIs in `internal/handlers` + `internal/services`. |
+| Kubernetes Specialist | `client-go` resources, reconciliation, and status logic in `internal/core`. |
+| DB & ORM Specialist | Entities and migrations in `internal/db`. |
+| Security & Auth | JWT, RBAC middlewares (AdminOnly, ProjectMember), secrets handling. |
+| Frontend Engineer | Pages and feature components in `ui/src`. |
+| UI/UX Design | Design-system consistency (shadcn/ui + Tailwind). |
+| State & Data | Server-state and API client modules in `ui/src/api` + `ui/src/stores`. |
+| DevOps UI | xterm.js terminals, WebSocket log streaming, real-time views. |
